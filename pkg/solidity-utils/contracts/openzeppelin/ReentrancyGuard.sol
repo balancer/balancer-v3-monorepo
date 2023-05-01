@@ -4,7 +4,7 @@
 // Modifier code is inlined by the compiler, which causes its code to appear multiple times in the codebase. By using
 // private functions, we achieve the same end result with slightly higher runtime gas costs, but reduced bytecode size.
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
 import "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
