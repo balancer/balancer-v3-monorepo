@@ -1,0 +1,9 @@
+name: Setup
+
+runs:
+  using: composite
+  steps:
+    - name: Install node
+      uses: actions/setup-node@v1
+      with:
+        node-version: 18.15
