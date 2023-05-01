@@ -12,8 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
@@ -113,11 +112,11 @@ abstract contract AssetManagers is
 
         if (amount > 0) {
             token.safeTransfer(msg.sender, amount);
+            cashDelta = int256(type(uint256).max - amount + 1);
         }
 
         // Since 'cash' and 'managed' are stored as uint112, `amount` is guaranteed to also fit in 112 bits. It will
         // therefore always fit in a 256 bit integer.
-        cashDelta = int256(-amount);
         managedDelta = int256(amount);
     }
 
@@ -143,12 +142,12 @@ abstract contract AssetManagers is
 
         if (amount > 0) {
             token.safeTransferFrom(msg.sender, address(this), amount);
+            managedDelta = int256(type(uint256).max - amount + 1);
         }
 
         // Since 'cash' and 'managed' are stored as uint112, `amount` is guaranteed to also fit in 112 bits. It will
         // therefore always fit in a 256 bit integer.
         cashDelta = int256(amount);
-        managedDelta = int256(-amount);
     }
 
     /**

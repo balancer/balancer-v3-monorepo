@@ -12,17 +12,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
 import "@balancer-labs/v3-interfaces/contracts/liquidity-mining/IAuthorizerAdaptor.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 contract MockAuthorizerAdaptorEntrypoint {
     function getVault() external pure returns (IVault) {
-        return IVault(0);
+        return IVault(address(0));
     }
 
     function getAuthorizerAdaptor() external pure returns (IAuthorizerAdaptor) {
-        return IAuthorizerAdaptor(0);
+        return IAuthorizerAdaptor(address(0));
     }
 }

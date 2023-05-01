@@ -12,8 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "@balancer-labs/v3-interfaces/contracts/liquidity-mining/IAuthorizerAdaptorEntrypoint.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -37,7 +36,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
     using Address for address;
 
     // solhint-disable-next-line const-name-snakecase
-    address private constant _EVERYWHERE = address(-1);
+    address private constant _EVERYWHERE = address(type(uint160).max);
 
     // solhint-disable-next-line const-name-snakecase
     uint256 internal constant _GLOBAL_CANCELER_SCHEDULED_EXECUTION_ID = type(uint256).max;

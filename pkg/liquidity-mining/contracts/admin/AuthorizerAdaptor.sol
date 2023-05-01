@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
 import "@balancer-labs/v3-interfaces/contracts/liquidity-mining/IAuthorizerAdaptor.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
@@ -46,7 +46,7 @@ contract AuthorizerAdaptor is IAuthorizerAdaptor, ReentrancyGuard {
 
     constructor(IVault vault) {
         // AuthorizerAdaptor is a singleton, so it simply uses its own address to disambiguate action identifiers
-        _actionIdDisambiguator = bytes32(uint256(address(this)));
+        _actionIdDisambiguator = bytes32(bytes20(address(this)));
         _vault = vault;
     }
 

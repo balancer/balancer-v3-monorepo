@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
 import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
@@ -22,7 +22,7 @@ abstract contract SingletonAuthentication is Authentication {
     IVault private immutable _vault;
 
     // Use the contract's own address to disambiguate action identifiers
-    constructor(IVault vault) Authentication(bytes32(uint256(address(this)))) {
+    constructor(IVault vault) Authentication(bytes32(bytes20(address(this)))) {
         _vault = vault;
     }
 

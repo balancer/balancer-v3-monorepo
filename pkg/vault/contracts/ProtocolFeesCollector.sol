@@ -12,8 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeesCollector.sol";
 
@@ -52,7 +51,7 @@ contract ProtocolFeesCollector is IProtocolFeesCollector, Authentication, Reentr
     constructor(IVault _vault)
         // The ProtocolFeesCollector is a singleton, so it simply uses its own address to disambiguate action
         // identifiers.
-        Authentication(bytes32(uint256(address(this))))
+        Authentication(bytes32(bytes20(address(this))))
     {
         vault = _vault;
     }

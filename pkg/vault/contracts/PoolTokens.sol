@@ -12,8 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
@@ -37,7 +36,7 @@ abstract contract PoolTokens is ReentrancyGuard, PoolRegistry, AssetManagers {
         // Validates token addresses and assigns Asset Managers
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            _require(token != IERC20(0), Errors.INVALID_TOKEN);
+            _require(token != IERC20(address(0)), Errors.INVALID_TOKEN);
 
             _poolAssetManagers[poolId][token] = assetManagers[i];
         }

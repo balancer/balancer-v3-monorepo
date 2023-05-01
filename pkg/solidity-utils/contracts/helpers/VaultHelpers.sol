@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
 library VaultHelpers {
     /**
@@ -23,6 +23,6 @@ library VaultHelpers {
     function toPoolAddress(bytes32 poolId) internal pure returns (address) {
         // 12 byte logical shift left to remove the nonce and specialization setting. We don't need to mask,
         // since the logical shift already sets the upper bits to zero.
-        return address(uint256(poolId) >> (12 * 8));
+        return address(uint160(uint256(poolId)) >> (12 * 8));
     }
 }

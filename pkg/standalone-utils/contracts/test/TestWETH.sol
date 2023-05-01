@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
 import "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 
@@ -41,7 +41,7 @@ contract TestWETH is IWETH {
     function withdraw(uint256 wad) public override {
         require(balanceOf[msg.sender] >= wad, "INSUFFICIENT_BALANCE");
         balanceOf[msg.sender] -= wad;
-        msg.sender.transfer(wad);
+        payable(msg.sender).transfer(wad);
         emit Withdrawal(msg.sender, wad);
     }
 
@@ -72,7 +72,7 @@ contract TestWETH is IWETH {
     ) public override returns (bool) {
         require(balanceOf[src] >= wad, "INSUFFICIENT_BALANCE");
 
-        if (src != msg.sender && allowance[src][msg.sender] != uint256(-1)) {
+        if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
             require(allowance[src][msg.sender] >= wad, "INSUFFICIENT_ALLOWANCE");
             allowance[src][msg.sender] -= wad;
         }

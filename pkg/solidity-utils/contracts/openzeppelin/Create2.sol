@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
 import "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
@@ -62,6 +62,6 @@ library Create2 {
         address deployer
     ) internal pure returns (address) {
         bytes32 _data = keccak256(abi.encodePacked(bytes1(0xff), deployer, salt, bytecodeHash));
-        return address(uint256(_data));
+        return address(uint160(uint256(_data)));
     }
 }

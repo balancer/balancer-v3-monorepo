@@ -16,8 +16,7 @@
 // implementation and terminology and interfaces are intentionally kept
 // similar
 
-pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
@@ -47,13 +46,13 @@ abstract contract FlashLoans is Fees, ReentrancyGuard, TemporarilyPausable {
         uint256[] memory preLoanBalances = new uint256[](tokens.length);
 
         // Used to ensure `tokens` is sorted in ascending order, which ensures token uniqueness.
-        IERC20 previousToken = IERC20(0);
+        IERC20 previousToken = IERC20(address(0));
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amount = amounts[i];
 
-            _require(token > previousToken, token == IERC20(0) ? Errors.ZERO_TOKEN : Errors.UNSORTED_TOKENS);
+            _require(token > previousToken, token == IERC20(address(0)) ? Errors.ZERO_TOKEN : Errors.UNSORTED_TOKENS);
             previousToken = token;
 
             preLoanBalances[i] = token.balanceOf(address(this));
