@@ -6,11 +6,7 @@
   "license": "GPL-3.0-only",
   "scripts": {
     "measure-deployment": "hardhat run deployment.ts",
-    "measure-single-pair": "hardhat run singlePair.ts",
-    "measure-multihop": "hardhat run multihop.ts",
-    "measure-join-exit": "hardhat run joinExit.ts",
-    "measure-relayer": "hardhat run relayer.ts",
-    "benchmark": "yarn measure-deployment && yarn measure-single-pair && yarn measure-multihop && yarn measure-join-exit && yarn measure-relayer",
+    "benchmark": "yarn measure-deployment",
     "lint": "yarn lint:typescript",
     "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
   },
