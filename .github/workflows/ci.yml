@@ -6,7 +6,7 @@ env:
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches: ['*', '**/*']
 
@@ -35,8 +35,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
@@ -46,12 +44,23 @@ jobs:
       - name: Test
         run: yarn workspace @balancer-labs/v3-solidity-utils test
 
+  test-standalone-utils:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - name: Compile
+        run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Test
+        run: yarn workspace @balancer-labs/v3-standalone-utils test
+
   test-vault:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
@@ -60,4 +69,3 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v3-vault test
-

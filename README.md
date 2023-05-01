@@ -33,14 +33,6 @@ One option to quickly select the suggested Node version is using `nvm`, and runn
 $ nvm use
 ```
 
-## Clone
-
-This repository uses git submodules; use `--recurse-submodules` option when cloning. For example, using https:
-
-```bash
-$ git clone --recurse-submodules https://github.com/balancer-labs/balancer-v3-monorepo.git
-```
-
 ## Build and Test
 
 Before any tests can be run, the repository needs to be prepared:
