@@ -105,50 +105,52 @@ abstract contract BaseSplitCodeFactory {
      * @dev Returns the creation code that will result in a contract being deployed with `constructorArgs`.
      */
     function _getCreationCodeWithArgs(bytes memory constructorArgs) private view returns (bytes memory code) {
-        // This function exists because `abi.encode()` cannot be instructed to place its result at a specific address.
-        // We need for the ABI-encoded constructor arguments to be located immediately after the creation code, but
-        // cannot rely on `abi.encodePacked()` to perform concatenation as that would involve copying the creation code,
-        // which would be prohibitively expensive.
-        // Instead, we compute the creation code in a pre-allocated array that is large enough to hold *both* the
-        // creation code and the constructor arguments, and then copy the ABI-encoded arguments (which should not be
-        // overly long) right after the end of the creation code.
+        unchecked {
+            // This function exists because `abi.encode()` cannot be instructed to place its result at a specific address.
+            // We need for the ABI-encoded constructor arguments to be located immediately after the creation code, but
+            // cannot rely on `abi.encodePacked()` to perform concatenation as that would involve copying the creation code,
+            // which would be prohibitively expensive.
+            // Instead, we compute the creation code in a pre-allocated array that is large enough to hold *both* the
+            // creation code and the constructor arguments, and then copy the ABI-encoded arguments (which should not be
+            // overly long) right after the end of the creation code.
 
-        // Immutable variables cannot be used in assembly, so we store them in the stack first.
-        address creationCodeContractA = _creationCodeContractA;
-        uint256 creationCodeSizeA = _creationCodeSizeA;
-        address creationCodeContractB = _creationCodeContractB;
-        uint256 creationCodeSizeB = _creationCodeSizeB;
+            // Immutable variables cannot be used in assembly, so we store them in the stack first.
+            address creationCodeContractA = _creationCodeContractA;
+            uint256 creationCodeSizeA = _creationCodeSizeA;
+            address creationCodeContractB = _creationCodeContractB;
+            uint256 creationCodeSizeB = _creationCodeSizeB;
 
-        uint256 creationCodeSize = creationCodeSizeA + creationCodeSizeB;
-        uint256 constructorArgsSize = constructorArgs.length;
+            uint256 creationCodeSize = creationCodeSizeA + creationCodeSizeB;
+            uint256 constructorArgsSize = constructorArgs.length;
 
-        uint256 codeSize = creationCodeSize + constructorArgsSize;
+            uint256 codeSize = creationCodeSize + constructorArgsSize;
 
-        assembly {
-            // First, we allocate memory for `code` by retrieving the free memory pointer and then moving it ahead of
-            // `code` by the size of the creation code plus constructor arguments, and 32 bytes for the array length.
-            code := mload(0x40)
-            mstore(0x40, add(code, add(codeSize, 32)))
+            assembly {
+                // First, we allocate memory for `code` by retrieving the free memory pointer and then moving it ahead of
+                // `code` by the size of the creation code plus constructor arguments, and 32 bytes for the array length.
+                code := mload(0x40)
+                mstore(0x40, add(code, add(codeSize, 32)))
 
-            // We now store the length of the code plus constructor arguments.
-            mstore(code, codeSize)
+                // We now store the length of the code plus constructor arguments.
+                mstore(code, codeSize)
 
-            // Next, we concatenate the creation code stored in A and B.
-            let dataStart := add(code, 32)
-            extcodecopy(creationCodeContractA, dataStart, 0, creationCodeSizeA)
-            extcodecopy(creationCodeContractB, add(dataStart, creationCodeSizeA), 0, creationCodeSizeB)
+                // Next, we concatenate the creation code stored in A and B.
+                let dataStart := add(code, 32)
+                extcodecopy(creationCodeContractA, dataStart, 0, creationCodeSizeA)
+                extcodecopy(creationCodeContractB, add(dataStart, creationCodeSizeA), 0, creationCodeSizeB)
+            }
+
+            // Finally, we copy the constructorArgs to the end of the array. Unfortunately there is no way to avoid this
+            // copy, as it is not possible to tell Solidity where to store the result of `abi.encode()`.
+            uint256 constructorArgsDataPtr;
+            uint256 constructorArgsCodeDataPtr;
+            assembly {
+                constructorArgsDataPtr := add(constructorArgs, 32)
+                constructorArgsCodeDataPtr := add(add(code, 32), creationCodeSize)
+            }
+
+            _memcpy(constructorArgsCodeDataPtr, constructorArgsDataPtr, constructorArgsSize);
         }
-
-        // Finally, we copy the constructorArgs to the end of the array. Unfortunately there is no way to avoid this
-        // copy, as it is not possible to tell Solidity where to store the result of `abi.encode()`.
-        uint256 constructorArgsDataPtr;
-        uint256 constructorArgsCodeDataPtr;
-        assembly {
-            constructorArgsDataPtr := add(constructorArgs, 32)
-            constructorArgsCodeDataPtr := add(add(code, 32), creationCodeSize)
-        }
-
-        _memcpy(constructorArgsCodeDataPtr, constructorArgsDataPtr, constructorArgsSize);
     }
 
     /**
@@ -182,21 +184,23 @@ abstract contract BaseSplitCodeFactory {
         uint256 src,
         uint256 len
     ) private pure {
-        // Copy word-length chunks while possible
-        for (; len >= 32; len -= 32) {
-            assembly {
-                mstore(dest, mload(src))
+        unchecked {
+            // Copy word-length chunks while possible
+            for (; len >= 32; len -= 32) {
+                assembly {
+                    mstore(dest, mload(src))
+                }
+                dest += 32;
+                src += 32;
             }
-            dest += 32;
-            src += 32;
-        }
 
-        // Copy remaining bytes
-        uint256 mask = 256**(32 - len) - 1;
-        assembly {
-            let srcpart := and(mload(src), not(mask))
-            let destpart := and(mload(dest), mask)
-            mstore(dest, or(destpart, srcpart))
+            // Copy remaining bytes
+            uint256 mask = 256**(32 - len) - 1;
+            assembly {
+                let srcpart := and(mload(src), not(mask))
+                let destpart := and(mload(dest), mask)
+                mstore(dest, or(destpart, srcpart))
+            }
         }
     }
 }
