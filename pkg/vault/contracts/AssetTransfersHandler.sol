@@ -69,7 +69,9 @@ abstract contract AssetTransfersHandler is AssetHelpers {
                 uint256 deductedBalance = _decreaseInternalBalance(sender, token, amount, true);
                 // Because `deductedBalance` will be always the lesser of the current internal balance
                 // and the amount to decrease, it is safe to perform unchecked arithmetic.
-                amount -= deductedBalance;
+                unchecked {
+                    amount -= deductedBalance;
+                }
             }
 
             if (amount > 0) {

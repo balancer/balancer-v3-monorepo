@@ -88,7 +88,9 @@ library BalanceAllocation {
      */
     function managedDelta(bytes32 newBalance, bytes32 oldBalance) internal pure returns (int256) {
         // Because `managed` is a 112 bit value, we can safely perform unchecked arithmetic in 256 bits.
-        return int256(managed(newBalance)) - int256(managed(oldBalance));
+        unchecked {
+            return int256(managed(newBalance)) - int256(managed(oldBalance));
+        }
     }
 
     /**
