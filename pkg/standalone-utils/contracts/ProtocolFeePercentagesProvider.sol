@@ -42,7 +42,6 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
 
     // These are copied from ProtocolFeesCollector
     uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
-    uint256 private constant _MAX_PROTOCOL_FLASH_LOAN_FEE_PERCENTAGE = 1e16; // 1%
 
     constructor(
         IVault vault,
@@ -58,14 +57,11 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
         _registerFeeType(ProtocolFeeType.YIELD, "Yield", maxYieldValue, 0);
         _registerFeeType(ProtocolFeeType.AUM, "Assets Under Management", maxAUMValue, 0);
 
-        // Swap and Flash loan types are special as their storage is actually located in the ProtocolFeesCollector. We
+        // Swap types are special as their storage is actually located in the ProtocolFeesCollector. We
         // therefore simply mark them as registered, but ignore maximum and initial values. Not calling _registerFeeType
         // also means that ProtocolFeeTypeRegistered nor ProtocolFeePercentageChanged events will be emitted for these.
         _feeTypeData[ProtocolFeeType.SWAP].registered = true;
         _feeTypeData[ProtocolFeeType.SWAP].name = "Swap";
-
-        _feeTypeData[ProtocolFeeType.FLASH_LOAN].registered = true;
-        _feeTypeData[ProtocolFeeType.FLASH_LOAN].name = "Flash Loan";
     }
 
     modifier withValidFeeType(uint256 feeType) {
@@ -127,8 +123,6 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
 
         if (feeType == ProtocolFeeType.SWAP) {
             _protocolFeesCollector.setSwapFeePercentage(newValue);
-        } else if (feeType == ProtocolFeeType.FLASH_LOAN) {
-            _protocolFeesCollector.setFlashLoanFeePercentage(newValue);
         } else {
             _feeTypeData[feeType].value = newValue.toUint64();
         }
@@ -139,8 +133,6 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
     function getFeeTypePercentage(uint256 feeType) external view override withValidFeeType(feeType) returns (uint256) {
         if (feeType == ProtocolFeeType.SWAP) {
             return _protocolFeesCollector.getSwapFeePercentage();
-        } else if (feeType == ProtocolFeeType.FLASH_LOAN) {
-            return _protocolFeesCollector.getFlashLoanFeePercentage();
         } else {
             return _feeTypeData[feeType].value;
         }
@@ -155,8 +147,6 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
     {
         if (feeType == ProtocolFeeType.SWAP) {
             return _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE;
-        } else if (feeType == ProtocolFeeType.FLASH_LOAN) {
-            return _MAX_PROTOCOL_FLASH_LOAN_FEE_PERCENTAGE;
         } else {
             return _feeTypeData[feeType].maximum;
         }

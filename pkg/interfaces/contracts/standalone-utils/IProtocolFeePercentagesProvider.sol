@@ -27,7 +27,7 @@ interface IProtocolFeePercentagesProvider {
     event ProtocolFeeTypeRegistered(uint256 indexed feeType, string name, uint256 maximumPercentage);
 
     // Emitted when the value of a fee type changes.
-    // IMPORTANT: it is possible for a third party to modify the SWAP and FLASH_LOAN fee type values directly in the
+    // IMPORTANT: it is possible for a third party to modify the SWAP fee type values directly in the
     // ProtocolFeesCollector, which will result in this event not being emitted despite their value changing. Such usage
     // of the ProtocolFeesCollector is however discouraged: all state-changing interactions with it should originate in
     // this contract.
@@ -61,11 +61,10 @@ interface IProtocolFeePercentagesProvider {
     /**
      * @dev Sets the percentage value for `feeType` to `newValue`.
      *
-     * IMPORTANT: it is possible for a third party to modify the SWAP and FLASH_LOAN fee type values directly in the
+     * IMPORTANT: it is possible for a third party to modify the SWAP fee type values directly in the
      * ProtocolFeesCollector, without invoking this function. This will result in the `ProtocolFeePercentageChanged`
      * event not being emitted despite their value changing. Such usage of the ProtocolFeesCollector is however
-     * discouraged: only this contract should be granted permission to call `setSwapFeePercentage` and
-     * `setFlashLoanFeePercentage`.
+     * discouraged: only this contract should be granted permission to call `setSwapFeePercentage`.
      */
     function setFeeTypePercentage(uint256 feeType, uint256 newValue) external;
 
@@ -93,7 +92,6 @@ library ProtocolFeeType {
 
     // solhint-disable private-vars-leading-underscore
     uint256 internal constant SWAP = 0;
-    uint256 internal constant FLASH_LOAN = 1;
     uint256 internal constant YIELD = 2;
     uint256 internal constant AUM = 3;
     // solhint-enable private-vars-leading-underscore

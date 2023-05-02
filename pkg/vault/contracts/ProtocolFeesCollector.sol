@@ -35,7 +35,6 @@ contract ProtocolFeesCollector is IProtocolFeesCollector, Authentication, Reentr
 
     // Absolute maximum fee percentages (1e18 = 100%, 1e16 = 1%).
     uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
-    uint256 private constant _MAX_PROTOCOL_FLASH_LOAN_FEE_PERCENTAGE = 1e16; // 1%
 
     IVault public immutable override vault;
 
@@ -45,9 +44,6 @@ contract ProtocolFeesCollector is IProtocolFeesCollector, Authentication, Reentr
     // actually charged on each individual swap: the `Vault` relies on the Pools being honest and reporting fees due
     // when users join and exit them.
     uint256 private _swapFeePercentage;
-
-    // The flash loan fee is charged whenever a flash loan occurs, as a percentage of the tokens lent.
-    uint256 private _flashLoanFeePercentage;
 
     constructor(IVault _vault)
         // The ProtocolFeesCollector is a singleton, so it simply uses its own address to disambiguate action
@@ -77,21 +73,8 @@ contract ProtocolFeesCollector is IProtocolFeesCollector, Authentication, Reentr
         emit SwapFeePercentageChanged(newSwapFeePercentage);
     }
 
-    function setFlashLoanFeePercentage(uint256 newFlashLoanFeePercentage) external override authenticate {
-        _require(
-            newFlashLoanFeePercentage <= _MAX_PROTOCOL_FLASH_LOAN_FEE_PERCENTAGE,
-            Errors.FLASH_LOAN_FEE_PERCENTAGE_TOO_HIGH
-        );
-        _flashLoanFeePercentage = newFlashLoanFeePercentage;
-        emit FlashLoanFeePercentageChanged(newFlashLoanFeePercentage);
-    }
-
     function getSwapFeePercentage() external view override returns (uint256) {
         return _swapFeePercentage;
-    }
-
-    function getFlashLoanFeePercentage() external view override returns (uint256) {
-        return _flashLoanFeePercentage;
     }
 
     function getCollectedFeeAmounts(IERC20[] memory tokens)

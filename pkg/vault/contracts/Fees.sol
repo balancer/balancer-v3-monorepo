@@ -50,16 +50,6 @@ abstract contract Fees is IVault {
         return getProtocolFeesCollector().getSwapFeePercentage();
     }
 
-    /**
-     * @dev Returns the protocol fee amount to charge for a flash loan of `amount`.
-     */
-    function _calculateFlashLoanFeeAmount(uint256 amount) internal view returns (uint256) {
-        // Fixed point multiplication introduces error: we round up, which means in certain scenarios the charged
-        // percentage can be slightly higher than intended.
-        uint256 percentage = getProtocolFeesCollector().getFlashLoanFeePercentage();
-        return FixedPoint.mulUp(amount, percentage);
-    }
-
     function _payFeeAmount(IERC20 token, uint256 amount) internal {
         if (amount > 0) {
             token.safeTransfer(address(getProtocolFeesCollector()), amount);

@@ -19,7 +19,6 @@ import "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 
 import "./VaultAuthorization.sol";
-import "./FlashLoans.sol";
 import "./Swaps.sol";
 
 /**
@@ -35,7 +34,6 @@ import "./Swaps.sol";
  *
  *  - `AssetManagers`: Pool token Asset Manager registry, and Asset Manager interactions.
  *  - `Fees`: set and compute protocol fees.
- *  - `FlashLoans`: flash loan transfers and fees.
  *  - `PoolBalances`: Pool joins and exits.
  *  - `PoolRegistry`: Pool registration, ID management, and basic queries.
  *  - `PoolTokens`: Pool token registration and registration, and balance queries.
@@ -57,7 +55,7 @@ import "./Swaps.sol";
  * utilization of `internal` functions (particularly inside modifiers), usage of named return arguments, dedicated
  * storage access methods, dynamic revert reason generation, and usage of inline assembly, to name a few.
  */
-contract Vault is VaultAuthorization, FlashLoans, Swaps {
+contract Vault is VaultAuthorization, Swaps {
     constructor(
         IAuthorizer authorizer,
         IWETH weth,
