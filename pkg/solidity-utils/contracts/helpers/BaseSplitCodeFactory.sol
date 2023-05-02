@@ -106,13 +106,13 @@ abstract contract BaseSplitCodeFactory {
      */
     function _getCreationCodeWithArgs(bytes memory constructorArgs) private view returns (bytes memory code) {
         unchecked {
-            // This function exists because `abi.encode()` cannot be instructed to place its result at a specific address.
-            // We need for the ABI-encoded constructor arguments to be located immediately after the creation code, but
-            // cannot rely on `abi.encodePacked()` to perform concatenation as that would involve copying the creation code,
-            // which would be prohibitively expensive.
+            // This function exists because `abi.encode()` cannot be instructed to place its result at a specific
+            // address. We need for the ABI-encoded constructor arguments to be located immediately after the
+            // creation code, but cannot rely on `abi.encodePacked()` to perform concatenation as that would involve
+            // copying the creation code, which would be prohibitively expensive.
             // Instead, we compute the creation code in a pre-allocated array that is large enough to hold *both* the
-            // creation code and the constructor arguments, and then copy the ABI-encoded arguments (which should not be
-            // overly long) right after the end of the creation code.
+            // creation code and the constructor arguments, and then copy the ABI-encoded arguments (which should not
+            // be overly long) right after the end of the creation code.
 
             // Immutable variables cannot be used in assembly, so we store them in the stack first.
             address creationCodeContractA = _creationCodeContractA;
@@ -126,8 +126,9 @@ abstract contract BaseSplitCodeFactory {
             uint256 codeSize = creationCodeSize + constructorArgsSize;
 
             assembly {
-                // First, we allocate memory for `code` by retrieving the free memory pointer and then moving it ahead of
-                // `code` by the size of the creation code plus constructor arguments, and 32 bytes for the array length.
+                // First, we allocate memory for `code` by retrieving the free memory pointer and then moving it
+                // ahead of `code` by the size of the creation code plus constructor arguments, and 32 bytes for
+                // the array length.
                 code := mload(0x40)
                 mstore(0x40, add(code, add(codeSize, 32)))
 
@@ -179,11 +180,7 @@ abstract contract BaseSplitCodeFactory {
 
     // From
     // https://github.com/Arachnid/solidity-stringutils/blob/b9a6f6615cf18a87a823cbc461ce9e140a61c305/src/strings.sol
-    function _memcpy(
-        uint256 dest,
-        uint256 src,
-        uint256 len
-    ) private pure {
+    function _memcpy(uint256 dest, uint256 src, uint256 len) private pure {
         unchecked {
             // Copy word-length chunks while possible
             for (; len >= 32; len -= 32) {
@@ -195,7 +192,7 @@ abstract contract BaseSplitCodeFactory {
             }
 
             // Copy remaining bytes
-            uint256 mask = 256**(32 - len) - 1;
+            uint256 mask = 256 ** (32 - len) - 1;
             assembly {
                 let srcpart := and(mload(src), not(mask))
                 let destpart := and(mload(dest), mask)

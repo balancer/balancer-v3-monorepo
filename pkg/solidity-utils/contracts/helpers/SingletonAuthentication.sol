@@ -32,11 +32,7 @@ abstract contract SingletonAuthentication is Authentication {
         return getAuthorizer().canPerform(actionId, account, address(this));
     }
 
-    function _canPerform(
-        bytes32 actionId,
-        address account,
-        address where
-    ) internal view returns (bool) {
+    function _canPerform(bytes32 actionId, address account, address where) internal view returns (bool) {
         return getAuthorizer().canPerform(actionId, account, where);
     }
 }
