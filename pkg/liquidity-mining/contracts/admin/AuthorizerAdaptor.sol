@@ -52,11 +52,7 @@ contract AuthorizerAdaptor is IAuthorizerAdaptor, ReentrancyGuard {
         return getVault().getAuthorizer();
     }
 
-    function _canPerform(
-        bytes32 actionId,
-        address account,
-        address where
-    ) internal view returns (bool) {
+    function _canPerform(bytes32 actionId, address account, address where) internal view returns (bool) {
         return getAuthorizer().canPerform(actionId, account, where);
     }
 
@@ -82,13 +78,10 @@ contract AuthorizerAdaptor is IAuthorizerAdaptor, ReentrancyGuard {
      * @param data - Calldata to be sent to the target contract
      * @return The bytes encoded return value from the performed function call
      */
-    function performAction(address target, bytes calldata data)
-        external
-        payable
-        override
-        nonReentrant
-        returns (bytes memory)
-    {
+    function performAction(
+        address target,
+        bytes calldata data
+    ) external payable override nonReentrant returns (bytes memory) {
         // WARNING: the following line contains a critical bug that allows the caller to trick this contract into
         // checking for an incorrect permission.
         // We unconditionally read memory slot 100, which is where the first four bytes of `data` will reside (i.e. the

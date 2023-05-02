@@ -41,11 +41,7 @@ contract AuthorizerAdaptorEntrypoint is IAuthorizerAdaptorEntrypoint {
         return _adaptor;
     }
 
-    function canPerform(
-        bytes32 actionId,
-        address account,
-        address where
-    ) public view returns (bool) {
+    function canPerform(bytes32 actionId, address account, address where) public view returns (bool) {
         return getAuthorizer().canPerform(actionId, account, where);
     }
 
