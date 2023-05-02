@@ -131,6 +131,7 @@ const balancerErrorCodes: Record<string, string> = {
   '442': 'SAFE_CAST_VALUE_CANT_FIT_UINT64',
   '443': 'UNHANDLED_FEE_TYPE',
   '444': 'BURN_FROM_ZERO',
+  '445': 'ZERO_NEGATION',
   '500': 'INVALID_POOL_ID',
   '501': 'CALLER_NOT_POOL',
   '502': 'SENDER_NOT_ASSET_MANAGER',

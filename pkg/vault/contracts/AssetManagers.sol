@@ -8,6 +8,7 @@ import "@balancer-labs/v3-interfaces/contracts/solidity-utils/openzeppelin/IERC2
 import "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import "@balancer-labs/v3-solidity-utils/contracts/helpers/NumericCastHelpers.sol";
 import "@balancer-labs/v3-solidity-utils/contracts/math/Math.sol";
 
 import "./UserBalance.sol";
@@ -100,7 +101,7 @@ abstract contract AssetManagers is
 
         if (amount > 0) {
             token.safeTransfer(msg.sender, amount);
-            cashDelta = int256(type(uint256).max - amount + 1);
+            cashDelta = NumericCastHelpers.negateUint256(amount);
         }
 
         // Since 'cash' and 'managed' are stored as uint112, `amount` is guaranteed to also fit in 112 bits. It will
@@ -130,7 +131,7 @@ abstract contract AssetManagers is
 
         if (amount > 0) {
             token.safeTransferFrom(msg.sender, address(this), amount);
-            managedDelta = int256(type(uint256).max - amount + 1);
+            managedDelta = NumericCastHelpers.negateUint256(amount);
         }
 
         // Since 'cash' and 'managed' are stored as uint112, `amount` is guaranteed to also fit in 112 bits. It will
