@@ -128,7 +128,8 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
         (
             bytes32[] memory finalBalances,
             uint256[] memory amountsInOrOut,
-            uint256[] memory paidProtocolSwapFeeAmounts
+            uint256[] memory paidProtocolSwapFeeAmounts,
+            uint256 wrappedEth
         ) = _callPoolBalanceChange(kind, poolId, sender, recipient, change, balances);
 
         // All that remains is storing the new Pool balances.
@@ -151,6 +152,9 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
             _unsafeCastToInt256(amountsInOrOut, positive),
             paidProtocolSwapFeeAmounts
         );
+
+        // Handle any used and remaining ETH.
+        _handleRemainingEth(wrappedEth);
     }
 
     /**
@@ -169,7 +173,8 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
         returns (
             bytes32[] memory finalBalances,
             uint256[] memory amountsInOrOut,
-            uint256[] memory dueProtocolFeeAmounts
+            uint256[] memory dueProtocolFeeAmounts,
+            uint256 wrappedEth
         )
     {
         (uint256[] memory totalBalances, uint256 lastChangeBlock) = balances.totalsAndLastChangeBlock();
@@ -199,9 +204,23 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
 
         // The Vault ignores the `recipient` in joins and the `sender` in exits: it is up to the Pool to keep track of
         // their participation.
-        finalBalances = kind == PoolBalanceChangeKind.JOIN
-            ? _processJoinPoolTransfers(sender, change, balances, amountsInOrOut, dueProtocolFeeAmounts)
-            : _processExitPoolTransfers(recipient, change, balances, amountsInOrOut, dueProtocolFeeAmounts);
+        if (kind == PoolBalanceChangeKind.JOIN) {
+            (finalBalances, wrappedEth) = _processJoinPoolTransfers(
+                sender,
+                change,
+                balances,
+                amountsInOrOut,
+                dueProtocolFeeAmounts
+            );
+        } else {
+            finalBalances = _processExitPoolTransfers(
+                recipient,
+                change,
+                balances,
+                amountsInOrOut,
+                dueProtocolFeeAmounts
+            );
+        }
     }
 
     /**
@@ -217,10 +236,7 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
         bytes32[] memory balances,
         uint256[] memory amountsIn,
         uint256[] memory dueProtocolFeeAmounts
-    ) private returns (bytes32[] memory finalBalances) {
-        // We need to track how much of the received ETH was used and wrapped into WETH to return any excess.
-        uint256 wrappedEth = 0;
-
+    ) private returns (bytes32[] memory finalBalances, uint256 wrappedEth) {
         finalBalances = new bytes32[](balances.length);
         for (uint256 i = 0; i < change.assets.length; ++i) {
             uint256 amountIn = amountsIn[i];
@@ -230,6 +246,7 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
             IAsset asset = change.assets[i];
             _receiveAsset(asset, amountIn, sender, change.useInternalBalance);
 
+            // We need to track how much of the received ETH was used and wrapped into WETH to return any excess.
             if (_isETH(asset)) {
                 wrappedEth = wrappedEth.add(amountIn);
             }
@@ -243,9 +260,6 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
                 ? balances[i].increaseCash(amountIn - feeAmount)
                 : balances[i].decreaseCash(feeAmount - amountIn);
         }
-
-        // Handle any used and remaining ETH.
-        _handleRemainingEth(wrappedEth);
     }
 
     /**
