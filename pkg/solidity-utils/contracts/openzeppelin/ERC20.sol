@@ -5,8 +5,6 @@ pragma solidity ^0.8.0;
 import "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 
-import "./SafeMath.sol";
-
 /**
  * @dev Implementation of the {IERC20} interface.
  *
@@ -32,7 +30,6 @@ import "./SafeMath.sol";
  * allowances. See {IERC20-approve}.
  */
 contract ERC20 is IERC20 {
-    using SafeMath for uint256;
 
     mapping(address => uint256) private _balances;
 
@@ -169,10 +166,18 @@ contract ERC20 is IERC20 {
         uint256 amount
     ) public virtual override returns (bool) {
         _transfer(sender, recipient, amount);
+
+        uint256 currentAllowance = _allowances[sender][msg.sender];
+        _require(amount <= currentAllowance, Errors.ERC20_TRANSFER_EXCEEDS_ALLOWANCE);
+        
+        unchecked {
+            currentAllowance -= amount;
+        }
+
         _approve(
             sender,
             msg.sender,
-            _allowances[sender][msg.sender].sub(amount, Errors.ERC20_TRANSFER_EXCEEDS_ALLOWANCE)
+            currentAllowance
         );
         return true;
     }
@@ -190,7 +195,7 @@ contract ERC20 is IERC20 {
      * - `spender` cannot be the zero address.
      */
     function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
-        _approve(msg.sender, spender, _allowances[msg.sender][spender].add(addedValue));
+        _approve(msg.sender, spender, _allowances[msg.sender][spender] + addedValue);
         return true;
     }
 
@@ -209,10 +214,18 @@ contract ERC20 is IERC20 {
      * `subtractedValue`.
      */
     function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
+        uint256 currentAllowance = _allowances[msg.sender][spender];
+
+        _require(subtractedValue <= currentAllowance, Errors.ERC20_DECREASED_ALLOWANCE_BELOW_ZERO);
+
+        unchecked {
+            currentAllowance -= subtractedValue;
+        }
+
         _approve(
             msg.sender,
             spender,
-            _allowances[msg.sender][spender].sub(subtractedValue, Errors.ERC20_DECREASED_ALLOWANCE_BELOW_ZERO)
+            currentAllowance
         );
         return true;
     }
@@ -241,8 +254,15 @@ contract ERC20 is IERC20 {
 
         _beforeTokenTransfer(sender, recipient, amount);
 
-        _balances[sender] = _balances[sender].sub(amount, Errors.ERC20_TRANSFER_EXCEEDS_BALANCE);
-        _balances[recipient] = _balances[recipient].add(amount);
+        uint256 senderBalance = _balances[sender];
+
+        _require(amount <= senderBalance, Errors.ERC20_TRANSFER_EXCEEDS_BALANCE);
+
+        unchecked {
+            _balances[sender] = senderBalance - amount;            
+        }
+
+        _balances[recipient] = _balances[recipient] + amount;
         emit Transfer(sender, recipient, amount);
     }
 
@@ -258,8 +278,8 @@ contract ERC20 is IERC20 {
     function _mint(address account, uint256 amount) internal virtual {
         _beforeTokenTransfer(address(0), account, amount);
 
-        _setTotalSupply(totalSupply().add(amount));
-        _balances[account] = _balances[account].add(amount);
+        _setTotalSupply(totalSupply() + amount);
+        _balances[account] = _balances[account] + amount;
         emit Transfer(address(0), account, amount);
     }
 
@@ -279,8 +299,15 @@ contract ERC20 is IERC20 {
 
         _beforeTokenTransfer(account, address(0), amount);
 
-        _balances[account] = _balances[account].sub(amount, Errors.ERC20_BURN_EXCEEDS_BALANCE);
-        _setTotalSupply(totalSupply().sub(amount));
+        uint256 accountBalance = _balances[account];
+
+        _require(amount <= accountBalance, Errors.ERC20_BURN_EXCEEDS_BALANCE);
+
+        unchecked {
+            _balances[account] = accountBalance - amount;
+        }
+
+        _setTotalSupply(totalSupply() - amount);
         emit Transfer(account, address(0), amount);
     }
 
