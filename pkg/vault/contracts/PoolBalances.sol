@@ -125,11 +125,14 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
 
         // The bulk of the work is done here: the corresponding Pool hook is called, its final balances are computed,
         // assets are transferred, and fees are paid.
-        (
-            bytes32[] memory finalBalances,
-            uint256[] memory amountsInOrOut,
-            uint256[] memory paidProtocolSwapFeeAmounts
-        ) = _callPoolBalanceChange(kind, poolId, sender, recipient, change, balances);
+        (bytes32[] memory finalBalances, uint256[] memory amountsInOrOut) = _callPoolBalanceChange(
+            kind,
+            poolId,
+            sender,
+            recipient,
+            change,
+            balances
+        );
 
         // All that remains is storing the new Pool balances.
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
@@ -148,8 +151,7 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
             sender,
             tokens,
             // We can unsafely cast to int256 because balances are actually stored as uint112
-            _unsafeCastToInt256(amountsInOrOut, positive),
-            paidProtocolSwapFeeAmounts
+            _unsafeCastToInt256(amountsInOrOut, positive)
         );
     }
 
@@ -164,18 +166,11 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
         address payable recipient,
         PoolBalanceChange memory change,
         bytes32[] memory balances
-    )
-        private
-        returns (
-            bytes32[] memory finalBalances,
-            uint256[] memory amountsInOrOut,
-            uint256[] memory dueProtocolFeeAmounts
-        )
-    {
+    ) private returns (bytes32[] memory finalBalances, uint256[] memory amountsInOrOut) {
         (uint256[] memory totalBalances, uint256 lastChangeBlock) = balances.totalsAndLastChangeBlock();
 
         IBasePool pool = IBasePool(_getPoolAddress(poolId));
-        (amountsInOrOut, dueProtocolFeeAmounts) = kind == PoolBalanceChangeKind.JOIN
+        amountsInOrOut = kind == PoolBalanceChangeKind.JOIN
             ? pool.onJoinPool(
                 poolId,
                 sender,
@@ -195,13 +190,13 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
                 change.userData
             );
 
-        InputHelpers.ensureInputLengthMatch(balances.length, amountsInOrOut.length, dueProtocolFeeAmounts.length);
+        InputHelpers.ensureInputLengthMatch(balances.length, amountsInOrOut.length);
 
         // The Vault ignores the `recipient` in joins and the `sender` in exits: it is up to the Pool to keep track of
         // their participation.
         finalBalances = kind == PoolBalanceChangeKind.JOIN
-            ? _processJoinPoolTransfers(sender, change, balances, amountsInOrOut, dueProtocolFeeAmounts)
-            : _processExitPoolTransfers(recipient, change, balances, amountsInOrOut, dueProtocolFeeAmounts);
+            ? _processJoinPoolTransfers(sender, change, balances, amountsInOrOut)
+            : _processExitPoolTransfers(recipient, change, balances, amountsInOrOut);
     }
 
     /**
@@ -215,8 +210,7 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
         address sender,
         PoolBalanceChange memory change,
         bytes32[] memory balances,
-        uint256[] memory amountsIn,
-        uint256[] memory dueProtocolFeeAmounts
+        uint256[] memory amountsIn
     ) private returns (bytes32[] memory finalBalances) {
         // We need to track how much of the received ETH was used and wrapped into WETH to return any excess.
         uint256 wrappedEth = 0;
@@ -234,14 +228,8 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
                 wrappedEth = wrappedEth.add(amountIn);
             }
 
-            uint256 feeAmount = dueProtocolFeeAmounts[i];
-            _payFeeAmount(_translateToIERC20(asset), feeAmount);
-
-            // Compute the new Pool balances. Note that the fee amount might be larger than `amountIn`,
-            // resulting in an overall decrease of the Pool's balance for a token.
-            finalBalances[i] = (amountIn >= feeAmount) // This lets us skip checked arithmetic
-                ? balances[i].increaseCash(amountIn - feeAmount)
-                : balances[i].decreaseCash(feeAmount - amountIn);
+            // Compute the new Pool balances.
+            finalBalances[i] = balances[i].increaseCash(amountIn);
         }
 
         // Handle any used and remaining ETH.
@@ -252,15 +240,13 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
      * @dev Transfers `amountsOut` to `recipient`, checking that they are within their accepted limits, and pays
      * accumulated protocol swap fees from the Pool.
      *
-     * Returns the Pool's final balances, which are the current `balances` minus `amountsOut` and fees paid
-     * (`dueProtocolFeeAmounts`).
+     * Returns the Pool's final balances, which are the current `balances` minus `amountsOut`.
      */
     function _processExitPoolTransfers(
         address payable recipient,
         PoolBalanceChange memory change,
         bytes32[] memory balances,
-        uint256[] memory amountsOut,
-        uint256[] memory dueProtocolFeeAmounts
+        uint256[] memory amountsOut
     ) private returns (bytes32[] memory finalBalances) {
         finalBalances = new bytes32[](balances.length);
         for (uint256 i = 0; i < change.assets.length; ++i) {
@@ -271,11 +257,8 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
             IAsset asset = change.assets[i];
             _sendAsset(asset, amountOut, recipient, change.useInternalBalance);
 
-            uint256 feeAmount = dueProtocolFeeAmounts[i];
-            _payFeeAmount(_translateToIERC20(asset), feeAmount);
-
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
-            finalBalances[i] = balances[i].decreaseCash(amountOut.add(feeAmount));
+            finalBalances[i] = balances[i].decreaseCash(amountOut);
         }
     }
 

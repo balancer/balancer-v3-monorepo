@@ -442,8 +442,7 @@ interface IVault is ISignaturesValidator, ITemporarilyPausable, IAuthentication 
         bytes32 indexed poolId,
         address indexed liquidityProvider,
         IERC20[] tokens,
-        int256[] deltas,
-        uint256[] protocolFeeAmounts
+        int256[] deltas
     );
 
     enum PoolBalanceChangeKind { JOIN, EXIT }

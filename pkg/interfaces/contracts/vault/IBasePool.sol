@@ -53,7 +53,7 @@ interface IBasePool is IPoolSwapStructs {
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) external returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts);
+    ) external returns (uint256[] memory amountsIn);
 
     /**
      * @dev Called by the Vault when a user calls `IVault.exitPool` to remove liquidity from this Pool. Returns how many
@@ -85,7 +85,7 @@ interface IBasePool is IPoolSwapStructs {
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts);
+    ) external returns (uint256[] memory amountsOut);
 
     /**
      * @dev Returns this Pool's ID, used when interacting with the Vault (to e.g. join the Pool or swap with it).

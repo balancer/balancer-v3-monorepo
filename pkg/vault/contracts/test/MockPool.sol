@@ -85,7 +85,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) external override returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
+    ) external override returns (uint256[] memory amountsIn) {
         emit OnJoinPoolCalled(
             poolId,
             sender,
@@ -96,7 +96,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
             userData
         );
 
-        (amountsIn, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
+        amountsIn = abi.decode(userData, (uint256[]));
     }
 
     function onExitPool(
@@ -107,7 +107,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) external override returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
+    ) external override returns (uint256[] memory amountsOut) {
         emit OnExitPoolCalled(
             poolId,
             sender,
@@ -118,7 +118,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
             userData
         );
 
-        (amountsOut, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
+        amountsOut = abi.decode(userData, (uint256[]));
     }
 
     // Amounts in are multiplied by the multiplier, amounts out are divided by it
