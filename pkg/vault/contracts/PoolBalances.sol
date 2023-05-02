@@ -177,6 +177,37 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
             uint256 wrappedEth
         )
     {
+        (amountsInOrOut, dueProtocolFeeAmounts) = _processJoinOrExit(kind, poolId, sender, recipient, change, balances);
+
+        // The Vault ignores the `recipient` in joins and the `sender` in exits: it is up to the Pool to keep track of
+        // their participation.
+        if (kind == PoolBalanceChangeKind.JOIN) {
+            (finalBalances, wrappedEth) = _processJoinPoolTransfers(
+                sender,
+                change,
+                balances,
+                amountsInOrOut,
+                dueProtocolFeeAmounts
+            );
+        } else {
+            finalBalances = _processExitPoolTransfers(
+                recipient,
+                change,
+                balances,
+                amountsInOrOut,
+                dueProtocolFeeAmounts
+            );
+        }
+    }
+
+    function _processJoinOrExit(
+        PoolBalanceChangeKind kind,
+        bytes32 poolId,
+        address sender,
+        address payable recipient,
+        PoolBalanceChange memory change,
+        bytes32[] memory balances
+    ) private returns (uint256[] memory amountsInOrOut, uint256[] memory dueProtocolFeeAmounts) {
         (uint256[] memory totalBalances, uint256 lastChangeBlock) = balances.totalsAndLastChangeBlock();
 
         IBasePool pool = IBasePool(_getPoolAddress(poolId));
@@ -201,26 +232,6 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
             );
 
         InputHelpers.ensureInputLengthMatch(balances.length, amountsInOrOut.length, dueProtocolFeeAmounts.length);
-
-        // The Vault ignores the `recipient` in joins and the `sender` in exits: it is up to the Pool to keep track of
-        // their participation.
-        if (kind == PoolBalanceChangeKind.JOIN) {
-            (finalBalances, wrappedEth) = _processJoinPoolTransfers(
-                sender,
-                change,
-                balances,
-                amountsInOrOut,
-                dueProtocolFeeAmounts
-            );
-        } else {
-            finalBalances = _processExitPoolTransfers(
-                recipient,
-                change,
-                balances,
-                amountsInOrOut,
-                dueProtocolFeeAmounts
-            );
-        }
     }
 
     /**
