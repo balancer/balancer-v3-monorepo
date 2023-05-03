@@ -62,11 +62,7 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
      * - `tokenX` and `tokenY` must not be the same
      * - The tokens must be ordered: tokenX < tokenY
      */
-    function _registerTwoTokenPoolTokens(
-        bytes32 poolId,
-        IERC20 tokenX,
-        IERC20 tokenY
-    ) internal {
+    function _registerTwoTokenPoolTokens(bytes32 poolId, IERC20 tokenX, IERC20 tokenY) internal {
         // Not technically true since we didn't register yet, but this is consistent with the error messages of other
         // specialization settings.
         _require(tokenX != tokenY, Errors.TOKEN_ALREADY_REGISTERED);
@@ -98,11 +94,7 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
      * - `tokenX` and `tokenY` must be registered in the Pool
      * - both tokens must have zero balance in the Vault
      */
-    function _deregisterTwoTokenPoolTokens(
-        bytes32 poolId,
-        IERC20 tokenX,
-        IERC20 tokenY
-    ) internal {
+    function _deregisterTwoTokenPoolTokens(bytes32 poolId, IERC20 tokenX, IERC20 tokenY) internal {
         (
             bytes32 balanceA,
             bytes32 balanceB,
@@ -141,11 +133,7 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
      * This function assumes `poolId` exists, corresponds to the Two Token specialization setting, and that `token` is
      * registered for that Pool.
      */
-    function _twoTokenPoolCashToManaged(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) internal {
+    function _twoTokenPoolCashToManaged(bytes32 poolId, IERC20 token, uint256 amount) internal {
         _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.cashToManaged, amount);
     }
 
@@ -155,11 +143,7 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
      * This function assumes `poolId` exists, corresponds to the Two Token specialization setting, and that `token` is
      * registered for that Pool.
      */
-    function _twoTokenPoolManagedToCash(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) internal {
+    function _twoTokenPoolManagedToCash(bytes32 poolId, IERC20 token, uint256 amount) internal {
         _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.managedToCash, amount);
     }
 
@@ -171,11 +155,7 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
      *
      * Returns the managed balance delta as a result of this call.
      */
-    function _setTwoTokenPoolManagedBalance(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) internal returns (int256) {
+    function _setTwoTokenPoolManagedBalance(bytes32 poolId, IERC20 token, uint256 amount) internal returns (int256) {
         return _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.setManaged, amount);
     }
 
@@ -226,11 +206,9 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
      *
      * This function assumes `poolId` exists and corresponds to the Two Token specialization setting.
      */
-    function _getTwoTokenPoolTokens(bytes32 poolId)
-        internal
-        view
-        returns (IERC20[] memory tokens, bytes32[] memory balances)
-    {
+    function _getTwoTokenPoolTokens(
+        bytes32 poolId
+    ) internal view returns (IERC20[] memory tokens, bytes32[] memory balances) {
         (, IERC20 tokenA, bytes32 balanceA, IERC20 tokenB, bytes32 balanceB) = _getTwoTokenPoolBalances(poolId);
 
         // Both tokens will either be zero (if unregistered) or non-zero (if registered), but we keep the full check for
@@ -256,7 +234,9 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
      * an array, as well as a storage pointer to the `TwoTokenPoolBalances` struct, which can be used to update it
      * without having to recompute the pair hash and storage slot.
      */
-    function _getTwoTokenPoolBalances(bytes32 poolId)
+    function _getTwoTokenPoolBalances(
+        bytes32 poolId
+    )
         private
         view
         returns (
@@ -325,15 +305,7 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
         bytes32 poolId,
         IERC20 tokenX,
         IERC20 tokenY
-    )
-        internal
-        view
-        returns (
-            bytes32 balanceA,
-            bytes32 balanceB,
-            TwoTokenPoolBalances storage poolBalances
-        )
-    {
+    ) internal view returns (bytes32 balanceA, bytes32 balanceB, TwoTokenPoolBalances storage poolBalances) {
         (IERC20 tokenA, IERC20 tokenB) = _sortTwoTokens(tokenX, tokenY);
         bytes32 pairHash = _getTwoTokenPairHash(tokenA, tokenB);
 

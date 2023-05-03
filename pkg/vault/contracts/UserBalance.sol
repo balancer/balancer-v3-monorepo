@@ -32,12 +32,10 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
     // Internal Balance for each token, for each account.
     mapping(address => mapping(IERC20 => uint256)) private _internalTokenBalance;
 
-    function getInternalBalance(address user, IERC20[] memory tokens)
-        external
-        view
-        override
-        returns (uint256[] memory balances)
-    {
+    function getInternalBalance(
+        address user,
+        IERC20[] memory tokens
+    ) external view override returns (uint256[] memory balances) {
         balances = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
             balances[i] = _getInternalBalance(user, tokens[i]);
@@ -104,12 +102,7 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
         _handleRemainingEth(ethWrapped);
     }
 
-    function _depositToInternalBalance(
-        IAsset asset,
-        address sender,
-        address recipient,
-        uint256 amount
-    ) private {
+    function _depositToInternalBalance(IAsset asset, address sender, address recipient, uint256 amount) private {
         _increaseInternalBalance(recipient, _translateToIERC20(asset), amount);
         _receiveAsset(asset, amount, sender, false);
     }
@@ -125,23 +118,13 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
         _sendAsset(asset, amount, recipient, false);
     }
 
-    function _transferInternalBalance(
-        IERC20 token,
-        address sender,
-        address recipient,
-        uint256 amount
-    ) private {
+    function _transferInternalBalance(IERC20 token, address sender, address recipient, uint256 amount) private {
         // A partial decrease of Internal Balance is disallowed: `sender` must have the full `amount`.
         _decreaseInternalBalance(sender, token, amount, false);
         _increaseInternalBalance(recipient, token, amount);
     }
 
-    function _transferToExternalBalance(
-        IERC20 token,
-        address sender,
-        address recipient,
-        uint256 amount
-    ) private {
+    function _transferToExternalBalance(IERC20 token, address sender, address recipient, uint256 amount) private {
         if (amount > 0) {
             token.safeTransferFrom(sender, recipient, amount);
             emit ExternalBalanceTransfer(token, sender, recipient, amount);
@@ -151,11 +134,7 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
     /**
      * @dev Increases `account`'s Internal Balance for `token` by `amount`.
      */
-    function _increaseInternalBalance(
-        address account,
-        IERC20 token,
-        uint256 amount
-    ) internal override {
+    function _increaseInternalBalance(address account, IERC20 token, uint256 amount) internal override {
         uint256 currentBalance = _getInternalBalance(account, token);
         uint256 newBalance = currentBalance.add(amount);
         _setInternalBalance(account, token, newBalance, amount.toInt256());
@@ -189,12 +168,7 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
      * (if positive) or decreased (if negative). To avoid reading the current balance in order to compute the delta,
      * this function relies on the caller providing it directly.
      */
-    function _setInternalBalance(
-        address account,
-        IERC20 token,
-        uint256 newBalance,
-        int256 delta
-    ) private {
+    function _setInternalBalance(address account, IERC20 token, uint256 newBalance, int256 delta) private {
         _internalTokenBalance[account][token] = newBalance;
         emit InternalBalanceChanged(account, token, delta);
     }
@@ -209,18 +183,10 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
     /**
      * @dev Destructures a User Balance operation, validating that the contract caller is allowed to perform it.
      */
-    function _validateUserBalanceOp(UserBalanceOp memory op, bool checkedCallerIsRelayer)
-        private
-        view
-        returns (
-            UserBalanceOpKind,
-            IAsset,
-            uint256,
-            address,
-            address payable,
-            bool
-        )
-    {
+    function _validateUserBalanceOp(
+        UserBalanceOp memory op,
+        bool checkedCallerIsRelayer
+    ) private view returns (UserBalanceOpKind, IAsset, uint256, address, address payable, bool) {
         // The only argument we need to validate is `sender`, which can only be either the contract caller, or a
         // relayer approved by `sender`.
         address sender = op.sender;

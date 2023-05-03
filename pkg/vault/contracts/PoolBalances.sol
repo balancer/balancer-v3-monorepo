@@ -64,11 +64,9 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
     /**
      * @dev Converts a JoinPoolRequest into a PoolBalanceChange, with no runtime cost.
      */
-    function _toPoolBalanceChange(JoinPoolRequest memory request)
-        private
-        pure
-        returns (PoolBalanceChange memory change)
-    {
+    function _toPoolBalanceChange(
+        JoinPoolRequest memory request
+    ) private pure returns (PoolBalanceChange memory change) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             change := request
@@ -78,11 +76,9 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
     /**
      * @dev Converts an ExitPoolRequest into a PoolBalanceChange, with no runtime cost.
      */
-    function _toPoolBalanceChange(ExitPoolRequest memory request)
-        private
-        pure
-        returns (PoolBalanceChange memory change)
-    {
+    function _toPoolBalanceChange(
+        ExitPoolRequest memory request
+    ) private pure returns (PoolBalanceChange memory change) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             change := request
@@ -272,11 +268,10 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
      * `expectedTokens` must exactly equal the token array returned by `getPoolTokens`: both arrays must have the same
      * length, elements and order. Additionally, the Pool must have at least one registered token.
      */
-    function _validateTokensAndGetBalances(bytes32 poolId, IERC20[] memory expectedTokens)
-        private
-        view
-        returns (bytes32[] memory)
-    {
+    function _validateTokensAndGetBalances(
+        bytes32 poolId,
+        IERC20[] memory expectedTokens
+    ) private view returns (bytes32[] memory) {
         (IERC20[] memory actualTokens, bytes32[] memory balances) = _getPoolTokens(poolId);
         InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
         _require(actualTokens.length > 0, Errors.POOL_NO_TOKENS);
@@ -292,11 +287,10 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
      * @dev Casts an array of uint256 to int256, setting the sign of the result according to the `positive` flag,
      * without checking whether the values fit in the signed 256 bit range.
      */
-    function _unsafeCastToInt256(uint256[] memory values, bool positive)
-        private
-        pure
-        returns (int256[] memory signedValues)
-    {
+    function _unsafeCastToInt256(
+        uint256[] memory values,
+        bool positive
+    ) private pure returns (int256[] memory signedValues) {
         signedValues = new int256[](values.length);
         for (uint256 i = 0; i < values.length; i++) {
             signedValues[i] = positive ? int256(values[i]) : -int256(values[i]);

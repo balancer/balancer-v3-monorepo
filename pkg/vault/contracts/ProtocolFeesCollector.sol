@@ -36,7 +36,9 @@ contract ProtocolFeesCollector is IProtocolFeesCollector, Authentication, Reentr
     // The flash loan fee is charged whenever a flash loan occurs, as a percentage of the tokens lent.
     uint256 private _flashLoanFeePercentage;
 
-    constructor(IVault _vault)
+    constructor(
+        IVault _vault
+    )
         // The ProtocolFeesCollector is a singleton, so it simply uses its own address to disambiguate action
         // identifiers.
         Authentication(bytes32(bytes20(address(this))))
@@ -81,12 +83,9 @@ contract ProtocolFeesCollector is IProtocolFeesCollector, Authentication, Reentr
         return _flashLoanFeePercentage;
     }
 
-    function getCollectedFeeAmounts(IERC20[] memory tokens)
-        external
-        view
-        override
-        returns (uint256[] memory feeAmounts)
-    {
+    function getCollectedFeeAmounts(
+        IERC20[] memory tokens
+    ) external view override returns (uint256[] memory feeAmounts) {
         feeAmounts = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
             feeAmounts[i] = tokens[i].balanceOf(address(this));

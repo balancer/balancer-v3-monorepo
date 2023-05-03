@@ -75,12 +75,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         _;
     }
 
-    constructor(
-        address initialRoot,
-        address nextRoot,
-        IAuthentication vault,
-        uint256 rootTransferDelay
-    ) {
+    constructor(address initialRoot, address nextRoot, IAuthentication vault, uint256 rootTransferDelay) {
         _setRoot(initialRoot);
         // By setting `nextRoot` as the pending root, it can immediately call `claimRoot` and replace `initialRoot`,
         // skipping the root transfer delay for the very first root transfer. This is very useful in schemes where a
@@ -161,11 +156,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
     /**
      * @inheritdoc ITimelockAuthorizer
      */
-    function isGranter(
-        bytes32 actionId,
-        address account,
-        address where
-    ) public view override returns (bool) {
+    function isGranter(bytes32 actionId, address account, address where) public view override returns (bool) {
         return _isGranter[actionId][account][where] || _isGranter[actionId][account][EVERYWHERE()] || isRoot(account);
     }
 
@@ -179,12 +170,9 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
     /**
      * @inheritdoc ITimelockAuthorizer
      */
-    function getScheduledExecution(uint256 scheduledExecutionId)
-        external
-        view
-        override
-        returns (ITimelockAuthorizer.ScheduledExecution memory)
-    {
+    function getScheduledExecution(
+        uint256 scheduledExecutionId
+    ) external view override returns (ITimelockAuthorizer.ScheduledExecution memory) {
         return _scheduledExecutions[scheduledExecutionId];
     }
 
@@ -338,11 +326,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
     /**
      * @inheritdoc ITimelockAuthorizer
      */
-    function addGranter(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external override {
+    function addGranter(bytes32 actionId, address account, address where) external override {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         require(!isGranter(actionId, account, where), "ACCOUNT_IS_ALREADY_GRANTER");
@@ -359,11 +343,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
     /**
      * @inheritdoc ITimelockAuthorizer
      */
-    function removeGranter(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external override {
+    function removeGranter(bytes32 actionId, address account, address where) external override {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         require(isGranter(actionId, account, where), "ACCOUNT_IS_NOT_GRANTER");

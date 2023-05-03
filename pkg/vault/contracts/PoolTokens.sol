@@ -43,13 +43,10 @@ abstract contract PoolTokens is ReentrancyGuard, PoolRegistry, AssetManagers {
         emit TokensRegistered(poolId, tokens, assetManagers);
     }
 
-    function deregisterTokens(bytes32 poolId, IERC20[] memory tokens)
-        external
-        override
-        nonReentrant
-        whenNotPaused
-        onlyPool(poolId)
-    {
+    function deregisterTokens(
+        bytes32 poolId,
+        IERC20[] memory tokens
+    ) external override nonReentrant whenNotPaused onlyPool(poolId) {
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
         if (specialization == PoolSpecialization.TWO_TOKEN) {
             _require(tokens.length == 2, Errors.TOKENS_LENGTH_MUST_BE_2);
@@ -70,33 +67,29 @@ abstract contract PoolTokens is ReentrancyGuard, PoolRegistry, AssetManagers {
         emit TokensDeregistered(poolId, tokens);
     }
 
-    function getPoolTokens(bytes32 poolId)
+    function getPoolTokens(
+        bytes32 poolId
+    )
         external
         view
         override
         withRegisteredPool(poolId)
-        returns (
-            IERC20[] memory tokens,
-            uint256[] memory balances,
-            uint256 lastChangeBlock
-        )
+        returns (IERC20[] memory tokens, uint256[] memory balances, uint256 lastChangeBlock)
     {
         bytes32[] memory rawBalances;
         (tokens, rawBalances) = _getPoolTokens(poolId);
         (balances, lastChangeBlock) = rawBalances.totalsAndLastChangeBlock();
     }
 
-    function getPoolTokenInfo(bytes32 poolId, IERC20 token)
+    function getPoolTokenInfo(
+        bytes32 poolId,
+        IERC20 token
+    )
         external
         view
         override
         withRegisteredPool(poolId)
-        returns (
-            uint256 cash,
-            uint256 managed,
-            uint256 lastChangeBlock,
-            address assetManager
-        )
+        returns (uint256 cash, uint256 managed, uint256 lastChangeBlock, address assetManager)
     {
         bytes32 balance;
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
