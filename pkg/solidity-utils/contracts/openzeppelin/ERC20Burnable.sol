@@ -33,13 +33,11 @@ abstract contract ERC20Burnable is ERC20 {
     function burnFrom(address account, uint256 amount) public virtual {
         uint256 currentAllowance = allowance(account, msg.sender);
         _require(amount <= currentAllowance, Errors.ERC20_BURN_EXCEEDS_ALLOWANCE);
-        uint256 decreasedAllowance;
 
         unchecked {
-            decreasedAllowance = currentAllowance - amount;
+            _approve(account, msg.sender, currentAllowance - amount);
         }
 
-        _approve(account, msg.sender, decreasedAllowance);
         _burn(account, amount);
     }
 }

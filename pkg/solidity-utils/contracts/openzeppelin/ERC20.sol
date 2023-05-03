@@ -171,14 +171,13 @@ contract ERC20 is IERC20 {
         _require(amount <= currentAllowance, Errors.ERC20_TRANSFER_EXCEEDS_ALLOWANCE);
         
         unchecked {
-            currentAllowance -= amount;
+            _approve(
+                sender,
+                msg.sender,
+                currentAllowance - amount
+            );
         }
 
-        _approve(
-            sender,
-            msg.sender,
-            currentAllowance
-        );
         return true;
     }
 
@@ -219,14 +218,13 @@ contract ERC20 is IERC20 {
         _require(subtractedValue <= currentAllowance, Errors.ERC20_DECREASED_ALLOWANCE_BELOW_ZERO);
 
         unchecked {
-            currentAllowance -= subtractedValue;
+            _approve(
+                msg.sender,
+                spender,
+                currentAllowance - subtractedValue
+            );
         }
 
-        _approve(
-            msg.sender,
-            spender,
-            currentAllowance
-        );
         return true;
     }
 
