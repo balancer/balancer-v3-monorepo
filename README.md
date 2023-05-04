@@ -6,7 +6,7 @@
 [![CI Status](https://github.com/balancer-labs/balancer-v3-monorepo/workflows/CI/badge.svg)](https://github.com/balancer-labs/balancer-v3-monorepo/actions)
 [![License](https://img.shields.io/badge/License-GPLv3-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-This repository contains the Balancer Protocol V2 core smart contracts, including the `Vault` and standard Pools, along with their tests, configuration, and deployment information.
+This repository contains the Balancer Protocol V3 core smart contracts, including the `Vault` and standard Pools, along with their tests, configuration, and deployment information.
 
 For a high-level introduction to Balancer V2, see [Introducing Balancer V2: Generalized AMMs](https://medium.com/balancer-protocol/balancer-v3-generalizing-amms-16343c4563ff).
 
