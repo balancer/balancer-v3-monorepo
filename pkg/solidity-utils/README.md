@@ -20,5 +20,4 @@ Most of the Solidity source code is licensed under the GNU General Public Licens
 
 ### Exceptions
 
-- All files in the [`openzeppelin` directory](./contracts/openzeppelin) are based on the [OpenZeppelin Contracts](https://github.com/OpenZeppelin/openzeppelin-contracts) library, and as such are licensed under the MIT License: see [LICENSE](./contracts/openzeppelin/LICENSE).
 - The [`LogExpMath`](./contracts/math/LogExpMath.sol) contract is licensed under the MIT License.
