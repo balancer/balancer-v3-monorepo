@@ -1,6 +1,6 @@
 {
   "name": "@balancer-labs/v3-solidity-utils",
-  "version": "4.0.0",
+  "version": "1.0.0",
   "description": "Solidity libraries and utilities",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/balancer-labs/balancer-v3-monorepo/tree/master/pkg/solidity-utils#readme",
