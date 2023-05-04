@@ -11,9 +11,6 @@
     "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
   },
   "devDependencies": {
-    "@balancer-labs/v3-common": "workspace:*",
-    "@balancer-labs/v3-helpers": "workspace:*",
-    "@balancer-labs/v3-vault": "workspace:*",
     "@nomiclabs/hardhat-ethers": "^2.2.1",
     "@types/lodash": "^4.14.186",
     "@types/node": "^14.14.31",

@@ -40,7 +40,6 @@ Before any tests can be run, the repository needs to be prepared:
 
 ```bash
 $ yarn # install all dependencies
-$ yarn workspace @balancer-labs/balancer-js build # build balancer-js first
 ```
 
 ### Regular build
