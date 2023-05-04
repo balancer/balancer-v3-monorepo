@@ -1,6 +1,6 @@
 # <img src="../../logo.svg" alt="Balancer" height="128px">
 
-# Balancer V2 Solidity Utilities
+# Balancer V3 Solidity Utilities
 
 [![NPM Package](https://img.shields.io/npm/v/@balancer-labs/v3-solidity-utils.svg)](https://www.npmjs.org/package/@balancer-labs/v3-solidity-utils)
 
