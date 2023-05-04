@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.18;
 
+import "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/ITemporarilyPausable.sol";
+
 /**
  * @dev Allows for a contract to be paused during an initial period after deployment, disabling functionality. Can be
  * used as an emergency switch in case a security vulnerability or threat is identified.
@@ -28,5 +30,7 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
             uint256 pauseWindowEndTime,
             uint256 bufferPeriodEndTime
         )
-    {}
+    {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 }

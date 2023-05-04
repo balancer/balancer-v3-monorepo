@@ -1,6 +1,6 @@
 # <img src="../../logo.svg" alt="Balancer" height="128px">
 
-# Balancer V2 Interfaces
+# Balancer V3 Interfaces
 
 [![NPM Package](https://img.shields.io/npm/v/@balancer-labs/v3-interfaces.svg)](https://www.npmjs.org/package/@balancer-labs/v3-interfaces)
 
@@ -20,12 +20,7 @@ This package can be used in multiple ways, including interacting with already de
 
 ### Notes
 
-One of the most commonly included libraries is [BalancerErrors](contracts/solidity-utils/helpers/BalancerErrors.sol). To save bytecode, Balancer V2 does not use the standard `require(<condition>, 'error string')`. Instead, BalancerErrors defines `_require` and `_revert` functions. These take a numerical constant instead of a string, and return a fixed-length code, which can be converted to plain text using TypeScript utilities.
 
 ## Licensing
 
 [GNU General Public License Version 3 (GPL v3)](../../LICENSE).
-
-```
-
-```

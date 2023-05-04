@@ -19,7 +19,6 @@ Active development occurs in this repository, which means some contracts in it m
 ### Packages
 
 - [`v3-interfaces`](./pkg/interfaces): Solidity interfaces for all contracts.
-- [`v3-vault`](./pkg/vault): the [`Vault`](./pkg/vault/contracts/Vault.sol) contract and all core interfaces, including [`IVault`](./pkg/interfaces/contracts/vault/IVault.sol) and the Pool interfaces: [`IBasePool`](./pkg/interfaces/contracts/vault/IBasePool.sol), [`IGeneralPool`](./pkg/interfaces/contracts/vault/IGeneralPool.sol) and [`IMinimalSwapInfoPool`](./pkg/interfaces/contracts/vault/IMinimalSwapInfoPool.sol).
 - [`v3-solidity-utils`](./pkg/solidity-utils): miscellaneous Solidity helpers and utilities used in many different contracts.
 
 ## Pre-requisites
@@ -79,6 +78,4 @@ Most of the Solidity source code is licensed under the GNU General Public Licens
 
 ### Exceptions
 
-- All files in the `openzeppelin` directory of the [`v3-solidity-utils`](./pkg/solidity-utils) package are based on the [OpenZeppelin Contracts](https://github.com/OpenZeppelin/openzeppelin-contracts) library, and as such are licensed under the MIT License: see [LICENSE](./pkg/solidity-utils/contracts/openzeppelin/LICENSE).
-- The `LogExpMath` contract from the [`v3-solidity-utils`](./pkg/solidity-utils) package is licensed under the MIT License.
 - All other files, including tests and the [`pvt`](./pvt) directory are unlicensed.
