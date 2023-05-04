@@ -59,7 +59,7 @@ $ yarn test # run all tests
 To instead run a single package's tests, run:
 
 ```bash
-$ cd pkg/<package> # e.g. cd pkg/v3-vault
+$ cd pkg/<package> # e.g. cd pkg/vault
 $ yarn test
 ```
 
