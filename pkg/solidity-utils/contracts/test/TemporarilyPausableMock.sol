@@ -5,8 +5,5 @@ pragma solidity ^0.8.18;
 import "../helpers/TemporarilyPausable.sol";
 
 contract TemporarilyPausableMock is TemporarilyPausable {
-    constructor()
-        TemporarilyPausable()
-    {}
-
+    constructor() TemporarilyPausable() {}
 }
