@@ -92,7 +92,6 @@ chai.use(function (chai, utils) {
     }
   });
 
-
   ['eq', 'equal', 'equals'].forEach((fn: string) => {
     Assertion.overwriteMethod(fn, function (_super) {
       return function (this: any, expected: any) {
