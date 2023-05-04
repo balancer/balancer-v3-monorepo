@@ -8,8 +8,6 @@
 
 This repository contains the Balancer Protocol V3 core smart contracts, including the `Vault` and standard Pools, along with their tests, configuration, and deployment information.
 
-For a high-level introduction to Balancer, see [Introducing Balancer V2: Generalized AMMs](https://medium.com/balancer-protocol/balancer-v2-generalizing-amms-16343c4563ff).
-
 ## Structure
 
 This is a Yarn monorepo, with the packages meant to be published in the [`pkg`](./pkg) directory. Newly developed packages may not be published yet.
