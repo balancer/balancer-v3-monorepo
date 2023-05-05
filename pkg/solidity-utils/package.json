@@ -30,8 +30,8 @@
     "@balancer-labs/v3-interfaces": "workspace:*"
   },
   "devDependencies": {
-    "@nomiclabs/hardhat-ethers": "^2.2.1",
-    "@nomiclabs/hardhat-waffle": "^2.0.3",
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@nomiclabs/hardhat-waffle": "^2.0.5",
     "@types/chai": "^4.3.3",
     "@types/lodash": "^4.14.186",
     "@types/mocha": "^10.0.0",
@@ -45,7 +45,7 @@
     "eslint-plugin-prettier": "^4.2.1",
     "ethereum-waffle": "^3.4.4",
     "ethers": "^5.7.2",
-    "hardhat": "^2.12.5",
+    "hardhat": "^2.14.0",
     "hardhat-ignore-warnings": "^0.2.4",
     "lodash.frompairs": "^4.0.1",
     "lodash.pick": "^4.4.0",
