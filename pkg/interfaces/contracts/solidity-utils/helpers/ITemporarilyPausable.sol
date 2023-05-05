@@ -7,15 +7,42 @@ pragma solidity ^0.8.0;
  */
 interface ITemporarilyPausable {
     /**
-     * @dev Emitted every time the pause state changes by `_setPaused`.
+     * @dev Emitted when the pause is triggered by `account`.
      */
-    event PausedStateChanged(bool paused);
+    event Paused(address account);
 
     /**
-     * @dev Returns the current paused state.
+     * @dev Emitted when the pause is lifted by `account`.
      */
-    function getPausedState()
-        external
-        view
-        returns (bool paused, uint256 pauseWindowEndTime, uint256 bufferPeriodEndTime);
+    event Unpaused(address account);
+    /**
+     * @dev
+     */
+
+    error MaxPauseWindowDuration();
+
+    /**
+     * @dev
+     */
+    error MaxBufferPeriodDuration();
+
+    /**
+     * @dev
+     */
+    error PauseWindowExpired();
+
+    /**
+     * @dev
+     */
+    error BufferPeriodExpired();
+
+    /**
+     * @dev
+     */
+    error AlreadyPaused();
+
+    /**
+     * @dev
+     */
+    error AlreadyUnPaused();
 }

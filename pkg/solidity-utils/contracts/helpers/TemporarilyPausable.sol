@@ -19,14 +19,113 @@ import "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/ITemporari
  *
  * Note that since the contract can only be paused within the Pause Window, unpausing during the Buffer Period is
  * irreversible.
+ *
+ * Contract has a compatible inteface with OpenZeppelin Pauseable smart contract
+ * https://docs.openzeppelin.com/contracts/4.x/api/security#Pausable
+ * Inheritance is not used because OZ lib is using revert strings
  */
 abstract contract TemporarilyPausable is ITemporarilyPausable {
-    function getPausedState()
-        external
-        view
-        override
-        returns (bool paused, uint256 pauseWindowEndTime, uint256 bufferPeriodEndTime)
-    {
-        // solhint-disable-previous-line no-empty-blocks
+    // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
+    // solhint-disable not-rely-on-time
+
+    uint256 public constant MAX_PAUSE_WINDOW_DURATION = 270 days;
+    uint256 public constant MAX_BUFFER_PERIOD_DURATION = 90 days;
+
+    uint256 private immutable _pauseWindowEndTime;
+    uint256 private immutable _bufferPeriodEndTime;
+
+    bool private _paused;
+
+    constructor(uint256 pauseWindowDuration, uint256 bufferPeriodDuration) {
+        if (pauseWindowDuration > MAX_PAUSE_WINDOW_DURATION) {
+            revert MaxPauseWindowDuration();
+        }
+        if (bufferPeriodDuration > MAX_BUFFER_PERIOD_DURATION) {
+            revert MaxBufferPeriodDuration();
+        }
+
+        uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
+
+        _pauseWindowEndTime = pauseWindowEndTime;
+        _bufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is not paused.
+     */
+    modifier whenNotPaused() {
+        _requireNotPaused();
+        _;
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is paused.
+     */
+    modifier whenPaused() {
+        _requirePaused();
+        _;
+    }
+
+    /**
+     * @dev Sets the pause state to `paused`. The contract can only be paused until the end of the Pause Window, and
+     * unpaused until the end of the Buffer Period.
+     *
+     * Once the Buffer Period expires, this function reverts unconditionally.
+     */
+    function _pause() internal whenNotPaused {
+        if (block.timestamp >= _getPauseWindowEndTime()) {
+            revert PauseWindowExpired();
+        }
+        _paused = true;
+        emit Paused(msg.sender);
+    }
+
+    /**
+     * @dev Returns to normal state.
+     */
+    function _unpause() internal whenPaused {
+        if (block.timestamp >= _getBufferPeriodEndTime()) {
+            revert BufferPeriodExpired();
+        }
+        _paused = false;
+        emit Unpaused(msg.sender);
+    }
+
+    /**
+     * @dev Returns true if the contract is paused, and false otherwise.
+     *
+     * Once the Buffer Period expires, the gas cost of calling this function is reduced dramatically, as storage is no
+     * longer accessed.
+     */
+    function paused() public view returns (bool) {
+        return block.timestamp <= _getBufferPeriodEndTime() && _paused;
+    }
+
+    /**
+     * @dev Throws if the contract is paused.
+     */
+    function _requireNotPaused() internal view {
+        if (paused()) {
+            revert AlreadyPaused();
+        }
+    }
+
+    /**
+     * @dev Throws if the contract is not paused.
+     */
+    function _requirePaused() internal view {
+        if (!paused()) {
+            revert AlreadyUnPaused();
+        }
+    }
+
+    // These getters lead to reduced bytecode size by inlining the immutable variables in a single place.
+
+    function _getPauseWindowEndTime() private view returns (uint256) {
+        return _pauseWindowEndTime;
+    }
+
+    function _getBufferPeriodEndTime() private view returns (uint256) {
+        return _bufferPeriodEndTime;
     }
 }
