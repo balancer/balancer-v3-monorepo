@@ -32,11 +32,7 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
     uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
     uint256 private constant _MAX_PROTOCOL_FLASH_LOAN_FEE_PERCENTAGE = 1e16; // 1%
 
-    constructor(
-        IVault vault,
-        uint256 maxYieldValue,
-        uint256 maxAUMValue
-    ) SingletonAuthentication(vault) {
+    constructor(IVault vault, uint256 maxYieldValue, uint256 maxAUMValue) SingletonAuthentication(vault) {
         IProtocolFeesCollector protocolFeeCollector = vault.getProtocolFeesCollector();
         _protocolFeesCollector = protocolFeeCollector; // Note that this is immutable in the Vault as well
 
@@ -71,12 +67,7 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
         _registerFeeType(feeType, name, maximumValue, initialValue);
     }
 
-    function _registerFeeType(
-        uint256 feeType,
-        string memory name,
-        uint256 maximumValue,
-        uint256 initialValue
-    ) private {
+    function _registerFeeType(uint256 feeType, string memory name, uint256 maximumValue, uint256 initialValue) private {
         require((maximumValue > 0) && (maximumValue <= _MAX_PROTOCOL_FEE_PERCENTAGE), "Invalid maximum fee percentage");
         require(initialValue <= maximumValue, "Invalid initial percentage");
 
@@ -95,22 +86,17 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
         return _feeTypeData[feeType].registered;
     }
 
-    function isValidFeeTypePercentage(uint256 feeType, uint256 value)
-        public
-        view
-        override
-        withValidFeeType(feeType)
-        returns (bool)
-    {
+    function isValidFeeTypePercentage(
+        uint256 feeType,
+        uint256 value
+    ) public view override withValidFeeType(feeType) returns (bool) {
         return value <= getFeeTypeMaximumPercentage(feeType);
     }
 
-    function setFeeTypePercentage(uint256 feeType, uint256 newValue)
-        external
-        override
-        withValidFeeType(feeType)
-        authenticate
-    {
+    function setFeeTypePercentage(
+        uint256 feeType,
+        uint256 newValue
+    ) external override withValidFeeType(feeType) authenticate {
         require(isValidFeeTypePercentage(feeType, newValue), "Invalid fee percentage");
 
         if (feeType == ProtocolFeeType.SWAP) {
@@ -134,13 +120,9 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
         }
     }
 
-    function getFeeTypeMaximumPercentage(uint256 feeType)
-        public
-        view
-        override
-        withValidFeeType(feeType)
-        returns (uint256)
-    {
+    function getFeeTypeMaximumPercentage(
+        uint256 feeType
+    ) public view override withValidFeeType(feeType) returns (uint256) {
         if (feeType == ProtocolFeeType.SWAP) {
             return _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE;
         } else if (feeType == ProtocolFeeType.FLASH_LOAN) {
