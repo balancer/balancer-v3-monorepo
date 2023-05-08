@@ -30,11 +30,7 @@ interface IERC4626 is IERC20 {
     /**
      * @dev Burns exactly `shares` from `owner` and sends `assets` of underlying tokens to `receiver`.
      */
-    function redeem(
-        uint256 shares,
-        address receiver,
-        address owner
-    ) external returns (uint256 assets);
+    function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets);
 
     /**
      * @dev The address of the underlying token that the Vault uses for accounting, depositing, and withdrawing.
