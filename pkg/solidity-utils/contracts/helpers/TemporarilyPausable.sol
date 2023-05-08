@@ -9,7 +9,7 @@ import "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/ITemporari
  * used as an emergency switch in case a security vulnerability or threat is identified.
  *
  * The contract can only be paused during the Pause Window, a period that starts at deployment. It can also be
- * unpaused and repaused any number of times during this period. This is intended to serve as a safety measure: it lets
+ * unpaused and re-paused any number of times during this period. This is intended to serve as a safety measure: it lets
  * system managers react quickly to potentially dangerous situations, knowing that this action is reversible if careful
  * analysis later determines there was a false alarm.
  *
