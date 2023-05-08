@@ -1,5 +1,7 @@
 import { expect } from 'chai';
+import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { BigNumberish } from '@balancer-labs/v3-helpers/src/numbers';
@@ -8,25 +10,14 @@ import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 
 describe('TemporarilyPausable', function () {
   let instance: Contract;
+  let user: SignerWithAddress, other: SignerWithAddress;
 
   const deployTemporarilyPausable = async ({ pauseWindowDuration = 0, bufferPeriodDuration = 0 }) => {
     instance = await deploy('TemporarilyPausableMock', { args: [pauseWindowDuration, bufferPeriodDuration] });
   };
-
-  const assertPauseState = async (
-    expectedStatus: boolean,
-    expectedPauseWindowEndTime?: BigNumberish,
-    expectedBufferPeriodDuration?: BigNumberish
-  ): Promise<void> => {
-    const paused = await instance.paused();
-    const pauseWindowEndTime = await instance.getPauseWindowEndTime();
-    const bufferPeriodEndTime = await instance.getBufferPeriodEndTime();
-
-    expect(paused).to.equal(expectedStatus);
-    if (expectedPauseWindowEndTime) expect(pauseWindowEndTime).to.equal(expectedPauseWindowEndTime);
-    if (expectedBufferPeriodDuration)
-      expect(bufferPeriodEndTime).to.equal(pauseWindowEndTime.add(expectedBufferPeriodDuration));
-  };
+  before('setup signers', async () => {
+    [, user, other] = await ethers.getSigners();
+  });
 
   describe('initialization', () => {
     it('can be initialized with pause window and buffer period duration', async () => {
@@ -35,7 +26,11 @@ describe('TemporarilyPausable', function () {
 
       await deployTemporarilyPausable({ pauseWindowDuration, bufferPeriodDuration });
 
-      await assertPauseState(false, await fromNow(pauseWindowDuration), bufferPeriodDuration);
+      expect(await instance.paused()).to.equal(false);
+      expect(await instance.getPauseWindowEndTime()).to.equal(await fromNow(pauseWindowDuration));
+      expect(await instance.getBufferPeriodEndTime()).to.equal(
+        (await fromNow(pauseWindowDuration)).add(bufferPeriodDuration)
+      );
     });
 
     it('can be initialized with no pause window or buffer period duration', async () => {
@@ -44,7 +39,9 @@ describe('TemporarilyPausable', function () {
 
       await deployTemporarilyPausable({ pauseWindowDuration, bufferPeriodDuration });
 
-      await assertPauseState(false, await currentTimestamp(), bufferPeriodDuration);
+      expect(await instance.paused()).to.equal(false);
+      expect(await instance.getPauseWindowEndTime()).to.equal(await fromNow(0));
+      expect(await instance.getBufferPeriodEndTime()).to.equal(await fromNow(0));
     });
 
     it('cannot be initialized with a pause window greater than the max', async () => {
@@ -79,7 +76,7 @@ describe('TemporarilyPausable', function () {
       });
     });
 
-    context('before the pause window end date', () => {
+    context('before the pause window end date has been reached', () => {
       sharedBeforeEach('advance some time', async () => {
         await advanceTime(PAUSE_WINDOW_DURATION / 2);
       });
@@ -87,21 +84,27 @@ describe('TemporarilyPausable', function () {
       it('can be paused', async () => {
         await instance.pause();
 
-        await assertPauseState(true);
+        expect(await instance.paused()).to.equal(true);
       });
 
       it('can be paused and unpaused', async () => {
         await instance.pause();
-        await assertPauseState(true);
+        expect(await instance.paused()).to.equal(true);
 
         await advanceTime(PAUSE_WINDOW_DURATION / 4);
 
         await instance.unpause();
-        await assertPauseState(false);
+        expect(await instance.paused()).to.equal(false);
+      });
+
+      it('emits a Paused event', async () => {
+        await expect(await instance.connect(user).pause())
+          .to.emit(instance, 'Paused')
+          .withArgs(user.address);
       });
     });
 
-    context('when the pause window end date has been reached', () => {
+    context('after the pause window end date has been reached', () => {
       context('when unpaused', () => {
         sharedBeforeEach('advance time', async () => {
           await advanceTime(PAUSE_WINDOW_DURATION);
@@ -109,7 +112,7 @@ describe('TemporarilyPausable', function () {
 
         function itIsForeverUnpaused() {
           it('is unpaused', async () => {
-            await assertPauseState(false);
+            expect(await instance.paused()).to.equal(false);
           });
 
           it('cannot be paused', async () => {
@@ -146,17 +149,17 @@ describe('TemporarilyPausable', function () {
           });
 
           it('is paused', async () => {
-            await assertPauseState(true);
+            expect(await instance.paused()).to.equal(true);
           });
 
           it('can be unpaused', async () => {
             await instance.unpause();
-            await assertPauseState(false);
+            expect(await instance.paused()).to.equal(false);
           });
 
           it('cannot be unpaused and paused', async () => {
             await instance.unpause();
-            await assertPauseState(false);
+            expect(await instance.paused()).to.equal(false);
 
             await expect(instance.pause()).to.be.revertedWithCustomError(instance, 'PauseWindowExpired');
           });
@@ -168,7 +171,7 @@ describe('TemporarilyPausable', function () {
           });
 
           it('is unpaused', async () => {
-            await assertPauseState(false);
+            expect(await instance.paused()).to.equal(false);
           });
 
           it('cannot be paused', async () => {
