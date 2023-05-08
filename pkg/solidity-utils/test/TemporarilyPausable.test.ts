@@ -8,12 +8,16 @@ import { BigNumberish } from '@balancer-labs/v3-helpers/src/numbers';
 import { advanceTime, currentTimestamp, fromNow, MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 
+import { TemporarilyPausableMock } from '../typechain-types/contracts/test/TemporarilyPausableMock';
+
 describe('TemporarilyPausable', function () {
-  let instance: Contract;
+  let instance: TemporarilyPausableMock;
   let user: SignerWithAddress, other: SignerWithAddress;
 
   const deployTemporarilyPausable = async (pauseWindowDuration = 0, bufferPeriodDuration = 0) => {
-    instance = await deploy('TemporarilyPausableMock', { args: [pauseWindowDuration, bufferPeriodDuration] });
+    instance = (await deploy('TemporarilyPausableMock', {
+      args: [pauseWindowDuration, bufferPeriodDuration],
+    })) as unknown as TemporarilyPausableMock;
   };
   before('setup signers', async () => {
     [, user, other] = await ethers.getSigners();
@@ -46,7 +50,7 @@ describe('TemporarilyPausable', function () {
 
     it('cannot be initialized with a pause window greater than the max', async () => {
       const maxPauseWindowDuration = await instance.getMaxPauseWindowDuration();
-      const pauseWindowDuration = maxPauseWindowDuration + 1;
+      const pauseWindowDuration = maxPauseWindowDuration.toNumber() + 1;
 
       await expect(deployTemporarilyPausable(pauseWindowDuration)).to.be.revertedWithCustomError(
         instance,
@@ -57,7 +61,7 @@ describe('TemporarilyPausable', function () {
     it('cannot be initialized with a buffer period greater than the max', async () => {
       const maxBufferPeriodDuration = await instance.getMaxBufferPeriodDuration();
       const pauseWindowDuration = MONTH;
-      const bufferPeriodDuration = maxBufferPeriodDuration + 1;
+      const bufferPeriodDuration = maxBufferPeriodDuration.toNumber() + 1;
 
       await expect(deployTemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)).to.be.revertedWithCustomError(
         instance,
