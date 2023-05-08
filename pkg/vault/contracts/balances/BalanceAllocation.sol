@@ -1,16 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
 
@@ -63,7 +51,7 @@ library BalanceAllocation {
      * @dev Returns the amount of Pool tokens currently in the Vault.
      */
     function cash(bytes32 balance) internal pure returns (uint256) {
-        uint256 mask = 2**(112) - 1;
+        uint256 mask = 2 ** (112) - 1;
         return uint256(balance) & mask;
     }
 
@@ -71,7 +59,7 @@ library BalanceAllocation {
      * @dev Returns the amount of Pool tokens that are being managed by an Asset Manager.
      */
     function managed(bytes32 balance) internal pure returns (uint256) {
-        uint256 mask = 2**(112) - 1;
+        uint256 mask = 2 ** (112) - 1;
         return uint256(balance >> 112) & mask;
     }
 
@@ -79,7 +67,7 @@ library BalanceAllocation {
      * @dev Returns the last block when the total balance changed.
      */
     function lastChangeBlock(bytes32 balance) internal pure returns (uint256) {
-        uint256 mask = 2**(32) - 1;
+        uint256 mask = 2 ** (32) - 1;
         return uint256(balance >> 224) & mask;
     }
 
@@ -95,14 +83,9 @@ library BalanceAllocation {
      * @dev Returns the total balance for each entry in `balances`, as well as the latest block when the total
      * balance of *any* of them last changed.
      */
-    function totalsAndLastChangeBlock(bytes32[] memory balances)
-        internal
-        pure
-        returns (
-            uint256[] memory results,
-            uint256 lastChangeBlock_ // Avoid shadowing
-        )
-    {
+    function totalsAndLastChangeBlock(
+        bytes32[] memory balances
+    ) internal pure returns (uint256[] memory results, uint256 lastChangeBlock_) {
         results = new uint256[](balances.length);
         lastChangeBlock_ = 0;
 
@@ -119,7 +102,7 @@ library BalanceAllocation {
      */
     function isZero(bytes32 balance) internal pure returns (bool) {
         // We simply need to check the least significant 224 bytes of the word: the block does not affect this.
-        uint256 mask = 2**(224) - 1;
+        uint256 mask = 2 ** (224) - 1;
         return (uint256(balance) & mask) == 0;
     }
 
@@ -136,16 +119,12 @@ library BalanceAllocation {
      *
      * For consistency, this also checks that the sum of `cash` and `managed` (`total`) fits in 112 bits.
      */
-    function toBalance(
-        uint256 _cash,
-        uint256 _managed,
-        uint256 _blockNumber
-    ) internal pure returns (bytes32) {
+    function toBalance(uint256 _cash, uint256 _managed, uint256 _blockNumber) internal pure returns (bytes32) {
         uint256 _total = _cash + _managed;
 
         // Since both 'cash' and 'managed' are positive integers, by checking that their sum ('total') fits in 112 bits
         // we are also indirectly checking that both 'cash' and 'managed' themselves fit in 112 bits.
-        _require(_total >= _cash && _total < 2**112, Errors.BALANCE_TOTAL_OVERFLOW);
+        _require(_total >= _cash && _total < 2 ** 112, Errors.BALANCE_TOTAL_OVERFLOW);
 
         // We assume the block fits in 32 bits - this is expected to hold for at least a few decades.
         return _pack(_cash, _managed, _blockNumber);
@@ -236,7 +215,7 @@ library BalanceAllocation {
      * shared cash and managed balances.
      */
     function _decodeBalanceA(bytes32 sharedBalance) private pure returns (uint256) {
-        uint256 mask = 2**(112) - 1;
+        uint256 mask = 2 ** (112) - 1;
         return uint256(sharedBalance) & mask;
     }
 
@@ -245,7 +224,7 @@ library BalanceAllocation {
      * shared cash and managed balances.
      */
     function _decodeBalanceB(bytes32 sharedBalance) private pure returns (uint256) {
-        uint256 mask = 2**(112) - 1;
+        uint256 mask = 2 ** (112) - 1;
         return uint256(sharedBalance >> 112) & mask;
     }
 

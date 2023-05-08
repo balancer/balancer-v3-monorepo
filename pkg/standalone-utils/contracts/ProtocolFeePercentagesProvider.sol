@@ -1,16 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
@@ -44,11 +32,7 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
     uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
     uint256 private constant _MAX_PROTOCOL_FLASH_LOAN_FEE_PERCENTAGE = 1e16; // 1%
 
-    constructor(
-        IVault vault,
-        uint256 maxYieldValue,
-        uint256 maxAUMValue
-    ) SingletonAuthentication(vault) {
+    constructor(IVault vault, uint256 maxYieldValue, uint256 maxAUMValue) SingletonAuthentication(vault) {
         IProtocolFeesCollector protocolFeeCollector = vault.getProtocolFeesCollector();
         _protocolFeesCollector = protocolFeeCollector; // Note that this is immutable in the Vault as well
 
@@ -83,12 +67,7 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
         _registerFeeType(feeType, name, maximumValue, initialValue);
     }
 
-    function _registerFeeType(
-        uint256 feeType,
-        string memory name,
-        uint256 maximumValue,
-        uint256 initialValue
-    ) private {
+    function _registerFeeType(uint256 feeType, string memory name, uint256 maximumValue, uint256 initialValue) private {
         require((maximumValue > 0) && (maximumValue <= _MAX_PROTOCOL_FEE_PERCENTAGE), "Invalid maximum fee percentage");
         require(initialValue <= maximumValue, "Invalid initial percentage");
 
@@ -107,22 +86,17 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
         return _feeTypeData[feeType].registered;
     }
 
-    function isValidFeeTypePercentage(uint256 feeType, uint256 value)
-        public
-        view
-        override
-        withValidFeeType(feeType)
-        returns (bool)
-    {
+    function isValidFeeTypePercentage(
+        uint256 feeType,
+        uint256 value
+    ) public view override withValidFeeType(feeType) returns (bool) {
         return value <= getFeeTypeMaximumPercentage(feeType);
     }
 
-    function setFeeTypePercentage(uint256 feeType, uint256 newValue)
-        external
-        override
-        withValidFeeType(feeType)
-        authenticate
-    {
+    function setFeeTypePercentage(
+        uint256 feeType,
+        uint256 newValue
+    ) external override withValidFeeType(feeType) authenticate {
         require(isValidFeeTypePercentage(feeType, newValue), "Invalid fee percentage");
 
         if (feeType == ProtocolFeeType.SWAP) {
@@ -146,13 +120,9 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
         }
     }
 
-    function getFeeTypeMaximumPercentage(uint256 feeType)
-        public
-        view
-        override
-        withValidFeeType(feeType)
-        returns (uint256)
-    {
+    function getFeeTypeMaximumPercentage(
+        uint256 feeType
+    ) public view override withValidFeeType(feeType) returns (uint256) {
         if (feeType == ProtocolFeeType.SWAP) {
             return _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE;
         } else if (feeType == ProtocolFeeType.FLASH_LOAN) {

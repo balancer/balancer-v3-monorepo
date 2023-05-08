@@ -1,16 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
 
@@ -64,11 +52,7 @@ contract AuthorizerWithAdaptorValidation is IAuthorizer {
      * @dev Ensure that all requests either came through the AuthorizerAdaptor via the AuthorizerAdaptorEntrypoint
      * (which we know has safely checked permissions), or can be validated with the actual Authorizer.
      */
-    function canPerform(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external view override returns (bool) {
+    function canPerform(bytes32 actionId, address account, address where) external view override returns (bool) {
         if (msg.sender == address(_authorizerAdaptor)) {
             // The situation where the caller is the `AuthorizerAdaptor` is a special case, as due to a bug it can be
             // tricked into passing an incorrect `actionId` value, potentially resulting in escalation of privileges.
