@@ -26,7 +26,8 @@ describe('CodeDeployer', function () {
   });
 
   context('with code over 24kB long', () => {
-    it('reverts', async () => {
+    // Have marked it unlimited, since the Vault is now too large; therefore this won't fail on hardhat
+    it.skip('reverts', async () => {
       const data = `0x${'00'.repeat(24 * 1024 + 1)}`;
       await expect(factory.deploy(data)).to.be.revertedWith('CODE_DEPLOYMENT_FAILED');
     });
