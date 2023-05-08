@@ -1,6 +1,6 @@
 import '@nomiclabs/hardhat-ethers';
 import '@nomicfoundation/hardhat-toolbox';
-import '@typechain/hardhat'
+import '@typechain/hardhat';
 
 import 'hardhat-ignore-warnings';
 

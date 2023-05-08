@@ -1,18 +1,16 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
-import { BigNumberish } from '@balancer-labs/v3-helpers/src/numbers';
-import { advanceTime, currentTimestamp, fromNow, MONTH } from '@balancer-labs/v3-helpers/src/time';
+import { advanceTime, fromNow, MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 
 import { TemporarilyPausableMock } from '../typechain-types/contracts/test/TemporarilyPausableMock';
 
 describe('TemporarilyPausable', function () {
   let instance: TemporarilyPausableMock;
-  let user: SignerWithAddress, other: SignerWithAddress;
+  let user: SignerWithAddress;
 
   const deployTemporarilyPausable = async (pauseWindowDuration = 0, bufferPeriodDuration = 0) => {
     instance = (await deploy('TemporarilyPausableMock', {
@@ -20,7 +18,7 @@ describe('TemporarilyPausable', function () {
     })) as unknown as TemporarilyPausableMock;
   };
   before('setup signers', async () => {
-    [, user, other] = await ethers.getSigners();
+    [, user] = await ethers.getSigners();
   });
 
   describe('initialization', () => {
