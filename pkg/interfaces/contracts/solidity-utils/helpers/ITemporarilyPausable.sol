@@ -15,34 +15,5 @@ interface ITemporarilyPausable {
      * @dev Emitted when the pause is lifted by `account`.
      */
     event Unpaused(address account);
-    /**
-     * @dev
-     */
 
-    error MaxPauseWindowDuration();
-
-    /**
-     * @dev
-     */
-    error MaxBufferPeriodDuration();
-
-    /**
-     * @dev
-     */
-    error PauseWindowExpired();
-
-    /**
-     * @dev
-     */
-    error BufferPeriodExpired();
-
-    /**
-     * @dev
-     */
-    error AlreadyPaused();
-
-    /**
-     * @dev
-     */
-    error AlreadyUnPaused();
 }

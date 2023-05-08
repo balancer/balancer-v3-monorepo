@@ -9,4 +9,28 @@ contract TemporarilyPausableMock is TemporarilyPausable {
     constructor(uint256 pauseWindowDuration, uint256 bufferPeriodDuration)
         TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
     {}
+
+    function unpause() external {
+        _unpause();
+    }
+
+    function pause() external {
+        _pause();
+    }
+
+    function getPauseWindowEndTime() external view returns (uint256) {
+        return _getPauseWindowEndTime();
+    }
+
+    function getBufferPeriodEndTime() external view returns (uint256) {
+        return _getBufferPeriodEndTime();
+    }
+
+    function getMaxPauseWindowDuration() external pure returns (uint256) {
+        return MAX_PAUSE_WINDOW_DURATION;
+    }
+
+    function getMaxBufferPeriodDuration() external pure returns (uint256) {
+        return MAX_BUFFER_PERIOD_DURATION;
+    }
 }

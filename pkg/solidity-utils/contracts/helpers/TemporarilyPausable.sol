@@ -27,6 +27,35 @@ import "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/ITemporari
 abstract contract TemporarilyPausable is ITemporarilyPausable {
     // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
     // solhint-disable not-rely-on-time
+    /**
+     * @dev
+     */
+    error MaxPauseWindowDuration();
+
+    /**
+     * @dev
+     */
+    error MaxBufferPeriodDuration();
+
+    /**
+     * @dev
+     */
+    error PauseWindowExpired();
+
+    /**
+     * @dev
+     */
+    error BufferPeriodExpired();
+
+    /**
+     * @dev
+     */
+    error AlreadyPaused();
+
+    /**
+     * @dev
+     */
+    error AlreadyUnPaused();
 
     uint256 public constant MAX_PAUSE_WINDOW_DURATION = 270 days;
     uint256 public constant MAX_BUFFER_PERIOD_DURATION = 90 days;
@@ -121,11 +150,11 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
 
     // These getters lead to reduced bytecode size by inlining the immutable variables in a single place.
 
-    function _getPauseWindowEndTime() private view returns (uint256) {
+    function _getPauseWindowEndTime() internal view returns (uint256) {
         return _pauseWindowEndTime;
     }
 
-    function _getBufferPeriodEndTime() private view returns (uint256) {
+    function _getBufferPeriodEndTime() internal view returns (uint256) {
         return _bufferPeriodEndTime;
     }
 }
