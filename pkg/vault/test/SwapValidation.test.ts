@@ -59,7 +59,7 @@ describe('Swap Validation', () => {
         assets: tokens.addresses,
         maxAmountsIn: Array(tokens.length).fill(MAX_UINT256),
         fromInternalBalance: false,
-        userData: encodeJoin(Array(tokens.length).fill(initialBalance), Array(tokens.length).fill(0)),
+        userData: encodeJoin(Array(tokens.length).fill(initialBalance)),
       });
 
       poolIds.push(poolId);

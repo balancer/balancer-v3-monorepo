@@ -306,7 +306,7 @@ describe('PoolRegistry', () => {
                       assets: tokens.addresses,
                       maxAmountsIn: Array(tokens.length).fill(MAX_UINT256),
                       fromInternalBalance: false,
-                      userData: encodeJoin(Array(tokens.length).fill(5), Array(tokens.length).fill(0)),
+                      userData: encodeJoin(Array(tokens.length).fill(5)),
                     });
                   });
 
@@ -323,8 +323,7 @@ describe('PoolRegistry', () => {
                           minAmountsOut: Array(tokens.length).fill(0),
                           toInternalBalance: false,
                           userData: encodeExit(
-                            tokens.addresses.map((_, index) => (index == 0 ? 5 : 0)), // Fully exit on token 0
-                            Array(tokens.length).fill(0)
+                            tokens.addresses.map((_, index) => (index == 0 ? 5 : 0)) // Fully exit on token 0
                           ),
                         });
 

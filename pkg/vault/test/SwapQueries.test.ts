@@ -42,7 +42,7 @@ describe('Swap Queries', () => {
         assets: tokens.addresses,
         maxAmountsIn: Array(tokens.length).fill(MAX_UINT256),
         fromInternalBalance: false,
-        userData: encodeJoin(Array(tokens.length).fill(bn(100e18)), Array(tokens.length).fill(0)),
+        userData: encodeJoin(Array(tokens.length).fill(bn(100e18))),
       });
 
       poolIds.push(poolId);
