@@ -36,7 +36,6 @@ describe('Fees', () => {
 
   describe('set fees', () => {
     const MAX_SWAP_FEE_PERCENTAGE = bn(50e16); // 50%
-    const MAX_FLASH_LOAN_FEE_PERCENTAGE = bn(1e16); // 1%
 
     context('when the sender is allowed', () => {
       context('when the given input is valid', async () => {
@@ -56,25 +55,6 @@ describe('Fees', () => {
             });
           });
         });
-
-        describe('flash loan fee', () => {
-          it('sets the percentage properly', async () => {
-            await vault.setFlashLoanFeePercentage(MAX_FLASH_LOAN_FEE_PERCENTAGE, { from: admin });
-
-            const flashLoanFeePercentage = await vault.getFlashLoanFeePercentage();
-            expect(flashLoanFeePercentage).to.equal(MAX_FLASH_LOAN_FEE_PERCENTAGE);
-          });
-
-          it('emits an event', async () => {
-            const receipt = await (
-              await vault.setFlashLoanFeePercentage(MAX_FLASH_LOAN_FEE_PERCENTAGE, { from: admin })
-            ).wait();
-
-            expectEvent.inReceipt(receipt, 'FlashLoanFeePercentageChanged', {
-              newFlashLoanFeePercentage: MAX_FLASH_LOAN_FEE_PERCENTAGE,
-            });
-          });
-        });
       });
 
       context('when the given input is invalid', async () => {
@@ -85,23 +65,12 @@ describe('Fees', () => {
             'SWAP_FEE_PERCENTAGE_TOO_HIGH'
           );
         });
-
-        it('reverts if the flash loan fee percentage is above the maximum', async () => {
-          const badFlashLoanFeePercentage = MAX_FLASH_LOAN_FEE_PERCENTAGE.add(1);
-
-          await expect(vault.setFlashLoanFeePercentage(badFlashLoanFeePercentage, { from: admin })).to.be.revertedWith(
-            'FLASH_LOAN_FEE_PERCENTAGE_TOO_HIGH'
-          );
-        });
       });
     });
 
     context('when the sender is not allowed', () => {
       it('reverts', async () => {
         await expect(vault.setSwapFeePercentage(MAX_SWAP_FEE_PERCENTAGE, { from: other })).to.be.revertedWith(
-          'SENDER_NOT_ALLOWED'
-        );
-        await expect(vault.setFlashLoanFeePercentage(MAX_SWAP_FEE_PERCENTAGE, { from: other })).to.be.revertedWith(
           'SENDER_NOT_ALLOWED'
         );
       });

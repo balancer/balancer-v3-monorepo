@@ -211,19 +211,14 @@ export default class Vault {
     return feesCollector.withdrawCollectedFees(tokens, amounts, TypesConverter.toAddress(recipient));
   }
 
-  async getProtocolFeePercentages(): Promise<{ swapFeePercentage: BigNumber; flashLoanFeePercentage: BigNumber }> {
+  async getProtocolFeePercentages(): Promise<{ swapFeePercentage: BigNumber }> {
     return {
       swapFeePercentage: await this.getSwapFeePercentage(),
-      flashLoanFeePercentage: await this.getFlashLoanFeePercentage(),
-    };
+    }
   }
 
   async getSwapFeePercentage(): Promise<BigNumber> {
     return this.getFeesProvider().getFeeTypePercentage(ProtocolFee.SWAP);
-  }
-
-  async getFlashLoanFeePercentage(): Promise<BigNumber> {
-    return this.getFeesProvider().getFeeTypePercentage(ProtocolFee.FLASH_LOAN);
   }
 
   async getFeesCollector(): Promise<Contract> {
@@ -253,22 +248,6 @@ export default class Vault {
     return instance.setSwapFeePercentage(swapFeePercentage);
   }
 
-  async setFlashLoanFeePercentage(
-    flashLoanFeePercentage: BigNumber,
-    { from }: TxParams = {}
-  ): Promise<ContractTransaction> {
-    const feesCollector = await this.getFeesCollector();
-    const id = await actionId(feesCollector, 'setFlashLoanFeePercentage');
-
-    if (this.authorizer && this.admin && !(await this.hasPermissionGlobally(id, this.admin))) {
-      await this.grantPermissionGlobally(id, this.admin);
-    }
-
-    const sender = from || this.admin;
-    const instance = sender ? feesCollector.connect(sender) : feesCollector;
-    return instance.setFlashLoanFeePercentage(flashLoanFeePercentage);
-  }
-
   async setFeeTypePercentage(feeType: number, value: BigNumberish): Promise<void> {
     if (!this.admin) throw Error("Missing Vault's admin");
 
@@ -283,12 +262,6 @@ export default class Vault {
 
     await this.grantPermissionIfNeeded(
       await actionId(feeCollector, 'setSwapFeePercentage'),
-      feeProvider.address,
-      feeCollector.address
-    );
-
-    await this.grantPermissionIfNeeded(
-      await actionId(feeCollector, 'setFlashLoanFeePercentage'),
       feeProvider.address,
       feeCollector.address
     );

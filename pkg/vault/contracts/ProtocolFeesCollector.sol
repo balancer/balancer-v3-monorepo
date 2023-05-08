@@ -33,7 +33,9 @@ contract ProtocolFeesCollector is IProtocolFeesCollector, Authentication, Reentr
     // when users join and exit them.
     uint256 private _swapFeePercentage;
 
-    constructor(IVault _vault)
+    constructor(
+        IVault _vault
+    )
         // The ProtocolFeesCollector is a singleton, so it simply uses its own address to disambiguate action
         // identifiers.
         Authentication(bytes32(uint256(address(this))))
@@ -65,12 +67,9 @@ contract ProtocolFeesCollector is IProtocolFeesCollector, Authentication, Reentr
         return _swapFeePercentage;
     }
 
-    function getCollectedFeeAmounts(IERC20[] memory tokens)
-        external
-        view
-        override
-        returns (uint256[] memory feeAmounts)
-    {
+    function getCollectedFeeAmounts(
+        IERC20[] memory tokens
+    ) external view override returns (uint256[] memory feeAmounts) {
         feeAmounts = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
             feeAmounts[i] = tokens[i].balanceOf(address(this));

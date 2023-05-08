@@ -86,7 +86,6 @@ export type QueryBatchSwap = {
 
 export enum ProtocolFee {
   SWAP = 0,
-  FLASH_LOAN = 1,
   YIELD = 2,
   AUM = 3,
 }
