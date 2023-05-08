@@ -85,7 +85,16 @@ describe('TemporarilyPausable', function () {
         expect(await instance.paused()).to.equal(true);
       });
 
-      it('can be paused and unpaused', async () => {
+      it('cannot be paused twice', async () => {
+        await instance.pause();
+        await expect(instance.pause()).to.be.revertedWithCustomError(instance, 'AlreadyPaused');
+      });
+
+      it('cannot be unpaused twice', async () => {
+        await expect(instance.unpause()).to.be.revertedWithCustomError(instance, 'AlreadyUnPaused');
+      });
+
+      it('can be paused and then unpaused', async () => {
         await instance.pause();
         expect(await instance.paused()).to.equal(true);
 
@@ -93,6 +102,13 @@ describe('TemporarilyPausable', function () {
 
         await instance.unpause();
         expect(await instance.paused()).to.equal(false);
+      });
+
+      it('emits a Unpaused event', async () => {
+        await instance.pause();
+        await expect(await instance.connect(user).unpause())
+          .to.emit(instance, 'Unpaused')
+          .withArgs(user.address);
       });
 
       it('emits a Paused event', async () => {
@@ -113,7 +129,17 @@ describe('TemporarilyPausable', function () {
             expect(await instance.paused()).to.equal(false);
           });
 
+          it('cannot be unpaused again', async () => {
+            await expect(instance.unpause()).to.be.revertedWithCustomError(instance, 'AlreadyUnPaused');
+          });
+
           it('cannot be paused', async () => {
+            await expect(instance.pause()).to.be.revertedWithCustomError(instance, 'PauseWindowExpired');
+          });
+
+          it('cannot be paused in the future', async () => {
+            await advanceTime(MONTH * 12);
+
             await expect(instance.pause()).to.be.revertedWithCustomError(instance, 'PauseWindowExpired');
           });
         }
@@ -150,12 +176,22 @@ describe('TemporarilyPausable', function () {
             expect(await instance.paused()).to.equal(true);
           });
 
+          it('cannot be paused again', async () => {
+            await expect(instance.pause()).to.be.revertedWithCustomError(instance, 'AlreadyPaused');
+          });
+
           it('can be unpaused', async () => {
             await instance.unpause();
             expect(await instance.paused()).to.equal(false);
           });
 
-          it('cannot be unpaused and paused', async () => {
+          it('emits a Unpaused event', async () => {
+            await expect(await instance.connect(user).unpause())
+              .to.emit(instance, 'Unpaused')
+              .withArgs(user.address);
+          });
+
+          it('cannot be unpaused and then paused', async () => {
             await instance.unpause();
             expect(await instance.paused()).to.equal(false);
 
@@ -172,12 +208,12 @@ describe('TemporarilyPausable', function () {
             expect(await instance.paused()).to.equal(false);
           });
 
-          it('cannot be paused', async () => {
-            await expect(instance.pause()).to.be.revertedWithCustomError(instance, 'PauseWindowExpired');
+          it('cannot be unpaused again', async () => {
+            await expect(instance.unpause()).to.be.revertedWithCustomError(instance, 'AlreadyUnPaused');
           });
 
-          it('cannot be unpaused', async () => {
-            await expect(instance.unpause()).to.be.revertedWithCustomError(instance, 'AlreadyUnPaused');
+          it('cannot be paused', async () => {
+            await expect(instance.pause()).to.be.revertedWithCustomError(instance, 'PauseWindowExpired');
           });
         });
       });
