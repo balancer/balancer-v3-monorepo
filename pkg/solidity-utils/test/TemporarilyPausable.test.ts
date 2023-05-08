@@ -12,7 +12,7 @@ describe('TemporarilyPausable', function () {
   let instance: Contract;
   let user: SignerWithAddress, other: SignerWithAddress;
 
-  const deployTemporarilyPausable = async ({ pauseWindowDuration = 0, bufferPeriodDuration = 0 }) => {
+  const deployTemporarilyPausable = async (pauseWindowDuration = 0, bufferPeriodDuration = 0) => {
     instance = await deploy('TemporarilyPausableMock', { args: [pauseWindowDuration, bufferPeriodDuration] });
   };
   before('setup signers', async () => {
@@ -24,7 +24,7 @@ describe('TemporarilyPausable', function () {
       const pauseWindowDuration = MONTH;
       const bufferPeriodDuration = MONTH;
 
-      await deployTemporarilyPausable({ pauseWindowDuration, bufferPeriodDuration });
+      await deployTemporarilyPausable(pauseWindowDuration, bufferPeriodDuration);
 
       expect(await instance.paused()).to.equal(false);
       expect(await instance.getPauseWindowEndTime()).to.equal(await fromNow(pauseWindowDuration));
@@ -37,7 +37,7 @@ describe('TemporarilyPausable', function () {
       const pauseWindowDuration = 0;
       const bufferPeriodDuration = 0;
 
-      await deployTemporarilyPausable({ pauseWindowDuration, bufferPeriodDuration });
+      await deployTemporarilyPausable(pauseWindowDuration, bufferPeriodDuration);
 
       expect(await instance.paused()).to.equal(false);
       expect(await instance.getPauseWindowEndTime()).to.equal(await fromNow(0));
@@ -48,7 +48,7 @@ describe('TemporarilyPausable', function () {
       const maxPauseWindowDuration = await instance.getMaxPauseWindowDuration();
       const pauseWindowDuration = maxPauseWindowDuration + 1;
 
-      await expect(deployTemporarilyPausable({ pauseWindowDuration })).to.be.revertedWithCustomError(
+      await expect(deployTemporarilyPausable(pauseWindowDuration)).to.be.revertedWithCustomError(
         instance,
         'MaxPauseWindowDuration'
       );
@@ -59,9 +59,10 @@ describe('TemporarilyPausable', function () {
       const pauseWindowDuration = MONTH;
       const bufferPeriodDuration = maxBufferPeriodDuration + 1;
 
-      await expect(
-        deployTemporarilyPausable({ pauseWindowDuration, bufferPeriodDuration })
-      ).to.be.revertedWithCustomError(instance, 'MaxBufferPeriodDuration');
+      await expect(deployTemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)).to.be.revertedWithCustomError(
+        instance,
+        'MaxBufferPeriodDuration'
+      );
     });
   });
 
@@ -70,10 +71,7 @@ describe('TemporarilyPausable', function () {
     const BUFFER_PERIOD_DURATION = MONTH;
 
     sharedBeforeEach('deploy', async () => {
-      await deployTemporarilyPausable({
-        pauseWindowDuration: PAUSE_WINDOW_DURATION,
-        bufferPeriodDuration: BUFFER_PERIOD_DURATION,
-      });
+      await deployTemporarilyPausable(PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION);
     });
 
     context('before the pause window end date has been reached', () => {
