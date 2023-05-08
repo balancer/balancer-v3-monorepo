@@ -1,16 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
@@ -42,12 +30,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
      * caller of this function to check that this is true to prevent the Vault from using its own ETH (though the Vault
      * typically doesn't hold any).
      */
-    function _receiveAsset(
-        IAsset asset,
-        uint256 amount,
-        address sender,
-        bool fromInternalBalance
-    ) internal {
+    function _receiveAsset(IAsset asset, uint256 amount, address sender, bool fromInternalBalance) internal {
         if (amount == 0) {
             return;
         }
@@ -86,12 +69,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
      * If `asset` is ETH, `toInternalBalance` must be false (as ETH cannot be held as internal balance), and the funds
      * are instead sent directly after unwrapping WETH.
      */
-    function _sendAsset(
-        IAsset asset,
-        uint256 amount,
-        address payable recipient,
-        bool toInternalBalance
-    ) internal {
+    function _sendAsset(IAsset asset, uint256 amount, address payable recipient, bool toInternalBalance) internal {
         if (amount == 0) {
             return;
         }
@@ -153,11 +131,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
     // this case UserBalance) in order to decouple it from the rest of the system and enable standalone testing by
     // implementing these with mocks.
 
-    function _increaseInternalBalance(
-        address account,
-        IERC20 token,
-        uint256 amount
-    ) internal virtual;
+    function _increaseInternalBalance(address account, IERC20 token, uint256 amount) internal virtual;
 
     function _decreaseInternalBalance(
         address account,

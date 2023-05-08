@@ -1,16 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
 
@@ -22,9 +10,8 @@ import "./SignaturesValidator.sol";
 abstract contract OptionalOnlyCaller is IOptionalOnlyCaller, SignaturesValidator {
     mapping(address => bool) private _isOnlyCallerEnabled;
 
-    bytes32 private constant _SET_ONLY_CALLER_CHECK_TYPEHASH = keccak256(
-        "SetOnlyCallerCheck(address user,bool enabled,uint256 nonce)"
-    );
+    bytes32 private constant _SET_ONLY_CALLER_CHECK_TYPEHASH =
+        keccak256("SetOnlyCallerCheck(address user,bool enabled,uint256 nonce)");
 
     /**
      * @dev Reverts if the verification mechanism is enabled and the given address is not the caller.
@@ -39,11 +26,7 @@ abstract contract OptionalOnlyCaller is IOptionalOnlyCaller, SignaturesValidator
         _setOnlyCallerCheck(msg.sender, enabled);
     }
 
-    function setOnlyCallerCheckWithSignature(
-        address user,
-        bool enabled,
-        bytes memory signature
-    ) external override {
+    function setOnlyCallerCheckWithSignature(address user, bool enabled, bytes memory signature) external override {
         bytes32 structHash = keccak256(abi.encode(_SET_ONLY_CALLER_CHECK_TYPEHASH, user, enabled, getNextNonce(user)));
         _ensureValidSignature(user, structHash, signature, Errors.INVALID_SIGNATURE);
         _setOnlyCallerCheck(user, enabled);

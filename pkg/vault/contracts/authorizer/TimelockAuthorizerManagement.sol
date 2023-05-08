@@ -1,16 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
@@ -88,12 +76,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
         _;
     }
 
-    constructor(
-        address initialRoot,
-        address nextRoot,
-        IAuthentication vault,
-        uint256 rootTransferDelay
-    ) {
+    constructor(address initialRoot, address nextRoot, IAuthentication vault, uint256 rootTransferDelay) {
         _setRoot(initialRoot);
         // By setting `nextRoot` as the pending root, it can immediately call `claimRoot` and replace `initialRoot`,
         // skipping the root transfer delay for the very first root transfer. This is very useful in schemes where a
@@ -174,11 +157,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
     /**
      * @inheritdoc ITimelockAuthorizer
      */
-    function isGranter(
-        bytes32 actionId,
-        address account,
-        address where
-    ) public view override returns (bool) {
+    function isGranter(bytes32 actionId, address account, address where) public view override returns (bool) {
         return _isGranter[actionId][account][where] || _isGranter[actionId][account][EVERYWHERE()] || isRoot(account);
     }
 
@@ -192,12 +171,9 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
     /**
      * @inheritdoc ITimelockAuthorizer
      */
-    function getScheduledExecution(uint256 scheduledExecutionId)
-        external
-        view
-        override
-        returns (ITimelockAuthorizer.ScheduledExecution memory)
-    {
+    function getScheduledExecution(
+        uint256 scheduledExecutionId
+    ) external view override returns (ITimelockAuthorizer.ScheduledExecution memory) {
         return _scheduledExecutions[scheduledExecutionId];
     }
 
@@ -351,11 +327,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
     /**
      * @inheritdoc ITimelockAuthorizer
      */
-    function addGranter(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external override {
+    function addGranter(bytes32 actionId, address account, address where) external override {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         require(!isGranter(actionId, account, where), "ACCOUNT_IS_ALREADY_GRANTER");
@@ -372,11 +344,7 @@ abstract contract TimelockAuthorizerManagement is ITimelockAuthorizer {
     /**
      * @inheritdoc ITimelockAuthorizer
      */
-    function removeGranter(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external override {
+    function removeGranter(bytes32 actionId, address account, address where) external override {
         require(isRoot(msg.sender), "SENDER_IS_NOT_ROOT");
 
         require(isGranter(actionId, account, where), "ACCOUNT_IS_NOT_GRANTER");
