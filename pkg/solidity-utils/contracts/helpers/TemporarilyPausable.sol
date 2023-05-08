@@ -22,25 +22,27 @@ import "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/ITemporari
  *
  * Contract has a compatible inteface with OpenZeppelin Pauseable smart contract
  * https://docs.openzeppelin.com/contracts/4.x/api/security#Pausable
- * Inheritance is not used because OZ lib is using revert strings
+ * Inheritance is not used because OZ lib is using revert strings and we are using custom errors
  */
 abstract contract TemporarilyPausable is ITemporarilyPausable {
     // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
     // solhint-disable not-rely-on-time
 
-    uint256 public constant MAX_PAUSE_WINDOW_DURATION = 270 days;
-    uint256 public constant MAX_BUFFER_PERIOD_DURATION = 90 days;
-
-    uint256 private immutable _pauseWindowEndTime;
-    uint256 private immutable _bufferPeriodEndTime;
+    uint256 internal immutable _pauseWindowEndTime;
+    uint256 internal immutable _bufferPeriodEndTime;
 
     bool private _paused;
 
+    /**
+     * @dev Initializes the contract with the given Pause Window and Buffer Period durations.
+     * @param pauseWindowDuration Duration of the Pause Window in seconds.
+     * @param bufferPeriodDuration Duration of the Buffer Period in seconds.
+     */
     constructor(uint256 pauseWindowDuration, uint256 bufferPeriodDuration) {
-        if (pauseWindowDuration > MAX_PAUSE_WINDOW_DURATION) {
+        if (pauseWindowDuration > PausableConstants.MAX_PAUSE_WINDOW_DURATION) {
             revert MaxPauseWindowDuration();
         }
-        if (bufferPeriodDuration > MAX_BUFFER_PERIOD_DURATION) {
+        if (bufferPeriodDuration > PausableConstants.MAX_BUFFER_PERIOD_DURATION) {
             revert MaxBufferPeriodDuration();
         }
 
@@ -73,7 +75,7 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
      * Once the Buffer Period expires, this function reverts unconditionally.
      */
     function _pause() internal whenNotPaused {
-        if (block.timestamp >= _getPauseWindowEndTime()) {
+        if (block.timestamp >= _pauseWindowEndTime) {
             revert PauseWindowExpired();
         }
         _paused = true;
@@ -81,10 +83,10 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
     }
 
     /**
-     * @dev Returns to normal state.
+     * @dev Returns the contract to a normal (unpaused) state.
      */
     function _unpause() internal whenPaused {
-        if (block.timestamp >= _getBufferPeriodEndTime()) {
+        if (block.timestamp >= _bufferPeriodEndTime) {
             revert BufferPeriodExpired();
         }
         _paused = false;
@@ -98,7 +100,7 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
      * longer accessed.
      */
     function paused() public view returns (bool) {
-        return block.timestamp <= _getBufferPeriodEndTime() && _paused;
+        return block.timestamp <= _bufferPeriodEndTime && _paused;
     }
 
     /**
@@ -118,14 +120,12 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
             revert AlreadyUnPaused();
         }
     }
+}
 
-    // These getters lead to reduced bytecode size by inlining the immutable variables in a single place.
-
-    function _getPauseWindowEndTime() internal view returns (uint256) {
-        return _pauseWindowEndTime;
-    }
-
-    function _getBufferPeriodEndTime() internal view returns (uint256) {
-        return _bufferPeriodEndTime;
-    }
+/**
+ * @dev Keep the maximum durations in a single place.
+ */
+library PausableConstants {
+    uint256 public constant MAX_PAUSE_WINDOW_DURATION = 270 days;
+    uint256 public constant MAX_BUFFER_PERIOD_DURATION = 90 days;
 }
