@@ -1,0 +1,22 @@
+{
+  "name": "@balancer-labs/v3-common",
+  "description": "Common configuration",
+  "private": true,
+  "version": "1.0.0",
+  "license": "GPL-3.0-only",
+  "scripts": {
+    "lint": "yarn lint:typescript",
+    "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
+  },
+  "dependencies": {
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.6",
+    "typescript": "^4.0.2"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.41.0",
+    "@typescript-eslint/parser": "^5.41.0",
+    "eslint": "^8.26.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "prettier": "^2.8.8"
+  }
+}
