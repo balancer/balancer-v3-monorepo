@@ -10,9 +10,8 @@ import "./SignaturesValidator.sol";
 abstract contract OptionalOnlyCaller is IOptionalOnlyCaller, SignaturesValidator {
     mapping(address => bool) private _isOnlyCallerEnabled;
 
-    bytes32 private constant _SET_ONLY_CALLER_CHECK_TYPEHASH = keccak256(
-        "SetOnlyCallerCheck(address user,bool enabled,uint256 nonce)"
-    );
+    bytes32 private constant _SET_ONLY_CALLER_CHECK_TYPEHASH =
+        keccak256("SetOnlyCallerCheck(address user,bool enabled,uint256 nonce)");
 
     /**
      * @dev Reverts if the verification mechanism is enabled and the given address is not the caller.
@@ -27,11 +26,7 @@ abstract contract OptionalOnlyCaller is IOptionalOnlyCaller, SignaturesValidator
         _setOnlyCallerCheck(msg.sender, enabled);
     }
 
-    function setOnlyCallerCheckWithSignature(
-        address user,
-        bool enabled,
-        bytes memory signature
-    ) external override {
+    function setOnlyCallerCheckWithSignature(address user, bool enabled, bytes memory signature) external override {
         bytes32 structHash = keccak256(abi.encode(_SET_ONLY_CALLER_CHECK_TYPEHASH, user, enabled, getNextNonce(user)));
         _ensureValidSignature(user, structHash, signature, Errors.INVALID_SIGNATURE);
         _setOnlyCallerCheck(user, enabled);

@@ -53,13 +53,9 @@ abstract contract PoolRegistry is ReentrancyGuard, VaultAuthorization {
         _require(msg.sender == _getPoolAddress(poolId), Errors.CALLER_NOT_POOL);
     }
 
-    function registerPool(PoolSpecialization specialization)
-        external
-        override
-        nonReentrant
-        whenNotPaused
-        returns (bytes32)
-    {
+    function registerPool(
+        PoolSpecialization specialization
+    ) external override nonReentrant whenNotPaused returns (bytes32) {
         // Each Pool is assigned a unique ID based on an incrementing nonce. This assumes there will never be more than
         // 2**80 Pools, and the nonce will not overflow.
 
@@ -75,13 +71,9 @@ abstract contract PoolRegistry is ReentrancyGuard, VaultAuthorization {
         return poolId;
     }
 
-    function getPool(bytes32 poolId)
-        external
-        view
-        override
-        withRegisteredPool(poolId)
-        returns (address, PoolSpecialization)
-    {
+    function getPool(
+        bytes32 poolId
+    ) external view override withRegisteredPool(poolId) returns (address, PoolSpecialization) {
         return (_getPoolAddress(poolId), _getPoolSpecialization(poolId));
     }
 
@@ -101,11 +93,7 @@ abstract contract PoolRegistry is ReentrancyGuard, VaultAuthorization {
      * 2 bytes for the specialization setting is a bit overkill: there only three of them, which means two bits would
      * suffice. However, there's nothing else of interest to store in this extra space.
      */
-    function _toPoolId(
-        address pool,
-        PoolSpecialization specialization,
-        uint80 nonce
-    ) internal pure returns (bytes32) {
+    function _toPoolId(address pool, PoolSpecialization specialization, uint80 nonce) internal pure returns (bytes32) {
         bytes32 serialized;
 
         serialized |= bytes32(uint256(nonce));
@@ -133,7 +121,7 @@ abstract contract PoolRegistry is ReentrancyGuard, VaultAuthorization {
      */
     function _getPoolSpecialization(bytes32 poolId) internal pure returns (PoolSpecialization specialization) {
         // 10 byte logical shift left to remove the nonce, followed by a 2 byte mask to remove the address.
-        uint256 value = uint256(poolId >> (10 * 8)) & (2**(2 * 8) - 1);
+        uint256 value = uint256(poolId >> (10 * 8)) & (2 ** (2 * 8) - 1);
 
         // Casting a value into an enum results in a runtime check that reverts unless the value is within the enum's
         // range. Passing an invalid Pool ID to this function would then result in an obscure revert with no reason

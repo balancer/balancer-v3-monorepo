@@ -30,12 +30,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
      * caller of this function to check that this is true to prevent the Vault from using its own ETH (though the Vault
      * typically doesn't hold any).
      */
-    function _receiveAsset(
-        IAsset asset,
-        uint256 amount,
-        address sender,
-        bool fromInternalBalance
-    ) internal {
+    function _receiveAsset(IAsset asset, uint256 amount, address sender, bool fromInternalBalance) internal {
         if (amount == 0) {
             return;
         }
@@ -74,12 +69,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
      * If `asset` is ETH, `toInternalBalance` must be false (as ETH cannot be held as internal balance), and the funds
      * are instead sent directly after unwrapping WETH.
      */
-    function _sendAsset(
-        IAsset asset,
-        uint256 amount,
-        address payable recipient,
-        bool toInternalBalance
-    ) internal {
+    function _sendAsset(IAsset asset, uint256 amount, address payable recipient, bool toInternalBalance) internal {
         if (amount == 0) {
             return;
         }
@@ -141,11 +131,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
     // this case UserBalance) in order to decouple it from the rest of the system and enable standalone testing by
     // implementing these with mocks.
 
-    function _increaseInternalBalance(
-        address account,
-        IERC20 token,
-        uint256 amount
-    ) internal virtual;
+    function _increaseInternalBalance(address account, IERC20 token, uint256 amount) internal virtual;
 
     function _decreaseInternalBalance(
         address account,

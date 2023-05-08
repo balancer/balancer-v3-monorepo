@@ -94,11 +94,7 @@ abstract contract GeneralPoolsBalance {
      * This function assumes `poolId` exists, corresponds to the General specialization setting, and that `token` is
      * registered for that Pool.
      */
-    function _generalPoolCashToManaged(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) internal {
+    function _generalPoolCashToManaged(bytes32 poolId, IERC20 token, uint256 amount) internal {
         _updateGeneralPoolBalance(poolId, token, BalanceAllocation.cashToManaged, amount);
     }
 
@@ -108,11 +104,7 @@ abstract contract GeneralPoolsBalance {
      * This function assumes `poolId` exists, corresponds to the General specialization setting, and that `token` is
      * registered for that Pool.
      */
-    function _generalPoolManagedToCash(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) internal {
+    function _generalPoolManagedToCash(bytes32 poolId, IERC20 token, uint256 amount) internal {
         _updateGeneralPoolBalance(poolId, token, BalanceAllocation.managedToCash, amount);
     }
 
@@ -124,11 +116,7 @@ abstract contract GeneralPoolsBalance {
      *
      * Returns the managed balance delta as a result of this call.
      */
-    function _setGeneralPoolManagedBalance(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) internal returns (int256) {
+    function _setGeneralPoolManagedBalance(bytes32 poolId, IERC20 token, uint256 amount) internal returns (int256) {
         return _updateGeneralPoolBalance(poolId, token, BalanceAllocation.setManaged, amount);
     }
 
@@ -162,11 +150,9 @@ abstract contract GeneralPoolsBalance {
      *
      * This function assumes `poolId` exists and corresponds to the General specialization setting.
      */
-    function _getGeneralPoolTokens(bytes32 poolId)
-        internal
-        view
-        returns (IERC20[] memory tokens, bytes32[] memory balances)
-    {
+    function _getGeneralPoolTokens(
+        bytes32 poolId
+    ) internal view returns (IERC20[] memory tokens, bytes32[] memory balances) {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
         tokens = new IERC20[](poolBalances.length());
         balances = new bytes32[](tokens.length);
@@ -196,11 +182,10 @@ abstract contract GeneralPoolsBalance {
      * @dev Same as `_getGeneralPoolBalance` but using a Pool's storage pointer, which saves gas in repeated reads and
      * writes.
      */
-    function _getGeneralPoolBalance(EnumerableMap.IERC20ToBytes32Map storage poolBalances, IERC20 token)
-        private
-        view
-        returns (bytes32)
-    {
+    function _getGeneralPoolBalance(
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances,
+        IERC20 token
+    ) private view returns (bytes32) {
         return poolBalances.get(token, Errors.TOKEN_NOT_REGISTERED);
     }
 

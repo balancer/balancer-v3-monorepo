@@ -52,11 +52,7 @@ contract AuthorizerWithAdaptorValidation is IAuthorizer {
      * @dev Ensure that all requests either came through the AuthorizerAdaptor via the AuthorizerAdaptorEntrypoint
      * (which we know has safely checked permissions), or can be validated with the actual Authorizer.
      */
-    function canPerform(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external view override returns (bool) {
+    function canPerform(bytes32 actionId, address account, address where) external view override returns (bool) {
         if (msg.sender == address(_authorizerAdaptor)) {
             // The situation where the caller is the `AuthorizerAdaptor` is a special case, as due to a bug it can be
             // tricked into passing an incorrect `actionId` value, potentially resulting in escalation of privileges.

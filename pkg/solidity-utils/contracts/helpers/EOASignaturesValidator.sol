@@ -79,11 +79,7 @@ abstract contract EOASignaturesValidator is ISignaturesValidator, EIP712 {
         return (recoveredAddress != address(0) && recoveredAddress == account);
     }
 
-    function _toArraySignature(
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) internal pure returns (bytes memory) {
+    function _toArraySignature(uint8 v, bytes32 r, bytes32 s) internal pure returns (bytes memory) {
         bytes memory signature = new bytes(65);
         // solhint-disable-next-line no-inline-assembly
         assembly {

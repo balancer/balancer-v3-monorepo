@@ -105,11 +105,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     /**
      * @inheritdoc ITimelockAuthorizer
      */
-    function getPermissionId(
-        bytes32 actionId,
-        address account,
-        address where
-    ) public pure override returns (bytes32) {
+    function getPermissionId(bytes32 actionId, address account, address where) public pure override returns (bytes32) {
         return keccak256(abi.encodePacked(actionId, account, where));
     }
 
@@ -127,11 +123,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     /**
      * @inheritdoc ITimelockAuthorizer
      */
-    function hasPermission(
-        bytes32 actionId,
-        address account,
-        address where
-    ) public view override returns (bool) {
+    function hasPermission(bytes32 actionId, address account, address where) public view override returns (bool) {
         return
             _isPermissionGranted[getPermissionId(actionId, account, where)] ||
             _isPermissionGranted[getPermissionId(actionId, account, EVERYWHERE())];
@@ -140,11 +132,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     /**
      * @inheritdoc IAuthorizer
      */
-    function canPerform(
-        bytes32 actionId,
-        address account,
-        address where
-    ) public view override returns (bool) {
+    function canPerform(bytes32 actionId, address account, address where) public view override returns (bool) {
         if (msg.sender == address(_authorizerAdaptor)) {
             // The situation where the caller is the `AuthorizerAdaptor` is a special case, as due to a bug it can be
             // tricked into passing an incorrect `actionId` value, potentially resulting in escalation of privileges.
@@ -328,11 +316,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     /**
      * @inheritdoc ITimelockAuthorizer
      */
-    function grantPermission(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external override {
+    function grantPermission(bytes32 actionId, address account, address where) external override {
         if (_grantDelays[actionId] == 0) {
             require(isGranter(actionId, msg.sender, where), "SENDER_IS_NOT_GRANTER");
         } else {
@@ -380,11 +364,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
     /**
      * @inheritdoc ITimelockAuthorizer
      */
-    function revokePermission(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external override {
+    function revokePermission(bytes32 actionId, address account, address where) external override {
         if (_revokeDelays[actionId] == 0) {
             require(isRevoker(msg.sender, where), "SENDER_IS_NOT_REVOKER");
         } else {
@@ -436,11 +416,7 @@ contract TimelockAuthorizer is IAuthorizer, TimelockAuthorizerManagement {
      * This performs no permission checks on `msg.sender` of any kind. The caller of this function should perform
      * any appropriate checks.
      */
-    function _revokePermission(
-        bytes32 actionId,
-        address account,
-        address where
-    ) private {
+    function _revokePermission(bytes32 actionId, address account, address where) private {
         bytes32 permission = getPermissionId(actionId, account, where);
 
         require(_isPermissionGranted[permission], "PERMISSION_NOT_GRANTED");

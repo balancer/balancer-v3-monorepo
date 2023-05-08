@@ -178,11 +178,7 @@ abstract contract BaseSplitCodeFactory {
 
     // From
     // https://github.com/Arachnid/solidity-stringutils/blob/b9a6f6615cf18a87a823cbc461ce9e140a61c305/src/strings.sol
-    function _memcpy(
-        uint256 dest,
-        uint256 src,
-        uint256 len
-    ) private pure {
+    function _memcpy(uint256 dest, uint256 src, uint256 len) private pure {
         // Copy word-length chunks while possible
         for (; len >= 32; len -= 32) {
             assembly {
@@ -193,7 +189,7 @@ abstract contract BaseSplitCodeFactory {
         }
 
         // Copy remaining bytes
-        uint256 mask = 256**(32 - len) - 1;
+        uint256 mask = 256 ** (32 - len) - 1;
         assembly {
             let srcpart := and(mload(src), not(mask))
             let destpart := and(mload(dest), mask)

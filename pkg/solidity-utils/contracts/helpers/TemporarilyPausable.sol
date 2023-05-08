@@ -59,11 +59,7 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
         external
         view
         override
-        returns (
-            bool paused,
-            uint256 pauseWindowEndTime,
-            uint256 bufferPeriodEndTime
-        )
+        returns (bool paused, uint256 pauseWindowEndTime, uint256 bufferPeriodEndTime)
     {
         paused = !_isNotPaused();
         pauseWindowEndTime = _getPauseWindowEndTime();

@@ -97,11 +97,7 @@ abstract contract MinimalSwapInfoPoolsBalance is PoolRegistry {
      * This function assumes `poolId` exists, corresponds to the Minimal Swap Info specialization setting, and that
      * `token` is registered for that Pool.
      */
-    function _minimalSwapInfoPoolCashToManaged(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) internal {
+    function _minimalSwapInfoPoolCashToManaged(bytes32 poolId, IERC20 token, uint256 amount) internal {
         _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation.cashToManaged, amount);
     }
 
@@ -111,11 +107,7 @@ abstract contract MinimalSwapInfoPoolsBalance is PoolRegistry {
      * This function assumes `poolId` exists, corresponds to the Minimal Swap Info specialization setting, and that
      * `token` is registered for that Pool.
      */
-    function _minimalSwapInfoPoolManagedToCash(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) internal {
+    function _minimalSwapInfoPoolManagedToCash(bytes32 poolId, IERC20 token, uint256 amount) internal {
         _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation.managedToCash, amount);
     }
 
@@ -164,11 +156,9 @@ abstract contract MinimalSwapInfoPoolsBalance is PoolRegistry {
      *
      * This function assumes `poolId` exists and corresponds to the Minimal Swap Info specialization setting.
      */
-    function _getMinimalSwapInfoPoolTokens(bytes32 poolId)
-        internal
-        view
-        returns (IERC20[] memory tokens, bytes32[] memory balances)
-    {
+    function _getMinimalSwapInfoPoolTokens(
+        bytes32 poolId
+    ) internal view returns (IERC20[] memory tokens, bytes32[] memory balances) {
         EnumerableSet.AddressSet storage poolTokens = _minimalSwapInfoPoolsTokens[poolId];
         tokens = new IERC20[](poolTokens.length());
         balances = new bytes32[](tokens.length);
