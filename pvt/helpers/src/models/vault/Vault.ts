@@ -214,7 +214,7 @@ export default class Vault {
   async getProtocolFeePercentages(): Promise<{ swapFeePercentage: BigNumber }> {
     return {
       swapFeePercentage: await this.getSwapFeePercentage(),
-    }
+    };
   }
 
   async getSwapFeePercentage(): Promise<BigNumber> {
