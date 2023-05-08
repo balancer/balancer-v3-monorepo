@@ -1,5 +1,5 @@
 import '@nomiclabs/hardhat-ethers';
-import '@nomiclabs/hardhat-waffle';
+import '@nomicfoundation/hardhat-toolbox';
 import 'hardhat-ignore-warnings';
 
 import { hardhatBaseConfig } from '@balancer-labs/v3-common';
