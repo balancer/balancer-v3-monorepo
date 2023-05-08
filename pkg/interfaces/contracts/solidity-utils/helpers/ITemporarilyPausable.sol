@@ -7,6 +7,36 @@ pragma solidity ^0.8.0;
  */
 interface ITemporarilyPausable {
     /**
+     * @dev
+     */
+    error MaxPauseWindowDuration();
+
+    /**
+     * @dev
+     */
+    error MaxBufferPeriodDuration();
+
+    /**
+     * @dev
+     */
+    error PauseWindowExpired();
+
+    /**
+     * @dev
+     */
+    error BufferPeriodExpired();
+
+    /**
+     * @dev
+     */
+    error AlreadyPaused();
+
+    /**
+     * @dev
+     */
+    error AlreadyUnPaused();
+
+    /**
      * @dev Emitted when the pause is triggered by `account`.
      */
     event Paused(address account);
@@ -15,5 +45,4 @@ interface ITemporarilyPausable {
      * @dev Emitted when the pause is lifted by `account`.
      */
     event Unpaused(address account);
-
 }

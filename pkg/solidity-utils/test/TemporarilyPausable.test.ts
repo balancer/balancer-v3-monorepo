@@ -51,7 +51,10 @@ describe('TemporarilyPausable', function () {
       const maxPauseWindowDuration = await instance.getMaxPauseWindowDuration();
       const pauseWindowDuration = maxPauseWindowDuration + 1;
 
-      await expect(deployTemporarilyPausable({ pauseWindowDuration })).to.be.revertedWith('MaxPauseWindowDuration');
+      await expect(deployTemporarilyPausable({ pauseWindowDuration })).to.be.revertedWithCustomError(
+        instance,
+        'MaxPauseWindowDuration'
+      );
     });
 
     it('cannot be initialized with a buffer period greater than the max', async () => {
@@ -59,9 +62,9 @@ describe('TemporarilyPausable', function () {
       const pauseWindowDuration = MONTH;
       const bufferPeriodDuration = maxBufferPeriodDuration + 1;
 
-      await expect(deployTemporarilyPausable({ pauseWindowDuration, bufferPeriodDuration })).to.be.revertedWith(
-        'MAX_BUFFER_PERIOD_DURATION'
-      );
+      await expect(
+        deployTemporarilyPausable({ pauseWindowDuration, bufferPeriodDuration })
+      ).to.be.revertedWithCustomError(instance, 'MaxBufferPeriodDuration');
     });
   });
 
@@ -110,7 +113,7 @@ describe('TemporarilyPausable', function () {
           });
 
           it('cannot be paused', async () => {
-            await expect(instance.pause()).to.be.revertedWith('PAUSE_WINDOW_EXPIRED');
+            await expect(instance.pause()).to.be.revertedWithCustomError(instance, 'PauseWindowExpired');
           });
         }
 
@@ -155,7 +158,7 @@ describe('TemporarilyPausable', function () {
             await instance.unpause();
             await assertPauseState(false);
 
-            await expect(instance.pause()).to.be.revertedWith('PAUSE_WINDOW_EXPIRED');
+            await expect(instance.pause()).to.be.revertedWithCustomError(instance, 'PauseWindowExpired');
           });
         });
 
@@ -169,11 +172,11 @@ describe('TemporarilyPausable', function () {
           });
 
           it('cannot be paused', async () => {
-            await expect(instance.pause()).to.be.revertedWith('PAUSE_WINDOW_EXPIRED');
+            await expect(instance.pause()).to.be.revertedWithCustomError(instance, 'PauseWindowExpired');
           });
 
           it('cannot be unpaused', async () => {
-            await expect(instance.unpause()).to.be.revertedWith('BUFFER_PERIOD_EXPIRED');
+            await expect(instance.unpause()).to.be.revertedWithCustomError(instance, 'AlreadyUnPaused');
           });
         });
       });
