@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 /**
  * @title ITemporarilyPausable
- * @dev Interface for the TemporarilyPausable helper. Provides a structure for contracts that need temporarily pausable functionality.
+ * @dev Interface for contracts that need temporarily pausable functionality.
  * This interface defines error types and events related to pausing and unpausing a contract.
  */
 interface ITemporarilyPausable {
