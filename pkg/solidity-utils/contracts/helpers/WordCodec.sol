@@ -1,16 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
 
@@ -38,8 +26,8 @@ library WordCodec {
 
     // Masks are values with the least significant N bits set. They can be used to extract an encoded value from a word,
     // or to insert a new one replacing the old.
-    uint256 private constant _MASK_1 = 2**(1) - 1;
-    uint256 private constant _MASK_192 = 2**(192) - 1;
+    uint256 private constant _MASK_1 = 2 ** (1) - 1;
+    uint256 private constant _MASK_192 = 2 ** (192) - 1;
 
     // In-place insertion
 
@@ -71,12 +59,7 @@ library WordCodec {
      *
      * Assumes `value` can be represented using `bitLength` bits.
      */
-    function insertInt(
-        bytes32 word,
-        int256 value,
-        uint256 offset,
-        uint256 bitLength
-    ) internal pure returns (bytes32) {
+    function insertInt(bytes32 word, int256 value, uint256 offset, uint256 bitLength) internal pure returns (bytes32) {
         _validateEncodingParams(value, offset, bitLength);
 
         uint256 mask = (1 << bitLength) - 1;
@@ -93,11 +76,7 @@ library WordCodec {
      *
      * The return value can be ORed bitwise with other encoded values to form a 256 bit word.
      */
-    function encodeUint(
-        uint256 value,
-        uint256 offset,
-        uint256 bitLength
-    ) internal pure returns (bytes32) {
+    function encodeUint(uint256 value, uint256 offset, uint256 bitLength) internal pure returns (bytes32) {
         _validateEncodingParams(value, offset, bitLength);
 
         return bytes32(value << offset);
@@ -108,11 +87,7 @@ library WordCodec {
      *
      * The return value can be ORed bitwise with other encoded values to form a 256 bit word.
      */
-    function encodeInt(
-        int256 value,
-        uint256 offset,
-        uint256 bitLength
-    ) internal pure returns (bytes32) {
+    function encodeInt(int256 value, uint256 offset, uint256 bitLength) internal pure returns (bytes32) {
         _validateEncodingParams(value, offset, bitLength);
 
         uint256 mask = (1 << bitLength) - 1;
@@ -125,11 +100,7 @@ library WordCodec {
     /**
      * @dev Decodes and returns an unsigned integer with `bitLength` bits, shifted by an offset, from a 256 bit word.
      */
-    function decodeUint(
-        bytes32 word,
-        uint256 offset,
-        uint256 bitLength
-    ) internal pure returns (uint256 result) {
+    function decodeUint(bytes32 word, uint256 offset, uint256 bitLength) internal pure returns (uint256 result) {
         // Equivalent to:
         // result = uint256(word >> offset) & ((1 << bitLength) - 1);
         assembly {
@@ -140,11 +111,7 @@ library WordCodec {
     /**
      * @dev Decodes and returns a signed integer with `bitLength` bits, shifted by an offset, from a 256 bit word.
      */
-    function decodeInt(
-        bytes32 word,
-        uint256 offset,
-        uint256 bitLength
-    ) internal pure returns (int256 result) {
+    function decodeInt(bytes32 word, uint256 offset, uint256 bitLength) internal pure returns (int256 result) {
         int256 maxInt = int256((1 << (bitLength - 1)) - 1);
         uint256 mask = (1 << bitLength) - 1;
 
@@ -179,11 +146,7 @@ library WordCodec {
      *
      * Assumes `value` can be represented using 192 bits.
      */
-    function insertBits192(
-        bytes32 word,
-        bytes32 value,
-        uint256 offset
-    ) internal pure returns (bytes32) {
+    function insertBits192(bytes32 word, bytes32 value, uint256 offset) internal pure returns (bytes32) {
         bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_192 << offset));
         return clearedWord | bytes32((uint256(value) & _MASK_192) << offset);
     }
@@ -192,11 +155,7 @@ library WordCodec {
      * @dev Inserts a boolean value shifted by an offset into a 256 bit word, replacing the old value. Returns the new
      * word.
      */
-    function insertBool(
-        bytes32 word,
-        bool value,
-        uint256 offset
-    ) internal pure returns (bytes32 result) {
+    function insertBool(bytes32 word, bool value, uint256 offset) internal pure returns (bytes32 result) {
         // Equivalent to:
         // bytes32 clearedWord = bytes32(uint256(word) & ~(1 << offset));
         // bytes32 referenceInsertBool = clearedWord | bytes32(uint256(value ? 1 : 0) << offset);
@@ -208,11 +167,7 @@ library WordCodec {
 
     // Helpers
 
-    function _validateEncodingParams(
-        uint256 value,
-        uint256 offset,
-        uint256 bitLength
-    ) private pure {
+    function _validateEncodingParams(uint256 value, uint256 offset, uint256 bitLength) private pure {
         _require(offset < 256, Errors.OUT_OF_BOUNDS);
         // We never accept 256 bit values (which would make the codec pointless), and the larger the offset the smaller
         // the maximum bit length.
@@ -222,11 +177,7 @@ library WordCodec {
         _require(value >> bitLength == 0, Errors.CODEC_OVERFLOW);
     }
 
-    function _validateEncodingParams(
-        int256 value,
-        uint256 offset,
-        uint256 bitLength
-    ) private pure {
+    function _validateEncodingParams(int256 value, uint256 offset, uint256 bitLength) private pure {
         _require(offset < 256, Errors.OUT_OF_BOUNDS);
         // We never accept 256 bit values (which would make the codec pointless), and the larger the offset the smaller
         // the maximum bit length.

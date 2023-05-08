@@ -1,16 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
@@ -53,8 +41,8 @@ abstract contract VaultAuthorization is
 
     // _SET_RELAYER_TYPE_HASH =
     //     keccak256("SetRelayerApproval(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
-    bytes32
-        private constant _SET_RELAYER_TYPE_HASH = 0xa3f865aa351e51cfeb40f5178d1564bb629fe9030b83caf6361d1baaf5b90b5a;
+    bytes32 private constant _SET_RELAYER_TYPE_HASH =
+        0xa3f865aa351e51cfeb40f5178d1564bb629fe9030b83caf6361d1baaf5b90b5a;
 
     IAuthorizer private _authorizer;
     mapping(address => mapping(address => bool)) private _approvedRelayers;
@@ -72,7 +60,9 @@ abstract contract VaultAuthorization is
         _;
     }
 
-    constructor(IAuthorizer authorizer)
+    constructor(
+        IAuthorizer authorizer
+    )
         // The Vault is a singleton, so it simply uses its own address to disambiguate action identifiers.
         Authentication(bytes32(uint256(address(this))))
         EIP712("Balancer V2 Vault", "1")
@@ -150,24 +140,24 @@ abstract contract VaultAuthorization is
             // With the selector in the least significant 4 bytes, we can use 4 byte literals with leading zeros,
             // resulting in dense bytecode (PUSH4 opcodes).
             switch selector
-                case 0xb95cac28 {
-                    hash := _JOIN_TYPE_HASH
-                }
-                case 0x8bdb3913 {
-                    hash := _EXIT_TYPE_HASH
-                }
-                case 0x52bbbe29 {
-                    hash := _SWAP_TYPE_HASH
-                }
-                case 0x945bcec9 {
-                    hash := _BATCH_SWAP_TYPE_HASH
-                }
-                case 0xfa6e671d {
-                    hash := _SET_RELAYER_TYPE_HASH
-                }
-                default {
-                    hash := 0x0000000000000000000000000000000000000000000000000000000000000000
-                }
+            case 0xb95cac28 {
+                hash := _JOIN_TYPE_HASH
+            }
+            case 0x8bdb3913 {
+                hash := _EXIT_TYPE_HASH
+            }
+            case 0x52bbbe29 {
+                hash := _SWAP_TYPE_HASH
+            }
+            case 0x945bcec9 {
+                hash := _BATCH_SWAP_TYPE_HASH
+            }
+            case 0xfa6e671d {
+                hash := _SET_RELAYER_TYPE_HASH
+            }
+            default {
+                hash := 0x0000000000000000000000000000000000000000000000000000000000000000
+            }
         }
     }
 }
