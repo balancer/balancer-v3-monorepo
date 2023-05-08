@@ -1,16 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
 
@@ -106,11 +94,7 @@ abstract contract GeneralPoolsBalance {
      * This function assumes `poolId` exists, corresponds to the General specialization setting, and that `token` is
      * registered for that Pool.
      */
-    function _generalPoolCashToManaged(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) internal {
+    function _generalPoolCashToManaged(bytes32 poolId, IERC20 token, uint256 amount) internal {
         _updateGeneralPoolBalance(poolId, token, BalanceAllocation.cashToManaged, amount);
     }
 
@@ -120,11 +104,7 @@ abstract contract GeneralPoolsBalance {
      * This function assumes `poolId` exists, corresponds to the General specialization setting, and that `token` is
      * registered for that Pool.
      */
-    function _generalPoolManagedToCash(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) internal {
+    function _generalPoolManagedToCash(bytes32 poolId, IERC20 token, uint256 amount) internal {
         _updateGeneralPoolBalance(poolId, token, BalanceAllocation.managedToCash, amount);
     }
 
@@ -136,11 +116,7 @@ abstract contract GeneralPoolsBalance {
      *
      * Returns the managed balance delta as a result of this call.
      */
-    function _setGeneralPoolManagedBalance(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) internal returns (int256) {
+    function _setGeneralPoolManagedBalance(bytes32 poolId, IERC20 token, uint256 amount) internal returns (int256) {
         return _updateGeneralPoolBalance(poolId, token, BalanceAllocation.setManaged, amount);
     }
 
@@ -174,11 +150,9 @@ abstract contract GeneralPoolsBalance {
      *
      * This function assumes `poolId` exists and corresponds to the General specialization setting.
      */
-    function _getGeneralPoolTokens(bytes32 poolId)
-        internal
-        view
-        returns (IERC20[] memory tokens, bytes32[] memory balances)
-    {
+    function _getGeneralPoolTokens(
+        bytes32 poolId
+    ) internal view returns (IERC20[] memory tokens, bytes32[] memory balances) {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
         tokens = new IERC20[](poolBalances.length());
         balances = new bytes32[](tokens.length);
@@ -208,11 +182,10 @@ abstract contract GeneralPoolsBalance {
      * @dev Same as `_getGeneralPoolBalance` but using a Pool's storage pointer, which saves gas in repeated reads and
      * writes.
      */
-    function _getGeneralPoolBalance(EnumerableMap.IERC20ToBytes32Map storage poolBalances, IERC20 token)
-        private
-        view
-        returns (bytes32)
-    {
+    function _getGeneralPoolBalance(
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances,
+        IERC20 token
+    ) private view returns (bytes32) {
         return poolBalances.get(token, Errors.TOKEN_NOT_REGISTERED);
     }
 

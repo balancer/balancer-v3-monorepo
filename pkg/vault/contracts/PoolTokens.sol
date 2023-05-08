@@ -1,16 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
@@ -56,13 +44,10 @@ abstract contract PoolTokens is ReentrancyGuard, PoolRegistry, AssetManagers {
         emit TokensRegistered(poolId, tokens, assetManagers);
     }
 
-    function deregisterTokens(bytes32 poolId, IERC20[] memory tokens)
-        external
-        override
-        nonReentrant
-        whenNotPaused
-        onlyPool(poolId)
-    {
+    function deregisterTokens(
+        bytes32 poolId,
+        IERC20[] memory tokens
+    ) external override nonReentrant whenNotPaused onlyPool(poolId) {
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
         if (specialization == PoolSpecialization.TWO_TOKEN) {
             _require(tokens.length == 2, Errors.TOKENS_LENGTH_MUST_BE_2);
@@ -83,33 +68,29 @@ abstract contract PoolTokens is ReentrancyGuard, PoolRegistry, AssetManagers {
         emit TokensDeregistered(poolId, tokens);
     }
 
-    function getPoolTokens(bytes32 poolId)
+    function getPoolTokens(
+        bytes32 poolId
+    )
         external
         view
         override
         withRegisteredPool(poolId)
-        returns (
-            IERC20[] memory tokens,
-            uint256[] memory balances,
-            uint256 lastChangeBlock
-        )
+        returns (IERC20[] memory tokens, uint256[] memory balances, uint256 lastChangeBlock)
     {
         bytes32[] memory rawBalances;
         (tokens, rawBalances) = _getPoolTokens(poolId);
         (balances, lastChangeBlock) = rawBalances.totalsAndLastChangeBlock();
     }
 
-    function getPoolTokenInfo(bytes32 poolId, IERC20 token)
+    function getPoolTokenInfo(
+        bytes32 poolId,
+        IERC20 token
+    )
         external
         view
         override
         withRegisteredPool(poolId)
-        returns (
-            uint256 cash,
-            uint256 managed,
-            uint256 lastChangeBlock,
-            address assetManager
-        )
+        returns (uint256 cash, uint256 managed, uint256 lastChangeBlock, address assetManager)
     {
         bytes32 balance;
         PoolSpecialization specialization = _getPoolSpecialization(poolId);

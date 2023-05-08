@@ -1,16 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
@@ -77,11 +65,9 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
     /**
      * @dev Converts a JoinPoolRequest into a PoolBalanceChange, with no runtime cost.
      */
-    function _toPoolBalanceChange(JoinPoolRequest memory request)
-        private
-        pure
-        returns (PoolBalanceChange memory change)
-    {
+    function _toPoolBalanceChange(
+        JoinPoolRequest memory request
+    ) private pure returns (PoolBalanceChange memory change) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             change := request
@@ -91,11 +77,9 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
     /**
      * @dev Converts an ExitPoolRequest into a PoolBalanceChange, with no runtime cost.
      */
-    function _toPoolBalanceChange(ExitPoolRequest memory request)
-        private
-        pure
-        returns (PoolBalanceChange memory change)
-    {
+    function _toPoolBalanceChange(
+        ExitPoolRequest memory request
+    ) private pure returns (PoolBalanceChange memory change) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             change := request
@@ -310,11 +294,10 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
      * `expectedTokens` must exactly equal the token array returned by `getPoolTokens`: both arrays must have the same
      * length, elements and order. Additionally, the Pool must have at least one registered token.
      */
-    function _validateTokensAndGetBalances(bytes32 poolId, IERC20[] memory expectedTokens)
-        private
-        view
-        returns (bytes32[] memory)
-    {
+    function _validateTokensAndGetBalances(
+        bytes32 poolId,
+        IERC20[] memory expectedTokens
+    ) private view returns (bytes32[] memory) {
         (IERC20[] memory actualTokens, bytes32[] memory balances) = _getPoolTokens(poolId);
         InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
         _require(actualTokens.length > 0, Errors.POOL_NO_TOKENS);
@@ -330,11 +313,10 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
      * @dev Casts an array of uint256 to int256, setting the sign of the result according to the `positive` flag,
      * without checking whether the values fit in the signed 256 bit range.
      */
-    function _unsafeCastToInt256(uint256[] memory values, bool positive)
-        private
-        pure
-        returns (int256[] memory signedValues)
-    {
+    function _unsafeCastToInt256(
+        uint256[] memory values,
+        bool positive
+    ) private pure returns (int256[] memory signedValues) {
         signedValues = new int256[](values.length);
         for (uint256 i = 0; i < values.length; i++) {
             signedValues[i] = positive ? int256(values[i]) : -int256(values[i]);
