@@ -40,7 +40,7 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
      */
     constructor(uint256 pauseWindowDuration, uint256 bufferPeriodDuration) {
         if (pauseWindowDuration > PausableConstants.MAX_PAUSE_WINDOW_DURATION) {
-            revert MaxPauseWindowDuration();
+            revert MaxPauseWindowDurationExceeded();
         }
         if (bufferPeriodDuration > PausableConstants.MAX_BUFFER_PERIOD_DURATION) {
             revert MaxBufferPeriodDuration();

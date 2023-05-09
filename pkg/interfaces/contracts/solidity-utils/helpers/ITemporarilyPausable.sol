@@ -11,7 +11,7 @@ interface ITemporarilyPausable {
     /**
      * @dev Error indicating that the maximum pause window duration has been exceeded.
      */
-    error MaxPauseWindowDuration();
+    error MaxPauseWindowDurationExceeded();
 
     /**
      * @dev Error indicating that the maximum buffer period duration has been exceeded.

@@ -17,7 +17,6 @@ describe('TemporarilyPausable', function () {
       args: [pauseWindowDuration, bufferPeriodDuration],
     })) as unknown as TemporarilyPausableMock;
   };
-
   before('setup signers', async () => {
     [, user] = await ethers.getSigners();
   });
@@ -53,7 +52,7 @@ describe('TemporarilyPausable', function () {
 
       await expect(deployTemporarilyPausable(pauseWindowDuration)).to.be.revertedWithCustomError(
         instance,
-        'MaxPauseWindowDuration'
+        'MaxPauseWindowDurationExceeded'
       );
     });
 
