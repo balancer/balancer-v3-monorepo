@@ -93,7 +93,7 @@ describe('TemporarilyPausable', function () {
       });
 
       it('cannot be unpaused twice', async () => {
-        await expect(instance.unpause()).to.be.revertedWithCustomError(instance, 'AlreadyUnPaused');
+        await expect(instance.unpause()).to.be.revertedWithCustomError(instance, 'AlreadyUnpaused');
       });
 
       it('can be paused and then unpaused', async () => {
@@ -132,7 +132,7 @@ describe('TemporarilyPausable', function () {
           });
 
           it('cannot be unpaused again', async () => {
-            await expect(instance.unpause()).to.be.revertedWithCustomError(instance, 'AlreadyUnPaused');
+            await expect(instance.unpause()).to.be.revertedWithCustomError(instance, 'AlreadyUnpaused');
           });
 
           it('cannot be paused', async () => {
@@ -211,7 +211,7 @@ describe('TemporarilyPausable', function () {
           });
 
           it('cannot be unpaused again', async () => {
-            await expect(instance.unpause()).to.be.revertedWithCustomError(instance, 'AlreadyUnPaused');
+            await expect(instance.unpause()).to.be.revertedWithCustomError(instance, 'AlreadyUnpaused');
           });
 
           it('cannot be paused', async () => {

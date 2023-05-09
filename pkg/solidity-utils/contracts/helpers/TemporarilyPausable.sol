@@ -117,7 +117,7 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
      */
     function _requirePaused() internal view {
         if (!paused()) {
-            revert AlreadyUnPaused();
+            revert AlreadyUnpaused();
         }
     }
 }
