@@ -36,7 +36,7 @@ interface ITemporarilyPausable {
     /**
      * @dev Error indicating that the contract is already unpaused.
      */
-    error AlreadyUnPaused();
+    error AlreadyUnpaused();
 
     /**
      * @dev Returns true if the contract is paused, and false otherwise.
