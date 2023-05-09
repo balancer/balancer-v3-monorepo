@@ -17,6 +17,7 @@ describe('TemporarilyPausable', function () {
       args: [pauseWindowDuration, bufferPeriodDuration],
     })) as unknown as TemporarilyPausableMock;
   };
+
   before('setup signers', async () => {
     [, user] = await ethers.getSigners();
   });
