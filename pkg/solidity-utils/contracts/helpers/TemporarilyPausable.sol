@@ -43,7 +43,7 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
             revert MaxPauseWindowDurationExceeded();
         }
         if (bufferPeriodDuration > PausableConstants.MAX_BUFFER_PERIOD_DURATION) {
-            revert MaxBufferPeriodDuration();
+            revert MaxBufferPeriodDurationExceeded();
         }
 
         uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;

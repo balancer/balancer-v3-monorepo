@@ -63,7 +63,7 @@ describe('TemporarilyPausable', function () {
 
       await expect(deployTemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)).to.be.revertedWithCustomError(
         instance,
-        'MaxBufferPeriodDuration'
+        'MaxBufferPeriodDurationExceeded'
       );
     });
   });
