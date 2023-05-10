@@ -24,7 +24,7 @@
     "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
   },
   "devDependencies": {
-    "@balancer-labs/hardhat-toolbox": "workspace:*",
+    "@balancer-labs/solidity-toolbox": "workspace:*",
     "@types/lodash": "^4.14.186",
     "@typescript-eslint/eslint-plugin": "^5.41.0",
     "@typescript-eslint/parser": "^5.41.0",

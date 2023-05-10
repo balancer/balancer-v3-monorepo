@@ -30,7 +30,7 @@
     "@balancer-labs/v3-interfaces": "workspace:*"
   },
   "devDependencies": {
-    "@balancer-labs/hardhat-toolbox": "workspace:*",
+    "@balancer-labs/solidity-toolbox": "workspace:*",
     "@typescript-eslint/eslint-plugin": "^5.41.0",
     "@typescript-eslint/parser": "^5.41.0",
     "decimal.js": "^10.4.2",
@@ -44,6 +44,7 @@
     "lodash.times": "^4.3.2",
     "lodash.zip": "^4.2.0",
     "mocha": "^10.1.0",
-    "nodemon": "^2.0.20"
+    "nodemon": "^2.0.20",
+    "solhint": "^3.4.1"
   }
 }
