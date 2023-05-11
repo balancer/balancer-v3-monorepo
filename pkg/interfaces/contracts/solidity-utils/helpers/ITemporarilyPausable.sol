@@ -62,11 +62,11 @@ interface ITemporarilyPausable {
      * @dev Emitted when the pause is triggered by `account`.
      * @param account The address that triggered the pause event.
      */
-    event Paused(address account);
+    event Paused(address indexed account);
 
     /**
      * @dev Emitted when the pause is lifted by `account`.
      * @param account The address that triggered the unpause event.
      */
-    event Unpaused(address account);
+    event Unpaused(address indexed account);
 }
