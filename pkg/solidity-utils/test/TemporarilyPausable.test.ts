@@ -30,7 +30,7 @@ describe('TemporarilyPausable', function () {
       await deployTemporarilyPausable(pauseWindowDuration, bufferPeriodDuration);
 
       expect(await instance.paused()).to.equal(false);
-      const [pauseWindowEndTime, bufferPeriodEndTime] = await instance.getEndTimes();
+      const [pauseWindowEndTime, bufferPeriodEndTime] = await instance.getPauseWindowEndTimes();
       expect(pauseWindowEndTime).to.equal(await fromNow(pauseWindowDuration));
       expect(bufferPeriodEndTime).to.equal((await fromNow(pauseWindowDuration)).add(bufferPeriodDuration));
     });
@@ -42,7 +42,7 @@ describe('TemporarilyPausable', function () {
       await deployTemporarilyPausable(pauseWindowDuration, bufferPeriodDuration);
 
       expect(await instance.paused()).to.equal(false);
-      const [pauseWindowEndTime, bufferPeriodEndTime] = await instance.getEndTimes();
+      const [pauseWindowEndTime, bufferPeriodEndTime] = await instance.getPauseWindowEndTimes();
       expect(pauseWindowEndTime).to.equal(await fromNow(0));
       expect(bufferPeriodEndTime).to.equal(await fromNow(0));
     });

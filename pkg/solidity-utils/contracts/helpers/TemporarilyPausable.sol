@@ -89,7 +89,7 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
     /**
      * @inheritdoc ITemporarilyPausable
      */
-    function getEndTimes() public view returns (uint256 pauseWindowEndTime, uint256 bufferPeriodEndTime) {
+    function getPauseWindowEndTimes() public view returns (uint256 pauseWindowEndTime, uint256 bufferPeriodEndTime) {
         return (_pauseWindowEndTime, _bufferPeriodEndTime);
     }
 
