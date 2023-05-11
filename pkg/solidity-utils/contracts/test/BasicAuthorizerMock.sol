@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+pragma solidity ^0.8.0;
+
+import "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+
+contract BasicAuthorizerMock is IAuthorizer {
+    /// @inheritdoc IAuthorizer
+    function canPerform(
+        bytes32,
+        address,
+        address
+    ) external pure override returns (bool) {
+        return true;
+    }
+}
