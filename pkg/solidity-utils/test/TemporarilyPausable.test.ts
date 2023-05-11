@@ -13,10 +13,11 @@ describe('TemporarilyPausable', function () {
   let user: SignerWithAddress;
 
   const deployTemporarilyPausable = async (pauseWindowDuration = 0, bufferPeriodDuration = 0) => {
-    instance = (await deploy('TemporarilyPausableMock', {
+    instance = await deploy('TemporarilyPausableMock', {
       args: [pauseWindowDuration, bufferPeriodDuration],
-    })) as unknown as TemporarilyPausableMock;
+    });
   };
+
   before('setup signers', async () => {
     [, user] = await ethers.getSigners();
   });
