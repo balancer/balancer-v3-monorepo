@@ -22,7 +22,8 @@
   "scripts": {
     "build": "yarn workspaces foreach --parallel --verbose run build",
     "lint": "NODE_NO_WARNINGS=1 yarn workspaces foreach --parallel --verbose run lint",
-    "test": "yarn workspaces foreach --parallel --verbose run test"
+    "test": "yarn workspaces foreach --parallel --verbose run test",
+    "gas": "yarn workspaces foreach --parallel --verbose run gas"
   },
   "workspaces": [
     "pkg/*",

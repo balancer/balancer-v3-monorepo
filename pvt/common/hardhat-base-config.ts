@@ -22,6 +22,10 @@ export const compilers: [SolcConfig] = [
   },
 ];
 
+export const gasReporter = {
+  enabled: process.env.REPORT_GAS ? true : false,
+};
+
 export const warnings = {
   // Ignore code-size in test files: mocks may make contracts not deployable on real networks, but we don't care about
   // that.
