@@ -29,3 +29,7 @@ forge-cache/
 
 # Typechain
 typechain-types/
+
+# Coverage
+coverage/
+coverage.json
