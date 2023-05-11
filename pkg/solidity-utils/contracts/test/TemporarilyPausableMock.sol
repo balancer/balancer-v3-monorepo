@@ -17,14 +17,6 @@ contract TemporarilyPausableMock is TemporarilyPausable {
         _pause();
     }
 
-    function getPauseWindowEndTime() external view returns (uint256) {
-        return _pauseWindowEndTime;
-    }
-
-    function getBufferPeriodEndTime() external view returns (uint256) {
-        return _bufferPeriodEndTime;
-    }
-
     function getMaxPauseWindowDuration() external pure returns (uint256) {
         return PausableConstants.MAX_PAUSE_WINDOW_DURATION;
     }

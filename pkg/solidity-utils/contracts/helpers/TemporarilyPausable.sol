@@ -80,13 +80,17 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
     }
 
     /**
-     * @dev Returns true if the contract is paused, and false otherwise.
-     *
-     * Once the Buffer Period expires, the gas cost of calling this function is reduced dramatically, as storage is no
-     * longer accessed.
+     * @inheritdoc ITemporarilyPausable
      */
     function paused() public view returns (bool) {
         return block.timestamp <= _bufferPeriodEndTime && _paused;
+    }
+
+    /**
+     * @inheritdoc ITemporarilyPausable
+     */
+    function getEndTimes() public view returns (uint256 pauseWindowEndTime, uint256 bufferPeriodEndTime) {
+        return (_pauseWindowEndTime, _bufferPeriodEndTime);
     }
 
     /**

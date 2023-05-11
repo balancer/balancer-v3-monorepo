@@ -30,10 +30,9 @@ describe('TemporarilyPausable', function () {
       await deployTemporarilyPausable(pauseWindowDuration, bufferPeriodDuration);
 
       expect(await instance.paused()).to.equal(false);
-      expect(await instance.getPauseWindowEndTime()).to.equal(await fromNow(pauseWindowDuration));
-      expect(await instance.getBufferPeriodEndTime()).to.equal(
-        (await fromNow(pauseWindowDuration)).add(bufferPeriodDuration)
-      );
+      const [pauseWindowEndTime, bufferPeriodEndTime] = await instance.getEndTimes();
+      expect(pauseWindowEndTime).to.equal(await fromNow(pauseWindowDuration));
+      expect(bufferPeriodEndTime).to.equal((await fromNow(pauseWindowDuration)).add(bufferPeriodDuration));
     });
 
     it('can be initialized with no pause window or buffer period duration', async () => {
@@ -43,8 +42,9 @@ describe('TemporarilyPausable', function () {
       await deployTemporarilyPausable(pauseWindowDuration, bufferPeriodDuration);
 
       expect(await instance.paused()).to.equal(false);
-      expect(await instance.getPauseWindowEndTime()).to.equal(await fromNow(0));
-      expect(await instance.getBufferPeriodEndTime()).to.equal(await fromNow(0));
+      const [pauseWindowEndTime, bufferPeriodEndTime] = await instance.getEndTimes();
+      expect(pauseWindowEndTime).to.equal(await fromNow(0));
+      expect(bufferPeriodEndTime).to.equal(await fromNow(0));
     });
 
     it('cannot be initialized with a pause window greater than the max', async () => {

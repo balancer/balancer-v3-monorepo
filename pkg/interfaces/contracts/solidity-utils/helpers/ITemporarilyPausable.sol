@@ -59,6 +59,11 @@ interface ITemporarilyPausable {
     function paused() external view returns (bool);
 
     /**
+     * @dev Returns the end times of the pause window and buffer period.
+     */
+    function getEndTimes() external view returns (uint256 pauseWindowEndTime, uint256 bufferPeriodEndTime);
+
+    /**
      * @dev Emitted when the pause is triggered by `account`.
      * @param account The address that triggered the pause event.
      */
