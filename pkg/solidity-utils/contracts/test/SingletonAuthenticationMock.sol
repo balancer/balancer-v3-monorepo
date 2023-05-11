@@ -10,4 +10,8 @@ contract SingletonAuthenticationMock is SingletonAuthentication {
     constructor(IVault vault) SingletonAuthentication(vault) {
       // solhint-disable-previous-line no-empty-blocks
     }
+
+    function canPerform(bytes32 actionId, address account) external view returns (bool) {
+        return _canPerform(actionId, account, address(this));
+    }
 }

@@ -8,6 +8,7 @@ import { BasicAuthorizerMock } from '../typechain-types/contracts/test/BasicAuth
 import { BasicVaultMock } from '../typechain-types/contracts/test/BasicVaultMock';
 import { SingletonAuthenticationMock } from '../typechain-types/contracts/test/SingletonAuthenticationMock';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
+import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 
 describe('SingletonAuthentication', () => {
   let singleton: SingletonAuthenticationMock;
@@ -79,6 +80,42 @@ describe('SingletonAuthentication', () => {
       const secondActionId = await secondOne.getActionId(POLYGON, selector);
 
       expect(firstActionId).to.not.equal(secondActionId);
+    });
+  });
+
+  describe('permission checks', () => {
+    let mainnetAction: string;
+    let polygonAction: string;
+
+    sharedBeforeEach('define action', async () => {
+      mainnetAction = await actionId(vault, 'setAuthorizer');
+      polygonAction = await actionId(vault, 'setAuthorizer', vault.interface, 137);
+
+      expect(await singleton.canPerform(mainnetAction, other.address)).to.be.false;
+      expect(await singleton.canPerform(polygonAction, other.address)).to.be.false;
+    });
+
+    it('reflects roles granted in the authorizer', async () => {
+      // Should be true after granting.
+      await authorizer.grantRole(mainnetAction, other.address);
+      expect(await singleton.canPerform(mainnetAction, other.address)).to.be.true;
+    });
+
+    it('reflects roles revoked in the authorizer', async () => {
+      // And false again after revoking.
+      await authorizer.revokeRole(mainnetAction, other.address);
+      expect(await singleton.canPerform(mainnetAction, other.address)).to.be.false;
+    });
+
+    it('permissions are chain-specific', async () => {
+      await authorizer.grantRole(mainnetAction, other.address);
+      expect(await singleton.canPerform(mainnetAction, other.address)).to.be.true;
+      expect(await singleton.canPerform(polygonAction, other.address)).to.be.false;
+
+      await authorizer.grantRole(polygonAction, other.address);
+      await authorizer.revokeRole(mainnetAction, other.address);
+      expect(await singleton.canPerform(mainnetAction, other.address)).to.be.false;
+      expect(await singleton.canPerform(polygonAction, other.address)).to.be.true;
     });
   });
 });
