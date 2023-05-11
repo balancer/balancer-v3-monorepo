@@ -53,7 +53,7 @@ describe('TemporarilyPausable', function () {
 
       await expect(deployTemporarilyPausable(pauseWindowDuration)).to.be.revertedWithCustomError(
         instance,
-        'MaxPauseWindowDurationExceeded'
+        'PauseWindowDurationTooLarge'
       );
     });
 
@@ -64,7 +64,7 @@ describe('TemporarilyPausable', function () {
 
       await expect(deployTemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)).to.be.revertedWithCustomError(
         instance,
-        'MaxBufferPeriodDurationExceeded'
+        'BufferPeriodDurationTooLarge'
       );
     });
   });
