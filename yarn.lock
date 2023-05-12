@@ -32,6 +32,36 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@balancer-labs/solidity-toolbox@workspace:*, @balancer-labs/solidity-toolbox@workspace:pvt/solidity-toolbox":
+  version: 0.0.0-use.local
+  resolution: "@balancer-labs/solidity-toolbox@workspace:pvt/solidity-toolbox"
+  dependencies:
+    "@ethersproject/abi": "npm:^5.7.0"
+    "@ethersproject/providers": "npm:^5.7.2"
+    "@nomicfoundation/hardhat-chai-matchers": "npm:^1.0.6"
+    "@nomicfoundation/hardhat-network-helpers": "npm:^1.0.8"
+    "@nomicfoundation/hardhat-toolbox": "npm:^2.0.2"
+    "@nomiclabs/hardhat-ethers": "npm:^2.2.3"
+    "@nomiclabs/hardhat-etherscan": "npm:^3.1.7"
+    "@typechain/ethers-v5": "npm:^10.2.1"
+    "@typechain/hardhat": "npm:^6.1.6"
+    "@types/chai": "npm:^4.3.3"
+    "@types/mocha": "npm:^10.0.0"
+    "@types/node": "npm:^14.14.31"
+    chai: "npm:^4.3.7"
+    ethers: "npm:^5.7.2"
+    hardhat-gas-reporter: "npm:^1.0.9"
+    hardhat-ignore-warnings: "npm:^0.2.4"
+    prettier: "npm:^2.8.8"
+    prettier-plugin-solidity: "npm:^1.1.3"
+    solhint-plugin-prettier: "npm:^0.0.5"
+    solidity-coverage: "npm:^0.8.2"
+    ts-node: "npm:^10.9.1"
+    typechain: "npm:^8.1.1"
+    typescript: "npm:^4.0.2"
+  languageName: unknown
+  linkType: soft
+
 "@balancer-labs/v3-benchmarks@workspace:pvt/benchmarks":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v3-benchmarks@workspace:pvt/benchmarks"
@@ -99,30 +129,15 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v3-interfaces@workspace:pkg/interfaces"
   dependencies:
-    "@ethersproject/abi": "npm:^5.7.0"
-    "@ethersproject/providers": "npm:^5.7.2"
-    "@nomicfoundation/hardhat-chai-matchers": "npm:^1.0.6"
-    "@nomicfoundation/hardhat-network-helpers": "npm:^1.0.8"
-    "@nomicfoundation/hardhat-toolbox": "npm:^2.0.2"
-    "@nomiclabs/hardhat-ethers": "npm:^2.2.3"
-    "@nomiclabs/hardhat-etherscan": "npm:^3.1.7"
-    "@typechain/ethers-v5": "npm:^10.2.1"
-    "@typechain/hardhat": "npm:^6.1.6"
-    "@types/chai": "npm:^4.3.3"
+    "@balancer-labs/solidity-toolbox": "workspace:*"
     "@types/lodash": "npm:^4.14.186"
-    "@types/mocha": "npm:^10.0.0"
-    "@types/node": "npm:^14.14.31"
     "@typescript-eslint/eslint-plugin": "npm:^5.41.0"
     "@typescript-eslint/parser": "npm:^5.41.0"
-    chai: "npm:^4.3.7"
     decimal.js: "npm:^10.4.2"
     eslint: "npm:^8.26.0"
     eslint-plugin-mocha-no-only: "npm:^1.1.1"
     eslint-plugin-prettier: "npm:^4.2.1"
-    ethers: "npm:^5.7.2"
     hardhat: "npm:^2.14.0"
-    hardhat-gas-reporter: "npm:^1.0.9"
-    hardhat-ignore-warnings: "npm:^0.2.4"
     lodash.frompairs: "npm:^4.0.1"
     lodash.pick: "npm:^4.4.0"
     lodash.range: "npm:^3.2.0"
@@ -130,14 +145,7 @@ __metadata:
     lodash.zip: "npm:^4.2.0"
     mocha: "npm:^10.1.0"
     nodemon: "npm:^2.0.20"
-    prettier: "npm:^2.8.8"
-    prettier-plugin-solidity: "npm:^1.1.3"
     solhint: "npm:^3.4.1"
-    solhint-plugin-prettier: "npm:^0.0.5"
-    solidity-coverage: "npm:^0.8.2"
-    ts-node: "npm:^10.9.1"
-    typechain: "npm:^8.1.1"
-    typescript: "npm:^4.0.2"
   languageName: unknown
   linkType: soft
 
@@ -151,22 +159,15 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v3-solidity-utils@workspace:pkg/solidity-utils"
   dependencies:
+    "@balancer-labs/solidity-toolbox": "workspace:*"
     "@balancer-labs/v3-interfaces": "workspace:*"
-    "@nomiclabs/hardhat-ethers": "npm:^2.2.3"
-    "@types/chai": "npm:^4.3.3"
-    "@types/lodash": "npm:^4.14.186"
-    "@types/mocha": "npm:^10.0.0"
-    "@types/node": "npm:^14.14.31"
     "@typescript-eslint/eslint-plugin": "npm:^5.41.0"
     "@typescript-eslint/parser": "npm:^5.41.0"
-    chai: "npm:^4.3.6"
     decimal.js: "npm:^10.4.2"
     eslint: "npm:^8.26.0"
     eslint-plugin-mocha-no-only: "npm:^1.1.1"
     eslint-plugin-prettier: "npm:^4.2.1"
-    ethers: "npm:^5.7.2"
     hardhat: "npm:^2.14.0"
-    hardhat-ignore-warnings: "npm:^0.2.4"
     lodash.frompairs: "npm:^4.0.1"
     lodash.pick: "npm:^4.4.0"
     lodash.range: "npm:^3.2.0"
@@ -174,12 +175,7 @@ __metadata:
     lodash.zip: "npm:^4.2.0"
     mocha: "npm:^10.1.0"
     nodemon: "npm:^2.0.20"
-    prettier: "npm:^2.8.8"
-    prettier-plugin-solidity: "npm:^1.1.3"
     solhint: "npm:^3.4.1"
-    solhint-plugin-prettier: "npm:^0.0.5"
-    ts-node: "npm:^10.9.1"
-    typescript: "npm:^4.0.2"
   languageName: unknown
   linkType: soft
 
@@ -2398,7 +2394,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"chai@npm:^4.3.6, chai@npm:^4.3.7":
+"chai@npm:^4.3.7":
   version: 4.3.7
   resolution: "chai@npm:4.3.7"
   dependencies:
