@@ -5,6 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { advanceTime, fromNow, MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
+import '@balancer-labs/v3-common/setupTests';
 
 import { TemporarilyPausableMock } from '../typechain-types/contracts/test/TemporarilyPausableMock';
 
