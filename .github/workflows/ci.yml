@@ -30,7 +30,8 @@ jobs:
         run: yarn build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          coverage:
+
+  coverage:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
