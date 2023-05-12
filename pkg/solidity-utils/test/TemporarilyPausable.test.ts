@@ -14,10 +14,11 @@ describe('TemporarilyPausable', function () {
   let user: SignerWithAddress;
 
   const deployTemporarilyPausable = async (pauseWindowDuration = 0, bufferPeriodDuration = 0) => {
-    instance = (await deploy('TemporarilyPausableMock', {
+    instance = await deploy('TemporarilyPausableMock', {
       args: [pauseWindowDuration, bufferPeriodDuration],
-    })) as unknown as TemporarilyPausableMock;
+    });
   };
+
   before('setup signers', async () => {
     [, user] = await ethers.getSigners();
   });
@@ -30,10 +31,9 @@ describe('TemporarilyPausable', function () {
       await deployTemporarilyPausable(pauseWindowDuration, bufferPeriodDuration);
 
       expect(await instance.paused()).to.equal(false);
-      expect(await instance.getPauseWindowEndTime()).to.equal(await fromNow(pauseWindowDuration));
-      expect(await instance.getBufferPeriodEndTime()).to.equal(
-        (await fromNow(pauseWindowDuration)).add(bufferPeriodDuration)
-      );
+      const [pauseWindowEndTime, bufferPeriodEndTime] = await instance.getPauseEndTimes();
+      expect(pauseWindowEndTime).to.equal(await fromNow(pauseWindowDuration));
+      expect(bufferPeriodEndTime).to.equal((await fromNow(pauseWindowDuration)).add(bufferPeriodDuration));
     });
 
     it('can be initialized with no pause window or buffer period duration', async () => {
@@ -43,8 +43,9 @@ describe('TemporarilyPausable', function () {
       await deployTemporarilyPausable(pauseWindowDuration, bufferPeriodDuration);
 
       expect(await instance.paused()).to.equal(false);
-      expect(await instance.getPauseWindowEndTime()).to.equal(await fromNow(0));
-      expect(await instance.getBufferPeriodEndTime()).to.equal(await fromNow(0));
+      const [pauseWindowEndTime, bufferPeriodEndTime] = await instance.getPauseEndTimes();
+      expect(pauseWindowEndTime).to.equal(await fromNow(0));
+      expect(bufferPeriodEndTime).to.equal(await fromNow(0));
     });
 
     it('cannot be initialized with a pause window greater than the max', async () => {
@@ -53,7 +54,7 @@ describe('TemporarilyPausable', function () {
 
       await expect(deployTemporarilyPausable(pauseWindowDuration)).to.be.revertedWithCustomError(
         instance,
-        'MaxPauseWindowDurationExceeded'
+        'PauseWindowDurationTooLarge'
       );
     });
 
@@ -64,7 +65,7 @@ describe('TemporarilyPausable', function () {
 
       await expect(deployTemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)).to.be.revertedWithCustomError(
         instance,
-        'MaxBufferPeriodDurationExceeded'
+        'BufferPeriodDurationTooLarge'
       );
     });
   });

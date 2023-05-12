@@ -21,10 +21,10 @@ export type ContractDeploymentParams = {
 //
 // For example, to deploy Vault.sol from the package that holds its artifacts, use `deploy('Vault')`. To deploy it from
 // a different package, use `deploy('v3-vault/Vault')`, assuming the Vault's package is @balancer-labs/v3-vault.
-export async function deploy(
+export async function deploy<T>(
   contract: string,
   { from, args, libraries }: ContractDeploymentParams = {}
-): Promise<Contract> {
+): Promise<T> {
   if (!args) args = [];
   if (!from) from = (await ethers.getSigners())[0];
 
@@ -33,7 +33,7 @@ export async function deploy(
   const factory = await ethers.getContractFactoryFromArtifact(artifact, { signer: from, libraries });
   const instance = await factory.deploy(...args);
 
-  return instance.deployed();
+  return instance.deployed() as unknown as T;
 }
 
 // Creates a contract object for a contract deployed at a known address. The `contract` argument follows the same rules

@@ -12,5 +12,4 @@ export default {
     compilers: hardhatBaseConfig.compilers,
   },
   warnings: hardhatBaseConfig.warnings,
-  gasReporter: hardhatBaseConfig.gasReporter,
 };
