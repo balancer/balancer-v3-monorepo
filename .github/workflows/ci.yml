@@ -35,14 +35,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-        with:
-          fetch-depth: 2
       - name: Set up environment
         uses: ./.github/actions/setup
       - run: yarn coverage
         env:
           NODE_OPTIONS: --max_old_space_size=4096
-      - uses: codecov/codecov-action@v3
 
   test-solidity-utils:
     runs-on: ubuntu-latest
@@ -56,4 +53,3 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v3-solidity-utils test
-
