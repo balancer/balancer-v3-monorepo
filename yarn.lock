@@ -119,7 +119,7 @@ __metadata:
     eslint: "npm:^8.26.0"
     eslint-plugin-mocha-no-only: "npm:^1.1.1"
     eslint-plugin-prettier: "npm:^4.2.1"
-    ethers: "npm:5.7.2"
+    ethers: "npm:^5.7.2"
     hardhat: "npm:^2.14.0"
     hardhat-gas-reporter: "npm:^1.0.9"
     hardhat-ignore-warnings: "npm:^0.2.4"
@@ -164,7 +164,7 @@ __metadata:
     eslint: "npm:^8.26.0"
     eslint-plugin-mocha-no-only: "npm:^1.1.1"
     eslint-plugin-prettier: "npm:^4.2.1"
-    ethers: "npm:5.7.2"
+    ethers: "npm:^5.7.2"
     hardhat: "npm:^2.14.0"
     hardhat-ignore-warnings: "npm:^0.2.4"
     lodash.frompairs: "npm:^4.0.1"
@@ -3450,7 +3450,24 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ethers@npm:5.7.2, ethers@npm:^5.7.1, ethers@npm:^5.7.2":
+"ethers@npm:^4.0.40":
+  version: 4.0.49
+  resolution: "ethers@npm:4.0.49"
+  dependencies:
+    aes-js: "npm:3.0.0"
+    bn.js: "npm:^4.11.9"
+    elliptic: "npm:6.5.4"
+    hash.js: "npm:1.1.3"
+    js-sha3: "npm:0.5.7"
+    scrypt-js: "npm:2.0.4"
+    setimmediate: "npm:1.0.4"
+    uuid: "npm:2.0.1"
+    xmlhttprequest: "npm:1.8.0"
+  checksum: f11c6aff684797b5badc4173577ebe1069938a0c2035498a6aa8580376a81f70606642cc5bb39a5947f469146980f6126da018881c4e55b5585e98b6b222120f
+  languageName: node
+  linkType: hard
+
+"ethers@npm:^5.7.1, ethers@npm:^5.7.2":
   version: 5.7.2
   resolution: "ethers@npm:5.7.2"
   dependencies:
@@ -3485,23 +3502,6 @@ __metadata:
     "@ethersproject/web": "npm:5.7.1"
     "@ethersproject/wordlists": "npm:5.7.0"
   checksum: 610a2f023e31be37c859dee025e9f5538009a72e400ba647471e7cc0dd7ed1020d0b9970ee45be80f976cb4d1a9b31eae42b4e3cfdcdfb20785e2fcd67e96a6b
-  languageName: node
-  linkType: hard
-
-"ethers@npm:^4.0.40":
-  version: 4.0.49
-  resolution: "ethers@npm:4.0.49"
-  dependencies:
-    aes-js: "npm:3.0.0"
-    bn.js: "npm:^4.11.9"
-    elliptic: "npm:6.5.4"
-    hash.js: "npm:1.1.3"
-    js-sha3: "npm:0.5.7"
-    scrypt-js: "npm:2.0.4"
-    setimmediate: "npm:1.0.4"
-    uuid: "npm:2.0.1"
-    xmlhttprequest: "npm:1.8.0"
-  checksum: f11c6aff684797b5badc4173577ebe1069938a0c2035498a6aa8580376a81f70606642cc5bb39a5947f469146980f6126da018881c4e55b5585e98b6b222120f
   languageName: node
   linkType: hard
 
