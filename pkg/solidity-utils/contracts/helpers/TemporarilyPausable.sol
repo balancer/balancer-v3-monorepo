@@ -72,9 +72,6 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
      * @dev Returns the contract to a normal (unpaused) state.
      */
     function _unpause() internal whenPaused {
-        if (block.timestamp >= _bufferPeriodEndTime) {
-            revert BufferPeriodExpired();
-        }
         _paused = false;
         emit Unpaused(msg.sender);
     }
