@@ -1,0 +1,24 @@
+[profile.default]
+src = 'contracts'
+out = 'forge-artifacts'
+libs = ['node_modules']
+test = 'test/foundry'
+cache_path  = 'forge-cache'
+allow_paths = ['../', '../../node_modules/']
+remappings = [
+    'ds-test/=../../node_modules/forge-std/lib/ds-test/src/',
+    'forge-std/=../../node_modules/forge-std/src/',
+    '@balancer-labs/=../../node_modules/@balancer-labs/'
+]
+optimizer = true
+optimizer_runs = 999
+
+[fuzz]
+runs = 10000
+max_test_rejects = 60000
+
+[profile.intense.fuzz]
+verbosity = 3
+runs = 100000
+max_test_rejects = 600000
+

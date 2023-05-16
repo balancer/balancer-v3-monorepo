@@ -49,7 +49,9 @@ __metadata:
     "@types/mocha": "npm:^10.0.0"
     "@types/node": "npm:^14.14.31"
     chai: "npm:^4.3.7"
+    ds-test: "https://github.com/dapphub/ds-test#e282159d5170298eb2455a6c05280ab5a73a4ef0"
     ethers: "npm:^5.7.2"
+    forge-std: "https://github.com/foundry-rs/forge-std.git#v1.5.5"
     hardhat-gas-reporter: "npm:^1.0.9"
     hardhat-ignore-warnings: "npm:^0.2.4"
     prettier: "npm:^2.8.8"
@@ -2967,6 +2969,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"ds-test@https://github.com/dapphub/ds-test#e282159d5170298eb2455a6c05280ab5a73a4ef0":
+  version: 1.0.0
+  resolution: "ds-test@https://github.com/dapphub/ds-test.git#commit=e282159d5170298eb2455a6c05280ab5a73a4ef0"
+  checksum: 4c06182d23e04c06134355199426ef775956a72828f37c4eb38882ac6ca428711ed735af901b506290c01f323d9366dbca01e906f1fecdd8e8e4329d7dd190c0
+  languageName: node
+  linkType: hard
+
 "ecc-jsbn@npm:~0.1.1":
   version: 0.1.2
   resolution: "ecc-jsbn@npm:0.1.2"
@@ -3725,6 +3734,13 @@ __metadata:
   version: 0.6.1
   resolution: "forever-agent@npm:0.6.1"
   checksum: b426cf45f0bdea79970a4320cb550b84d0bcd0530d544e0424456f44272a19641a000ea921f8e58dba5511b71f94d95c80692e3d13ce5f0b766f18426430efd5
+  languageName: node
+  linkType: hard
+
+"forge-std@https://github.com/foundry-rs/forge-std.git#v1.5.5":
+  version: 1.5.5
+  resolution: "forge-std@https://github.com/foundry-rs/forge-std.git#commit=73d44ec7d124e3831bc5f832267889ffb6f9bc3f"
+  checksum: a3521319e41e9ffa88273796f160bb898fce6ec33d7eadd6a45c660546dadbd34b5aa4a347bfa112a0b47c90a04a43d97d3b636d52c1e7b1b1445e4b042b0a3b
   languageName: node
   linkType: hard
 
