@@ -41,7 +41,7 @@ jobs:
         env:
           NODE_OPTIONS: --max_old_space_size=4096
 
-  test-solidity-utils:
+  test-hardhat-solidity-utils:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -52,4 +52,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
-        run: yarn workspace @balancer-labs/v3-solidity-utils test
+        run: yarn workspace @balancer-labs/v3-solidity-utils test:hardhat
+
+  test-forge-solidity-utils:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - name: Compile
+        run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Test
+        run: yarn workspace @balancer-labs/v3-solidity-utils test:forge
