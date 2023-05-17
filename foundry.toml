@@ -12,6 +12,8 @@ remappings = [
 ]
 optimizer = true
 optimizer_runs = 999
+solc_version = '0.8.18'
+auto_detect_solc = false
 
 [fuzz]
 runs = 10000
