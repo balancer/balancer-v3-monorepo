@@ -3,7 +3,7 @@ name: Setup
 runs:
   using: composite
   steps:
-    - name: Install node
+    - name: Install Node
       uses: actions/setup-node@v3
       with:
         node-version: 18.15
@@ -13,8 +13,11 @@ runs:
       with:
         path: '**/node_modules'
         key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
-    - name: Install
+    - name: Yarn
       run: yarn --immutable
       shell: bash
       if: steps.cache.outputs.cache-hit != 'true'
+    - name: Install Foundry
+      uses: foundry-rs/foundry-toolchain@v1
+
 
