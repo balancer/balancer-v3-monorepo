@@ -100,14 +100,14 @@ describe('ExpLog', () => {
       const base = MAX_X.add(1);
       const exponent = 1;
 
-      await expect(lib.pow(base, exponent)).to.be.revertedWith('X_OUT_OF_BOUNDS');
+      await expect(lib.pow(base, exponent)).to.be.revertedWithCustomError(lib, 'XOutOfBounds');
     });
 
     it('cannot handle an exponent greater than (2^254/1e20) - 1', async () => {
       const base = 1;
       const exponent = MAX_Y.add(1);
 
-      await expect(lib.pow(base, exponent)).to.be.revertedWith('Y_OUT_OF_BOUNDS');
+      await expect(lib.pow(base, exponent)).to.be.revertedWithCustomError(lib, 'YOutOfBounds');
     });
   });
 });
