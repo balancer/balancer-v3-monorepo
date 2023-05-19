@@ -1,26 +1,27 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-pragma solidity ^0.7.0;
-
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+pragma solidity ^0.8.18;
 
 import "./LogExpMath.sol";
 
 /* solhint-disable private-vars-leading-underscore */
 
 library FixedPoint {
+    /**
+     * @dev
+     */
+    error MulOverflow();
+
+    /**
+     * @dev
+     */
+    error DivInternal();
+
+    /**
+     * @dev
+     */
+    error ZeroDivision();
+
     // solhint-disable no-inline-assembly
 
     uint256 internal constant ONE = 1e18; // 18 decimal places
@@ -31,32 +32,20 @@ library FixedPoint {
     // Minimum base for the power function when the exponent is 'free' (larger than ONE).
     uint256 internal constant MIN_POW_BASE_FREE_EXPONENT = 0.7e18;
 
-    function add(uint256 a, uint256 b) internal pure returns (uint256) {
-        // Fixed Point addition is the same as regular checked addition
-
-        uint256 c = a + b;
-        _require(c >= a, Errors.ADD_OVERFLOW);
-        return c;
-    }
-
-    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        // Fixed Point addition is the same as regular checked addition
-
-        _require(b <= a, Errors.SUB_OVERFLOW);
-        uint256 c = a - b;
-        return c;
-    }
-
     function mulDown(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 product = a * b;
-        _require(a == 0 || product / a == b, Errors.MUL_OVERFLOW);
+        if (!(a == 0 || product / a == b)) {
+            revert MulOverflow();
+        }
 
         return product / ONE;
     }
 
     function mulUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
         uint256 product = a * b;
-        _require(a == 0 || product / a == b, Errors.MUL_OVERFLOW);
+        if (!(a == 0 || product / a == b)) {
+            revert MulOverflow();
+        }
 
         // The traditional divUp formula is:
         // divUp(x, y) := (x + y - 1) / y
@@ -72,19 +61,24 @@ library FixedPoint {
     }
 
     function divDown(uint256 a, uint256 b) internal pure returns (uint256) {
-        _require(b != 0, Errors.ZERO_DIVISION);
-
         uint256 aInflated = a * ONE;
-        _require(a == 0 || aInflated / a == ONE, Errors.DIV_INTERNAL); // mul overflow
+        if (!(a == 0 || aInflated / a == ONE)) {
+            revert DivInternal();
+        }
 
+        // Solidity 0.8x always checks for division by zero
         return aInflated / b;
     }
 
     function divUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
-        _require(b != 0, Errors.ZERO_DIVISION);
+        if (b == 0) {
+            revert ZeroDivision();
+        }
 
         uint256 aInflated = a * ONE;
-        _require(a == 0 || aInflated / a == ONE, Errors.DIV_INTERNAL); // mul overflow
+        if (!(a == 0 || aInflated / a == ONE)) {
+            revert DivInternal();
+        }
 
         // The traditional divUp formula is:
         // divUp(x, y) := (x + y - 1) / y
@@ -115,12 +109,12 @@ library FixedPoint {
             return mulDown(square, square);
         } else {
             uint256 raw = LogExpMath.pow(x, y);
-            uint256 maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), 1);
+            uint256 maxError = mulUp(raw, MAX_POW_RELATIVE_ERROR) + 1;
 
             if (raw < maxError) {
                 return 0;
             } else {
-                return sub(raw, maxError);
+                return raw - maxError;
             }
         }
     }
@@ -141,9 +135,9 @@ library FixedPoint {
             return mulUp(square, square);
         } else {
             uint256 raw = LogExpMath.pow(x, y);
-            uint256 maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), 1);
+            uint256 maxError = mulUp(raw, MAX_POW_RELATIVE_ERROR) + 1;
 
-            return add(raw, maxError);
+            return raw + maxError;
         }
     }
 
