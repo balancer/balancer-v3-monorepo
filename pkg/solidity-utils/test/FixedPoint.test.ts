@@ -1,10 +1,10 @@
 import { Contract } from 'ethers';
 import Decimal from 'decimal.js';
 
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { decimal, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
-import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import { deploy } from '@balancer-labs/v3-helpers/src/contract';
+import { decimal, fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { expectEqualWithError } from '@balancer-labs/v3-helpers/src/test/relativeError';
+import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 
 describe('FixedPoint', () => {
   let lib: Contract;
