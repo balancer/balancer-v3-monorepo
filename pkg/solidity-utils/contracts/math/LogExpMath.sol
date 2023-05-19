@@ -10,6 +10,8 @@ pragma solidity ^0.8.18;
  * Exponentiation and logarithm with arbitrary bases (x^y and log_x(y)) are implemented by conversion to natural
  * exponentiation and logarithm (where the base is Euler's number).
  *
+ * All math operations are unchecked in order to save gas.
+ *
  * @author Fernando Martinelli - @fernandomartinelli
  * @author Sergio Yuhjtman     - @sergioyuhjtman
  * @author Daniel Fernandez    - @dmf7z
@@ -131,18 +133,20 @@ library LogExpMath {
         int256 y_int256 = int256(y);
 
         int256 logx_times_y;
-        if (LN_36_LOWER_BOUND < x_int256 && x_int256 < LN_36_UPPER_BOUND) {
-            int256 ln_36_x = _ln_36(x_int256);
+        unchecked {
+            if (LN_36_LOWER_BOUND < x_int256 && x_int256 < LN_36_UPPER_BOUND) {
+                int256 ln_36_x = _ln_36(x_int256);
 
-            // ln_36_x has 36 decimal places, so multiplying by y_int256 isn't as straightforward, since we can't just
-            // bring y_int256 to 36 decimal places, as it might overflow. Instead, we perform two 18 decimal
-            // multiplications and add the results: one with the first 18 decimals of ln_36_x, and one with the
-            // (downscaled) last 18 decimals.
-            logx_times_y = ((ln_36_x / ONE_18) * y_int256 + ((ln_36_x % ONE_18) * y_int256) / ONE_18);
-        } else {
-            logx_times_y = _ln(x_int256) * y_int256;
+                // ln_36_x has 36 decimal places, so multiplying by y_int256 isn't as straightforward, since we can't just
+                // bring y_int256 to 36 decimal places, as it might overflow. Instead, we perform two 18 decimal
+                // multiplications and add the results: one with the first 18 decimals of ln_36_x, and one with the
+                // (downscaled) last 18 decimals.
+                logx_times_y = ((ln_36_x / ONE_18) * y_int256 + ((ln_36_x % ONE_18) * y_int256) / ONE_18);
+            } else {
+                logx_times_y = _ln(x_int256) * y_int256;
+            }
+            logx_times_y /= ONE_18;
         }
-        logx_times_y /= ONE_18;
 
         // Finally, we compute exp(y * ln(x)) to arrive at x^y
         if (!(MIN_NATURAL_EXPONENT <= logx_times_y && logx_times_y <= MAX_NATURAL_EXPONENT)) {
@@ -166,7 +170,9 @@ library LogExpMath {
             // We only handle positive exponents: e^(-x) is computed as 1 / e^x. We can safely make x positive since it
             // fits in the signed 256 bit range (as it is larger than MIN_NATURAL_EXPONENT).
             // Fixed point division requires multiplying by ONE_18.
-            return ((ONE_18 * ONE_18) / exp(-x));
+            unchecked {
+                return ((ONE_18 * ONE_18) / exp(-x));
+            }
         }
 
         // First, we use the fact that e^(x+y) = e^x * e^y to decompose x into a sum of powers of two, which we call x_n,
@@ -187,55 +193,59 @@ library LogExpMath {
         // it and compute the accumulated product.
 
         int256 firstAN;
-        if (x >= x0) {
-            x -= x0;
-            firstAN = a0;
-        } else if (x >= x1) {
-            x -= x1;
-            firstAN = a1;
-        } else {
-            firstAN = 1; // One with no decimal places
-        }
+        unchecked {
+            if (x >= x0) {
+                x -= x0;
+                firstAN = a0;
+            } else if (x >= x1) {
+                x -= x1;
+                firstAN = a1;
+            } else {
+                firstAN = 1; // One with no decimal places
+            }
 
-        // We now transform x into a 20 decimal fixed point number, to have enhanced precision when computing the
-        // smaller terms.
-        x *= 100;
+            // We now transform x into a 20 decimal fixed point number, to have enhanced precision when computing the
+            // smaller terms.
+            x *= 100;
+        }
 
         // `product` is the accumulated product of all a_n (except a0 and a1), which starts at 20 decimal fixed point
         // one. Recall that fixed point multiplication requires dividing by ONE_20.
         int256 product = ONE_20;
 
-        if (x >= x2) {
-            x -= x2;
-            product = (product * a2) / ONE_20;
-        }
-        if (x >= x3) {
-            x -= x3;
-            product = (product * a3) / ONE_20;
-        }
-        if (x >= x4) {
-            x -= x4;
-            product = (product * a4) / ONE_20;
-        }
-        if (x >= x5) {
-            x -= x5;
-            product = (product * a5) / ONE_20;
-        }
-        if (x >= x6) {
-            x -= x6;
-            product = (product * a6) / ONE_20;
-        }
-        if (x >= x7) {
-            x -= x7;
-            product = (product * a7) / ONE_20;
-        }
-        if (x >= x8) {
-            x -= x8;
-            product = (product * a8) / ONE_20;
-        }
-        if (x >= x9) {
-            x -= x9;
-            product = (product * a9) / ONE_20;
+        unchecked {
+            if (x >= x2) {
+                x -= x2;
+                product = (product * a2) / ONE_20;
+            }
+            if (x >= x3) {
+                x -= x3;
+                product = (product * a3) / ONE_20;
+            }
+            if (x >= x4) {
+                x -= x4;
+                product = (product * a4) / ONE_20;
+            }
+            if (x >= x5) {
+                x -= x5;
+                product = (product * a5) / ONE_20;
+            }
+            if (x >= x6) {
+                x -= x6;
+                product = (product * a6) / ONE_20;
+            }
+            if (x >= x7) {
+                x -= x7;
+                product = (product * a7) / ONE_20;
+            }
+            if (x >= x8) {
+                x -= x8;
+                product = (product * a8) / ONE_20;
+            }
+            if (x >= x9) {
+                x -= x9;
+                product = (product * a9) / ONE_20;
+            }
         }
 
         // x10 and x11 are unnecessary here since we have high enough precision already.
@@ -248,52 +258,54 @@ library LogExpMath {
 
         // The first term is simply x.
         term = x;
-        seriesSum += term;
+        unchecked {
+            seriesSum += term;
 
-        // Each term (x^n / n!) equals the previous one times x, divided by n. Since x is a fixed point number,
-        // multiplying by it requires dividing by ONE_20, but dividing by the non-fixed point n values does not.
+            // Each term (x^n / n!) equals the previous one times x, divided by n. Since x is a fixed point number,
+            // multiplying by it requires dividing by ONE_20, but dividing by the non-fixed point n values does not.
 
-        term = ((term * x) / ONE_20) / 2;
-        seriesSum += term;
+            term = ((term * x) / ONE_20) / 2;
+            seriesSum += term;
 
-        term = ((term * x) / ONE_20) / 3;
-        seriesSum += term;
+            term = ((term * x) / ONE_20) / 3;
+            seriesSum += term;
 
-        term = ((term * x) / ONE_20) / 4;
-        seriesSum += term;
+            term = ((term * x) / ONE_20) / 4;
+            seriesSum += term;
 
-        term = ((term * x) / ONE_20) / 5;
-        seriesSum += term;
+            term = ((term * x) / ONE_20) / 5;
+            seriesSum += term;
 
-        term = ((term * x) / ONE_20) / 6;
-        seriesSum += term;
+            term = ((term * x) / ONE_20) / 6;
+            seriesSum += term;
 
-        term = ((term * x) / ONE_20) / 7;
-        seriesSum += term;
+            term = ((term * x) / ONE_20) / 7;
+            seriesSum += term;
 
-        term = ((term * x) / ONE_20) / 8;
-        seriesSum += term;
+            term = ((term * x) / ONE_20) / 8;
+            seriesSum += term;
 
-        term = ((term * x) / ONE_20) / 9;
-        seriesSum += term;
+            term = ((term * x) / ONE_20) / 9;
+            seriesSum += term;
 
-        term = ((term * x) / ONE_20) / 10;
-        seriesSum += term;
+            term = ((term * x) / ONE_20) / 10;
+            seriesSum += term;
 
-        term = ((term * x) / ONE_20) / 11;
-        seriesSum += term;
+            term = ((term * x) / ONE_20) / 11;
+            seriesSum += term;
 
-        term = ((term * x) / ONE_20) / 12;
-        seriesSum += term;
+            term = ((term * x) / ONE_20) / 12;
+            seriesSum += term;
 
-        // 12 Taylor terms are sufficient for 18 decimal precision.
+            // 12 Taylor terms are sufficient for 18 decimal precision.
 
-        // We now have the first a_n (with no decimals), and the product of all other a_n present, and the Taylor
-        // approximation of the exponentiation of the remainder (both with 20 decimals). All that remains is to multiply
-        // all three (one 20 decimal fixed point multiplication, dividing by ONE_20, and one integer multiplication),
-        // and then drop two digits to return an 18 decimal value.
+            // We now have the first a_n (with no decimals), and the product of all other a_n present, and the Taylor
+            // approximation of the exponentiation of the remainder (both with 20 decimals). All that remains is to multiply
+            // all three (one 20 decimal fixed point multiplication, dividing by ONE_20, and one integer multiplication),
+            // and then drop two digits to return an 18 decimal value.
 
-        return (((product * seriesSum) / ONE_20) * firstAN) / 100;
+            return (((product * seriesSum) / ONE_20) * firstAN) / 100;
+        }
     }
 
     /**
@@ -306,21 +318,25 @@ library LogExpMath {
         // upscaling.
 
         int256 logBase;
-        if (LN_36_LOWER_BOUND < base && base < LN_36_UPPER_BOUND) {
-            logBase = _ln_36(base);
-        } else {
-            logBase = _ln(base) * ONE_18;
+        unchecked {
+            if (LN_36_LOWER_BOUND < base && base < LN_36_UPPER_BOUND) {
+                logBase = _ln_36(base);
+            } else {
+                logBase = _ln(base) * ONE_18;
+            }
         }
 
         int256 logArg;
-        if (LN_36_LOWER_BOUND < arg && arg < LN_36_UPPER_BOUND) {
-            logArg = _ln_36(arg);
-        } else {
-            logArg = _ln(arg) * ONE_18;
-        }
+        unchecked {
+            if (LN_36_LOWER_BOUND < arg && arg < LN_36_UPPER_BOUND) {
+                logArg = _ln_36(arg);
+            } else {
+                logArg = _ln(arg) * ONE_18;
+            }
 
-        // When dividing, we multiply by ONE_18 to arrive at a result with 18 decimal places
-        return (logArg * ONE_18) / logBase;
+            // When dividing, we multiply by ONE_18 to arrive at a result with 18 decimal places
+            return (logArg * ONE_18) / logBase;
+        }
     }
 
     /**
@@ -332,7 +348,9 @@ library LogExpMath {
             revert OutOfBounds();
         }
         if (LN_36_LOWER_BOUND < a && a < LN_36_UPPER_BOUND) {
-            return _ln_36(a) / ONE_18;
+            unchecked {
+                return _ln_36(a) / ONE_18;
+            }
         } else {
             return _ln(a);
         }
@@ -346,7 +364,9 @@ library LogExpMath {
             // Since ln(a^k) = k * ln(a), we can compute ln(a) as ln(a) = ln((1/a)^(-1)) = - ln((1/a)). If a is less
             // than one, 1/a will be greater than one, and this if statement will not be entered in the recursive call.
             // Fixed point division requires multiplying by ONE_18.
-            return (-_ln((ONE_18 * ONE_18) / a));
+            unchecked {
+                return (-_ln((ONE_18 * ONE_18) / a));
+            }
         }
 
         // First, we use the fact that ln^(a * b) = ln(a) + ln(b) to decompose ln(a) into a sum of powers of two, which
@@ -365,70 +385,72 @@ library LogExpMath {
         // by it and compute the accumulated sum.
 
         int256 sum = 0;
-        if (a >= a0 * ONE_18) {
-            a /= a0; // Integer, not fixed point division
-            sum += x0;
-        }
+        unchecked {
+            if (a >= a0 * ONE_18) {
+                a /= a0; // Integer, not fixed point division
+                sum += x0;
+            }
 
-        if (a >= a1 * ONE_18) {
-            a /= a1; // Integer, not fixed point division
-            sum += x1;
-        }
+            if (a >= a1 * ONE_18) {
+                a /= a1; // Integer, not fixed point division
+                sum += x1;
+            }
 
-        // All other a_n and x_n are stored as 20 digit fixed point numbers, so we convert the sum and a to this format.
-        sum *= 100;
-        a *= 100;
+            // All other a_n and x_n are stored as 20 digit fixed point numbers, so we convert the sum and a to this format.
+            sum *= 100;
+            a *= 100;
 
-        // Because further a_n are  20 digit fixed point numbers, we multiply by ONE_20 when dividing by them.
+            // Because further a_n are  20 digit fixed point numbers, we multiply by ONE_20 when dividing by them.
 
-        if (a >= a2) {
-            a = (a * ONE_20) / a2;
-            sum += x2;
-        }
+            if (a >= a2) {
+                a = (a * ONE_20) / a2;
+                sum += x2;
+            }
 
-        if (a >= a3) {
-            a = (a * ONE_20) / a3;
-            sum += x3;
-        }
+            if (a >= a3) {
+                a = (a * ONE_20) / a3;
+                sum += x3;
+            }
 
-        if (a >= a4) {
-            a = (a * ONE_20) / a4;
-            sum += x4;
-        }
+            if (a >= a4) {
+                a = (a * ONE_20) / a4;
+                sum += x4;
+            }
 
-        if (a >= a5) {
-            a = (a * ONE_20) / a5;
-            sum += x5;
-        }
+            if (a >= a5) {
+                a = (a * ONE_20) / a5;
+                sum += x5;
+            }
 
-        if (a >= a6) {
-            a = (a * ONE_20) / a6;
-            sum += x6;
-        }
+            if (a >= a6) {
+                a = (a * ONE_20) / a6;
+                sum += x6;
+            }
 
-        if (a >= a7) {
-            a = (a * ONE_20) / a7;
-            sum += x7;
-        }
+            if (a >= a7) {
+                a = (a * ONE_20) / a7;
+                sum += x7;
+            }
 
-        if (a >= a8) {
-            a = (a * ONE_20) / a8;
-            sum += x8;
-        }
+            if (a >= a8) {
+                a = (a * ONE_20) / a8;
+                sum += x8;
+            }
 
-        if (a >= a9) {
-            a = (a * ONE_20) / a9;
-            sum += x9;
-        }
+            if (a >= a9) {
+                a = (a * ONE_20) / a9;
+                sum += x9;
+            }
 
-        if (a >= a10) {
-            a = (a * ONE_20) / a10;
-            sum += x10;
-        }
+            if (a >= a10) {
+                a = (a * ONE_20) / a10;
+                sum += x10;
+            }
 
-        if (a >= a11) {
-            a = (a * ONE_20) / a11;
-            sum += x11;
+            if (a >= a11) {
+                a = (a * ONE_20) / a11;
+                sum += x11;
+            }
         }
 
         // a is now a small number (smaller than a_11, which roughly equals 1.06). This means we can use a Taylor series
@@ -438,41 +460,43 @@ library LogExpMath {
 
         // Recall that 20 digit fixed point division requires multiplying by ONE_20, and multiplication requires
         // division by ONE_20.
-        int256 z = ((a - ONE_20) * ONE_20) / (a + ONE_20);
-        int256 z_squared = (z * z) / ONE_20;
+        unchecked {
+            int256 z = ((a - ONE_20) * ONE_20) / (a + ONE_20);
+            int256 z_squared = (z * z) / ONE_20;
 
-        // num is the numerator of the series: the z^(2 * n + 1) term
-        int256 num = z;
+            // num is the numerator of the series: the z^(2 * n + 1) term
+            int256 num = z;
 
-        // seriesSum holds the accumulated sum of each term in the series, starting with the initial z
-        int256 seriesSum = num;
+            // seriesSum holds the accumulated sum of each term in the series, starting with the initial z
+            int256 seriesSum = num;
 
-        // In each step, the numerator is multiplied by z^2
-        num = (num * z_squared) / ONE_20;
-        seriesSum += num / 3;
+            // In each step, the numerator is multiplied by z^2
+            num = (num * z_squared) / ONE_20;
+            seriesSum += num / 3;
 
-        num = (num * z_squared) / ONE_20;
-        seriesSum += num / 5;
+            num = (num * z_squared) / ONE_20;
+            seriesSum += num / 5;
 
-        num = (num * z_squared) / ONE_20;
-        seriesSum += num / 7;
+            num = (num * z_squared) / ONE_20;
+            seriesSum += num / 7;
 
-        num = (num * z_squared) / ONE_20;
-        seriesSum += num / 9;
+            num = (num * z_squared) / ONE_20;
+            seriesSum += num / 9;
 
-        num = (num * z_squared) / ONE_20;
-        seriesSum += num / 11;
+            num = (num * z_squared) / ONE_20;
+            seriesSum += num / 11;
 
-        // 6 Taylor terms are sufficient for 36 decimal precision.
+            // 6 Taylor terms are sufficient for 36 decimal precision.
 
-        // Finally, we multiply by 2 (non fixed point) to compute ln(remainder)
-        seriesSum *= 2;
+            // Finally, we multiply by 2 (non fixed point) to compute ln(remainder)
+            seriesSum *= 2;
 
-        // We now have the sum of all x_n present, and the Taylor approximation of the logarithm of the remainder (both
-        // with 20 decimals). All that remains is to sum these two, and then drop two digits to return a 18 decimal
-        // value.
+            // We now have the sum of all x_n present, and the Taylor approximation of the logarithm of the remainder (both
+            // with 20 decimals). All that remains is to sum these two, and then drop two digits to return a 18 decimal
+            // value.
 
-        return (sum + seriesSum) / 100;
+            return (sum + seriesSum) / 100;
+        }
     }
 
     /**
@@ -486,48 +510,49 @@ library LogExpMath {
         // worthwhile.
 
         // First, we transform x to a 36 digit fixed point value.
-        x *= ONE_18;
+        unchecked {
+            x *= ONE_18;
 
-        // We will use the following Taylor expansion, which converges very rapidly. Let z = (x - 1) / (x + 1).
-        // ln(x) = 2 * (z + z^3 / 3 + z^5 / 5 + z^7 / 7 + ... + z^(2 * n + 1) / (2 * n + 1))
+            // We will use the following Taylor expansion, which converges very rapidly. Let z = (x - 1) / (x + 1).
+            // ln(x) = 2 * (z + z^3 / 3 + z^5 / 5 + z^7 / 7 + ... + z^(2 * n + 1) / (2 * n + 1))
 
-        // Recall that 36 digit fixed point division requires multiplying by ONE_36, and multiplication requires
-        // division by ONE_36.
-        int256 z = ((x - ONE_36) * ONE_36) / (x + ONE_36);
-        int256 z_squared = (z * z) / ONE_36;
+            // Recall that 36 digit fixed point division requires multiplying by ONE_36, and multiplication requires
+            // division by ONE_36.
+            int256 z = ((x - ONE_36) * ONE_36) / (x + ONE_36);
+            int256 z_squared = (z * z) / ONE_36;
 
-        // num is the numerator of the series: the z^(2 * n + 1) term
-        int256 num = z;
+            // num is the numerator of the series: the z^(2 * n + 1) term
+            int256 num = z;
 
-        // seriesSum holds the accumulated sum of each term in the series, starting with the initial z
-        int256 seriesSum = num;
+            // seriesSum holds the accumulated sum of each term in the series, starting with the initial z
+            int256 seriesSum = num;
 
-        // In each step, the numerator is multiplied by z^2
-        num = (num * z_squared) / ONE_36;
-        seriesSum += num / 3;
+            // In each step, the numerator is multiplied by z^2
+            num = (num * z_squared) / ONE_36;
+            seriesSum += num / 3;
 
-        num = (num * z_squared) / ONE_36;
-        seriesSum += num / 5;
+            num = (num * z_squared) / ONE_36;
+            seriesSum += num / 5;
 
-        num = (num * z_squared) / ONE_36;
-        seriesSum += num / 7;
+            num = (num * z_squared) / ONE_36;
+            seriesSum += num / 7;
 
-        num = (num * z_squared) / ONE_36;
-        seriesSum += num / 9;
+            num = (num * z_squared) / ONE_36;
+            seriesSum += num / 9;
 
-        num = (num * z_squared) / ONE_36;
-        seriesSum += num / 11;
+            num = (num * z_squared) / ONE_36;
+            seriesSum += num / 11;
 
-        num = (num * z_squared) / ONE_36;
-        seriesSum += num / 13;
+            num = (num * z_squared) / ONE_36;
+            seriesSum += num / 13;
 
-        num = (num * z_squared) / ONE_36;
-        seriesSum += num / 15;
+            num = (num * z_squared) / ONE_36;
+            seriesSum += num / 15;
 
-        // 8 Taylor terms are sufficient for 36 decimal precision.
+            // 8 Taylor terms are sufficient for 36 decimal precision.
 
-        // All that remains is multiplying by 2 (non fixed point).
-        return seriesSum * 2;
+            // All that remains is multiplying by 2 (non fixed point).
+            return seriesSum * 2;
+        }
     }
 }
-
