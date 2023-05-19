@@ -1,20 +1,6 @@
 // SPDX-License-Identifier: MIT
-// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
-// documentation files (the “Software”), to deal in the Software without restriction, including without limitation the
-// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
-// The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
-// Software.
-
-// THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
-// WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-// COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-pragma solidity ^0.7.0;
-
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+pragma solidity ^0.8.18;
 
 /* solhint-disable */
 
@@ -25,10 +11,35 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerEr
  * exponentiation and logarithm (where the base is Euler's number).
  *
  * @author Fernando Martinelli - @fernandomartinelli
- * @author Sergio Yuhjtman - @sergioyuhjtman
- * @author Daniel Fernandez - @dmf7z
+ * @author Sergio Yuhjtman     - @sergioyuhjtman
+ * @author Daniel Fernandez    - @dmf7z
  */
 library LogExpMath {
+    /**
+     * @dev
+     */
+    error XOutOfBounds();
+
+    /**
+     * @dev
+     */
+    error YOutOfBounds();
+
+    /**
+     * @dev
+     */
+    error ProductOutOfBounds();
+
+    /**
+     * @dev
+     */
+    error InvalidExponent();
+
+    /**
+     * @dev
+     */
+    error OutOfBounds();
+
     // All fixed point multiplications and divisions are inlined. This means we need to divide by ONE when multiplying
     // two numbers, and multiply by ONE when dividing them.
 
@@ -55,7 +66,7 @@ library LogExpMath {
     int256 constant LN_36_LOWER_BOUND = ONE_18 - 1e17;
     int256 constant LN_36_UPPER_BOUND = ONE_18 + 1e17;
 
-    uint256 constant MILD_EXPONENT_BOUND = 2**254 / uint256(ONE_20);
+    uint256 constant MILD_EXPONENT_BOUND = 2 ** 254 / uint256(ONE_20);
 
     // 18 decimal constants
     int256 constant x0 = 128000000000000000000; // 2ˆ7
@@ -105,14 +116,18 @@ library LogExpMath {
         // x^y = exp(y * ln(x)).
 
         // The ln function takes a signed value, so we need to make sure x fits in the signed 256 bit range.
-        _require(x >> 255 == 0, Errors.X_OUT_OF_BOUNDS);
+        if (x >> 255 != 0) {
+            revert XOutOfBounds();
+        }
         int256 x_int256 = int256(x);
 
         // We will compute y * ln(x) in a single step. Depending on the value of x, we can either use ln or ln_36. In
         // both cases, we leave the division by ONE_18 (due to fixed point multiplication) to the end.
 
         // This prevents y * ln(x) from overflowing, and at the same time guarantees y fits in the signed 256 bit range.
-        _require(y < MILD_EXPONENT_BOUND, Errors.Y_OUT_OF_BOUNDS);
+        if (y >= MILD_EXPONENT_BOUND) {
+            revert YOutOfBounds();
+        }
         int256 y_int256 = int256(y);
 
         int256 logx_times_y;
@@ -130,10 +145,9 @@ library LogExpMath {
         logx_times_y /= ONE_18;
 
         // Finally, we compute exp(y * ln(x)) to arrive at x^y
-        _require(
-            MIN_NATURAL_EXPONENT <= logx_times_y && logx_times_y <= MAX_NATURAL_EXPONENT,
-            Errors.PRODUCT_OUT_OF_BOUNDS
-        );
+        if (!(MIN_NATURAL_EXPONENT <= logx_times_y && logx_times_y <= MAX_NATURAL_EXPONENT)) {
+            revert ProductOutOfBounds();
+        }
 
         return uint256(exp(logx_times_y));
     }
@@ -144,7 +158,9 @@ library LogExpMath {
      * Reverts if `x` is smaller than MIN_NATURAL_EXPONENT, or larger than `MAX_NATURAL_EXPONENT`.
      */
     function exp(int256 x) internal pure returns (int256) {
-        _require(x >= MIN_NATURAL_EXPONENT && x <= MAX_NATURAL_EXPONENT, Errors.INVALID_EXPONENT);
+        if (!(x >= MIN_NATURAL_EXPONENT && x <= MAX_NATURAL_EXPONENT)) {
+            revert InvalidExponent();
+        }
 
         if (x < 0) {
             // We only handle positive exponents: e^(-x) is computed as 1 / e^x. We can safely make x positive since it
@@ -312,7 +328,9 @@ library LogExpMath {
      */
     function ln(int256 a) internal pure returns (int256) {
         // The real natural logarithm is not defined for negative numbers or zero.
-        _require(a > 0, Errors.OUT_OF_BOUNDS);
+        if (a <= 0) {
+            revert OutOfBounds();
+        }
         if (LN_36_LOWER_BOUND < a && a < LN_36_UPPER_BOUND) {
             return _ln_36(a) / ONE_18;
         } else {
@@ -512,3 +530,4 @@ library LogExpMath {
         return seriesSum * 2;
     }
 }
+
