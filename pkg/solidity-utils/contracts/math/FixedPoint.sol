@@ -92,12 +92,13 @@ library FixedPoint {
             return mulDown(square, square);
         } else {
             uint256 raw = LogExpMath.pow(x, y);
-            uint256 maxError = mulUp(raw, MAX_POW_RELATIVE_ERROR) + 1;
-
-            if (raw < maxError) {
-                return 0;
-            } else {
-                return raw - maxError;
+            unchecked {
+                uint256 maxError = mulUp(raw, MAX_POW_RELATIVE_ERROR) + 1;
+                if (raw < maxError) {
+                    return 0;
+                } else {
+                    return raw - maxError;
+                }
             }
         }
     }
@@ -118,9 +119,11 @@ library FixedPoint {
             return mulUp(square, square);
         } else {
             uint256 raw = LogExpMath.pow(x, y);
-            uint256 maxError = mulUp(raw, MAX_POW_RELATIVE_ERROR) + 1;
+            unchecked {
+                uint256 maxError = mulUp(raw, MAX_POW_RELATIVE_ERROR) + 1;
 
-            return raw + maxError;
+                return raw + maxError;
+            }
         }
     }
 
