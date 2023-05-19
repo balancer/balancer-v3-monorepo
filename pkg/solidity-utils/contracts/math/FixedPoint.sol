@@ -10,16 +10,6 @@ library FixedPoint {
     /**
      * @dev
      */
-    error MulOverflow();
-
-    /**
-     * @dev
-     */
-    error DivInternal();
-
-    /**
-     * @dev
-     */
     error ZeroDivision();
 
     // solhint-disable no-inline-assembly
@@ -33,19 +23,15 @@ library FixedPoint {
     uint256 internal constant MIN_POW_BASE_FREE_EXPONENT = 0.7e18;
 
     function mulDown(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Multiple overflow protection is done by Solidity 0.8x
         uint256 product = a * b;
-        if (!(a == 0 || product / a == b)) {
-            revert MulOverflow();
-        }
 
         return product / ONE;
     }
 
     function mulUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
+        // Multiple overflow protection is done by Solidity 0.8x
         uint256 product = a * b;
-        if (!(a == 0 || product / a == b)) {
-            revert MulOverflow();
-        }
 
         // The traditional divUp formula is:
         // divUp(x, y) := (x + y - 1) / y
@@ -61,24 +47,21 @@ library FixedPoint {
     }
 
     function divDown(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Multiple overflow protection is done by Solidity 0.8x
         uint256 aInflated = a * ONE;
-        if (!(a == 0 || aInflated / a == ONE)) {
-            revert DivInternal();
-        }
 
         // Solidity 0.8x always checks for division by zero
         return aInflated / b;
     }
 
     function divUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
+        // This check is required because Yul's `div` doesn't revert on b==0
         if (b == 0) {
             revert ZeroDivision();
         }
 
+        // Multiple overflow protection is done by Solidity 0.8x
         uint256 aInflated = a * ONE;
-        if (!(a == 0 || aInflated / a == ONE)) {
-            revert DivInternal();
-        }
 
         // The traditional divUp formula is:
         // divUp(x, y) := (x + y - 1) / y
