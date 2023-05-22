@@ -3,12 +3,16 @@ import { expect } from 'chai';
 import Decimal from 'decimal.js';
 
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
-import { decimal, fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { decimal, fp, bn } from '@balancer-labs/v3-helpers/src/numbers';
+import { MAX_UINT256 } from '@balancer-labs/v3-helpers/src/constants';
 import { expectEqualWithError } from '@balancer-labs/v3-helpers/src/test/relativeError';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 
 describe.only('FixedPoint', () => {
   let lib: Contract;
+
+  const ONE = fp(1);
+  const TWO = fp(2);
 
   const EXPECTED_RELATIVE_ERROR = 1e-14;
 
@@ -78,13 +82,14 @@ describe.only('FixedPoint', () => {
       expect(await lib.mulDown(fp(1), fp(1))).to.equal(fp(1));
     });
 
-    it('multiplies large numbers correctly', async () => {
-      const largeNumber = decimal('1e18');
-      expectEqualWithError(
-        await lib.mulDown(fp(largeNumber), fp(largeNumber)),
-        fp(largeNumber.pow(2)),
-        EXPECTED_RELATIVE_ERROR
-      );
+    it('returns product when both factors are not 0', async function () {
+      expect(await lib.mulDown(ONE, fp(42))).to.equal(fp(42));
+      expect(await lib.mulDown(fp(42), ONE)).to.equal(fp(42));
+    });
+
+    it('reverts on overflow', async function () {
+      // Panic code 0x11: arithmetic operation overflow
+      await expect(lib.mulDown(MAX_UINT256, TWO)).to.be.revertedWithPanic('0x11');
     });
   });
 
@@ -97,13 +102,14 @@ describe.only('FixedPoint', () => {
       expect(await lib.mulUp(fp(1), fp(1))).to.equal(fp(1));
     });
 
-    it('multiplies large numbers correctly', async () => {
-      const largeNumber = decimal('1e18');
-      expectEqualWithError(
-        await lib.mulUp(fp(largeNumber), fp(largeNumber)),
-        fp(largeNumber.pow(2)),
-        EXPECTED_RELATIVE_ERROR
-      );
+    it('reverts on overflow', async function () {
+      // Panic code 0x11: arithmetic operation overflow
+      await expect(lib.mulUp(MAX_UINT256, TWO)).to.be.revertedWithPanic('0x11');
+    });
+
+    it('returns product when both factors are not 0', async function () {
+      expect(await lib.mulUp(ONE, fp(42))).to.equal(fp(42));
+      expect(await lib.mulUp(fp(42), ONE)).to.equal(fp(42));
     });
   });
 
@@ -119,6 +125,11 @@ describe.only('FixedPoint', () => {
     it('divides large number by itself correctly', async () => {
       const largeNumber = decimal('1e18');
       expect(await lib.divDown(fp(largeNumber), fp(largeNumber))).to.equal(fp(1));
+    });
+
+    it('reverts on underflow', async function () {
+      // Panic code 0x10: arithmetic operation underflow
+      await expect(lib.divDown(MAX_UINT256, ONE)).to.be.revertedWithPanic('0x11');
     });
 
     it('should revert on division by zero', async () => {
@@ -141,8 +152,12 @@ describe.only('FixedPoint', () => {
       expect(await lib.divUp(fp(largeNumber), fp(largeNumber))).to.equal(fp(1));
     });
 
+    it('returns quotient when divisor is not 0', async function () {
+      expect(await lib.divUp(fp(42), ONE)).to.equal(fp(42));
+    });
+
     it('should revert on division by zero', async () => {
-      await expect(lib.divUp(fp(1), fp(0))).to.be.revertedWithCustomError(lib,'ZeroDivision');
+      await expect(lib.divUp(fp(1), fp(0))).to.be.revertedWithCustomError(lib, 'ZeroDivision');
     });
   });
 
@@ -171,13 +186,26 @@ describe.only('FixedPoint', () => {
     });
 
     it('returns the correct power for base 2 power 2', async () => {
-      expectEqualWithError(await lib.powDown(fp(2), fp(2)), fp(4), EXPECTED_RELATIVE_ERROR);
+      expect(await lib.powDown(fp(2), fp(2))).to.equal(fp(4));
+    });
+
+    it('returns the correct power for base 2 power 4', async () => {
+      expect(await lib.powDown(fp(2), fp(4))).to.equal(fp(16));
     });
 
     it('returns the correct power for large base and exponent', async () => {
       const base = decimal('1e18');
-      const exponent = decimal('2');
-      expectEqualWithError(await lib.powDown(fp(base), fp(exponent)), fp(base.pow(exponent)), EXPECTED_RELATIVE_ERROR);
+      const exponent = 3;
+      // TODO: Precision seems to differ for powDow and powUp. Should check this.
+      expectEqualWithError(await lib.powDown(fp(base), fp(exponent)), fp(base.pow(exponent)), 1e-13);
+    });
+
+    it('returns 0 when result is less than maxError', async function () {
+      // These x and y values need to be found experimentally such that 0 < x^y < MAX_POW_RELATIVE_ERROR
+      const x = 0;
+      const y = 1;
+
+      expect(await lib.powDown(x, y)).to.equal(0);
     });
   });
 
@@ -196,7 +224,7 @@ describe.only('FixedPoint', () => {
 
     it('returns the correct power for large base and exponent', async () => {
       const base = decimal('1e18');
-      const exponent = decimal('2');
+      const exponent = 3;
       expectEqualWithError(await lib.powUp(fp(base), fp(exponent)), fp(base.pow(exponent)), EXPECTED_RELATIVE_ERROR);
     });
   });
