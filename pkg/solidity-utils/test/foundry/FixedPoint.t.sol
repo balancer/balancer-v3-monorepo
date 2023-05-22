@@ -73,7 +73,12 @@ contract FixedPointTest is Test {
     function testDivDown(uint256 a, uint256 b) external {
         unchecked {
             if (b == 0) {
-                vm.expectRevert(stdError.arithmeticError);
+                // check for overflow
+                if ((a * FixedPoint.ONE) / FixedPoint.ONE != a) {
+                    vm.expectRevert(stdError.arithmeticError);
+                } else {
+                    vm.expectRevert(stdError.divisionError);
+                }
                 FixedPoint.divDown(a, b);
             } else if (a != 0 && (a * FixedPoint.ONE) / FixedPoint.ONE != a) {
                 vm.expectRevert(stdError.arithmeticError);
@@ -104,7 +109,7 @@ contract FixedPointTest is Test {
     function testDivUp(uint256 a, uint256 b) external {
         unchecked {
             if (b == 0) {
-                vm.expectRevert(stdError.arithmeticError);
+                vm.expectRevert(abi.encodeWithSelector(FixedPoint.ZeroDivision.selector));
                 FixedPoint.divUp(a, b);
             } else if (a != 0 && (a * FixedPoint.ONE) / FixedPoint.ONE != a) {
                 vm.expectRevert(stdError.arithmeticError);
