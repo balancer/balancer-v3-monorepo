@@ -12,4 +12,24 @@ contract FixedPointMock {
     function powUp(uint256 x, uint256 y) public pure returns (uint256) {
         return FixedPoint.powUp(x, y);
     }
+
+    function mulDown(uint256 a, uint256 b) public pure returns (uint256) {
+        return FixedPoint.mulDown(a, b);
+    }
+
+    function mulUp(uint256 a, uint256 b) public pure returns (uint256) {
+        return FixedPoint.mulUp(a, b);
+    }
+
+    function divDown(uint256 a, uint256 b) public pure returns (uint256) {
+        return FixedPoint.divDown(a, b);
+    }
+
+    function divUp(uint256 a, uint256 b) public pure returns (uint256) {
+        return FixedPoint.divUp(a, b);
+    }
+
+    function complement(uint256 x) public pure returns (uint256) {
+        return FixedPoint.complement(x);
+    }
 }
