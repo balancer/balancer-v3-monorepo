@@ -8,7 +8,7 @@ import { MAX_UINT256 } from '@balancer-labs/v3-helpers/src/constants';
 import { expectEqualWithError } from '@balancer-labs/v3-helpers/src/test/relativeError';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 
-describe.only('FixedPoint', () => {
+describe('FixedPoint', () => {
   let lib: Contract;
 
   const ONE = fp(1);
