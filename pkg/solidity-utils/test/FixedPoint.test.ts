@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import Decimal from 'decimal.js';
 
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
-import { decimal, fp, bn } from '@balancer-labs/v3-helpers/src/numbers';
+import { decimal, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { MAX_UINT256 } from '@balancer-labs/v3-helpers/src/constants';
 import { expectEqualWithError } from '@balancer-labs/v3-helpers/src/test/relativeError';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';

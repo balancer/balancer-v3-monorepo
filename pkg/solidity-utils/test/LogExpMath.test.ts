@@ -293,6 +293,7 @@ describe('ExpLog', () => {
     });
 
     it('handles input equal to a3 * ONE_18', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-loss-of-precision
       const a3 = 888611052050787263676000000;
       const a = fp(a3);
 
@@ -300,6 +301,7 @@ describe('ExpLog', () => {
     });
 
     it('handles input equal to a1 * ONE_18', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-loss-of-precision
       const a1 = 6235149080811616882910000000;
       const a = fp(a1);
 
