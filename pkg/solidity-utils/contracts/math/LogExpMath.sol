@@ -171,7 +171,9 @@ library LogExpMath {
         if (x < 0) {
             // We only handle positive exponents: e^(-x) is computed as 1 / e^x. We can safely make x positive since it
             // fits in the signed 256 bit range (as it is larger than MIN_NATURAL_EXPONENT).
-            x = -x;
+            unchecked {
+                x = -x;
+            }
             negative = true;
         }
 
