@@ -166,6 +166,7 @@ library LogExpMath {
             revert InvalidExponent();
         }
 
+        // We avoid using recursion here because zkSync doesn't support it.
         bool negative = false;
 
         if (x < 0) {
@@ -364,6 +365,7 @@ library LogExpMath {
      * @dev Internal natural logarithm (ln(a)) with signed 18 decimal fixed point argument.
      */
     function _ln(int256 a) private pure returns (int256) {
+        // We avoid using recursion here because zkSync doesn't support it.
         bool negative = false;
 
         if (a < ONE_18) {
