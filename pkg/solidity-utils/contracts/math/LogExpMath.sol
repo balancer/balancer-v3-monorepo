@@ -362,13 +362,15 @@ library LogExpMath {
      * @dev Internal natural logarithm (ln(a)) with signed 18 decimal fixed point argument.
      */
     function _ln(int256 a) private pure returns (int256) {
+        bool negative = false;
+
         if (a < ONE_18) {
             // Since ln(a^k) = k * ln(a), we can compute ln(a) as ln(a) = ln((1/a)^(-1)) = - ln((1/a)). If a is less
             // than one, 1/a will be greater than one, and this if statement will not be entered in the recursive call.
-            // Fixed point division requires multiplying by ONE_18.
             unchecked {
-                return (-_ln((ONE_18 * ONE_18) / a));
+                a = (ONE_18 * ONE_18) / a;
             }
+            negative = true;
         }
 
         // First, we use the fact that ln^(a * b) = ln(a) + ln(b) to decompose ln(a) into a sum of powers of two, which
@@ -497,7 +499,9 @@ library LogExpMath {
             // with 20 decimals). All that remains is to sum these two, and then drop two digits to return a 18 decimal
             // value.
 
-            return (sum + seriesSum) / 100;
+            int256 result = (sum + seriesSum) / 100;
+
+            return negative ? -result : result;
         }
     }
 
