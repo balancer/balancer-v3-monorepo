@@ -166,13 +166,13 @@ library LogExpMath {
             revert InvalidExponent();
         }
 
+        bool negative = false;
+
         if (x < 0) {
             // We only handle positive exponents: e^(-x) is computed as 1 / e^x. We can safely make x positive since it
             // fits in the signed 256 bit range (as it is larger than MIN_NATURAL_EXPONENT).
-            // Fixed point division requires multiplying by ONE_18.
-            unchecked {
-                return ((ONE_18 * ONE_18) / exp(-x));
-            }
+            x = -x;
+            negative = true;
         }
 
         // First, we use the fact that e^(x+y) = e^x * e^y to decompose x into a sum of powers of two, which we call x_n,
@@ -304,7 +304,9 @@ library LogExpMath {
             // all three (one 20 decimal fixed point multiplication, dividing by ONE_20, and one integer multiplication),
             // and then drop two digits to return an 18 decimal value.
 
-            return (((product * seriesSum) / ONE_20) * firstAN) / 100;
+            int256 result = (((product * seriesSum) / ONE_20) * firstAN) / 100;
+
+            return negative ? (ONE_18 * ONE_18) / result : result;
         }
     }
 
