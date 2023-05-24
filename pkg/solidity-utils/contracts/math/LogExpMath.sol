@@ -18,27 +18,27 @@ pragma solidity ^0.8.18;
  */
 library LogExpMath {
     /**
-     * @dev
+     * @dev This error is thrown when a base is not within an acceptable range.
      */
-    error XOutOfBounds();
+    error BaseOutOfBounds();
 
     /**
-     * @dev
+     * @dev This error is thrown when a exponent is not within an acceptable range.
      */
-    error YOutOfBounds();
+    error ExponentOutOfBounds();
 
     /**
-     * @dev
+     * @dev This error is thrown when the y * ln(x) is not within an acceptable range.
      */
     error ProductOutOfBounds();
 
     /**
-     * @dev
+     * @dev This error is thrown when an exponent used in the exp function is not within an acceptable range.
      */
     error InvalidExponent();
 
     /**
-     * @dev
+     * @dev This error is thrown when a variable or result is not within the acceptable bounds defined in the function.
      */
     error OutOfBounds();
 
@@ -68,7 +68,7 @@ library LogExpMath {
     int256 constant LN_36_LOWER_BOUND = ONE_18 - 1e17;
     int256 constant LN_36_UPPER_BOUND = ONE_18 + 1e17;
 
-    uint256 constant MILD_EXPONENT_BOUND = 2 ** 254 / uint256(ONE_20);
+    uint256 constant MILD_EXPONENT_BOUND = 2**254 / uint256(ONE_20);
 
     // 18 decimal constants
     int256 constant x0 = 128000000000000000000; // 2ˆ7
@@ -119,7 +119,7 @@ library LogExpMath {
 
         // The ln function takes a signed value, so we need to make sure x fits in the signed 256 bit range.
         if (x >> 255 != 0) {
-            revert XOutOfBounds();
+            revert BaseOutOfBounds();
         }
         int256 x_int256 = int256(x);
 
@@ -128,7 +128,7 @@ library LogExpMath {
 
         // This prevents y * ln(x) from overflowing, and at the same time guarantees y fits in the signed 256 bit range.
         if (y >= MILD_EXPONENT_BOUND) {
-            revert YOutOfBounds();
+            revert ExponentOutOfBounds();
         }
         int256 y_int256 = int256(y);
 
