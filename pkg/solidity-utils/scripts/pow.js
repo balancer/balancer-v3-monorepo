@@ -13,7 +13,7 @@ function calculatePower(base, exponent) {
   let baseBig = mathInstance.divide(mathInstance.bignumber(base), ONE_18);
   let exponentBig = mathInstance.divide(mathInstance.bignumber(exponent), ONE_18);
 
-  let result = mathInstance.round(mathInstance.pow(baseBig, exponentBig));
+  let result = mathInstance.round(mathInstance.multiply(mathInstance.pow(baseBig, exponentBig), ONE_18));
   return mathInstance.format(result, { notation: 'fixed' });
 }
 
