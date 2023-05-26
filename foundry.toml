@@ -17,10 +17,10 @@ solc_version = '0.8.18'
 auto_detect_solc = false
 
 [fuzz]
-runs = 10000
+runs = 256
 max_test_rejects = 60000
 
-[profile.intense.fuzz]
+[profile.intense]
 verbosity = 3
 runs = 100000
 max_test_rejects = 600000
