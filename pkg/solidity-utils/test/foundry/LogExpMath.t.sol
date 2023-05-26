@@ -9,7 +9,7 @@ import "../../contracts/math/LogExpMath.sol";
 import "../../contracts/test/LogExpMathMock.sol";
 
 contract LogExpMathTest is Test {
-    uint256 internal constant EXPECTED_RELATIVE_ERROR = 1e10;
+    uint256 internal constant EXPECTED_RELATIVE_ERROR = 1e4;
     uint256 constant ONE_18 = 1e18;
     uint256 constant ONE_20 = 1e20;
     uint256 constant MILD_EXPONENT_BOUND = 2 ** 254 / uint256(ONE_20);
