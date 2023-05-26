@@ -9,10 +9,14 @@ import "../../contracts/math/LogExpMath.sol";
 import "../../contracts/test/LogExpMathMock.sol";
 
 contract LogExpMathTest is Test {
-    uint256 internal constant EXPECTED_RELATIVE_ERROR = 1e3;
-    int256 constant ONE_18 = 1e18;
-    int256 constant ONE_20 = 1e20;
+    uint256 internal constant EXPECTED_RELATIVE_ERROR = 1e10;
+    uint256 constant ONE_18 = 1e18;
+    uint256 constant ONE_20 = 1e20;
     uint256 constant MILD_EXPONENT_BOUND = 2 ** 254 / uint256(ONE_20);
+    uint256 constant UPPER_BASE_BOUND = 1e10 * ONE_18;
+    uint256 constant LOWER_BASE_BOUND = 1e4;
+    uint256 constant UPPER_EXPONENT_BOUND = 1e3 * ONE_18;
+    uint256 constant LOWER_EXPONENT_BOUND = 1e6;
     LogExpMathMock mock;
 
     function setUp() public {
@@ -24,13 +28,14 @@ contract LogExpMathTest is Test {
     }
 
     function testPowMatchesJSFuzzed(uint256 base, uint256 exponent) external {
-        base = bound(base, 0, 10);
-        exponent = bound(exponent, 0, MILD_EXPONENT_BOUND - 1);
+        base = bound(base, LOWER_BASE_BOUND, UPPER_BASE_BOUND);
+        exponent = bound(exponent, LOWER_EXPONENT_BOUND, UPPER_EXPONENT_BOUND);
 
         uint256 pow;
         try mock.pow(base, exponent) returns (uint256 ret) {
             pow = ret;
         } catch (bytes memory reason) {
+            // abandon the run if we get one of the expected errors
             vm.assume(
                 !(LogExpMath.ProductOutOfBounds.selector == bytes4(reason) ||
                     LogExpMath.ExponentOutOfBounds.selector == bytes4(reason) ||
@@ -49,8 +54,7 @@ contract LogExpMathTest is Test {
 
         // Run command and capture output
         bytes memory result = vm.ffi(bashInput);
-        console.logBytes(result);
-        uint256 expectedResult = abi.decode(result, (uint256)) * 1e18;
+        uint256 expectedResult = abi.decode(result, (uint256));
 
         assertApproxEqAbs(pow, expectedResult, expectedResult / EXPECTED_RELATIVE_ERROR);
     }
