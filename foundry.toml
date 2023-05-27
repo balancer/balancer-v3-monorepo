@@ -20,7 +20,7 @@ auto_detect_solc = false
 runs = 256
 max_test_rejects = 60000
 
-[profile.intense]
+[profile.intense.fuzz]
 verbosity = 3
 runs = 100000
 max_test_rejects = 600000
