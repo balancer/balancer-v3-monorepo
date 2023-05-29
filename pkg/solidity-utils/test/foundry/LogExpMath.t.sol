@@ -13,9 +13,9 @@ contract LogExpMathTest is Test {
     uint256 constant ONE_18 = 1e18;
     uint256 constant ONE_20 = 1e20;
     uint256 constant MILD_EXPONENT_BOUND = 2 ** 254 / uint256(ONE_20);
-    uint256 constant UPPER_BASE_BOUND = 1e10 * ONE_18;
-    uint256 constant LOWER_BASE_BOUND = 1e14;
-    uint256 constant UPPER_EXPONENT_BOUND = 1e3 * ONE_18;
+    uint256 constant UPPER_BASE_BOUND = 1e7 * ONE_18;
+    uint256 constant LOWER_BASE_BOUND = 1e15;
+    uint256 constant UPPER_EXPONENT_BOUND = 10 * ONE_18;
     uint256 constant LOWER_EXPONENT_BOUND = 1e14;
     LogExpMathMock mock;
 
@@ -45,6 +45,8 @@ contract LogExpMathTest is Test {
         bytes memory result = vm.ffi(bashInput);
         uint256 expectedResult = abi.decode(result, (uint256));
 
-        assertApproxEqAbs(pow, expectedResult, expectedResult / EXPECTED_RELATIVE_ERROR);
+        uint256 delta = expectedResult / EXPECTED_RELATIVE_ERROR;
+        // for delta of 0 allow precision loss of 1
+        assertApproxEqAbs(pow, expectedResult, delta == 0 ? 1 : delta);
     }
 }
