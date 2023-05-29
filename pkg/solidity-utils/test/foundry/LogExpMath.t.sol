@@ -31,18 +31,7 @@ contract LogExpMathTest is Test {
         base = bound(base, LOWER_BASE_BOUND, UPPER_BASE_BOUND);
         exponent = bound(exponent, LOWER_EXPONENT_BOUND, UPPER_EXPONENT_BOUND);
 
-        uint256 pow;
-        try mock.pow(base, exponent) returns (uint256 ret) {
-            pow = ret;
-        } catch (bytes memory reason) {
-            // abandon the run if we get one of the expected errors
-            vm.assume(
-                !(LogExpMath.ProductOutOfBounds.selector == bytes4(reason) ||
-                    LogExpMath.ExponentOutOfBounds.selector == bytes4(reason) ||
-                    LogExpMath.BaseOutOfBounds.selector == bytes4(reason))
-            );
-            revert("Unhandled error occurred.");
-        }
+        uint256 pow = mock.pow(base, exponent);
 
         string[] memory bashInput = new string[](4);
 
