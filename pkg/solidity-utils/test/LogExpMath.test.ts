@@ -135,7 +135,7 @@ describe('ExpLog', () => {
     });
 
     describe('max values', () => {
-      it('cannot handle a product when logx_times_y <= MAX_NATURAL_EXPONENT', async () => {
+      it('cannot handle a product when logx_times_y > MAX_NATURAL_EXPONENT', async () => {
         const base = bn(2).pow(254);
         const exponent = bn(10).pow(20);
 
