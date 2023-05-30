@@ -8,7 +8,7 @@ import "./LogExpMath.sol";
 
 library FixedPoint {
     /**
-     * @dev
+     * @dev This error is thrown upon division by zero.
      */
     error ZeroDivision();
 
