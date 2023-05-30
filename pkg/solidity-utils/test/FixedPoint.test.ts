@@ -171,8 +171,7 @@ describe('FixedPoint', () => {
     });
 
     it('returns the correct complement for a number greater than 1', async () => {
-      const value = decimal('2');
-      expect(await lib.complement(fp(value))).to.equal(fp(0));
+      expect(await lib.complement(fp(2))).to.equal(fp(0));
     });
   });
 
