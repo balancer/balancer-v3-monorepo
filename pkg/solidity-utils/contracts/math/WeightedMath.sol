@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.18;
 
+import "./FixedPoint.sol";
 import "./LogExpMath.sol";
 
 // These functions start with an underscore, as if they were part of a contract and not a library. At some point this
@@ -10,6 +11,32 @@ import "./LogExpMath.sol";
 
 library WeightedMath {
     using FixedPoint for uint256;
+
+    /**
+     * @dev
+     */
+    error MinBPTInForTokenOut();
+
+    /**
+     * @dev
+     */
+    error MaxOutBptForTokenIn();
+
+    /**
+     * @dev
+     */
+    error MaxOutRatio();
+
+    /**
+     * @dev
+     */
+    error MaxInRatio();
+
+    /**
+     * @dev
+     */
+    error ZeroInvariant();
+
     // A minimum normalized weight imposes a maximum weight ratio. We need this due to limitations in the
     // implementation of the power function, as these ratios are often exponents.
     uint256 internal constant _MIN_WEIGHT = 0.01e18;
@@ -55,7 +82,9 @@ library WeightedMath {
             invariant = invariant.mulDown(balances[i].powDown(normalizedWeights[i]));
         }
 
-        _require(invariant > 0, Errors.ZERO_INVARIANT);
+        if (invariant == 0) {
+            revert ZeroInvariant();
+        }
     }
 
     // Computes how many tokens can be taken out of a pool if `amountIn` are sent, given the
@@ -83,7 +112,9 @@ library WeightedMath {
         // Because bI / (bI + aI) <= 1, the exponent rounds down.
 
         // Cannot exceed maximum in ratio
-        _require(amountIn <= balanceIn.mulDown(_MAX_IN_RATIO), Errors.MAX_IN_RATIO);
+        if (amountIn > balanceIn.mulDown(_MAX_IN_RATIO)) {
+            revert MaxInRatio();
+        }
 
         uint256 denominator = balanceIn.add(amountIn);
         uint256 base = balanceIn.divUp(denominator);
@@ -118,7 +149,9 @@ library WeightedMath {
         // Because b0 / (b0 - a0) >= 1, the exponent rounds up.
 
         // Cannot exceed maximum out ratio
-        _require(amountOut <= balanceOut.mulDown(_MAX_OUT_RATIO), Errors.MAX_OUT_RATIO);
+        if (amountOut > balanceOut.mulDown(_MAX_OUT_RATIO)) {
+            revert MaxOutRatio();
+        }
 
         uint256 base = balanceOut.divUp(balanceOut.sub(amountOut));
         uint256 exponent = weightOut.divUp(weightIn);
@@ -276,7 +309,9 @@ library WeightedMath {
 
         // Calculate the factor by which the invariant will increase after minting BPTAmountOut
         uint256 invariantRatio = bptTotalSupply.add(bptAmountOut).divUp(bptTotalSupply);
-        _require(invariantRatio <= _MAX_INVARIANT_RATIO, Errors.MAX_OUT_BPT_FOR_TOKEN_IN);
+        if (invariantRatio <= _MAX_INVARIANT_RATIO) {
+            revert MaxOutBptForTokenIn();
+        }
 
         // Calculate by how much the token balance has to increase to match the invariantRatio
         uint256 balanceRatio = invariantRatio.powUp(FixedPoint.ONE.divUp(normalizedWeight));
@@ -426,7 +461,9 @@ library WeightedMath {
 
         // Calculate the factor by which the invariant will decrease after burning BPTAmountIn
         uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).divUp(bptTotalSupply);
-        _require(invariantRatio >= _MIN_INVARIANT_RATIO, Errors.MIN_BPT_IN_FOR_TOKEN_OUT);
+        if (invariantRatio < _MIN_INVARIANT_RATIO) {
+            revert MinBPTInForTokenOut();
+        }
 
         // Calculate by how much the token balance has to decrease to match invariantRatio
         uint256 balanceRatio = invariantRatio.powUp(FixedPoint.ONE.divDown(normalizedWeight));
