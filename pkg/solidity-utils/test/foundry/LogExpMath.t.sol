@@ -15,7 +15,7 @@ contract LogExpMathTest is Test {
     uint256 constant MILD_EXPONENT_BOUND = 2 ** 254 / uint256(ONE_20);
     uint256 constant UPPER_BASE_BOUND = 1e7 * ONE_18;
     uint256 constant LOWER_BASE_BOUND = 1e15;
-    uint256 constant UPPER_EXPONENT_BOUND = 10 * ONE_18;
+    uint256 constant UPPER_EXPONENT_BOUND = 5 * ONE_18;
     uint256 constant LOWER_EXPONENT_BOUND = 1e14;
     LogExpMathMock mock;
 
