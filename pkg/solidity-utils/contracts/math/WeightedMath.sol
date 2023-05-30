@@ -12,27 +12,32 @@ library WeightedMath {
     using FixedPoint for uint256;
 
     /**
-     * @dev
+     * @dev Error thrown when attempting to burn less BPTs than allowed
+     * for a specific amountOut
      */
     error MinBPTInForTokenOut();
 
     /**
-     * @dev
+     * @dev Error thrown when attempting to mint more BPTs than allowed
+     * for a specific amountIn.
      */
     error MaxOutBptForTokenIn();
 
     /**
-     * @dev
+     * @dev Error thrown when trying to extract a disproportionate
+     * amountOut of tokens from the pool.
      */
     error MaxOutRatio();
 
     /**
-     * @dev
+     * @dev Error thrown when trying to add a disproportionate
+     * amountIn of tokens to the pool.
      */
     error MaxInRatio();
 
     /**
-     * @dev
+     * @dev Error thrown when the calculated invariant is zero,
+     * indicating an issue with invariant calculation.
      */
     error ZeroInvariant();
 
