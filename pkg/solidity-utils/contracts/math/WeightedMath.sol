@@ -8,7 +8,6 @@ import "./LogExpMath.sol";
 // These functions start with an underscore, as if they were part of a contract and not a library. At some point this
 // should be fixed.
 // solhint-disable private-vars-leading-underscore
-
 library WeightedMath {
     using FixedPoint for uint256;
 
@@ -116,7 +115,7 @@ library WeightedMath {
             revert MaxInRatio();
         }
 
-        uint256 denominator = balanceIn.add(amountIn);
+        uint256 denominator = balanceIn + amountIn;
         uint256 base = balanceIn.divUp(denominator);
         uint256 exponent = weightIn.divDown(weightOut);
         uint256 power = base.powUp(exponent);
@@ -153,13 +152,13 @@ library WeightedMath {
             revert MaxOutRatio();
         }
 
-        uint256 base = balanceOut.divUp(balanceOut.sub(amountOut));
+        uint256 base = balanceOut.divUp(balanceOut - amountOut);
         uint256 exponent = weightOut.divUp(weightIn);
         uint256 power = base.powUp(exponent);
 
         // Because the base is larger than one (and the power rounds up), the power should always be larger than one, so
         // the following subtraction should never revert.
-        uint256 ratio = power.sub(FixedPoint.ONE);
+        uint256 ratio = power - FixedPoint.ONE;
 
         return balanceIn.mulUp(ratio);
     }
@@ -177,8 +176,8 @@ library WeightedMath {
 
         uint256 invariantRatioWithFees = 0;
         for (uint256 i = 0; i < balances.length; i++) {
-            balanceRatiosWithFee[i] = balances[i].add(amountsIn[i]).divDown(balances[i]);
-            invariantRatioWithFees = invariantRatioWithFees.add(balanceRatiosWithFee[i].mulDown(normalizedWeights[i]));
+            balanceRatiosWithFee[i] = balances[i] + amountsIn[i].divDown(balances[i]);
+            invariantRatioWithFees = invariantRatioWithFees + balanceRatiosWithFee[i].mulDown(normalizedWeights[i]);
         }
 
         uint256 invariantRatio = _computeJoinExactTokensInInvariantRatio(
@@ -207,24 +206,23 @@ library WeightedMath {
 
         uint256 amountInWithoutFee;
         {
-            uint256 balanceRatioWithFee = balance.add(amountIn).divDown(balance);
+            uint256 balanceRatioWithFee = balance + amountIn.divDown(balance);
 
             // The use of `normalizedWeight.complement()` assumes that the sum of all weights equals FixedPoint.ONE.
             // This may not be the case when weights are stored in a denormalized format or during a gradual weight
             // change due rounding errors during normalization or interpolation. This will result in a small difference
             // between the output of this function and the equivalent `_calcBptOutGivenExactTokensIn` call.
-            uint256 invariantRatioWithFees = balanceRatioWithFee.mulDown(normalizedWeight).add(
-                normalizedWeight.complement()
-            );
+            uint256 invariantRatioWithFees = balanceRatioWithFee.mulDown(normalizedWeight) +
+                normalizedWeight.complement();
 
             if (balanceRatioWithFee > invariantRatioWithFees) {
                 uint256 nonTaxableAmount = invariantRatioWithFees > FixedPoint.ONE
                     ? balance.mulDown(invariantRatioWithFees - FixedPoint.ONE)
                     : 0;
-                uint256 taxableAmount = amountIn.sub(nonTaxableAmount);
+                uint256 taxableAmount = amountIn - nonTaxableAmount;
                 uint256 swapFee = taxableAmount.mulUp(swapFeePercentage);
 
-                amountInWithoutFee = nonTaxableAmount.add(taxableAmount.sub(swapFee));
+                amountInWithoutFee = nonTaxableAmount + taxableAmount - swapFee;
             } else {
                 amountInWithoutFee = amountIn;
                 // If a token's amount in is not being charged a swap fee then it might be zero.
@@ -235,7 +233,7 @@ library WeightedMath {
             }
         }
 
-        uint256 balanceRatio = balance.add(amountInWithoutFee).divDown(balance);
+        uint256 balanceRatio = balance + amountInWithoutFee.divDown(balance);
 
         uint256 invariantRatio = balanceRatio.powDown(normalizedWeight);
 
@@ -269,8 +267,8 @@ library WeightedMath {
                 uint256 nonTaxableAmount = invariantRatioWithFees > FixedPoint.ONE
                     ? balances[i].mulDown(invariantRatioWithFees - FixedPoint.ONE)
                     : 0;
-                uint256 swapFee = amountsIn[i].sub(nonTaxableAmount).mulUp(swapFeePercentage);
-                amountInWithoutFee = amountsIn[i].sub(swapFee);
+                uint256 swapFee = amountsIn[i] - nonTaxableAmount.mulUp(swapFeePercentage);
+                amountInWithoutFee = amountsIn[i] - swapFee;
             } else {
                 amountInWithoutFee = amountsIn[i];
 
@@ -283,7 +281,7 @@ library WeightedMath {
                 }
             }
 
-            uint256 balanceRatio = balances[i].add(amountInWithoutFee).divDown(balances[i]);
+            uint256 balanceRatio = balances[i] + amountInWithoutFee.divDown(balances[i]);
 
             invariantRatio = invariantRatio.mulDown(balanceRatio.powDown(normalizedWeights[i]));
         }
@@ -308,7 +306,7 @@ library WeightedMath {
         // Token in, so we round up overall.
 
         // Calculate the factor by which the invariant will increase after minting BPTAmountOut
-        uint256 invariantRatio = bptTotalSupply.add(bptAmountOut).divUp(bptTotalSupply);
+        uint256 invariantRatio = bptTotalSupply + bptAmountOut.divUp(bptTotalSupply);
         if (invariantRatio <= _MAX_INVARIANT_RATIO) {
             revert MaxOutBptForTokenIn();
         }
@@ -316,16 +314,16 @@ library WeightedMath {
         // Calculate by how much the token balance has to increase to match the invariantRatio
         uint256 balanceRatio = invariantRatio.powUp(FixedPoint.ONE.divUp(normalizedWeight));
 
-        uint256 amountInWithoutFee = balance.mulUp(balanceRatio.sub(FixedPoint.ONE));
+        uint256 amountInWithoutFee = balance.mulUp(balanceRatio - FixedPoint.ONE);
 
         // We can now compute how much extra balance is being deposited and used in virtual swaps, and charge swap fees
         // accordingly.
         uint256 taxableAmount = amountInWithoutFee.mulUp(normalizedWeight.complement());
-        uint256 nonTaxableAmount = amountInWithoutFee.sub(taxableAmount);
+        uint256 nonTaxableAmount = amountInWithoutFee - taxableAmount;
 
         uint256 taxableAmountPlusFees = taxableAmount.divUp(swapFeePercentage.complement());
 
-        return nonTaxableAmount.add(taxableAmountPlusFees);
+        return nonTaxableAmount + taxableAmountPlusFees;
     }
 
     function _calcBptInGivenExactTokensOut(
@@ -340,10 +338,10 @@ library WeightedMath {
         uint256[] memory balanceRatiosWithoutFee = new uint256[](amountsOut.length);
         uint256 invariantRatioWithoutFees = 0;
         for (uint256 i = 0; i < balances.length; i++) {
-            balanceRatiosWithoutFee[i] = balances[i].sub(amountsOut[i]).divUp(balances[i]);
-            invariantRatioWithoutFees = invariantRatioWithoutFees.add(
-                balanceRatiosWithoutFee[i].mulUp(normalizedWeights[i])
-            );
+            balanceRatiosWithoutFee[i] = balances[i] - amountsOut[i].divUp(balances[i]);
+            invariantRatioWithoutFees =
+                invariantRatioWithoutFees +
+                balanceRatiosWithoutFee[i].mulUp(normalizedWeights[i]);
         }
 
         uint256 invariantRatio = _computeExitExactTokensOutInvariantRatio(
@@ -367,11 +365,10 @@ library WeightedMath {
     ) internal pure returns (uint256) {
         // BPT in, so we round up overall.
 
-        uint256 balanceRatioWithoutFee = balance.sub(amountOut).divUp(balance);
+        uint256 balanceRatioWithoutFee = balance - amountOut.divUp(balance);
 
-        uint256 invariantRatioWithoutFees = balanceRatioWithoutFee.mulUp(normalizedWeight).add(
-            normalizedWeight.complement()
-        );
+        uint256 invariantRatioWithoutFees = balanceRatioWithoutFee.mulUp(normalizedWeight) +
+            normalizedWeight.complement();
 
         uint256 amountOutWithFee;
         if (invariantRatioWithoutFees > balanceRatioWithoutFee) {
@@ -379,10 +376,10 @@ library WeightedMath {
             // 'token out'. This results in slightly larger price impact.
 
             uint256 nonTaxableAmount = balance.mulDown(invariantRatioWithoutFees.complement());
-            uint256 taxableAmount = amountOut.sub(nonTaxableAmount);
+            uint256 taxableAmount = amountOut - nonTaxableAmount;
             uint256 taxableAmountPlusFees = taxableAmount.divUp(swapFeePercentage.complement());
 
-            amountOutWithFee = nonTaxableAmount.add(taxableAmountPlusFees);
+            amountOutWithFee = nonTaxableAmount + taxableAmountPlusFees;
         } else {
             amountOutWithFee = amountOut;
             // If a token's amount out is not being charged a swap fee then it might be zero.
@@ -392,7 +389,7 @@ library WeightedMath {
             }
         }
 
-        uint256 balanceRatio = balance.sub(amountOutWithFee).divDown(balance);
+        uint256 balanceRatio = balance - amountOutWithFee.divDown(balance);
 
         uint256 invariantRatio = balanceRatio.powDown(normalizedWeight);
 
@@ -419,10 +416,10 @@ library WeightedMath {
             uint256 amountOutWithFee;
             if (invariantRatioWithoutFees > balanceRatiosWithoutFee[i]) {
                 uint256 nonTaxableAmount = balances[i].mulDown(invariantRatioWithoutFees.complement());
-                uint256 taxableAmount = amountsOut[i].sub(nonTaxableAmount);
+                uint256 taxableAmount = amountsOut[i] - nonTaxableAmount;
                 uint256 taxableAmountPlusFees = taxableAmount.divUp(swapFeePercentage.complement());
 
-                amountOutWithFee = nonTaxableAmount.add(taxableAmountPlusFees);
+                amountOutWithFee = nonTaxableAmount + taxableAmountPlusFees;
             } else {
                 amountOutWithFee = amountsOut[i];
                 // If a token's amount out is not being charged a swap fee then it might be zero (e.g. when exiting a
@@ -434,7 +431,7 @@ library WeightedMath {
                 }
             }
 
-            uint256 balanceRatio = balances[i].sub(amountOutWithFee).divDown(balances[i]);
+            uint256 balanceRatio = balances[i] - amountOutWithFee.divDown(balances[i]);
 
             invariantRatio = invariantRatio.mulDown(balanceRatio.powDown(normalizedWeights[i]));
         }
@@ -460,7 +457,7 @@ library WeightedMath {
         // rounds up). Because (totalBPT - bptIn) / totalBPT <= 1, the exponent rounds down.
 
         // Calculate the factor by which the invariant will decrease after burning BPTAmountIn
-        uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).divUp(bptTotalSupply);
+        uint256 invariantRatio = bptTotalSupply - bptAmountIn.divUp(bptTotalSupply);
         if (invariantRatio < _MIN_INVARIANT_RATIO) {
             revert MinBPTInForTokenOut();
         }
@@ -477,10 +474,10 @@ library WeightedMath {
         // Swap fees are typically charged on 'token in', but there is no 'token in' here, so we apply it
         // to 'token out'. This results in slightly larger price impact. Fees are rounded up.
         uint256 taxableAmount = amountOutWithoutFee.mulUp(normalizedWeight.complement());
-        uint256 nonTaxableAmount = amountOutWithoutFee.sub(taxableAmount);
+        uint256 nonTaxableAmount = amountOutWithoutFee - taxableAmount;
         uint256 taxableAmountMinusFees = taxableAmount.mulUp(swapFeePercentage.complement());
 
-        return nonTaxableAmount.add(taxableAmountMinusFees);
+        return nonTaxableAmount + taxableAmountMinusFees;
     }
 
     /**
@@ -502,12 +499,12 @@ library WeightedMath {
         //
         // As we're working with normalized weights `totalWeight` is equal to 1.
 
-        uint256 weightSumRatio = FixedPoint.ONE.divDown(FixedPoint.ONE.sub(normalizedWeight));
+        uint256 weightSumRatio = FixedPoint.ONE.divDown(FixedPoint.ONE - normalizedWeight);
 
         // The amount of BPT to mint is then simply:
         //
         // toMint = totalSupply * (weightSumRatio - 1)
 
-        return totalSupply.mulDown(weightSumRatio.sub(FixedPoint.ONE));
+        return totalSupply.mulDown(weightSumRatio - FixedPoint.ONE);
     }
 }
