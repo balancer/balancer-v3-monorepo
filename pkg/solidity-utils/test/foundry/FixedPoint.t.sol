@@ -73,7 +73,7 @@ contract FixedPointTest is Test {
     function testDivDown(uint256 a, uint256 b) external {
         unchecked {
             if (b == 0) {
-                // check for overflow
+                // check for overflow: `divDown` will fail first because of the overflow, and then because of dividing by 0.
                 if ((a * FixedPoint.ONE) / FixedPoint.ONE != a) {
                     vm.expectRevert(stdError.arithmeticError);
                 } else {
