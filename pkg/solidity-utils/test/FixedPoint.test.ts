@@ -166,6 +166,10 @@ describe('FixedPoint', () => {
       expect(await lib.complement(fp(0))).to.equal(fp(1));
     });
 
+    it('returns the correct complement for 0.3', async () => {
+      expect(await lib.complement(fp(0.3))).to.equal(fp(0.7));
+    });
+
     it('returns the correct complement for 1', async () => {
       expect(await lib.complement(fp(1))).to.equal(fp(0));
     });
