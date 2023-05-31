@@ -12,7 +12,7 @@ contract LogExpMathTest is Test {
     uint256 internal constant EXPECTED_RELATIVE_ERROR = 1e4;
     uint256 constant ONE_18 = 1e18;
     uint256 constant ONE_20 = 1e20;
-    uint256 constant MILD_EXPONENT_BOUND = 2 ** 254 / uint256(ONE_20);
+    uint256 constant MILD_EXPONENT_BOUND = 2**254 / uint256(ONE_20);
     uint256 constant UPPER_BASE_BOUND = 1e7 * ONE_18;
     uint256 constant LOWER_BASE_BOUND = 1e15;
     uint256 constant UPPER_EXPONENT_BOUND = 5 * ONE_18;
@@ -27,6 +27,10 @@ contract LogExpMathTest is Test {
         assertApproxEqAbs(LogExpMath.pow(2e18, 2e18), 4e18, 100);
     }
 
+    /**
+     * forge-config: default.fuzz.runs = 256
+     * forge-config: intense.fuzz.runs = 10000
+     */
     function testPowMatchesJSFuzzed(uint256 base, uint256 exponent) external {
         base = bound(base, LOWER_BASE_BOUND, UPPER_BASE_BOUND);
         exponent = bound(exponent, LOWER_EXPONENT_BOUND, UPPER_EXPONENT_BOUND);
