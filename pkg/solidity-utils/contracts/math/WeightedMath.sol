@@ -255,7 +255,7 @@ library WeightedMath {
         uint256[] memory balanceRatiosWithFee,
         uint256 invariantRatioWithFees,
         uint256 swapFeePercentage
-    ) private pure returns (uint256 invariantRatio) {
+    ) internal pure returns (uint256 invariantRatio) {
         // Swap fees are charged on all tokens that are being added in a larger proportion than the overall invariant
         // increase.
         invariantRatio = FixedPoint.ONE;
@@ -408,7 +408,7 @@ library WeightedMath {
         uint256[] memory balanceRatiosWithoutFee,
         uint256 invariantRatioWithoutFees,
         uint256 swapFeePercentage
-    ) private pure returns (uint256 invariantRatio) {
+    ) internal pure returns (uint256 invariantRatio) {
         invariantRatio = FixedPoint.ONE;
 
         for (uint256 i = 0; i < balances.length; i++) {
