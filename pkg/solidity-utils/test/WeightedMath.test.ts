@@ -1,5 +1,3 @@
-import { Contract } from 'ethers';
-
 import { bn } from '@balancer-labs/v3-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { expectEqualWithError } from '@balancer-labs/v3-helpers/src/test/relativeError';
@@ -11,7 +9,7 @@ import { WeightedMathMock } from '../typechain-types/contracts/test/WeightedMath
 
 const MAX_RELATIVE_ERROR = 0.0001; //Max relative error
 
-describe.only('WeightedMath', function () {
+describe('WeightedMath', function () {
   let math: WeightedMathMock;
 
   before(async function () {
