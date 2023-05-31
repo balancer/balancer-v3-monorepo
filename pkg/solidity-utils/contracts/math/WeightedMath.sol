@@ -5,9 +5,6 @@ pragma solidity ^0.8.18;
 import "./FixedPoint.sol";
 import "./LogExpMath.sol";
 
-// These functions start with an underscore, as if they were part of a contract and not a library. At some point this
-// should be fixed.
-// solhint-disable private-vars-leading-underscore
 library WeightedMath {
     using FixedPoint for uint256;
 
@@ -70,7 +67,7 @@ library WeightedMath {
     // Invariant is used to collect protocol swap fees by comparing its value between two times.
     // So we can round always to the same direction. It is also used to initiate the BPT amount
     // and, because there is a minimum BPT, we round down the invariant.
-    function _calculateInvariant(
+    function calculateInvariant(
         uint256[] memory normalizedWeights,
         uint256[] memory balances
     ) internal pure returns (uint256 invariant) {
@@ -93,7 +90,7 @@ library WeightedMath {
 
     // Computes how many tokens can be taken out of a pool if `amountIn` are sent, given the
     // current balances and weights.
-    function _calcOutGivenIn(
+    function calcOutGivenIn(
         uint256 balanceIn,
         uint256 weightIn,
         uint256 balanceOut,
@@ -130,7 +127,7 @@ library WeightedMath {
 
     // Computes how many tokens must be sent to a pool in order to take `amountOut`, given the
     // current balances and weights.
-    function _calcInGivenOut(
+    function calcInGivenOut(
         uint256 balanceIn,
         uint256 weightIn,
         uint256 balanceOut,
@@ -168,7 +165,7 @@ library WeightedMath {
         return balanceIn.mulUp(ratio);
     }
 
-    function _calcBptOutGivenExactTokensIn(
+    function calcBptOutGivenExactTokensIn(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory amountsIn,
@@ -185,7 +182,7 @@ library WeightedMath {
             invariantRatioWithFees = invariantRatioWithFees + balanceRatiosWithFee[i].mulDown(normalizedWeights[i]);
         }
 
-        uint256 invariantRatio = _computeJoinExactTokensInInvariantRatio(
+        uint256 invariantRatio = computeJoinExactTokensInInvariantRatio(
             balances,
             normalizedWeights,
             amountsIn,
@@ -200,7 +197,7 @@ library WeightedMath {
         return bptOut;
     }
 
-    function _calcBptOutGivenExactTokenIn(
+    function calcBptOutGivenExactTokenIn(
         uint256 balance,
         uint256 normalizedWeight,
         uint256 amountIn,
@@ -251,7 +248,7 @@ library WeightedMath {
     /**
      * @dev Intermediate function to avoid stack-too-deep errors.
      */
-    function _computeJoinExactTokensInInvariantRatio(
+    function computeJoinExactTokensInInvariantRatio(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory amountsIn,
@@ -292,7 +289,7 @@ library WeightedMath {
         }
     }
 
-    function _calcTokenInGivenExactBptOut(
+    function calcTokenInGivenExactBptOut(
         uint256 balance,
         uint256 normalizedWeight,
         uint256 bptAmountOut,
@@ -331,7 +328,7 @@ library WeightedMath {
         return nonTaxableAmount + taxableAmountPlusFees;
     }
 
-    function _calcBptInGivenExactTokensOut(
+    function calcBptInGivenExactTokensOut(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory amountsOut,
@@ -349,7 +346,7 @@ library WeightedMath {
                 balanceRatiosWithoutFee[i].mulUp(normalizedWeights[i]);
         }
 
-        uint256 invariantRatio = _computeExitExactTokensOutInvariantRatio(
+        uint256 invariantRatio = computeExitExactTokensOutInvariantRatio(
             balances,
             normalizedWeights,
             amountsOut,
@@ -361,7 +358,7 @@ library WeightedMath {
         return bptTotalSupply.mulUp(invariantRatio.complement());
     }
 
-    function _calcBptInGivenExactTokenOut(
+    function calcBptInGivenExactTokenOut(
         uint256 balance,
         uint256 normalizedWeight,
         uint256 amountOut,
@@ -404,7 +401,7 @@ library WeightedMath {
     /**
      * @dev Intermediate function to avoid stack-too-deep errors.
      */
-    function _computeExitExactTokensOutInvariantRatio(
+    function computeExitExactTokensOutInvariantRatio(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory amountsOut,
@@ -442,7 +439,7 @@ library WeightedMath {
         }
     }
 
-    function _calcTokenOutGivenExactBptIn(
+    function calcTokenOutGivenExactBptIn(
         uint256 balance,
         uint256 normalizedWeight,
         uint256 bptAmountIn,
@@ -493,7 +490,7 @@ library WeightedMath {
      * @param totalSupply - the total supply of the Pool's BPT.
      * @param normalizedWeight - the normalized weight of the token to be added (normalized relative to final weights)
      */
-    function _calcBptOutAddToken(uint256 totalSupply, uint256 normalizedWeight) internal pure returns (uint256) {
+    function calcBptOutAddToken(uint256 totalSupply, uint256 normalizedWeight) internal pure returns (uint256) {
         // The amount of BPT which is equivalent to the token being added may be calculated by the growth in the
         // sum of the token weights, i.e. if we add a token which will make up 50% of the pool then we should receive
         // 50% of the new supply of BPT.
