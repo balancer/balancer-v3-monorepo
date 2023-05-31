@@ -1,28 +1,27 @@
 import { Contract } from 'ethers';
 
-import { bn } from '@balancer-labs/v2-helpers/src/numbers';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
-import {
-  calculateInvariant,
-  calcInGivenOut,
-  calcOutGivenIn,
-} from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
+import { bn } from '@balancer-labs/v3-helpers/src/numbers';
+import { deploy } from '@balancer-labs/v3-helpers/src/contract';
+import { expectEqualWithError } from '@balancer-labs/v3-helpers/src/test/relativeError';
 import { expect } from 'chai';
+
+import { calculateInvariant, calcInGivenOut, calcOutGivenIn } from '@balancer-labs/v3-helpers/src/math/weighted';
+
+import { WeightedMathMock } from '../typechain-types/contracts/test/WeightedMathMock';
 
 const MAX_RELATIVE_ERROR = 0.0001; //Max relative error
 
-describe('WeightedMath', function () {
-  let math: Contract;
+describe.only('WeightedMath', function () {
+  let math: WeightedMathMock;
 
   before(async function () {
-    math = await deploy('ExternalWeightedMath');
+    math = await deploy('WeightedMathMock');
   });
 
   context('invariant', () => {
     context('zero invariant', () => {
       it('reverts', async () => {
-        await expect(math.calculateInvariant([bn(1)], [0])).to.be.revertedWith('ZERO_INVARIANT');
+        await expect(math.calculateInvariant([bn(1)], [0])).to.be.revertedWithCustomError(math, 'ZeroInvariant');
       });
     });
 
@@ -206,4 +205,3 @@ describe('WeightedMath', function () {
     });
   });
 });
-
