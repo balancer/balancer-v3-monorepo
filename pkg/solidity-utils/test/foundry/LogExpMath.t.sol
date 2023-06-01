@@ -12,7 +12,7 @@ contract LogExpMathTest is Test {
     uint256 internal constant EXPECTED_RELATIVE_ERROR = 1e4;
     uint256 constant ONE_18 = 1e18;
     uint256 constant ONE_20 = 1e20;
-    uint256 constant MILD_EXPONENT_BOUND = 2**254 / uint256(ONE_20);
+    uint256 constant MILD_EXPONENT_BOUND = 2 ** 254 / uint256(ONE_20);
     uint256 constant UPPER_BASE_BOUND = 1e7 * ONE_18;
     uint256 constant LOWER_BASE_BOUND = 1e15;
     uint256 constant UPPER_EXPONENT_BOUND = 5 * ONE_18;
