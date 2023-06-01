@@ -123,7 +123,7 @@ describe('FixedPoint', () => {
     });
 
     it('divides large number by itself correctly', async () => {
-      const largeNumber = decimal('1e18');
+      const largeNumber = decimal('1e18').mul(Math.random());
       expect(await lib.divDown(fp(largeNumber), fp(largeNumber))).to.equal(fp(1));
     });
 
