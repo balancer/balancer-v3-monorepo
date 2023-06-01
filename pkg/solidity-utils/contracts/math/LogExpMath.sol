@@ -68,7 +68,7 @@ library LogExpMath {
     int256 constant LN_36_LOWER_BOUND = ONE_18 - 1e17;
     int256 constant LN_36_UPPER_BOUND = ONE_18 + 1e17;
 
-    uint256 constant MILD_EXPONENT_BOUND = 2 ** 254 / uint256(ONE_20);
+    uint256 constant MILD_EXPONENT_BOUND = 2**254 / uint256(ONE_20);
 
     // 18 decimal constants
     int256 constant x0 = 128000000000000000000; // 2ˆ7
@@ -166,17 +166,13 @@ library LogExpMath {
             revert InvalidExponent();
         }
 
-        // We avoid using recursion here because zkSync doesn't support it.
-        bool negativeExponent = false;
-
         if (x < 0) {
             // We only handle positive exponents: e^(-x) is computed as 1 / e^x. We can safely make x positive since it
-            // fits in the signed 256 bit range (as it is larger than MIN_NATURAL_EXPONENT). In the negative
-            // exponent case, compute e^x, then return 1 / result.
+            // fits in the signed 256 bit range (as it is larger than MIN_NATURAL_EXPONENT).
+            // Fixed point division requires multiplying by ONE_18.
             unchecked {
-                x = -x;
+                return ((ONE_18 * ONE_18) / exp(-x));
             }
-            negativeExponent = true;
         }
 
         // First, we use the fact that e^(x+y) = e^x * e^y to decompose x into a sum of powers of two, which we call x_n,
@@ -308,10 +304,7 @@ library LogExpMath {
             // all three (one 20 decimal fixed point multiplication, dividing by ONE_20, and one integer multiplication),
             // and then drop two digits to return an 18 decimal value.
 
-            int256 result = (((product * seriesSum) / ONE_20) * firstAN) / 100;
-
-            // We avoid using recursion here because zkSync doesn't support it.
-            return negativeExponent ? (ONE_18 * ONE_18) / result : result;
+            return (((product * seriesSum) / ONE_20) * firstAN) / 100;
         }
     }
 
@@ -367,16 +360,13 @@ library LogExpMath {
      * @dev Internal natural logarithm (ln(a)) with signed 18 decimal fixed point argument.
      */
     function _ln(int256 a) private pure returns (int256) {
-        // We avoid using recursion here because zkSync doesn't support it.
-        bool negativeExponent = false;
-
         if (a < ONE_18) {
             // Since ln(a^k) = k * ln(a), we can compute ln(a) as ln(a) = ln((1/a)^(-1)) = - ln((1/a)). If a is less
-            // than one, 1/a will be greater than one, so in this case we compute ln(1/a) and negate the final result.
+            // than one, 1/a will be greater than one, and this if statement will not be entered in the recursive call.
+            // Fixed point division requires multiplying by ONE_18.
             unchecked {
-                a = (ONE_18 * ONE_18) / a;
+                return (-_ln((ONE_18 * ONE_18) / a));
             }
-            negativeExponent = true;
         }
 
         // First, we use the fact that ln^(a * b) = ln(a) + ln(b) to decompose ln(a) into a sum of powers of two, which
@@ -505,10 +495,7 @@ library LogExpMath {
             // with 20 decimals). All that remains is to sum these two, and then drop two digits to return a 18 decimal
             // value.
 
-            int256 result = (sum + seriesSum) / 100;
-
-            // We avoid using recursion here because zkSync doesn't support it.
-            return negativeExponent ? -result : result;
+            return (sum + seriesSum) / 100;
         }
     }
 
