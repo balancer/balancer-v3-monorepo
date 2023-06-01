@@ -32,6 +32,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@babel/runtime@npm:^7.21.0":
+  version: 7.21.5
+  resolution: "@babel/runtime@npm:7.21.5"
+  dependencies:
+    regenerator-runtime: "npm:^0.13.11"
+  checksum: 1ecc2c70921d1a43b44287c9bccf28fc816923a35714045995505e866f4a2b5b94f66a806e86ad5fbfdecb6623fc380fb6778b92f9fa814885430b461eddf392
+  languageName: node
+  linkType: hard
+
 "@balancer-labs/solidity-toolbox@workspace:*, @balancer-labs/solidity-toolbox@workspace:pvt/solidity-toolbox":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/solidity-toolbox@workspace:pvt/solidity-toolbox"
@@ -43,6 +52,7 @@ __metadata:
     "@nomicfoundation/hardhat-toolbox": "npm:^2.0.2"
     "@nomiclabs/hardhat-ethers": "npm:^2.2.3"
     "@nomiclabs/hardhat-etherscan": "npm:^3.1.7"
+    "@openzeppelin/contracts": "npm:^4.9.0"
     "@typechain/ethers-v5": "npm:^10.2.1"
     "@typechain/hardhat": "npm:^6.1.6"
     "@types/chai": "npm:^4.3.3"
@@ -175,6 +185,7 @@ __metadata:
     lodash.range: "npm:^3.2.0"
     lodash.times: "npm:^4.3.2"
     lodash.zip: "npm:^4.2.0"
+    mathjs: "npm:^11.8.0"
     mocha: "npm:^10.1.0"
     nodemon: "npm:^2.0.20"
     solhint: "npm:^3.4.1"
@@ -1179,6 +1190,13 @@ __metadata:
     mkdirp: "npm:^1.0.4"
     rimraf: "npm:^3.0.2"
   checksum: 3557a12cd18dfb5bcd5d5cf910b783832af50ffba28fd5bb510c3c56b2df0481558b9ec6d3008e8eeefb9f2944bdc1d34832b1a8bbf6ad1cd2f256bf12c84ff0
+  languageName: node
+  linkType: hard
+
+"@openzeppelin/contracts@npm:^4.9.0":
+  version: 4.9.0
+  resolution: "@openzeppelin/contracts@npm:4.9.0"
+  checksum: 3d97814254e4e70e6c2a9a6f9b630ea1f5c2fb73473288ae58e0739ac2ebfd0f321bf4827f0269b657a07eb08adf5b482f0f49a26c8528407e3fdd8c4a55a601
   languageName: node
   linkType: hard
 
@@ -2667,6 +2685,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"complex.js@npm:^2.1.1":
+  version: 2.1.1
+  resolution: "complex.js@npm:2.1.1"
+  checksum: d9f2acf570c29df4c8b2a9f2cc3992c6f783e5c534be9606f8c61115714e0eea6f05469e120417328153cb4296633f09b353cc2da65ace806e26f7aef73f0c62
+  languageName: node
+  linkType: hard
+
 "concat-map@npm:0.0.1":
   version: 0.0.1
   resolution: "concat-map@npm:0.0.1"
@@ -2847,7 +2872,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"decimal.js@npm:^10.4.2":
+"decimal.js@npm:^10.4.2, decimal.js@npm:^10.4.3":
   version: 10.4.3
   resolution: "decimal.js@npm:10.4.3"
   checksum: 0fbf4c97adc9826a2f1cf2ae8be8cc00cca3f2b61643ee19f0dd8ee55f11385ed0111d77c8cd234e151c80da1454b20c8e61f0354e3b90b5bec3a72379359049
@@ -3131,6 +3156,13 @@ __metadata:
   version: 3.1.1
   resolution: "escalade@npm:3.1.1"
   checksum: 37f3535f99193a5ff755af30866bb55828aff044bdc14e1844d0965470ba87ef686761fbbf2cea02955f1bb8510f72c3308e7dbe2d794fa85058a33bf60ea372
+  languageName: node
+  linkType: hard
+
+"escape-latex@npm:^1.2.0":
+  version: 1.2.0
+  resolution: "escape-latex@npm:1.2.0"
+  checksum: c49d653bc06d9b21a87a8308fa016383044b23a2e399fcc3db6b133d1106db041b8ec9b80f9d0f6514f0c0a14990d944a81c04408d80ec0fae997477333b32b4
   languageName: node
   linkType: hard
 
@@ -3777,6 +3809,13 @@ __metadata:
   version: 1.19.5
   resolution: "fp-ts@npm:1.19.5"
   checksum: cee85ba8cdb7e8b7e2b087dcd069e0c8777a590bd3505639716ac5a0d846a44ac3dfd676f4745ae06c1dd9afed4d47787d0a9384fa7a96e7fadf86799ba76ff9
+  languageName: node
+  linkType: hard
+
+"fraction.js@npm:^4.2.0":
+  version: 4.2.0
+  resolution: "fraction.js@npm:4.2.0"
+  checksum: b9136779dc6442d15595bf29c9cdec784968645711a6df0e62bfffc669d9d895a79d760b1a95f0a58adf5893037bf91a0e7ef0b68f105526d3418c5a77cd115b
   languageName: node
   linkType: hard
 
@@ -4936,6 +4975,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"javascript-natural-sort@npm:^0.7.1":
+  version: 0.7.1
+  resolution: "javascript-natural-sort@npm:0.7.1"
+  checksum: 1eef5ae7f34691e9febdcfe1fa44c1a9436631fb7b93a48ab614ce460e3ab344abf6a341bd6d1a82f0df7ac7e8040df360d9a643d7651978c92e7fa9b9f01d23
+  languageName: node
+  linkType: hard
+
 "js-sdsl@npm:^4.1.4":
   version: 4.4.0
   resolution: "js-sdsl@npm:4.4.0"
@@ -5376,6 +5422,25 @@ __metadata:
   version: 1.1.3
   resolution: "markdown-table@npm:1.1.3"
   checksum: 7e877ad5e610495beec19876a8b5136b6f3f7b3dd3af0f1aac7589033064f23ff4e7569b33c90a461c44586f371cfa883ff5b36a9cf514a64b07d14d2bccfec4
+  languageName: node
+  linkType: hard
+
+"mathjs@npm:^11.8.0":
+  version: 11.8.0
+  resolution: "mathjs@npm:11.8.0"
+  dependencies:
+    "@babel/runtime": "npm:^7.21.0"
+    complex.js: "npm:^2.1.1"
+    decimal.js: "npm:^10.4.3"
+    escape-latex: "npm:^1.2.0"
+    fraction.js: "npm:^4.2.0"
+    javascript-natural-sort: "npm:^0.7.1"
+    seedrandom: "npm:^3.0.5"
+    tiny-emitter: "npm:^2.1.0"
+    typed-function: "npm:^4.1.0"
+  bin:
+    mathjs: bin/cli.js
+  checksum: 7ab8d874b1b4d864e29eda36b04cc2b47b5a0cae18d34a17c08fc0ee6f9fd5034e4ee762027cee2cc7581230d42fa5c8ded4ab114a9e3d264e20bdf878979a81
   languageName: node
   linkType: hard
 
@@ -6483,6 +6548,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"regenerator-runtime@npm:^0.13.11":
+  version: 0.13.11
+  resolution: "regenerator-runtime@npm:0.13.11"
+  checksum: 0485db63ce47760e28329590cb9f8b208365d076dbf2edaa32e551a7c0451fc6f7557b225268422c960ffa4fbc6ff86d63d6a747aacbf6b10ed6a747b432e3c8
+  languageName: node
+  linkType: hard
+
 "regexp.prototype.flags@npm:^1.4.3":
   version: 1.5.0
   resolution: "regexp.prototype.flags@npm:1.5.0"
@@ -6837,6 +6909,13 @@ __metadata:
     node-gyp: "npm:latest"
     node-gyp-build: "npm:^4.2.0"
   checksum: f67a7e2b6e6d02502d425015b09da74382cf33043c733f4d0d5c32b9f243b47fe930fb4df258d5937e84373f1bf7b9073bbf330fab654ca8f0a24a2e25af6007
+  languageName: node
+  linkType: hard
+
+"seedrandom@npm:^3.0.5":
+  version: 3.0.5
+  resolution: "seedrandom@npm:3.0.5"
+  checksum: c04d9a1c1c28bc1d5737f5fb02291ad56c34d57599034ce4a0e65578a84c3128d81d20d70729e0e32ef57e3c6b914b3751cbba95e9dddbd0212a405b2f921119
   languageName: node
   linkType: hard
 
@@ -7626,6 +7705,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tiny-emitter@npm:^2.1.0":
+  version: 2.1.0
+  resolution: "tiny-emitter@npm:2.1.0"
+  checksum: 3b905925cfa3f75302be0f324d2d7c1cf563c09304bbd40bf38c3abf3b8a93f2f2aa3a2e4b099400a9a1f44bc087fab42800314e8a5ea71cb81bc91ea2d8f1bc
+  languageName: node
+  linkType: hard
+
 "tmp@npm:0.0.33":
   version: 0.0.33
   resolution: "tmp@npm:0.0.33"
@@ -7865,6 +7951,13 @@ __metadata:
     for-each: "npm:^0.3.3"
     is-typed-array: "npm:^1.1.9"
   checksum: bd196be0cb6c267e1fc8c3d54f19c1059d1082e0baf0f6735b39ed2a01e9dd2fef0593b1b03e0bdb9c29d1e6e34bbb1498f951a19b4c78bc5c7af6786fc3c6b6
+  languageName: node
+  linkType: hard
+
+"typed-function@npm:^4.1.0":
+  version: 4.1.0
+  resolution: "typed-function@npm:4.1.0"
+  checksum: 987d8007aeb2809a27347b91e1dd317c32e33b2083468caba863109d72be424bbe10378ab376457da65ddd9567b1fd3c2a1b26780ebcbcbffe56eb04d971f7f4
   languageName: node
   linkType: hard
 
