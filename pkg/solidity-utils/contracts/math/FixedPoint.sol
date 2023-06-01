@@ -50,7 +50,7 @@ library FixedPoint {
         // Multiplication overflow protection is provided by Solidity 0.8.x
         uint256 aInflated = a * ONE;
 
-        // Solidity 0.8x always checks for division by zero
+        // Solidity 0.8.x always checks for division by zero
         return aInflated / b;
     }
 
