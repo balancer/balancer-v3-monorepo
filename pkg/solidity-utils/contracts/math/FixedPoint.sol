@@ -47,10 +47,10 @@ library FixedPoint {
     }
 
     function divDown(uint256 a, uint256 b) internal pure returns (uint256) {
-        // Multiplication overflow protection is provided by Solidity 0.8.x
+        // Solidity 0.8 reverts with a Panic code (0x11) if the multiplication overflows.
         uint256 aInflated = a * ONE;
 
-        // Solidity 0.8.x always checks for division by zero
+        // Solidity 0.8 reverts with a "Division by Zero" Panic code (0x12) if b is zero
         return aInflated / b;
     }
 
