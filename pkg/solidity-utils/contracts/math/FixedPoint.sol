@@ -23,7 +23,7 @@ library FixedPoint {
     uint256 internal constant MIN_POW_BASE_FREE_EXPONENT = 0.7e18;
 
     function mulDown(uint256 a, uint256 b) internal pure returns (uint256) {
-        // Multiple overflow protection is done by Solidity 0.8x
+        // Multiplication overflow protection is provided by Solidity 0.8.x
         uint256 product = a * b;
 
         return product / ONE;
