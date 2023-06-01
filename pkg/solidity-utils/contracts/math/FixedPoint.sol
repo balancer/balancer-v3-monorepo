@@ -93,7 +93,7 @@ library FixedPoint {
         } else {
             uint256 raw = LogExpMath.pow(x, y);
             uint256 maxError = mulUp(raw, MAX_POW_RELATIVE_ERROR) + 1;
-            
+
             if (raw < maxError) {
                 return 0;
             } else {
