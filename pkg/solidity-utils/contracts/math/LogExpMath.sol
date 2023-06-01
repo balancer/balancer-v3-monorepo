@@ -176,7 +176,7 @@ library LogExpMath {
             unchecked {
                 x = -x;
             }
-            negative = true;
+            negativeExponent = true;
         }
 
         // First, we use the fact that e^(x+y) = e^x * e^y to decompose x into a sum of powers of two, which we call x_n,
@@ -310,7 +310,7 @@ library LogExpMath {
 
             int256 result = (((product * seriesSum) / ONE_20) * firstAN) / 100;
 
-            return negative ? (ONE_18 * ONE_18) / result : result;
+            return negativeExponent ? (ONE_18 * ONE_18) / result : result;
         }
     }
 
@@ -367,7 +367,7 @@ library LogExpMath {
      */
     function _ln(int256 a) private pure returns (int256) {
         // We avoid using recursion here because zkSync doesn't support it.
-        bool negative = false;
+        bool negativeExponent = false;
 
         if (a < ONE_18) {
             // Since ln(a^k) = k * ln(a), we can compute ln(a) as ln(a) = ln((1/a)^(-1)) = - ln((1/a)). If a is less
@@ -375,7 +375,7 @@ library LogExpMath {
             unchecked {
                 a = (ONE_18 * ONE_18) / a;
             }
-            negative = true;
+            negativeExponent = true;
         }
 
         // First, we use the fact that ln^(a * b) = ln(a) + ln(b) to decompose ln(a) into a sum of powers of two, which
@@ -506,7 +506,7 @@ library LogExpMath {
 
             int256 result = (sum + seriesSum) / 100;
 
-            return negative ? -result : result;
+            return negativeExponent ? -result : result;
         }
     }
 
