@@ -167,7 +167,7 @@ library LogExpMath {
         }
 
         // We avoid using recursion here because zkSync doesn't support it.
-        bool negative = false;
+        bool negativeExponent = false;
 
         if (x < 0) {
             // We only handle positive exponents: e^(-x) is computed as 1 / e^x. We can safely make x positive since it
