@@ -18,6 +18,7 @@
 - [ ] The diff is legible and has no extraneous changes
 - [ ] Complex code has been commented, including external interfaces
 - [ ] Tests are included for all code paths
+- [ ] Tests have 100% coverage
 - [ ] The base branch is either `main`, or there's a description of how to merge
 
 ## Issue Resolution
