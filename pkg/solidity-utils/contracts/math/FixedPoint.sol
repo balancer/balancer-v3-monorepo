@@ -30,7 +30,7 @@ library FixedPoint {
     }
 
     function mulUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
-        // Multiple overflow protection is done by Solidity 0.8x
+        // Multiplication overflow protection is provided by Solidity 0.8.x
         uint256 product = a * b;
 
         // The traditional divUp formula is:
