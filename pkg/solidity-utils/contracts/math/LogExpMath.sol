@@ -370,7 +370,7 @@ library LogExpMath {
 
         if (a < ONE_18) {
             // Since ln(a^k) = k * ln(a), we can compute ln(a) as ln(a) = ln((1/a)^(-1)) = - ln((1/a)). If a is less
-            // than one, 1/a will be greater than one, and this if statement will not be entered in the recursive call.
+            // than one, 1/a will be greater than one, so in this case we compute ln(1/a) and negate the final result.
             unchecked {
                 a = (ONE_18 * ONE_18) / a;
             }
