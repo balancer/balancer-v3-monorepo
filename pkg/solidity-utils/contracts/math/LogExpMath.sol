@@ -28,7 +28,7 @@ library LogExpMath {
     error ExponentOutOfBounds();
 
     /**
-     * @dev This error is thrown when the y * ln(x) is not within an acceptable range.
+     * @dev This error is thrown when the exponent * ln(base) is not within an acceptable range.
      */
     error ProductOutOfBounds();
 
