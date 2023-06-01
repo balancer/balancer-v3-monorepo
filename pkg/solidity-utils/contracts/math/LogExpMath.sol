@@ -68,7 +68,7 @@ library LogExpMath {
     int256 constant LN_36_LOWER_BOUND = ONE_18 - 1e17;
     int256 constant LN_36_UPPER_BOUND = ONE_18 + 1e17;
 
-    uint256 constant MILD_EXPONENT_BOUND = 2**254 / uint256(ONE_20);
+    uint256 constant MILD_EXPONENT_BOUND = 2 ** 254 / uint256(ONE_20);
 
     // 18 decimal constants
     int256 constant x0 = 128000000000000000000; // 2ˆ7
@@ -310,6 +310,7 @@ library LogExpMath {
 
             int256 result = (((product * seriesSum) / ONE_20) * firstAN) / 100;
 
+            // We avoid using recursion here because zkSync doesn't support it.
             return negativeExponent ? (ONE_18 * ONE_18) / result : result;
         }
     }
@@ -506,6 +507,7 @@ library LogExpMath {
 
             int256 result = (sum + seriesSum) / 100;
 
+            // We avoid using recursion here because zkSync doesn't support it.
             return negativeExponent ? -result : result;
         }
     }
