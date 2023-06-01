@@ -30,3 +30,24 @@ export const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 export function randomAddress(): string {
   return ethers.Wallet.createRandom().address;
 }
+
+// 0x00: Used for generic compiler inserted panics.
+export const GENERIC_PANIC = '0x00';
+//0x01: If you call assert with an argument that evaluates to false.
+export const ASSERT_PANIC = '0x01';
+//0x11: If an arithmetic operation results in underflow or overflow outside of an unchecked { ... } block.
+export const ARITHMETIC_FLOW_PANIC = '0x11';
+//0x12; If you divide or modulo by zero (e.g. 5 / 0 or 23 % 0).
+export const DIVISION_BY_ZERO_PANIC = '0x12';
+//0x21: If you convert a value that is too big or negative into an enum type.
+export const WRONG_ENUM_VALUE_PANIC = '0x21';
+//0x22: If you access a storage byte array that is incorrectly encoded.
+export const STORAGE_ARRAY_WRONG_ENCODING_PANIC = '0x22';
+//0x31: If you call .pop() on an empty array.
+export const EMPTY_ARRAY_POP_PANIC = '0x31';
+//0x32: If you access an array, bytesN or an array slice at an out-of-bounds or negative index.
+export const ARRAY_OUT_OF_BOUNDS_PANIC = '0x32';
+//0x41: If you allocate too much memory or create an array that is too large.
+export const OUT_OF_MEMORY_PANIC = '0x41';
+//0x51: If you call a zero-initialized variable of internal function type.
+export const INTERNAL_ZERO_CALL_PANIC = '0x51';
