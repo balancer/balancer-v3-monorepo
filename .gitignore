@@ -33,3 +33,6 @@ typechain-types/
 # Coverage
 coverage/
 coverage.json
+
+# Slither
+slither/
