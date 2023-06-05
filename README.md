@@ -84,7 +84,15 @@ $ yarn slither
 ```
 
 The analyzer's global settings can be found in `.slither.config.json`.
+
+
 Some of the analyzer's known findings are already filtered out using [--triage-mode option](https://github.com/crytic/slither/wiki/Usage#triage-mode); the results of the triage can be found in `slither.db.json` files inside each individual workspace.
+
+To run Slither in triage mode:
+
+```bash
+$ yarn slither:triage
+```
 
 ## Security
 
