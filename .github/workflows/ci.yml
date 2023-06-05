@@ -26,7 +26,9 @@ jobs:
       - uses: actions/checkout@v3
       - name: Set up environment
         uses: ./.github/actions/setup
-      - name: Slither Static Analyzer
+      - name: Install Slither
+        run: yarn slither-install
+      - name: Run Slither
         run: yarn slither
 
   build:
