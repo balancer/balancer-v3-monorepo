@@ -240,8 +240,6 @@ describe.only('WeightedMath', function () {
         bptTotalSupply,
         swapFeePercentage
       );
-      console.log('bptOutPool:', bptOutPool);
-      console.log('bptOutMath:', bptOutMath);
       expectEqualWithError(bptOutPool, bptOutMath, MAX_RELATIVE_ERROR);
     });
 
