@@ -1,5 +1,5 @@
 import { bn } from '@balancer-labs/v3-helpers/src/numbers';
-import { MAX_IN_RATIO, MAX_RELATIVE_ERROR } from '@balancer-labs/v3-helpers/src/constants';
+import { MAX_OUT_RATIO, MAX_IN_RATIO, MAX_RELATIVE_ERROR } from '@balancer-labs/v3-helpers/src/constants';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { expectEqualWithError } from '@balancer-labs/v3-helpers/src/test/relativeError';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
@@ -218,6 +218,20 @@ describe.only('WeightedMath', function () {
       );
       //TODO: review high rel error for small amount
       expectEqualWithError(inAmountPool, bn(inAmountMath.toFixed(0)), 0.5);
+    });
+
+    it('throws MaxOutRatio error when amountOut exceeds maximum allowed', async () => {
+      const tokenBalanceIn = bn(100e18);
+      const tokenWeightIn = bn(50e18);
+      const tokenBalanceOut = bn(100e18);
+      const tokenWeightOut = bn(40e18);
+
+      // The amount in exceeds the maximum in ratio (i.e. tokenBalanceIn * MAX_IN_RATIO)
+      const tokenAmountOut = tokenBalanceOut.mul(MAX_OUT_RATIO).add(bn('1')); // Just slightly greater than maximum allowed
+
+      await expect(
+        math.calcInGivenOut(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountOut)
+      ).to.be.revertedWithCustomError(math, 'MaxOutRatio');
     });
   });
 
