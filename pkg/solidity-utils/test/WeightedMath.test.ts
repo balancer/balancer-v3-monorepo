@@ -2,6 +2,8 @@ import { bn } from '@balancer-labs/v3-helpers/src/numbers';
 import { MAX_IN_RATIO, MAX_RELATIVE_ERROR } from '@balancer-labs/v3-helpers/src/constants';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { expectEqualWithError } from '@balancer-labs/v3-helpers/src/test/relativeError';
+import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
+import '@balancer-labs/v3-common/setupTests';
 import { expect } from 'chai';
 
 import {
@@ -9,6 +11,7 @@ import {
   calcInGivenOut,
   calcOutGivenIn,
   calcBptOutGivenExactTokensIn,
+  calcBptOutGivenExactTokenIn,
 } from '@balancer-labs/v3-helpers/src/math/weighted';
 
 import { WeightedMathMock } from '../typechain-types/contracts/test/WeightedMathMock';
@@ -16,7 +19,7 @@ import { WeightedMathMock } from '../typechain-types/contracts/test/WeightedMath
 describe.only('WeightedMath', function () {
   let math: WeightedMathMock;
 
-  before(async function () {
+  sharedBeforeEach('deploy', async function () {
     math = await deploy('WeightedMathMock');
   });
 
@@ -257,13 +260,13 @@ describe.only('WeightedMath', function () {
         bptTotalSupply,
         swapFeePercentage
       );
-      expectEqualWithError(bptOutPool, 0, MAX_RELATIVE_ERROR);
+      expect(bptOutPool).to.be.zero;
     });
 
     it('calculates correct BPT out when amountsIn are extremely small', async () => {
       const balances = [bn(100e18), bn(200e18)];
       const normalizedWeights = [bn(0.5e18), bn(0.5e18)];
-      const amountsIn = [bn(0.01e18), bn(0.02e18)];
+      const amountsIn = [bn(1e12), bn(2e12)];
       const bptTotalSupply = bn(1000e18);
       const swapFeePercentage = bn(0.01e18);
 
@@ -302,6 +305,118 @@ describe.only('WeightedMath', function () {
         balances,
         normalizedWeights,
         amountsIn,
+        bptTotalSupply,
+        swapFeePercentage
+      );
+      expectEqualWithError(bptOutPool, bptOutMath, MAX_RELATIVE_ERROR);
+    });
+  });
+
+  describe('calcBptOutGivenExactTokenIn', () => {
+    // Define a standard BPT total supply and swap fee for tests.
+    const bptTotalSupply = bn(1000e18);
+    const swapFeePercentage = bn(0.01e18); // 1% swap fee
+    const normalizedWeight = bn(0.5e18); // 50% normalized weight
+
+    it('calculates correct BPT out amount with no swap fee', async () => {
+      const balance = bn(100e18);
+      const amountIn = bn(10e18);
+
+      const bptOutMath = calcBptOutGivenExactTokenIn(
+        balance,
+        normalizedWeight,
+        amountIn,
+        bptTotalSupply,
+        swapFeePercentage
+      );
+      const bptOutPool = await math.calcBptOutGivenExactTokenIn(
+        balance,
+        normalizedWeight,
+        amountIn,
+        bptTotalSupply,
+        swapFeePercentage
+      );
+      expectEqualWithError(bptOutPool, bptOutMath, MAX_RELATIVE_ERROR);
+    });
+
+    it('calculates correct BPT out amount with swap fee', async () => {
+      const balance = bn(100e18);
+      const amountIn = bn(200e18); // Big enough to trigger swap fee
+
+      const bptOutMath = calcBptOutGivenExactTokenIn(
+        balance,
+        normalizedWeight,
+        amountIn,
+        bptTotalSupply,
+        swapFeePercentage
+      );
+      const bptOutPool = await math.calcBptOutGivenExactTokenIn(
+        balance,
+        normalizedWeight,
+        amountIn,
+        bptTotalSupply,
+        swapFeePercentage
+      );
+      expectEqualWithError(bptOutPool, bptOutMath, MAX_RELATIVE_ERROR);
+    });
+
+    it('calculates 0 BPT out when amountIn is 0', async () => {
+      const balance = bn(100e18);
+      const amountIn = bn(0);
+
+      const bptOutMath = calcBptOutGivenExactTokenIn(
+        balance,
+        normalizedWeight,
+        amountIn,
+        bptTotalSupply,
+        swapFeePercentage
+      );
+      const bptOutPool = await math.calcBptOutGivenExactTokenIn(
+        balance,
+        normalizedWeight,
+        amountIn,
+        bptTotalSupply,
+        swapFeePercentage
+      );
+      expectEqualWithError(bptOutPool, bptOutMath, MAX_RELATIVE_ERROR);
+    });
+
+    it('calculates correct BPT out amount when balance is extremely small', async () => {
+      const balance = bn(1e6); // 0.000001 token
+      const amountIn = bn(1e6);
+
+      const bptOutMath = calcBptOutGivenExactTokenIn(
+        balance,
+        normalizedWeight,
+        amountIn,
+        bptTotalSupply,
+        swapFeePercentage
+      );
+      const bptOutPool = await math.calcBptOutGivenExactTokenIn(
+        balance,
+        normalizedWeight,
+        amountIn,
+        bptTotalSupply,
+        swapFeePercentage
+      );
+      expectEqualWithError(bptOutPool, bptOutMath, MAX_RELATIVE_ERROR);
+    });
+
+    it('calculates correct BPT out amount when balance is extremely large', async () => {
+      const balance = bn(1000000e18); // 1,000,000 tokens
+      const amountIn = bn(100e18);
+
+      const bptOutMath = calcBptOutGivenExactTokenIn(
+        balance,
+        normalizedWeight,
+        amountIn,
+        bptTotalSupply,
+        swapFeePercentage
+      );
+      const bptOutPool = await math.calcBptOutGivenExactTokenIn(
+        balance,
+        normalizedWeight,
+        amountIn,
         bptTotalSupply,
         swapFeePercentage
       );
