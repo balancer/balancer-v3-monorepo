@@ -218,9 +218,8 @@ export function calcBptInGivenExactTokenOut(
 }
 
 export function calcTokenOutGivenExactBptIn(
-  tokenIndex: number,
-  fpBalances: BigNumberish[],
-  fpWeights: BigNumberish[],
+  fpBalance: BigNumberish,
+  fpWeight: BigNumberish,
   fpBptAmountIn: BigNumberish,
   fpBptTotalSupply: BigNumberish,
   fpSwapFeePercentage: BigNumberish
@@ -228,8 +227,8 @@ export function calcTokenOutGivenExactBptIn(
   const bptAmountIn = fromFp(fpBptAmountIn);
   const bptTotalSupply = fromFp(fpBptTotalSupply);
   const swapFeePercentage = fromFp(fpSwapFeePercentage);
-  const weight = fromFp(fpWeights[tokenIndex]);
-  const balance = fpBalances.map(fromFp)[tokenIndex];
+  const weight = fromFp(fpWeight);
+  const balance = fromFp(fpBalance);
 
   const invariantRatio = bptTotalSupply.sub(bptAmountIn).div(bptTotalSupply);
   const tokenBalanceRatio = invariantRatio.pow(decimal(1).div(weight));
