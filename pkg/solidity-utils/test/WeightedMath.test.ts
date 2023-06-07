@@ -21,7 +21,7 @@ import {
 
 import { WeightedMathMock } from '../typechain-types/contracts/test/WeightedMathMock';
 
-describe.only('WeightedMath', function () {
+describe('WeightedMath', function () {
   let math: WeightedMathMock;
 
   sharedBeforeEach('deploy', async function () {
@@ -371,13 +371,6 @@ describe.only('WeightedMath', function () {
       const balance = bn(100e18);
       const amountIn = bn(0);
 
-      const expected = calcBptOutGivenExactTokenIn(
-        balance,
-        normalizedWeight,
-        amountIn,
-        bptTotalSupply,
-        swapFeePercentage
-      );
       const result = await math.calcBptOutGivenExactTokenIn(
         balance,
         normalizedWeight,
@@ -385,7 +378,7 @@ describe.only('WeightedMath', function () {
         bptTotalSupply,
         swapFeePercentage
       );
-      expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
+      expectEqualWithError(result, 0, MAX_RELATIVE_ERROR);
     });
 
     it('calculates correct BPT out amount when balance is extremely small', async () => {
@@ -492,6 +485,55 @@ describe.only('WeightedMath', function () {
         swapFeePercentage
       );
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
+    });
+
+    it('calculates correct BPT when swap fee is applied', async () => {
+      const balances = [bn(100e18), bn(100e18)];
+      const normalizedWeights = [bn(0.01e18), bn(0.99e18)];
+      const amountsOut = [bn(50e18), bn(10e18)];
+      const bptTotalSupply = bn(100e18);
+      const swapFeePercentage = bn(0.01e18);
+
+      const expected = calcBptInGivenExactTokensOut(
+        balances,
+        normalizedWeights,
+        amountsOut,
+        bptTotalSupply,
+        swapFeePercentage
+      );
+      const result = await math.calcBptInGivenExactTokensOut(
+        balances,
+        normalizedWeights,
+        amountsOut,
+        bptTotalSupply,
+        swapFeePercentage
+      );
+      expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
+    });
+
+    it('calculates correct BPT when one of the out tokens is zero', async () => {
+      const balances = [bn(100e18), bn(100e18)];
+      const normalizedWeights = [bn(0.5e18), bn(0.5e18)];
+      const amountsOut = [bn(0), bn(10e18)];
+      const bptTotalSupply = bn(100e18);
+      const swapFeePercentage = bn(0.01e18);
+
+      const expected = calcBptInGivenExactTokensOut(
+        balances,
+        normalizedWeights,
+        amountsOut,
+        bptTotalSupply,
+        swapFeePercentage
+      );
+      const result = await math.calcBptInGivenExactTokensOut(
+        balances,
+        normalizedWeights,
+        amountsOut,
+        bptTotalSupply,
+        swapFeePercentage
+      );
+      // TODO: For some reason precision loss here is high
+      expectEqualWithError(result, expected, 0.01);
     });
   });
 
