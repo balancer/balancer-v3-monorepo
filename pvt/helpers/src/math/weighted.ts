@@ -176,6 +176,47 @@ export function calcBptInGivenExactTokensOut(
   return fp(bptIn);
 }
 
+export function calcBptInGivenExactTokenOut(
+  fpBalance: BigNumberish,
+  fpWeight: BigNumberish,
+  fpAmountOut: BigNumberish,
+  fpBptTotalSupply: BigNumberish,
+  fpSwapFeePercentage: BigNumberish
+): BigNumberish {
+  const balance = fromFp(fpBalance);
+  const normalizedWeight = fromFp(fpWeight);
+  const amountOut = fromFp(fpAmountOut);
+  const bptTotalSupply = fromFp(fpBptTotalSupply);
+  const swapFeePercentage = fromFp(fpSwapFeePercentage);
+
+  let amountOutWithFee;
+  const balanceRatioWithoutFee = balance.sub(amountOut).div(balance);
+
+  const invariantRatioWithoutFees = balanceRatioWithoutFee.mul(normalizedWeight).add(complement(normalizedWeight));
+
+  if (invariantRatioWithoutFees.gt(balanceRatioWithoutFee)) {
+    const nonTaxableAmount = balance.mul(complement(invariantRatioWithoutFees));
+    const taxableAmount = amountOut.sub(nonTaxableAmount);
+    const taxableAmountPlusFees = taxableAmount.div(complement(swapFeePercentage));
+
+    amountOutWithFee = nonTaxableAmount.add(taxableAmountPlusFees);
+  } else {
+    amountOutWithFee = amountOut;
+    // If a token's amount in is not being charged a swap fee then it might be zero.
+    // In this case, it's clear that the sender should receive no BPT.
+    if (amountOutWithFee.floor().toNumber() == 0) {
+      return 0;
+    }
+  }
+
+  const balanceRatio = balance.sub(amountOutWithFee).div(balance);
+
+  const invariantRatio = balanceRatio.pow(normalizedWeight);
+
+  const bptOut = bptTotalSupply.mul(complement(invariantRatio));
+  return fp(bptOut);
+}
+
 export function calcTokenOutGivenExactBptIn(
   tokenIndex: number,
   fpBalances: BigNumberish[],
