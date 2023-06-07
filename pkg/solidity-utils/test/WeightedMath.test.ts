@@ -15,6 +15,7 @@ import {
   calcTokenInGivenExactBptOut,
   calcBptInGivenExactTokensOut,
   calcBptInGivenExactTokenOut,
+  calcTokenOutGivenExactBptIn,
 } from '@balancer-labs/v3-helpers/src/math/weighted';
 
 import { WeightedMathMock } from '../typechain-types/contracts/test/WeightedMathMock';
@@ -536,6 +537,44 @@ describe.only('WeightedMath', function () {
         swapFeePercentage
       );
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
+    });
+  });
+
+  describe('calcTokenOutGivenExactBptIn', () => {
+    it('calculates correct token amountOut', async () => {
+      const balance = bn(1e21);
+      const normalizedWeight = bn(5e17);
+      const bptAmountIn = bn(1e16);
+      const bptTotalSupply = bn(1e20);
+      const swapFeePercentage = bn(1e16);
+
+      const expected = calcTokenOutGivenExactBptIn(
+        balance,
+        normalizedWeight,
+        bptAmountIn,
+        bptTotalSupply,
+        swapFeePercentage
+      );
+      const result = await math.calcTokenOutGivenExactBptIn(
+        balance,
+        normalizedWeight,
+        bptAmountIn,
+        bptTotalSupply,
+        swapFeePercentage
+      );
+      expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
+    });
+
+    it('throws MinBPTInForTokenOut error when invariant ratio exceeds MIN_INVARIANT_RATIO', async () => {
+      const balance = bn(1e20);
+      const normalizedWeight = bn(5e17);
+      const bptAmountIn = bn(9e19); // This will trigger the MinBPTInForTokenOut error
+      const bptTotalSupply = bn(1e20);
+      const swapFeePercentage = bn(1e16);
+
+      await expect(
+        math.calcTokenOutGivenExactBptIn(balance, normalizedWeight, bptAmountIn, bptTotalSupply, swapFeePercentage)
+      ).to.be.revertedWithCustomError(math, 'MinBPTInForTokenOut');
     });
   });
 });
