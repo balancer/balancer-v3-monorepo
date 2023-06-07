@@ -229,6 +229,30 @@ describe.only('WeightedMath', function () {
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
 
+    it('calculates correct BPT out when swap fee is applied', async () => {
+      const balances = [bn(100e18), bn(100e18)];
+      const normalizedWeights = [bn(0.5e18), bn(0.5e18)];
+      const amountsIn = [bn(10e18), bn(1e18)];
+      const bptTotalSupply = bn(100e18);
+      const swapFeePercentage = bn(0.01e18);
+
+      const expected = calcBptOutGivenExactTokensIn(
+        balances,
+        normalizedWeights,
+        amountsIn,
+        bptTotalSupply,
+        swapFeePercentage
+      );
+      const result = await math.calcBptOutGivenExactTokensIn(
+        balances,
+        normalizedWeights,
+        amountsIn,
+        bptTotalSupply,
+        swapFeePercentage
+      );
+      expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
+    });
+
     it('returns zero BPT out when invariantRatio is less than ONE', async () => {
       const balances = [bn(100e18), bn(100e18)];
       const normalizedWeights = [bn(0.5e18), bn(0.5e18)];
