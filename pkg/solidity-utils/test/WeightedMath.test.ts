@@ -12,6 +12,7 @@ import {
   calcOutGivenIn,
   calcBptOutGivenExactTokensIn,
   calcBptOutGivenExactTokenIn,
+  calcTokenInGivenExactBptOut,
 } from '@balancer-labs/v3-helpers/src/math/weighted';
 
 import { WeightedMathMock } from '../typechain-types/contracts/test/WeightedMathMock';
@@ -34,9 +35,9 @@ describe.only('WeightedMath', function () {
         const balances = [bn(10e18), bn(12e18)];
 
         const result = await math.calculateInvariant(normalizedWeights, balances);
-        const expectedInvariant = calculateInvariant(balances, normalizedWeights);
+        const expected = calculateInvariant(balances, normalizedWeights);
 
-        expectEqualWithError(result, bn(expectedInvariant), MAX_RELATIVE_ERROR);
+        expectEqualWithError(result, bn(expected), MAX_RELATIVE_ERROR);
       });
     });
 
@@ -46,9 +47,9 @@ describe.only('WeightedMath', function () {
         const balances = [bn(10e18), bn(12e18), bn(14e18)];
 
         const result = await math.calculateInvariant(normalizedWeights, balances);
-        const expectedInvariant = calculateInvariant(balances, normalizedWeights);
+        const expected = calculateInvariant(balances, normalizedWeights);
 
-        expectEqualWithError(result, bn(expectedInvariant), MAX_RELATIVE_ERROR);
+        expectEqualWithError(result, bn(expected), MAX_RELATIVE_ERROR);
       });
     });
   });
@@ -61,21 +62,15 @@ describe.only('WeightedMath', function () {
       const tokenWeightOut = bn(40e18);
       const tokenAmountIn = bn(15e18);
 
-      const outAmountMath = calcOutGivenIn(
+      const expected = calcOutGivenIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn);
+      const result = await math.calcOutGivenIn(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
         tokenWeightOut,
         tokenAmountIn
       );
-      const outAmountPool = await math.calcOutGivenIn(
-        tokenBalanceIn,
-        tokenWeightIn,
-        tokenBalanceOut,
-        tokenWeightOut,
-        tokenAmountIn
-      );
-      expectEqualWithError(outAmountPool, bn(outAmountMath.toFixed(0)), MAX_RELATIVE_ERROR);
+      expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
 
     it('calculates correct outAmountPool when tokenAmountIn is extermely small', async () => {
@@ -85,14 +80,8 @@ describe.only('WeightedMath', function () {
       const tokenWeightOut = bn(40e18);
       const tokenAmountIn = bn(10e6); // (MIN AMOUNT = 0.00000000001)
 
-      const outAmountMath = calcOutGivenIn(
-        tokenBalanceIn,
-        tokenWeightIn,
-        tokenBalanceOut,
-        tokenWeightOut,
-        tokenAmountIn
-      );
-      const outAmountPool = await math.calcOutGivenIn(
+      const expected = calcOutGivenIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn);
+      const result = await math.calcOutGivenIn(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
@@ -100,7 +89,7 @@ describe.only('WeightedMath', function () {
         tokenAmountIn
       );
       //TODO: review high rel error for small amount
-      expectEqualWithError(outAmountPool, bn(outAmountMath.toFixed(0)), 0.1);
+      expectEqualWithError(result, expected, 0.1);
     });
 
     it('calculates correct outAmountPool when tokenWeightIn is extermely big', async () => {
@@ -112,21 +101,15 @@ describe.only('WeightedMath', function () {
       const tokenWeightOut = bn(1e18);
       const tokenAmountIn = bn(15e18);
 
-      const outAmountMath = calcOutGivenIn(
+      const expected = calcOutGivenIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn);
+      const result = await math.calcOutGivenIn(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
         tokenWeightOut,
         tokenAmountIn
       );
-      const outAmountPool = await math.calcOutGivenIn(
-        tokenBalanceIn,
-        tokenWeightIn,
-        tokenBalanceOut,
-        tokenWeightOut,
-        tokenAmountIn
-      );
-      expectEqualWithError(outAmountPool, bn(outAmountMath.toFixed(0)), MAX_RELATIVE_ERROR);
+      expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
 
     it('calculates correct outAmountPool when tokenWeightIn is extermely small', async () => {
@@ -138,21 +121,15 @@ describe.only('WeightedMath', function () {
       const tokenWeightOut = bn(1e18);
       const tokenAmountIn = bn(15e18);
 
-      const outAmountMath = calcOutGivenIn(
+      const expected = calcOutGivenIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn);
+      const result = await math.calcOutGivenIn(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
         tokenWeightOut,
         tokenAmountIn
       );
-      const outAmountPool = await math.calcOutGivenIn(
-        tokenBalanceIn,
-        tokenWeightIn,
-        tokenBalanceOut,
-        tokenWeightOut,
-        tokenAmountIn
-      );
-      expectEqualWithError(outAmountPool, bn(outAmountMath.toFixed(0)), MAX_RELATIVE_ERROR);
+      expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
 
     it('throws MaxInRatio error when tokenAmountIn exceeds maximum allowed', async () => {
@@ -171,28 +148,22 @@ describe.only('WeightedMath', function () {
   });
 
   describe('calcInGivenOut', () => {
-    it('calculates correct inAmountPool', async () => {
+    it('calculates correct result', async () => {
       const tokenBalanceIn = bn(100e18);
       const tokenWeightIn = bn(50e18);
       const tokenBalanceOut = bn(100e18);
       const tokenWeightOut = bn(40e18);
       const tokenAmountOut = bn(15e18);
 
-      const inAmountMath = calcInGivenOut(
+      const expected = calcInGivenOut(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountOut);
+      const result = await math.calcInGivenOut(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
         tokenWeightOut,
         tokenAmountOut
       );
-      const inAmountPool = await math.calcInGivenOut(
-        tokenBalanceIn,
-        tokenWeightIn,
-        tokenBalanceOut,
-        tokenWeightOut,
-        tokenAmountOut
-      );
-      expectEqualWithError(inAmountPool, bn(inAmountMath.toFixed(0)), MAX_RELATIVE_ERROR);
+      expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
 
     it('calculates correct inAmountPool when tokenAmountOut is extermely small', async () => {
@@ -202,14 +173,8 @@ describe.only('WeightedMath', function () {
       const tokenWeightOut = bn(40e18);
       const tokenAmountOut = bn(10e6); // (MIN AMOUNT = 0.00000000001)
 
-      const inAmountMath = calcInGivenOut(
-        tokenBalanceIn,
-        tokenWeightIn,
-        tokenBalanceOut,
-        tokenWeightOut,
-        tokenAmountOut
-      );
-      const inAmountPool = await math.calcInGivenOut(
+      const expected = calcInGivenOut(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountOut);
+      const result = await math.calcInGivenOut(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
@@ -217,7 +182,7 @@ describe.only('WeightedMath', function () {
         tokenAmountOut
       );
       //TODO: review high rel error for small amount
-      expectEqualWithError(inAmountPool, bn(inAmountMath.toFixed(0)), 0.5);
+      expectEqualWithError(result, expected, 0.5);
     });
 
     it('throws MaxOutRatio error when amountOut exceeds maximum allowed', async () => {
@@ -243,21 +208,21 @@ describe.only('WeightedMath', function () {
       const bptTotalSupply = bn(100e18);
       const swapFeePercentage = bn(0.01e18);
 
-      const bptOutMath = calcBptOutGivenExactTokensIn(
+      const expected = calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
         amountsIn,
         bptTotalSupply,
         swapFeePercentage
       );
-      const bptOutPool = await math.calcBptOutGivenExactTokensIn(
+      const result = await math.calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
         amountsIn,
         bptTotalSupply,
         swapFeePercentage
       );
-      expectEqualWithError(bptOutPool, bptOutMath, MAX_RELATIVE_ERROR);
+      expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
 
     it('returns zero BPT out when invariantRatio is less than ONE', async () => {
@@ -267,14 +232,14 @@ describe.only('WeightedMath', function () {
       const bptTotalSupply = bn(1000e18);
       const swapFeePercentage = bn(0.01e18);
 
-      const bptOutPool = await math.calcBptOutGivenExactTokensIn(
+      const result = await math.calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
         amountsIn,
         bptTotalSupply,
         swapFeePercentage
       );
-      expect(bptOutPool).to.be.zero;
+      expect(result).to.be.zero;
     });
 
     it('calculates correct BPT out when amountsIn are extremely small', async () => {
@@ -284,21 +249,21 @@ describe.only('WeightedMath', function () {
       const bptTotalSupply = bn(1000e18);
       const swapFeePercentage = bn(0.01e18);
 
-      const bptOutMath = calcBptOutGivenExactTokensIn(
+      const expected = calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
         amountsIn,
         bptTotalSupply,
         swapFeePercentage
       );
-      const bptOutPool = await math.calcBptOutGivenExactTokensIn(
+      const result = await math.calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
         amountsIn,
         bptTotalSupply,
         swapFeePercentage
       );
-      expectEqualWithError(bptOutPool, bptOutMath, MAX_RELATIVE_ERROR);
+      expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
 
     it('calculates correct BPT out when normalizedWeights are unbalanced', async () => {
@@ -308,21 +273,21 @@ describe.only('WeightedMath', function () {
       const bptTotalSupply = bn(1000e18);
       const swapFeePercentage = bn(0.01e18);
 
-      const bptOutMath = calcBptOutGivenExactTokensIn(
+      const expected = calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
         amountsIn,
         bptTotalSupply,
         swapFeePercentage
       );
-      const bptOutPool = await math.calcBptOutGivenExactTokensIn(
+      const result = await math.calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
         amountsIn,
         bptTotalSupply,
         swapFeePercentage
       );
-      expectEqualWithError(bptOutPool, bptOutMath, MAX_RELATIVE_ERROR);
+      expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
   });
 
@@ -446,21 +411,21 @@ describe.only('WeightedMath', function () {
       const bptTotalSupply = bn(1e20);
       const swapFeePercentage = bn(1e16);
 
-      const amountInMath = calcTokenInGivenExactBptOut(
+      const expected = calcTokenInGivenExactBptOut(
         balance,
         normalizedWeight,
         bptAmountOut,
         bptTotalSupply,
         swapFeePercentage
       );
-      const amountInPool = await math.calcTokenInGivenExactBptOut(
+      const result = await math.calcTokenInGivenExactBptOut(
         balance,
         normalizedWeight,
         bptAmountOut,
         bptTotalSupply,
         swapFeePercentage
       );
-      expectEqualWithError(amountInPool, amountInMath, MAX_RELATIVE_ERROR);
+      expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
 
     it('throws MaxOutBptForTokenIn error when invariant ratio exceeds MAX_INVARIANT_RATIO', async () => {
