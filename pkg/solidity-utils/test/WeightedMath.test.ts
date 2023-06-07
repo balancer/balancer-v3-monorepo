@@ -21,6 +21,8 @@ import {
 
 import { WeightedMathMock } from '../typechain-types/contracts/test/WeightedMathMock';
 
+const SWAP_FEE = bn(0.01e18);
+
 describe('WeightedMath', function () {
   let math: WeightedMathMock;
 
@@ -210,21 +212,20 @@ describe('WeightedMath', function () {
       const normalizedWeights = [bn(0.5e18), bn(0.5e18)];
       const amountsIn = [bn(10e18), bn(10e18)];
       const bptTotalSupply = bn(100e18);
-      const swapFeePercentage = bn(0.01e18);
 
       const expected = calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
         amountsIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       const result = await math.calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
         amountsIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
@@ -234,21 +235,20 @@ describe('WeightedMath', function () {
       const normalizedWeights = [bn(0.5e18), bn(0.5e18)];
       const amountsIn = [bn(10e18), bn(1e18)];
       const bptTotalSupply = bn(100e18);
-      const swapFeePercentage = bn(0.01e18);
 
       const expected = calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
         amountsIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       const result = await math.calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
         amountsIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
@@ -258,14 +258,13 @@ describe('WeightedMath', function () {
       const normalizedWeights = [bn(0.5e18), bn(0.5e18)];
       const amountsIn = [bn(0), bn(0)];
       const bptTotalSupply = bn(1000e18);
-      const swapFeePercentage = bn(0.01e18);
 
       const result = await math.calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
         amountsIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       expect(result).to.be.zero;
     });
@@ -275,21 +274,20 @@ describe('WeightedMath', function () {
       const normalizedWeights = [bn(0.5e18), bn(0.5e18)];
       const amountsIn = [bn(1e12), bn(2e12)];
       const bptTotalSupply = bn(1000e18);
-      const swapFeePercentage = bn(0.01e18);
 
       const expected = calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
         amountsIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       const result = await math.calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
         amountsIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
@@ -299,21 +297,20 @@ describe('WeightedMath', function () {
       const normalizedWeights = [bn(0.2e18), bn(0.8e18)];
       const amountsIn = [bn(10e18), bn(20e18)];
       const bptTotalSupply = bn(1000e18);
-      const swapFeePercentage = bn(0.01e18);
 
       const expected = calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
         amountsIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       const result = await math.calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
         amountsIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
@@ -322,7 +319,6 @@ describe('WeightedMath', function () {
   describe('calcBptOutGivenExactTokenIn', () => {
     // Define a standard BPT total supply and swap fee for tests.
     const bptTotalSupply = bn(1000e18);
-    const swapFeePercentage = bn(0.01e18); // 1% swap fee
     const normalizedWeight = bn(0.5e18); // 50% normalized weight
 
     it('calculates correct BPT out amount with no swap fee', async () => {
@@ -334,14 +330,14 @@ describe('WeightedMath', function () {
         normalizedWeight,
         amountIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       const result = await math.calcBptOutGivenExactTokenIn(
         balance,
         normalizedWeight,
         amountIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
@@ -355,14 +351,14 @@ describe('WeightedMath', function () {
         normalizedWeight,
         amountIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       const result = await math.calcBptOutGivenExactTokenIn(
         balance,
         normalizedWeight,
         amountIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
@@ -376,7 +372,7 @@ describe('WeightedMath', function () {
         normalizedWeight,
         amountIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       expectEqualWithError(result, 0, MAX_RELATIVE_ERROR);
     });
@@ -390,14 +386,14 @@ describe('WeightedMath', function () {
         normalizedWeight,
         amountIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       const result = await math.calcBptOutGivenExactTokenIn(
         balance,
         normalizedWeight,
         amountIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
@@ -411,14 +407,14 @@ describe('WeightedMath', function () {
         normalizedWeight,
         amountIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       const result = await math.calcBptOutGivenExactTokenIn(
         balance,
         normalizedWeight,
         amountIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
@@ -430,21 +426,20 @@ describe('WeightedMath', function () {
       const normalizedWeight = bn(5e17);
       const bptAmountOut = bn(1e16);
       const bptTotalSupply = bn(1e20);
-      const swapFeePercentage = bn(1e16);
 
       const expected = calcTokenInGivenExactBptOut(
         balance,
         normalizedWeight,
         bptAmountOut,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       const result = await math.calcTokenInGivenExactBptOut(
         balance,
         normalizedWeight,
         bptAmountOut,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
@@ -454,10 +449,9 @@ describe('WeightedMath', function () {
       const normalizedWeight = bn(5e17);
       const bptAmountOut = bn(3e20); // This will trigger the MaxOutBptForTokenIn error
       const bptTotalSupply = bn(1e20);
-      const swapFeePercentage = bn(1e16);
 
       await expect(
-        math.calcTokenInGivenExactBptOut(balance, normalizedWeight, bptAmountOut, bptTotalSupply, swapFeePercentage)
+        math.calcTokenInGivenExactBptOut(balance, normalizedWeight, bptAmountOut, bptTotalSupply, SWAP_FEE)
       ).to.be.revertedWithCustomError(math, 'MaxOutBptForTokenIn');
     });
   });
@@ -468,21 +462,20 @@ describe('WeightedMath', function () {
       const normalizedWeights = [bn(0.5e18), bn(0.5e18)];
       const amountsOut = [bn(10e18), bn(10e18)];
       const bptTotalSupply = bn(100e18);
-      const swapFeePercentage = bn(0.01e18);
 
       const expected = calcBptInGivenExactTokensOut(
         balances,
         normalizedWeights,
         amountsOut,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       const result = await math.calcBptInGivenExactTokensOut(
         balances,
         normalizedWeights,
         amountsOut,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
@@ -492,21 +485,20 @@ describe('WeightedMath', function () {
       const normalizedWeights = [bn(0.01e18), bn(0.99e18)];
       const amountsOut = [bn(50e18), bn(10e18)];
       const bptTotalSupply = bn(100e18);
-      const swapFeePercentage = bn(0.01e18);
 
       const expected = calcBptInGivenExactTokensOut(
         balances,
         normalizedWeights,
         amountsOut,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       const result = await math.calcBptInGivenExactTokensOut(
         balances,
         normalizedWeights,
         amountsOut,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
@@ -516,21 +508,20 @@ describe('WeightedMath', function () {
       const normalizedWeights = [bn(0.5e18), bn(0.5e18)];
       const amountsOut = [bn(0), bn(10e18)];
       const bptTotalSupply = bn(100e18);
-      const swapFeePercentage = bn(0.01e18);
 
       const expected = calcBptInGivenExactTokensOut(
         balances,
         normalizedWeights,
         amountsOut,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       const result = await math.calcBptInGivenExactTokensOut(
         balances,
         normalizedWeights,
         amountsOut,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       // TODO: For some reason precision loss here is high
       expectEqualWithError(result, expected, 0.01);
@@ -540,7 +531,6 @@ describe('WeightedMath', function () {
   describe('calcBptInGivenExactTokenOut', () => {
     // Define a standard BPT total supply and swap fee for tests.
     const bptTotalSupply = bn(1000e18);
-    const swapFeePercentage = bn(0.01e18); // 1% swap fee
     const normalizedWeight = bn(0.5e18); // 50% normalized weight
 
     it('calculates correct BPT in amount with no swap fee', async () => {
@@ -552,14 +542,14 @@ describe('WeightedMath', function () {
         normalizedWeight,
         amountOut,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       const result = await math.calcBptInGivenExactTokenOut(
         balance,
         normalizedWeight,
         amountOut,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
@@ -573,14 +563,14 @@ describe('WeightedMath', function () {
         normalizedWeight,
         amountOut,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       const result = await math.calcBptInGivenExactTokenOut(
         balance,
         normalizedWeight,
         amountOut,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
@@ -594,14 +584,14 @@ describe('WeightedMath', function () {
         normalizedWeight,
         amountOut,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       const result = await math.calcBptInGivenExactTokenOut(
         balance,
         normalizedWeight,
         amountOut,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
@@ -613,21 +603,20 @@ describe('WeightedMath', function () {
       const normalizedWeight = bn(5e17);
       const bptAmountIn = bn(1e16);
       const bptTotalSupply = bn(1e20);
-      const swapFeePercentage = bn(1e16);
 
       const expected = calcTokenOutGivenExactBptIn(
         balance,
         normalizedWeight,
         bptAmountIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       const result = await math.calcTokenOutGivenExactBptIn(
         balance,
         normalizedWeight,
         bptAmountIn,
         bptTotalSupply,
-        swapFeePercentage
+        SWAP_FEE
       );
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
@@ -637,10 +626,9 @@ describe('WeightedMath', function () {
       const normalizedWeight = bn(5e17);
       const bptAmountIn = bn(9e19); // This will trigger the MinBPTInForTokenOut error
       const bptTotalSupply = bn(1e20);
-      const swapFeePercentage = bn(1e16);
 
       await expect(
-        math.calcTokenOutGivenExactBptIn(balance, normalizedWeight, bptAmountIn, bptTotalSupply, swapFeePercentage)
+        math.calcTokenOutGivenExactBptIn(balance, normalizedWeight, bptAmountIn, bptTotalSupply, SWAP_FEE)
       ).to.be.revertedWithCustomError(math, 'MinBPTInForTokenOut');
     });
   });
