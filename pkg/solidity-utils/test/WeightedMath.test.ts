@@ -16,6 +16,7 @@ import {
   calcBptInGivenExactTokensOut,
   calcBptInGivenExactTokenOut,
   calcTokenOutGivenExactBptIn,
+  calcBptOutAddToken,
 } from '@balancer-labs/v3-helpers/src/math/weighted';
 
 import { WeightedMathMock } from '../typechain-types/contracts/test/WeightedMathMock';
@@ -575,6 +576,17 @@ describe.only('WeightedMath', function () {
       await expect(
         math.calcTokenOutGivenExactBptIn(balance, normalizedWeight, bptAmountIn, bptTotalSupply, swapFeePercentage)
       ).to.be.revertedWithCustomError(math, 'MinBPTInForTokenOut');
+    });
+  });
+
+  describe('calcBptOutAddToken', () => {
+    it('calculates the amount of BTP which should be minted when adding a new token', async () => {
+      const normalizedWeight = bn(5e17);
+      const bptTotalSupply = bn(1e20);
+
+      const expected = calcBptOutAddToken(bptTotalSupply, normalizedWeight);
+      const result = await math.calcBptOutAddToken(bptTotalSupply, normalizedWeight);
+      expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
   });
 });
