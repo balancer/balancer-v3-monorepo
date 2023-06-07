@@ -315,6 +315,11 @@ export function calculateBPTPrice(
   return bn(toFp(fromFp(fpBalance).div(fromFp(fpWeight)).div(fromFp(totalSupply))).toFixed(0));
 }
 
+export function calcBptOutAddToken(totalSupply: BigNumberish, fpWeight: BigNumberish): BigNumber {
+  const weightSumRatio = decimal(1).div(decimal(1).sub(fromFp(fpWeight)));
+  return bn(toFp(fromFp(totalSupply).mul(weightSumRatio.sub(1))));
+}
+
 function complement(val: Decimal) {
   return val.lt(1) ? decimal(1).sub(val) : 0;
 }
