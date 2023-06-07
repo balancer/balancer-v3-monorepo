@@ -24,7 +24,9 @@
     "lint": "NODE_NO_WARNINGS=1 yarn workspaces foreach --parallel --verbose run lint",
     "test": "yarn workspaces foreach --parallel --verbose run test",
     "coverage": "yarn workspaces foreach --parallel --verbose run coverage",
-    "gas": "yarn workspaces foreach --parallel --verbose run gas"
+    "gas": "yarn workspaces foreach --parallel --verbose run gas",
+    "slither-install": "python3 -m venv slither && bash -c 'source slither/bin/activate && pip3 install slither-analyzer'",
+    "slither": "bash -c 'source slither/bin/activate && yarn workspaces foreach --parallel --verbose run slither'"
   },
   "workspaces": [
     "pkg/*",

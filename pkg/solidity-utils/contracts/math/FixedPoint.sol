@@ -8,7 +8,7 @@ import "./LogExpMath.sol";
 
 library FixedPoint {
     /**
-     * @dev
+     * @dev This error is thrown upon division by zero.
      */
     error ZeroDivision();
 
@@ -23,14 +23,14 @@ library FixedPoint {
     uint256 internal constant MIN_POW_BASE_FREE_EXPONENT = 0.7e18;
 
     function mulDown(uint256 a, uint256 b) internal pure returns (uint256) {
-        // Multiple overflow protection is done by Solidity 0.8x
+        // Multiplication overflow protection is provided by Solidity 0.8.x
         uint256 product = a * b;
 
         return product / ONE;
     }
 
     function mulUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
-        // Multiple overflow protection is done by Solidity 0.8x
+        // Multiplication overflow protection is provided by Solidity 0.8.x
         uint256 product = a * b;
 
         // The traditional divUp formula is:
@@ -47,10 +47,10 @@ library FixedPoint {
     }
 
     function divDown(uint256 a, uint256 b) internal pure returns (uint256) {
-        // Multiple overflow protection is done by Solidity 0.8x
+        // Solidity 0.8 reverts with a Panic code (0x11) if the multiplication overflows.
         uint256 aInflated = a * ONE;
 
-        // Solidity 0.8x always checks for division by zero
+        // Solidity 0.8 reverts with a "Division by Zero" Panic code (0x12) if b is zero
         return aInflated / b;
     }
 
@@ -92,11 +92,12 @@ library FixedPoint {
             return mulDown(square, square);
         } else {
             uint256 raw = LogExpMath.pow(x, y);
-            unchecked {
-                uint256 maxError = mulUp(raw, MAX_POW_RELATIVE_ERROR) + 1;
-                if (raw < maxError) {
-                    return 0;
-                } else {
+            uint256 maxError = mulUp(raw, MAX_POW_RELATIVE_ERROR) + 1;
+
+            if (raw < maxError) {
+                return 0;
+            } else {
+                unchecked {
                     return raw - maxError;
                 }
             }
@@ -119,11 +120,9 @@ library FixedPoint {
             return mulUp(square, square);
         } else {
             uint256 raw = LogExpMath.pow(x, y);
-            unchecked {
-                uint256 maxError = mulUp(raw, MAX_POW_RELATIVE_ERROR) + 1;
+            uint256 maxError = mulUp(raw, MAX_POW_RELATIVE_ERROR) + 1;
 
-                return raw + maxError;
-            }
+            return raw + maxError;
         }
     }
 

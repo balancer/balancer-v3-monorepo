@@ -27,6 +27,10 @@ contract LogExpMathTest is Test {
         assertApproxEqAbs(LogExpMath.pow(2e18, 2e18), 4e18, 100);
     }
 
+    /**
+     * forge-config: default.fuzz.runs = 256
+     * forge-config: intense.fuzz.runs = 10000
+     */
     function testPowMatchesJSFuzzed(uint256 base, uint256 exponent) external {
         base = bound(base, LOWER_BASE_BOUND, UPPER_BASE_BOUND);
         exponent = bound(exponent, LOWER_EXPONENT_BOUND, UPPER_EXPONENT_BOUND);

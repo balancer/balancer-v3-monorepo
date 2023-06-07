@@ -4,7 +4,7 @@ import Decimal from 'decimal.js';
 
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { decimal, fp } from '@balancer-labs/v3-helpers/src/numbers';
-import { MAX_UINT256 } from '@balancer-labs/v3-helpers/src/constants';
+import { MAX_UINT256, ARITHMETIC_FLOW_PANIC, DIVISION_BY_ZERO_PANIC } from '@balancer-labs/v3-helpers/src/constants';
 import { expectEqualWithError } from '@balancer-labs/v3-helpers/src/test/relativeError';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 
@@ -88,8 +88,7 @@ describe('FixedPoint', () => {
     });
 
     it('reverts on overflow', async function () {
-      // Panic code 0x11: arithmetic operation overflow
-      await expect(lib.mulDown(MAX_UINT256, TWO)).to.be.revertedWithPanic('0x11');
+      await expect(lib.mulDown(MAX_UINT256, TWO)).to.be.revertedWithPanic(ARITHMETIC_FLOW_PANIC);
     });
   });
 
@@ -103,8 +102,7 @@ describe('FixedPoint', () => {
     });
 
     it('reverts on overflow', async function () {
-      // Panic code 0x11: arithmetic operation overflow
-      await expect(lib.mulUp(MAX_UINT256, TWO)).to.be.revertedWithPanic('0x11');
+      await expect(lib.mulUp(MAX_UINT256, TWO)).to.be.revertedWithPanic(ARITHMETIC_FLOW_PANIC);
     });
 
     it('returns product when both factors are not 0', async function () {
@@ -123,18 +121,16 @@ describe('FixedPoint', () => {
     });
 
     it('divides large number by itself correctly', async () => {
-      const largeNumber = decimal('1e18');
+      const largeNumber = decimal('1e18').mul(Math.random());
       expect(await lib.divDown(fp(largeNumber), fp(largeNumber))).to.equal(fp(1));
     });
 
     it('reverts on underflow', async function () {
-      // Panic code 0x10: arithmetic operation underflow
-      await expect(lib.divDown(MAX_UINT256, ONE)).to.be.revertedWithPanic('0x11');
+      await expect(lib.divDown(MAX_UINT256, ONE)).to.be.revertedWithPanic(ARITHMETIC_FLOW_PANIC);
     });
 
     it('should revert on division by zero', async () => {
-      // 0x12 (Division or modulo division by zero)
-      await expect(lib.divDown(fp(1), fp(0))).to.be.revertedWithPanic('0x12');
+      await expect(lib.divDown(fp(1), fp(0))).to.be.revertedWithPanic(DIVISION_BY_ZERO_PANIC);
     });
   });
 
@@ -166,13 +162,16 @@ describe('FixedPoint', () => {
       expect(await lib.complement(fp(0))).to.equal(fp(1));
     });
 
+    it('returns the correct complement for 0.3', async () => {
+      expect(await lib.complement(fp(0.3))).to.equal(fp(0.7));
+    });
+
     it('returns the correct complement for 1', async () => {
       expect(await lib.complement(fp(1))).to.equal(fp(0));
     });
 
     it('returns the correct complement for a number greater than 1', async () => {
-      const value = decimal('2');
-      expect(await lib.complement(fp(value))).to.equal(fp(0));
+      expect(await lib.complement(fp(2))).to.equal(fp(0));
     });
   });
 
