@@ -154,25 +154,34 @@ export function calcBptInGivenExactTokensOut(
   const bptTotalSupply = fromFp(fpBptTotalSupply);
 
   const balanceRatiosWithoutFee = [];
-  let weightedBalanceRatio = decimal(0);
+  let invariantRatioWithoutFees = decimal(0);
   for (let i = 0; i < balances.length; i++) {
     const balanceRatioWithoutFee = balances[i].sub(amountsOut[i]).div(balances[i]);
     balanceRatiosWithoutFee.push(balanceRatioWithoutFee);
-    weightedBalanceRatio = weightedBalanceRatio.add(balanceRatioWithoutFee.mul(weights[i]));
+    invariantRatioWithoutFees = invariantRatioWithoutFees.add(balanceRatioWithoutFee.mul(weights[i]));
   }
 
   let invariantRatio = decimal(1);
   for (let i = 0; i < balances.length; i++) {
-    const tokenBalancePercentageExcess = weightedBalanceRatio.lte(balanceRatiosWithoutFee[i])
-      ? 0
-      : weightedBalanceRatio.sub(balanceRatiosWithoutFee[i]).div(decimal(1).sub(balanceRatiosWithoutFee[i]));
+    let amountOutWithFee;
+    if (invariantRatioWithoutFees > balanceRatiosWithoutFee[i]) {
+      const nonTaxableAmount = balances[i].mul(complement(invariantRatioWithoutFees));
+      const taxableAmount = amountsOut[i].sub(nonTaxableAmount);
+      const taxableAmountPlusFees = taxableAmount.div(complement(swapFeePercentage));
 
-    const amountOutBeforeFee = amountsOut[i].div(decimal(1).sub(swapFeePercentage.mul(tokenBalancePercentageExcess)));
-    const tokenBalanceRatio = decimal(1).sub(amountOutBeforeFee.div(balances[i]));
-    invariantRatio = invariantRatio.mul(tokenBalanceRatio.pow(weights[i]));
+      amountOutWithFee = nonTaxableAmount.add(taxableAmountPlusFees);
+    } else {
+      amountOutWithFee = amountsOut[i];
+      if (amountOutWithFee.floor().toNumber() == 0) {
+        continue;
+      }
+    }
+
+    const balanceRatio = balances[i].sub(amountOutWithFee).div(balances[i]);
+    invariantRatio = invariantRatio.mul(balanceRatio.pow(weights[i]));
   }
 
-  const bptIn = bptTotalSupply.mul(decimal(1).sub(invariantRatio));
+  const bptIn = bptTotalSupply.mul(complement(invariantRatio));
   return fp(bptIn);
 }
 
