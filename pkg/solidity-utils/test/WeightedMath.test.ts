@@ -35,28 +35,24 @@ describe('WeightedMath', function () {
       await expect(math.calculateInvariant([bn(1)], [0])).to.be.revertedWithCustomError(math, 'ZeroInvariant');
     });
 
-    context('two tokens', () => {
-      it('calculates invariant', async () => {
-        const normalizedWeights = [bn(0.3e18), bn(0.7e18)];
-        const balances = [bn(10e18), bn(12e18)];
+    it('calculates invariant for two tokens', async () => {
+      const normalizedWeights = [bn(0.3e18), bn(0.7e18)];
+      const balances = [bn(10e18), bn(12e18)];
 
-        const result = await math.calculateInvariant(normalizedWeights, balances);
-        const expected = calculateInvariant(balances, normalizedWeights);
+      const result = await math.calculateInvariant(normalizedWeights, balances);
+      const expected = calculateInvariant(balances, normalizedWeights);
 
-        expectEqualWithError(result, bn(expected), MAX_RELATIVE_ERROR);
-      });
+      expectEqualWithError(result, bn(expected), MAX_RELATIVE_ERROR);
     });
 
-    context('three tokens', () => {
-      it('calculates invariant', async () => {
-        const normalizedWeights = [bn(0.3e18), bn(0.2e18), bn(0.5e18)];
-        const balances = [bn(10e18), bn(12e18), bn(14e18)];
+    it('calculates invariant for three tokens', async () => {
+      const normalizedWeights = [bn(0.3e18), bn(0.2e18), bn(0.5e18)];
+      const balances = [bn(10e18), bn(12e18), bn(14e18)];
 
-        const result = await math.calculateInvariant(normalizedWeights, balances);
-        const expected = calculateInvariant(balances, normalizedWeights);
+      const result = await math.calculateInvariant(normalizedWeights, balances);
+      const expected = calculateInvariant(balances, normalizedWeights);
 
-        expectEqualWithError(result, bn(expected), MAX_RELATIVE_ERROR);
-      });
+      expectEqualWithError(result, bn(expected), MAX_RELATIVE_ERROR);
     });
   });
 
@@ -213,13 +209,7 @@ describe('WeightedMath', function () {
       const amountsIn = [bn(10e18), bn(10e18)];
       const bptTotalSupply = bn(100e18);
 
-      const expected = calcBptOutGivenExactTokensIn(
-        balances,
-        normalizedWeights,
-        amountsIn,
-        bptTotalSupply,
-        SWAP_FEE
-      );
+      const expected = calcBptOutGivenExactTokensIn(balances, normalizedWeights, amountsIn, bptTotalSupply, SWAP_FEE);
       const result = await math.calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
@@ -236,13 +226,7 @@ describe('WeightedMath', function () {
       const amountsIn = [bn(10e18), bn(1e18)];
       const bptTotalSupply = bn(100e18);
 
-      const expected = calcBptOutGivenExactTokensIn(
-        balances,
-        normalizedWeights,
-        amountsIn,
-        bptTotalSupply,
-        SWAP_FEE
-      );
+      const expected = calcBptOutGivenExactTokensIn(balances, normalizedWeights, amountsIn, bptTotalSupply, SWAP_FEE);
       const result = await math.calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
@@ -275,13 +259,7 @@ describe('WeightedMath', function () {
       const amountsIn = [bn(1e12), bn(2e12)];
       const bptTotalSupply = bn(1000e18);
 
-      const expected = calcBptOutGivenExactTokensIn(
-        balances,
-        normalizedWeights,
-        amountsIn,
-        bptTotalSupply,
-        SWAP_FEE
-      );
+      const expected = calcBptOutGivenExactTokensIn(balances, normalizedWeights, amountsIn, bptTotalSupply, SWAP_FEE);
       const result = await math.calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
@@ -298,13 +276,7 @@ describe('WeightedMath', function () {
       const amountsIn = [bn(10e18), bn(20e18)];
       const bptTotalSupply = bn(1000e18);
 
-      const expected = calcBptOutGivenExactTokensIn(
-        balances,
-        normalizedWeights,
-        amountsIn,
-        bptTotalSupply,
-        SWAP_FEE
-      );
+      const expected = calcBptOutGivenExactTokensIn(balances, normalizedWeights, amountsIn, bptTotalSupply, SWAP_FEE);
       const result = await math.calcBptOutGivenExactTokensIn(
         balances,
         normalizedWeights,
@@ -325,13 +297,7 @@ describe('WeightedMath', function () {
       const balance = bn(100e18);
       const amountIn = bn(10e18);
 
-      const expected = calcBptOutGivenExactTokenIn(
-        balance,
-        normalizedWeight,
-        amountIn,
-        bptTotalSupply,
-        SWAP_FEE
-      );
+      const expected = calcBptOutGivenExactTokenIn(balance, normalizedWeight, amountIn, bptTotalSupply, SWAP_FEE);
       const result = await math.calcBptOutGivenExactTokenIn(
         balance,
         normalizedWeight,
@@ -346,13 +312,7 @@ describe('WeightedMath', function () {
       const balance = bn(100e18);
       const amountIn = bn(200e18); // Big enough to trigger swap fee
 
-      const expected = calcBptOutGivenExactTokenIn(
-        balance,
-        normalizedWeight,
-        amountIn,
-        bptTotalSupply,
-        SWAP_FEE
-      );
+      const expected = calcBptOutGivenExactTokenIn(balance, normalizedWeight, amountIn, bptTotalSupply, SWAP_FEE);
       const result = await math.calcBptOutGivenExactTokenIn(
         balance,
         normalizedWeight,
@@ -381,13 +341,7 @@ describe('WeightedMath', function () {
       const balance = bn(1e6); // 0.000001 token
       const amountIn = bn(1e6);
 
-      const expected = calcBptOutGivenExactTokenIn(
-        balance,
-        normalizedWeight,
-        amountIn,
-        bptTotalSupply,
-        SWAP_FEE
-      );
+      const expected = calcBptOutGivenExactTokenIn(balance, normalizedWeight, amountIn, bptTotalSupply, SWAP_FEE);
       const result = await math.calcBptOutGivenExactTokenIn(
         balance,
         normalizedWeight,
@@ -402,13 +356,7 @@ describe('WeightedMath', function () {
       const balance = bn(1000000e18); // 1,000,000 tokens
       const amountIn = bn(100e18);
 
-      const expected = calcBptOutGivenExactTokenIn(
-        balance,
-        normalizedWeight,
-        amountIn,
-        bptTotalSupply,
-        SWAP_FEE
-      );
+      const expected = calcBptOutGivenExactTokenIn(balance, normalizedWeight, amountIn, bptTotalSupply, SWAP_FEE);
       const result = await math.calcBptOutGivenExactTokenIn(
         balance,
         normalizedWeight,
@@ -427,13 +375,7 @@ describe('WeightedMath', function () {
       const bptAmountOut = bn(1e16);
       const bptTotalSupply = bn(1e20);
 
-      const expected = calcTokenInGivenExactBptOut(
-        balance,
-        normalizedWeight,
-        bptAmountOut,
-        bptTotalSupply,
-        SWAP_FEE
-      );
+      const expected = calcTokenInGivenExactBptOut(balance, normalizedWeight, bptAmountOut, bptTotalSupply, SWAP_FEE);
       const result = await math.calcTokenInGivenExactBptOut(
         balance,
         normalizedWeight,
@@ -463,13 +405,7 @@ describe('WeightedMath', function () {
       const amountsOut = [bn(10e18), bn(10e18)];
       const bptTotalSupply = bn(100e18);
 
-      const expected = calcBptInGivenExactTokensOut(
-        balances,
-        normalizedWeights,
-        amountsOut,
-        bptTotalSupply,
-        SWAP_FEE
-      );
+      const expected = calcBptInGivenExactTokensOut(balances, normalizedWeights, amountsOut, bptTotalSupply, SWAP_FEE);
       const result = await math.calcBptInGivenExactTokensOut(
         balances,
         normalizedWeights,
@@ -486,13 +422,7 @@ describe('WeightedMath', function () {
       const amountsOut = [bn(50e18), bn(10e18)];
       const bptTotalSupply = bn(100e18);
 
-      const expected = calcBptInGivenExactTokensOut(
-        balances,
-        normalizedWeights,
-        amountsOut,
-        bptTotalSupply,
-        SWAP_FEE
-      );
+      const expected = calcBptInGivenExactTokensOut(balances, normalizedWeights, amountsOut, bptTotalSupply, SWAP_FEE);
       const result = await math.calcBptInGivenExactTokensOut(
         balances,
         normalizedWeights,
@@ -509,13 +439,7 @@ describe('WeightedMath', function () {
       const amountsOut = [bn(0), bn(10e18)];
       const bptTotalSupply = bn(100e18);
 
-      const expected = calcBptInGivenExactTokensOut(
-        balances,
-        normalizedWeights,
-        amountsOut,
-        bptTotalSupply,
-        SWAP_FEE
-      );
+      const expected = calcBptInGivenExactTokensOut(balances, normalizedWeights, amountsOut, bptTotalSupply, SWAP_FEE);
       const result = await math.calcBptInGivenExactTokensOut(
         balances,
         normalizedWeights,
@@ -537,13 +461,7 @@ describe('WeightedMath', function () {
       const balance = bn(100e18);
       const amountOut = bn(10e18);
 
-      const expected = calcBptInGivenExactTokenOut(
-        balance,
-        normalizedWeight,
-        amountOut,
-        bptTotalSupply,
-        SWAP_FEE
-      );
+      const expected = calcBptInGivenExactTokenOut(balance, normalizedWeight, amountOut, bptTotalSupply, SWAP_FEE);
       const result = await math.calcBptInGivenExactTokenOut(
         balance,
         normalizedWeight,
@@ -558,13 +476,7 @@ describe('WeightedMath', function () {
       const balance = bn(100e18);
       const amountOut = bn(90e18); // Big enough to trigger swap fee
 
-      const expected = calcBptInGivenExactTokenOut(
-        balance,
-        normalizedWeight,
-        amountOut,
-        bptTotalSupply,
-        SWAP_FEE
-      );
+      const expected = calcBptInGivenExactTokenOut(balance, normalizedWeight, amountOut, bptTotalSupply, SWAP_FEE);
       const result = await math.calcBptInGivenExactTokenOut(
         balance,
         normalizedWeight,
@@ -579,13 +491,7 @@ describe('WeightedMath', function () {
       const balance = bn(100e18);
       const amountOut = bn(0);
 
-      const expected = calcBptInGivenExactTokenOut(
-        balance,
-        normalizedWeight,
-        amountOut,
-        bptTotalSupply,
-        SWAP_FEE
-      );
+      const expected = calcBptInGivenExactTokenOut(balance, normalizedWeight, amountOut, bptTotalSupply, SWAP_FEE);
       const result = await math.calcBptInGivenExactTokenOut(
         balance,
         normalizedWeight,
@@ -604,13 +510,7 @@ describe('WeightedMath', function () {
       const bptAmountIn = bn(1e16);
       const bptTotalSupply = bn(1e20);
 
-      const expected = calcTokenOutGivenExactBptIn(
-        balance,
-        normalizedWeight,
-        bptAmountIn,
-        bptTotalSupply,
-        SWAP_FEE
-      );
+      const expected = calcTokenOutGivenExactBptIn(balance, normalizedWeight, bptAmountIn, bptTotalSupply, SWAP_FEE);
       const result = await math.calcTokenOutGivenExactBptIn(
         balance,
         normalizedWeight,
