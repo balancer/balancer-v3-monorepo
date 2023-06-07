@@ -309,7 +309,7 @@ library WeightedMath {
 
         // Calculate the factor by which the invariant will increase after minting BPTAmountOut
         uint256 invariantRatio = (bptTotalSupply + bptAmountOut).divUp(bptTotalSupply);
-        if (invariantRatio <= _MAX_INVARIANT_RATIO) {
+        if (invariantRatio > _MAX_INVARIANT_RATIO) {
             revert MaxOutBptForTokenIn();
         }
 
