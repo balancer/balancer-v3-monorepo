@@ -44,7 +44,7 @@ library WeightedMath {
     // Pool limits that arise from limitations in the fixed point power function (and the imposed 1:100 maximum weight
     // ratio).
 
-    // Swap limits: amounts swapped may not be larger than this percentage of total balance.
+    // Swap limits: amounts swapped may not be larger than this percentage of the total balance.
     uint256 internal constant _MAX_IN_RATIO = 0.3e18;
     uint256 internal constant _MAX_OUT_RATIO = 0.3e18;
 
