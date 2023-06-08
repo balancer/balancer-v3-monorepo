@@ -9,8 +9,7 @@ library WeightedMath {
     using FixedPoint for uint256;
 
     /**
-     * @dev Error thrown when attempting to burn less BPTs than allowed
-     * for a specific amountOut
+     * @dev Error thrown when attempting to burn less BPT than allowed for a specific amountOut.
      */
     error MinBPTInForTokenOut();
 
