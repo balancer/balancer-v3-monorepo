@@ -14,8 +14,7 @@ library WeightedMath {
     error MinBPTInForTokenOut();
 
     /**
-     * @dev Error thrown when attempting to mint more BPTs than allowed
-     * for a specific amountIn.
+     * @dev Error thrown when attempting to mint more BPT than allowed for a specific amountIn.
      */
     error MaxOutBptForTokenIn();
 
