@@ -24,8 +24,7 @@ library WeightedMath {
     error MaxOutRatio();
 
     /**
-     * @dev Error thrown when trying to add a disproportionate
-     * amountIn of tokens to the pool.
+     * @dev Error thrown when trying to add a disproportionate amountIn of tokens to the pool.
      */
     error MaxInRatio();
 
