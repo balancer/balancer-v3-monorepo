@@ -19,8 +19,7 @@ library WeightedMath {
     error MaxOutBptForTokenIn();
 
     /**
-     * @dev Error thrown when trying to extract a disproportionate
-     * amountOut of tokens from the pool.
+     * @dev Error thrown when trying to extract a disproportionate amountOut of tokens from the pool.
      */
     error MaxOutRatio();
 
