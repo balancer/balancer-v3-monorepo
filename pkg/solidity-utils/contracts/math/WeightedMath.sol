@@ -29,8 +29,8 @@ library WeightedMath {
     error MaxInRatio();
 
     /**
-     * @dev Error thrown when the calculated invariant is zero,
-     * indicating an issue with invariant calculation.
+     * @dev Error thrown when the calculated invariant is zero, indicating an issue with the invariant calculation.
+     * Most commonly, this happens when a token balance is zero.
      */
     error ZeroInvariant();
 
