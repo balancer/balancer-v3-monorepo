@@ -114,7 +114,7 @@ describe('WeightedMath', function () {
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
 
-    it('calculates correct outAmountPool when tokenWeightIn is extermely small', async () => {
+    it('calculates correct outAmountPool when tokenWeightIn is extremely small', async () => {
       //Weight relation = 0.00769
 
       const tokenBalanceIn = bn(100e18);
