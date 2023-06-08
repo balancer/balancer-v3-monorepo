@@ -94,7 +94,7 @@ describe('WeightedMath', function () {
       expectEqualWithError(result, expected, 0.1);
     });
 
-    it('calculates correct outAmountPool when tokenWeightIn is extermely big', async () => {
+    it('calculates correct outAmountPool when tokenWeightIn is extremely big', async () => {
       //Weight relation = 130.07
 
       const tokenBalanceIn = bn(100e18);
