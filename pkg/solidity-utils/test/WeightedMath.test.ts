@@ -487,7 +487,7 @@ describe('WeightedMath', function () {
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
 
-    it('calculates 0 BPT in when amountOut is 0', async () => {
+    it('calculates zero BPT in when amountOut is zero', async () => {
       const balance = bn(100e18);
       const amountOut = bn(0);
 
