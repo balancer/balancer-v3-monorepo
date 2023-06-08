@@ -433,7 +433,7 @@ describe('WeightedMath', function () {
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
     });
 
-    it('calculates correct BPT when one of the out tokens is zero', async () => {
+    it('calculates correct BPT when one of the token amountsOut is zero', async () => {
       const balances = [bn(100e18), bn(100e18)];
       const normalizedWeights = [bn(0.5e18), bn(0.5e18)];
       const amountsOut = [bn(0), bn(10e18)];
