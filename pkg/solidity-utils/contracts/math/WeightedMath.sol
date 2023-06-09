@@ -34,7 +34,6 @@ library WeightedMath {
      */
     error ZeroInvariant();
 
-
     // Pool limits that arise from limitations in the fixed point power function (and the imposed 1:100 maximum weight
     // ratio).
 

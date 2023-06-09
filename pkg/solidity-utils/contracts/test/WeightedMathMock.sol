@@ -134,10 +134,7 @@ contract WeightedMathMock {
             );
     }
 
-    function calcBptOutAddToken(
-        uint256 totalSupply,
-        uint256 normalizedWeight
-    ) external pure returns (uint256) {
+    function calcBptOutAddToken(uint256 totalSupply, uint256 normalizedWeight) external pure returns (uint256) {
         return WeightedMath.calcBptOutAddToken(totalSupply, normalizedWeight);
     }
 }
