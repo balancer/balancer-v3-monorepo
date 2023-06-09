@@ -34,12 +34,6 @@ library WeightedMath {
      */
     error ZeroInvariant();
 
-    // A minimum normalized weight imposes a maximum weight ratio. We need this due to limitations in the
-    // implementation of the power function, as these ratios are often exponents.
-    uint256 internal constant _MIN_WEIGHT = 0.01e18;
-    // Having a minimum normalized weight imposes a limit on the maximum number of tokens;
-    // i.e., the largest possible pool is one where all tokens have exactly the minimum weight.
-    uint256 internal constant _MAX_WEIGHTED_TOKENS = 100;
 
     // Pool limits that arise from limitations in the fixed point power function (and the imposed 1:100 maximum weight
     // ratio).
