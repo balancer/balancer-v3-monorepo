@@ -1,5 +1,5 @@
 import { BigNumber, ethers } from 'ethers';
-import { maxUint, maxInt, minInt } from './numbers';
+import { maxUint, maxInt, minInt, bn } from './numbers';
 
 export const MAX_UINT256: BigNumber = maxUint(256);
 export const MAX_UINT112: BigNumber = maxUint(112);
@@ -25,6 +25,10 @@ export const MAX_GAS_LIMIT = 8e6;
 export const MAX_WEIGHTED_TOKENS = 100;
 
 export const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
+
+export const MAX_IN_RATIO = bn('0.3e18');
+export const MAX_OUT_RATIO = bn('0.3e18');
+export const MAX_RELATIVE_ERROR = 0.0001; //Max relative error
 
 // This is not quite a constant, but it fits here given we also have ZERO_ADDRESS, etc.
 export function randomAddress(): string {

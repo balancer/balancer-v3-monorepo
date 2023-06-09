@@ -5,9 +5,10 @@ pragma solidity ^0.8.18;
 import "../helpers/TemporarilyPausable.sol";
 
 contract TemporarilyPausableMock is TemporarilyPausable {
-    constructor(uint256 pauseWindowDuration, uint256 bufferPeriodDuration)
-        TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
-    {}
+    constructor(
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration
+    ) TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration) {}
 
     function unpause() external {
         _unpause();
