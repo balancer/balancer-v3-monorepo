@@ -142,13 +142,13 @@ export function calcTokenInGivenExactBptOut(
 
 export function calcBptInGivenExactTokensOut(
   fpBalances: BigNumber[],
-  fpWeights: BigNumber[],
+  fpNormalizedWeights: BigNumber[],
   fpAmountsOut: BigNumber[],
   fpBptTotalSupply: BigNumber,
   fpSwapFeePercentage: BigNumber
 ): BigNumber {
   const swapFeePercentage = fromFp(fpSwapFeePercentage);
-  const weights = fpWeights.map(fromFp);
+  const normalizedWeights = fpNormalizedWeights.map(fromFp);
   const balances = fpBalances.map(fromFp);
   const amountsOut = fpAmountsOut.map(fromFp);
   const bptTotalSupply = fromFp(fpBptTotalSupply);
@@ -158,7 +158,7 @@ export function calcBptInGivenExactTokensOut(
   for (let i = 0; i < balances.length; i++) {
     const balanceRatioWithoutFee = balances[i].sub(amountsOut[i]).div(balances[i]);
     balanceRatiosWithoutFee.push(balanceRatioWithoutFee);
-    invariantRatioWithoutFees = invariantRatioWithoutFees.add(balanceRatioWithoutFee.mul(weights[i]));
+    invariantRatioWithoutFees = invariantRatioWithoutFees.add(balanceRatioWithoutFee.mul(normalizedWeights[i]));
   }
 
   let invariantRatio = decimal(1);
@@ -178,7 +178,7 @@ export function calcBptInGivenExactTokensOut(
     }
 
     const balanceRatio = balances[i].sub(amountOutWithFee).div(balances[i]);
-    invariantRatio = invariantRatio.mul(balanceRatio.pow(weights[i]));
+    invariantRatio = invariantRatio.mul(balanceRatio.pow(normalizedWeights[i]));
   }
 
   const bptIn = bptTotalSupply.mul(complement(invariantRatio));
