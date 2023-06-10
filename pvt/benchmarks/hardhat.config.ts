@@ -1,4 +1,4 @@
-import '@nomiclabs/hardhat-ethers';
+import '@nomicfoundation/hardhat-ethers';
 
 import { hardhatBaseConfig } from '@balancer-labs/v3-common';
 
