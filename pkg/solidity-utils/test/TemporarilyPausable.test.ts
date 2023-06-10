@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { advanceTime, fromNow, MONTH } from '@balancer-labs/v3-helpers/src/time';
@@ -8,14 +8,18 @@ import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import '@balancer-labs/v3-common/setupTests';
 
 import { TemporarilyPausableMock } from '../typechain-types/contracts/test/TemporarilyPausableMock';
+import { BigNumberish, bn } from '@balancer-labs/v3-helpers/src/numbers';
 
 describe('TemporarilyPausable', function () {
   let instance: TemporarilyPausableMock;
   let user: SignerWithAddress;
 
-  const deployTemporarilyPausable = async (pauseWindowDuration = 0, bufferPeriodDuration = 0) => {
+  const deployTemporarilyPausable = async (
+    pauseWindowDuration: BigNumberish = 0n,
+    bufferPeriodDuration: BigNumberish = 0n
+  ) => {
     instance = await deploy('TemporarilyPausableMock', {
-      args: [pauseWindowDuration, bufferPeriodDuration],
+      args: [bn(pauseWindowDuration), bn(bufferPeriodDuration)],
     });
   };
 
@@ -33,7 +37,7 @@ describe('TemporarilyPausable', function () {
       expect(await instance.paused()).to.equal(false);
       const [pauseWindowEndTime, bufferPeriodEndTime] = await instance.getPauseEndTimes();
       expect(pauseWindowEndTime).to.equal(await fromNow(pauseWindowDuration));
-      expect(bufferPeriodEndTime).to.equal((await fromNow(pauseWindowDuration)).add(bufferPeriodDuration));
+      expect(bufferPeriodEndTime).to.equal((await fromNow(pauseWindowDuration)) + bn(bufferPeriodDuration));
     });
 
     it('can be initialized with no pause window or buffer period duration', async () => {
@@ -50,7 +54,7 @@ describe('TemporarilyPausable', function () {
 
     it('cannot be initialized with a pause window greater than the max', async () => {
       const maxPauseWindowDuration = await instance.getMaxPauseWindowDuration();
-      const pauseWindowDuration = maxPauseWindowDuration.toNumber() + 1;
+      const pauseWindowDuration = maxPauseWindowDuration + 1n;
 
       await expect(deployTemporarilyPausable(pauseWindowDuration)).to.be.revertedWithCustomError(
         instance,
@@ -61,7 +65,7 @@ describe('TemporarilyPausable', function () {
     it('cannot be initialized with a buffer period greater than the max', async () => {
       const maxBufferPeriodDuration = await instance.getMaxBufferPeriodDuration();
       const pauseWindowDuration = MONTH;
-      const bufferPeriodDuration = maxBufferPeriodDuration.toNumber() + 1;
+      const bufferPeriodDuration = maxBufferPeriodDuration + 1n;
 
       await expect(deployTemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)).to.be.revertedWithCustomError(
         instance,
