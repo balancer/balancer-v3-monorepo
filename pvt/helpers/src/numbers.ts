@@ -1,6 +1,7 @@
 import { Decimal } from 'decimal.js';
 
 import _BN from 'bn.js';
+import { boolean } from 'hardhat/internal/core/params/argumentTypes';
 
 const SCALING_FACTOR = 1e18;
 
@@ -131,4 +132,8 @@ function parseScientific(num: string): string {
 export function randomFromInterval(min: number, max: number): number {
   // min and max included
   return Math.random() * (max - min) + min;
+}
+
+export function isBn(n: unknown): boolean {
+  return typeof n === 'bigint';
 }

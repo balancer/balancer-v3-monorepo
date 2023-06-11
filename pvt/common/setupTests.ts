@@ -3,7 +3,7 @@ import chai, { expect } from 'chai';
 
 import { NAry } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
-import { BigNumberish, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { BigNumberish, bn, fp, isBn } from '@balancer-labs/v3-helpers/src/numbers';
 import { expectEqualWithError, expectLessThanOrEqualWithError } from '@balancer-labs/v3-helpers/src/test/relativeError';
 
 import { sharedBeforeEach } from './sharedBeforeEach';
@@ -100,7 +100,7 @@ chai.use(function (chai, utils) {
           Array.isArray(actual) &&
           Array.isArray(expected) &&
           actual.length === expected.length &&
-          (actual.some((v) => typeof v === 'bigint') || expected.some((v) => typeof v === 'bigint'))
+          (actual.some((v) => isBn(v)) || expected.some((v) => isBn(v)))
         ) {
           const equal = actual.every((value: any, i: number) => bn(value) == expected[i]);
           this.assert(
