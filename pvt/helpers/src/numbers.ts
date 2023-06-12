@@ -1,7 +1,6 @@
 import { Decimal } from 'decimal.js';
 
 import _BN from 'bn.js';
-import { boolean } from 'hardhat/internal/core/params/argumentTypes';
 
 const SCALING_FACTOR = 1e18;
 

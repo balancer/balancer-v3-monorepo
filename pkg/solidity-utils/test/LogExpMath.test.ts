@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
-import { bn, fp, FP_ONE } from '@balancer-labs/v3-helpers/src/numbers';
+import { fp, FP_ONE } from '@balancer-labs/v3-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v3-helpers/src/test/relativeError';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
