@@ -41,7 +41,7 @@ contract LogExpMathTest is Test {
 
         // Build ffi command string
         bashInput[0] = "node";
-        bashInput[1] = "./scripts/pow.js";
+        bashInput[1] = "./scripts/pow.mjs";
         bashInput[2] = Strings.toString(base);
         bashInput[3] = Strings.toString(exponent);
 
