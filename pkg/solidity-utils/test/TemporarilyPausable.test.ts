@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { BigNumberish } from 'ethers';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 
@@ -8,7 +9,7 @@ import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import '@balancer-labs/v3-common/setupTests';
 
 import { TemporarilyPausableMock } from '../typechain-types/contracts/test/TemporarilyPausableMock';
-import { BigNumberish, bn } from '@balancer-labs/v3-helpers/src/numbers';
+import { bn } from '@balancer-labs/v3-helpers/src/numbers';
 
 describe('TemporarilyPausable', function () {
   let instance: TemporarilyPausableMock;

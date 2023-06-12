@@ -1,9 +1,10 @@
+import { BigNumberish } from 'ethers';
 import { AsyncFunc } from 'mocha';
 import chai, { expect } from 'chai';
 
 import { NAry } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
-import { BigNumberish, bn, fp, isBn } from '@balancer-labs/v3-helpers/src/numbers';
+import { bn, fp, isBn } from '@balancer-labs/v3-helpers/src/numbers';
 import { expectEqualWithError, expectLessThanOrEqualWithError } from '@balancer-labs/v3-helpers/src/test/relativeError';
 
 import { sharedBeforeEach } from './sharedBeforeEach';

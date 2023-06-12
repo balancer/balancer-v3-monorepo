@@ -1,6 +1,7 @@
+import { BigNumberish } from 'ethers';
 import { Decimal } from 'decimal.js';
 
-import { BigNumberish, bn, decimal, fp, fromFp, toFp, fpMul, fpDiv, FP_ONE, FP_100_PCT } from '../numbers';
+import { bn, decimal, fp, fromFp, toFp, fpMul, fpDiv, FP_ONE, FP_100_PCT } from '../numbers';
 
 export function calculateInvariant(fpRawBalances: BigNumberish[], fpRawWeights: BigNumberish[]): bigint {
   const normalizedWeights = fpRawWeights.map(fromFp);

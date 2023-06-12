@@ -1,7 +1,6 @@
-import { Contract, ContractTransaction } from 'ethers';
+import { BigNumberish, Contract, ContractTransaction } from 'ethers';
 
 import { MAX_UINT256 } from '../../constants';
-import { BigNumberish } from '../../numbers';
 
 import TokensDeployer from './TokensDeployer';
 import TypesConverter from '../types/TypesConverter';

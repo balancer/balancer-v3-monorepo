@@ -1,7 +1,7 @@
-import { ContractReceipt } from 'ethers';
+import { BigNumberish, ContractReceipt } from 'ethers';
 import { ethers } from 'hardhat';
 
-import { BigNumberish, bn } from './numbers';
+import { bn } from './numbers';
 
 import { time } from '@nomicfoundation/hardhat-network-helpers';
 
