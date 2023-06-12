@@ -1,10 +1,9 @@
 import { Decimal } from 'decimal.js';
+import { BigNumberish } from 'ethers';
 
 import _BN from 'bn.js';
 
 const SCALING_FACTOR = 1e18;
-
-export type BigNumberish = string | number | bigint;
 
 export const decimal = (x: BigNumberish | Decimal): Decimal => new Decimal(x.toString());
 
