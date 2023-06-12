@@ -1,18 +1,19 @@
 import { expect } from 'chai';
 import { Decimal } from 'decimal.js';
-import { BigNumberish, bn, pct } from '../numbers';
+import { BigNumberish } from 'ethers';
+import { bn, pct } from '../numbers';
 
 export function expectEqualWithError(actual: BigNumberish, expected: BigNumberish, error: BigNumberish = 0.001): void {
   actual = bn(actual);
   expected = bn(expected);
   const acceptedError = pct(expected, error);
 
-  if (actual.gte(0)) {
-    expect(actual).to.be.at.least(expected.sub(acceptedError));
-    expect(actual).to.be.at.most(expected.add(acceptedError));
+  if (actual >= 0) {
+    expect(actual).to.be.at.least(expected - acceptedError);
+    expect(actual).to.be.at.most(expected + acceptedError);
   } else {
-    expect(actual).to.be.at.most(expected.sub(acceptedError));
-    expect(actual).to.be.at.least(expected.add(acceptedError));
+    expect(actual).to.be.at.most(expected - acceptedError);
+    expect(actual).to.be.at.least(expected + acceptedError);
   }
 }
 
@@ -34,7 +35,7 @@ export function expectLessThanOrEqualWithError(
 ): void {
   actual = bn(actual);
   expected = bn(expected);
-  const minimumValue = expected.sub(pct(expected, error));
+  const minimumValue = expected - pct(expected, error);
 
   expect(actual).to.be.at.most(expected);
   expect(actual).to.be.at.least(minimumValue);

@@ -1,4 +1,4 @@
-import '@nomiclabs/hardhat-ethers';
+import '@nomicfoundation/hardhat-ethers';
 import '@nomicfoundation/hardhat-toolbox';
 import 'hardhat-ignore-warnings';
 

@@ -1,5 +1,5 @@
-const { create, all } = require('mathjs');
-const { utils } = require('ethers');
+import { create, all } from 'mathjs';
+import { AbiCoder } from 'ethers';
 
 const config = {
   number: 'BigNumber',
@@ -22,4 +22,4 @@ let base = process.argv[2];
 let exponent = process.argv[3];
 
 let result = calculatePower(base, exponent);
-console.log(utils.defaultAbiCoder.encode(['uint256'], [result]));
+console.log(AbiCoder.defaultAbiCoder().encode(['uint256'], [result]));

@@ -1,20 +1,20 @@
-import { BigNumber, ethers } from 'ethers';
+import { ethers } from 'ethers';
 import { maxUint, maxInt, minInt, bn } from './numbers';
 
-export const MAX_UINT256: BigNumber = maxUint(256);
-export const MAX_UINT112: BigNumber = maxUint(112);
-export const MAX_UINT96: BigNumber = maxUint(96);
-export const MAX_UINT10: BigNumber = maxUint(10);
-export const MAX_UINT31: BigNumber = maxUint(31);
-export const MAX_UINT32: BigNumber = maxUint(32);
-export const MAX_UINT64: BigNumber = maxUint(64);
+export const MAX_UINT256: bigint = maxUint(256);
+export const MAX_UINT112: bigint = maxUint(112);
+export const MAX_UINT96: bigint = maxUint(96);
+export const MAX_UINT10: bigint = maxUint(10);
+export const MAX_UINT31: bigint = maxUint(31);
+export const MAX_UINT32: bigint = maxUint(32);
+export const MAX_UINT64: bigint = maxUint(64);
 
-export const MIN_INT22: BigNumber = minInt(22);
-export const MAX_INT22: BigNumber = maxInt(22);
-export const MIN_INT53: BigNumber = minInt(53);
-export const MAX_INT53: BigNumber = maxInt(53);
-export const MIN_INT256: BigNumber = minInt(256);
-export const MAX_INT256: BigNumber = maxInt(256);
+export const MIN_INT22: bigint = minInt(22);
+export const MAX_INT22: bigint = maxInt(22);
+export const MIN_INT53: bigint = minInt(53);
+export const MAX_INT53: bigint = maxInt(53);
+export const MIN_INT256: bigint = minInt(256);
+export const MAX_INT256: bigint = maxInt(256);
 
 export const ANY_ADDRESS = '0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF';
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';

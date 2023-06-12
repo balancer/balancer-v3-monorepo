@@ -1,5 +1,3 @@
-import { BigNumber } from 'ethers';
-
 import Token from './Token';
 import TokensDeployer from './TokensDeployer';
 import TypesConverter from '../types/TypesConverter';
@@ -122,7 +120,7 @@ export default class TokenList {
     );
   }
 
-  async balanceOf(account: Account): Promise<BigNumber[]> {
+  async balanceOf(account: Account): Promise<bigint[]> {
     return Promise.all(this.tokens.map((token) => token.balanceOf(account)));
   }
 
@@ -165,7 +163,7 @@ export default class TokenList {
     );
   }
 
-  scaledBalances(rawBalance: () => number): BigNumber[] {
-    return this.tokens.map((t) => BigNumber.from((rawBalance() * 10 ** t.decimals).toString()));
+  scaledBalances(rawBalance: () => number): bigint[] {
+    return this.tokens.map((t) => BigInt((rawBalance() * 10 ** t.decimals).toString()));
   }
 }

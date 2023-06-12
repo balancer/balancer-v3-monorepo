@@ -1,6 +1,7 @@
 import { expect } from 'chai';
-import { BigNumber, ContractReceipt } from 'ethers';
+import { ContractReceipt } from 'ethers';
 import { Interface, LogDescription } from 'ethers/lib/utils';
+import { isBn } from '../numbers';
 
 // Ported from @openzeppelin/test-helpers to use with Ethers. The Test Helpers don't
 // yet have Typescript typings, so we're being lax about them here.
@@ -26,7 +27,7 @@ export function inReceipt(receipt: ContractReceipt, eventName: string, eventArgs
 
         contains(e.args, k, v);
       } catch (error) {
-        exceptions.push(error);
+        exceptions.push(String(error));
         return false;
       }
     }
@@ -83,7 +84,7 @@ export function inIndirectReceipt(
 
         contains(e.args, k, v);
       } catch (error) {
-        exceptions.push(error);
+        exceptions.push(String(error));
         return false;
       }
     }
@@ -138,9 +139,9 @@ function contains(args: { [key: string]: any | undefined }, key: string, value: 
 
   if (value === null) {
     expect(args[key]).to.equal(null, `expected event argument '${key}' to be null but got ${args[key]}`);
-  } else if (BigNumber.isBigNumber(args[key]) || BigNumber.isBigNumber(value)) {
-    const actual = BigNumber.isBigNumber(args[key]) ? args[key].toString() : args[key];
-    const expected = BigNumber.isBigNumber(value) ? value.toString() : value;
+  } else if (isBn(args[key]) || isBn(value)) {
+    const actual = isBn(args[key]) ? args[key].toString() : args[key];
+    const expected = isBn(value) ? value.toString() : value;
 
     expect(args[key]).to.equal(value, `expected event argument '${key}' to have value ${expected} but got ${actual}`);
   } else {

@@ -1,7 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { ethers } from 'ethers';
+import { ethers, BigNumberish } from 'ethers';
 
-import { BigNumberish, FP_100_PCT } from '../../numbers';
+import { FP_100_PCT } from '../../numbers';
 import { ZERO_ADDRESS } from '../../constants';
 import { Account } from './types';
 import { RawVaultDeployment, VaultDeployment } from '../vault/types';
