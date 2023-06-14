@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 // Based on the EnumerableMap library from OpenZeppelin Contracts, altered to include the following:
-//  * a map from IERC20 to bytes32
+//  * a map from IERC20 to UInt256
 //  * entries are stored in mappings instead of arrays, reducing implicit storage reads for out-of-bounds checks
 //  * unchecked_at and unchecked_valueAt, which allow for more gas efficient data reads in some scenarios
 //  * indexOf, unchecked_indexOf and unchecked_setAt, which allow for more gas efficient data writes in some scenarios
@@ -9,10 +9,9 @@
 // Additionally, the base private functions that work on bytes32 were removed and replaced with a native implementation
 // for IERC20 keys, to reduce bytecode size and runtime costs.
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.18;
 
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+import "@balancer-labs/v3-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 
 /**
  * @dev Library for managing an enumerable variant of Solidity's
@@ -21,8 +20,8 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC2
  *
  * Maps have the following properties:
  *
- * - Entries are added, removed, and checked for existence in constant time
- * (O(1)).
+ * - Entries are added, removed, and checked for existence in constant time (O(1)).
+ *
  * - Entries are enumerated in O(n). No guarantees are made on the ordering.
  *
  * ```
@@ -55,17 +54,23 @@ library EnumerableMap {
     }
 
     /**
+     * @dev This error is thrown when an index is given beyond the current bounds of the set.
+     */
+    error IndexOutOfBounds();
+
+    /**
+     * @dev This error is thrown when attempting to retrieve an entry that is not present in the map.
+     */
+    error KeyNotFound();
+
+    /**
      * @dev Adds a key-value pair to a map, or updates the value for an existing
      * key. O(1).
      *
      * Returns true if the key was added to the map, that is if it was not
      * already present.
      */
-    function set(
-        IERC20ToUint256Map storage map,
-        IERC20 key,
-        uint256 value
-    ) internal returns (bool) {
+    function set(IERC20ToUint256Map storage map, IERC20 key, uint256 value) internal returns (bool) {
         // We read and store the key's index to prevent multiple reads from the same storage slot
         uint256 keyIndex = map._indexes[key];
 
@@ -92,11 +97,8 @@ library EnumerableMap {
      * This function performs one less storage read than {set}, but it should only be used when `index` is known to be
      * within bounds.
      */
-    function unchecked_setAt(
-        IERC20ToUint256Map storage map,
-        uint256 index,
-        uint256 value
-    ) internal {
+    function unchecked_setAt(IERC20ToUint256Map storage map, uint256 index, uint256 value) internal {
+        // solhint-disable-previous-line func-name-mixedcase
         map._entries[index]._value = value;
     }
 
@@ -166,7 +168,10 @@ library EnumerableMap {
      * - `index` must be strictly less than {length}.
      */
     function at(IERC20ToUint256Map storage map, uint256 index) internal view returns (IERC20, uint256) {
-        _require(map._length > index, Errors.OUT_OF_BOUNDS);
+        if (index >= map._length) {
+            revert IndexOutOfBounds();
+        }
+
         return unchecked_at(map, index);
     }
 
@@ -178,6 +183,7 @@ library EnumerableMap {
      * within bounds.
      */
     function unchecked_at(IERC20ToUint256Map storage map, uint256 index) internal view returns (IERC20, uint256) {
+        // solhint-disable-previous-line func-name-mixedcase
         IERC20ToUint256MapEntry storage entry = map._entries[index];
         return (entry._key, entry._value);
     }
@@ -187,6 +193,7 @@ library EnumerableMap {
      * read). O(1).
      */
     function unchecked_valueAt(IERC20ToUint256Map storage map, uint256 index) internal view returns (uint256) {
+        // solhint-disable-previous-line func-name-mixedcase
         return map._entries[index]._value;
     }
 
@@ -195,15 +202,14 @@ library EnumerableMap {
      *
      * Requirements:
      *
-     * - `key` must be in the map. Reverts with `errorCode` otherwise.
+     * - `key` must be in the map.
      */
-    function get(
-        IERC20ToUint256Map storage map,
-        IERC20 key,
-        uint256 errorCode
-    ) internal view returns (uint256) {
+    function get(IERC20ToUint256Map storage map, IERC20 key) internal view returns (uint256) {
         uint256 index = map._indexes[key];
-        _require(index > 0, errorCode);
+        if (index == 0) {
+            revert KeyNotFound();
+        }
+
         return unchecked_valueAt(map, index - 1);
     }
 
@@ -214,13 +220,12 @@ library EnumerableMap {
      *
      * - `key` must be in the map.
      */
-    function indexOf(
-        IERC20ToUint256Map storage map,
-        IERC20 key,
-        uint256 errorCode
-    ) internal view returns (uint256) {
+    function indexOf(IERC20ToUint256Map storage map, IERC20 key) internal view returns (uint256) {
         uint256 uncheckedIndex = unchecked_indexOf(map, key);
-        _require(uncheckedIndex != 0, errorCode);
+        if (uncheckedIndex == 0) {
+            revert KeyNotFound();
+        }
+
         return uncheckedIndex - 1;
     }
 
@@ -229,6 +234,7 @@ library EnumerableMap {
      * instead.
      */
     function unchecked_indexOf(IERC20ToUint256Map storage map, IERC20 key) internal view returns (uint256) {
+        // solhint-disable-previous-line func-name-mixedcase
         return map._indexes[key];
     }
 }

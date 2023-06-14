@@ -1,23 +1,21 @@
 // SPDX-License-Identifier: MIT
 
 // Based on the EnumerableSet library from OpenZeppelin Contracts, altered to remove the base private functions that
-// work on bytes32, replacing them with a native implementation for address and bytes32 values, to reduce bytecode
-// size and runtime costs.
+// work on bytes32, replacing them with a native implementation for address values, to reduce bytecode size and
+// runtime costs.
 // The `unchecked_at` function was also added, which allows for more gas efficient data reads in some scenarios.
 
-pragma solidity ^0.7.0;
-
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+pragma solidity ^0.8.18;
 
 /**
- * @dev Library for managing
+ * @dev Library for managing sets of primitve types.
  * https://en.wikipedia.org/wiki/Set_(abstract_data_type)[sets] of primitive
  * types.
  *
  * Sets have the following properties:
  *
- * - Elements are added, removed, and checked for existence in constant time
- * (O(1)).
+ * - Elements are added, removed, and checked for existence in constant time (O(1)).
+ *
  * - Elements are enumerated in O(n). No guarantees are made on the ordering.
  *
  * ```
@@ -29,9 +27,6 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerEr
  *     EnumerableSet.AddressSet private mySet;
  * }
  * ```
- *
- * As of v3.3.0, sets of type `bytes32` (`Bytes32Set`), `address` (`AddressSet`)
- * and `uint256` (`UintSet`) are supported.
  */
 library EnumerableSet {
     // The original OpenZeppelin implementation uses a generic Set type with bytes32 values: this was replaced with
@@ -44,6 +39,11 @@ library EnumerableSet {
         // means a value is not in the set.
         mapping(address => uint256) _indexes;
     }
+
+    /**
+     * @dev This error is thrown when an index is given beyond the current bounds of the set.
+     */
+    error IndexOutOfBounds();
 
     /**
      * @dev Add a value to a set. O(1).
@@ -128,7 +128,10 @@ library EnumerableSet {
      * - `index` must be strictly less than {length}.
      */
     function at(AddressSet storage set, uint256 index) internal view returns (address) {
-        _require(set._values.length > index, Errors.OUT_OF_BOUNDS);
+        if (index >= set._values.length) {
+            revert IndexOutOfBounds();
+        }
+
         return unchecked_at(set, index);
     }
 
