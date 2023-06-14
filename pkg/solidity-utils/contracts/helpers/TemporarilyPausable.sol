@@ -76,17 +76,13 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
         emit Unpaused(msg.sender);
     }
 
-    /**
-     * @inheritdoc ITemporarilyPausable
-     */
-    function paused() public view returns (bool) {
+    /// @inheritdoc ITemporarilyPausable
+    function paused() public view override returns (bool) {
         return block.timestamp <= _bufferPeriodEndTime && _paused;
     }
 
-    /**
-     * @inheritdoc ITemporarilyPausable
-     */
-    function getPauseEndTimes() public view returns (uint256 pauseWindowEndTime, uint256 bufferPeriodEndTime) {
+    /// @inheritdoc ITemporarilyPausable
+    function getPauseEndTimes() public view override returns (uint256 pauseWindowEndTime, uint256 bufferPeriodEndTime) {
         return (_pauseWindowEndTime, _bufferPeriodEndTime);
     }
 
