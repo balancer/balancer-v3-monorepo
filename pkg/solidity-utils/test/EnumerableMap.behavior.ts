@@ -104,6 +104,19 @@ export function shouldBehaveLikeMap(
     });
   });
 
+  describe('at', () => {
+    it('returns the value for a key', async () => {
+      await store.map.set(keyA, valueA);
+
+      expect((await store.map.at(0)).key).to.equal(keyA);
+      expect((await store.map.at(0)).value).to.equal(valueA);
+    });
+
+    it('reverts with a custom message if the index is invalid', async () => {
+      await expect(store.map.at(100)).to.be.revertedWithCustomError(store.map, 'IndexOutOfBounds');
+    });
+  });
+
   describe('indexOf', () => {
     it('returns the index of an added key', async () => {
       await store.map.set(keyA, valueA);
