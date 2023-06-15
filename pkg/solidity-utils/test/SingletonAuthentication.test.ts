@@ -1,13 +1,12 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { BasicAuthorizerMock } from '../typechain-types/contracts/test/BasicAuthorizerMock';
 import { BasicVaultMock } from '../typechain-types/contracts/test/BasicVaultMock';
 import { SingletonAuthenticationMock } from '../typechain-types/contracts/test/SingletonAuthenticationMock';
-import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 
 describe('SingletonAuthentication', () => {
@@ -22,10 +21,10 @@ describe('SingletonAuthentication', () => {
 
   sharedBeforeEach('deploy Authorizer, Vault, and Singleton', async () => {
     authorizer = (await deploy('BasicAuthorizerMock')) as unknown as BasicAuthorizerMock;
-    vault = (await deploy('BasicVaultMock', { args: [authorizer.address] })) as unknown as BasicVaultMock;
+    vault = (await deploy('BasicVaultMock', { args: [authorizer] })) as unknown as BasicVaultMock;
 
     singleton = (await deploy('SingletonAuthenticationMock', {
-      args: [vault.address],
+      args: [vault],
     })) as unknown as SingletonAuthenticationMock;
   });
 
@@ -35,11 +34,11 @@ describe('SingletonAuthentication', () => {
 
   describe('constructor', () => {
     it('sets the vault address', async () => {
-      expect(await singleton.getVault()).to.be.eq(vault.address);
+      expect(await singleton.getVault()).to.eq(await vault.getAddress());
     });
 
     it('uses the authorizer of the vault', async () => {
-      expect(await singleton.getAuthorizer()).to.equal(authorizer.address);
+      expect(await singleton.getAuthorizer()).to.equal(await authorizer.getAddress());
     });
 
     it('tracks authorizer changes in the vault', async () => {
@@ -49,11 +48,9 @@ describe('SingletonAuthentication', () => {
     });
 
     it('emits an event when the authorizer changes', async () => {
-      const receipt = await vault.connect(admin).setAuthorizer(other.address);
-
-      expectEvent.inReceipt(await receipt.wait(), 'AuthorizerChanged', {
-        newAuthorizer: other.address,
-      });
+      await expect(await vault.connect(admin).setAuthorizer(other.address))
+        .to.emit(vault, 'AuthorizerChanged')
+        .withArgs(other.address);
     });
   });
 
@@ -65,7 +62,7 @@ describe('SingletonAuthentication', () => {
     let secondOne: Contract;
 
     sharedBeforeEach('deploy second singleton', async () => {
-      secondOne = await deploy('SingletonAuthenticationMock', { args: [vault.address] });
+      secondOne = await deploy('SingletonAuthenticationMock', { args: [vault] });
     });
 
     it('disambiguates selectors', async () => {
