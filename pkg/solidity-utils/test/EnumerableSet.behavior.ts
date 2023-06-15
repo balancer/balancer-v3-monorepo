@@ -1,3 +1,4 @@
+import { MAX_UINT256 } from '@balancer-labs/v3-helpers/src/constants';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
@@ -115,8 +116,8 @@ export function shouldBehaveLikeSet(store: { set: Contract }, members: Array<str
       expect(await store.set.unchecked_indexOf(addressB)).to.equal(0);
     });
 
-    it('returns a zero index if the key is not in the map', async () => {
-      expect(await store.set.unchecked_indexOf(addressA)).to.be.equal(0);
+    it('returns -1 if the key is not in the map', async () => {
+      expect(await store.set.unchecked_indexOf(addressA)).to.be.equal(MAX_UINT256);
     });
   });
 

@@ -139,6 +139,18 @@ library EnumerableSet {
             revert IndexOutOfBounds();
         }
 
+        return unchecked_at(set, index);
+    }
+
+    /**
+     * @dev Same as {at}, except this doesn't revert if `index` it outside of the set (i.e. if it is equal or larger
+     * than {length}). O(1).
+     *
+     * This function performs one less storage read than {at}, but should only be used when `index` is known to be
+     * within bounds.
+     */
+    // solhint-disable-next-line func-name-mixedcase
+    function unchecked_at(AddressSet storage set, uint256 index) internal view returns (address) {
         return set._values[index];
     }
 
@@ -166,10 +178,9 @@ library EnumerableSet {
      */
     function unchecked_indexOf(AddressSet storage set, address value) internal view returns (uint256) {
         // solhint-disable-previous-line func-name-mixedcase
-        uint256 rawIndex = set._indexes[value];
 
         unchecked {
-            return rawIndex == 0 ? 0 : rawIndex - 1;
+            return set._indexes[value] - 1;
         }
     }
 }
