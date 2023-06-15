@@ -83,17 +83,19 @@ library EnumerableSet {
             // the array, and then remove the last element (sometimes called as 'swap and pop').
             // This modifies the order of the array, as noted in {at}.
 
-            uint256 toDeleteIndex = valueIndex - 1;
-            uint256 lastIndex = set._values.length - 1;
+            unchecked {
+                uint256 toDeleteIndex = valueIndex - 1;
+                uint256 lastIndex = set._values.length - 1;
 
-            // The swap is only necessary if we're not removing the last element
-            if (toDeleteIndex != lastIndex) {
-                address lastValue = set._values[lastIndex];
+                // The swap is only necessary if we're not removing the last element
+                if (toDeleteIndex != lastIndex) {
+                    address lastValue = set._values[lastIndex];
 
-                // Move the last value to the index where the value to delete is
-                set._values[toDeleteIndex] = lastValue;
-                // Update the index for the moved value
-                set._indexes[lastValue] = toDeleteIndex + 1; // All indexes are 1-based
+                    // Move the last value to the index where the value to delete is
+                    set._values[toDeleteIndex] = lastValue;
+                    // Update the index for the moved value
+                    set._indexes[lastValue] = toDeleteIndex + 1; // All indexes are 1-based
+                }
             }
 
             // Delete the slot where the moved value was stored
@@ -150,7 +152,9 @@ library EnumerableSet {
             revert ElementNotFound();
         }
 
-        return rawIndex - 1;
+        unchecked {
+            return rawIndex - 1;
+        }
     }
 
     /**
@@ -164,6 +168,8 @@ library EnumerableSet {
         // solhint-disable-previous-line func-name-mixedcase
         uint256 rawIndex = set._indexes[value];
 
-        return rawIndex == 0 ? 0 : rawIndex - 1;
+        unchecked {
+            return rawIndex == 0 ? 0 : rawIndex - 1;
+        }
     }
 }

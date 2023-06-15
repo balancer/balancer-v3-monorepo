@@ -74,19 +74,21 @@ library EnumerableMap {
         // We read and store the key's index to prevent multiple reads from the same storage slot
         uint256 keyIndex = map._indexes[key];
 
-        // Equivalent to !contains(map, key)
-        if (keyIndex == 0) {
-            uint256 previousLength = map._length;
-            map._entries[previousLength] = IERC20ToUint256MapEntry({ _key: key, _value: value });
-            map._length = previousLength + 1;
+        unchecked {
+            // Equivalent to !contains(map, key)
+            if (keyIndex == 0) {
+                uint256 previousLength = map._length;
+                map._entries[previousLength] = IERC20ToUint256MapEntry({ _key: key, _value: value });
+                map._length = previousLength + 1;
 
-            // The entry is stored at previousLength, but we add 1 to all indexes
-            // and use 0 as a sentinel value
-            map._indexes[key] = previousLength + 1;
-            return true;
-        } else {
-            map._entries[keyIndex - 1]._value = value;
-            return false;
+                // The entry is stored at previousLength, but we add 1 to all indexes
+                // and use 0 as a sentinel value
+                map._indexes[key] = previousLength + 1;
+                return true;
+            } else {
+                map._entries[keyIndex - 1]._value = value;
+                return false;
+            }
         }
     }
 
@@ -116,18 +118,22 @@ library EnumerableMap {
             // To delete a key-value pair from the _entries pseudo-array in O(1), we swap the entry to delete with the
             // one at the highest index, and then remove this last entry (sometimes called as 'swap and pop').
             // This modifies the order of the pseudo-array, as noted in {at}.
+            uint256 toDeleteIndex;
+            uint256 lastIndex;
 
-            uint256 toDeleteIndex = keyIndex - 1;
-            uint256 lastIndex = map._length - 1;
+            unchecked {
+                toDeleteIndex = keyIndex - 1;
+                lastIndex = map._length - 1;
 
-            // The swap is only necessary if we're not removing the last element
-            if (toDeleteIndex != lastIndex) {
-                IERC20ToUint256MapEntry storage lastEntry = map._entries[lastIndex];
+                // The swap is only necessary if we're not removing the last element
+                if (toDeleteIndex != lastIndex) {
+                    IERC20ToUint256MapEntry storage lastEntry = map._entries[lastIndex];
 
-                // Move the last entry to the index where the entry to delete is
-                map._entries[toDeleteIndex] = lastEntry;
-                // Update the index for the moved entry
-                map._indexes[lastEntry._key] = toDeleteIndex + 1; // All indexes are 1-based
+                    // Move the last entry to the index where the entry to delete is
+                    map._entries[toDeleteIndex] = lastEntry;
+                    // Update the index for the moved entry
+                    map._indexes[lastEntry._key] = toDeleteIndex + 1; // All indexes are 1-based
+                }
             }
 
             // Delete the slot where the moved entry was stored
@@ -210,7 +216,9 @@ library EnumerableMap {
             revert KeyNotFound();
         }
 
-        return unchecked_valueAt(map, index - 1);
+        unchecked {
+            return unchecked_valueAt(map, index - 1);
+        }
     }
 
     /**
@@ -226,7 +234,9 @@ library EnumerableMap {
             revert KeyNotFound();
         }
 
-        return uncheckedIndex - 1;
+        unchecked {
+            return uncheckedIndex - 1;
+        }
     }
 
     /**
