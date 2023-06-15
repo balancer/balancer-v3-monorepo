@@ -4,7 +4,7 @@ import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { shouldBehaveLikeSet } from './EnumerableSet.behavior';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 
-describe('EnumerableMap', () => {
+describe('EnumerableSet', () => {
   describe('EnumerableIERC20ToUint256Map', () => {
     const members = [
       '0x8B40ECf815AC8d53aB4AD2a00248DE77296344Db',
