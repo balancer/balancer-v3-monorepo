@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
-import { bn, fp, FP_ONE } from '@balancer-labs/v3-helpers/src/numbers';
+import { fp, FP_ONE } from '@balancer-labs/v3-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v3-helpers/src/test/relativeError';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
@@ -9,10 +9,10 @@ import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 describe('ExpLog', () => {
   let lib: Contract;
 
-  const MAX_X = bn(2).pow(255).sub(1);
-  const MAX_Y = bn(2).pow(254).div(bn(10).pow(20)).sub(1);
-  const LN_36_LOWER_BOUND = FP_ONE.sub(fp(0.1));
-  const LN_36_UPPER_BOUND = FP_ONE.add(fp(0.1));
+  const MAX_X = 2n ** 255n - 1n;
+  const MAX_Y = 2n ** 254n / 10n ** 20n - 1n;
+  const LN_36_LOWER_BOUND = FP_ONE - fp(0.1);
+  const LN_36_UPPER_BOUND = FP_ONE + fp(0.1);
   const MIN_NATURAL_EXPONENT = fp(-41);
   const MAX_NATURAL_EXPONENT = fp(130);
   const EXPECTED_RELATIVE_ERROR = 1e-14;
@@ -102,7 +102,7 @@ describe('ExpLog', () => {
 
     describe('x between LN_36_LOWER_BOUND and LN_36_UPPER_BOUND', () => {
       it('handles x in the specific range properly', async () => {
-        const base = LN_36_LOWER_BOUND.add(LN_36_UPPER_BOUND).div(2);
+        const base = (LN_36_LOWER_BOUND + LN_36_UPPER_BOUND) / 2n;
 
         // Choose an arbitrary exponent, like 2
         const exponent = 2;
@@ -136,21 +136,21 @@ describe('ExpLog', () => {
 
     describe('max values', () => {
       it('cannot handle a product when logx_times_y > MAX_NATURAL_EXPONENT', async () => {
-        const base = bn(2).pow(254);
-        const exponent = bn(10).pow(20);
+        const base = 2n ** 254n;
+        const exponent = 10n ** 20n;
 
         await expect(lib.pow(base, exponent)).to.be.revertedWithCustomError(lib, 'ProductOutOfBounds');
       });
 
       it('cannot handle a product when logx_times_y < MIN_NATURAL_EXPONENT', async () => {
         const base = 1;
-        const exponent = bn(10).pow(20);
+        const exponent = 10n ** 20n;
 
         await expect(lib.pow(base, exponent)).to.be.revertedWithCustomError(lib, 'ProductOutOfBounds');
       });
 
       it('cannot handle a base greater than 2^255 - 1', async () => {
-        const base = MAX_X.add(1);
+        const base = MAX_X + 1n;
         const exponent = 1;
 
         await expect(lib.pow(base, exponent)).to.be.revertedWithCustomError(lib, 'BaseOutOfBounds');
@@ -158,7 +158,7 @@ describe('ExpLog', () => {
 
       it('cannot handle an exponent greater than (2^254/1e20) - 1', async () => {
         const base = 1;
-        const exponent = MAX_Y.add(1);
+        const exponent = MAX_Y + 1n;
 
         await expect(lib.pow(base, exponent)).to.be.revertedWithCustomError(lib, 'ExponentOutOfBounds');
       });
@@ -189,7 +189,7 @@ describe('ExpLog', () => {
     it('handles large positive input within the defined bounds', async () => {
       expectEqualWithError(
         await lib.exp(MAX_NATURAL_EXPONENT),
-        fp(Math.exp(MAX_NATURAL_EXPONENT.div(FP_ONE).toNumber())),
+        fp(Math.exp(Number(MAX_NATURAL_EXPONENT / FP_ONE))),
         EXPECTED_RELATIVE_ERROR
       );
     });
@@ -197,19 +197,19 @@ describe('ExpLog', () => {
     it('handles large negative input within the defined bounds', async () => {
       expectEqualWithError(
         await lib.exp(MIN_NATURAL_EXPONENT),
-        fp(Math.exp(MIN_NATURAL_EXPONENT.div(FP_ONE).toNumber())),
+        fp(Math.exp(Number(MIN_NATURAL_EXPONENT / FP_ONE))),
         EXPECTED_RELATIVE_ERROR
       );
     });
 
     it('cannot handle input larger than MAX_NATURAL_EXPONENT', async () => {
-      const x = MAX_NATURAL_EXPONENT.add(1);
+      const x = MAX_NATURAL_EXPONENT + 1n;
 
       await expect(lib.exp(x)).to.be.revertedWithCustomError(lib, 'InvalidExponent');
     });
 
     it('cannot handle input smaller than MIN_NATURAL_EXPONENT', async () => {
-      const x = MIN_NATURAL_EXPONENT.sub(1);
+      const x = MIN_NATURAL_EXPONENT - 1n;
 
       await expect(lib.exp(x)).to.be.revertedWithCustomError(lib, 'InvalidExponent');
     });
@@ -235,7 +235,7 @@ describe('ExpLog', () => {
     });
 
     it('handles arg within LN_36_LOWER_BOUND bounds', async () => {
-      const arg = LN_36_LOWER_BOUND.add(1);
+      const arg = LN_36_LOWER_BOUND + 1n;
       const base = fp(10);
 
       expectEqualWithError(await lib.log(arg, base), fp(Math.log10(0.9)), EXPECTED_RELATIVE_ERROR);
@@ -243,13 +243,13 @@ describe('ExpLog', () => {
 
     it('handles base within LN_36_LOWER_BOUND bounds', async () => {
       const arg = fp(100);
-      const base = LN_36_LOWER_BOUND.add(1);
+      const base = LN_36_LOWER_BOUND + 1n;
 
       expectEqualWithError(await lib.log(arg, base), fp(Math.log(100) / Math.log(0.9)), EXPECTED_RELATIVE_ERROR);
     });
 
     it('handles arg larger than LN_36_UPPER_BOUND', async () => {
-      const arg = LN_36_UPPER_BOUND.add(1);
+      const arg = LN_36_UPPER_BOUND + 1n;
       const base = fp(10);
 
       expectEqualWithError(await lib.log(arg, base), fp(Math.log10(1.1)), EXPECTED_RELATIVE_ERROR);
@@ -257,7 +257,7 @@ describe('ExpLog', () => {
 
     it('handles base larger than LN_36_UPPER_BOUND', async () => {
       const arg = fp(100);
-      const base = LN_36_UPPER_BOUND.add(1);
+      const base = LN_36_UPPER_BOUND + 1n;
 
       expectEqualWithError(await lib.log(arg, base), fp(Math.log(100) / Math.log(1.1)), EXPECTED_RELATIVE_ERROR);
     });
@@ -281,13 +281,13 @@ describe('ExpLog', () => {
     });
 
     it('handles input within LN_36 bounds', async () => {
-      const a = LN_36_LOWER_BOUND.add(1);
+      const a = LN_36_LOWER_BOUND + 1n;
 
       expectEqualWithError(await lib.ln(a), fp(Math.log(0.9)), EXPECTED_RELATIVE_ERROR);
     });
 
     it('handles input larger than LN_36_UPPER_BOUND', async () => {
-      const a = LN_36_UPPER_BOUND.add(1);
+      const a = LN_36_UPPER_BOUND + 1n;
 
       expectEqualWithError(await lib.ln(a), fp(Math.log(1.1)), EXPECTED_RELATIVE_ERROR);
     });

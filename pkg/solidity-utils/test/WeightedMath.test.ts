@@ -141,7 +141,7 @@ describe('WeightedMath', function () {
       const tokenWeightOut = bn(40e18);
 
       // The amount in exceeds the maximum in ratio (i.e. tokenBalanceIn * MAX_IN_RATIO)
-      const tokenAmountIn = tokenBalanceIn.mul(MAX_IN_RATIO).add(bn('1')); // Just slightly greater than maximum allowed
+      const tokenAmountIn = tokenBalanceIn * MAX_IN_RATIO + 1n; // Just slightly greater than maximum allowed
 
       await expect(
         math.calcOutGivenIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn)
@@ -194,7 +194,7 @@ describe('WeightedMath', function () {
       const tokenWeightOut = bn(40e18);
 
       // The amount in exceeds the maximum in ratio (i.e. tokenBalanceIn * MAX_IN_RATIO)
-      const tokenAmountOut = tokenBalanceOut.mul(MAX_OUT_RATIO).add(bn('1')); // Just slightly greater than maximum allowed
+      const tokenAmountOut = tokenBalanceOut * MAX_OUT_RATIO + 1n; // Just slightly greater than maximum allowed
 
       await expect(
         math.calcInGivenOut(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountOut)

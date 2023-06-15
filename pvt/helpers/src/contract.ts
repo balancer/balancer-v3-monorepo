@@ -33,7 +33,7 @@ export async function deploy<T>(
   const factory = await ethers.getContractFactoryFromArtifact(artifact, { signer: from, libraries });
   const instance = await factory.deploy(...args);
 
-  return instance.deployed() as unknown as T;
+  return instance.waitForDeployment() as unknown as T;
 }
 
 // Creates a contract object for a contract deployed at a known address. The `contract` argument follows the same rules

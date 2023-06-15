@@ -1,21 +1,21 @@
-import { BigNumber, ContractReceipt } from 'ethers';
+import { BigNumberish, ContractReceipt } from 'ethers';
 import { ethers } from 'hardhat';
 
-import { BigNumberish, bn } from './numbers';
+import { bn } from './numbers';
 
 import { time } from '@nomicfoundation/hardhat-network-helpers';
 
-export const currentTimestamp = async (): Promise<BigNumber> => {
+export const currentTimestamp = async (): Promise<bigint> => {
   return bn(await time.latest());
 };
 
-export const currentWeekTimestamp = async (): Promise<BigNumber> => {
-  return (await currentTimestamp()).div(WEEK).mul(WEEK);
+export const currentWeekTimestamp = async (): Promise<bigint> => {
+  return ((await currentTimestamp()) / bn(WEEK)) * bn(WEEK);
 };
 
-export const fromNow = async (seconds: number): Promise<BigNumber> => {
+export const fromNow = async (seconds: number): Promise<bigint> => {
   const now = await currentTimestamp();
-  return now.add(seconds);
+  return now + bn(seconds);
 };
 
 export const advanceTime = async (seconds: BigNumberish): Promise<void> => {
@@ -35,6 +35,7 @@ export const lastBlockNumber = async (): Promise<number> => await time.latestBlo
 export const receiptTimestamp = async (receipt: ContractReceipt | Promise<ContractReceipt>): Promise<number> => {
   const blockHash = (await receipt).blockHash;
   const block = await ethers.provider.getBlock(blockHash);
+  if (block === null) throw Error('Could not get block for blockhash');
   return block.timestamp;
 };
 

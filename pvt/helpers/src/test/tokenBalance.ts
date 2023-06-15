@@ -1,9 +1,9 @@
 import { expect } from 'chai';
 import { Dictionary } from 'lodash';
-import { Contract, BigNumber } from 'ethers';
+import { BigNumberish, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { BigNumberish, bn } from '../numbers';
+import { bn } from '../numbers';
 import TokenList from '../models/tokens/TokenList';
 import Token from '../models/tokens/Token';
 
@@ -32,30 +32,30 @@ interface BalanceChange {
 }
 
 abstract class BalanceTracker {
-  private prev: BigNumber | undefined;
+  private prev: bigint | undefined;
 
   // returns the current token balance
-  async get(): Promise<BigNumber> {
+  async get(): Promise<bigint> {
     this.prev = await this.currentBalance();
     return this.prev;
   }
 
   // returns the balance difference between the current one and the
   // last call to get or delta
-  async delta(): Promise<BigNumber> {
+  async delta(): Promise<bigint> {
     const balance = await this.currentBalance();
 
     if (this.prev == undefined) {
       throw new Error('Tracker.get must be called before Tracker.delta');
     }
 
-    const delta = balance.sub(this.prev);
+    const delta = balance - this.prev;
     this.prev = balance;
 
     return delta;
   }
 
-  abstract currentBalance(): Promise<BigNumber>;
+  abstract currentBalance(): Promise<bigint>;
 }
 
 class ERC20BalanceTracker extends BalanceTracker {
@@ -63,7 +63,7 @@ class ERC20BalanceTracker extends BalanceTracker {
     super();
   }
 
-  async currentBalance(): Promise<BigNumber> {
+  async currentBalance(): Promise<bigint> {
     return this.token.balanceOf(this.address);
   }
 }
@@ -73,7 +73,7 @@ class InternalBalanceTracker extends BalanceTracker {
     super();
   }
 
-  async currentBalance(): Promise<BigNumber> {
+  async currentBalance(): Promise<bigint> {
     const result = await this.vault.getInternalBalance(this.address, [this.token.address]);
     return result[0];
   }

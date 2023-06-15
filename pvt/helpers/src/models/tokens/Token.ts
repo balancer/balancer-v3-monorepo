@@ -1,7 +1,6 @@
-import { BigNumber, Contract, ContractTransaction } from 'ethers';
+import { BigNumberish, Contract, ContractTransaction } from 'ethers';
 
 import { MAX_UINT256 } from '../../constants';
-import { BigNumberish } from '../../numbers';
 
 import TokensDeployer from './TokensDeployer';
 import TypesConverter from '../types/TypesConverter';
@@ -44,7 +43,7 @@ export default class Token {
     return this.instance.address;
   }
 
-  async balanceOf(account: Account): Promise<BigNumber> {
+  async balanceOf(account: Account): Promise<bigint> {
     return this.instance.balanceOf(TypesConverter.toAddress(account));
   }
 

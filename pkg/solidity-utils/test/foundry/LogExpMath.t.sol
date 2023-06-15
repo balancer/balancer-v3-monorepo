@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
@@ -41,7 +41,7 @@ contract LogExpMathTest is Test {
 
         // Build ffi command string
         bashInput[0] = "node";
-        bashInput[1] = "./scripts/pow.js";
+        bashInput[1] = "./scripts/pow.mjs";
         bashInput[2] = Strings.toString(base);
         bashInput[3] = Strings.toString(exponent);
 

@@ -1,10 +1,10 @@
+import { BigNumberish } from 'ethers';
 import { AsyncFunc } from 'mocha';
-import { BigNumber } from 'ethers';
 import chai, { expect } from 'chai';
 
 import { NAry } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
-import { BigNumberish, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { bn, fp, isBn } from '@balancer-labs/v3-helpers/src/numbers';
 import { expectEqualWithError, expectLessThanOrEqualWithError } from '@balancer-labs/v3-helpers/src/test/relativeError';
 
 import { sharedBeforeEach } from './sharedBeforeEach';
@@ -101,9 +101,9 @@ chai.use(function (chai, utils) {
           Array.isArray(actual) &&
           Array.isArray(expected) &&
           actual.length === expected.length &&
-          (actual.some(BigNumber.isBigNumber) || expected.some(BigNumber.isBigNumber))
+          (actual.some((v) => isBn(v)) || expected.some((v) => isBn(v)))
         ) {
-          const equal = actual.every((value: any, i: number) => BigNumber.from(value).eq(expected[i]));
+          const equal = actual.every((value: any, i: number) => bn(value) == expected[i]);
           this.assert(
             equal,
             `Expected "[${expected}]" to be deeply equal [${actual}]`,
