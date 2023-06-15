@@ -23,8 +23,8 @@ export function inReceipt(receipt: ContractTransactionReceipt, eventName: string
     }
 
     // Construct the event arguments (keys are in the fragment inputs; values are in the args)
-    let actualEventArgs = {};
-    e.fragment.inputs.forEach((key, i) => actualEventArgs[key.name] = e.args[i]);
+    const actualEventArgs = {};
+    e.fragment.inputs.forEach((key, i) => (actualEventArgs[key.name] = e.args[i]));
 
     for (const [k, v] of Object.entries(eventArgs)) {
       try {
