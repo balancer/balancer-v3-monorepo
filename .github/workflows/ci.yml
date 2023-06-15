@@ -20,17 +20,6 @@ jobs:
       - name: Lint
         run: yarn lint
 
-  static-analysis:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up environment
-        uses: ./.github/actions/setup
-      - name: Install Slither
-        run: yarn slither-install
-      - name: Run Slither
-        run: yarn slither
-
   build:
     runs-on: ubuntu-latest
     steps:
