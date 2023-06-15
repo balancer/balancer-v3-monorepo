@@ -7,7 +7,7 @@ export const actionId = (
   contractInterface?: Interface,
   chainId?: number
 ): Promise<string> => {
-  const selector = (contractInterface ?? instance.interface).getSighash(method);
+  const selector = (contractInterface ?? instance.interface).getFunction(method).selector;
 
   return instance.getActionId(chainId ?? 1, selector);
 };
