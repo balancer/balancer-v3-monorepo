@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { BigNumberish } from 'ethers';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
-
+import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { advanceTime, fromNow, MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
@@ -115,15 +115,23 @@ describe('TemporarilyPausable', function () {
 
       it('emits a Unpaused event', async () => {
         await instance.pause();
-        await expect(await instance.connect(user).unpause())
-          .to.emit(instance, 'Unpaused')
-          .withArgs(user.address);
+
+        /*
+            Could check this way, using an array of values instead of an object:
+
+            await expect(await instance.connect(user).unpause())
+              .to.emit(instance, 'Unpaused')
+              .withArgs(user.address);
+         */
+        const tx = await instance.connect(user).unpause();
+
+        expectEvent.inReceipt(await tx.wait(), 'Unpaused', { account: user.address });
       });
 
       it('emits a Paused event', async () => {
-        await expect(await instance.connect(user).pause())
-          .to.emit(instance, 'Paused')
-          .withArgs(user.address);
+        const tx = await instance.connect(user).pause();
+
+        expectEvent.inReceipt(await tx.wait(), 'Paused', { account: user.address });
       });
     });
 
@@ -195,9 +203,9 @@ describe('TemporarilyPausable', function () {
           });
 
           it('emits a Unpaused event', async () => {
-            await expect(await instance.connect(user).unpause())
-              .to.emit(instance, 'Unpaused')
-              .withArgs(user.address);
+            const tx = await instance.connect(user).unpause();
+
+            expectEvent.inReceipt(await tx.wait(), 'Unpaused', { account: user.address });
           });
 
           it('cannot be unpaused and then paused', async () => {
