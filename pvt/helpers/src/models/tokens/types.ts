@@ -1,6 +1,6 @@
 import { BigNumberish } from 'ethers';
 
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 
 import { NAry, Account } from '../types/types';
 
