@@ -115,7 +115,6 @@ describe('TemporarilyPausable', function () {
 
       it('emits a Unpaused event', async () => {
         await instance.pause();
-
         await expect(await instance.connect(user).unpause())
           .to.emit(instance, 'Unpaused')
           .withArgs(user.address);
