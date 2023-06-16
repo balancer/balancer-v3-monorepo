@@ -65,16 +65,6 @@ interface IVault {
     error PoolNotRegistered(address poolAddress);
 
     /**
-     * @dev Error indicating an attempt to register an invalid token.
-     */
-    error InvalidToken();
-
-    /**
-     * @dev Error indicating a token was already registered (i.e., a duplicate). 
-     */
-    error TokenAlreadyRegistered(IERC20 tokenAddress);
-
-    /**
      * @dev Returns a Pool's registered tokens and balances.
      *
      * The order of the `tokens` and `balances` arrays is the same order that will be used in `joinPool`, `exitPool`,

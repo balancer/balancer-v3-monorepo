@@ -15,10 +15,20 @@ import "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.so
 abstract contract PoolRegistry is IVault, ReentrancyGuard, TemporarilyPausable {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
 
+    // Registry of pool addresses.
     mapping(address => bool) private _isPoolRegistered;
 
-    // Pool -> (token -> balance)
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolBalances;
+
+    /**
+     * @dev Error indicating an attempt to register an invalid token.
+     */
+    error InvalidToken();
+
+    /**
+     * @dev Error indicating a token was already registered (i.e., a duplicate). 
+     */
+    error TokenAlreadyRegistered(IERC20 tokenAddress);
 
     /**
      * @dev Reverts unless `poolAddress` corresponds to a registered Pool.
@@ -82,7 +92,6 @@ abstract contract PoolRegistry is IVault, ReentrancyGuard, TemporarilyPausable {
         }
 
         _isPoolRegistered[poolAddress] = true;
-
         emit PoolRegistered(poolAddress, tokens);
     }
 
