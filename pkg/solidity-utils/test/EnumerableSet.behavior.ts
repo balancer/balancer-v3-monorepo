@@ -1,4 +1,3 @@
-import { MAX_UINT256 } from '@balancer-labs/v3-helpers/src/constants';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
@@ -84,7 +83,7 @@ export function shouldBehaveLikeSet(store: { set: Contract }, members: Array<str
       expect(await store.set.indexOf(addressB)).to.equal(0);
     });
 
-    it('reverts if the key is not in the map', async () => {
+    it('reverts if the key is not in the set', async () => {
       await expect(store.set.indexOf(addressA)).to.be.revertedWithCustomError(store.set, 'ElementNotFound');
     });
   });
@@ -108,8 +107,8 @@ export function shouldBehaveLikeSet(store: { set: Contract }, members: Array<str
       expect(await store.set.unchecked_indexOf(addressB)).to.equal(0);
     });
 
-    it('returns -1 if the key is not in the map', async () => {
-      expect(await store.set.unchecked_indexOf(addressA)).to.be.equal(MAX_UINT256);
+    it('returns 0 if the key is not in the set', async () => {
+      expect(await store.set.unchecked_indexOf(addressA)).to.be.equal(0);
     });
   });
 

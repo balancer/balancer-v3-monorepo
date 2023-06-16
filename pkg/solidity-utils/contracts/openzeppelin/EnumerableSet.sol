@@ -180,9 +180,10 @@ library EnumerableSet {
      */
     function unchecked_indexOf(AddressSet storage set, address value) internal view returns (uint256) {
         // solhint-disable-previous-line func-name-mixedcase
+        uint256 rawIndex = set._indexes[value];
 
         unchecked {
-            return set._indexes[value] - 1;
+            return rawIndex == 0 ? 0 : rawIndex - 1;
         }
     }
 }
