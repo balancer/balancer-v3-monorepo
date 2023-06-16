@@ -30,6 +30,8 @@ One option to quickly select the suggested Node version is using `nvm`, and runn
 $ nvm use
 ```
 
+Solidity 0.8.4 or higher is required, as V3 uses custom error messages. We strongly recommend using the latest released version of the Solidity compiler (at least 0.8.18), to incorporate all the latest bug fixes.
+
 ## Build and Test
 
 Before any tests can be run, the repository needs to be prepared:
