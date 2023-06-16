@@ -56,7 +56,7 @@ interface IVault {
      * @dev Error indicating that a referenced pool has not been registered.
      * @param poolAddress - the address of the unregistered pool.
      */
-    error InvalidPoolAddress(address poolAddress);
+    error PoolNotRegistered(address poolAddress);
 
     /**
      * @dev Error indicating an attempt to register an invalid token.
@@ -66,7 +66,7 @@ interface IVault {
     /**
      * @dev Error indicating a token was already registered (i.e., a duplicate). 
      */
-    error TokenAlreadyRegistered(address tokenAddress);
+    error TokenAlreadyRegistered(IERC20 tokenAddress);
 
     /**
      * @dev Returns a Pool's registered tokens and balances.

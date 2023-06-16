@@ -9,41 +9,48 @@ import "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.so
 import "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 
 contract Vault is IVault, TemporarilyPausable, ReentrancyGuard {
-    using EnumerableMap for EnumerableMap.IERC20ToUint256MapEntry;
+    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
 
     // State variables
 
     mapping(address => bool) private _isPoolRegistered;
 
     // Pool -> (token -> balance)
-    mapping(address => EnumerableMap.IERC20ToUint256MapEntry) internal _poolBalances;
+    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolBalances;
 
     // Modifiers
 
     /**
-     * @dev Reverts unless `poolId` corresponds to a registered Pool.
+     * @dev Reverts unless `poolAddress` corresponds to a registered Pool.
      */
     modifier withRegisteredPool(address poolAddress) {
         _ensureRegisteredPool(poolAddress);
         _;
     }
 
+    constructor(
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration
+    ) TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
     // Public Functions
 
     /// @inheritdoc IVault
-    function registerPool(IERC20[] memory tokens) external nonReentrant whenNotPaused override {
+    function registerPool(IERC20[] memory tokens) external override nonReentrant whenNotPaused {
         address poolAddress = msg.sender;
 
         if (isRegisteredPool(poolAddress)) {
             revert PoolAlreadyRegistered(poolAddress);
         }
 
-        EnumerableMap.IERC20ToUint256MapEntry storage poolBalances = _poolBalances[poolAddress];
+        EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolBalances[poolAddress];
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
 
-            if (token == IERC20(0)) {
+            if (token == IERC20(address(0))) {
                 revert InvalidToken();
             }
 
@@ -66,11 +73,19 @@ contract Vault is IVault, TemporarilyPausable, ReentrancyGuard {
     }
 
     /// @inheritdoc IVault
-    function getPoolTokens(address poolAddress) external view withRegisteredPool(poolAddress) override returns (IERC20[] memory tokens, uint256[] memory balances) {
-        EnumerableMap.IERC20ToUint256MapEntry storage poolBalances = _poolBalances[poolAddress];
+    function getPoolTokens(
+        address poolAddress
+    )
+        external
+        view
+        override
+        withRegisteredPool(poolAddress)
+        returns (IERC20[] memory tokens, uint256[] memory balances)
+    {
+        EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolBalances[poolAddress];
 
         tokens = new IERC20[](poolBalances.length());
-        balances = new bytes32[](tokens.length);
+        balances = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length, we can use
@@ -86,7 +101,7 @@ contract Vault is IVault, TemporarilyPausable, ReentrancyGuard {
      */
     function _ensureRegisteredPool(address poolAddress) internal view {
         if (!isRegisteredPool(poolAddress)) {
-            revert InvalidPoolAddress(poolAddress);
+            revert PoolNotRegistered(poolAddress);
         }
     }
 }
