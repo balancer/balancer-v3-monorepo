@@ -42,6 +42,10 @@ contract BalancerPoolToken is IERC20Metadata {
         return _vault.balanceOf(address(this), account);
     }
 
+    function initialize(IERC20[] memory tokens) external {
+        _vault.registerPool(tokens);
+    }
+
     function transfer(address to, uint256 amount) public override returns (bool) {
         // Vault will perform the transfer and call emitTransfer to emit the event from this contract.
         _vault.transfer(address(this), msg.sender, to, amount);

@@ -76,6 +76,7 @@ abstract contract PoolTokens is PoolRegistry {
 
         uint256 accountBalance = _accountBPTBalances[poolToken][from];
         require(accountBalance >= amount, "ERC20: burn amount exceeds balance");
+
         unchecked {
             _accountBPTBalances[poolToken][from] = accountBalance - amount;
             // Overflow not possible: amount <= accountBalance <= totalSupply.

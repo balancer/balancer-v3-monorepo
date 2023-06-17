@@ -40,30 +40,11 @@ abstract contract PoolRegistry is IVault, ReentrancyGuard, TemporarilyPausable {
     }
 
     /**
-     * @dev Reverts unless `poolAddress` corresponds to a registered Pool, and the caller is the Pool's contract.
-     */
-    modifier onlyPool(address poolAddress) {
-        _ensurePoolIsSender(poolAddress);
-        _;
-    }
-
-    /**
      * @dev Reverts unless `poolAddress` corresponds to a registered Pool.
      */
     function _ensureRegisteredPool(address poolAddress) internal view {
         if (!isRegisteredPool(poolAddress)) {
             revert PoolNotRegistered(poolAddress);
-        }
-    }
-
-    /**
-     * @dev Reverts unless `poolAddress` corresponds to a registered Pool, and the caller is the Pool's contract.
-     */
-    function _ensurePoolIsSender(address poolAddress) private view {
-        _ensureRegisteredPool(poolAddress);
-
-        if (msg.sender != poolAddress) {
-            revert CallerIsNotPool();
         }
     }
 
