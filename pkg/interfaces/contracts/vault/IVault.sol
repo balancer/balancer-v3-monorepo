@@ -71,4 +71,34 @@ interface IVault {
      * as well as in all Pool hooks (where applicable).
      */
     function getPoolTokens(address poolAddress) external view returns (IERC20[] memory tokens, uint256[] memory balances);
+
+    /**
+     * @dev Returns the total supply of a BPT token.
+     */
+    function totalSupply(address poolToken) external view returns (uint256);
+
+    /**
+     * @dev Returns an account's balance of a BPT token.
+     */
+    function balanceOf(address poolToken, address account) external view returns (uint256);
+
+    /**
+     * @dev Permissioned function to transfer a BPT token.
+     */
+    function transfer(address poolToken, address owner, address to, uint256 amount) external returns (bool);
+
+    /**
+     * @dev Permissioned function to transferFrom a BPT token.
+     */
+    function transferFrom(address poolToken, address spender, address from, address to, uint256 amount) external returns (bool);
+
+    /**
+     * @dev Returns an owner's BPT allowance for a given spender.
+     */
+    function allowance(address poolToken, address owner, address spender) external view returns (uint256);
+
+    /**
+     * @dev Permissioned function to set a sender's BPT allowance for a given spender.
+     */
+    function approve(address poolToken, address sender, address spender, uint256 amount) external returns (bool);
 }
