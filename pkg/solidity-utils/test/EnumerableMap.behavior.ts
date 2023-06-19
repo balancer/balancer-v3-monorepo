@@ -15,7 +15,7 @@ export function shouldBehaveLikeMap(
 
     await Promise.all(keys.map(async (key) => expect(await map.contains(key)).to.equal(true)));
 
-    expect(await map.length()).to.equal(keys.length.toString());
+    expect(await map.length()).to.equal(keys.length);
 
     expect(await Promise.all(keys.map((key) => map.get(key)))).to.deep.equal(values);
 
@@ -37,7 +37,7 @@ export function shouldBehaveLikeMap(
       )
     ).to.have.same.deep.members(
       zip(
-        keys.map((k) => k.toString()),
+        keys.map((k) => k),
         values
       )
     );
@@ -50,10 +50,8 @@ export function shouldBehaveLikeMap(
   });
 
   describe('set', () => {
-    it('emits an event on add', async () => {
-      await expect(await store.map.set(keyA, valueA))
-        .to.emit(store.map, 'OperationResult')
-        .withArgs(true);
+    it('returns true when adding a key', async () => {
+      expect(await store.map.set.staticCall(keyA, valueA)).to.be.true;
     });
 
     it('adds a key', async () => {
@@ -70,18 +68,10 @@ export function shouldBehaveLikeMap(
       expect(await store.map.contains(keyC)).to.equal(false);
     });
 
-    it('emits an event on add when already in the set', async () => {
-      await store.map.set(keyA, valueA);
-
-      await expect(await store.map.set(keyA, valueA))
-        .to.emit(store.map, 'OperationResult')
-        .withArgs(false);
-    });
-
     it('returns false when adding keys already in the set', async () => {
       await store.map.set(keyA, valueA);
 
-      await expectMembersMatch(store.map, [keyA], [valueA]);
+      expect(await store.map.set.staticCall(keyA, valueA)).to.be.false;
     });
 
     it('updates values for keys already in the set', async () => {
@@ -190,7 +180,8 @@ export function shouldBehaveLikeMap(
 
     it('does not revert when setting indexes outside of the map', async () => {
       const length = await store.map.length();
-      await store.map.unchecked_setAt(length, valueC);
+
+      await expect(await store.map.unchecked_setAt(length, valueC)).not.to.be.reverted;
     });
   });
 
@@ -223,17 +214,16 @@ export function shouldBehaveLikeMap(
 
     it('does not revert when accessing indexes outside of the map', async () => {
       const length = await store.map.length();
-      await store.map.unchecked_valueAt(length);
+
+      await expect(await store.map.unchecked_valueAt(length)).not.to.be.reverted;
     });
   });
 
   describe('remove', () => {
-    it('emits an event on removing keys', async () => {
+    it('returns true when removing keys in the set', async () => {
       await store.map.set(keyA, valueA);
 
-      await expect(await store.map.remove(keyA))
-        .to.emit(store.map, 'OperationResult')
-        .withArgs(true);
+      expect(await store.map.remove.staticCall(keyA)).to.be.true;
     });
 
     it('removes added keys', async () => {
@@ -244,13 +234,11 @@ export function shouldBehaveLikeMap(
       await expectMembersMatch(store.map, [], []);
     });
 
-    it('emits an event on removing keys not in the set', async () => {
+    it('returns false when removing keys not in the set', async () => {
       await store.map.set(keyA, valueA);
       await store.map.remove(keyA);
 
-      await expect(await store.map.remove(keyA))
-        .to.emit(store.map, 'OperationResult')
-        .withArgs(false);
+      expect(await store.map.remove.staticCall(keyA)).to.be.false;
     });
 
     it('returns false when removing keys not in the set', async () => {

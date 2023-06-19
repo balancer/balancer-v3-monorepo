@@ -11,17 +11,14 @@ import "../openzeppelin/EnumerableMap.sol";
 contract EnumerableIERC20ToUint256MapMock {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
 
-    event OperationResult(bool result);
-
     EnumerableMap.IERC20ToUint256Map private _map;
 
     function contains(IERC20 key) public view returns (bool) {
         return _map.contains(key);
     }
 
-    function set(IERC20 key, uint256 value) public {
-        bool result = _map.set(key, value);
-        emit OperationResult(result);
+    function set(IERC20 key, uint256 value) public returns (bool) {
+        return _map.set(key, value);
     }
 
     function unchecked_indexOf(IERC20 key) public view returns (uint256) {
@@ -36,9 +33,8 @@ contract EnumerableIERC20ToUint256MapMock {
         _map.unchecked_setAt(index, value);
     }
 
-    function remove(IERC20 key) public {
-        bool result = _map.remove(key);
-        emit OperationResult(result);
+    function remove(IERC20 key) public returns (bool) {
+        return _map.remove(key);
     }
 
     function length() public view returns (uint256) {

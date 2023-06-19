@@ -1,4 +1,3 @@
-import { MAX_UINT256 } from '@balancer-labs/v3-helpers/src/constants';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
@@ -26,10 +25,8 @@ export function shouldBehaveLikeSet(store: { set: Contract }, members: Array<str
   });
 
   describe('add', () => {
-    it('emits an event on add', async () => {
-      await expect(await store.set.add(addressA))
-        .to.emit(store.set, 'OperationResult')
-        .withArgs(true);
+    it('returns true when adding a new member', async () => {
+      expect(await store.set.add.staticCall(addressA)).to.be.true;
     });
 
     it('adds an address', async () => {
@@ -46,16 +43,10 @@ export function shouldBehaveLikeSet(store: { set: Contract }, members: Array<str
       expect(await store.set.contains(addressC)).to.equal(false);
     });
 
-    it('emits an event on add when already in the set', async () => {
-      await store.set.add(addressA);
-
-      await expect(await store.set.add(addressA))
-        .to.emit(store.set, 'OperationResult')
-        .withArgs(false);
-    });
-
     it('returns false when adding members already in the set', async () => {
       await store.set.add(addressA);
+
+      expect(await store.set.add.staticCall(addressA)).to.be.false;
 
       await expectMembersMatch(store.set, [addressA]);
     });
@@ -92,7 +83,7 @@ export function shouldBehaveLikeSet(store: { set: Contract }, members: Array<str
       expect(await store.set.indexOf(addressB)).to.equal(0);
     });
 
-    it('reverts if the key is not in the map', async () => {
+    it('reverts if the key is not in the set', async () => {
       await expect(store.set.indexOf(addressA)).to.be.revertedWithCustomError(store.set, 'ElementNotFound');
     });
   });
@@ -116,18 +107,16 @@ export function shouldBehaveLikeSet(store: { set: Contract }, members: Array<str
       expect(await store.set.unchecked_indexOf(addressB)).to.equal(0);
     });
 
-    it('returns -1 if the key is not in the map', async () => {
-      expect(await store.set.unchecked_indexOf(addressA)).to.be.equal(MAX_UINT256);
+    it('returns 0 if the key is not in the set', async () => {
+      expect(await store.set.unchecked_indexOf(addressA)).to.be.equal(0);
     });
   });
 
   describe('remove', () => {
-    it('emits an event on removing members', async () => {
+    it('returns true when removing members', async () => {
       await store.set.add(addressA);
 
-      await expect(await store.set.remove(addressA))
-        .to.emit(store.set, 'OperationResult')
-        .withArgs(true);
+      expect(await store.set.remove.staticCall(addressA)).to.be.true;
     });
 
     it('removes added members', async () => {
@@ -138,16 +127,14 @@ export function shouldBehaveLikeSet(store: { set: Contract }, members: Array<str
       await expectMembersMatch(store.set, []);
     });
 
-    it('emits an event on removing members not in the set', async () => {
+    it('returns false when removing members that used to be in the set', async () => {
       await store.set.add(addressA);
       await store.set.remove(addressA);
 
-      await expect(await store.set.remove(addressA))
-        .to.emit(store.set, 'OperationResult')
-        .withArgs(false);
+      expect(await store.set.remove.staticCall(addressA)).to.be.false;
     });
 
-    it('returns false when removing members not in the set', async () => {
+    it('returns false when removing members that were never in the set', async () => {
       expect(await store.set.contains(addressA)).to.equal(false);
     });
 
