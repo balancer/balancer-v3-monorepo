@@ -64,5 +64,7 @@ interface IVault {
      * The order of the `tokens` and `balances` arrays is the same order that will be used in `joinPool`, `exitPool`,
      * as well as in all Pool hooks (where applicable).
      */
-    function getPoolTokens(address poolAddress) external view returns (IERC20[] memory tokens, uint256[] memory balances);
+    function getPoolTokens(
+        address poolAddress
+    ) external view returns (IERC20[] memory tokens, uint256[] memory balances);
 }
