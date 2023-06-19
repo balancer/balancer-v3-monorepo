@@ -15,15 +15,15 @@ abstract contract PoolTokens is PoolRegistry {
     // Pool -> total supply (BPT)
     mapping(address => uint256) private _totalSupply;
 
-    function totalSupply(address poolToken) public view override returns (uint256) {
+    function totalSupply(address poolToken) external view override returns (uint256) {
         return _totalSupply[poolToken];
     }
 
-    function balanceOf(address poolToken, address account) public view returns (uint256) {
+    function balanceOf(address poolToken, address account) external view returns (uint256) {
         return _accountBPTBalances[poolToken][account];
     }
 
-    function allowance(address poolToken, address owner, address spender) public view returns (uint256) {
+    function allowance(address poolToken, address owner, address spender) external view returns (uint256) {
         return _allowances[poolToken][owner][spender];
     }
 
@@ -32,7 +32,7 @@ abstract contract PoolTokens is PoolRegistry {
         address owner,
         address to,
         uint256 amount
-    ) public withRegisteredPool(poolToken) returns (bool) {
+    ) external withRegisteredPool(poolToken) returns (bool) {
         _transfer(poolToken, owner, to, amount);
         return true;
     }
@@ -42,7 +42,7 @@ abstract contract PoolTokens is PoolRegistry {
         address sender,
         address spender,
         uint256 amount
-    ) public withRegisteredPool(poolToken) returns (bool) {
+    ) external withRegisteredPool(poolToken) returns (bool) {
         _approve(poolToken, sender, spender, amount);
         return true;
     }
@@ -53,7 +53,7 @@ abstract contract PoolTokens is PoolRegistry {
         address from,
         address to,
         uint256 amount
-    ) public withRegisteredPool(poolToken) returns (bool) {
+    ) external withRegisteredPool(poolToken) returns (bool) {
         _spendAllowance(poolToken, from, spender, amount);
         _transfer(poolToken, from, to, amount);
         return true;
@@ -111,7 +111,7 @@ abstract contract PoolTokens is PoolRegistry {
     }
 
     function _spendAllowance(address poolToken, address owner, address spender, uint256 amount) internal {
-        uint256 currentAllowance = allowance(poolToken, owner, spender);
+        uint256 currentAllowance = _allowances[poolToken][owner][spender];
         if (currentAllowance != type(uint256).max) {
             require(currentAllowance >= amount, "ERC20: insufficient allowance");
             unchecked {
