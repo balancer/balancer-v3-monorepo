@@ -45,9 +45,9 @@ describe('Vault', function () {
     vault = await deploy('VaultMock', { args: [PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
     vaultAddress = await vault.getAddress();
 
-    tokenA = await deploy('TestToken', { args: ['Token A', 'TKNA', 18] });
-    tokenB = await deploy('TestToken', { args: ['Token B', 'TKNB', 6] });
-    tokenC = await deploy('TestToken', { args: ['Token C', 'TKNC', 8] });
+    tokenA = await deploy('v3-solidity-utils/TestToken', { args: ['Token A', 'TKNA', 18] });
+    tokenB = await deploy('v3-solidity-utils/TestToken', { args: ['Token B', 'TKNB', 6] });
+    tokenC = await deploy('v3-solidity-utils/TestToken', { args: ['Token C', 'TKNC', 8] });
 
     poolA = await deploy('BalancerPoolToken', { args: [vaultAddress, 'Pool A', 'POOLA'] });
     poolB = await deploy('BalancerPoolToken', { args: [vaultAddress, 'Pool B', 'POOLB'] });
