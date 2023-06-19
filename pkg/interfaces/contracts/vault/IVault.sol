@@ -53,12 +53,6 @@ interface IVault {
     error PoolAlreadyRegistered(address poolAddress);
 
     /**
-     * @dev Error indicating that a permissioned Vault function restricted to registered pools was called
-     * from somewhere else.
-     */
-    error CallerIsNotPool();
-
-    /**
      * @dev Error indicating that a referenced pool has not been registered.
      * @param poolAddress - the address of the unregistered pool.
      */
@@ -70,7 +64,9 @@ interface IVault {
      * The order of the `tokens` and `balances` arrays is the same order that will be used in `joinPool`, `exitPool`,
      * as well as in all Pool hooks (where applicable).
      */
-    function getPoolTokens(address poolAddress) external view returns (IERC20[] memory tokens, uint256[] memory balances);
+    function getPoolTokens(
+        address poolAddress
+    ) external view returns (IERC20[] memory tokens, uint256[] memory balances);
 
     /**
      * @dev Returns the total supply of a BPT token.
@@ -90,7 +86,13 @@ interface IVault {
     /**
      * @dev Permissioned function to transferFrom a BPT token.
      */
-    function transferFrom(address poolToken, address spender, address from, address to, uint256 amount) external returns (bool);
+    function transferFrom(
+        address poolToken,
+        address spender,
+        address from,
+        address to,
+        uint256 amount
+    ) external returns (bool);
 
     /**
      * @dev Returns an owner's BPT allowance for a given spender.
