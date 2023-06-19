@@ -53,12 +53,6 @@ interface IVault {
     error PoolAlreadyRegistered(address poolAddress);
 
     /**
-     * @dev Error indicating that a permissioned Vault function restricted to registered pools was called
-     * from somewhere else.
-     */
-    error CallerIsNotPool();
-
-    /**
      * @dev Error indicating that a referenced pool has not been registered.
      * @param poolAddress - the address of the unregistered pool.
      */
