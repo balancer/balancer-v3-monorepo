@@ -4,7 +4,7 @@ import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 
 describe('EnumerableSet', () => {
-  function shouldBehaveLikeSet(store: { set: Contract }, members: Array<string>): void {
+  function shouldBehaveLikeSet(setType: string, members: Array<string>): void {
     const [addressA, addressB, addressC] = members;
 
     async function expectMembersMatch(set: Contract, members: Array<string>) {
@@ -21,166 +21,172 @@ describe('EnumerableSet', () => {
       );
     }
 
-    it('starts empty', async () => {
-      expect(await store.set.contains(addressA)).to.equal(false);
+    let set: Contract;
 
-      await expectMembersMatch(store.set, []);
+    sharedBeforeEach('deploy Set', async () => {
+      set = await deploy(`Enumerable${setType}Mock`);
+    });
+
+    it('starts empty', async () => {
+      expect(await set.contains(addressA)).to.equal(false);
+
+      await expectMembersMatch(set, []);
     });
 
     describe('add', () => {
       it('returns true when adding a new member', async () => {
-        expect(await store.set.add.staticCall(addressA)).to.be.true;
+        expect(await set.add.staticCall(addressA)).to.be.true;
       });
 
       it('adds an address', async () => {
-        await store.set.add(addressA);
+        await set.add(addressA);
 
-        await expectMembersMatch(store.set, [addressA]);
+        await expectMembersMatch(set, [addressA]);
       });
 
       it('adds several addresses', async () => {
-        await store.set.add(addressA);
-        await store.set.add(addressB);
+        await set.add(addressA);
+        await set.add(addressB);
 
-        await expectMembersMatch(store.set, [addressA, addressB]);
-        expect(await store.set.contains(addressC)).to.equal(false);
+        await expectMembersMatch(set, [addressA, addressB]);
+        expect(await set.contains(addressC)).to.equal(false);
       });
 
       it('returns false when adding members already in the set', async () => {
-        await store.set.add(addressA);
+        await set.add(addressA);
 
-        expect(await store.set.add.staticCall(addressA)).to.be.false;
+        expect(await set.add.staticCall(addressA)).to.be.false;
 
-        await expectMembersMatch(store.set, [addressA]);
+        await expectMembersMatch(set, [addressA]);
       });
     });
 
     describe('at', () => {
       it('returns the value for an address', async () => {
-        await store.set.add(addressA);
+        await set.add(addressA);
 
-        expect(await store.set.at(0)).to.equal(addressA);
+        expect(await set.at(0)).to.equal(addressA);
       });
 
       it('reverts with a custom message if the index is invalid', async () => {
-        await expect(store.set.at(100)).to.be.revertedWithCustomError(store.set, 'IndexOutOfBounds');
+        await expect(set.at(100)).to.be.revertedWithCustomError(set, 'IndexOutOfBounds');
       });
     });
 
     describe('indexOf', () => {
       it('returns the index of an added key', async () => {
-        await store.set.add(addressA);
-        await store.set.add(addressB);
+        await set.add(addressA);
+        await set.add(addressB);
 
-        expect(await store.set.indexOf(addressA)).to.equal(0);
-        expect(await store.set.indexOf(addressB)).to.equal(1);
+        expect(await set.indexOf(addressA)).to.equal(0);
+        expect(await set.indexOf(addressB)).to.equal(1);
       });
 
       it('adding and removing keys can change the index', async () => {
-        await store.set.add(addressA);
-        await store.set.add(addressB);
+        await set.add(addressA);
+        await set.add(addressB);
 
-        await store.set.remove(addressA);
+        await set.remove(addressA);
 
         // B is now the only element; its index must be 0
-        expect(await store.set.indexOf(addressB)).to.equal(0);
+        expect(await set.indexOf(addressB)).to.equal(0);
       });
 
       it('reverts if the key is not in the set', async () => {
-        await expect(store.set.indexOf(addressA)).to.be.revertedWithCustomError(store.set, 'ElementNotFound');
+        await expect(set.indexOf(addressA)).to.be.revertedWithCustomError(set, 'ElementNotFound');
       });
     });
 
     describe('unchecked_indexOf', () => {
       it('returns the index of an added key', async () => {
-        await store.set.add(addressA);
-        await store.set.add(addressB);
+        await set.add(addressA);
+        await set.add(addressB);
 
-        expect(await store.set.unchecked_indexOf(addressA)).to.equal(0);
-        expect(await store.set.unchecked_indexOf(addressB)).to.equal(1);
+        expect(await set.unchecked_indexOf(addressA)).to.equal(0);
+        expect(await set.unchecked_indexOf(addressB)).to.equal(1);
       });
 
       it('adding and removing keys can change the index', async () => {
-        await store.set.add(addressA);
-        await store.set.add(addressB);
+        await set.add(addressA);
+        await set.add(addressB);
 
-        await store.set.remove(addressA);
+        await set.remove(addressA);
 
         // B is now the only element; its index must be 0
-        expect(await store.set.unchecked_indexOf(addressB)).to.equal(0);
+        expect(await set.unchecked_indexOf(addressB)).to.equal(0);
       });
 
       it('returns 0 if the key is not in the set', async () => {
-        expect(await store.set.unchecked_indexOf(addressA)).to.be.equal(0);
+        expect(await set.unchecked_indexOf(addressA)).to.be.equal(0);
       });
     });
 
     describe('remove', () => {
       it('returns true when removing members', async () => {
-        await store.set.add(addressA);
+        await set.add(addressA);
 
-        expect(await store.set.remove.staticCall(addressA)).to.be.true;
+        expect(await set.remove.staticCall(addressA)).to.be.true;
       });
 
       it('removes added members', async () => {
-        await store.set.add(addressA);
-        await store.set.remove(addressA);
+        await set.add(addressA);
+        await set.remove(addressA);
 
-        expect(await store.set.contains(addressA)).to.equal(false);
-        await expectMembersMatch(store.set, []);
+        expect(await set.contains(addressA)).to.equal(false);
+        await expectMembersMatch(set, []);
       });
 
       it('returns false when removing members that used to be in the set', async () => {
-        await store.set.add(addressA);
-        await store.set.remove(addressA);
+        await set.add(addressA);
+        await set.remove(addressA);
 
-        expect(await store.set.remove.staticCall(addressA)).to.be.false;
+        expect(await set.remove.staticCall(addressA)).to.be.false;
       });
 
       it('returns false when removing members that were never in the set', async () => {
-        expect(await store.set.contains(addressA)).to.equal(false);
+        expect(await set.contains(addressA)).to.equal(false);
       });
 
       it('adds and removes multiple members', async () => {
         // []
 
-        await store.set.add(addressA);
-        await store.set.add(addressC);
+        await set.add(addressA);
+        await set.add(addressC);
 
         // [A, C]
 
-        await store.set.remove(addressA);
-        await store.set.remove(addressB);
+        await set.remove(addressA);
+        await set.remove(addressB);
 
         // [C]
 
-        await store.set.add(addressB);
+        await set.add(addressB);
 
         // [C, B]
 
-        await store.set.add(addressA);
-        await store.set.remove(addressC);
+        await set.add(addressA);
+        await set.remove(addressC);
 
         // [B, A]
 
-        await store.set.add(addressA);
-        await store.set.add(addressB);
+        await set.add(addressA);
+        await set.add(addressB);
 
         // [B, A]
 
-        await store.set.add(addressC);
-        await store.set.remove(addressA);
+        await set.add(addressC);
+        await set.remove(addressA);
 
         // [B, C]
 
-        await store.set.add(addressA);
-        await store.set.remove(addressB);
+        await set.add(addressA);
+        await set.remove(addressB);
 
         // [C, A]
 
-        await expectMembersMatch(store.set, [addressC, addressA]);
+        await expectMembersMatch(set, [addressC, addressA]);
 
-        expect(await store.set.contains(addressB)).to.equal(false);
+        expect(await set.contains(addressB)).to.equal(false);
       });
     });
   }
@@ -192,12 +198,6 @@ describe('EnumerableSet', () => {
       '0x7571A57e94F046725612f786Aa9bf44ce6b56894',
     ];
 
-    const store: { set?: Contract } = {};
-
-    sharedBeforeEach(async () => {
-      store.set = await deploy('EnumerableAddressSetMock');
-    });
-
-    shouldBehaveLikeSet(store as { set: Contract }, members);
+    shouldBehaveLikeSet('AddressSet', members);
   });
 });
