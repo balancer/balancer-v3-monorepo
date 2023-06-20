@@ -3,6 +3,7 @@
 pragma solidity ^0.8.4;
 
 import "../Vault.sol";
+import "../lib/AssetHelpersLib.sol";
 
 contract VaultMock is Vault {
     constructor(
@@ -14,14 +15,14 @@ contract VaultMock is Vault {
     }
 
     function isETH(IAsset asset) external pure returns (bool) {
-        return _isETH(asset);
+        return AssetHelpersLib.isETH(asset);
     }
 
     function translateToIERC20(IAsset asset) external view returns (IERC20) {
-        return _translateToIERC20(asset);
+        return AssetHelpersLib.translateToIERC20(asset, WETH());
     }
 
     function translateToIERC20(IAsset[] memory assets) external view returns (IERC20[] memory) {
-        return _translateToIERC20(assets);
+        return AssetHelpersLib.translateToIERC20(assets, WETH());
     }
 }
