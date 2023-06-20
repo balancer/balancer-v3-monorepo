@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { BigNumberish } from 'ethers';
+import { BigNumberish, Typed } from 'ethers';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { fromNow, MONTH } from '@balancer-labs/v3-helpers/src/time';
 import '@balancer-labs/v3-common/setupTests';
@@ -56,8 +56,8 @@ describe('Vault', function () {
     });
 
     it('translates native ETH', async () => {
-      expect(await instance['translateToIERC20(address)'](ETH_SENTINEL)).to.equal(WETH);
-      expect(await instance['translateToIERC20(address)'](ANY_ADDRESS)).to.equal(ANY_ADDRESS);
+      expect(await instance.translateToIERC20(Typed.address(ETH_SENTINEL))).to.equal(WETH);
+      expect(await instance.translateToIERC20(Typed.address(ANY_ADDRESS))).to.equal(ANY_ADDRESS);
     });
 
     it('translates an array of tokens', async () => {
