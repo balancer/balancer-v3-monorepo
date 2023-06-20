@@ -13,7 +13,7 @@
     "@nomicfoundation/hardhat-toolbox": "^3.0.0",
     "@nomicfoundation/hardhat-verify": "^1.0.1",
     "@nomiclabs/hardhat-etherscan": "^3.1.7",
-    "@openzeppelin/contracts": "4.9.2",
+    "@openzeppelin/contracts": "^4.9.0",
     "@typechain/ethers-v6": "^0.4.0",
     "@typechain/hardhat": "^8.0.0",
     "@types/chai": "^4.3.3",
@@ -32,6 +32,9 @@
     "ts-node": "^10.9.1",
     "typechain": "^8.1.1",
     "typescript": "^4.0.2"
+  },
+  "resolutions": {
+    "@openzeppelin/contracts": "4.9.0"
   },
   "scripts": {
     "postinstall": "mkdir -p ../../node_modules/forge-std/lib/ && cd ../../node_modules/forge-std/lib/ && ln -s ../../ds-test/ ds-test"
