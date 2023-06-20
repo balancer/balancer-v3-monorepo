@@ -28,11 +28,11 @@ describe('ReentrancyGuard', () => {
   });
 
   it('_reentrancyGuardEntered should be true when guarded', async function () {
-    await reentrancyMock.guardedCheckEntered();
+    await expect(reentrancyMock.guardedCheckEntered()).not.to.be.reverted;
   });
 
   it('_reentrancyGuardEntered should be false when unguarded', async function () {
-    await reentrancyMock.unguardedCheckNotEntered();
+    await expect(reentrancyMock.unguardedCheckNotEntered()).not.to.be.reverted;
   });
 
   // The following are more side-effects than intended behavior:
