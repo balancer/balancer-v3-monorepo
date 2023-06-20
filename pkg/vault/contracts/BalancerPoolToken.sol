@@ -35,20 +35,20 @@ contract BalancerPoolToken is IERC20Metadata {
     }
 
     function totalSupply() public view override returns (uint256) {
-        return _vault.totalSupply(address(this));
+        return _getVault().totalSupply(address(this));
     }
 
     function balanceOf(address account) public view override returns (uint256) {
-        return _vault.balanceOf(address(this), account);
+        return _getVault().balanceOf(address(this), account);
     }
 
     function initialize(IERC20[] memory tokens) external {
-        _vault.registerPool(tokens);
+        _getVault().registerPool(tokens);
     }
 
     function transfer(address to, uint256 amount) public override returns (bool) {
         // Vault will perform the transfer and call emitTransfer to emit the event from this contract.
-        _vault.transfer(address(this), msg.sender, to, amount);
+        _getVault().transfer(address(this), msg.sender, to, amount);
         return true;
     }
 
@@ -57,12 +57,12 @@ contract BalancerPoolToken is IERC20Metadata {
     }
 
     function allowance(address owner, address spender) public view override returns (uint256) {
-        return _vault.allowance(address(this), owner, spender);
+        return _getVault().allowance(address(this), owner, spender);
     }
 
     function approve(address spender, uint256 amount) public override returns (bool) {
         // Vault will perform the approval and call emitApprove to emit the event from this contract.
-        _vault.approve(address(this), msg.sender, spender, amount);
+        _getVault().approve(address(this), msg.sender, spender, amount);
         return true;
     }
 
@@ -72,7 +72,11 @@ contract BalancerPoolToken is IERC20Metadata {
 
     function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
         // Vault will perform the transfer and call emitTransfer to emit the event from this contract.
-        _vault.transferFrom(address(this), msg.sender, from, to, amount);
+        _getVault().transferFrom(address(this), msg.sender, from, to, amount);
         return true;
+    }
+
+    function _getVault() internal view returns (IVault) {
+        return _vault;
     }
 }
