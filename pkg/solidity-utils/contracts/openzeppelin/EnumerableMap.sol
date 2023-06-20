@@ -39,18 +39,18 @@ library EnumerableMap {
     // IERC20ToUint256Map, resulting in more dense bytecode.
 
     struct IERC20ToUint256MapEntry {
-        IERC20 _key;
-        uint256 _value;
+        IERC20 key;
+        uint256 value;
     }
 
     struct IERC20ToUint256Map {
         // Number of entries in the map
-        uint256 _length;
+        uint256 size;
         // Storage of map keys and values
-        mapping(uint256 => IERC20ToUint256MapEntry) _entries;
+        mapping(uint256 => IERC20ToUint256MapEntry) entries;
         // Position of the entry defined by a key in the `entries` array, plus 1
         // because index 0 means a key is not in the map.
-        mapping(IERC20 => uint256) _indexes;
+        mapping(IERC20 => uint256) indexes;
     }
 
     /**
@@ -72,21 +72,21 @@ library EnumerableMap {
      */
     function set(IERC20ToUint256Map storage map, IERC20 key, uint256 value) internal returns (bool) {
         // We read and store the key's index to prevent multiple reads from the same storage slot
-        uint256 keyIndex = map._indexes[key];
+        uint256 keyIndex = map.indexes[key];
 
         unchecked {
             // Equivalent to !contains(map, key)
             if (keyIndex == 0) {
-                uint256 previousLength = map._length;
-                map._entries[previousLength] = IERC20ToUint256MapEntry({ _key: key, _value: value });
-                map._length = previousLength + 1;
+                uint256 previousLength = map.size;
+                map.entries[previousLength] = IERC20ToUint256MapEntry(key, value);
+                map.size = previousLength + 1;
 
                 // The entry is stored at previousLength, but we add 1 to all indexes
                 // and use 0 as a sentinel value
-                map._indexes[key] = previousLength + 1;
+                map.indexes[key] = previousLength + 1;
                 return true;
             } else {
-                map._entries[keyIndex - 1]._value = value;
+                map.entries[keyIndex - 1].value = value;
                 return false;
             }
         }
@@ -101,7 +101,7 @@ library EnumerableMap {
      */
     function unchecked_setAt(IERC20ToUint256Map storage map, uint256 index, uint256 value) internal {
         // solhint-disable-previous-line func-name-mixedcase
-        map._entries[index]._value = value;
+        map.entries[index].value = value;
     }
 
     /**
@@ -111,11 +111,11 @@ library EnumerableMap {
      */
     function remove(IERC20ToUint256Map storage map, IERC20 key) internal returns (bool) {
         // We read and store the key's index to prevent multiple reads from the same storage slot
-        uint256 keyIndex = map._indexes[key];
+        uint256 keyIndex = map.indexes[key];
 
         // Equivalent to contains(map, key)
         if (keyIndex != 0) {
-            // To delete a key-value pair from the _entries pseudo-array in O(1), we swap the entry to delete with the
+            // To delete a key-value pair from the entries pseudo-array in O(1), we swap the entry to delete with the
             // one at the highest index, and then remove this last entry (sometimes called as 'swap and pop').
             // This modifies the order of the pseudo-array, as noted in {at}.
             uint256 toDeleteIndex;
@@ -123,25 +123,25 @@ library EnumerableMap {
 
             unchecked {
                 toDeleteIndex = keyIndex - 1;
-                lastIndex = map._length - 1;
+                lastIndex = map.size - 1;
             }
 
             // The swap is only necessary if we're not removing the last element
             if (toDeleteIndex != lastIndex) {
-                IERC20ToUint256MapEntry storage lastEntry = map._entries[lastIndex];
+                IERC20ToUint256MapEntry storage lastEntry = map.entries[lastIndex];
 
                 // Move the last entry to the index where the entry to delete is
-                map._entries[toDeleteIndex] = lastEntry;
+                map.entries[toDeleteIndex] = lastEntry;
                 // Update the index for the moved entry
-                map._indexes[lastEntry._key] = keyIndex; // = toDeleteIndex + 1; all indices are 1-based
+                map.indexes[lastEntry.key] = keyIndex; // = toDeleteIndex + 1; all indices are 1-based
             }
 
             // Delete the slot where the moved entry was stored
-            delete map._entries[lastIndex];
-            map._length = lastIndex;
+            delete map.entries[lastIndex];
+            map.size = lastIndex;
 
             // Delete the index for the deleted slot
-            delete map._indexes[key];
+            delete map.indexes[key];
 
             return true;
         } else {
@@ -153,14 +153,14 @@ library EnumerableMap {
      * @dev Returns true if the key is in the map. O(1).
      */
     function contains(IERC20ToUint256Map storage map, IERC20 key) internal view returns (bool) {
-        return map._indexes[key] != 0;
+        return map.indexes[key] != 0;
     }
 
     /**
      * @dev Returns the number of key-value pairs in the map. O(1).
      */
     function length(IERC20ToUint256Map storage map) internal view returns (uint256) {
-        return map._length;
+        return map.size;
     }
 
     /**
@@ -171,10 +171,10 @@ library EnumerableMap {
      *
      * Requirements:
      *
-     * - `index` must be strictly less than {length}.
+     * - `index` must be strictly less than {size}.
      */
     function at(IERC20ToUint256Map storage map, uint256 index) internal view returns (IERC20, uint256) {
-        if (index >= map._length) {
+        if (index >= map.size) {
             revert IndexOutOfBounds();
         }
 
@@ -183,15 +183,15 @@ library EnumerableMap {
 
     /**
      * @dev Same as {at}, except this doesn't revert if `index` it outside of the map (i.e. if it is equal or larger
-     * than {length}). O(1).
+     * than {size}). O(1).
      *
      * This function performs one less storage read than {at}, but should only be used when `index` is known to be
      * within bounds.
      */
     function unchecked_at(IERC20ToUint256Map storage map, uint256 index) internal view returns (IERC20, uint256) {
         // solhint-disable-previous-line func-name-mixedcase
-        IERC20ToUint256MapEntry storage entry = map._entries[index];
-        return (entry._key, entry._value);
+        IERC20ToUint256MapEntry storage entry = map.entries[index];
+        return (entry.key, entry.value);
     }
 
     /**
@@ -200,7 +200,7 @@ library EnumerableMap {
      */
     function unchecked_valueAt(IERC20ToUint256Map storage map, uint256 index) internal view returns (uint256) {
         // solhint-disable-previous-line func-name-mixedcase
-        return map._entries[index]._value;
+        return map.entries[index].value;
     }
 
     /**
@@ -211,7 +211,7 @@ library EnumerableMap {
      * - `key` must be in the map.
      */
     function get(IERC20ToUint256Map storage map, IERC20 key) internal view returns (uint256) {
-        uint256 index = map._indexes[key];
+        uint256 index = map.indexes[key];
         if (index == 0) {
             revert KeyNotFound();
         }
@@ -245,6 +245,6 @@ library EnumerableMap {
      */
     function unchecked_indexOf(IERC20ToUint256Map storage map, IERC20 key) internal view returns (uint256) {
         // solhint-disable-previous-line func-name-mixedcase
-        return map._indexes[key];
+        return map.indexes[key];
     }
 }
