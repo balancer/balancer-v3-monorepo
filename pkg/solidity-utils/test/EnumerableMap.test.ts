@@ -5,11 +5,7 @@ import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { zip } from 'lodash';
 
 describe('EnumerableMap', () => {
-  function shouldBehaveLikeMap(
-    store: { map: Contract },
-    keys: Array<string | bigint>,
-    values: Array<string | bigint>
-  ): void {
+  function shouldBehaveLikeMap(mapType: string, keys: Array<string | bigint>, values: Array<string | bigint>): void {
     const [keyA, keyB, keyC] = keys;
     const [valueA, valueB, valueC] = values;
 
@@ -46,248 +42,254 @@ describe('EnumerableMap', () => {
       );
     }
 
-    it('starts empty', async () => {
-      expect(await store.map.contains(keyA)).to.equal(false);
+    let map: Contract;
 
-      await expectMembersMatch(store.map, [], []);
+    sharedBeforeEach('deploy Map', async () => {
+      map = await deploy(`Enumerable${mapType}MapMock`);
+    });
+
+    it('starts empty', async () => {
+      expect(await map.contains(keyA)).to.equal(false);
+
+      await expectMembersMatch(map, [], []);
     });
 
     describe('set', () => {
       it('returns true when adding a key', async () => {
-        expect(await store.map.set.staticCall(keyA, valueA)).to.be.true;
+        expect(await map.set.staticCall(keyA, valueA)).to.be.true;
       });
 
       it('adds a key', async () => {
-        await store.map.set(keyA, valueA);
+        await map.set(keyA, valueA);
 
-        await expectMembersMatch(store.map, [keyA], [valueA]);
+        await expectMembersMatch(map, [keyA], [valueA]);
       });
 
       it('adds several keys', async () => {
-        await store.map.set(keyA, valueA);
-        await store.map.set(keyB, valueB);
+        await map.set(keyA, valueA);
+        await map.set(keyB, valueB);
 
-        await expectMembersMatch(store.map, [keyA, keyB], [valueA, valueB]);
-        expect(await store.map.contains(keyC)).to.equal(false);
+        await expectMembersMatch(map, [keyA, keyB], [valueA, valueB]);
+        expect(await map.contains(keyC)).to.equal(false);
       });
 
       it('returns false when adding keys already in the set', async () => {
-        await store.map.set(keyA, valueA);
+        await map.set(keyA, valueA);
 
-        expect(await store.map.set.staticCall(keyA, valueA)).to.be.false;
+        expect(await map.set.staticCall(keyA, valueA)).to.be.false;
       });
 
       it('updates values for keys already in the set', async () => {
-        await store.map.set(keyA, valueA);
-        await store.map.set(keyA, valueB);
+        await map.set(keyA, valueA);
+        await map.set(keyA, valueB);
 
-        await expectMembersMatch(store.map, [keyA], [valueB]);
+        await expectMembersMatch(map, [keyA], [valueB]);
       });
     });
 
     describe('get', () => {
       it('returns the value for a key', async () => {
-        await store.map.set(keyA, valueA);
+        await map.set(keyA, valueA);
 
-        expect(await store.map.get(keyA)).to.equal(valueA);
+        expect(await map.get(keyA)).to.equal(valueA);
       });
 
       it('reverts with a custom message if the key is not in the map', async () => {
-        await expect(store.map.get(keyA)).to.be.revertedWithCustomError(store.map, 'KeyNotFound');
+        await expect(map.get(keyA)).to.be.revertedWithCustomError(map, 'KeyNotFound');
       });
     });
 
     describe('at', () => {
       it('returns the value for a key', async () => {
-        await store.map.set(keyA, valueA);
+        await map.set(keyA, valueA);
 
-        expect((await store.map.at(0)).key).to.equal(keyA);
-        expect((await store.map.at(0)).value).to.equal(valueA);
+        expect((await map.at(0)).key).to.equal(keyA);
+        expect((await map.at(0)).value).to.equal(valueA);
       });
 
       it('reverts with a custom message if the index is invalid', async () => {
-        await expect(store.map.at(100)).to.be.revertedWithCustomError(store.map, 'IndexOutOfBounds');
+        await expect(map.at(100)).to.be.revertedWithCustomError(map, 'IndexOutOfBounds');
       });
     });
 
     describe('indexOf', () => {
       it('returns the index of an added key', async () => {
-        await store.map.set(keyA, valueA);
-        await store.map.set(keyB, valueB);
+        await map.set(keyA, valueA);
+        await map.set(keyB, valueB);
 
-        expect(await store.map.indexOf(keyA)).to.equal(0);
-        expect(await store.map.indexOf(keyB)).to.equal(1);
+        expect(await map.indexOf(keyA)).to.equal(0);
+        expect(await map.indexOf(keyB)).to.equal(1);
       });
 
       it('adding and removing keys can change the index', async () => {
-        await store.map.set(keyA, valueA);
-        await store.map.set(keyB, valueB);
+        await map.set(keyA, valueA);
+        await map.set(keyB, valueB);
 
-        await store.map.remove(keyA);
+        await map.remove(keyA);
 
         // B is now the only element; its index must be 0
-        expect(await store.map.indexOf(keyB)).to.equal(0);
+        expect(await map.indexOf(keyB)).to.equal(0);
       });
 
       it('reverts if the key is not in the map', async () => {
-        await expect(store.map.indexOf(keyA)).to.be.revertedWithCustomError(store.map, 'KeyNotFound');
+        await expect(map.indexOf(keyA)).to.be.revertedWithCustomError(map, 'KeyNotFound');
       });
     });
 
     describe('unchecked_indexOf', () => {
       it('returns the index of an added key, plus one', async () => {
-        await store.map.set(keyA, valueA);
-        await store.map.set(keyB, valueB);
+        await map.set(keyA, valueA);
+        await map.set(keyB, valueB);
 
-        expect(await store.map.unchecked_indexOf(keyA)).to.equal(0 + 1);
-        expect(await store.map.unchecked_indexOf(keyB)).to.equal(1 + 1);
+        expect(await map.unchecked_indexOf(keyA)).to.equal(0 + 1);
+        expect(await map.unchecked_indexOf(keyB)).to.equal(1 + 1);
       });
 
       it('adding and removing keys can change the index', async () => {
-        await store.map.set(keyA, valueA);
-        await store.map.set(keyB, valueB);
+        await map.set(keyA, valueA);
+        await map.set(keyB, valueB);
 
-        await store.map.remove(keyA);
+        await map.remove(keyA);
 
         // B is now the only element; its index must be 0
-        expect(await store.map.unchecked_indexOf(keyB)).to.equal(0 + 1);
+        expect(await map.unchecked_indexOf(keyB)).to.equal(0 + 1);
       });
 
       it('returns a zero index if the key is not in the map', async () => {
-        expect(await store.map.unchecked_indexOf(keyA)).to.be.equal(0);
+        expect(await map.unchecked_indexOf(keyA)).to.be.equal(0);
       });
     });
 
     describe('unchecked_setAt', () => {
       it('updates a value', async () => {
-        await store.map.set(keyA, valueA);
+        await map.set(keyA, valueA);
 
-        const indexA = (await store.map.unchecked_indexOf(keyA)) - 1n;
-        await store.map.unchecked_setAt(indexA, valueB);
+        const indexA = (await map.unchecked_indexOf(keyA)) - 1n;
+        await map.unchecked_setAt(indexA, valueB);
 
-        await expectMembersMatch(store.map, [keyA], [valueB]);
+        await expectMembersMatch(map, [keyA], [valueB]);
       });
 
       it('updates several values', async () => {
-        await store.map.set(keyA, valueA);
-        await store.map.set(keyB, valueB);
+        await map.set(keyA, valueA);
+        await map.set(keyB, valueB);
 
-        const indexA = (await store.map.unchecked_indexOf(keyA)) - 1n;
-        const indexB = (await store.map.unchecked_indexOf(keyB)) - 1n;
+        const indexA = (await map.unchecked_indexOf(keyA)) - 1n;
+        const indexB = (await map.unchecked_indexOf(keyB)) - 1n;
 
-        await store.map.unchecked_setAt(indexA, valueC);
-        await store.map.unchecked_setAt(indexB, valueA);
+        await map.unchecked_setAt(indexA, valueC);
+        await map.unchecked_setAt(indexB, valueA);
 
-        await expectMembersMatch(store.map, [keyA, keyB], [valueC, valueA]);
+        await expectMembersMatch(map, [keyA, keyB], [valueC, valueA]);
       });
 
       it('does not revert when setting indexes outside of the map', async () => {
-        const length = await store.map.length();
+        const length = await map.length();
 
-        await expect(await store.map.unchecked_setAt(length, valueC)).not.to.be.reverted;
+        await expect(await map.unchecked_setAt(length, valueC)).not.to.be.reverted;
       });
     });
 
     describe('unchecked_at', () => {
       it('returns an entry at an index', async () => {
-        await store.map.set(keyA, valueA);
+        await map.set(keyA, valueA);
 
-        const indexA = (await store.map.unchecked_indexOf(keyA)) - 1n;
-        const entry = await store.map.unchecked_at(indexA);
+        const indexA = (await map.unchecked_indexOf(keyA)) - 1n;
+        const entry = await map.unchecked_at(indexA);
 
         expect(entry.key).to.equal(keyA);
         expect(entry.value).to.equal(valueA);
       });
 
       it('does not revert when accessing indexes outside of the map', async () => {
-        const length = await store.map.length();
-        await store.map.unchecked_at(length);
+        const length = await map.length();
+        await map.unchecked_at(length);
       });
     });
 
     describe('unchecked_valueAt', () => {
       it('returns a value at an index', async () => {
-        await store.map.set(keyA, valueA);
+        await map.set(keyA, valueA);
 
-        const indexA = (await store.map.unchecked_indexOf(keyA)) - 1n;
-        const value = await store.map.unchecked_valueAt(indexA);
+        const indexA = (await map.unchecked_indexOf(keyA)) - 1n;
+        const value = await map.unchecked_valueAt(indexA);
 
         expect(value).to.equal(valueA);
       });
 
       it('does not revert when accessing indexes outside of the map', async () => {
-        const length = await store.map.length();
+        const length = await map.length();
 
-        await expect(await store.map.unchecked_valueAt(length)).not.to.be.reverted;
+        await expect(await map.unchecked_valueAt(length)).not.to.be.reverted;
       });
     });
 
     describe('remove', () => {
       it('returns true when removing keys in the set', async () => {
-        await store.map.set(keyA, valueA);
+        await map.set(keyA, valueA);
 
-        expect(await store.map.remove.staticCall(keyA)).to.be.true;
+        expect(await map.remove.staticCall(keyA)).to.be.true;
       });
 
       it('removes added keys', async () => {
-        await store.map.set(keyA, valueA);
-        await store.map.remove(keyA);
+        await map.set(keyA, valueA);
+        await map.remove(keyA);
 
-        expect(await store.map.contains(keyA)).to.equal(false);
-        await expectMembersMatch(store.map, [], []);
+        expect(await map.contains(keyA)).to.equal(false);
+        await expectMembersMatch(map, [], []);
       });
 
       it('returns false when removing keys not in the set', async () => {
-        await store.map.set(keyA, valueA);
-        await store.map.remove(keyA);
+        await map.set(keyA, valueA);
+        await map.remove(keyA);
 
-        expect(await store.map.remove.staticCall(keyA)).to.be.false;
+        expect(await map.remove.staticCall(keyA)).to.be.false;
       });
 
       it('returns false when removing keys not in the set', async () => {
-        expect(await store.map.contains(keyA)).to.equal(false);
+        expect(await map.contains(keyA)).to.equal(false);
       });
 
       it('adds and removes multiple keys', async () => {
         // []
 
-        await store.map.set(keyA, valueA);
-        await store.map.set(keyC, valueC);
+        await map.set(keyA, valueA);
+        await map.set(keyC, valueC);
 
         // [A, C]
 
-        await store.map.remove(keyA);
-        await store.map.remove(keyB);
+        await map.remove(keyA);
+        await map.remove(keyB);
 
         // [C]
 
-        await store.map.set(keyB, valueB);
+        await map.set(keyB, valueB);
 
         // [C, B]
 
-        await store.map.set(keyA, valueA);
-        await store.map.remove(keyC);
+        await map.set(keyA, valueA);
+        await map.remove(keyC);
 
         // [A, B]
 
-        await store.map.set(keyA, valueA);
-        await store.map.set(keyB, valueB);
+        await map.set(keyA, valueA);
+        await map.set(keyB, valueB);
 
         // [A, B]
 
-        await store.map.set(keyC, valueC);
-        await store.map.remove(keyA);
+        await map.set(keyC, valueC);
+        await map.remove(keyA);
 
         // [B, C]
 
-        await store.map.set(keyA, valueA);
-        await store.map.remove(keyB);
+        await map.set(keyA, valueA);
+        await map.remove(keyB);
 
         // [A, C]
 
-        await expectMembersMatch(store.map, [keyA, keyC], [valueA, valueC]);
+        await expectMembersMatch(map, [keyA, keyC], [valueA, valueC]);
 
-        expect(await store.map.contains(keyB)).to.equal(false);
+        expect(await map.contains(keyB)).to.equal(false);
       });
     });
   }
@@ -301,12 +303,6 @@ describe('EnumerableMap', () => {
 
     const values = [42n, 1337n, 9999n];
 
-    const store: { map?: Contract } = {};
-
-    sharedBeforeEach(async () => {
-      store.map = await deploy('EnumerableIERC20ToUint256MapMock');
-    });
-
-    shouldBehaveLikeMap(store as { map: Contract }, keys, values);
+    shouldBehaveLikeMap('IERC20ToUint256', keys, values);
   });
 });
