@@ -2,7 +2,9 @@
 
 pragma solidity ^0.8.4;
 
-import "../solidity-utils/openzeppelin/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import "../solidity-utils/misc/IWETH.sol";
 
 /**
  * @dev Full external interface for the Vault core contract - no external or public methods exist in the contract that
@@ -22,6 +24,11 @@ interface IVault {
     // Contracts calling view functions in the Vault must make sure the Vault has not already been entered.
     //
     // - View functions revert if referring to either unregistered Pools, or unregistered tokens for registered Pools.
+
+    /**
+     * @dev Expose the WETH address (for wrapping and unwrapping native ETH).
+     */
+    function WETH() external view returns (IWETH);
 
     /**
      * @dev Registers the caller account as a Pool. Must be called by the Pool's contract. Pools and tokens cannot

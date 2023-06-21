@@ -5,8 +5,8 @@ pragma solidity ^0.8.4;
 import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
-import "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 
 /**
  * @dev Maintains the Pool ID data structure, implements Pool ID creation and registration, and defines useful modifiers
