@@ -1,17 +1,25 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
-import { MONTH } from '@balancer-labs/v3-helpers/src/time';
+import { MONTH, fromNow } from '@balancer-labs/v3-helpers/src/time';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { BalancerPoolToken } from '../typechain-types/contracts/BalancerPoolToken';
 import { TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { ANY_ADDRESS, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import '@balancer-labs/v3-common/setupTests';
-import { fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { Typed } from 'ethers';
 
 describe('Vault', function () {
+  const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+  const ETH_SENTINEL = ZERO_ADDRESS;
+
+  const BAL = '0xba100000625a3754423978a60c9317c58a424e3d';
+  const DAI = '0x6b175474e89094c44da98b954eedeac495271d0f';
+  const WBTC = '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599';
+
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
 
@@ -42,7 +50,7 @@ describe('Vault', function () {
   });
 
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
-    vault = await deploy('VaultMock', { args: [PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
+    vault = await deploy('VaultMock', { args: [WETH, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
     vaultAddress = await vault.getAddress();
 
     tokenA = await deploy('v3-solidity-utils/TestToken', { args: ['Token A', 'TKNA', 18] });
@@ -414,6 +422,45 @@ describe('Vault', function () {
       await expect(
         vault.connect(user).transferFrom(poolAAddress, relayer.address, user.address, other.address, bptAmount + 1n)
       ).to.be.revertedWith('ERC20: insufficient allowance');
+    });
+  });
+
+  describe('native ETH handling', () => {
+    it('detects the ETH asset', async () => {
+      expect(await vault.isETH(ETH_SENTINEL)).to.be.true;
+      expect(await vault.isETH(ANY_ADDRESS)).to.be.false;
+    });
+
+    it('translates native ETH', async () => {
+      expect(await vault.translateToIERC20(Typed.address(ETH_SENTINEL))).to.equal(WETH);
+      expect(await vault.translateToIERC20(Typed.address(ANY_ADDRESS))).to.equal(ANY_ADDRESS);
+    });
+
+    it('translates an array of tokens', async () => {
+      const tokensIn = [WETH, BAL, ETH_SENTINEL, DAI, WBTC];
+      const tokensOut = [WETH, BAL, WETH, DAI, WBTC];
+
+      expect(await vault['translateToIERC20(address[])'](tokensIn)).to.deep.equal(tokensOut);
+    });
+  });
+
+  describe('initialization', () => {
+    let timedVault: VaultMock;
+
+    sharedBeforeEach('redeploy Vault', async () => {
+      timedVault = await deploy('VaultMock', { args: [WETH, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
+    });
+
+    it('initializes WETH', async () => {
+      expect(await timedVault.WETH()).to.equal(WETH);
+    });
+
+    it('is temporarily pausable', async () => {
+      expect(await timedVault.paused()).to.equal(false);
+
+      const [pauseWindowEndTime, bufferPeriodEndTime] = await timedVault.getPauseEndTimes();
+      expect(pauseWindowEndTime).to.equal(await fromNow(PAUSE_WINDOW_DURATION));
+      expect(bufferPeriodEndTime).to.equal((await fromNow(PAUSE_WINDOW_DURATION)) + bn(BUFFER_PERIOD_DURATION));
     });
   });
 });

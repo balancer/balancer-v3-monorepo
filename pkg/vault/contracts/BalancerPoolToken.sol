@@ -2,32 +2,20 @@
 
 pragma solidity ^0.8.4;
 
-import "@balancer-labs/v3-interfaces/contracts/solidity-utils/openzeppelin/IERC20Metadata.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-contract BalancerPoolToken is IERC20Metadata {
-    IVault private immutable _vault;
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-    string private _name;
-    string private _symbol;
+contract BalancerPoolToken is ERC20 {
+    IVault private immutable _vault;
 
     modifier onlyVault() {
         require(msg.sender == address(_vault), "Sender is not the Vault");
         _;
     }
 
-    constructor(IVault vault, string memory name_, string memory symbol_) {
+    constructor(IVault vault, string memory name, string memory symbol) ERC20(name, symbol) {
         _vault = vault;
-        _name = name_;
-        _symbol = symbol_;
-    }
-
-    function name() public view override returns (string memory) {
-        return _name;
-    }
-
-    function symbol() public view override returns (string memory) {
-        return _symbol;
     }
 
     function decimals() public pure override returns (uint8) {
