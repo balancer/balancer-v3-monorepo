@@ -30,8 +30,8 @@ contract BalancerPoolToken is ERC20 {
         return _getVault().balanceOf(address(this), account);
     }
 
-    function initialize(IERC20[] memory tokens) external {
-        _getVault().registerPool(tokens);
+    function initialize(address factory, IERC20[] memory tokens) external {
+        _getVault().registerPool(factory, tokens);
     }
 
     function transfer(address to, uint256 amount) public override returns (bool) {

@@ -35,6 +35,7 @@ describe('Vault', function () {
   let user: SignerWithAddress;
   let other: SignerWithAddress;
   let relayer: SignerWithAddress;
+  let factory: SignerWithAddress;
 
   let tokenAAddress: string;
   let tokenBAddress: string;
@@ -46,7 +47,7 @@ describe('Vault', function () {
   let poolATokens: string[];
 
   before('setup signers', async () => {
-    [, user, other, relayer] = await ethers.getSigners();
+    [, user, other, factory, relayer] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
@@ -78,7 +79,7 @@ describe('Vault', function () {
 
   describe('registration', () => {
     it('can register a pool', async () => {
-      await poolA.initialize(poolATokens);
+      await poolA.initialize(factory, poolATokens);
 
       expect(await vault.isRegisteredPool(poolAAddress)).to.be.true;
       expect(await vault.isRegisteredPool(poolBAddress)).to.be.false;
@@ -93,28 +94,27 @@ describe('Vault', function () {
     });
 
     it('registering a pool emits an event', async () => {
-      await expect(await poolA.initialize(poolATokens))
+      await expect(await poolA.initialize(factory, poolATokens))
         .to.emit(vault, 'PoolRegistered')
-        .withArgs(poolAAddress, poolATokens);
+        .withArgs(poolAAddress, factory.address, poolATokens);
     });
 
     it('cannot register a pool twice', async () => {
-      await poolA.initialize(poolATokens);
+      await poolA.initialize(factory, poolATokens);
 
-      await expect(poolA.initialize(poolATokens))
+      await expect(poolA.initialize(factory, poolATokens))
         .to.be.revertedWithCustomError(vault, 'PoolAlreadyRegistered')
         .withArgs(poolAAddress);
     });
 
     it('cannot register a pool with an invalid token', async () => {
-      await expect(poolA.initialize([tokenAAddress, tokenCAddress, ZERO_ADDRESS])).to.be.revertedWithCustomError(
-        vault,
-        'InvalidToken'
-      );
+      await expect(
+        poolA.initialize(factory, [tokenAAddress, tokenCAddress, ZERO_ADDRESS])
+      ).to.be.revertedWithCustomError(vault, 'InvalidToken');
     });
 
     it('cannot register a pool with duplicate tokens', async () => {
-      await expect(poolA.initialize([tokenAAddress, tokenBAddress, tokenAAddress]))
+      await expect(poolA.initialize(factory, [tokenAAddress, tokenBAddress, tokenAAddress]))
         .to.be.revertedWithCustomError(vault, 'TokenAlreadyRegistered')
         .withArgs(tokenAAddress);
     });
@@ -124,7 +124,7 @@ describe('Vault', function () {
     const bptAmount = fp(100);
 
     sharedBeforeEach('register the pool', async () => {
-      await poolA.initialize(poolATokens);
+      await poolA.initialize(factory, poolATokens);
     });
 
     it('vault can mint BPT', async () => {
@@ -165,7 +165,7 @@ describe('Vault', function () {
     const bptAmount = fp(32.5);
 
     sharedBeforeEach('register the pool, and mint initial supply', async () => {
-      await poolA.initialize(poolATokens);
+      await poolA.initialize(factory, poolATokens);
       await vault.mint(poolAAddress, user.address, totalSupply);
     });
 
@@ -214,7 +214,7 @@ describe('Vault', function () {
     const remainingBalance = totalSupply - bptAmount;
 
     sharedBeforeEach('register the pool, and mint initial supply', async () => {
-      await poolA.initialize(poolATokens);
+      await poolA.initialize(factory, poolATokens);
       await vault.mint(poolAAddress, user.address, totalSupply);
     });
 
@@ -284,7 +284,7 @@ describe('Vault', function () {
     const bptAmount = fp(72);
 
     sharedBeforeEach('register the pool', async () => {
-      await poolA.initialize(poolATokens);
+      await poolA.initialize(factory, poolATokens);
     });
 
     function itSetsApprovalsCorrectly() {
@@ -345,7 +345,7 @@ describe('Vault', function () {
     const remainingBalance = totalSupply - bptAmount;
 
     sharedBeforeEach('register the pool, mint initial supply, and approve transfer', async () => {
-      await poolA.initialize(poolATokens);
+      await poolA.initialize(factory, poolATokens);
       await vault.mint(poolAAddress, user.address, totalSupply);
       await poolA.connect(user).approve(relayer.address, bptAmount);
     });

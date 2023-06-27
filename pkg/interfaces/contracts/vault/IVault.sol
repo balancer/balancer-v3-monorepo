@@ -28,6 +28,7 @@ interface IVault {
     /**
      * @dev Expose the WETH address (for wrapping and unwrapping native ETH).
      */
+    // solhint-disable-next-line func-name-mixedcase
     function WETH() external view returns (IWETH);
 
     /**
@@ -38,32 +39,31 @@ interface IVault {
      * exit by receiving registered tokens, and can only swap registered tokens.
      *
      * Emits a `PoolRegistered` event.
+     * @param factory - address of the factory that deployed this pool
+     * @param tokens - tokens registered with this pool
      */
-    function registerPool(IERC20[] memory tokens) external;
+    function registerPool(address factory, IERC20[] memory tokens) external;
 
     /**
      * @dev Returns whether or not an address corresponds to a registered pool.
-     * @param poolAddress - address of the suspected pool.
+     * @param pool - address of the suspected pool.
      */
-    function isRegisteredPool(address poolAddress) external view returns (bool);
+    function isRegisteredPool(address pool) external view returns (bool);
 
     /**
      * @dev Emitted when a Pool is registered by calling `registerPool`.
-     * @param poolAddress - address of the pool being registered.
      */
-    event PoolRegistered(address indexed poolAddress, IERC20[] tokens);
+    event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
 
     /**
      * @dev Error indicating that a pool has already been registered.
-     * @param poolAddress - the address of the duplicate pool.
      */
-    error PoolAlreadyRegistered(address poolAddress);
+    error PoolAlreadyRegistered(address pool);
 
     /**
      * @dev Error indicating that a referenced pool has not been registered.
-     * @param poolAddress - the address of the unregistered pool.
      */
-    error PoolNotRegistered(address poolAddress);
+    error PoolNotRegistered(address pool);
 
     /**
      * @dev Returns a Pool's registered tokens and balances.
@@ -71,9 +71,7 @@ interface IVault {
      * The order of the `tokens` and `balances` arrays is the same order that will be used in `joinPool`, `exitPool`,
      * as well as in all Pool hooks (where applicable).
      */
-    function getPoolTokens(
-        address poolAddress
-    ) external view returns (IERC20[] memory tokens, uint256[] memory balances);
+    function getPoolTokens(address pool) external view returns (IERC20[] memory tokens, uint256[] memory balances);
 
     /**
      * @dev Returns the total supply of a BPT token.
