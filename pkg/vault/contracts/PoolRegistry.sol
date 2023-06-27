@@ -18,6 +18,8 @@ abstract contract PoolRegistry is IVault, ReentrancyGuard, TemporarilyPausable {
     // Registry of pool addresses.
     mapping(address => bool) private _isPoolRegistered;
 
+    // Registry of token balances.
+    // (pool address -> (token address -> balance))
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolBalances;
 
     /**
