@@ -84,13 +84,7 @@ abstract contract PoolRegistry is IVault, ReentrancyGuard, TemporarilyPausable {
     /// @inheritdoc IVault
     function getPoolTokens(
         address pool
-    )
-        external
-        view
-        override
-        withRegisteredPool(pool)
-        returns (IERC20[] memory tokens, uint256[] memory balances)
-    {
+    ) external view override withRegisteredPool(pool) returns (IERC20[] memory tokens, uint256[] memory balances) {
         EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolBalances[pool];
 
         tokens = new IERC20[](poolBalances.length());

@@ -28,6 +28,7 @@ interface IVault {
     /**
      * @dev Expose the WETH address (for wrapping and unwrapping native ETH).
      */
+    // solhint-disable-next-line func-name-mixedcase
     function WETH() external view returns (IWETH);
 
     /**
@@ -70,7 +71,5 @@ interface IVault {
      * The order of the `tokens` and `balances` arrays is the same order that will be used in `joinPool`, `exitPool`,
      * as well as in all Pool hooks (where applicable).
      */
-    function getPoolTokens(
-        address pool
-    ) external view returns (IERC20[] memory tokens, uint256[] memory balances);
+    function getPoolTokens(address pool) external view returns (IERC20[] memory tokens, uint256[] memory balances);
 }
