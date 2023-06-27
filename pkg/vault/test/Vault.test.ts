@@ -1,12 +1,16 @@
+import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumberish, Typed } from 'ethers';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
-import { fromNow, MONTH } from '@balancer-labs/v3-helpers/src/time';
-import '@balancer-labs/v3-common/setupTests';
-
+import { MONTH, fromNow } from '@balancer-labs/v3-helpers/src/time';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
-import { bn } from '@balancer-labs/v3-helpers/src/numbers';
-import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { BalancerPoolToken } from '../typechain-types/contracts/BalancerPoolToken';
+import { TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/TestToken';
+import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
+import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
+import { ANY_ADDRESS, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import '@balancer-labs/v3-common/setupTests';
+import { bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { Typed } from 'ethers';
 
 describe('Vault', function () {
   const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
@@ -16,55 +20,447 @@ describe('Vault', function () {
   const DAI = '0x6b175474e89094c44da98b954eedeac495271d0f';
   const WBTC = '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599';
 
-  const pauseWindowDuration = MONTH;
-  const bufferPeriodDuration = MONTH;
+  const PAUSE_WINDOW_DURATION = MONTH * 3;
+  const BUFFER_PERIOD_DURATION = MONTH;
 
-  let instance: VaultMock;
+  let vault: VaultMock;
+  let poolA: BalancerPoolToken;
+  let poolB: BalancerPoolToken;
+  let tokenA: TestToken;
+  let tokenB: TestToken;
+  let tokenC: TestToken;
 
-  const deployVault = async (weth: string, pauseWindowDuration: BigNumberish, bufferPeriodDuration: BigNumberish) => {
-    instance = await deploy('VaultMock', {
-      args: [weth, bn(pauseWindowDuration), bn(bufferPeriodDuration)],
+  let vaultAddress: string;
+
+  let user: SignerWithAddress;
+  let other: SignerWithAddress;
+  let relayer: SignerWithAddress;
+  let factory: SignerWithAddress;
+
+  let tokenAAddress: string;
+  let tokenBAddress: string;
+  let tokenCAddress: string;
+
+  let poolAAddress: string;
+  let poolBAddress: string;
+
+  let poolATokens: string[];
+
+  before('setup signers', async () => {
+    [, user, other, factory, relayer] = await ethers.getSigners();
+  });
+
+  sharedBeforeEach('deploy vault, tokens, and pools', async function () {
+    vault = await deploy('VaultMock', { args: [WETH, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
+    vaultAddress = await vault.getAddress();
+
+    tokenA = await deploy('v3-solidity-utils/TestToken', { args: ['Token A', 'TKNA', 18] });
+    tokenB = await deploy('v3-solidity-utils/TestToken', { args: ['Token B', 'TKNB', 6] });
+    tokenC = await deploy('v3-solidity-utils/TestToken', { args: ['Token C', 'TKNC', 8] });
+
+    poolA = await deploy('BalancerPoolToken', { args: [vaultAddress, 'Pool A', 'POOLA'] });
+    poolB = await deploy('BalancerPoolToken', { args: [vaultAddress, 'Pool B', 'POOLB'] });
+
+    expect(await poolA.name()).to.equal('Pool A');
+    expect(await poolA.symbol()).to.equal('POOLA');
+    expect(await poolA.decimals()).to.equal(18);
+  });
+
+  sharedBeforeEach('get addresses', async () => {
+    tokenAAddress = await tokenA.getAddress();
+    tokenBAddress = await tokenB.getAddress();
+    tokenCAddress = await tokenC.getAddress();
+
+    poolAAddress = await poolA.getAddress();
+    poolBAddress = await poolB.getAddress();
+
+    poolATokens = [tokenAAddress, tokenBAddress, tokenCAddress];
+  });
+
+  describe('registration', () => {
+    it('can register a pool', async () => {
+      await poolA.initialize(factory, poolATokens);
+
+      expect(await vault.isRegisteredPool(poolAAddress)).to.be.true;
+      expect(await vault.isRegisteredPool(poolBAddress)).to.be.false;
+
+      const { tokens, balances } = await vault.getPoolTokens(poolAAddress);
+      expect(tokens).to.deep.equal(poolATokens);
+      expect(balances).to.deep.equal(Array(tokens.length).fill(0));
+
+      await expect(vault.getPoolTokens(poolBAddress))
+        .to.be.revertedWithCustomError(vault, 'PoolNotRegistered')
+        .withArgs(poolBAddress);
     });
-  };
 
-  describe('initialization', () => {
-    sharedBeforeEach('deploy Vault', async () => {
-      await deployVault(WETH, pauseWindowDuration, bufferPeriodDuration);
+    it('registering a pool emits an event', async () => {
+      await expect(await poolA.initialize(factory, poolATokens))
+        .to.emit(vault, 'PoolRegistered')
+        .withArgs(poolAAddress, factory.address, poolATokens);
     });
 
-    it('initializes WETH', async () => {
-      expect(await instance.WETH()).to.equal(WETH);
+    it('cannot register a pool twice', async () => {
+      await poolA.initialize(factory, poolATokens);
+
+      await expect(poolA.initialize(factory, poolATokens))
+        .to.be.revertedWithCustomError(vault, 'PoolAlreadyRegistered')
+        .withArgs(poolAAddress);
     });
 
-    it('is temporarily pausable', async () => {
-      expect(await instance.paused()).to.equal(false);
+    it('cannot register a pool with an invalid token', async () => {
+      await expect(
+        poolA.initialize(factory, [tokenAAddress, tokenCAddress, ZERO_ADDRESS])
+      ).to.be.revertedWithCustomError(vault, 'InvalidToken');
+    });
 
-      const [pauseWindowEndTime, bufferPeriodEndTime] = await instance.getPauseEndTimes();
-      expect(pauseWindowEndTime).to.equal(await fromNow(pauseWindowDuration));
-      expect(bufferPeriodEndTime).to.equal((await fromNow(pauseWindowDuration)) + bn(bufferPeriodDuration));
+    it('cannot register a pool with duplicate tokens', async () => {
+      await expect(poolA.initialize(factory, [tokenAAddress, tokenBAddress, tokenAAddress]))
+        .to.be.revertedWithCustomError(vault, 'TokenAlreadyRegistered')
+        .withArgs(tokenAAddress);
+    });
+  });
+
+  describe('minting', async () => {
+    const bptAmount = fp(100);
+
+    sharedBeforeEach('register the pool', async () => {
+      await poolA.initialize(factory, poolATokens);
+    });
+
+    it('vault can mint BPT', async () => {
+      await vault.mint(poolAAddress, user.address, bptAmount);
+
+      // balanceOf directly on pool token
+      expect(await poolA.balanceOf(user.address)).to.equal(bptAmount);
+      expect(await poolB.balanceOf(user.address)).to.equal(0);
+
+      // balanceOf indirectly, through vault
+      expect(await vault.balanceOf(poolAAddress, user.address)).to.equal(bptAmount);
+      expect(await vault.balanceOf(poolBAddress, user.address)).to.equal(0);
+
+      // user has the total supply (directly on pool token)
+      expect(await poolA.totalSupply()).to.equal(bptAmount);
+      expect(await poolB.totalSupply()).to.equal(0);
+
+      // user has the total supply (indirectly, through vault)
+      expect(await vault.totalSupply(poolAAddress)).to.equal(bptAmount);
+      expect(await vault.totalSupply(poolBAddress)).to.equal(0);
+    });
+
+    it('minting emits a transfer event on the token', async () => {
+      await expect(await vault.mint(poolAAddress, user.address, bptAmount))
+        .to.emit(poolA, 'Transfer')
+        .withArgs(ZERO_ADDRESS, user.address, bptAmount);
+    });
+
+    it('cannot mint to zero address', async () => {
+      await expect(vault.mint(poolBAddress, ZERO_ADDRESS, bptAmount)).to.be.revertedWith(
+        'ERC20: mint to the zero address'
+      );
+    });
+  });
+
+  describe('burning', async () => {
+    const totalSupply = fp(100);
+    const bptAmount = fp(32.5);
+
+    sharedBeforeEach('register the pool, and mint initial supply', async () => {
+      await poolA.initialize(factory, poolATokens);
+      await vault.mint(poolAAddress, user.address, totalSupply);
+    });
+
+    it('vault can burn BPT', async () => {
+      await vault.burn(poolAAddress, user.address, bptAmount);
+
+      const remainingBalance = totalSupply - bptAmount;
+
+      // balanceOf directly on pool token
+      expect(await poolA.balanceOf(user.address)).to.equal(remainingBalance);
+
+      // balanceOf indirectly, through vault
+      expect(await vault.balanceOf(poolAAddress, user.address)).to.equal(remainingBalance);
+
+      // user has the total supply (directly on pool token)
+      expect(await poolA.totalSupply()).to.equal(remainingBalance);
+
+      // user has the total supply (indirectly, through vault)
+      expect(await vault.totalSupply(poolAAddress)).to.equal(remainingBalance);
+    });
+
+    it('burning emits a transfer event on the token', async () => {
+      await expect(await vault.burn(poolAAddress, user.address, bptAmount))
+        .to.emit(poolA, 'Transfer')
+        .withArgs(user.address, ZERO_ADDRESS, bptAmount);
+    });
+
+    it('cannot burn from the zero address', async () => {
+      await expect(vault.burn(poolBAddress, ZERO_ADDRESS, bptAmount)).to.be.revertedWith(
+        'ERC20: burn from the zero address'
+      );
+    });
+
+    it('cannot burn more than the balance', async () => {
+      // User has zero balance of PoolB
+      await expect(vault.burn(poolBAddress, user.address, bptAmount)).to.be.revertedWith(
+        'ERC20: burn amount exceeds balance'
+      );
+    });
+  });
+
+  describe('transfer', () => {
+    const totalSupply = fp(50);
+    const bptAmount = fp(18);
+
+    const remainingBalance = totalSupply - bptAmount;
+
+    sharedBeforeEach('register the pool, and mint initial supply', async () => {
+      await poolA.initialize(factory, poolATokens);
+      await vault.mint(poolAAddress, user.address, totalSupply);
+    });
+
+    function itTransfersBPTCorrectly() {
+      it('transfers BPT between users', async () => {
+        expect(await poolA.balanceOf(user.address)).to.equal(remainingBalance);
+        expect(await poolA.balanceOf(other.address)).to.equal(bptAmount);
+
+        // Supply doesn't change
+        expect(await poolA.totalSupply()).to.equal(totalSupply);
+      });
+    }
+
+    it('transfers BPT directly', async () => {
+      await poolA.connect(user).transfer(other.address, bptAmount);
+
+      itTransfersBPTCorrectly();
+    });
+
+    it('transfers BPT through the vault', async () => {
+      await vault.connect(user).transfer(poolAAddress, user.address, other.address, bptAmount);
+
+      itTransfersBPTCorrectly();
+    });
+
+    it('direct transfer emits a transfer event on the token', async () => {
+      await expect(await poolA.connect(user).transfer(other.address, bptAmount))
+        .to.emit(poolA, 'Transfer')
+        .withArgs(user.address, other.address, bptAmount);
+    });
+
+    it('indirect transfer emits a transfer event on the token', async () => {
+      await expect(await vault.connect(user).transfer(poolAAddress, user.address, other.address, bptAmount))
+        .to.emit(poolA, 'Transfer')
+        .withArgs(user.address, other.address, bptAmount);
+    });
+
+    it('vault cannot transfer a non-BPT token', async () => {
+      await tokenA.mint(user.address, bptAmount);
+      expect(await tokenA.balanceOf(user.address)).to.equal(bptAmount);
+
+      await expect(vault.connect(user).transfer(tokenAAddress, user.address, other.address, bptAmount))
+        .to.be.revertedWithCustomError(vault, 'PoolNotRegistered')
+        .withArgs(tokenAAddress);
+    });
+
+    it('cannot transfer from zero address', async () => {
+      await expect(
+        vault.connect(user).transfer(poolAAddress, ZERO_ADDRESS, other.address, bptAmount)
+      ).to.be.revertedWith('ERC20: transfer from the zero address');
+    });
+
+    it('cannot transfer to zero address', async () => {
+      await expect(
+        vault.connect(user).transfer(poolAAddress, user.address, ZERO_ADDRESS, bptAmount)
+      ).to.be.revertedWith('ERC20: transfer to the zero address');
+    });
+
+    it('cannot transfer more than balance', async () => {
+      await expect(
+        vault.connect(user).transfer(poolAAddress, user.address, other.address, totalSupply + 1n)
+      ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
+    });
+  });
+
+  describe('allowance', () => {
+    const bptAmount = fp(72);
+
+    sharedBeforeEach('register the pool', async () => {
+      await poolA.initialize(factory, poolATokens);
+    });
+
+    function itSetsApprovalsCorrectly() {
+      it('sets approval', async () => {
+        expect(await poolA.allowance(user.address, relayer.address)).to.equal(bptAmount);
+        expect(await poolA.allowance(user.address, other.address)).to.equal(0);
+
+        expect(await vault.allowance(poolAAddress, user.address, relayer.address)).to.equal(bptAmount);
+        expect(await vault.allowance(poolAAddress, user.address, other.address)).to.equal(0);
+      });
+    }
+
+    context('sets approval directly', async () => {
+      sharedBeforeEach('set approval', async () => {
+        await poolA.connect(user).approve(relayer.address, bptAmount);
+      });
+
+      itSetsApprovalsCorrectly();
+    });
+
+    context('sets approval through the vault', async () => {
+      sharedBeforeEach('set approval', async () => {
+        await vault.connect(user).approve(poolAAddress, user.address, relayer.address, bptAmount);
+      });
+
+      itSetsApprovalsCorrectly();
+    });
+
+    it('direct approval emits an event on the token', async () => {
+      await expect(await poolA.connect(user).approve(relayer.address, bptAmount))
+        .to.emit(poolA, 'Approval')
+        .withArgs(user.address, relayer.address, bptAmount);
+    });
+
+    it('indirect approval emits an event on the token', async () => {
+      await expect(await vault.connect(user).approve(poolAAddress, user.address, relayer.address, bptAmount))
+        .to.emit(poolA, 'Approval')
+        .withArgs(user.address, relayer.address, bptAmount);
+    });
+
+    it('cannot approve from zero address', async () => {
+      await expect(
+        vault.connect(user).approve(poolAAddress, ZERO_ADDRESS, other.address, bptAmount)
+      ).to.be.revertedWith('ERC20: approve from the zero address');
+    });
+
+    it('cannot approve to zero address', async () => {
+      await expect(vault.connect(user).approve(poolAAddress, user.address, ZERO_ADDRESS, bptAmount)).to.be.revertedWith(
+        'ERC20: approve to the zero address'
+      );
+    });
+  });
+
+  describe('transferFrom', () => {
+    const totalSupply = fp(50);
+    const bptAmount = fp(18);
+
+    const remainingBalance = totalSupply - bptAmount;
+
+    sharedBeforeEach('register the pool, mint initial supply, and approve transfer', async () => {
+      await poolA.initialize(factory, poolATokens);
+      await vault.mint(poolAAddress, user.address, totalSupply);
+      await poolA.connect(user).approve(relayer.address, bptAmount);
+    });
+
+    function itTransfersBPTCorrectly() {
+      it('relayer can transfer BPT', async () => {
+        expect(await poolA.balanceOf(user.address)).to.equal(remainingBalance);
+        expect(await poolA.balanceOf(relayer.address)).to.equal(bptAmount);
+
+        // Supply doesn't change
+        expect(await poolA.totalSupply()).to.equal(totalSupply);
+      });
+    }
+
+    context('transfers BPT directly', async () => {
+      sharedBeforeEach('direct transferFrom', async () => {
+        await poolA.connect(relayer).transferFrom(user.address, relayer.address, bptAmount);
+      });
+
+      itTransfersBPTCorrectly();
+    });
+
+    context('transfers BPT through the vault', async () => {
+      sharedBeforeEach('indirect transferFrom', async () => {
+        await vault.connect(relayer).transfer(poolAAddress, user.address, relayer.address, bptAmount);
+      });
+
+      itTransfersBPTCorrectly();
+    });
+
+    it('direct transfer emits a transfer event on the token', async () => {
+      await expect(await poolA.connect(relayer).transferFrom(user.address, relayer.address, bptAmount))
+        .to.emit(poolA, 'Transfer')
+        .withArgs(user.address, relayer.address, bptAmount);
+    });
+
+    it('indirect transfer emits a transfer event on the token', async () => {
+      await expect(
+        await vault
+          .connect(relayer)
+          .transferFrom(poolAAddress, relayer.address, user.address, relayer.address, bptAmount)
+      )
+        .to.emit(poolA, 'Transfer')
+        .withArgs(user.address, relayer.address, bptAmount);
+    });
+
+    it('vault cannot transfer a non-BPT token', async () => {
+      await tokenA.mint(user.address, bptAmount);
+      expect(await tokenA.balanceOf(user.address)).to.equal(bptAmount);
+
+      await expect(
+        vault.connect(relayer).transferFrom(tokenAAddress, relayer.address, user.address, relayer.address, bptAmount)
+      )
+        .to.be.revertedWithCustomError(vault, 'PoolNotRegistered')
+        .withArgs(tokenAAddress);
+    });
+
+    it('cannot transfer to zero address', async () => {
+      await expect(
+        vault.connect(relayer).transferFrom(poolAAddress, relayer.address, user.address, ZERO_ADDRESS, bptAmount)
+      ).to.be.revertedWith('ERC20: transfer to the zero address');
+    });
+
+    it('cannot transfer more than balance', async () => {
+      // Give infinite allowance
+      await poolA.connect(user).approve(relayer.address, MAX_UINT256);
+
+      await expect(
+        vault.connect(user).transferFrom(poolAAddress, relayer.address, user.address, other.address, totalSupply + 1n)
+      ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
+    });
+
+    it('cannot transfer more than allowance', async () => {
+      await expect(
+        vault.connect(user).transferFrom(poolAAddress, relayer.address, user.address, other.address, bptAmount + 1n)
+      ).to.be.revertedWith('ERC20: insufficient allowance');
     });
   });
 
   describe('native ETH handling', () => {
-    sharedBeforeEach('deploy Vault', async () => {
-      await deployVault(WETH, pauseWindowDuration, bufferPeriodDuration);
-    });
-
     it('detects the ETH asset', async () => {
-      expect(await instance.isETH(ETH_SENTINEL)).to.be.true;
-      expect(await instance.isETH(ANY_ADDRESS)).to.be.false;
+      expect(await vault.isETH(ETH_SENTINEL)).to.be.true;
+      expect(await vault.isETH(ANY_ADDRESS)).to.be.false;
     });
 
     it('translates native ETH', async () => {
-      expect(await instance.translateToIERC20(Typed.address(ETH_SENTINEL))).to.equal(WETH);
-      expect(await instance.translateToIERC20(Typed.address(ANY_ADDRESS))).to.equal(ANY_ADDRESS);
+      expect(await vault.translateToIERC20(Typed.address(ETH_SENTINEL))).to.equal(WETH);
+      expect(await vault.translateToIERC20(Typed.address(ANY_ADDRESS))).to.equal(ANY_ADDRESS);
     });
 
     it('translates an array of tokens', async () => {
       const tokensIn = [WETH, BAL, ETH_SENTINEL, DAI, WBTC];
       const tokensOut = [WETH, BAL, WETH, DAI, WBTC];
 
-      expect(await instance['translateToIERC20(address[])'](tokensIn)).to.deep.equal(tokensOut);
+      expect(await vault['translateToIERC20(address[])'](tokensIn)).to.deep.equal(tokensOut);
+    });
+  });
+
+  describe('initialization', () => {
+    let timedVault: VaultMock;
+
+    sharedBeforeEach('redeploy Vault', async () => {
+      timedVault = await deploy('VaultMock', { args: [WETH, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
+    });
+
+    it('initializes WETH', async () => {
+      expect(await timedVault.WETH()).to.equal(WETH);
+    });
+
+    it('is temporarily pausable', async () => {
+      expect(await timedVault.paused()).to.equal(false);
+
+      const [pauseWindowEndTime, bufferPeriodEndTime] = await timedVault.getPauseEndTimes();
+      expect(pauseWindowEndTime).to.equal(await fromNow(PAUSE_WINDOW_DURATION));
+      expect(bufferPeriodEndTime).to.equal((await fromNow(PAUSE_WINDOW_DURATION)) + bn(BUFFER_PERIOD_DURATION));
     });
   });
 });

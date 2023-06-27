@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.4;
 
-import "../Vault.sol";
 import "../lib/AssetHelpersLib.sol";
+import "../Vault.sol";
 
 contract VaultMock is Vault {
     constructor(
@@ -11,7 +11,15 @@ contract VaultMock is Vault {
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
     ) Vault(weth, pauseWindowDuration, bufferPeriodDuration) {
-        // solhint-disable-previous-line no-empty-blocks
+        // solhint-disable-previous-line no-empty-blocks      
+    }
+
+    function mint(address poolToken, address to, uint256 amount) external {
+        _mint(poolToken, to, amount);
+    }
+
+    function burn(address poolToken, address from, uint256 amount) external {
+        _burn(poolToken, from, amount);
     }
 
     function isETH(IAsset asset) external pure returns (bool) {

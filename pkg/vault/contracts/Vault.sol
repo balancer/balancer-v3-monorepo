@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.4;
 
-import "./PoolRegistry.sol";
+import "./PoolTokens.sol";
 
-contract Vault is PoolRegistry {
+contract Vault is PoolTokens {
     // solhint-disable-next-line var-name-mixedcase
     IWETH private immutable _weth;
 

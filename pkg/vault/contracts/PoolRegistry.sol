@@ -18,9 +18,8 @@ abstract contract PoolRegistry is IVault, ReentrancyGuard, TemporarilyPausable {
     // Registry of pool addresses.
     mapping(address => bool) private _isPoolRegistered;
 
-    // Registry of token balances.
-    // (pool address -> (token address -> balance))
-    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolBalances;
+    // Pool -> (token -> balance): Vault tokens allocated to this pool
+    mapping(address => EnumerableMap.IERC20ToUint256Map) private _poolTokenBalances;
 
     /**
      * @dev Reverts unless `pool` corresponds to a registered Pool.
@@ -47,7 +46,7 @@ abstract contract PoolRegistry is IVault, ReentrancyGuard, TemporarilyPausable {
             revert PoolAlreadyRegistered(pool);
         }
 
-        EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolBalances[pool];
+        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
@@ -58,7 +57,7 @@ abstract contract PoolRegistry is IVault, ReentrancyGuard, TemporarilyPausable {
 
             // EnumerableMaps require an explicit initial value when creating a key-value pair: we use zero, the same
             // value that is found in uninitialized storage, which corresponds to an empty balance.
-            bool added = poolBalances.set(tokens[i], 0);
+            bool added = poolTokenBalances.set(tokens[i], 0);
             if (!added) {
                 revert TokenAlreadyRegistered(tokens[i]);
             }
@@ -77,15 +76,15 @@ abstract contract PoolRegistry is IVault, ReentrancyGuard, TemporarilyPausable {
     function getPoolTokens(
         address pool
     ) external view override withRegisteredPool(pool) returns (IERC20[] memory tokens, uint256[] memory balances) {
-        EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolBalances[pool];
+        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
 
-        tokens = new IERC20[](poolBalances.length());
+        tokens = new IERC20[](poolTokenBalances.length());
         balances = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length, we can use
             // `unchecked_at` as we know `i` is a valid token index, saving storage reads.
-            (tokens[i], balances[i]) = poolBalances.unchecked_at(i);
+            (tokens[i], balances[i]) = poolTokenBalances.unchecked_at(i);
         }
     }
 }
