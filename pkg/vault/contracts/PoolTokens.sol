@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.4;
 
-import "./PoolRegistry.sol";
 import "./BalancerPoolToken.sol";
 
 abstract contract PoolTokens {
