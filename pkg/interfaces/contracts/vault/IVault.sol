@@ -41,6 +41,16 @@ interface IVault {
     error PoolNotRegistered(address pool);
 
     /**
+     * @dev Error indicating an attempt to register an invalid token.
+     */
+    error InvalidToken();
+
+    /**
+     * @dev Error indicating a token was already registered (i.e., a duplicate).
+     */
+    error TokenAlreadyRegistered(IERC20 tokenAddress);
+
+    /**
      * @dev Expose the WETH address (for wrapping and unwrapping native ETH).
      */
     // solhint-disable-next-line func-name-mixedcase

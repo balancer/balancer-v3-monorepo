@@ -22,16 +22,6 @@ abstract contract PoolRegistry is IVault, ReentrancyGuard, TemporarilyPausable {
     mapping(address => EnumerableMap.IERC20ToUint256Map) private _poolTokenBalances;
 
     /**
-     * @dev Error indicating an attempt to register an invalid token.
-     */
-    error InvalidToken();
-
-    /**
-     * @dev Error indicating a token was already registered (i.e., a duplicate).
-     */
-    error TokenAlreadyRegistered(IERC20 tokenAddress);
-
-    /**
      * @dev Reverts unless `pool` corresponds to a registered Pool.
      */
     modifier withRegisteredPool(address pool) {
