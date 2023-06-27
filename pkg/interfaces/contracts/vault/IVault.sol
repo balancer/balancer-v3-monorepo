@@ -38,8 +38,10 @@ interface IVault {
      * exit by receiving registered tokens, and can only swap registered tokens.
      *
      * Emits a `PoolRegistered` event.
+     * @param factory - address of the factory that deployed this pool
+     * @param tokens - tokens registered with this pool
      */
-    function registerPool(IERC20[] memory tokens) external;
+    function registerPool(address factory, IERC20[] memory tokens) external;
 
     /**
      * @dev Returns whether or not an address corresponds to a registered pool.
@@ -49,19 +51,16 @@ interface IVault {
 
     /**
      * @dev Emitted when a Pool is registered by calling `registerPool`.
-     * @param pool - address of the pool being registered.
      */
-    event PoolRegistered(address indexed pool, IERC20[] tokens);
+    event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
 
     /**
      * @dev Error indicating that a pool has already been registered.
-     * @param pool - the address of the duplicate pool.
      */
     error PoolAlreadyRegistered(address pool);
 
     /**
      * @dev Error indicating that a referenced pool has not been registered.
-     * @param pool - the address of the unregistered pool.
      */
     error PoolNotRegistered(address pool);
 

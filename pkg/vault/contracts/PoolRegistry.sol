@@ -48,7 +48,7 @@ abstract contract PoolRegistry is IVault, ReentrancyGuard, TemporarilyPausable {
     }
 
     /// @inheritdoc IVault
-    function registerPool(IERC20[] memory tokens) external override nonReentrant whenNotPaused {
+    function registerPool(address factory, IERC20[] memory tokens) external override nonReentrant whenNotPaused {
         address pool = msg.sender;
 
         if (isRegisteredPool(pool)) {
@@ -73,7 +73,7 @@ abstract contract PoolRegistry is IVault, ReentrancyGuard, TemporarilyPausable {
         }
 
         _isPoolRegistered[pool] = true;
-        emit PoolRegistered(pool, tokens);
+        emit PoolRegistered(pool, factory, tokens);
     }
 
     /// @inheritdoc IVault
