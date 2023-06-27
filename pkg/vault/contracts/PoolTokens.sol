@@ -5,7 +5,7 @@ pragma solidity ^0.8.4;
 import "./PoolRegistry.sol";
 import "./BalancerPoolToken.sol";
 
-abstract contract PoolTokens is PoolRegistry {
+abstract contract PoolTokens {
     // Pool -> (holder -> balance): Users' BPT balances
     mapping(address => mapping(address => uint256)) private _accountBPTBalances;
 
@@ -15,48 +15,16 @@ abstract contract PoolTokens is PoolRegistry {
     // Pool -> total supply (BPT)
     mapping(address => uint256) private _totalSupply;
 
-    function totalSupply(address poolToken) external view override returns (uint256) {
+    function _getTotalSupply(address poolToken) internal view returns (uint256) {
         return _totalSupply[poolToken];
     }
 
-    function balanceOf(address poolToken, address account) external view returns (uint256) {
+    function _getBalanceOf(address poolToken, address account) internal view returns (uint256) {
         return _accountBPTBalances[poolToken][account];
     }
 
-    function allowance(address poolToken, address owner, address spender) external view returns (uint256) {
+    function _getAllowance(address poolToken, address owner, address spender) internal view returns (uint256) {
         return _allowances[poolToken][owner][spender];
-    }
-
-    function transfer(
-        address poolToken,
-        address owner,
-        address to,
-        uint256 amount
-    ) external withRegisteredPool(poolToken) returns (bool) {
-        _transfer(poolToken, owner, to, amount);
-        return true;
-    }
-
-    function approve(
-        address poolToken,
-        address sender,
-        address spender,
-        uint256 amount
-    ) external withRegisteredPool(poolToken) returns (bool) {
-        _approve(poolToken, sender, spender, amount);
-        return true;
-    }
-
-    function transferFrom(
-        address poolToken,
-        address spender,
-        address from,
-        address to,
-        uint256 amount
-    ) external withRegisteredPool(poolToken) returns (bool) {
-        _spendAllowance(poolToken, from, spender, amount);
-        _transfer(poolToken, from, to, amount);
-        return true;
     }
 
     function _mint(address poolToken, address to, uint256 amount) internal {

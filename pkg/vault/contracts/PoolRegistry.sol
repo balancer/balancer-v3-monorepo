@@ -4,15 +4,13 @@ pragma solidity ^0.8.4;
 
 import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
-import "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 
 /**
  * @dev Maintains the Pool ID data structure, implements Pool ID creation and registration, and defines useful modifiers
  * and helper functions for ensuring correct behavior when working with Pools.
  */
-abstract contract PoolRegistry is IVault, ReentrancyGuard, TemporarilyPausable {
+abstract contract PoolRegistry is IVault {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
 
     // Registry of pool addresses.
@@ -33,16 +31,15 @@ abstract contract PoolRegistry is IVault, ReentrancyGuard, TemporarilyPausable {
      * @dev Reverts unless `pool` corresponds to a registered Pool.
      */
     function _ensureRegisteredPool(address pool) internal view {
-        if (!isRegisteredPool(pool)) {
+        if (!_isRegisteredPool(pool)) {
             revert PoolNotRegistered(pool);
         }
     }
 
-    /// @inheritdoc IVault
-    function registerPool(address factory, IERC20[] memory tokens) external override nonReentrant whenNotPaused {
+    function _registerPool(address factory, IERC20[] memory tokens) internal {
         address pool = msg.sender;
 
-        if (isRegisteredPool(pool)) {
+        if (_isRegisteredPool(pool)) {
             revert PoolAlreadyRegistered(pool);
         }
 
@@ -67,15 +64,11 @@ abstract contract PoolRegistry is IVault, ReentrancyGuard, TemporarilyPausable {
         emit PoolRegistered(pool, factory, tokens);
     }
 
-    /// @inheritdoc IVault
-    function isRegisteredPool(address pool) public view returns (bool) {
+    function _isRegisteredPool(address pool) internal view returns (bool) {
         return _isPoolRegistered[pool];
     }
 
-    /// @inheritdoc IVault
-    function getPoolTokens(
-        address pool
-    ) external view override withRegisteredPool(pool) returns (IERC20[] memory tokens, uint256[] memory balances) {
+    function _getPoolTokens(address pool) internal view returns (IERC20[] memory tokens, uint256[] memory balances) {
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
 
         tokens = new IERC20[](poolTokenBalances.length());
