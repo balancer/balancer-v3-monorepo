@@ -31,31 +31,31 @@ abstract contract PoolRegistry is IVault, ReentrancyGuard, TemporarilyPausable {
     error TokenAlreadyRegistered(IERC20 tokenAddress);
 
     /**
-     * @dev Reverts unless `poolAddress` corresponds to a registered Pool.
+     * @dev Reverts unless `pool` corresponds to a registered Pool.
      */
-    modifier withRegisteredPool(address poolAddress) {
-        _ensureRegisteredPool(poolAddress);
+    modifier withRegisteredPool(address pool) {
+        _ensureRegisteredPool(pool);
         _;
     }
 
     /**
-     * @dev Reverts unless `poolAddress` corresponds to a registered Pool.
+     * @dev Reverts unless `pool` corresponds to a registered Pool.
      */
-    function _ensureRegisteredPool(address poolAddress) internal view {
-        if (!isRegisteredPool(poolAddress)) {
-            revert PoolNotRegistered(poolAddress);
+    function _ensureRegisteredPool(address pool) internal view {
+        if (!isRegisteredPool(pool)) {
+            revert PoolNotRegistered(pool);
         }
     }
 
     /// @inheritdoc IVault
     function registerPool(IERC20[] memory tokens) external override nonReentrant whenNotPaused {
-        address poolAddress = msg.sender;
+        address pool = msg.sender;
 
-        if (isRegisteredPool(poolAddress)) {
-            revert PoolAlreadyRegistered(poolAddress);
+        if (isRegisteredPool(pool)) {
+            revert PoolAlreadyRegistered(pool);
         }
 
-        EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolBalances[poolAddress];
+        EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolBalances[pool];
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
@@ -72,26 +72,26 @@ abstract contract PoolRegistry is IVault, ReentrancyGuard, TemporarilyPausable {
             }
         }
 
-        _isPoolRegistered[poolAddress] = true;
-        emit PoolRegistered(poolAddress, tokens);
+        _isPoolRegistered[pool] = true;
+        emit PoolRegistered(pool, tokens);
     }
 
     /// @inheritdoc IVault
-    function isRegisteredPool(address poolAddress) public view returns (bool) {
-        return _isPoolRegistered[poolAddress];
+    function isRegisteredPool(address pool) public view returns (bool) {
+        return _isPoolRegistered[pool];
     }
 
     /// @inheritdoc IVault
     function getPoolTokens(
-        address poolAddress
+        address pool
     )
         external
         view
         override
-        withRegisteredPool(poolAddress)
+        withRegisteredPool(pool)
         returns (IERC20[] memory tokens, uint256[] memory balances)
     {
-        EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolBalances[poolAddress];
+        EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolBalances[pool];
 
         tokens = new IERC20[](poolBalances.length());
         balances = new uint256[](tokens.length);

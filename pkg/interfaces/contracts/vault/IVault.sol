@@ -43,27 +43,27 @@ interface IVault {
 
     /**
      * @dev Returns whether or not an address corresponds to a registered pool.
-     * @param poolAddress - address of the suspected pool.
+     * @param pool - address of the suspected pool.
      */
-    function isRegisteredPool(address poolAddress) external view returns (bool);
+    function isRegisteredPool(address pool) external view returns (bool);
 
     /**
      * @dev Emitted when a Pool is registered by calling `registerPool`.
-     * @param poolAddress - address of the pool being registered.
+     * @param pool - address of the pool being registered.
      */
-    event PoolRegistered(address indexed poolAddress, IERC20[] tokens);
+    event PoolRegistered(address indexed pool, IERC20[] tokens);
 
     /**
      * @dev Error indicating that a pool has already been registered.
-     * @param poolAddress - the address of the duplicate pool.
+     * @param pool - the address of the duplicate pool.
      */
-    error PoolAlreadyRegistered(address poolAddress);
+    error PoolAlreadyRegistered(address pool);
 
     /**
      * @dev Error indicating that a referenced pool has not been registered.
-     * @param poolAddress - the address of the unregistered pool.
+     * @param pool - the address of the unregistered pool.
      */
-    error PoolNotRegistered(address poolAddress);
+    error PoolNotRegistered(address pool);
 
     /**
      * @dev Returns a Pool's registered tokens and balances.
@@ -72,6 +72,6 @@ interface IVault {
      * as well as in all Pool hooks (where applicable).
      */
     function getPoolTokens(
-        address poolAddress
+        address pool
     ) external view returns (IERC20[] memory tokens, uint256[] memory balances);
 }
