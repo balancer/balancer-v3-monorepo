@@ -26,6 +26,21 @@ interface IVault {
     // - View functions revert if referring to either unregistered Pools, or unregistered tokens for registered Pools.
 
     /**
+     * @dev Emitted when a Pool is registered by calling `registerPool`.
+     */
+    event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
+
+    /**
+     * @dev Error indicating that a pool has already been registered.
+     */
+    error PoolAlreadyRegistered(address pool);
+
+    /**
+     * @dev Error indicating that a referenced pool has not been registered.
+     */
+    error PoolNotRegistered(address pool);
+
+    /**
      * @dev Expose the WETH address (for wrapping and unwrapping native ETH).
      */
     // solhint-disable-next-line func-name-mixedcase
@@ -49,21 +64,6 @@ interface IVault {
      * @param pool - address of the suspected pool.
      */
     function isRegisteredPool(address pool) external view returns (bool);
-
-    /**
-     * @dev Emitted when a Pool is registered by calling `registerPool`.
-     */
-    event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
-
-    /**
-     * @dev Error indicating that a pool has already been registered.
-     */
-    error PoolAlreadyRegistered(address pool);
-
-    /**
-     * @dev Error indicating that a referenced pool has not been registered.
-     */
-    error PoolNotRegistered(address pool);
 
     /**
      * @dev Returns a Pool's registered tokens and balances.
