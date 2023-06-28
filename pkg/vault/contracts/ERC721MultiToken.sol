@@ -22,9 +22,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
     // Mapping from owner to operator approvals
     mapping(address => mapping(address => mapping(address => bool))) private _operatorApprovals;
 
-    /**
-     * @dev See {IERC721-balanceOf}.
-     */
+    /// @dev See {IERC721-balanceOf}.
     function _balanceOfERC721(address token, address owner) internal view returns (uint256) {
         if (owner == address(0)) {
             revert ERC721InvalidOwner(address(0));
@@ -32,9 +30,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
         return _balances[token][owner];
     }
 
-    /**
-     * @dev See {IERC721-ownerOf}.
-     */
+    /// @dev See {IERC721-ownerOf}.
     function _safeOwnerOfERC721(address token, uint256 tokenId) internal view returns (address) {
         address owner = _ownerOfERC721(token, tokenId);
         if (owner == address(0)) {
@@ -43,25 +39,19 @@ abstract contract ERC721MultiToken is IERC721Errors {
         return owner;
     }
 
-    /**
-     * @dev See {IERC721-getApproved}.
-     */
+    /// @dev See {IERC721-getApproved}.
     function _getApprovedERC721(address token, uint256 tokenId) internal view returns (address) {
         _requireMinted(token, tokenId);
 
         return _tokenApprovals[token][tokenId];
     }
 
-    /**
-     * @dev See {IERC721-isApprovedForAll}.
-     */
+    /// @dev See {IERC721-isApprovedForAll}.
     function _isApprovedForAllERC721(address token, address owner, address operator) internal view returns (bool) {
         return _operatorApprovals[token][owner][operator];
     }
 
-    /**
-     * @dev See {IERC721-approve}.
-     */
+    /// @dev See {IERC721-approve}.
     function _approveERC721(address token, address sender, address to, uint256 tokenId) internal {
         address owner = _ownerOfERC721(token, tokenId);
         if (to == owner) {
@@ -75,16 +65,12 @@ abstract contract ERC721MultiToken is IERC721Errors {
         _approve(token, to, tokenId);
     }
 
-    /**
-     * @dev See {IERC721-setApprovalForAll}.
-     */
+    /// @dev See {IERC721-setApprovalForAll}.
     function _setApprovalForAllERC721(address token, address sender, address operator, bool approved) internal {
         _setApprovalForAll(token, sender, operator, approved);
     }
 
-    /**
-     * @dev See {IERC721-transferFrom}.
-     */
+    /// @dev See {IERC721-transferFrom}.
     function _transferFromERC721(address token, address sender, address from, address to, uint256 tokenId) internal {
         if (!_isApprovedOrOwnerERC721(token, sender, tokenId)) {
             revert ERC721InsufficientApproval(sender, tokenId);
@@ -93,9 +79,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
         _transferERC721(token, from, to, tokenId);
     }
 
-    /**
-     * @dev See {IERC721-safeTransferFrom}.
-     */
+    /// @dev See {IERC721-safeTransferFrom}.
     function _safeTransferFromERC721(
         address token,
         address sender,
@@ -106,9 +90,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
         _safeTransferFromERC721(token, sender, from, to, tokenId, "");
     }
 
-    /**
-     * @dev See {IERC721-safeTransferFrom}.
-     */
+    /// @dev See {IERC721-safeTransferFrom}.
     function _safeTransferFromERC721(
         address token,
         address sender,
@@ -155,9 +137,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
         }
     }
 
-    /**
-     * @dev Returns the owner of the `tokenId`. Does NOT revert if token doesn't exist
-     */
+    /// @dev Returns the owner of the `tokenId`. Does NOT revert if token doesn't exist
     function _ownerOfERC721(address token, uint256 tokenId) private view returns (address) {
         return _owners[token][tokenId];
     }
@@ -340,9 +320,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
         ERC721PoolToken(token).emitApprovalForAll(owner, operator, approved);
     }
 
-    /**
-     * @dev Reverts if the `tokenId` has not been minted yet.
-     */
+    /// @dev Reverts if the `tokenId` has not been minted yet.
     function _requireMinted(address token, uint256 tokenId) private view {
         if (!_existsERC721(token, tokenId)) {
             revert ERC721NonexistentToken(tokenId);
