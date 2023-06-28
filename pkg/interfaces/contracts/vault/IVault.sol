@@ -56,6 +56,10 @@ interface IVault {
     // solhint-disable-next-line func-name-mixedcase
     function WETH() external view returns (IWETH);
 
+    /***********************/
+    /*  Pool Registration  */
+    /***********************/
+
     /**
      * @dev Registers the caller account as a Pool. Must be called by the Pool's contract. Pools and tokens cannot
      * be deregistered.
@@ -83,6 +87,10 @@ interface IVault {
      */
     function getPoolTokens(address pool) external view returns (IERC20[] memory tokens, uint256[] memory balances);
 
+    /***************************/
+    /*  Balancer ERC20 tokens  */
+    /***************************/
+
     /**
      * @dev Returns the total supply of a BPT token.
      */
@@ -96,7 +104,12 @@ interface IVault {
     /**
      * @dev Permissioned function to transfer a BPT token.
      */
-    function transfer(address poolToken, address owner, address to, uint256 amount) external returns (bool);
+    function transfer(
+        address poolToken,
+        address owner,
+        address to,
+        uint256 amount
+    ) external returns (bool);
 
     /**
      * @dev Permissioned function to transferFrom a BPT token.
@@ -112,10 +125,96 @@ interface IVault {
     /**
      * @dev Returns an owner's BPT allowance for a given spender.
      */
-    function allowance(address poolToken, address owner, address spender) external view returns (uint256);
+    function allowance(
+        address poolToken,
+        address owner,
+        address spender
+    ) external view returns (uint256);
 
     /**
      * @dev Permissioned function to set a sender's BPT allowance for a given spender.
      */
-    function approve(address poolToken, address sender, address spender, uint256 amount) external returns (bool);
+    function approve(
+        address poolToken,
+        address sender,
+        address spender,
+        uint256 amount
+    ) external returns (bool);
+
+    /*******************/
+    /*  ERC721 tokens  */
+    /*******************/
+
+    /**
+     * @dev Returns an account's balance of a Balancer ERC721 token.
+     */
+    function balanceOfERC721(address token, address owner) external view returns (uint256);
+
+    /**
+     * @dev Returns an owner of a Balancer ERC721 token.
+     */
+    function ownerOfERC721(address token, uint256 tokenId) external view returns (address);
+
+    /**
+     * @dev See {IERC721-getApproved}.
+     */
+    function getApprovedERC721(address token, uint256 tokenId) external view returns (address);
+
+    /**
+     * @dev See {IERC721-isApprovedForAll}.
+     */
+    function isApprovedForAllERC721(
+        address token,
+        address owner,
+        address operator
+    ) external view returns (bool);
+
+    /**
+     * @dev Can be called only by registered ERC721 pool. See {IERC721-approve}.
+     */
+    function approveERC721(
+        address sender,
+        address to,
+        uint256 tokenId
+    ) external;
+
+    /**
+     * @dev Can be called only by registered ERC721 pool. See {IERC721-setApprovalForAll}.
+     */
+    function setApprovalForAllERC721(
+        address sender,
+        address operator,
+        bool approved
+    ) external;
+
+    /**
+     * @dev Can be called only by registered ERC721 pool. See {IERC721-transferFrom}.
+     */
+    function transferFromERC721(
+        address sender,
+        address from,
+        address to,
+        uint256 tokenId
+    ) external;
+
+    /**
+     * @dev Can be called only by registered ERC721 pool. See {IERC721-safeTransferFrom}.
+     */
+    function safeTransferFromERC721(
+        address sender,
+        address from,
+        address to,
+        uint256 tokenId
+    ) external;
+
+    /**
+     * @dev Can be called only by registered ERC721 pool. See {IERC721-safeTransferFrom}.
+     */
+    function safeTransferFromERC721(
+        address sender,
+        address from,
+        address to,
+        uint256 tokenId,
+        bytes memory data
+    ) external;
 }
