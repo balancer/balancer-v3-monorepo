@@ -28,17 +28,17 @@ contract Vault is IVault, PoolTokens, ERC721MultiToken, PoolRegistry, Reentrancy
     /*******************/
 
     /// @inheritdoc IVault
-    function totalSupply(address poolToken) external view override returns (uint256) {
+    function totalSupply(address poolToken) external view returns (uint256) {
         return _getTotalSupply(poolToken);
     }
 
     /// @inheritdoc IVault
-    function balanceOf(address poolToken, address account) external view override returns (uint256) {
+    function balanceOf(address poolToken, address account) external view returns (uint256) {
         return _getBalanceOf(poolToken, account);
     }
 
     /// @inheritdoc IVault
-    function allowance(address poolToken, address owner, address spender) external view override returns (uint256) {
+    function allowance(address poolToken, address owner, address spender) external view returns (uint256) {
         return _getAllowance(poolToken, owner, spender);
     }
 
@@ -151,7 +151,7 @@ contract Vault is IVault, PoolTokens, ERC721MultiToken, PoolRegistry, Reentrancy
     /***********************/
 
     /// @inheritdoc IVault
-    function registerPool(address factory, IERC20[] memory tokens) external override nonReentrant whenNotPaused {
+    function registerPool(address factory, IERC20[] memory tokens) external nonReentrant whenNotPaused {
         _registerPool(factory, tokens);
     }
 
@@ -163,12 +163,12 @@ contract Vault is IVault, PoolTokens, ERC721MultiToken, PoolRegistry, Reentrancy
     /// @inheritdoc IVault
     function getPoolTokens(
         address pool
-    ) external view override withRegisteredPool(pool) returns (IERC20[] memory tokens, uint256[] memory balances) {
+    ) external view withRegisteredPool(pool) returns (IERC20[] memory tokens, uint256[] memory balances) {
         return _getPoolTokens(pool);
     }
 
     /// @inheritdoc IVault
-    function WETH() public view override returns (IWETH) {
+    function WETH() public view returns (IWETH) {
         // solhint-disable-previous-line func-name-mixedcase
         return _weth;
     }
