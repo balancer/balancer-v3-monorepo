@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-contract ERC721BasePool is IERC721, IERC721Metadata, ERC165 {
+contract ERC721BalancerPoolToken is IERC721, IERC721Metadata, ERC165 {
     using Strings for uint256;
 
     IVault private immutable _vault;
@@ -22,7 +22,13 @@ contract ERC721BasePool is IERC721, IERC721Metadata, ERC165 {
         _;
     }
 
-    constructor(IVault vault_, address factory, IERC20[] memory tokens, string memory name_, string memory symbol_) {
+    constructor(
+        IVault vault_,
+        address factory,
+        IERC20[] memory tokens,
+        string memory name_,
+        string memory symbol_
+    ) {
         _vault = vault_;
         _name = name_;
         _symbol = symbol_;
@@ -109,33 +115,58 @@ contract ERC721BasePool is IERC721, IERC721Metadata, ERC165 {
     /**
      * @dev See {IERC721-transferFrom}.
      */
-    function transferFrom(address from, address to, uint256 tokenId) public virtual {
+    function transferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public virtual {
         _vault.transferFromERC721(msg.sender, from, to, tokenId);
     }
 
     /**
      * @dev See {IERC721-safeTransferFrom}.
      */
-    function safeTransferFrom(address from, address to, uint256 tokenId) public virtual {
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public virtual {
         _vault.safeTransferFromERC721(msg.sender, from, to, tokenId);
     }
 
     /**
      * @dev See {IERC721-safeTransferFrom}.
      */
-    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data) public virtual {
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId,
+        bytes memory data
+    ) public virtual {
         _vault.safeTransferFromERC721(msg.sender, from, to, tokenId, data);
     }
 
-    function emitTransfer(address from, address to, uint256 amount) external onlyVault {
+    function emitTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) external onlyVault {
         emit Transfer(from, to, amount);
     }
 
-    function emitApprovalForAll(address owner, address operator, bool approved) external onlyVault {
+    function emitApprovalForAll(
+        address owner,
+        address operator,
+        bool approved
+    ) external onlyVault {
         emit ApprovalForAll(owner, operator, approved);
     }
 
-    function emitApproval(address owner, address spender, uint256 amount) external onlyVault {
+    function emitApproval(
+        address owner,
+        address spender,
+        uint256 amount
+    ) external onlyVault {
         emit Approval(owner, spender, amount);
     }
 
