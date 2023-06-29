@@ -7,7 +7,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-contract BalancerPoolToken is IERC20, IERC20Metadata {
+contract ERC20BalancerPoolToken is IERC20, IERC20Metadata {
     IVault private immutable _vault;
 
     string private _name;

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.4;
 
-import "./BalancerPoolToken.sol";
+import "./ERC20BalancerPoolToken.sol";
 
 abstract contract PoolTokens {
     // Pool -> (holder -> balance): Users' BPT balances
@@ -35,7 +35,7 @@ abstract contract PoolTokens {
             _accountBPTBalances[poolToken][to] += amount;
         }
 
-        BalancerPoolToken(poolToken).emitTransfer(address(0), to, amount);
+        ERC20BalancerPoolToken(poolToken).emitTransfer(address(0), to, amount);
     }
 
     function _burn(address poolToken, address from, uint256 amount) internal {
@@ -50,7 +50,7 @@ abstract contract PoolTokens {
             _totalSupply[poolToken] -= amount;
         }
 
-        BalancerPoolToken(poolToken).emitTransfer(from, address(0), amount);
+        ERC20BalancerPoolToken(poolToken).emitTransfer(from, address(0), amount);
     }
 
     function _transfer(address poolToken, address from, address to, uint256 amount) internal {
@@ -66,7 +66,7 @@ abstract contract PoolTokens {
             _accountBPTBalances[poolToken][to] += amount;
         }
 
-        BalancerPoolToken(poolToken).emitTransfer(from, to, amount);
+        ERC20BalancerPoolToken(poolToken).emitTransfer(from, to, amount);
     }
 
     function _approve(address poolToken, address owner, address spender, uint256 amount) internal {
@@ -74,7 +74,7 @@ abstract contract PoolTokens {
         require(spender != address(0), "ERC20: approve to the zero address");
 
         _allowances[poolToken][owner][spender] = amount;
-        BalancerPoolToken(poolToken).emitApprove(owner, spender, amount);
+        ERC20BalancerPoolToken(poolToken).emitApprove(owner, spender, amount);
     }
 
     function _spendAllowance(address poolToken, address owner, address spender, uint256 amount) internal {
