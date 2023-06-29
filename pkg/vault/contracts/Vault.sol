@@ -7,10 +7,10 @@ import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 
-import "./PoolTokens.sol";
+import "./MultiToken.sol";
 import "./PoolRegistry.sol";
 
-contract Vault is IVault, PoolTokens, PoolRegistry, ReentrancyGuard, TemporarilyPausable {
+contract Vault is IVault, MultiToken, PoolRegistry, ReentrancyGuard, TemporarilyPausable {
     // solhint-disable-next-line var-name-mixedcase
     IWETH private immutable _weth;
 

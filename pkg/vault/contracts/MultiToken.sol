@@ -6,7 +6,14 @@ import "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC20Error
 
 import "./ERC20BalancerPoolToken.sol";
 
-abstract contract PoolTokens is IERC20Errors {
+/**
+ * @notice Store Balancer Pool Token (BPT) data and handle accounting for all Pools in the Vault.
+ * @dev The Vault manages all BPT (Balancer Pool Tokens), which can be either ERC20 or ERC721, in a manner similar to
+ * ERC-1155, but without fully supporting the standard. Parts of it conflict with the Vault's security model and
+ * design philosophy; the purpose is to encapsulate all accounting (of both pool constituent tokens and the pool
+ * contracts themselves) in the Vault, rather than dividing responsibilities between the Vault and pool contracts.
+ */
+abstract contract MultiToken is IERC20Errors {
     // Pool -> (holder -> balance): Users' BPT balances
     mapping(address => mapping(address => uint256)) private _accountBPTBalances;
 
