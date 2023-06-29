@@ -41,20 +41,20 @@ contract ERC20BalancerPoolToken is IERC20, IERC20Metadata {
     }
 
     function totalSupply() public view override returns (uint256) {
-        return _getVault().totalSupply(address(this));
+        return _vault.totalSupply(address(this));
     }
 
     function balanceOf(address account) public view override returns (uint256) {
-        return _getVault().balanceOf(address(this), account);
+        return _vault.balanceOf(address(this), account);
     }
 
     function initialize(address factory, IERC20[] memory tokens) external {
-        _getVault().registerPool(factory, tokens);
+        _vault.registerPool(factory, tokens);
     }
 
     function transfer(address to, uint256 amount) public override returns (bool) {
         // Vault will perform the transfer and call emitTransfer to emit the event from this contract.
-        _getVault().transfer(address(this), msg.sender, to, amount);
+        _vault.transfer(address(this), msg.sender, to, amount);
         return true;
     }
 
@@ -63,12 +63,12 @@ contract ERC20BalancerPoolToken is IERC20, IERC20Metadata {
     }
 
     function allowance(address owner, address spender) public view override returns (uint256) {
-        return _getVault().allowance(address(this), owner, spender);
+        return _vault.allowance(address(this), owner, spender);
     }
 
     function approve(address spender, uint256 amount) public override returns (bool) {
         // Vault will perform the approval and call emitApprove to emit the event from this contract.
-        _getVault().approve(address(this), msg.sender, spender, amount);
+        _vault.approve(address(this), msg.sender, spender, amount);
         return true;
     }
 
@@ -78,11 +78,7 @@ contract ERC20BalancerPoolToken is IERC20, IERC20Metadata {
 
     function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
         // Vault will perform the transfer and call emitTransfer to emit the event from this contract.
-        _getVault().transferFrom(address(this), msg.sender, from, to, amount);
+        _vault.transferFrom(address(this), msg.sender, from, to, amount);
         return true;
-    }
-
-    function _getVault() internal view returns (IVault) {
-        return _vault;
     }
 }
