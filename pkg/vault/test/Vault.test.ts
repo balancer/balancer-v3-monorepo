@@ -33,6 +33,8 @@ describe('Vault', function () {
   let vaultAddress: string;
 
   let factory: SignerWithAddress;
+  let user: SignerWithAddress;
+  let other: SignerWithAddress;
 
   let tokenAAddress: string;
   let tokenBAddress: string;
@@ -44,7 +46,7 @@ describe('Vault', function () {
   let poolATokens: string[];
 
   before('setup signers', async () => {
-    [, factory] = await ethers.getSigners();
+    [, factory, user, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
@@ -114,6 +116,40 @@ describe('Vault', function () {
       await expect(poolA.initialize(factory, [tokenAAddress, tokenBAddress, tokenAAddress]))
         .to.be.revertedWithCustomError(vault, 'TokenAlreadyRegistered')
         .withArgs(tokenAAddress);
+    });
+
+    it('cannot register a pool when paused', async () => {
+      await vault.pause();
+
+      await expect(poolA.initialize(factory, poolATokens)).to.be.revertedWithCustomError(vault, 'AlreadyPaused');
+    });
+
+    it('cannot register while registering another pool', async () => {
+      await expect(vault.reentrantRegisterPool(factory, poolATokens)).to.be.revertedWithCustomError(
+        vault,
+        'ReentrancyGuardReentrantCall'
+      );
+    });
+
+    it('cannot get pool tokens for an invalid pool', async () => {
+      await expect(vault.getPoolTokens(ANY_ADDRESS))
+        .to.be.revertedWithCustomError(vault, 'PoolNotRegistered')
+        .withArgs(ANY_ADDRESS);
+    });
+
+    it('cannot transfer from an invalid pool', async () => {
+      await expect(vault.transfer(ANY_ADDRESS, user.address, other.address, 0))
+        .to.be.revertedWithCustomError(vault, 'PoolNotRegistered')
+        .withArgs(ANY_ADDRESS);
+      await expect(vault.transferFrom(ANY_ADDRESS, user.address, user.address, other.address, 0))
+        .to.be.revertedWithCustomError(vault, 'PoolNotRegistered')
+        .withArgs(ANY_ADDRESS);
+    });
+
+    it('cannot approve an invalid pool', async () => {
+      await expect(vault.approve(ANY_ADDRESS, user.address, other.address, 0))
+        .to.be.revertedWithCustomError(vault, 'PoolNotRegistered')
+        .withArgs(ANY_ADDRESS);
     });
   });
 

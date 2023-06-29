@@ -229,6 +229,18 @@ describe('ERC20BalancerPoolToken', function () {
         .to.be.revertedWithCustomError(vault, 'ERC20InsufficientBalance')
         .withArgs(user.address, totalSupply, totalSupply + 1n);
     });
+
+    it('cannot emit transfer event except through the Vault', async () => {
+      await expect(poolA.connect(user).emitTransfer(user.address, other.address, totalSupply))
+        .to.be.revertedWithCustomError(poolA, 'SenderIsNotVault')
+        .withArgs(user.address);
+    });
+
+    it('cannot emit approval event except through the Vault', async () => {
+      await expect(poolA.connect(user).emitApprove(user.address, other.address, totalSupply))
+        .to.be.revertedWithCustomError(poolA, 'SenderIsNotVault')
+        .withArgs(user.address);
+    });
   });
 
   describe('allowance', () => {
