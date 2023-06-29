@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-contract ERC721PoolToken is IERC721, IERC721Metadata, ERC165 {
+contract ERC721BasePool is IERC721, IERC721Metadata, ERC165 {
     using Strings for uint256;
 
     IVault private immutable _vault;

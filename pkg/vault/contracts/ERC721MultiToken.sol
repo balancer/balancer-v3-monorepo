@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IERC6093.sol";
 
-import "./ERC721PoolToken.sol";
+import "./ERC721BasePool.sol";
 
 abstract contract ERC721MultiToken is IERC721Errors {
     // Mapping from token ID to owner address
@@ -226,7 +226,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
         _owners[token][tokenId] = to;
 
         // Emit Transfer event on the token
-        ERC721PoolToken(token).emitTransfer(address(0), to, tokenId);
+        ERC721BasePool(token).emitTransfer(address(0), to, tokenId);
     }
 
     /**
@@ -253,7 +253,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
         delete _owners[token][tokenId];
 
         // Emit Transfer event on the token
-        ERC721PoolToken(token).emitTransfer(owner, address(0), tokenId);
+        ERC721BasePool(token).emitTransfer(owner, address(0), tokenId);
     }
 
     /**
@@ -292,7 +292,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
         _owners[token][tokenId] = to;
 
         // Emit Transfer event on the token
-        ERC721PoolToken(token).emitTransfer(address(0), to, tokenId);
+        ERC721BasePool(token).emitTransfer(address(0), to, tokenId);
     }
 
     /**
@@ -303,7 +303,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
     function _approve(address token, address to, uint256 tokenId) private {
         _tokenApprovals[token][tokenId] = to;
         // Emit Approval event on the token
-        ERC721PoolToken(token).emitApproval(_ownerOfERC721(token, tokenId), to, tokenId);
+        ERC721BasePool(token).emitApproval(_ownerOfERC721(token, tokenId), to, tokenId);
     }
 
     /**
@@ -317,7 +317,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
         }
         _operatorApprovals[token][owner][operator] = approved;
         // Emit ApprovalForAll event on the token
-        ERC721PoolToken(token).emitApprovalForAll(owner, operator, approved);
+        ERC721BasePool(token).emitApprovalForAll(owner, operator, approved);
     }
 
     /// @dev Reverts if the `tokenId` has not been minted yet.
