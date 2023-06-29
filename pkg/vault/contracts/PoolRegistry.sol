@@ -23,7 +23,7 @@ abstract contract PoolRegistry is IVaultErrors {
      * @dev Emitted when a Pool is registered by calling `registerPool`.
      */
     event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
-    
+
     /**
      * @dev Reverts unless `pool` corresponds to a registered Pool.
      */
