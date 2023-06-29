@@ -128,7 +128,10 @@ export default class ERC20TokenList {
     this.tokens.forEach(fn, thisArg);
   }
 
-  async asyncEach(fn: (value: ERC20Token, i: number, array: ERC20Token[]) => Promise<void>, thisArg?: unknown): Promise<void> {
+  async asyncEach(
+    fn: (value: ERC20Token, i: number, array: ERC20Token[]) => Promise<void>,
+    thisArg?: unknown
+  ): Promise<void> {
     await this.asyncMap(fn, thisArg);
   }
 
@@ -136,7 +139,10 @@ export default class ERC20TokenList {
     return this.tokens.map(fn, thisArg);
   }
 
-  async asyncMap<T>(fn: (value: ERC20Token, i: number, array: ERC20Token[]) => Promise<T>, thisArg?: unknown): Promise<T[]> {
+  async asyncMap<T>(
+    fn: (value: ERC20Token, i: number, array: ERC20Token[]) => Promise<T>,
+    thisArg?: unknown
+  ): Promise<T[]> {
     const promises = this.tokens.map(fn, thisArg);
     return Promise.all(promises);
   }
