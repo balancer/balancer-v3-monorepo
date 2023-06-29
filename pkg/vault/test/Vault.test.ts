@@ -4,7 +4,7 @@ import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH, fromNow } from '@balancer-labs/v3-helpers/src/time';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { BalancerPoolToken } from '../typechain-types/contracts/BalancerPoolToken';
-import { TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/TestToken';
+import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { ANY_ADDRESS, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
@@ -26,9 +26,9 @@ describe('Vault', function () {
   let vault: VaultMock;
   let poolA: BalancerPoolToken;
   let poolB: BalancerPoolToken;
-  let tokenA: TestToken;
-  let tokenB: TestToken;
-  let tokenC: TestToken;
+  let tokenA: ERC20TestToken;
+  let tokenB: ERC20TestToken;
+  let tokenC: ERC20TestToken;
 
   let vaultAddress: string;
 
@@ -54,9 +54,9 @@ describe('Vault', function () {
     vault = await deploy('VaultMock', { args: [WETH, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
     vaultAddress = await vault.getAddress();
 
-    tokenA = await deploy('v3-solidity-utils/TestToken', { args: ['Token A', 'TKNA', 18] });
-    tokenB = await deploy('v3-solidity-utils/TestToken', { args: ['Token B', 'TKNB', 6] });
-    tokenC = await deploy('v3-solidity-utils/TestToken', { args: ['Token C', 'TKNC', 8] });
+    tokenA = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });
+    tokenB = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token B', 'TKNB', 6] });
+    tokenC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token C', 'TKNC', 8] });
 
     poolA = await deploy('BalancerPoolToken', { args: [vaultAddress, 'Pool A', 'POOLA'] });
     poolB = await deploy('BalancerPoolToken', { args: [vaultAddress, 'Pool B', 'POOLB'] });

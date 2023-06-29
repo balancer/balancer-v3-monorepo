@@ -4,8 +4,8 @@ import { BigNumberish, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { bn } from '../numbers';
-import TokenList from '../models/tokens/TokenList';
-import Token from '../models/tokens/Token';
+import ERC20TokenList from '../models/tokens/ERC20TokenList';
+import ERC20Token from '../models/tokens/ERC20Token';
 
 // Ported from @openzeppelin/test-helpers to use with ERC20 tokens and Ethers
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -59,7 +59,7 @@ abstract class BalanceTracker {
 }
 
 class ERC20BalanceTracker extends BalanceTracker {
-  constructor(private address: string, private token: Token) {
+  constructor(private address: string, private token: ERC20Token) {
     super();
   }
 
@@ -69,7 +69,7 @@ class ERC20BalanceTracker extends BalanceTracker {
 }
 
 class InternalBalanceTracker extends BalanceTracker {
-  constructor(private vault: Contract, private address: string, private token: Token) {
+  constructor(private vault: Contract, private address: string, private token: ERC20Token) {
     super();
   }
 
@@ -85,7 +85,7 @@ function accountToAddress(account: Account): string {
 
 // Creates an initializes a balance tracker. Constructors cannot be async (and therefore get cannot
 // be called there), so we have this helper method.
-export async function balanceTracker(address: string, token: Token): Promise<ERC20BalanceTracker> {
+export async function balanceTracker(address: string, token: ERC20Token): Promise<ERC20BalanceTracker> {
   const tracker = new ERC20BalanceTracker(address, token);
   await tracker.get();
   return tracker;
@@ -94,7 +94,7 @@ export async function balanceTracker(address: string, token: Token): Promise<ERC
 export async function internalBalanceTracker(
   vault: Contract,
   address: string,
-  token: Token
+  token: ERC20Token
 ): Promise<InternalBalanceTracker> {
   const tracker = new InternalBalanceTracker(vault, address, token);
   await tracker.get();
@@ -134,7 +134,7 @@ export async function internalBalanceTracker(
 // Returns the result of calling `promise`.
 export async function expectBalanceChange(
   promise: () => Promise<unknown>,
-  tokens: TokenList,
+  tokens: ERC20TokenList,
   balanceChange: BalanceChange | Array<BalanceChange>,
   vault?: Contract
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

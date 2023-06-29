@@ -2,34 +2,34 @@ import { BigNumberish, Contract, ContractTransaction } from 'ethers';
 
 import { MAX_UINT256 } from '../../constants';
 
-import TokensDeployer from './TokensDeployer';
+import TokensDeployer from './ERC20TokensDeployer';
 import TypesConverter from '../types/TypesConverter';
 import { Account, TxParams } from '../types/types';
 import { RawTokenDeployment } from './types';
 import { deployedAt } from '../../contract';
 
-export default class Token {
+export default class ERC20Token {
   name: string;
   symbol: string;
   decimals: number;
   instance: Contract;
 
-  static async create(params: RawTokenDeployment): Promise<Token> {
+  static async create(params: RawTokenDeployment): Promise<ERC20Token> {
     return TokensDeployer.deployToken(params);
   }
 
-  static async deployedAt(address: Account): Promise<Token> {
-    const instance = await deployedAt('v3-solidity-utils/TestToken', TypesConverter.toAddress(address));
+  static async deployedAt(address: Account): Promise<ERC20Token> {
+    const instance = await deployedAt('v3-solidity-utils/ERC20TestToken', TypesConverter.toAddress(address));
     const [name, symbol, decimals] = await Promise.all([instance.name(), instance.symbol(), instance.decimals()]);
     if (symbol === 'WETH') {
-      return new Token(
+      return new ERC20Token(
         name,
         symbol,
         decimals,
         await deployedAt('v3-standalone-utils/TestWETH', TypesConverter.toAddress(address))
       );
     }
-    return new Token(name, symbol, decimals, instance);
+    return new ERC20Token(name, symbol, decimals, instance);
   }
 
   constructor(name: string, symbol: string, decimals: number, instance: Contract) {
@@ -77,7 +77,7 @@ export default class Token {
     return token.burn(amount);
   }
 
-  compare(anotherToken: Token): number {
+  compare(anotherToken: ERC20Token): number {
     return this.address.toLowerCase() > anotherToken.address.toLowerCase() ? 1 : -1;
   }
 }
