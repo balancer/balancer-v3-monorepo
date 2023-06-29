@@ -38,15 +38,7 @@ contract VaultMock is Vault {
         _pause();
     }
 
-    function _alternateRegisterPool(address factory, IERC20[] memory tokens) private nonReentrant {
-       _registerPool(factory, tokens);
-    }
-
-    function _triggerReentrancyGuard(address factory, IERC20[] memory tokens) private nonReentrant {
-        _alternateRegisterPool(factory, tokens);
-    }
-
-    function reentrantRegisterPool(address factory, IERC20[] memory tokens) external {
-        _triggerReentrancyGuard(factory, tokens);
+    function reentrantRegisterPool(address factory, IERC20[] memory tokens) external nonReentrant {
+        this.registerPool(factory, tokens);
     }
 }
