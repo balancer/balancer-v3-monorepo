@@ -154,9 +154,9 @@ describe('Vault', function () {
     });
 
     it('cannot mint to zero address', async () => {
-      await expect(vault.mint(poolBAddress, ZERO_ADDRESS, bptAmount)).to.be.revertedWith(
-        'ERC20: mint to the zero address'
-      );
+      await expect(vault.mint(poolBAddress, ZERO_ADDRESS, bptAmount))
+        .to.be.revertedWithCustomError(vault, 'ERC20InvalidReceiver')
+        .withArgs(ZERO_ADDRESS);
     });
   });
 
@@ -194,16 +194,16 @@ describe('Vault', function () {
     });
 
     it('cannot burn from the zero address', async () => {
-      await expect(vault.burn(poolBAddress, ZERO_ADDRESS, bptAmount)).to.be.revertedWith(
-        'ERC20: burn from the zero address'
-      );
+      await expect(vault.burn(poolBAddress, ZERO_ADDRESS, bptAmount))
+        .to.be.revertedWithCustomError(vault, 'ERC20InvalidSender')
+        .withArgs(ZERO_ADDRESS);
     });
 
     it('cannot burn more than the balance', async () => {
       // User has zero balance of PoolB
-      await expect(vault.burn(poolBAddress, user.address, bptAmount)).to.be.revertedWith(
-        'ERC20: burn amount exceeds balance'
-      );
+      await expect(vault.burn(poolBAddress, user.address, bptAmount))
+        .to.be.revertedWithCustomError(vault, 'ERC20InsufficientBalance')
+        .withArgs(user.address, 0, bptAmount);
     });
   });
 
@@ -262,21 +262,21 @@ describe('Vault', function () {
     });
 
     it('cannot transfer from zero address', async () => {
-      await expect(
-        vault.connect(user).transfer(poolAAddress, ZERO_ADDRESS, other.address, bptAmount)
-      ).to.be.revertedWith('ERC20: transfer from the zero address');
+      await expect(vault.connect(user).transfer(poolAAddress, ZERO_ADDRESS, other.address, bptAmount))
+        .to.be.revertedWithCustomError(vault, 'ERC20InvalidSender')
+        .withArgs(ZERO_ADDRESS);
     });
 
     it('cannot transfer to zero address', async () => {
-      await expect(
-        vault.connect(user).transfer(poolAAddress, user.address, ZERO_ADDRESS, bptAmount)
-      ).to.be.revertedWith('ERC20: transfer to the zero address');
+      await expect(vault.connect(user).transfer(poolAAddress, user.address, ZERO_ADDRESS, bptAmount))
+        .to.be.revertedWithCustomError(vault, 'ERC20InvalidReceiver')
+        .withArgs(ZERO_ADDRESS);
     });
 
     it('cannot transfer more than balance', async () => {
-      await expect(
-        vault.connect(user).transfer(poolAAddress, user.address, other.address, totalSupply + 1n)
-      ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
+      await expect(vault.connect(user).transfer(poolAAddress, user.address, other.address, totalSupply + 1n))
+        .to.be.revertedWithCustomError(vault, 'ERC20InsufficientBalance')
+        .withArgs(user.address, totalSupply, totalSupply + 1n);
     });
   });
 
@@ -326,15 +326,15 @@ describe('Vault', function () {
     });
 
     it('cannot approve from zero address', async () => {
-      await expect(
-        vault.connect(user).approve(poolAAddress, ZERO_ADDRESS, other.address, bptAmount)
-      ).to.be.revertedWith('ERC20: approve from the zero address');
+      await expect(vault.connect(user).approve(poolAAddress, ZERO_ADDRESS, other.address, bptAmount))
+        .to.be.revertedWithCustomError(vault, 'ERC20InvalidApprover')
+        .withArgs(ZERO_ADDRESS);
     });
 
     it('cannot approve to zero address', async () => {
-      await expect(vault.connect(user).approve(poolAAddress, user.address, ZERO_ADDRESS, bptAmount)).to.be.revertedWith(
-        'ERC20: approve to the zero address'
-      );
+      await expect(vault.connect(user).approve(poolAAddress, user.address, ZERO_ADDRESS, bptAmount))
+        .to.be.revertedWithCustomError(vault, 'ERC20InvalidSpender')
+        .withArgs(ZERO_ADDRESS);
     });
   });
 
@@ -406,7 +406,9 @@ describe('Vault', function () {
     it('cannot transfer to zero address', async () => {
       await expect(
         vault.connect(relayer).transferFrom(poolAAddress, relayer.address, user.address, ZERO_ADDRESS, bptAmount)
-      ).to.be.revertedWith('ERC20: transfer to the zero address');
+      )
+        .to.be.revertedWithCustomError(vault, 'ERC20InvalidReceiver')
+        .withArgs(ZERO_ADDRESS);
     });
 
     it('cannot transfer more than balance', async () => {
@@ -415,13 +417,17 @@ describe('Vault', function () {
 
       await expect(
         vault.connect(user).transferFrom(poolAAddress, relayer.address, user.address, other.address, totalSupply + 1n)
-      ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
+      )
+        .to.be.revertedWithCustomError(vault, 'ERC20InsufficientBalance')
+        .withArgs(user.address, totalSupply, totalSupply + 1n);
     });
 
     it('cannot transfer more than allowance', async () => {
       await expect(
         vault.connect(user).transferFrom(poolAAddress, relayer.address, user.address, other.address, bptAmount + 1n)
-      ).to.be.revertedWith('ERC20: insufficient allowance');
+      )
+        .to.be.revertedWithCustomError(vault, 'ERC20InsufficientAllowance')
+        .withArgs(relayer.address, bptAmount, bptAmount + 1n);
     });
   });
 
