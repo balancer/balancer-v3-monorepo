@@ -24,4 +24,9 @@ interface IVaultErrors {
      * @dev Error indicating a token was already registered (i.e., a duplicate).
      */
     error TokenAlreadyRegistered(IERC20 tokenAddress);
+
+    /**
+     * @dev Error indicating the sender is not the Vault (e.g., someone is trying to call a permissioned function).
+     */
+    error SenderIsNotVault(address sender);
 }

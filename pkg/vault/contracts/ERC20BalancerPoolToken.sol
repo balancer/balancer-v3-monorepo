@@ -2,19 +2,22 @@
 
 pragma solidity ^0.8.4;
 
+import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-contract ERC20BalancerPoolToken is IERC20, IERC20Metadata {
+contract ERC20BalancerPoolToken is IERC20, IERC20Metadata, IVaultErrors {
     IVault private immutable _vault;
 
     string private _name;
     string private _symbol;
 
     modifier onlyVault() {
-        require(msg.sender == address(_vault), "Sender is not the Vault");
+        if (msg.sender != address(_vault)) {
+            revert SenderIsNotVault(msg.sender);
+        }
         _;
     }
 
