@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 pragma solidity ^0.8.4;
 
@@ -24,31 +24,6 @@ interface IVault {
     // Contracts calling view functions in the Vault must make sure the Vault has not already been entered.
     //
     // - View functions revert if referring to either unregistered Pools, or unregistered tokens for registered Pools.
-
-    /**
-     * @dev Emitted when a Pool is registered by calling `registerPool`.
-     */
-    event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
-
-    /**
-     * @dev Error indicating that a pool has already been registered.
-     */
-    error PoolAlreadyRegistered(address pool);
-
-    /**
-     * @dev Error indicating that a referenced pool has not been registered.
-     */
-    error PoolNotRegistered(address pool);
-
-    /**
-     * @dev Error indicating an attempt to register an invalid token.
-     */
-    error InvalidToken();
-
-    /**
-     * @dev Error indicating a token was already registered (i.e., a duplicate).
-     */
-    error TokenAlreadyRegistered(IERC20 tokenAddress);
 
     /**
      * @dev Expose the WETH address (for wrapping and unwrapping native ETH).
