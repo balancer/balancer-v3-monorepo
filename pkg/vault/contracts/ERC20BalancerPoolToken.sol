@@ -48,6 +48,9 @@ contract ERC20BalancerPoolToken is IERC20, IERC20Metadata {
         return _vault.balanceOf(address(this), account);
     }
 
+    //TODO This is a placeholder until we have pools (at least MockPools). A real pool would register itself
+    // in its constructor, and we wouldn't need this. (The factory would just be msg.sender.)
+    // Remove when we have pools.
     function initialize(address factory, IERC20[] memory tokens) external {
         _vault.registerPool(factory, tokens);
     }
