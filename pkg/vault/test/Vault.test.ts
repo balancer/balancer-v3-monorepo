@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH, fromNow } from '@balancer-labs/v3-helpers/src/time';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
-import { BalancerPoolToken } from '../typechain-types/contracts/BalancerPoolToken';
+import { ERC20BalancerPoolToken } from '../typechain-types/contracts/ERC20BalancerPoolToken';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
@@ -24,8 +24,8 @@ describe('Vault', function () {
   const BUFFER_PERIOD_DURATION = MONTH;
 
   let vault: VaultMock;
-  let poolA: BalancerPoolToken;
-  let poolB: BalancerPoolToken;
+  let poolA: ERC20BalancerPoolToken;
+  let poolB: ERC20BalancerPoolToken;
   let tokenA: ERC20TestToken;
   let tokenB: ERC20TestToken;
   let tokenC: ERC20TestToken;
@@ -58,8 +58,8 @@ describe('Vault', function () {
     tokenB = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token B', 'TKNB', 6] });
     tokenC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token C', 'TKNC', 8] });
 
-    poolA = await deploy('BalancerPoolToken', { args: [vaultAddress, 'Pool A', 'POOLA'] });
-    poolB = await deploy('BalancerPoolToken', { args: [vaultAddress, 'Pool B', 'POOLB'] });
+    poolA = await deploy('ERC20BalancerPoolToken', { args: [vaultAddress, 'Pool A', 'POOLA'] });
+    poolB = await deploy('ERC20BalancerPoolToken', { args: [vaultAddress, 'Pool B', 'POOLB'] });
 
     expect(await poolA.name()).to.equal('Pool A');
     expect(await poolA.symbol()).to.equal('POOLA');
