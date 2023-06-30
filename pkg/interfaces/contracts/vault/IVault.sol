@@ -10,7 +10,6 @@ import "../solidity-utils/misc/IWETH.sol";
  * @dev Full external interface for the Vault core contract - no external or public methods exist in the contract that
  * don't override one of these declarations.
  */
-
 interface IVault {
     // Generalities about the Vault:
     //
@@ -39,14 +38,13 @@ interface IVault {
      * exit by receiving registered tokens, and can only swap registered tokens.
      *
      * Emits a `PoolRegistered` event.
-     * @param factory - address of the factory that deployed this pool
-     * @param tokens - tokens registered with this pool
+     * @param factory Address of the factory that deployed this pool
+     * @param tokens Tokens registered with this pool
      */
     function registerPool(address factory, IERC20[] memory tokens) external;
 
     /**
      * @dev Returns whether or not an address corresponds to a registered pool.
-     * @param pool - address of the suspected pool.
      */
     function isRegisteredPool(address pool) external view returns (bool);
 
