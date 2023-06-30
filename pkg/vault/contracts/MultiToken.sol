@@ -56,9 +56,7 @@ abstract contract MultiToken is IERC20Errors {
 
         uint256 accountBalance = _bptBalances[poolToken][from];
         if (amount > accountBalance) {
-            unchecked {
-                revert ERC20InsufficientBalance(from, accountBalance, amount);
-            }
+            revert ERC20InsufficientBalance(from, accountBalance, amount);
         }
 
         unchecked {
