@@ -12,17 +12,41 @@ import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { ANY_ADDRESS, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import '@balancer-labs/v3-common/setupTests';
 import { bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
-import { Typed } from 'ethers';
+import { Typed, Interface } from 'ethers';
 
-describe.only('ERC721MultiToken', function () {
+const INTERFACES = {
+  ERC165: ['supportsInterface(bytes4)'],
+  ERC721: [
+    'balanceOf(address)',
+    'ownerOf(uint256)',
+    'approve(address,uint256)',
+    'getApproved(uint256)',
+    'setApprovalForAll(address,bool)',
+    'isApprovedForAll(address,address)',
+    'transferFrom(address,address,uint256)',
+    'safeTransferFrom(address,address,uint256)',
+    'safeTransferFrom(address,address,uint256,bytes)',
+  ],
+  ERC721Metadata: ['name()', 'symbol()', 'tokenURI(uint256)'],
+};
+
+export function getInterfaceID(contractInterface: Interface, functions: string[]) {
+  let interfaceID = 0n;
+  for (const func of functions) {
+    interfaceID = interfaceID ^ contractInterface.getSighash(func);
+  }
+
+  return interfaceID;
+}
+
+describe.only('ERC721BalancerPoolToken', function () {
   const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
 
   let vault: VaultMock;
-  let usdcPool: BalancerPoolToken;
-  let usdtPool: BalancerPoolToken;
+  let erc721Pool: BalancerPoolToken;
   let usdc: TestToken;
   let usdt: TestToken;
 
@@ -36,8 +60,7 @@ describe.only('ERC721MultiToken', function () {
   let usdcAddress: string;
   let usdtAddress: string;
 
-  let usdcPoolAddress: string;
-  let usdtPoolAddress: string;
+  let erc721PoolAddress: string;
 
   let tokenAddresses: string[];
 
@@ -57,15 +80,37 @@ describe.only('ERC721MultiToken', function () {
 
     tokenAddresses = [usdcAddress, usdtAddress];
 
-    usdcPool = await deploy('ERC721BalancerPoolToken', {
+    erc721Pool = await deploy('ERC721BalancerPoolToken', {
       args: [vaultAddress, factory, tokenAddresses, 'USDC Pool', 'POOL-USDC'],
     });
-    usdtPool = await deploy('ERC721BalancerPoolToken', {
-      args: [vaultAddress, factory, tokenAddresses, 'USDT Pool', 'POOL-USDT'],
-    });
 
-    usdcPoolAddress = await usdcPool.getAddress();
-    usdtPoolAddress = await usdtPool.getAddress();
+    erc721PoolAddress = await erc721Pool.getAddress();
   });
 
+  function shouldSupportInterfaces(interfaces = []) {
+    describe('ERC165', () => {
+      it('all interfaces are reported as supported', async function () {
+        for (const k of interfaces) {
+          const interfaceId = INTERFACE_IDS[k] ?? k;
+          expect(await this.contractUnderTest.supportsInterface(interfaceId)).to.equal(true, `does not support ${k}`);
+        }
+      });
+
+      it('all interface functions are in ABI', async function () {
+        for (const k of interfaces) {
+          // skip interfaces for which we don't have a function list
+          if (INTERFACES[k] === undefined) continue;
+          for (const fnName of INTERFACES[k]) {
+            const fnSig = FN_SIGNATURES[fnName];
+            expect(this.contractUnderTest.abi.filter((fn) => fn.signature === fnSig).length).to.equal(
+              1,
+              `did not find ${fnName}`
+            );
+          }
+        }
+      });
+    });
+  }
+
+  shouldSupportInterfaces(['ERC165', 'ERC721', 'ERC721Metadata']);
 });
