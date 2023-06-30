@@ -14,8 +14,8 @@ import "./ERC20BalancerPoolToken.sol";
  * contracts themselves) in the Vault, rather than dividing responsibilities between the Vault and pool contracts.
  */
 abstract contract MultiToken is IERC20Errors {
-    // Pool -> (holder -> balance): Users' BPT balances
-    mapping(address => mapping(address => uint256)) private _accountBPTBalances;
+    // Pool -> (owner -> balance): Users' BPT balances
+    mapping(address => mapping(address => uint256)) private _bptBalances;
 
     // Pool -> (owner -> (spender -> allowance))
     mapping(address => mapping(address => mapping(address => uint256))) private _allowances;
@@ -28,7 +28,7 @@ abstract contract MultiToken is IERC20Errors {
     }
 
     function _getBalanceOf(address poolToken, address account) internal view returns (uint256) {
-        return _accountBPTBalances[poolToken][account];
+        return _bptBalances[poolToken][account];
     }
 
     function _getAllowance(address poolToken, address owner, address spender) internal view returns (uint256) {
@@ -43,7 +43,7 @@ abstract contract MultiToken is IERC20Errors {
         _totalSupply[poolToken] += amount;
         unchecked {
             // Overflow not possible: balance + amount is at most totalSupply + amount, which is checked above.
-            _accountBPTBalances[poolToken][to] += amount;
+            _bptBalances[poolToken][to] += amount;
         }
 
         ERC20BalancerPoolToken(poolToken).emitTransfer(address(0), to, amount);
@@ -54,7 +54,7 @@ abstract contract MultiToken is IERC20Errors {
             revert ERC20InvalidSender(from);
         }
 
-        uint256 accountBalance = _accountBPTBalances[poolToken][from];
+        uint256 accountBalance = _bptBalances[poolToken][from];
         if (amount > accountBalance) {
             unchecked {
                 revert ERC20InsufficientBalance(from, accountBalance, amount);
@@ -62,7 +62,7 @@ abstract contract MultiToken is IERC20Errors {
         }
 
         unchecked {
-            _accountBPTBalances[poolToken][from] = accountBalance - amount;
+            _bptBalances[poolToken][from] = accountBalance - amount;
             // Overflow not possible: amount <= accountBalance <= totalSupply.
             _totalSupply[poolToken] -= amount;
         }
@@ -79,16 +79,16 @@ abstract contract MultiToken is IERC20Errors {
             revert ERC20InvalidReceiver(to);
         }
 
-        uint256 fromBalance = _accountBPTBalances[poolToken][from];
+        uint256 fromBalance = _bptBalances[poolToken][from];
         if (amount > fromBalance) {
             revert ERC20InsufficientBalance(from, fromBalance, amount);
         }
 
         unchecked {
-            _accountBPTBalances[poolToken][from] = fromBalance - amount;
+            _bptBalances[poolToken][from] = fromBalance - amount;
             // Overflow not possible: the sum of all balances is capped by totalSupply, and the sum is preserved by
             // decrementing then incrementing.
-            _accountBPTBalances[poolToken][to] += amount;
+            _bptBalances[poolToken][to] += amount;
         }
 
         ERC20BalancerPoolToken(poolToken).emitTransfer(from, to, amount);
