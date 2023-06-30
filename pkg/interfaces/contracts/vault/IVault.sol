@@ -76,12 +76,7 @@ interface IVault {
     /**
      * @dev Permissioned function to transferFrom a BPT token. Can only be called from a registered pool.
      */
-    function transferFrom(
-        address spender,
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool);
+    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
 
     /**
      * @dev Returns an owner's BPT allowance for a given spender.
