@@ -41,36 +41,33 @@ contract Vault is IVault, MultiToken, PoolRegistry, ReentrancyGuard, Temporarily
 
     /// @inheritdoc IVault
     function transfer(
-        address poolToken,
         address owner,
         address to,
         uint256 amount
-    ) external withRegisteredPool(poolToken) returns (bool) {
-        _transfer(poolToken, owner, to, amount);
+    ) external withRegisteredPool(msg.sender) returns (bool) {
+        _transfer(msg.sender, owner, to, amount);
         return true;
     }
 
     /// @inheritdoc IVault
     function approve(
-        address poolToken,
         address sender,
         address spender,
         uint256 amount
-    ) external withRegisteredPool(poolToken) returns (bool) {
-        _approve(poolToken, sender, spender, amount);
+    ) external withRegisteredPool(msg.sender) returns (bool) {
+        _approve(msg.sender, sender, spender, amount);
         return true;
     }
 
     /// @inheritdoc IVault
     function transferFrom(
-        address poolToken,
         address spender,
         address from,
         address to,
         uint256 amount
-    ) external withRegisteredPool(poolToken) returns (bool) {
-        _spendAllowance(poolToken, from, spender, amount);
-        _transfer(poolToken, from, to, amount);
+    ) external withRegisteredPool(msg.sender) returns (bool) {
+        _spendAllowance(msg.sender, from, spender, amount);
+        _transfer(msg.sender, from, to, amount);
         return true;
     }
 

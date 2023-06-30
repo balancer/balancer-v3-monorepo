@@ -69,15 +69,14 @@ interface IVault {
     function balanceOf(address poolToken, address account) external view returns (uint256);
 
     /**
-     * @dev Permissioned function to transfer a BPT token.
+     * @dev Permissioned function to transfer a BPT token. Can only be called from a registered pool.
      */
-    function transfer(address poolToken, address owner, address to, uint256 amount) external returns (bool);
+    function transfer(address owner, address to, uint256 amount) external returns (bool);
 
     /**
-     * @dev Permissioned function to transferFrom a BPT token.
+     * @dev Permissioned function to transferFrom a BPT token. Can only be called from a registered pool.
      */
     function transferFrom(
-        address poolToken,
         address spender,
         address from,
         address to,
@@ -90,7 +89,8 @@ interface IVault {
     function allowance(address poolToken, address owner, address spender) external view returns (uint256);
 
     /**
-     * @dev Permissioned function to set a sender's BPT allowance for a given spender.
+     * @dev Permissioned function to set a sender's BPT allowance for a given spender. Can only be called
+     * from a registered pool.
      */
-    function approve(address poolToken, address sender, address spender, uint256 amount) external returns (bool);
+    function approve(address sender, address spender, uint256 amount) external returns (bool);
 }

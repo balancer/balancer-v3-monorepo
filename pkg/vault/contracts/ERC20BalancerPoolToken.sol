@@ -60,7 +60,7 @@ contract ERC20BalancerPoolToken is IERC20, IERC20Metadata, IVaultErrors {
 
     function transfer(address to, uint256 amount) public override returns (bool) {
         // Vault will perform the transfer and call emitTransfer to emit the event from this contract.
-        _vault.transfer(address(this), msg.sender, to, amount);
+        _vault.transfer(msg.sender, to, amount);
         return true;
     }
 
@@ -74,7 +74,7 @@ contract ERC20BalancerPoolToken is IERC20, IERC20Metadata, IVaultErrors {
 
     function approve(address spender, uint256 amount) public override returns (bool) {
         // Vault will perform the approval and call emitApprove to emit the event from this contract.
-        _vault.approve(address(this), msg.sender, spender, amount);
+        _vault.approve(msg.sender, spender, amount);
         return true;
     }
 
@@ -84,7 +84,7 @@ contract ERC20BalancerPoolToken is IERC20, IERC20Metadata, IVaultErrors {
 
     function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
         // Vault will perform the transfer and call emitTransfer to emit the event from this contract.
-        _vault.transferFrom(address(this), msg.sender, from, to, amount);
+        _vault.transferFrom(msg.sender, from, to, amount);
         return true;
     }
 }
