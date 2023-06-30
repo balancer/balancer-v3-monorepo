@@ -1,31 +1,21 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { deploy } from '@balancer-labs/v3-helpers/src/contract';
-import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
-import { ERC20BalancerPoolToken } from '../typechain-types/contracts/ERC20BalancerPoolToken';
+import { ERC20PoolMock } from '../typechain-types/contracts/test/ERC20PoolMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
-import '@balancer-labs/v3-common/setupTests';
 import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { impersonate } from '@balancer-labs/v3-helpers/src/signers';
+import { setupEnvironment } from './poolSetup';
+import '@balancer-labs/v3-common/setupTests';
 
 describe('ERC20BalancerPoolToken', function () {
-  const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
-
-  const PAUSE_WINDOW_DURATION = MONTH * 3;
-  const BUFFER_PERIOD_DURATION = MONTH;
-
   let vault: VaultMock;
-  let poolA: ERC20BalancerPoolToken;
-  let poolB: ERC20BalancerPoolToken;
+  let poolA: ERC20PoolMock;
+  let poolB: ERC20PoolMock;
   let tokenA: ERC20TestToken;
-  let tokenB: ERC20TestToken;
-  let tokenC: ERC20TestToken;
-
-  let vaultAddress: string;
 
   let user: SignerWithAddress;
   let other: SignerWithAddress;
@@ -35,47 +25,36 @@ describe('ERC20BalancerPoolToken', function () {
   let registeredPoolSigner: SignerWithAddress;
   let unregisteredPoolSigner: SignerWithAddress;
 
-  let tokenAAddress: string;
-  let tokenBAddress: string;
-  let tokenCAddress: string;
-
   let poolAAddress: string;
   let poolBAddress: string;
-
-  let poolATokens: string[];
 
   before('setup signers', async () => {
     [, user, other, factory, relayer] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
-    vault = await deploy('VaultMock', { args: [WETH, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
-    vaultAddress = await vault.getAddress();
+    const { vault: vaultMock, tokens, pools } = await setupEnvironment(factory.address);
 
-    tokenA = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });
-    tokenB = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token B', 'TKNB', 6] });
-    tokenC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token C', 'TKNC', 8] });
+    vault = vaultMock;
 
-    poolA = await deploy('ERC20BalancerPoolToken', { args: [vaultAddress, 'Pool A', 'POOLA'] });
-    poolB = await deploy('ERC20BalancerPoolToken', { args: [vaultAddress, 'Pool B', 'POOLB'] });
+    tokenA = tokens[0];
 
-    expect(await poolA.name()).to.equal('Pool A');
-    expect(await poolA.symbol()).to.equal('POOLA');
-    expect(await poolA.decimals()).to.equal(18);
-  });
-
-  sharedBeforeEach('get addresses', async () => {
-    tokenAAddress = await tokenA.getAddress();
-    tokenBAddress = await tokenB.getAddress();
-    tokenCAddress = await tokenC.getAddress();
+    poolA = pools[0]; // This pool is registered
+    poolB = pools[1]; // This pool is unregistered
 
     poolAAddress = await poolA.getAddress();
     poolBAddress = await poolB.getAddress();
 
-    poolATokens = [tokenAAddress, tokenBAddress, tokenCAddress];
+    expect(await poolA.name()).to.equal('Pool A');
+    expect(await poolA.symbol()).to.equal('POOLA');
+    expect(await poolA.decimals()).to.equal(18);
+
+    expect(await poolB.name()).to.equal('Pool B');
+    expect(await poolB.symbol()).to.equal('POOLB');
+    expect(await poolB.decimals()).to.equal(18);
   });
 
-  sharedBeforeEach('get pool signer for calls through vault', async () => {
+  sharedBeforeEach('', async () => {
     // Simulate a call from the real Pool by "casting" it as a Signer,
     // so it can be used with `connect` like an EOA
     registeredPoolSigner = await impersonate(poolAAddress);
@@ -85,10 +64,6 @@ describe('ERC20BalancerPoolToken', function () {
 
   describe('minting', async () => {
     const bptAmount = fp(100);
-
-    sharedBeforeEach('register the pool', async () => {
-      await poolA.initialize(factory, poolATokens);
-    });
 
     it('vault can mint BPT', async () => {
       await vault.mint(poolAAddress, user.address, bptAmount);
@@ -127,8 +102,7 @@ describe('ERC20BalancerPoolToken', function () {
     const totalSupply = fp(100);
     const bptAmount = fp(32.5);
 
-    sharedBeforeEach('register the pool, and mint initial supply', async () => {
-      await poolA.initialize(factory, poolATokens);
+    sharedBeforeEach('Mint initial supply of pool A', async () => {
       await vault.mint(poolAAddress, user.address, totalSupply);
     });
 
@@ -176,8 +150,7 @@ describe('ERC20BalancerPoolToken', function () {
 
     const remainingBalance = totalSupply - bptAmount;
 
-    sharedBeforeEach('register the pool, and mint initial supply', async () => {
-      await poolA.initialize(factory, poolATokens);
+    sharedBeforeEach('Mint initial supply of pool A', async () => {
       await vault.mint(poolAAddress, user.address, totalSupply);
     });
 
@@ -258,10 +231,6 @@ describe('ERC20BalancerPoolToken', function () {
   describe('allowance', () => {
     const bptAmount = fp(72);
 
-    sharedBeforeEach('register the pool', async () => {
-      await poolA.initialize(factory, poolATokens);
-    });
-
     function itSetsApprovalsCorrectly() {
       it('sets approval', async () => {
         expect(await poolA.allowance(user.address, relayer.address)).to.equal(bptAmount);
@@ -328,8 +297,7 @@ describe('ERC20BalancerPoolToken', function () {
 
     const remainingBalance = totalSupply - bptAmount;
 
-    sharedBeforeEach('register the pool, mint initial supply, and approve transfer', async () => {
-      await poolA.initialize(factory, poolATokens);
+    sharedBeforeEach('Mint initial supply of pool A, and approve transfer', async () => {
       await vault.mint(poolAAddress, user.address, totalSupply);
       await poolA.connect(user).approve(relayer.address, bptAmount);
     });
