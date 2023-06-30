@@ -162,6 +162,18 @@ describe('ERC20BalancerPoolToken', function () {
         // Supply doesn't change
         expect(await poolA.totalSupply()).to.equal(totalSupply);
       });
+
+      it('direct transfer emits a transfer event on the token', async () => {
+        await expect(await poolA.connect(user).transfer(other.address, bptAmount))
+          .to.emit(poolA, 'Transfer')
+          .withArgs(user.address, other.address, bptAmount);
+      });
+
+      it('indirect transfer emits a transfer event on the token', async () => {
+        await expect(await vault.connect(registeredPoolSigner).transfer(user.address, other.address, bptAmount))
+          .to.emit(poolA, 'Transfer')
+          .withArgs(user.address, other.address, bptAmount);
+      });
     }
 
     it('transfers BPT directly', async () => {
@@ -174,18 +186,6 @@ describe('ERC20BalancerPoolToken', function () {
       await vault.connect(registeredPoolSigner).transfer(user.address, other.address, bptAmount);
 
       itTransfersBPTCorrectly();
-    });
-
-    it('direct transfer emits a transfer event on the token', async () => {
-      await expect(await poolA.connect(user).transfer(other.address, bptAmount))
-        .to.emit(poolA, 'Transfer')
-        .withArgs(user.address, other.address, bptAmount);
-    });
-
-    it('indirect transfer emits a transfer event on the token', async () => {
-      await expect(await vault.connect(registeredPoolSigner).transfer(user.address, other.address, bptAmount))
-        .to.emit(poolA, 'Transfer')
-        .withArgs(user.address, other.address, bptAmount);
     });
 
     it('vault cannot transfer a non-BPT token', async () => {
@@ -239,6 +239,18 @@ describe('ERC20BalancerPoolToken', function () {
         expect(await vault.allowance(poolAAddress, user.address, relayer.address)).to.equal(bptAmount);
         expect(await vault.allowance(poolAAddress, user.address, other.address)).to.equal(0);
       });
+
+      it('direct approval emits an event on the token', async () => {
+        await expect(await poolA.connect(user).approve(relayer.address, bptAmount))
+          .to.emit(poolA, 'Approval')
+          .withArgs(user.address, relayer.address, bptAmount);
+      });
+
+      it('indirect approval emits an event on the token', async () => {
+        await expect(await vault.connect(registeredPoolSigner).approve(user.address, relayer.address, bptAmount))
+          .to.emit(poolA, 'Approval')
+          .withArgs(user.address, relayer.address, bptAmount);
+      });
     }
 
     context('sets approval directly', async () => {
@@ -255,18 +267,6 @@ describe('ERC20BalancerPoolToken', function () {
       });
 
       itSetsApprovalsCorrectly();
-    });
-
-    it('direct approval emits an event on the token', async () => {
-      await expect(await poolA.connect(user).approve(relayer.address, bptAmount))
-        .to.emit(poolA, 'Approval')
-        .withArgs(user.address, relayer.address, bptAmount);
-    });
-
-    it('indirect approval emits an event on the token', async () => {
-      await expect(await vault.connect(registeredPoolSigner).approve(user.address, relayer.address, bptAmount))
-        .to.emit(poolA, 'Approval')
-        .withArgs(user.address, relayer.address, bptAmount);
     });
 
     it('cannot approve from zero address', async () => {
