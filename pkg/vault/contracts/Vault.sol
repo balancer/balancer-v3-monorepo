@@ -2,14 +2,17 @@
 
 pragma solidity ^0.8.4;
 
-import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
-import "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 
-import "./MultiToken.sol";
+import { ReentrancyGuard } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+import { TemporarilyPausable } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
+
+import { MultiToken } from "./MultiToken.sol";
 import { ERC721MultiToken } from "./ERC721MultiToken.sol";
-import "./PoolRegistry.sol";
+import { PoolRegistry } from "./PoolRegistry.sol";
 
 contract Vault is IVault, MultiToken, ERC721MultiToken, PoolRegistry, ReentrancyGuard, TemporarilyPausable {
     // solhint-disable-next-line var-name-mixedcase
