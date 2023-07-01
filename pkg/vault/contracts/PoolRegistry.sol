@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.4;
 
-import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 
@@ -10,7 +10,7 @@ import "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.so
  * @dev Maintains the Pool ID data structure, implements Pool ID creation and registration, and defines useful modifiers
  * and helper functions for ensuring correct behavior when working with Pools.
  */
-abstract contract PoolRegistry is IVault {
+abstract contract PoolRegistry is IVaultErrors {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
 
     // Registry of pool addresses.
@@ -18,6 +18,11 @@ abstract contract PoolRegistry is IVault {
 
     // Pool -> (token -> balance): Vault tokens allocated to this pool
     mapping(address => EnumerableMap.IERC20ToUint256Map) private _poolTokenBalances;
+
+    /**
+     * @dev Emitted when a Pool is registered by calling `registerPool`.
+     */
+    event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
 
     /**
      * @dev Reverts unless `pool` corresponds to a registered Pool.

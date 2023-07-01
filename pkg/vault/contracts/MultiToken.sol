@@ -2,9 +2,18 @@
 
 pragma solidity ^0.8.4;
 
-import "./BalancerPoolToken.sol";
+import "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC20Errors.sol";
 
-abstract contract PoolTokens {
+import "./ERC20BalancerPoolToken.sol";
+
+/**
+ * @notice Store Balancer Pool Token (BPT) data and handle accounting for all Pools in the Vault.
+ * @dev The Vault manages all BPT (Balancer Pool Tokens), which can be either ERC20 or ERC721, in a manner similar to
+ * ERC-1155, but without fully supporting the standard. Parts of it conflict with the Vault's security model and
+ * design philosophy; the purpose is to encapsulate all accounting (of both pool constituent tokens and the pool
+ * contracts themselves) in the Vault, rather than dividing responsibilities between the Vault and pool contracts.
+ */
+abstract contract MultiToken is IERC20Errors {
     // Pool -> (holder -> balance): Users' BPT balances
     mapping(address => mapping(address => uint256)) private _accountBPTBalances;
 
@@ -27,7 +36,9 @@ abstract contract PoolTokens {
     }
 
     function _mint(address poolToken, address to, uint256 amount) internal {
-        require(to != address(0), "ERC20: mint to the zero address");
+        if (to == address(0)) {
+            revert ERC20InvalidReceiver(to);
+        }
 
         _totalSupply[poolToken] += amount;
         unchecked {
@@ -35,14 +46,20 @@ abstract contract PoolTokens {
             _accountBPTBalances[poolToken][to] += amount;
         }
 
-        BalancerPoolToken(poolToken).emitTransfer(address(0), to, amount);
+        ERC20BalancerPoolToken(poolToken).emitTransfer(address(0), to, amount);
     }
 
     function _burn(address poolToken, address from, uint256 amount) internal {
-        require(from != address(0), "ERC20: burn from the zero address");
+        if (from == address(0)) {
+            revert ERC20InvalidSender(from);
+        }
 
         uint256 accountBalance = _accountBPTBalances[poolToken][from];
-        require(accountBalance >= amount, "ERC20: burn amount exceeds balance");
+        if (amount > accountBalance) {
+            unchecked {
+                revert ERC20InsufficientBalance(from, accountBalance, amount);
+            }
+        }
 
         unchecked {
             _accountBPTBalances[poolToken][from] = accountBalance - amount;
@@ -50,15 +67,23 @@ abstract contract PoolTokens {
             _totalSupply[poolToken] -= amount;
         }
 
-        BalancerPoolToken(poolToken).emitTransfer(from, address(0), amount);
+        ERC20BalancerPoolToken(poolToken).emitTransfer(from, address(0), amount);
     }
 
     function _transfer(address poolToken, address from, address to, uint256 amount) internal {
-        require(from != address(0), "ERC20: transfer from the zero address");
-        require(to != address(0), "ERC20: transfer to the zero address");
+        if (from == address(0)) {
+            revert ERC20InvalidSender(from);
+        }
+
+        if (to == address(0)) {
+            revert ERC20InvalidReceiver(to);
+        }
 
         uint256 fromBalance = _accountBPTBalances[poolToken][from];
-        require(fromBalance >= amount, "ERC20: transfer amount exceeds balance");
+        if (amount > fromBalance) {
+            revert ERC20InsufficientBalance(from, fromBalance, amount);
+        }
+
         unchecked {
             _accountBPTBalances[poolToken][from] = fromBalance - amount;
             // Overflow not possible: the sum of all balances is capped by totalSupply, and the sum is preserved by
@@ -66,21 +91,29 @@ abstract contract PoolTokens {
             _accountBPTBalances[poolToken][to] += amount;
         }
 
-        BalancerPoolToken(poolToken).emitTransfer(from, to, amount);
+        ERC20BalancerPoolToken(poolToken).emitTransfer(from, to, amount);
     }
 
     function _approve(address poolToken, address owner, address spender, uint256 amount) internal {
-        require(owner != address(0), "ERC20: approve from the zero address");
-        require(spender != address(0), "ERC20: approve to the zero address");
+        if (owner == address(0)) {
+            revert ERC20InvalidApprover(owner);
+        }
+
+        if (spender == address(0)) {
+            revert ERC20InvalidSpender(spender);
+        }
 
         _allowances[poolToken][owner][spender] = amount;
-        BalancerPoolToken(poolToken).emitApprove(owner, spender, amount);
+        ERC20BalancerPoolToken(poolToken).emitApprove(owner, spender, amount);
     }
 
     function _spendAllowance(address poolToken, address owner, address spender, uint256 amount) internal {
         uint256 currentAllowance = _allowances[poolToken][owner][spender];
         if (currentAllowance != type(uint256).max) {
-            require(currentAllowance >= amount, "ERC20: insufficient allowance");
+            if (amount > currentAllowance) {
+                revert ERC20InsufficientAllowance(spender, currentAllowance, amount);
+            }
+
             unchecked {
                 _approve(poolToken, owner, spender, currentAllowance - amount);
             }

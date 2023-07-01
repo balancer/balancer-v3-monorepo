@@ -33,4 +33,12 @@ contract VaultMock is Vault {
     function translateToIERC20(IAsset[] memory assets) external view returns (IERC20[] memory) {
         return AssetHelpersLib.translateToIERC20(assets, WETH());
     }
+
+    function pause() external {
+        _pause();
+    }
+
+    function reentrantRegisterPool(address factory, IERC20[] memory tokens) external nonReentrant {
+        this.registerPool(factory, tokens);
+    }
 }

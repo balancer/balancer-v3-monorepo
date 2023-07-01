@@ -7,11 +7,11 @@ import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 
-import "./PoolTokens.sol";
-import "./ERC721MultiToken.sol";
+import "./MultiToken.sol";
+import { ERC721MultiToken } from "./ERC721MultiToken.sol";
 import "./PoolRegistry.sol";
 
-contract Vault is IVault, PoolTokens, ERC721MultiToken, PoolRegistry, ReentrancyGuard, TemporarilyPausable {
+contract Vault is IVault, MultiToken, ERC721MultiToken, PoolRegistry, ReentrancyGuard, TemporarilyPausable {
     // solhint-disable-next-line var-name-mixedcase
     IWETH private immutable _weth;
 
@@ -38,7 +38,11 @@ contract Vault is IVault, PoolTokens, ERC721MultiToken, PoolRegistry, Reentrancy
     }
 
     /// @inheritdoc IVault
-    function allowance(address poolToken, address owner, address spender) external view returns (uint256) {
+    function allowance(
+        address poolToken,
+        address owner,
+        address spender
+    ) external view returns (uint256) {
         return _getAllowance(poolToken, owner, spender);
     }
 
@@ -97,12 +101,20 @@ contract Vault is IVault, PoolTokens, ERC721MultiToken, PoolRegistry, Reentrancy
     }
 
     /// @inheritdoc IVault
-    function isApprovedForAllERC721(address token, address owner, address operator) external view returns (bool) {
+    function isApprovedForAllERC721(
+        address token,
+        address owner,
+        address operator
+    ) external view returns (bool) {
         return _isApprovedForAllERC721(token, owner, operator);
     }
 
     /// @inheritdoc IVault
-    function approveERC721(address sender, address to, uint256 tokenId) external withRegisteredPool(msg.sender) {
+    function approveERC721(
+        address sender,
+        address to,
+        uint256 tokenId
+    ) external withRegisteredPool(msg.sender) {
         _approveERC721(msg.sender, sender, to, tokenId);
     }
 
@@ -161,9 +173,12 @@ contract Vault is IVault, PoolTokens, ERC721MultiToken, PoolRegistry, Reentrancy
     }
 
     /// @inheritdoc IVault
-    function getPoolTokens(
-        address pool
-    ) external view withRegisteredPool(pool) returns (IERC20[] memory tokens, uint256[] memory balances) {
+    function getPoolTokens(address pool)
+        external
+        view
+        withRegisteredPool(pool)
+        returns (IERC20[] memory tokens, uint256[] memory balances)
+    {
         return _getPoolTokens(pool);
     }
 
