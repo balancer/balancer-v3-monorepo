@@ -10,7 +10,6 @@ import "../solidity-utils/misc/IWETH.sol";
  * @dev Full external interface for the Vault core contract - no external or public methods exist in the contract that
  * don't override one of these declarations.
  */
-
 interface IVault {
     // Generalities about the Vault:
     //
@@ -43,14 +42,13 @@ interface IVault {
      * exit by receiving registered tokens, and can only swap registered tokens.
      *
      * Emits a `PoolRegistered` event.
-     * @param factory - address of the factory that deployed this pool
-     * @param tokens - tokens registered with this pool
+     * @param factory Address of the factory that deployed this pool
+     * @param tokens Tokens registered with this pool
      */
     function registerPool(address factory, IERC20[] memory tokens) external;
 
     /**
      * @dev Returns whether or not an address corresponds to a registered pool.
-     * @param pool - address of the suspected pool.
      */
     function isRegisteredPool(address pool) external view returns (bool);
 
@@ -77,44 +75,25 @@ interface IVault {
     function balanceOf(address poolToken, address account) external view returns (uint256);
 
     /**
-     * @dev Permissioned function to transfer a BPT token.
+     * @dev Permissioned function to transfer a BPT token. Can only be called from a registered pool.
      */
-    function transfer(
-        address poolToken,
-        address owner,
-        address to,
-        uint256 amount
-    ) external returns (bool);
+    function transfer(address owner, address to, uint256 amount) external returns (bool);
 
     /**
-     * @dev Permissioned function to transferFrom a BPT token.
+     * @dev Permissioned function to transferFrom a BPT token. Can only be called from a registered pool.
      */
-    function transferFrom(
-        address poolToken,
-        address spender,
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool);
+    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
 
     /**
      * @dev Returns an owner's BPT allowance for a given spender.
      */
-    function allowance(
-        address poolToken,
-        address owner,
-        address spender
-    ) external view returns (uint256);
+    function allowance(address poolToken, address owner, address spender) external view returns (uint256);
 
     /**
-     * @dev Permissioned function to set a sender's BPT allowance for a given spender.
+     * @dev Permissioned function to set a sender's BPT allowance for a given spender. Can only be called
+     * from a registered pool.
      */
-    function approve(
-        address poolToken,
-        address sender,
-        address spender,
-        uint256 amount
-    ) external returns (bool);
+    function approve(address sender, address spender, uint256 amount) external returns (bool);
 
     /*******************/
     /*  ERC721 tokens  */
@@ -138,49 +117,27 @@ interface IVault {
     /**
      * @dev See {IERC721-isApprovedForAll}.
      */
-    function isApprovedForAllERC721(
-        address token,
-        address owner,
-        address operator
-    ) external view returns (bool);
+    function isApprovedForAllERC721(address token, address owner, address operator) external view returns (bool);
 
     /**
      * @dev Can be called only by registered ERC721 pool. See {IERC721-approve}.
      */
-    function approveERC721(
-        address sender,
-        address to,
-        uint256 tokenId
-    ) external;
+    function approveERC721(address sender, address to, uint256 tokenId) external;
 
     /**
      * @dev Can be called only by registered ERC721 pool. See {IERC721-setApprovalForAll}.
      */
-    function setApprovalForAllERC721(
-        address sender,
-        address operator,
-        bool approved
-    ) external;
+    function setApprovalForAllERC721(address sender, address operator, bool approved) external;
 
     /**
      * @dev Can be called only by registered ERC721 pool. See {IERC721-transferFrom}.
      */
-    function transferFromERC721(
-        address sender,
-        address from,
-        address to,
-        uint256 tokenId
-    ) external;
+    function transferFromERC721(address sender, address from, address to, uint256 tokenId) external;
 
     /**
      * @dev Can be called only by registered ERC721 pool. See {IERC721-safeTransferFrom}.
      */
-    function safeTransferFromERC721(
-        address sender,
-        address from,
-        address to,
-        uint256 tokenId
-    ) external;
+    function safeTransferFromERC721(address sender, address from, address to, uint256 tokenId) external;
 
     /**
      * @dev Can be called only by registered ERC721 pool. See {IERC721-safeTransferFrom}.
