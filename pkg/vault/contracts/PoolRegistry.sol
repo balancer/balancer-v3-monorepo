@@ -7,8 +7,9 @@ import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 
 /**
- * @dev Maintains the Pool ID data structure, implements Pool ID creation and registration, and defines useful modifiers
- * and helper functions for ensuring correct behavior when working with Pools.
+ * @dev Maintains a registry of pool addresses, which allows users to verify that a pool is valid and present in
+ * the Vault. It also defines useful modifiers nd helper functions for ensuring correct behavior when working
+ * with Pools.
  */
 abstract contract PoolRegistry is IVaultErrors {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
