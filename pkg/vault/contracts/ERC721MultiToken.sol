@@ -62,7 +62,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
         address to,
         uint256 tokenId
     ) internal {
-        address owner = _ownerOfERC721(token, tokenId);
+        address owner = _safeOwnerOfERC721(token, tokenId);
         if (to == owner) {
             revert ERC721InvalidOperator(owner);
         }
@@ -278,7 +278,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
      * Emits a {Transfer} event.
      */
     function _burnERC721(address token, uint256 tokenId) internal {
-        address owner = _ownerOfERC721(token, tokenId);
+        address owner = _safeOwnerOfERC721(token, tokenId);
 
         // Clear approvals
         delete _tokenApprovals[token][tokenId];
@@ -310,7 +310,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
         address to,
         uint256 tokenId
     ) private {
-        address owner = _ownerOfERC721(token, tokenId);
+        address owner = _safeOwnerOfERC721(token, tokenId);
         if (owner != from) {
             revert ERC721IncorrectOwner(from, tokenId, owner);
         }
