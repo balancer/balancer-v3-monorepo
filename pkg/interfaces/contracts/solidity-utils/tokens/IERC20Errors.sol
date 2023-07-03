@@ -9,7 +9,6 @@ pragma solidity ^0.8.4;
 interface IERC20Errors {
     /**
      * @dev Indicates an error related to the current balance of a sender. Used in transfers.
-     * `balance` MUST be less than `needed`.
      */
     error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed);
 
