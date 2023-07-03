@@ -41,11 +41,7 @@ contract Vault is IVault, MultiToken, ERC721MultiToken, PoolRegistry, Reentrancy
     }
 
     /// @inheritdoc IVault
-    function allowance(
-        address poolToken,
-        address owner,
-        address spender
-    ) external view returns (uint256) {
+    function allowance(address poolToken, address owner, address spender) external view returns (uint256) {
         return _getAllowance(poolToken, owner, spender);
     }
 
@@ -101,20 +97,12 @@ contract Vault is IVault, MultiToken, ERC721MultiToken, PoolRegistry, Reentrancy
     }
 
     /// @inheritdoc IVault
-    function isApprovedForAllERC721(
-        address token,
-        address owner,
-        address operator
-    ) external view returns (bool) {
+    function isApprovedForAllERC721(address token, address owner, address operator) external view returns (bool) {
         return _isApprovedForAllERC721(token, owner, operator);
     }
 
     /// @inheritdoc IVault
-    function approveERC721(
-        address sender,
-        address to,
-        uint256 tokenId
-    ) external withRegisteredPool(msg.sender) {
+    function approveERC721(address sender, address to, uint256 tokenId) external withRegisteredPool(msg.sender) {
         _approveERC721(msg.sender, sender, to, tokenId);
     }
 
@@ -173,12 +161,9 @@ contract Vault is IVault, MultiToken, ERC721MultiToken, PoolRegistry, Reentrancy
     }
 
     /// @inheritdoc IVault
-    function getPoolTokens(address pool)
-        external
-        view
-        withRegisteredPool(pool)
-        returns (IERC20[] memory tokens, uint256[] memory balances)
-    {
+    function getPoolTokens(
+        address pool
+    ) external view withRegisteredPool(pool) returns (IERC20[] memory tokens, uint256[] memory balances) {
         return _getPoolTokens(pool);
     }
 
