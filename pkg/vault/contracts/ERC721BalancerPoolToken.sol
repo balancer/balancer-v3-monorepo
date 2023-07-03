@@ -24,15 +24,12 @@ contract ERC721BalancerPoolToken is IERC721, IERC721Metadata, ERC165 {
 
     constructor(
         IVault vault_,
-        address factory,
-        IERC20[] memory tokens,
         string memory name_,
         string memory symbol_
     ) {
         _vault = vault_;
         _name = name_;
         _symbol = symbol_;
-        _vault.registerPool(factory, tokens);
     }
 
     /**
