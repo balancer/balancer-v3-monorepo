@@ -8,6 +8,8 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
+import "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC721Errors.sol";
+
 import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 contract ERC721BalancerPoolToken is IERC721, IERC721Metadata, ERC165 {

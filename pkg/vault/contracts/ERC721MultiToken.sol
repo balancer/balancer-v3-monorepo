@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-import "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IERC6093.sol";
+import { IERC721Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC721Errors.sol";
 
-import "./ERC721BalancerPoolToken.sol";
+import { ERC721BalancerPoolToken } from "./ERC721BalancerPoolToken.sol";
 
 abstract contract ERC721MultiToken is IERC721Errors {
     // Mapping from token ID to owner address
@@ -47,21 +47,12 @@ abstract contract ERC721MultiToken is IERC721Errors {
     }
 
     /// @dev See {IERC721-isApprovedForAll}.
-    function _isApprovedForAllERC721(
-        address token,
-        address owner,
-        address operator
-    ) internal view returns (bool) {
+    function _isApprovedForAllERC721(address token, address owner, address operator) internal view returns (bool) {
         return _operatorApprovals[token][owner][operator];
     }
 
     /// @dev See {IERC721-approve}.
-    function _approveERC721(
-        address token,
-        address sender,
-        address to,
-        uint256 tokenId
-    ) internal {
+    function _approveERC721(address token, address sender, address to, uint256 tokenId) internal {
         address owner = _safeOwnerOfERC721(token, tokenId);
         if (to == owner) {
             revert ERC721InvalidOperator(owner);
@@ -75,23 +66,12 @@ abstract contract ERC721MultiToken is IERC721Errors {
     }
 
     /// @dev See {IERC721-setApprovalForAll}.
-    function _setApprovalForAllERC721(
-        address token,
-        address sender,
-        address operator,
-        bool approved
-    ) internal {
+    function _setApprovalForAllERC721(address token, address sender, address operator, bool approved) internal {
         _setApprovalForAll(token, sender, operator, approved);
     }
 
     /// @dev See {IERC721-transferFrom}.
-    function _transferFromERC721(
-        address token,
-        address sender,
-        address from,
-        address to,
-        uint256 tokenId
-    ) internal {
+    function _transferFromERC721(address token, address sender, address from, address to, uint256 tokenId) internal {
         if (!_isApprovedOrOwnerERC721(token, sender, tokenId)) {
             revert ERC721InsufficientApproval(sender, tokenId);
         }
@@ -181,11 +161,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
      *
      * - `tokenId` must exist.
      */
-    function _isApprovedOrOwnerERC721(
-        address token,
-        address spender,
-        uint256 tokenId
-    ) private view returns (bool) {
+    function _isApprovedOrOwnerERC721(address token, address spender, uint256 tokenId) private view returns (bool) {
         address owner = _ownerOfERC721(token, tokenId);
         return (spender == owner ||
             _isApprovedForAllERC721(token, owner, spender) ||
@@ -202,12 +178,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
      *
      * Emits a {Transfer} event.
      */
-    function _safeMintERC721(
-        address token,
-        address sender,
-        address to,
-        uint256 tokenId
-    ) internal {
+    function _safeMintERC721(address token, address sender, address to, uint256 tokenId) internal {
         _safeMintERC721(token, sender, to, tokenId, "");
     }
 
@@ -215,13 +186,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
      * @dev Same as {xref-ERC721-_safeMint-address-uint256-}[`_safeMint`], with an additional `data` parameter which is
      * forwarded in {IERC721Receiver-onERC721Received} to contract recipients.
      */
-    function _safeMintERC721(
-        address token,
-        address sender,
-        address to,
-        uint256 tokenId,
-        bytes memory data
-    ) internal {
+    function _safeMintERC721(address token, address sender, address to, uint256 tokenId, bytes memory data) internal {
         _mintERC721(token, to, tokenId);
         if (!_checkOnERC721Received(sender, address(0), to, tokenId, data)) {
             revert ERC721InvalidReceiver(to);
@@ -240,11 +205,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
      *
      * Emits a {Transfer} event.
      */
-    function _mintERC721(
-        address token,
-        address to,
-        uint256 tokenId
-    ) internal {
+    function _mintERC721(address token, address to, uint256 tokenId) internal {
         if (to == address(0)) {
             revert ERC721InvalidReceiver(address(0));
         }
@@ -304,12 +265,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
      *
      * Emits a {Transfer} event.
      */
-    function _transferERC721(
-        address token,
-        address from,
-        address to,
-        uint256 tokenId
-    ) private {
+    function _transferERC721(address token, address from, address to, uint256 tokenId) private {
         address owner = _safeOwnerOfERC721(token, tokenId);
         if (owner != from) {
             revert ERC721IncorrectOwner(from, tokenId, owner);
@@ -342,11 +298,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
      *
      * Emits an {Approval} event.
      */
-    function _approve(
-        address token,
-        address to,
-        uint256 tokenId
-    ) private {
+    function _approve(address token, address to, uint256 tokenId) private {
         _tokenApprovals[token][tokenId] = to;
         // Emit Approval event on the token
         ERC721BalancerPoolToken(token).emitApproval(_ownerOfERC721(token, tokenId), to, tokenId);
@@ -357,12 +309,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
      *
      * Emits an {ApprovalForAll} event.
      */
-    function _setApprovalForAll(
-        address token,
-        address owner,
-        address operator,
-        bool approved
-    ) private {
+    function _setApprovalForAll(address token, address owner, address operator, bool approved) private {
         if (owner == operator) {
             revert ERC721InvalidOperator(owner);
         }
