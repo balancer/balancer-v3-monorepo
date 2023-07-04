@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC721Errors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
