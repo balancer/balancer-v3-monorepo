@@ -22,7 +22,6 @@ contract ERC721BalancerPoolToken is IERC721, IERC721Metadata, ERC165, IVaultErro
     using Strings for uint256;
 
     IVault private immutable _vault;
-    
     string private _name;
     string private _symbol;
 
