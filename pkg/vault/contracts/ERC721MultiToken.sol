@@ -180,7 +180,6 @@ abstract contract ERC721MultiToken is IERC721Errors {
      * @dev Safely mints `tokenId` and transfers it to `to`.
      *
      * Requirements:
-     *
      * - `tokenId` must not exist.
      * - If `to` refers to a smart contract, it must implement {IERC721Receiver-onERC721Received},
      * which is called upon a safe transfer.
