@@ -235,7 +235,6 @@ abstract contract ERC721MultiToken is IERC721Errors {
      * This is an internal function that does not check if the sender is authorized to operate on the token.
      *
      * Requirements:
-     *
      * - `tokenId` must exist.
      *
      * Emits a {Transfer} event.
