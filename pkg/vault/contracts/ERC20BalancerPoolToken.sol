@@ -83,11 +83,11 @@ contract ERC20BalancerPoolToken is IERC20, IERC20Metadata, IVaultErrors {
         return true;
     }
 
-    // Accounting is centralized in the Vault MultiToken contract, and the actual transfers and approvals
-    // are done there. Operations can be initiated from either the token contract or the Vault.
-    // To maintain compliance with the ERC-20 standard, and conform to the expections of off-chain processes,
-    // all events are emitted from the token contract.
-
+    /**
+     * @dev Accounting is centralized in the Vault MultiToken contract, and the actual transfers and approvals
+     * are done there. Operations can be initiated from either the token contract or the Vault.
+     * by default, can be overridden in child contracts.
+     */
     function emitTransfer(address from, address to, uint256 amount) external onlyVault {
         emit Transfer(from, to, amount);
     }

@@ -12,6 +12,11 @@ import "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC721Erro
 
 import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+/**
+ * @notice Base contract for all ERC721 Balancer pools. Often abbreviated as "BPT" = Balancer Pool Token.
+ * @dev The ERC721BalancerPoolToken is fully compliant with the ERC721 API. However, all the accounting
+ * is delegated to the Vault, allowing the Vault to mint and burn ERC721 tokens.
+ */
 contract ERC721BalancerPoolToken is IERC721, IERC721Metadata, ERC165 {
     using Strings for uint256;
 
@@ -24,19 +29,13 @@ contract ERC721BalancerPoolToken is IERC721, IERC721Metadata, ERC165 {
         _;
     }
 
-    constructor(
-        IVault vault_,
-        string memory name_,
-        string memory symbol_
-    ) {
+    constructor(IVault vault_, string memory name_, string memory symbol_) {
         _vault = vault_;
         _name = name_;
         _symbol = symbol_;
     }
 
-    /**
-     * @dev See {IERC165-supportsInterface}.
-     */
+    /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
         return
             interfaceId == type(IERC721).interfaceId ||
@@ -44,23 +43,17 @@ contract ERC721BalancerPoolToken is IERC721, IERC721Metadata, ERC165 {
             super.supportsInterface(interfaceId);
     }
 
-    /**
-     * @dev See {IERC721Metadata-name}.
-     */
+    /// @inheritdoc IERC721Metadata
     function name() public view virtual returns (string memory) {
         return _name;
     }
 
-    /**
-     * @dev See {IERC721Metadata-symbol}.
-     */
+    /// @inheritdoc IERC721Metadata
     function symbol() public view virtual returns (string memory) {
         return _symbol;
     }
 
-    /**
-     * @dev See {IERC721Metadata-tokenURI}.
-     */
+    /// @inheritdoc IERC721Metadata
     function tokenURI(uint256 tokenId) public view virtual returns (string memory) {
         // checking that tokenId has an owner
         _vault.ownerOfERC721(address(this), tokenId);
@@ -69,103 +62,72 @@ contract ERC721BalancerPoolToken is IERC721, IERC721Metadata, ERC165 {
         return bytes(baseURI).length > 0 ? string.concat(baseURI, tokenId.toString()) : "";
     }
 
-    /**
-     * @dev See {IERC721-balanceOf}.
-     */
+    /// @inheritdoc IERC721balanceOf
     function balanceOf(address owner) public view virtual returns (uint256) {
         return _vault.balanceOfERC721(address(this), owner);
     }
 
-    /**
-     * @dev See {IERC721-ownerOf}.
-     */
+    /// @inheritdoc IERC721
     function ownerOf(uint256 tokenId) public view virtual returns (address) {
         return _vault.ownerOfERC721(address(this), tokenId);
     }
 
-    /**
-     * @dev See {IERC721-approve}.
-     */
+    /// @inheritdoc IERC721
     function approve(address to, uint256 tokenId) public virtual {
         _vault.approveERC721(msg.sender, to, tokenId);
     }
 
-    /**
-     * @dev See {IERC721-getApproved}.
-     */
+    /// @inheritdoc IERC721
     function getApproved(uint256 tokenId) public view virtual returns (address) {
         return _vault.getApprovedERC721(address(this), tokenId);
     }
 
-    /**
-     * @dev See {IERC721-setApprovalForAll}.
-     */
+    /// @inheritdoc IERC721
     function setApprovalForAll(address operator, bool approved) public virtual {
         _vault.setApprovalForAllERC721(msg.sender, operator, approved);
     }
 
-    /**
-     * @dev See {IERC721-isApprovedForAll}.
-     */
+    /// @inheritdoc IERC721
     function isApprovedForAll(address owner, address operator) public view virtual returns (bool) {
         return _vault.isApprovedForAllERC721(address(this), owner, operator);
     }
 
-    /**
-     * @dev See {IERC721-transferFrom}.
-     */
-    function transferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) public virtual {
+    /// @inheritdoc IERC721
+    function transferFrom(address from, address to, uint256 tokenId) public virtual {
         _vault.transferFromERC721(msg.sender, from, to, tokenId);
     }
 
-    /**
-     * @dev See {IERC721-safeTransferFrom}.
-     */
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) public virtual {
+    /// @inheritdoc IERC721
+    function safeTransferFrom(address from, address to, uint256 tokenId) public virtual {
         _vault.safeTransferFromERC721(msg.sender, from, to, tokenId);
     }
 
-    /**
-     * @dev See {IERC721-safeTransferFrom}.
-     */
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId,
-        bytes memory data
-    ) public virtual {
+    /// @inheritdoc IERC721
+    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data) public virtual {
         _vault.safeTransferFromERC721(msg.sender, from, to, tokenId, data);
     }
 
-    function emitTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) external onlyVault {
+    /**
+     * @dev The Transfer event is emitted. This function can only be called by the Vault.
+     * The Vault is invoking this function to ensure that the ERC721BalancerPoolToken is compliant with the ERC721 API.
+     */
+    function emitTransfer(address from, address to, uint256 amount) external onlyVault {
         emit Transfer(from, to, amount);
     }
 
-    function emitApprovalForAll(
-        address owner,
-        address operator,
-        bool approved
-    ) external onlyVault {
+    /**
+     * @dev The ApprovalForAll event is emitted. This function can only be called by the Vault.
+     * The Vault is invoking this function to ensure that the ERC721BalancerPoolToken is compliant with the ERC721 API.
+     */
+    function emitApprovalForAll(address owner, address operator, bool approved) external onlyVault {
         emit ApprovalForAll(owner, operator, approved);
     }
 
-    function emitApproval(
-        address owner,
-        address spender,
-        uint256 amount
-    ) external onlyVault {
+    /**
+     * @dev The Approval event is emitted. This function can only be called by the Vault.
+     * The Vault is invoking this function to ensure that the ERC721BalancerPoolToken is compliant with the ERC721 API.
+     */
+    function emitApproval(address owner, address spender, uint256 amount) external onlyVault {
         emit Approval(owner, spender, amount);
     }
 
