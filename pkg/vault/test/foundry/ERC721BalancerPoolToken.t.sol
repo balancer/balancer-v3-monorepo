@@ -132,8 +132,7 @@ contract ERC721BalancerPoolTokenTest is Test {
     }
 
     function testApproveAllInvalidOperator() public {
-        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721InvalidOperator.selector,
-                                               address(this)));
+        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721InvalidOperator.selector, address(this)));
         token.setApprovalForAll(address(this), true);
     }
 
