@@ -105,7 +105,7 @@ interface IVault {
     function balanceOfERC721(address token, address owner) external view returns (uint256);
 
     /**
-     * @dev Returns an owner of a Balancer ERC721 token.
+     * @dev Returns the owner of a Balancer ERC721 token.
      */
     function ownerOfERC721(address token, uint256 tokenId) external view returns (address);
 
