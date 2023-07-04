@@ -167,7 +167,6 @@ abstract contract ERC721MultiToken is IERC721Errors {
      * @dev Returns whether `spender` is allowed to manage `tokenId`.
      *
      * Requirements:
-     *
      * - `tokenId` must exist.
      */
     function _isApprovedOrOwnerERC721(address token, address spender, uint256 tokenId) private view returns (bool) {
