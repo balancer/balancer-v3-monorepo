@@ -18,7 +18,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
  * @dev The ERC721BalancerPoolToken is fully compliant with the ERC721 API. However, all the accounting
  * is delegated to the Vault, allowing the Vault to mint and burn ERC721 tokens.
  */
-contract ERC721BalancerPoolToken is IERC721, IERC721Metadata, ERC165 {
+contract ERC721BalancerPoolToken is IERC721, IERC721Metadata, ERC165, IVaultErrors {
     using Strings for uint256;
 
     IVault private immutable _vault;
