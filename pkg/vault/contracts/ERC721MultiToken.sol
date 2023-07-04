@@ -21,7 +21,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
     mapping(address => mapping(uint256 => address)) private _owners;
 
     // Mapping from owner address to token count
-    mapping(address => mapping(address => uint256)) private _balances;
+    mapping(address => mapping(address => uint256)) private _bptBalances;
 
     // Mapping from token ID to approved address
     mapping(address => mapping(uint256 => address)) private _tokenApprovals;
