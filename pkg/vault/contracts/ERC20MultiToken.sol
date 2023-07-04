@@ -13,7 +13,7 @@ import "./ERC20BalancerPoolToken.sol";
  * design philosophy; the purpose is to encapsulate all accounting (of both pool constituent tokens and the pool
  * contracts themselves) in the Vault, rather than dividing responsibilities between the Vault and pool contracts.
  */
-abstract contract MultiToken is IERC20Errors {
+abstract contract ERC20MultiToken is IERC20Errors {
     // Pool -> (owner -> balance): Users' BPT balances
     mapping(address => mapping(address => uint256)) private _bptBalances;
 
@@ -23,19 +23,19 @@ abstract contract MultiToken is IERC20Errors {
     // Pool -> total supply (BPT)
     mapping(address => uint256) private _totalSupply;
 
-    function _getTotalSupply(address poolToken) internal view returns (uint256) {
+    function _totalSupplyOfERC20(address poolToken) internal view returns (uint256) {
         return _totalSupply[poolToken];
     }
 
-    function _getBalanceOf(address poolToken, address account) internal view returns (uint256) {
+    function _balanceOfERC20(address poolToken, address account) internal view returns (uint256) {
         return _bptBalances[poolToken][account];
     }
 
-    function _getAllowance(address poolToken, address owner, address spender) internal view returns (uint256) {
+    function _allowanceOfERC20(address poolToken, address owner, address spender) internal view returns (uint256) {
         return _allowances[poolToken][owner][spender];
     }
 
-    function _mint(address poolToken, address to, uint256 amount) internal {
+    function _mintERC20(address poolToken, address to, uint256 amount) internal {
         if (to == address(0)) {
             revert ERC20InvalidReceiver(to);
         }
@@ -49,7 +49,7 @@ abstract contract MultiToken is IERC20Errors {
         ERC20BalancerPoolToken(poolToken).emitTransfer(address(0), to, amount);
     }
 
-    function _burn(address poolToken, address from, uint256 amount) internal {
+    function _burnERC20(address poolToken, address from, uint256 amount) internal {
         if (from == address(0)) {
             revert ERC20InvalidSender(from);
         }
@@ -68,7 +68,7 @@ abstract contract MultiToken is IERC20Errors {
         ERC20BalancerPoolToken(poolToken).emitTransfer(from, address(0), amount);
     }
 
-    function _transfer(address poolToken, address from, address to, uint256 amount) internal {
+    function _transferERC20(address poolToken, address from, address to, uint256 amount) internal {
         if (from == address(0)) {
             revert ERC20InvalidSender(from);
         }
@@ -92,7 +92,7 @@ abstract contract MultiToken is IERC20Errors {
         ERC20BalancerPoolToken(poolToken).emitTransfer(from, to, amount);
     }
 
-    function _approve(address poolToken, address owner, address spender, uint256 amount) internal {
+    function _approveERC20(address poolToken, address owner, address spender, uint256 amount) internal {
         if (owner == address(0)) {
             revert ERC20InvalidApprover(owner);
         }
@@ -113,7 +113,7 @@ abstract contract MultiToken is IERC20Errors {
             }
 
             unchecked {
-                _approve(poolToken, owner, spender, currentAllowance - amount);
+                _approveERC20(poolToken, owner, spender, currentAllowance - amount);
             }
         }
     }
