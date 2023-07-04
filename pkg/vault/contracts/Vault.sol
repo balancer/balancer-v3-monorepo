@@ -26,9 +26,9 @@ contract Vault is IVault, MultiToken, ERC721MultiToken, PoolRegistry, Reentrancy
         _weth = weth;
     }
 
-    /*******************/
-    /*  ERC20 tokens  */
-    /*******************/
+    /********************
+    //  ERC20 tokens  //
+    ********************/
 
     /// @inheritdoc IVault
     function totalSupply(address poolToken) external view returns (uint256) {
