@@ -95,9 +95,9 @@ interface IVault {
      */
     function approve(address sender, address spender, uint256 amount) external returns (bool);
 
-    /*******************/
-    /*  ERC721 tokens  */
-    /*******************/
+    /********************
+    //  ERC721 tokens  //
+    ********************/
 
     /**
      * @dev Returns an account's balance of a Balancer ERC721 token.
