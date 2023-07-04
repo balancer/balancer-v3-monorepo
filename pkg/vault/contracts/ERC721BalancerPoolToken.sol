@@ -62,7 +62,7 @@ contract ERC721BalancerPoolToken is IERC721, IERC721Metadata, ERC165 {
         return bytes(baseURI).length > 0 ? string.concat(baseURI, tokenId.toString()) : "";
     }
 
-    /// @inheritdoc IERC721balanceOf
+    /// @inheritdoc IERC721
     function balanceOf(address owner) public view virtual returns (uint256) {
         return _vault.balanceOfERC721(address(this), owner);
     }
