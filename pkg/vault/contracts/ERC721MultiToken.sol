@@ -34,7 +34,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
         if (owner == address(0)) {
             revert ERC721InvalidOwner(address(0));
         }
-        return _balances[token][owner];
+        return _bptBalances[token][owner];
     }
 
     /// @dev See {IERC721-ownerOf}.
@@ -226,7 +226,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
             // Given that tokens are minted one by one, it is impossible in practice that
             // this ever happens. Might change if we allow batch minting.
             // The ERC fails to describe this case.
-            _balances[token][to] += 1;
+            _bptBalances[token][to] += 1;
         }
 
         _owners[token][tokenId] = to;
@@ -252,8 +252,8 @@ abstract contract ERC721MultiToken is IERC721Errors {
         delete _tokenApprovals[token][tokenId];
 
         // Decrease balance with checked arithmetic, because an `ownerOf` override may
-        // invalidate the assumption that `_balances[from] >= 1`.
-        _balances[token][owner] -= 1;
+        // invalidate the assumption that `_bptBalances[from] >= 1`.
+        _bptBalances[token][owner] -= 1;
 
         delete _owners[token][tokenId];
 
@@ -284,13 +284,13 @@ abstract contract ERC721MultiToken is IERC721Errors {
         delete _tokenApprovals[token][tokenId];
 
         // Decrease balance with checked arithmetic, because an `ownerOf` override may
-        // invalidate the assumption that `_balances[from] >= 1`.
-        _balances[token][from] -= 1;
+        // invalidate the assumption that `_bptBalances[from] >= 1`.
+        _bptBalances[token][from] -= 1;
 
         unchecked {
-            // `_balances[to]` could overflow in the conditions described in `_mint`. That would require
+            // `_bptBalances[to]` could overflow in the conditions described in `_mint`. That would require
             // all 2**256 token ids to be minted, which in practice is impossible.
-            _balances[token][to] += 1;
+            _bptBalances[token][to] += 1;
         }
 
         _owners[token][tokenId] = to;
