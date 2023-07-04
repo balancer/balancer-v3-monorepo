@@ -118,6 +118,9 @@ contract ERC721BalancerPoolToken is IERC721, IERC721Metadata, ERC165, IVaultErro
         emit Transfer(from, to, amount);
     }
 
+    /// To maintain compliance with the ERC-721 standard, and conform to the expections of off-chain processes,
+    /// all events are emitted from the token contract.
+
     /**
      * @dev The ApprovalForAll event is emitted. This function can only be called by the Vault.
      * The Vault is invoking this function to ensure that the ERC721BalancerPoolToken is compliant with the ERC721 API.
