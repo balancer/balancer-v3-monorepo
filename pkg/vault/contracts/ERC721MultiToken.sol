@@ -261,7 +261,6 @@ abstract contract ERC721MultiToken is IERC721Errors {
      *  As opposed to {transferFrom}, this imposes no restrictions on msg.sender.
      *
      * Requirements:
-     *
      * - `to` cannot be the zero address.
      * - `tokenId` token must be owned by `from`.
      *
