@@ -27,7 +27,9 @@ contract ERC721BalancerPoolToken is IERC721, IERC721Metadata, ERC165, IVaultErro
     string private _symbol;
 
     modifier onlyVault() {
-        require(msg.sender == address(_vault), "Sender is not the Vault");
+        if (msg.sender != address(_vault)) {
+            revert SenderIsNotVault(msg.sender);
+        }
         _;
     }
 
