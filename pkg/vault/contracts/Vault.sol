@@ -77,9 +77,9 @@ contract Vault is IVault, MultiToken, ERC721MultiToken, PoolRegistry, Reentrancy
         return true;
     }
 
-    /*******************/
-    /*  ERC721 tokens  */
-    /*******************/
+    /********************
+    //  ERC721 tokens  //
+    ********************/
 
     /// @inheritdoc IVault
     function balanceOfERC721(address token, address owner) external view returns (uint256) {
