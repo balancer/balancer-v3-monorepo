@@ -116,7 +116,8 @@ abstract contract ERC721MultiToken is IERC721Errors {
      * @dev Safely transfers `tokenId` token from `from` to `to`, checking first that contract recipients
      * are aware of the ERC721 protocol to prevent tokens from being forever locked.
      *
-     * `data` is additional data, it has no specified format and it is sent in call to `to`.
+     * `data` is arbitrary additional data. it has no specified format, and it is sent with the
+     * `_checkOnERC721Received` call to `to`, if `to` is a contract.
      *
      * This internal function is equivalent to {safeTransferFrom}, and can be used to e.g.
      * implement alternative mechanisms to perform token transfer, such as signature-based.
