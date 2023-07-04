@@ -146,9 +146,9 @@ contract Vault is IVault, MultiToken, ERC721MultiToken, PoolRegistry, Reentrancy
         _safeTransferFromERC721(msg.sender, sender, from, to, tokenId, data);
     }
 
-    /***********************/
-    /*  Pool Registration  */
-    /***********************/
+    /************************
+    //  Pool Registration  //
+    ************************/
 
     /// @inheritdoc IVault
     function registerPool(address factory, IERC20[] memory tokens) external nonReentrant whenNotPaused {
