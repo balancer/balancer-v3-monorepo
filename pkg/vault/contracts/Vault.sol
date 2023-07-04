@@ -10,11 +10,11 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { ReentrancyGuard } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import { TemporarilyPausable } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 
-import { MultiToken } from "./MultiToken.sol";
+import { ERC20MultiToken } from "./ERC20MultiToken.sol";
 import { ERC721MultiToken } from "./ERC721MultiToken.sol";
 import { PoolRegistry } from "./PoolRegistry.sol";
 
-contract Vault is IVault, MultiToken, ERC721MultiToken, PoolRegistry, ReentrancyGuard, TemporarilyPausable {
+contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, ReentrancyGuard, TemporarilyPausable {
     // solhint-disable-next-line var-name-mixedcase
     IWETH private immutable _weth;
 
@@ -31,49 +31,49 @@ contract Vault is IVault, MultiToken, ERC721MultiToken, PoolRegistry, Reentrancy
     /*******************/
 
     /// @inheritdoc IVault
-    function totalSupply(address poolToken) external view returns (uint256) {
-        return _getTotalSupply(poolToken);
+    function totalSupplyOfERC20(address poolToken) external view returns (uint256) {
+        return _totalSupplyOfERC20(poolToken);
     }
 
     /// @inheritdoc IVault
-    function balanceOf(address poolToken, address account) external view returns (uint256) {
-        return _getBalanceOf(poolToken, account);
+    function balanceOfERC20(address poolToken, address account) external view returns (uint256) {
+        return _balanceOfERC20(poolToken, account);
     }
 
     /// @inheritdoc IVault
-    function allowance(address poolToken, address owner, address spender) external view returns (uint256) {
-        return _getAllowance(poolToken, owner, spender);
+    function allowanceOfERC20(address poolToken, address owner, address spender) external view returns (uint256) {
+        return _allowanceOfERC20(poolToken, owner, spender);
     }
 
     /// @inheritdoc IVault
-    function transfer(
+    function transferERC20(
         address owner,
         address to,
         uint256 amount
     ) external withRegisteredPool(msg.sender) returns (bool) {
-        _transfer(msg.sender, owner, to, amount);
+        _transferERC20(msg.sender, owner, to, amount);
         return true;
     }
 
     /// @inheritdoc IVault
-    function approve(
+    function approveERC20(
         address sender,
         address spender,
         uint256 amount
     ) external withRegisteredPool(msg.sender) returns (bool) {
-        _approve(msg.sender, sender, spender, amount);
+        _approveERC20(msg.sender, sender, spender, amount);
         return true;
     }
 
     /// @inheritdoc IVault
-    function transferFrom(
+    function transferFromERC20(
         address spender,
         address from,
         address to,
         uint256 amount
     ) external withRegisteredPool(msg.sender) returns (bool) {
         _spendAllowance(msg.sender, from, spender, amount);
-        _transfer(msg.sender, from, to, amount);
+        _transferERC20(msg.sender, from, to, amount);
         return true;
     }
 
