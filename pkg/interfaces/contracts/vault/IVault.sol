@@ -65,35 +65,35 @@ interface IVault {
     ****************************/
 
     /**
-     * @dev Returns the total supply of a BPT token.
+     * @dev Returns the total supply of an ERC20 BPT token.
      */
-    function totalSupply(address poolToken) external view returns (uint256);
+    function totalSupplyOfERC20(address poolToken) external view returns (uint256);
 
     /**
-     * @dev Returns an account's balance of a BPT token.
+     * @dev Returns an account's balance of an ERC20 BPT token.
      */
-    function balanceOf(address poolToken, address account) external view returns (uint256);
+    function balanceOfERC20(address poolToken, address account) external view returns (uint256);
 
     /**
-     * @dev Permissioned function to transfer a BPT token. Can only be called from a registered pool.
+     * @dev Permissioned function to transfer an ERC20 BPT token. Can only be called from a registered pool.
      */
-    function transfer(address owner, address to, uint256 amount) external returns (bool);
+    function transferERC20(address owner, address to, uint256 amount) external returns (bool);
 
     /**
-     * @dev Permissioned function to transferFrom a BPT token. Can only be called from a registered pool.
+     * @dev Permissioned function to transferFrom an ERC20 BPT token. Can only be called from a registered pool.
      */
-    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
+    function transferFromERC20(address spender, address from, address to, uint256 amount) external returns (bool);
 
     /**
-     * @dev Returns an owner's BPT allowance for a given spender.
+     * @dev Returns an owner's ERC20 BPT allowance for a given spender.
      */
-    function allowance(address poolToken, address owner, address spender) external view returns (uint256);
+    function allowanceOfERC20(address poolToken, address owner, address spender) external view returns (uint256);
 
     /**
-     * @dev Permissioned function to set a sender's BPT allowance for a given spender. Can only be called
+     * @dev Permissioned function to set a sender's ERC20 BPT allowance for a given spender. Can only be called
      * from a registered pool.
      */
-    function approve(address sender, address spender, uint256 amount) external returns (bool);
+    function approveERC20(address sender, address spender, uint256 amount) external returns (bool);
 
     /********************
     //  ERC721 tokens  //
