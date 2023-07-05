@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.4;
 
-import "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC20Errors.sol";
+import { IERC20Errors} from "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC20Errors.sol";
 
-import "./ERC20BalancerPoolToken.sol";
+import { ERC20BalancerPoolToken } from "./ERC20BalancerPoolToken.sol";
 
 /**
  * @notice Store Balancer Pool Token (BPT) data and handle accounting for all Pools in the Vault.
