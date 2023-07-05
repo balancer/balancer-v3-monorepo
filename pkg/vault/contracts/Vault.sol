@@ -26,9 +26,9 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
         _weth = weth;
     }
 
-    /********************
-    //  ERC20 tokens  //
-    ********************/
+    /*******************************************************************************
+                                      ERC20 tokens
+    *******************************************************************************/
 
     /// @inheritdoc IVault
     function totalSupplyOfERC20(address poolToken) external view returns (uint256) {
@@ -77,9 +77,9 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
         return true;
     }
 
-    /********************
-    //  ERC721 tokens  //
-    ********************/
+    /*******************************************************************************
+                                    ERC721 tokens
+    *******************************************************************************/
 
     /// @inheritdoc IVault
     function balanceOfERC721(address token, address owner) external view returns (uint256) {
@@ -146,9 +146,9 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
         _safeTransferFromERC721(msg.sender, sender, from, to, tokenId, data);
     }
 
-    /************************
-    //  Pool Registration  //
-    ************************/
+    /*******************************************************************************
+                                    Pool Registration
+    *******************************************************************************/
 
     /// @inheritdoc IVault
     function registerPool(address factory, IERC20[] memory tokens) external nonReentrant whenNotPaused {
