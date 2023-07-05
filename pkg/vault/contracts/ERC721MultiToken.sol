@@ -9,12 +9,19 @@ import { IERC721Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-u
 
 import { ERC721BalancerPoolToken } from "./ERC721BalancerPoolToken.sol";
 
+/**
+ * @notice Store Balancer Pool Token (BPT) ERC721 data and handle accounting for all Pools in the Vault.
+ * @dev The Vault manages all BPT (Balancer Pool Tokens), which can be either ERC20 or ERC721, in a manner similar to
+ * ERC-1155, but without fully supporting the standard. Parts of it conflict with the Vault's security model and
+ * design philosophy; the purpose is to encapsulate all accounting (of both pool constituent tokens and the pool
+ * contracts themselves) in the Vault, rather than dividing responsibilities between the Vault and pool contracts.
+ */
 abstract contract ERC721MultiToken is IERC721Errors {
     // Mapping from token ID to owner address
     mapping(address => mapping(uint256 => address)) private _owners;
 
-    // Mapping owner address to token count
-    mapping(address => mapping(address => uint256)) private _balances;
+    // Mapping from owner address to token count
+    mapping(address => mapping(address => uint256)) private _bptBalances;
 
     // Mapping from token ID to approved address
     mapping(address => mapping(uint256 => address)) private _tokenApprovals;
@@ -27,7 +34,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
         if (owner == address(0)) {
             revert ERC721InvalidOwner(address(0));
         }
-        return _balances[token][owner];
+        return _bptBalances[token][owner];
     }
 
     /// @dev See {IERC721-ownerOf}.
@@ -109,7 +116,8 @@ abstract contract ERC721MultiToken is IERC721Errors {
      * @dev Safely transfers `tokenId` token from `from` to `to`, checking first that contract recipients
      * are aware of the ERC721 protocol to prevent tokens from being forever locked.
      *
-     * `data` is additional data, it has no specified format and it is sent in call to `to`.
+     * `data` is arbitrary additional data. it has no specified format, and it is sent with the
+     * `_checkOnERC721Received` call to `to`, if `to` is a contract.
      *
      * This internal function is equivalent to {safeTransferFrom}, and can be used to e.g.
      * implement alternative mechanisms to perform token transfer, such as signature-based.
@@ -159,7 +167,6 @@ abstract contract ERC721MultiToken is IERC721Errors {
      * @dev Returns whether `spender` is allowed to manage `tokenId`.
      *
      * Requirements:
-     *
      * - `tokenId` must exist.
      */
     function _isApprovedOrOwnerERC721(address token, address spender, uint256 tokenId) private view returns (bool) {
@@ -173,7 +180,6 @@ abstract contract ERC721MultiToken is IERC721Errors {
      * @dev Safely mints `tokenId` and transfers it to `to`.
      *
      * Requirements:
-     *
      * - `tokenId` must not exist.
      * - If `to` refers to a smart contract, it must implement {IERC721Receiver-onERC721Received},
      * which is called upon a safe transfer.
@@ -220,7 +226,7 @@ abstract contract ERC721MultiToken is IERC721Errors {
             // Given that tokens are minted one by one, it is impossible in practice that
             // this ever happens. Might change if we allow batch minting.
             // The ERC fails to describe this case.
-            _balances[token][to] += 1;
+            _bptBalances[token][to] += 1;
         }
 
         _owners[token][tokenId] = to;
@@ -235,7 +241,6 @@ abstract contract ERC721MultiToken is IERC721Errors {
      * This is an internal function that does not check if the sender is authorized to operate on the token.
      *
      * Requirements:
-     *
      * - `tokenId` must exist.
      *
      * Emits a {Transfer} event.
@@ -247,8 +252,8 @@ abstract contract ERC721MultiToken is IERC721Errors {
         delete _tokenApprovals[token][tokenId];
 
         // Decrease balance with checked arithmetic, because an `ownerOf` override may
-        // invalidate the assumption that `_balances[from] >= 1`.
-        _balances[token][owner] -= 1;
+        // invalidate the assumption that `_bptBalances[from] >= 1`.
+        _bptBalances[token][owner] -= 1;
 
         delete _owners[token][tokenId];
 
@@ -261,7 +266,6 @@ abstract contract ERC721MultiToken is IERC721Errors {
      *  As opposed to {transferFrom}, this imposes no restrictions on msg.sender.
      *
      * Requirements:
-     *
      * - `to` cannot be the zero address.
      * - `tokenId` token must be owned by `from`.
      *
@@ -280,13 +284,13 @@ abstract contract ERC721MultiToken is IERC721Errors {
         delete _tokenApprovals[token][tokenId];
 
         // Decrease balance with checked arithmetic, because an `ownerOf` override may
-        // invalidate the assumption that `_balances[from] >= 1`.
-        _balances[token][from] -= 1;
+        // invalidate the assumption that `_bptBalances[from] >= 1`.
+        _bptBalances[token][from] -= 1;
 
         unchecked {
-            // `_balances[to]` could overflow in the conditions described in `_mint`. That would require
+            // `_bptBalances[to]` could overflow in the conditions described in `_mint`. That would require
             // all 2**256 token ids to be minted, which in practice is impossible.
-            _balances[token][to] += 1;
+            _bptBalances[token][to] += 1;
         }
 
         _owners[token][tokenId] = to;

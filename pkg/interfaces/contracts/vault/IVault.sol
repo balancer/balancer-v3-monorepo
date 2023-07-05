@@ -60,9 +60,9 @@ interface IVault {
      */
     function getPoolTokens(address pool) external view returns (IERC20[] memory tokens, uint256[] memory balances);
 
-    /***************************/
-    /*  Balancer ERC20 tokens  */
-    /***************************/
+    /****************************
+    //  Balancer ERC20 tokens  //
+    ****************************/
 
     /**
      * @dev Returns the total supply of an ERC20 BPT token.
@@ -95,9 +95,9 @@ interface IVault {
      */
     function approveERC20(address sender, address spender, uint256 amount) external returns (bool);
 
-    /*******************/
-    /*  ERC721 tokens  */
-    /*******************/
+    /********************
+    //  ERC721 tokens  //
+    ********************/
 
     /**
      * @dev Returns an account's balance of a Balancer ERC721 token.
@@ -105,7 +105,7 @@ interface IVault {
     function balanceOfERC721(address token, address owner) external view returns (uint256);
 
     /**
-     * @dev Returns an owner of a Balancer ERC721 token.
+     * @dev Returns the owner of a Balancer ERC721 token.
      */
     function ownerOfERC721(address token, uint256 tokenId) external view returns (address);
 

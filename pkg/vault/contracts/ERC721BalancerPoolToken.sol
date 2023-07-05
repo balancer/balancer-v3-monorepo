@@ -1,23 +1,25 @@
 // SPDX-License-Identifier: GPL-3.0-or-laterk
 
-pragma solidity >=0.8.18 <0.9.0;
+pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { IERC721Metadata } from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { ERC165, IERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
-import "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC721Errors.sol";
+import { IERC721Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC721Errors.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
-import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 /**
  * @notice Base contract for all ERC721 Balancer pools. Often abbreviated as "BPT" = Balancer Pool Token.
  * @dev The ERC721BalancerPoolToken is fully compliant with the ERC721 API. However, all the accounting
  * is delegated to the Vault, allowing the Vault to mint and burn ERC721 tokens.
  */
-contract ERC721BalancerPoolToken is IERC721, IERC721Metadata, ERC165 {
+contract ERC721BalancerPoolToken is IERC721, IERC721Metadata, ERC165, IVaultErrors {
     using Strings for uint256;
 
     IVault private immutable _vault;
@@ -25,7 +27,9 @@ contract ERC721BalancerPoolToken is IERC721, IERC721Metadata, ERC165 {
     string private _symbol;
 
     modifier onlyVault() {
-        require(msg.sender == address(_vault), "Sender is not the Vault");
+        if (msg.sender != address(_vault)) {
+            revert SenderIsNotVault(msg.sender);
+        }
         _;
     }
 
@@ -114,6 +118,9 @@ contract ERC721BalancerPoolToken is IERC721, IERC721Metadata, ERC165 {
     function emitTransfer(address from, address to, uint256 amount) external onlyVault {
         emit Transfer(from, to, amount);
     }
+
+    /// To maintain compliance with the ERC-721 standard, and conform to the expections of off-chain processes,
+    /// all events are emitted from the token contract.
 
     /**
      * @dev The ApprovalForAll event is emitted. This function can only be called by the Vault.
