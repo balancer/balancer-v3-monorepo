@@ -48,17 +48,17 @@ contract ERC721BalancerPoolToken is IERC721, IERC721Metadata, ERC165, IVaultErro
     }
 
     /// @inheritdoc IERC721Metadata
-    function name() public view virtual returns (string memory) {
+    function name() public view returns (string memory) {
         return _name;
     }
 
     /// @inheritdoc IERC721Metadata
-    function symbol() public view virtual returns (string memory) {
+    function symbol() public view returns (string memory) {
         return _symbol;
     }
 
     /// @inheritdoc IERC721Metadata
-    function tokenURI(uint256 tokenId) public view virtual returns (string memory) {
+    function tokenURI(uint256 tokenId) public view returns (string memory) {
         // checking that tokenId has an owner
         _vault.ownerOfERC721(address(this), tokenId);
 
