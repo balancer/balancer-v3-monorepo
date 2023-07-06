@@ -13,7 +13,6 @@ import "../solidity-utils/misc/IWETH.sol";
 interface IVault {
     /// Generalities about the Vault:
     ///
-    /// - Whenever documentation refers to 'tokens', it strictly refers to ERC20-compliant token contracts.
     /// The only deviation from the ERC20 standard that is supported is functions not returning a boolean value:
     /// in these scenarios, a non-reverting call is assumed to be successful.
     ///
