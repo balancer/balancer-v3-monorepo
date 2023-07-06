@@ -1,5 +1,5 @@
-import Token from './Token';
-import TokensDeployer from './TokensDeployer';
+import ERC20Token from './ERC20Token';
+import ERC20TokensDeployer from './ERC20TokensDeployer';
 import TypesConverter from '../types/TypesConverter';
 
 import { Account } from '../types/types';
@@ -15,14 +15,14 @@ import {
 
 export const ETH_TOKEN_ADDRESS = ZERO_ADDRESS;
 
-export default class TokenList {
-  tokens: Token[];
+export default class ERC20TokenList {
+  tokens: ERC20Token[];
 
-  static async create(params: RawTokensDeployment, options: TokensDeploymentOptions = {}): Promise<TokenList> {
-    return TokensDeployer.deploy(params, options);
+  static async create(params: RawTokensDeployment, options: TokensDeploymentOptions = {}): Promise<ERC20TokenList> {
+    return ERC20TokensDeployer.deploy(params, options);
   }
 
-  constructor(tokens: Token[] = []) {
+  constructor(tokens: ERC20Token[] = []) {
     this.tokens = tokens;
   }
 
@@ -34,62 +34,62 @@ export default class TokenList {
     return this.tokens.map((token) => token.address);
   }
 
-  get first(): Token {
+  get first(): ERC20Token {
     return this.get(0);
   }
 
-  get second(): Token {
+  get second(): ERC20Token {
     return this.get(1);
   }
 
-  get WETH(): Token {
+  get WETH(): ERC20Token {
     return this.findBySymbol('WETH');
   }
 
-  get DAI(): Token {
+  get DAI(): ERC20Token {
     return this.findBySymbol('DAI');
   }
 
-  get CDAI(): Token {
+  get CDAI(): ERC20Token {
     return this.findBySymbol('CDAI');
   }
 
-  get MKR(): Token {
+  get MKR(): ERC20Token {
     return this.findBySymbol('MKR');
   }
 
-  get SNX(): Token {
+  get SNX(): ERC20Token {
     return this.findBySymbol('SNX');
   }
 
-  get BAT(): Token {
+  get BAT(): ERC20Token {
     return this.findBySymbol('BAT');
   }
 
-  get GRT(): Token {
+  get GRT(): ERC20Token {
     return this.findBySymbol('GRT');
   }
 
-  get(index: number | Token): Token {
+  get(index: number | ERC20Token): ERC20Token {
     if (typeof index !== 'number') return index;
     if (index >= this.length) throw Error('Accessing invalid token list index');
     return this.tokens[index];
   }
 
-  indexOf(token: number | Token): number {
+  indexOf(token: number | ERC20Token): number {
     return typeof token === 'number' ? token : this.tokens.indexOf(token);
   }
 
-  indicesOf(tokens: (number | Token)[]): number[] {
+  indicesOf(tokens: (number | ERC20Token)[]): number[] {
     return tokens.map((token) => this.indexOf(token));
   }
 
-  indicesOfTwoTokens(token: number | Token, anotherToken: number | Token): number[] {
+  indicesOfTwoTokens(token: number | ERC20Token, anotherToken: number | ERC20Token): number[] {
     return [this.indexOf(token), this.indexOf(anotherToken)];
   }
 
-  subset(length: number, offset = 0): TokenList {
-    return new TokenList(this.tokens.slice(offset, offset + length));
+  subset(length: number, offset = 0): ERC20TokenList {
+    return new ERC20TokenList(this.tokens.slice(offset, offset + length));
   }
 
   async mint(rawParams: RawTokenMint): Promise<void> {
@@ -124,28 +124,34 @@ export default class TokenList {
     return Promise.all(this.tokens.map((token) => token.balanceOf(account)));
   }
 
-  each(fn: (value: Token, i: number, array: Token[]) => void, thisArg?: unknown): void {
+  each(fn: (value: ERC20Token, i: number, array: ERC20Token[]) => void, thisArg?: unknown): void {
     this.tokens.forEach(fn, thisArg);
   }
 
-  async asyncEach(fn: (value: Token, i: number, array: Token[]) => Promise<void>, thisArg?: unknown): Promise<void> {
+  async asyncEach(
+    fn: (value: ERC20Token, i: number, array: ERC20Token[]) => Promise<void>,
+    thisArg?: unknown
+  ): Promise<void> {
     await this.asyncMap(fn, thisArg);
   }
 
-  map<T>(fn: (value: Token, i: number, array: Token[]) => T, thisArg?: unknown): T[] {
+  map<T>(fn: (value: ERC20Token, i: number, array: ERC20Token[]) => T, thisArg?: unknown): T[] {
     return this.tokens.map(fn, thisArg);
   }
 
-  async asyncMap<T>(fn: (value: Token, i: number, array: Token[]) => Promise<T>, thisArg?: unknown): Promise<T[]> {
+  async asyncMap<T>(
+    fn: (value: ERC20Token, i: number, array: ERC20Token[]) => Promise<T>,
+    thisArg?: unknown
+  ): Promise<T[]> {
     const promises = this.tokens.map(fn, thisArg);
     return Promise.all(promises);
   }
 
-  reduce<T>(fn: (previousValue: T, currentValue: Token, i: number, array: Token[]) => T, initialValue: T): T {
+  reduce<T>(fn: (previousValue: T, currentValue: ERC20Token, i: number, array: ERC20Token[]) => T, initialValue: T): T {
     return this.tokens.reduce(fn, initialValue);
   }
 
-  findBySymbol(symbol: string): Token {
+  findBySymbol(symbol: string): ERC20Token {
     const token = this.tokens.find((token) => token.symbol.toLowerCase() === symbol.toLowerCase());
     if (!token) throw Error(`Could not find token with symbol ${symbol}`);
     return token;
@@ -157,8 +163,8 @@ export default class TokenList {
     return index;
   }
 
-  sort(): TokenList {
-    return new TokenList(
+  sort(): ERC20TokenList {
+    return new ERC20TokenList(
       this.tokens.sort((tokenA, tokenB) => (tokenA.address.toLowerCase() > tokenB.address.toLowerCase() ? 1 : -1))
     );
   }

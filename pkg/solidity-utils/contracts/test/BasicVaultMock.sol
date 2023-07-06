@@ -2,23 +2,21 @@
 
 pragma solidity ^0.8.4;
 
-import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 
-
-contract BasicVaultMock is IVault {
+contract BasicVaultMock is IAuthentication, IAuthorizer {
     IAuthorizer private _authorizer;
 
     constructor(IAuthorizer authorizer) {
         _authorizer = authorizer;
     }
 
-    /// @inheritdoc IVault
-    function getAuthorizer() external view override returns (IAuthorizer) {
+    function getAuthorizer() external view returns (IAuthorizer) {
         return _authorizer;
     }
 
-    /// @inheritdoc IVault
-    function setAuthorizer(IAuthorizer newAuthorizer) external override {
+    function setAuthorizer(IAuthorizer newAuthorizer) external {
         _authorizer = newAuthorizer;
 
         emit AuthorizerChanged(newAuthorizer);
@@ -27,5 +25,9 @@ contract BasicVaultMock is IVault {
     /// @inheritdoc IAuthentication
     function getActionId(uint16 chainId, bytes4 selector) public view override returns (bytes32) {
         return keccak256(abi.encodePacked(bytes32(bytes20(address(this))), chainId, selector));
+    }
+
+    function canPerform(bytes32, address, address) external pure returns (bool) {
+        return true;
     }
 }

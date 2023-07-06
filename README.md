@@ -96,6 +96,14 @@ To run Slither in triage mode:
 $ yarn slither:triage
 ```
 
+### Coverage
+
+```bash
+$ yarn coverage
+```
+
+The `coverage` command generates a coverage report for each package found in the `./package/coverage/index.html` directory. The `coverage.sh` script is used to merge HardHat and Forge coverage reports into a unified report, leveraging the lcov command-line utility.
+
 ## Security
 
 > Upgradeability | Not Applicable. The system cannot be upgraded.
