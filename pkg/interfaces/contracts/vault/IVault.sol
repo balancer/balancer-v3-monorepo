@@ -85,7 +85,7 @@ interface IVault {
                                ERC721 Balancer Pool Tokens 
     *******************************************************************************/
 
-    /// @dev Returns an account's balance of a Balancer ERC721 token.
+    /// @dev Returns an account's balance of a Balancer ERC721 pool token.
     function balanceOfERC721(address token, address owner) external view returns (uint256);
 
     /// @dev Returns the owner of a Balancer ERC721 token.
