@@ -13,8 +13,9 @@ import "../solidity-utils/misc/IWETH.sol";
 interface IVault {
     /// Generalities about the Vault:
     ///
-    /// The only deviation from the ERC20 standard that is supported is functions not returning a boolean value:
-    /// in these scenarios, a non-reverting call is assumed to be successful.
+    /// The Vault supports standard ERC20 and ERC721 pool tokens. The only deviation from the standards that
+    /// is supported is functions that fail to return an expected boolean value: in these scenarios, a non-reverting
+    /// call is assumed to be successful.
     ///
     /// - All non-view functions in the Vault are non-reentrant: calling them while another one is mid-execution (e.g.
     /// while execution control is transferred to a token contract during a swap) will result in a revert. View
