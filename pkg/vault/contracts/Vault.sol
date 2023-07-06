@@ -27,7 +27,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     }
 
     /*******************************************************************************
-                                      ERC20 tokens
+                              ERC20 Balancer Pool Tokens
     *******************************************************************************/
 
     /// @inheritdoc IVault
@@ -78,7 +78,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     }
 
     /*******************************************************************************
-                                    ERC721 tokens
+                            ERC721 Balancer Pool Tokens
     *******************************************************************************/
 
     /// @inheritdoc IVault
