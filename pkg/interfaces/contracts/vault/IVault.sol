@@ -109,7 +109,7 @@ interface IVault {
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-setApprovalForAll}.
     function setApprovalForAllERC721(address sender, address operator, bool approved) external;
 
-    /// @dev Can be called only by registered ERC721 pool. See {IERC721-transferFrom}.
+    /// @dev Can only be called by a registered ERC721 pool. See {IERC721-transferFrom}.
     function transferFromERC721(address sender, address from, address to, uint256 tokenId) external;
 
     /// @dev Can be called only by registered ERC721 pool. See {IERC721-safeTransferFrom}.
