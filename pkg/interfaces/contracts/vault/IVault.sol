@@ -72,7 +72,10 @@ interface IVault {
      */
     function transferERC20(address owner, address to, uint256 amount) external returns (bool);
 
-    /// @dev Permissioned function to transferFrom an ERC20 BPT token. Can only be called from a registered pool.
+    /**
+     * @dev Permissioned function to transferFrom an ERC20 Balancer pool token.
+     * Can only be called from a registered pool.
+     */
     function transferFromERC20(address spender, address from, address to, uint256 amount) external returns (bool);
 
     /// @dev Returns an owner's ERC20 BPT allowance for a given spender.
