@@ -119,8 +119,12 @@ contract ERC721BalancerPoolToken is IERC721, IERC721Metadata, ERC165, IVaultErro
         emit Transfer(from, to, amount);
     }
 
+    /// Accounting is centralized in the Vault MultiToken contract, and the actual transfers and approvals
+    /// are done there. Operations can be initiated from either the token contract or the Vault.
+    ///
     /// To maintain compliance with the ERC-721 standard, and conform to the expections of off-chain processes,
-    /// all events are emitted from the token contract.
+    /// the Vault calls `emitTransfer` and `emitApprove` during those operations, so that the event is emitted
+    /// only from the token contract. These events are NOT defined in the Vault contract.
 
     /**
      * @dev The ApprovalForAll event is emitted. This function can only be called by the Vault.
