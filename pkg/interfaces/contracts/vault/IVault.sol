@@ -103,7 +103,7 @@ interface IVault {
     /// @dev See {IERC721-isApprovedForAll}.
     function isApprovedForAllERC721(address token, address owner, address operator) external view returns (bool);
 
-    /// @dev Can be called only by registered ERC721 pool. See {IERC721-approve}.
+    /// @dev Can only be called by a registered ERC721 pool. See {IERC721-approve}.
     function approveERC721(address sender, address to, uint256 tokenId) external;
 
     /// @dev Can be called only by registered ERC721 pool. See {IERC721-setApprovalForAll}.
