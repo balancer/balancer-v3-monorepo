@@ -82,7 +82,7 @@ interface IVault {
     function approveERC20(address sender, address spender, uint256 amount) external returns (bool);
 
     /*******************************************************************************
-                                  Balancer ERC721 tokens 
+                               ERC721 Balancer Pool Tokens 
     *******************************************************************************/
 
     /// @dev Returns an account's balance of a Balancer ERC721 token.
