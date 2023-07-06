@@ -57,7 +57,7 @@ interface IVault {
     function getPoolTokens(address pool) external view returns (IERC20[] memory tokens, uint256[] memory balances);
 
     /*******************************************************************************
-                                    Balancer ERC20 tokens 
+                                 ERC20 Balancer Pool Tokens 
     *******************************************************************************/
 
     /// @dev Returns the total supply of an ERC20 BPT token.
