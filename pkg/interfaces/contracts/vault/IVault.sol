@@ -63,7 +63,7 @@ interface IVault {
     /// @dev Returns the total supply of an ERC20 Balancer Pool Token.
     function totalSupplyOfERC20(address poolToken) external view returns (uint256);
 
-    /// @dev Returns an account's balance of an ERC20 BPT token.
+    /// @dev Returns an account's balance of an ERC20 Balancer Pool Token.
     function balanceOfERC20(address poolToken, address account) external view returns (uint256);
 
     /// @dev Permissioned function to transfer an ERC20 BPT token. Can only be called from a registered pool.
