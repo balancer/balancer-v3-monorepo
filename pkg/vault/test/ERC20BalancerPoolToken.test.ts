@@ -240,7 +240,7 @@ describe('ERC20BalancerPoolToken', function () {
         expect(await vault.allowanceOfERC20(poolAAddress, user.address, other.address)).to.equal(0);
       });
 
-      it('direct ERC20 pproval emits an event on the token', async () => {
+      it('direct ERC20 approval emits an event on the token', async () => {
         await expect(await poolA.connect(user).approve(relayer.address, bptAmount))
           .to.emit(poolA, 'Approval')
           .withArgs(user.address, relayer.address, bptAmount);

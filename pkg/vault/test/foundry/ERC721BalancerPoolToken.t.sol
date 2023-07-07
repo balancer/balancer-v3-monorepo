@@ -366,85 +366,85 @@ contract ERC721BalancerPoolTokenTest is Test {
     function testSafeTransferFromToNonERC721Recipient() public {
         vault.mintERC721(address(token), address(this), 1337);
 
-        address recipeint = address(new NonERC721Recipient());
-        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721InvalidReceiver.selector, recipeint));
-        token.safeTransferFrom(address(this), recipeint, 1337);
+        address recipient = address(new NonERC721Recipient());
+        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721InvalidReceiver.selector, recipient));
+        token.safeTransferFrom(address(this), recipient, 1337);
     }
 
     function testSafeTransferFromToNonERC721RecipientWithData() public {
         vault.mintERC721(address(token), address(this), 1337);
 
-        address recipeint = address(new NonERC721Recipient());
-        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721InvalidReceiver.selector, recipeint));
-        token.safeTransferFrom(address(this), recipeint, 1337, "testing 123");
+        address recipient = address(new NonERC721Recipient());
+        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721InvalidReceiver.selector, recipient));
+        token.safeTransferFrom(address(this), recipient, 1337, "testing 123");
     }
 
     function testSafeTransferFromToRevertingERC721Recipient() public {
         vault.mintERC721(address(token), address(this), 1337);
 
-        RevertingERC721Recipient recipeint = new RevertingERC721Recipient();
+        RevertingERC721Recipient recipient = new RevertingERC721Recipient();
         vm.expectRevert(abi.encodePacked(IERC721Receiver.onERC721Received.selector));
-        token.safeTransferFrom(address(this), address(recipeint), 1337);
+        token.safeTransferFrom(address(this), address(recipient), 1337);
     }
 
     function testSafeTransferFromToRevertingERC721RecipientWithData() public {
         vault.mintERC721(address(token), address(this), 1337);
 
-        RevertingERC721Recipient recipeint = new RevertingERC721Recipient();
+        RevertingERC721Recipient recipient = new RevertingERC721Recipient();
         vm.expectRevert(abi.encodePacked(IERC721Receiver.onERC721Received.selector));
-        token.safeTransferFrom(address(this), address(recipeint), 1337, "testing 123");
+        token.safeTransferFrom(address(this), address(recipient), 1337, "testing 123");
     }
 
     function testSafeTransferFromToERC721RecipientWithWrongReturnData() public {
         vault.mintERC721(address(token), address(this), 1337);
 
-        address recipeint = address(new WrongReturnDataERC721Recipient());
-        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721InvalidReceiver.selector, recipeint));
-        token.safeTransferFrom(address(this), recipeint, 1337);
+        address recipient = address(new WrongReturnDataERC721Recipient());
+        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721InvalidReceiver.selector, recipient));
+        token.safeTransferFrom(address(this), recipient, 1337);
     }
 
     function testSafeTransferFromToERC721RecipientWithWrongReturnDataWithData() public {
         vault.mintERC721(address(token), address(this), 1337);
 
-        address recipeint = address(new WrongReturnDataERC721Recipient());
-        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721InvalidReceiver.selector, recipeint));
-        token.safeTransferFrom(address(this), recipeint, 1337, "testing 123");
+        address recipient = address(new WrongReturnDataERC721Recipient());
+        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721InvalidReceiver.selector, recipient));
+        token.safeTransferFrom(address(this), recipient, 1337, "testing 123");
     }
 
     function testSafeMintToNonERC721Recipient() public {
-        address recipeint = address(new NonERC721Recipient());
-        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721InvalidReceiver.selector, recipeint));
-        vault.safeMintERC721(address(token), address(recipeint), 1337);
+        address recipient = address(new NonERC721Recipient());
+        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721InvalidReceiver.selector, recipient));
+        vault.safeMintERC721(address(token), address(recipient), 1337);
     }
 
     function testSafeMintToNonERC721RecipientWithData() public {
-        address recipeint = address(new NonERC721Recipient());
-        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721InvalidReceiver.selector, recipeint));
-        vault.safeMintERC721(address(token), address(recipeint), 1337, "testing 123");
+        address recipient = address(new NonERC721Recipient());
+        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721InvalidReceiver.selector, recipient));
+        vault.safeMintERC721(address(token), address(recipient), 1337, "testing 123");
     }
 
     function testSafeMintToRevertingERC721Recipient() public {
-        RevertingERC721Recipient recipeint = new RevertingERC721Recipient();
+        RevertingERC721Recipient recipient = new RevertingERC721Recipient();
         vm.expectRevert(abi.encodePacked(IERC721Receiver.onERC721Received.selector));
-        vault.safeMintERC721(address(token), address(recipeint), 1337);
+        vault.safeMintERC721(address(token), address(recipient), 1337);
     }
 
     function testSafeMintToRevertingERC721RecipientWithData() public {
-        RevertingERC721Recipient recipeint = new RevertingERC721Recipient();
+        RevertingERC721Recipient recipient = new RevertingERC721Recipient();
         vm.expectRevert(abi.encodePacked(IERC721Receiver.onERC721Received.selector));
-        vault.safeMintERC721(address(token), address(recipeint), 1337, "testing 123");
+        vault.safeMintERC721(address(token), address(recipient), 1337, "testing 123");
     }
 
     function testSafeMintToERC721RecipientWithWrongReturnData() public {
-        WrongReturnDataERC721Recipient recipeint = new WrongReturnDataERC721Recipient();
-        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721InvalidReceiver.selector, recipeint));
-        vault.safeMintERC721(address(token), address(recipeint), 1337);
+        WrongReturnDataERC721Recipient recipient = new WrongReturnDataERC721Recipient();
+        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721InvalidReceiver.selector, recipient));
+        vault.safeMintERC721(address(token), address(recipient), 1337);
     }
 
     function testSafeMintToERC721RecipientWithWrongReturnDataWithData() public {
-        WrongReturnDataERC721Recipient recipeint = new WrongReturnDataERC721Recipient();
-        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721InvalidReceiver.selector, recipeint));
-        vault.safeMintERC721(address(token), address(recipeint), 1337, "testing 123");
+        WrongReturnDataERC721Recipient recipient = new WrongReturnDataERC721Recipient();
+        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721InvalidReceiver.selector, recipient));
+        vault.safeMintERC721(address(token), address(recipient), 1337, "testing 123");
     }
 
     function testBalanceOfZeroAddress() public {
