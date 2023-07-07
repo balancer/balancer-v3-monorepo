@@ -60,7 +60,7 @@ __metadata:
     "@nomicfoundation/hardhat-toolbox": "npm:^3.0.0"
     "@nomicfoundation/hardhat-verify": "npm:^1.0.1"
     "@nomiclabs/hardhat-etherscan": "npm:^3.1.7"
-    "@openzeppelin/contracts": "npm:^4.9.0"
+    "@openzeppelin/contracts": "npm:^4.9.2"
     "@typechain/ethers-v6": "npm:^0.4.0"
     "@typechain/hardhat": "npm:^8.0.0"
     "@types/chai": "npm:^4.3.3"
@@ -1252,10 +1252,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@openzeppelin/contracts@npm:^4.9.0":
-  version: 4.9.0
-  resolution: "@openzeppelin/contracts@npm:4.9.0"
-  checksum: 3d97814254e4e70e6c2a9a6f9b630ea1f5c2fb73473288ae58e0739ac2ebfd0f321bf4827f0269b657a07eb08adf5b482f0f49a26c8528407e3fdd8c4a55a601
+"@openzeppelin/contracts@npm:^4.9.2":
+  version: 4.9.2
+  resolution: "@openzeppelin/contracts@npm:4.9.2"
+  checksum: 7f298de72125cf074153c97d01453968df0d456d80d188326a2527fb3784a9be7cb375956bdbf8b98bfb55261a9159ccfd0494f58d8455ff402254b1b22f3774
   languageName: node
   linkType: hard
 

@@ -11,15 +11,31 @@ contract VaultMock is Vault {
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
     ) Vault(weth, pauseWindowDuration, bufferPeriodDuration) {
-        // solhint-disable-previous-line no-empty-blocks      
+        // solhint-disable-previous-line no-empty-blocks
     }
 
-    function mint(address poolToken, address to, uint256 amount) external {
-        _mint(poolToken, to, amount);
+    function burnERC20(address poolToken, address from, uint256 amount) external {
+        _burnERC20(poolToken, from, amount);
     }
 
-    function burn(address poolToken, address from, uint256 amount) external {
-        _burn(poolToken, from, amount);
+    function mintERC20(address poolToken, address to, uint256 amount) external {
+        _mintERC20(poolToken, to, amount);
+    }
+
+    function mintERC721(address poolToken, address to, uint256 tokenId) external {
+        _mintERC721(poolToken, to, tokenId);
+    }
+
+    function burnERC721(address poolToken, uint256 tokenId) external {
+        _burnERC721(poolToken, tokenId);
+    }
+
+    function safeMintERC721(address poolToken, address to, uint256 tokenId) external {
+        _safeMintERC721(poolToken, msg.sender, to, tokenId);
+    }
+
+    function safeMintERC721(address poolToken, address to, uint256 tokenId, bytes memory data) external {
+        _safeMintERC721(poolToken, msg.sender, to, tokenId, data);
     }
 
     function isETH(IAsset asset) external pure returns (bool) {
