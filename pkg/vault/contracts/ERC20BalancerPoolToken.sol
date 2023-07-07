@@ -90,10 +90,12 @@ contract ERC20BalancerPoolToken is IERC20, IERC20Metadata, IVaultErrors {
     /// the Vault calls `emitTransfer` and `emitApprove` during those operations, so that the event is emitted
     /// only from the token contract. These events are NOT defined in the Vault contract.
 
+    /// @dev Emit the Transfer event. This function can only be called by the Vault.
     function emitTransfer(address from, address to, uint256 amount) external onlyVault {
         emit Transfer(from, to, amount);
     }
 
+    /// @dev Emit the Approval event. This function can only be called by the Vault.
     function emitApprove(address owner, address spender, uint256 amount) external onlyVault {
         emit Approval(owner, spender, amount);
     }
