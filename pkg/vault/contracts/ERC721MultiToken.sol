@@ -17,16 +17,16 @@ import { ERC721BalancerPoolToken } from "./ERC721BalancerPoolToken.sol";
  * contracts themselves) in the Vault, rather than dividing responsibilities between the Vault and pool contracts.
  */
 abstract contract ERC721MultiToken is IERC721Errors {
-    // Mapping from token ID to owner address
+    // Mapping from ERC721 token address to token ID to owner address
     mapping(address => mapping(uint256 => address)) private _owners;
 
-    // Mapping from owner address to token count
+    // Mapping from ERC721 token address to owner address to token count
     mapping(address => mapping(address => uint256)) private _bptBalances;
 
-    // Mapping from token ID to approved address
+    // Mapping from ERC721 token address to token ID to approved address
     mapping(address => mapping(uint256 => address)) private _tokenApprovals;
 
-    // Mapping from owner to operator approvals
+    // Mapping from ERC721 token address to owner to operator approvals
     mapping(address => mapping(address => mapping(address => bool))) private _operatorApprovals;
 
     /// @dev See {IERC721-balanceOf}.
