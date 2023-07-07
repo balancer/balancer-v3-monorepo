@@ -8,10 +8,10 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC20Errors.sol";
-import { ERC20Helpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ERC20Helpers.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { ERC20BalancerPoolToken } from "../../contracts/ERC20BalancerPoolToken.sol";
+import { ERC20Helpers } from "../../contracts/test/ERC20Helpers.sol";
+import { ArrayHelpers } from "../../contracts/test/ArrayHelpers.sol";
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
