@@ -145,7 +145,6 @@ describe('Vault', function () {
     });
   });
 
-
   describe('initialization', () => {
     let timedVault: VaultMock;
 

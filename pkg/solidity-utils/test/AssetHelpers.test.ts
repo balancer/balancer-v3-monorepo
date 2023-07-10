@@ -1,15 +1,10 @@
 import { expect } from 'chai';
-import { BigNumberish } from 'ethers';
-import { ethers } from 'hardhat';
-import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
-import { advanceTime, fromNow, MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import '@balancer-labs/v3-common/setupTests';
 
 import { AssetHelpersMock } from '../typechain-types/contracts/test/AssetHelpersMock';
-import { bn } from '@balancer-labs/v3-helpers/src/numbers';
 import { Typed } from 'ethers';
 
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
