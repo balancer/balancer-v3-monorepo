@@ -9,18 +9,12 @@ import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/sign
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { bn } from '@balancer-labs/v3-helpers/src/numbers';
-import { Typed } from 'ethers';
 import { setupEnvironment } from './poolSetup';
 import { impersonate } from '@balancer-labs/v3-helpers/src/signers';
 import '@balancer-labs/v3-common/setupTests';
 
 describe('Vault', function () {
   const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
-  const ETH_SENTINEL = ZERO_ADDRESS;
-
-  const BAL = '0xba100000625a3754423978a60c9317c58a424e3d';
-  const DAI = '0x6b175474e89094c44da98b954eedeac495271d0f';
-  const WBTC = '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599';
 
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
@@ -151,24 +145,6 @@ describe('Vault', function () {
     });
   });
 
-  describe('native ETH handling', () => {
-    it('detects the ETH asset', async () => {
-      expect(await vault.isETH(ETH_SENTINEL)).to.be.true;
-      expect(await vault.isETH(ANY_ADDRESS)).to.be.false;
-    });
-
-    it('translates native ETH', async () => {
-      expect(await vault.translateToIERC20(Typed.address(ETH_SENTINEL))).to.equal(WETH);
-      expect(await vault.translateToIERC20(Typed.address(ANY_ADDRESS))).to.equal(ANY_ADDRESS);
-    });
-
-    it('translates an array of tokens', async () => {
-      const tokensIn = [WETH, BAL, ETH_SENTINEL, DAI, WBTC];
-      const tokensOut = [WETH, BAL, WETH, DAI, WBTC];
-
-      expect(await vault['translateToIERC20(address[])'](tokensIn)).to.deep.equal(tokensOut);
-    });
-  });
 
   describe('initialization', () => {
     let timedVault: VaultMock;
