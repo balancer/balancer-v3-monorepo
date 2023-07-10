@@ -94,7 +94,9 @@ contract ERC20BalancerPoolTokenTest is Test {
     function testTransferFromToZero() public {
         vault.mintERC20(address(token), address(this), 1337);
 
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(this), 0, 1337));
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(this), 0, 1337)
+        );
         token.transferFrom(address(this), address(0), 1337);
     }
 }
