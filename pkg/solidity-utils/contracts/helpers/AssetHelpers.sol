@@ -32,7 +32,7 @@ library AssetHelpers {
         return isETH(asset) ? weth : asIERC20(asset);
     }
 
-    /// @dev Same as `_translateToIERC20(Asset)`, but for an entire array.
+    /// @dev Same as `toIERC20(Asset)`, but for an array.
     function toIERC20(Asset[] memory assets, IWETH weth) internal pure returns (IERC20[] memory) {
         IERC20[] memory tokens = new IERC20[](assets.length);
         for (uint256 i = 0; i < assets.length; ++i) {
