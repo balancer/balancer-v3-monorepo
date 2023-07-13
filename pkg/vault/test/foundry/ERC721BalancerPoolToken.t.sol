@@ -10,10 +10,10 @@ import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Rec
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IERC721Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC721Errors.sol";
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { ERC721BalancerPoolToken } from "../../contracts/ERC721BalancerPoolToken.sol";
 import { ERC721PoolMock } from "../../contracts/test/ERC721PoolMock.sol";
-import { ArrayHelpers } from "../../contracts/test/ArrayHelpers.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
