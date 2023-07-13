@@ -2,8 +2,12 @@
 
 pragma solidity ^0.8.4;
 
-import "../lib/AssetHelpersLib.sol";
-import "../Vault.sol";
+import { Vault } from "../Vault.sol";
+
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+
+import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 
 contract VaultMock is Vault {
     constructor(
@@ -36,18 +40,6 @@ contract VaultMock is Vault {
 
     function safeMintERC721(address poolToken, address to, uint256 tokenId, bytes memory data) external {
         _safeMintERC721(poolToken, msg.sender, to, tokenId, data);
-    }
-
-    function isETH(IAsset asset) external pure returns (bool) {
-        return AssetHelpersLib.isETH(asset);
-    }
-
-    function translateToIERC20(IAsset asset) external view returns (IERC20) {
-        return AssetHelpersLib.translateToIERC20(asset, WETH());
-    }
-
-    function translateToIERC20(IAsset[] memory assets) external view returns (IERC20[] memory) {
-        return AssetHelpersLib.translateToIERC20(assets, WETH());
     }
 
     function pause() external {
