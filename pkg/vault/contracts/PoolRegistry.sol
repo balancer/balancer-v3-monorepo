@@ -8,7 +8,7 @@ import "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.so
 
 /**
  * @dev Maintains a registry of pool addresses, which allows users to verify that a pool is valid and present in
- * the Vault. It also defines useful modifiers nd helper functions for ensuring correct behavior when working
+ * the Vault. It also defines useful modifiers and helper functions for ensuring correct behavior when working
  * with Pools.
  */
 abstract contract PoolRegistry is IVaultErrors {
@@ -18,7 +18,7 @@ abstract contract PoolRegistry is IVaultErrors {
     mapping(address => bool) private _isPoolRegistered;
 
     // Pool -> (token -> balance): Vault tokens allocated to this pool
-    mapping(address => EnumerableMap.IERC20ToUint256Map) private _poolTokenBalances;
+    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolTokenBalances;
 
     /**
      * @dev Emitted when a Pool is registered by calling `registerPool`.
