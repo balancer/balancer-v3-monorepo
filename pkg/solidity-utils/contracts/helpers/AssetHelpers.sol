@@ -49,19 +49,19 @@ library AssetHelpers {
         return IERC20(address(Asset.unwrap(asset)));
     }
 
-    /// @dev Returns tokens as an array IERC20[] memory
-    function asIERC20(address[] memory tokens) internal pure returns (IERC20[] memory assets) {
+    /// @dev Returns addresses as an array IERC20[] memory
+    function asIERC20(address[] memory addresses) internal pure returns (IERC20[] memory tokens) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            assets := tokens
+            tokens := addresses
         }
     }
 
     /// @dev Returns tokens as an array of address[] memory
-    function asAddress(IERC20[] memory tokens) internal pure returns (address[] memory assets) {
+    function asAddress(IERC20[] memory tokens) internal pure returns (address[] memory addresses) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            assets := tokens
+            addresses := tokens
         }
     }
 }
