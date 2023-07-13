@@ -29,4 +29,14 @@ interface IVaultErrors {
      * @dev Error indicating the sender is not the Vault (e.g., someone is trying to call a permissioned function).
      */
     error SenderIsNotVault(address sender);
+
+    /**
+     * @dev
+     */
+    error TokensMismatch(address tokenA, address tokenB);
+
+    /**
+     * @dev
+     */
+    error PoolHasNoTokens(address pool);
 }
