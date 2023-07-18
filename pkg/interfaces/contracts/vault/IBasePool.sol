@@ -31,15 +31,12 @@ interface IBasePool {
      * Contracts implementing this function should check that the caller is indeed the Vault before performing any
      * state-changing operations, such as minting pool shares.
      */
-    function onJoinPool(
-        address pool,
+    function onAddLiquidity(
         address sender,
         address recipient,
         uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) external returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts);
+    ) external returns (uint256[] memory amountsIn);
 
     /**
      * @dev Called by the Vault when a user calls `IVault.exitPool` to remove liquidity from this Pool. Returns how many

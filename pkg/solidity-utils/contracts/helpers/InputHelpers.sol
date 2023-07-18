@@ -15,7 +15,7 @@ library InputHelpers {
      */
     error UnsortedArray();
 
-    function ensureInputLengthMatch(address[] a, address[] b) internal pure {
+    function ensureInputLengthMatch(address[] memory a, address[] memory b) internal pure {
         if (a.length != b.length) {
             revert InputLengthMismatch();
         }

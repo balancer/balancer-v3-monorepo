@@ -39,4 +39,19 @@ interface IVaultErrors {
      * @dev
      */
     error PoolHasNoTokens(address pool);
+
+    /**
+     * @dev
+     */
+    error JoinAboveMax();
+
+    /**
+     * @dev
+     */
+    error InvalidEthInternalBalance();
+
+    /**
+     * @dev
+     */
+    error InsufficientEth();
 }

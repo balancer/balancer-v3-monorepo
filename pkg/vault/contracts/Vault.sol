@@ -3,6 +3,8 @@
 pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -22,8 +24,13 @@ import { PoolRegistry } from "./PoolRegistry.sol";
 contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, ReentrancyGuard, TemporarilyPausable {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
+    using AssetHelpers for Asset;
+    using AssetHelpers for Asset[];
+    using AssetHelpers for IERC20[];
     using AssetHelpers for address[];
     using ArrayHelpers for uint256[];
+    using Address for address payable;
+    using SafeERC20 for IERC20;
 
     // solhint-disable-next-line var-name-mixedcase
     IWETH private immutable _weth;
@@ -202,6 +209,62 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
                                     Pools
     *******************************************************************************/
 
+    /// @inheritdoc IVault
+    function addLiquidity(
+        address pool,
+        address sender,
+        address recipient,
+        JoinPoolRequest memory request
+    ) external payable whenNotPaused nonReentrant withRegisteredPool(pool) {
+        InputHelpers.ensureInputLengthMatch(request.assets.length, request.maxAmountsIn.length);
+
+        // We first check that the caller passed the Pool's registered tokens in the correct order
+        // and retrieve the current balance for each.
+        IERC20[] memory tokens = request.assets.toIERC20(_weth);
+        uint256[] memory balances = _validateTokensAndGetBalances(pool, tokens);
+
+        // The bulk of the work is done here: the corresponding Pool hook is called
+        // its final balances are computed, assets are transferred, and fees are paid.
+        uint256[] memory amountsIn = IBasePool(pool).onAddLiquidity(sender, recipient, balances, request.userData);
+
+        // The Vault ignores the `recipient` in joins and the `sender` in exits: it is up to the Pool to keep track of
+        // their participation.
+        // We need to track how much of the received ETH was used and wrapped into WETH to return any excess.
+        uint256 wrappedEth = 0;
+
+        uint256[] memory finalBalances = new uint256[](balances.length);
+        for (uint256 i = 0; i < request.assets.length; ++i) {
+            uint256 amountIn = amountsIn[i];
+            if (amountIn > amountsIn[i]) {
+                revert JoinAboveMax();
+            }
+
+            // Receive assets from the sender - possibly from Internal Balance.
+            Asset asset = request.assets[i];
+            _receiveAsset(asset, amountIn, sender);
+
+            if (asset.isETH()) {
+                wrappedEth = wrappedEth + amountIn;
+            }
+
+            balances[i] += amountIn;
+        }
+
+        // Handle any used and remaining ETH.
+        _handleRemainingEth(wrappedEth);
+
+        // All that remains is storing the new Pool balances.
+        _setPoolBalances(pool, finalBalances);
+
+        emit PoolBalanceChanged(
+            pool,
+            sender,
+            tokens,
+            // We can unsafely cast to int256 because balances are actually stored as uint112
+            amountsIn.unsafeCastToInt256(true)
+        );
+    }
+
     /**
      * @dev Sets the balances of a Pool's tokens to `balances`.
      *
@@ -226,66 +289,83 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     function _validateTokensAndGetBalances(address pool, IERC20[] memory expectedTokens)
         private
         view
-        returns (bytes32[] memory)
+        returns (uint256[] memory)
     {
-        (IERC20[] memory actualTokens, bytes32[] memory balances) = _getPoolTokens(pool);
-        actualTokens.length.ensureInputLengthMatch(expectedTokens.length);
+        (IERC20[] memory actualTokens, uint256[] memory balances) = _getPoolTokens(pool);
+        InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
         if (actualTokens.length == 0) {
             revert PoolHasNoTokens(pool);
         }
 
         for (uint256 i = 0; i < actualTokens.length; ++i) {
             if (actualTokens[i] != expectedTokens[i]) {
-                revert TokensMismatch(actualTokens[i], expectedTokens[i]);
+                revert TokensMismatch(address(actualTokens[i]), address(expectedTokens[i]));
             }
         }
 
         return balances;
     }
 
-    function joinPool(
-        bytes32 pool,
-        address sender,
-        address recipient,
-        JoinPoolRequest memory request
-    ) external payable whenNotPaused nonReentrant withRegisteredPool(pool) {
-        request.assets.ensureInputLengthMatch(request.limits.length);
+    /*******************************************************************************
+                                    Utils
+    *******************************************************************************/
 
-        // We first check that the caller passed the Pool's registered tokens in the correct order
-        // and retrieve the current balance for each.
-        IERC20[] memory tokens = request.assets.toIERC20();
-        bytes32[] memory balances = _validateTokensAndGetBalances(pool, tokens);
+    /**
+     * @dev Returns excess ETH back to the contract caller, assuming `amountUsed` has been spent. Reverts
+     * if the caller sent less ETH than `amountUsed`.
+     *
+     * Because the caller might not know exactly how much ETH a Vault action will require, they may send extra.
+     * Note that this excess value is returned *to the contract caller* (msg.sender). If caller and e.g. swap sender are
+     * not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
+     * returned ETH.
+     */
+    function _handleRemainingEth(uint256 amountUsed) internal {
+        if (msg.value < amountUsed) {
+            revert InsufficientEth();
+        }
 
-        // The bulk of the work is done here: the corresponding Pool hook is called
-        // its final balances are computed, assets are transferred, and fees are paid.
-        (uint256[] memory totalBalances, uint256 lastChangeBlock) = balances.totalsAndLastChangeBlock();
+        uint256 excess = msg.value - amountUsed;
+        if (excess > 0) {
+            payable(msg.sender).sendValue(excess);
+        }
+    }
 
-        (amountsInOrOut, dueProtocolFeeAmounts) = pool.onJoinPool(
-            pool,
-            sender,
-            recipient,
-            totalBalances,
-            lastChangeBlock,
-            _getProtocolSwapFeePercentage(),
-            change.userData
-        );
+    /**
+     * @dev Receives `amount` of `asset` from `sender`. If `fromInternalBalance` is true, it first withdraws as much
+     * as possible from Internal Balance, then transfers any remaining amount.
+     *
+     * If `asset` is ETH, `fromInternalBalance` must be false (as ETH cannot be held as internal balance), and the funds
+     * will be wrapped into WETH.
+     *
+     * WARNING: this function does not check that the contract caller has actually supplied any ETH - it is up to the
+     * caller of this function to check that this is true to prevent the Vault from using its own ETH (though the Vault
+     * typically doesn't hold any).
+     */
+    function _receiveAsset(
+        Asset asset,
+        uint256 amount,
+        address sender
+    ) internal {
+        if (amount == 0) {
+            return;
+        }
 
-        balances.length.ensureInputLengthMatch(amountsInOrOut.length, dueProtocolFeeAmounts.length);
+        if (asset.isETH()) {
+            // The ETH amount to receive is deposited into the WETH contract, which will in turn mint WETH for
+            // the Vault at a 1:1 ratio.
 
-        // The Vault ignores the `recipient` in joins and the `sender` in exits: it is up to the Pool to keep track of
-        // their participation.
-        finalBalances = _processJoinPoolTransfers(sender, change, balances, amountsInOrOut, dueProtocolFeeAmounts);
+            // A check for this condition is also introduced by the compiler, but this one provides a revert reason.
+            // Note we're checking for the Vault's total balance, *not* ETH sent in this transaction.
+            if (address(this).balance < amount) {
+                revert InsufficientEth();
+            }
+            _weth.deposit{ value: amount }();
+        } else {
+            IERC20 token = asset.asIERC20();
 
-        // All that remains is storing the new Pool balances.
-        _setPoolBalances(pool, finalBalances);
-
-        emit PoolBalanceChanged(
-            pool,
-            sender,
-            tokens,
-            // We can unsafely cast to int256 because balances are actually stored as uint112
-            _unsafeCastToInt256(amountsInOrOut, true),
-            paidProtocolSwapFeeAmounts
-        );
+            if (amount > 0) {
+                token.safeTransferFrom(sender, address(this), amount);
+            }
+        }
     }
 }

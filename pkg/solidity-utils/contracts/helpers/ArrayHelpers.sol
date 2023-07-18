@@ -20,7 +20,7 @@ library ArrayHelpers {
     function unsafeCastToInt256(
         uint256[] memory values,
         bool positive
-    ) private pure returns (int256[] memory signedValues) {
+    ) internal pure returns (int256[] memory signedValues) {
         signedValues = new int256[](values.length);
         for (uint256 i = 0; i < values.length; i++) {
             signedValues[i] = positive ? int256(values[i]) : -int256(values[i]);

@@ -162,8 +162,8 @@ interface IVault {
      *
      * Emits a `PoolBalanceChanged` event.
      */
-    function joinPool(
-        bytes32 poolId,
+    function addLiquidity(
+        address pool,
         address sender,
         address recipient,
         JoinPoolRequest memory request
@@ -180,10 +180,9 @@ interface IVault {
      * @dev Emitted when a user joins or exits a Pool by calling `joinPool` or `exitPool`, respectively.
      */
     event PoolBalanceChanged(
-        bytes32 indexed poolId,
+        address indexed poolId,
         address indexed liquidityProvider,
         IERC20[] tokens,
-        int256[] deltas,
-        uint256[] protocolFeeAmounts
+        int256[] deltas
     );
 }
