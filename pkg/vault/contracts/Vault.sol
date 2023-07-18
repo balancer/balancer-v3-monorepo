@@ -252,7 +252,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
                 wrappedEth = wrappedEth + amountIn;
             }
 
-            balances[i] += amountIn;
+            finalBalances[i] += amountIn;
         }
 
         // Handle any used and remaining ETH.

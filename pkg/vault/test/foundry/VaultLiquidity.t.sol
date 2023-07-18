@@ -31,6 +31,9 @@ contract VaultLiquidityTest is Test {
     ERC20TestToken DAI;
     address alice = vm.addr(1);
 
+    uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
+    uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
+
     function setUp() public {
         vault = new VaultMock(IWETH(address(0)), 30 days, 90 days);
         USDC = new ERC20TestToken("USDC", "USDC", 6);
@@ -44,8 +47,8 @@ contract VaultLiquidityTest is Test {
             true
         );
 
-        USDC.mint(alice, 1e3 * 1e6);
-        DAI.mint(alice, 1e3 * 1e18);
+        USDC.mint(alice, USDC_AMOUNT_IN);
+        DAI.mint(alice, DAI_AMOUNT_IN);
 
         vm.startPrank(alice);
 
@@ -55,6 +58,8 @@ contract VaultLiquidityTest is Test {
         vm.stopPrank();
 
         vm.label(alice, "alice");
+        vm.label(address(USDC), "USDC");
+        vm.label(address(DAI), "DAI");
     }
 
     function testAddLiquidity() public {
@@ -62,9 +67,22 @@ contract VaultLiquidityTest is Test {
         vault.addLiquidity(
             address(pool),
             [address(USDC), address(DAI)].toMemoryArray().asAsset(),
-            [uint256(1e3 * 1e6), uint256(1e3 * 1e18)].toMemoryArray(),
+            [uint256(USDC_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
             bytes("")
         );
         vm.stopPrank();
+
+        // asssets are transferred from Alice 
+        assertEq(USDC.balanceOf(alice), 0);
+        assertEq(DAI.balanceOf(alice), 0);
+
+        // Assets are stored in the Vault
+        assertEq(USDC.balanceOf(address(vault)), USDC_AMOUNT_IN);
+        assertEq(DAI.balanceOf(address(vault)), DAI_AMOUNT_IN);
+
+        // Assets are deposited to the pool
+        (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
+        assertEq(balances[0], USDC_AMOUNT_IN);
+        assertEq(balances[1], DAI_AMOUNT_IN);
     }
 }
