@@ -268,7 +268,6 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     /// @inheritdoc IVault
     function removeLiquidity(
         address pool,
-        address sender,
         Asset[] memory assets,
         uint256[] memory minAmountsOut,
         bytes memory userData
@@ -303,7 +302,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
 
         emit PoolBalanceChanged(
             pool,
-            sender,
+            msg.sender,
             tokens,
             // We can unsafely cast to int256 because balances are actually stored as uint112
             amountsOut.unsafeCastToInt256(false)

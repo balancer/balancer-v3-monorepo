@@ -85,4 +85,36 @@ contract VaultLiquidityTest is Test {
         assertEq(balances[0], USDC_AMOUNT_IN);
         assertEq(balances[1], DAI_AMOUNT_IN);
     }
+
+    function testRemoveLiquidity() public {
+        vm.startPrank(alice);
+        vault.addLiquidity(
+            address(pool),
+            [address(USDC), address(DAI)].toMemoryArray().asAsset(),
+            [uint256(USDC_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
+            bytes("")
+        );
+
+        vault.removeLiquidity(
+            address(pool),
+            [address(USDC), address(DAI)].toMemoryArray().asAsset(),
+            [uint256(USDC_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
+            bytes("")
+        );
+
+        vm.stopPrank();
+
+        // asssets are transferred from Alice 
+        assertEq(USDC.balanceOf(alice), USDC_AMOUNT_IN);
+        assertEq(DAI.balanceOf(alice), DAI_AMOUNT_IN);
+
+        // Assets are stored in the Vault
+        assertEq(USDC.balanceOf(address(vault)), 0);
+        assertEq(DAI.balanceOf(address(vault)), 0);
+
+        // Assets are deposited to the pool
+        (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
+        assertEq(balances[0], 0);
+        assertEq(balances[1], 0);
+    }
 }

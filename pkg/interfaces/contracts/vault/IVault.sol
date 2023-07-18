@@ -255,7 +255,6 @@ interface IVault {
      */
     function removeLiquidity(
         address pool,
-        address sender,
         Asset[] memory assets,
         uint256[] memory minAmountsOut,
         bytes memory userData
