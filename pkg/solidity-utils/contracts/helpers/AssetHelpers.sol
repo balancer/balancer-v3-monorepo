@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { Asset } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/Asset.sol";
 
-type Asset is address;
 
 library AssetHelpers {
     // Sentinel value used to indicate WETH with wrapping/unwrapping semantics. The zero address is a good choice for

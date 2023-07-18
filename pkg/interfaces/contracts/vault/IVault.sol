@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.4;
 
-import { Asset } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
+import { Asset } from "../solidity-utils/misc/Asset.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../solidity-utils/misc/IWETH.sol";
+import { IWETH } from "../solidity-utils/misc/IWETH.sol";
 
 /**
  * @dev Full external interface for the Vault core contract - no external or public methods exist in the contract that
@@ -72,39 +72,22 @@ interface IVault {
      * @dev Permissioned function to transfer an ERC20 Balancer Pool Token.
      * Can only be called from a registered pool.
      */
-    function transferERC20(
-        address owner,
-        address to,
-        uint256 amount
-    ) external returns (bool);
+    function transferERC20(address owner, address to, uint256 amount) external returns (bool);
 
     /**
      * @dev Permissioned function to transferFrom an ERC20 Balancer pool token.
      * Can only be called from a registered pool.
      */
-    function transferFromERC20(
-        address spender,
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool);
+    function transferFromERC20(address spender, address from, address to, uint256 amount) external returns (bool);
 
     /// @dev Returns an owner's ERC20 BPT allowance for a given spender.
-    function allowanceOfERC20(
-        address poolToken,
-        address owner,
-        address spender
-    ) external view returns (uint256);
+    function allowanceOfERC20(address poolToken, address owner, address spender) external view returns (uint256);
 
     /**
      * @dev Permissioned function to set a sender's ERC20 BPT allowance for a given spender. Can only be called
      * from a registered pool.
      */
-    function approveERC20(
-        address sender,
-        address spender,
-        uint256 amount
-    ) external returns (bool);
+    function approveERC20(address sender, address spender, uint256 amount) external returns (bool);
 
     /*******************************************************************************
                                ERC721 Balancer Pool Tokens 
@@ -120,41 +103,19 @@ interface IVault {
     function getApprovedERC721(address token, uint256 tokenId) external view returns (address);
 
     /// @dev See {IERC721-isApprovedForAll}.
-    function isApprovedForAllERC721(
-        address token,
-        address owner,
-        address operator
-    ) external view returns (bool);
+    function isApprovedForAllERC721(address token, address owner, address operator) external view returns (bool);
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-approve}.
-    function approveERC721(
-        address sender,
-        address to,
-        uint256 tokenId
-    ) external;
+    function approveERC721(address sender, address to, uint256 tokenId) external;
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-setApprovalForAll}.
-    function setApprovalForAllERC721(
-        address sender,
-        address operator,
-        bool approved
-    ) external;
+    function setApprovalForAllERC721(address sender, address operator, bool approved) external;
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-transferFrom}.
-    function transferFromERC721(
-        address sender,
-        address from,
-        address to,
-        uint256 tokenId
-    ) external;
+    function transferFromERC721(address sender, address from, address to, uint256 tokenId) external;
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-safeTransferFrom}.
-    function safeTransferFromERC721(
-        address sender,
-        address from,
-        address to,
-        uint256 tokenId
-    ) external;
+    function safeTransferFromERC721(address sender, address from, address to, uint256 tokenId) external;
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-safeTransferFrom}.
     function safeTransferFromERC721(
