@@ -13,6 +13,13 @@ library ArrayHelpers {
         return ret;
     }
 
+    function toMemoryArray(uint256[2] memory array) internal pure returns (uint256[] memory) {
+        uint256[] memory ret = new uint256[](2);
+        ret[0] = array[0];
+        ret[1] = array[1];
+        return ret;
+    }
+
     /**
      * @dev Casts an array of uint256 to int256, setting the sign of the result according to the `positive` flag,
      * without checking whether the values fit in the signed 256 bit range.

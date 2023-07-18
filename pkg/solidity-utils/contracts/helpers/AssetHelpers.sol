@@ -72,4 +72,12 @@ library AssetHelpers {
             addresses := tokens
         }
     }
+
+    /// @dev Returns addresses as an array of Asset[] memory
+    function asAsset(address[] memory addresses) internal pure returns (Asset[] memory assets) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            assets := addresses
+        }
+    }
 }

@@ -212,36 +212,41 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     /// @inheritdoc IVault
     function addLiquidity(
         address pool,
-        address sender,
-        address recipient,
-        JoinPoolRequest memory request
+        Asset[] memory assets,
+        uint256[] memory maxAmountsIn,
+        bytes memory userData
     ) external payable whenNotPaused nonReentrant withRegisteredPool(pool) {
-        InputHelpers.ensureInputLengthMatch(request.assets.length, request.maxAmountsIn.length);
+        InputHelpers.ensureInputLengthMatch(assets.length, maxAmountsIn.length);
 
         // We first check that the caller passed the Pool's registered tokens in the correct order
         // and retrieve the current balance for each.
-        IERC20[] memory tokens = request.assets.toIERC20(_weth);
+        IERC20[] memory tokens = assets.toIERC20(_weth);
         uint256[] memory balances = _validateTokensAndGetBalances(pool, tokens);
 
         // The bulk of the work is done here: the corresponding Pool hook is called
         // its final balances are computed, assets are transferred, and fees are paid.
-        uint256[] memory amountsIn = IBasePool(pool).onAddLiquidity(sender, recipient, balances, request.userData);
+        uint256[] memory amountsIn = IBasePool(pool).onAddLiquidity(
+            msg.sender,
+            balances,
+            maxAmountsIn,
+            userData
+        );
 
-        // The Vault ignores the `recipient` in joins and the `sender` in exits: it is up to the Pool to keep track of
+        // The Vault ignores the `sender`: it is up to the Pool to keep track of
         // their participation.
         // We need to track how much of the received ETH was used and wrapped into WETH to return any excess.
         uint256 wrappedEth = 0;
 
         uint256[] memory finalBalances = new uint256[](balances.length);
-        for (uint256 i = 0; i < request.assets.length; ++i) {
+        for (uint256 i = 0; i < assets.length; ++i) {
             uint256 amountIn = amountsIn[i];
             if (amountIn > amountsIn[i]) {
                 revert JoinAboveMax();
             }
 
             // Receive assets from the sender - possibly from Internal Balance.
-            Asset asset = request.assets[i];
-            _receiveAsset(asset, amountIn, sender);
+            Asset asset = assets[i];
+            _receiveAsset(asset, amountIn, msg.sender);
 
             if (asset.isETH()) {
                 wrappedEth = wrappedEth + amountIn;
@@ -258,7 +263,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
 
         emit PoolBalanceChanged(
             pool,
-            sender,
+            msg.sender,
             tokens,
             // We can unsafely cast to int256 because balances are actually stored as uint112
             amountsIn.unsafeCastToInt256(true)
@@ -266,17 +271,17 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     }
 
     /**
-     * @dev Sets the balances of a Pool's tokens to `balances`.
+     * @dev Sets the balances of a Pool's tokens to `newBalances`.
      *
-     * WARNING: this assumes `balances` has the same length and order as the Pool's tokens.
+     * WARNING: this assumes `newBalances` has the same length and order as the Pool's tokens.
      */
-    function _setPoolBalances(address pool, uint256[] memory balances) internal {
+    function _setPoolBalances(address pool, uint256[] memory newBalances) internal {
         EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolTokenBalances[pool];
 
-        for (uint256 i = 0; i < balances.length; ++i) {
-            // Since we assume all balances are properly ordered, we can simply use `unchecked_setAt` to avoid one less
-            // storage read per token.
-            poolBalances.unchecked_setAt(i, balances[i]);
+        for (uint256 i = 0; i < newBalances.length; ++i) {
+            // Since we assume all newBalances are properly ordered, we can simply use `unchecked_setAt`
+            // to avoid one less storage read per token.
+            poolBalances.unchecked_setAt(i, newBalances[i]);
         }
     }
 

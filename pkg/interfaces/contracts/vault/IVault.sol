@@ -164,17 +164,10 @@ interface IVault {
      */
     function addLiquidity(
         address pool,
-        address sender,
-        address recipient,
-        JoinPoolRequest memory request
+        Asset[] memory assets,
+        uint256[] memory maxAmountsIn,
+        bytes memory userData
     ) external payable;
-
-    struct JoinPoolRequest {
-        Asset[] assets;
-        uint256[] maxAmountsIn;
-        bytes userData;
-        bool fromInternalBalance;
-    }
 
     /**
      * @dev Emitted when a user joins or exits a Pool by calling `joinPool` or `exitPool`, respectively.

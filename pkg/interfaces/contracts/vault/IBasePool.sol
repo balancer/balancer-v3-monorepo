@@ -10,6 +10,22 @@ import "./IVault.sol";
  * either IGeneralPool or IMinimalSwapInfoPool
  */
 interface IBasePool {
+
+    event OnAddLiquidityCalled(
+        address sender,
+        uint256[] currentBalances,
+        uint256[] maxAmountsIn,
+        bytes userData
+    );
+
+    event OnExitPoolCalled(
+        address sender,
+        uint256[] currentBalances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        bytes userData
+    );
+
     /**
      * @dev Called by the Vault when a user calls `IVault.joinPool` to add liquidity to this Pool. Returns how many of
      * each registered token the user should provide, as well as the amount of protocol fees the Pool owes to the Vault.
@@ -33,8 +49,8 @@ interface IBasePool {
      */
     function onAddLiquidity(
         address sender,
-        address recipient,
-        uint256[] memory balances,
+        uint256[] memory currentBalances,
+        uint256[] memory maxAmountsIn,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn);
 
@@ -61,44 +77,10 @@ interface IBasePool {
      * state-changing operations, such as burning pool shares.
      */
     function onExitPool(
-        address pool,
         address sender,
-        address recipient,
         uint256[] memory balances,
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts);
-
-    /**
-     * @dev Returns the current swap fee percentage as a 18 decimal fixed point number, so e.g. 1e17 corresponds to a
-     * 10% swap fee.
-     */
-    function getSwapFeePercentage() external view returns (uint256);
-
-    /**
-     * @dev Returns the scaling factors of each of the Pool's tokens. This is an implementation detail that is typically
-     * not relevant for outside parties, but which might be useful for some types of Pools.
-     */
-    function getScalingFactors() external view returns (uint256[] memory);
-
-    function queryJoin(
-        address pool,
-        address sender,
-        address recipient,
-        uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
-        bytes memory userData
-    ) external returns (uint256 bptOut, uint256[] memory amountsIn);
-
-    function queryExit(
-        address pool,
-        address sender,
-        address recipient,
-        uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
-        bytes memory userData
-    ) external returns (uint256 bptIn, uint256[] memory amountsOut);
 }
