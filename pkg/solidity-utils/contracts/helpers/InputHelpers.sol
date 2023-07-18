@@ -6,12 +6,12 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 library InputHelpers {
     /**
-     * @dev 
+     * @dev
      */
     error InputLengthMismatch();
 
     /**
-     * @dev 
+     * @dev
      */
     error UnsortedArray();
 
@@ -27,11 +27,7 @@ library InputHelpers {
         }
     }
 
-    function ensureInputLengthMatch(
-        uint256 a,
-        uint256 b,
-        uint256 c
-    ) internal pure {
+    function ensureInputLengthMatch(uint256 a, uint256 b, uint256 c) internal pure {
         if (a != b || b != c) {
             revert InputLengthMismatch();
         }
