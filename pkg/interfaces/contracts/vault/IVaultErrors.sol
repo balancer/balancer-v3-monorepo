@@ -53,5 +53,10 @@ interface IVaultErrors {
     /**
      * @dev
      */
+    error ExitBelowMin();
+
+    /**
+     * @dev
+     */
     error InsufficientEth();
 }

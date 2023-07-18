@@ -25,8 +25,6 @@ contract ERC20PoolMock is ERC20BalancerPoolToken, IBasePool {
         }
     }
 
-
-
     function onAddLiquidity(
         address sender,
         uint256[] memory currentBalances,
@@ -38,21 +36,14 @@ contract ERC20PoolMock is ERC20BalancerPoolToken, IBasePool {
         return maxAmountsIn;
     }
 
-    function onExitPool(
+    function onRemoveLiquidity(
         address sender,
         uint256[] memory currentBalances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
+        uint256[] memory minAmountsOut,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
-        emit OnExitPoolCalled(
-            sender,
-            currentBalances,
-            lastChangeBlock,
-            protocolSwapFeePercentage,
-            userData
-        );
+    ) external returns (uint256[] memory amountsOut) {
+        emit OnExitPoolCalled(sender, currentBalances, userData);
 
-        (amountsOut, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
+        return minAmountsOut;
     }
 }

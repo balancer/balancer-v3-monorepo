@@ -72,22 +72,39 @@ interface IVault {
      * @dev Permissioned function to transfer an ERC20 Balancer Pool Token.
      * Can only be called from a registered pool.
      */
-    function transferERC20(address owner, address to, uint256 amount) external returns (bool);
+    function transferERC20(
+        address owner,
+        address to,
+        uint256 amount
+    ) external returns (bool);
 
     /**
      * @dev Permissioned function to transferFrom an ERC20 Balancer pool token.
      * Can only be called from a registered pool.
      */
-    function transferFromERC20(address spender, address from, address to, uint256 amount) external returns (bool);
+    function transferFromERC20(
+        address spender,
+        address from,
+        address to,
+        uint256 amount
+    ) external returns (bool);
 
     /// @dev Returns an owner's ERC20 BPT allowance for a given spender.
-    function allowanceOfERC20(address poolToken, address owner, address spender) external view returns (uint256);
+    function allowanceOfERC20(
+        address poolToken,
+        address owner,
+        address spender
+    ) external view returns (uint256);
 
     /**
      * @dev Permissioned function to set a sender's ERC20 BPT allowance for a given spender. Can only be called
      * from a registered pool.
      */
-    function approveERC20(address sender, address spender, uint256 amount) external returns (bool);
+    function approveERC20(
+        address sender,
+        address spender,
+        uint256 amount
+    ) external returns (bool);
 
     /*******************************************************************************
                                ERC721 Balancer Pool Tokens 
@@ -103,19 +120,41 @@ interface IVault {
     function getApprovedERC721(address token, uint256 tokenId) external view returns (address);
 
     /// @dev See {IERC721-isApprovedForAll}.
-    function isApprovedForAllERC721(address token, address owner, address operator) external view returns (bool);
+    function isApprovedForAllERC721(
+        address token,
+        address owner,
+        address operator
+    ) external view returns (bool);
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-approve}.
-    function approveERC721(address sender, address to, uint256 tokenId) external;
+    function approveERC721(
+        address sender,
+        address to,
+        uint256 tokenId
+    ) external;
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-setApprovalForAll}.
-    function setApprovalForAllERC721(address sender, address operator, bool approved) external;
+    function setApprovalForAllERC721(
+        address sender,
+        address operator,
+        bool approved
+    ) external;
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-transferFrom}.
-    function transferFromERC721(address sender, address from, address to, uint256 tokenId) external;
+    function transferFromERC721(
+        address sender,
+        address from,
+        address to,
+        uint256 tokenId
+    ) external;
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-safeTransferFrom}.
-    function safeTransferFromERC721(address sender, address from, address to, uint256 tokenId) external;
+    function safeTransferFromERC721(
+        address sender,
+        address from,
+        address to,
+        uint256 tokenId
+    ) external;
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-safeTransferFrom}.
     function safeTransferFromERC721(
@@ -178,4 +217,47 @@ interface IVault {
         IERC20[] tokens,
         int256[] deltas
     );
+
+    /**
+     * @dev Called by users to exit a Pool, which transfers tokens from the Pool's balance to `recipient`. This will
+     * trigger custom Pool behavior, which will typically ask for something in return from `sender` - often tokenized
+     * Pool shares. The amount of tokens that can be withdrawn is limited by the Pool's `cash` balance (see
+     * `getPoolTokenInfo`).
+     *
+     * If the caller is not `sender`, it must be an authorized relayer for them.
+     *
+     * The `tokens` and `minAmountsOut` arrays must have the same length, and each entry in these indicates the minimum
+     * token amount to receive for each token contract. The amounts to send are decided by the Pool and not the Vault:
+     * it just enforces these minimums.
+     *
+     * If exiting a Pool that holds WETH, it is possible to receive ETH directly: the Vault will do the unwrapping. To
+     * enable this mechanism, the IAsset sentinel value (the zero address) must be passed in the `assets` array instead
+     * of the WETH address. Note that it is not possible to combine ETH and WETH in the same exit.
+     *
+     * `assets` must have the same length and order as the array returned by `getPoolTokens`. This prevents issues when
+     * interacting with Pools that register and deregister tokens frequently. If receiving ETH however, the array must
+     * be sorted *before* replacing the WETH address with the ETH sentinel value (the zero address), which means the
+     * final `assets` array might not be sorted. Pools with no registered tokens cannot be exited.
+     *
+     * If `toInternalBalance` is true, the tokens will be deposited to `recipient`'s Internal Balance. Otherwise,
+     * an ERC20 transfer will be performed. Note that ETH cannot be deposited to Internal Balance: attempting to
+     * do so will trigger a revert.
+     *
+     * `minAmountsOut` is the minimum amount of tokens the user expects to get out of the Pool, for each token in the
+     * `tokens` array. This array must match the Pool's registered tokens.
+     *
+     * This causes the Vault to call the `IBasePool.onExitPool` hook on the Pool's contract, where Pools implement
+     * their own custom logic. This typically requires additional information from the user (such as the expected number
+     * of Pool shares to return). This can be encoded in the `userData` argument, which is ignored by the Vault and
+     * passed directly to the Pool's contract.
+     *
+     * Emits a `PoolBalanceChanged` event.
+     */
+    function removeLiquidity(
+        address pool,
+        address sender,
+        Asset[] memory assets,
+        uint256[] memory minAmountsOut,
+        bytes memory userData
+    ) external;
 }

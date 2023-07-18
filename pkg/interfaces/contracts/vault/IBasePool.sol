@@ -21,8 +21,6 @@ interface IBasePool {
     event OnExitPoolCalled(
         address sender,
         uint256[] currentBalances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
         bytes userData
     );
 
@@ -76,11 +74,10 @@ interface IBasePool {
      * Contracts implementing this function should check that the caller is indeed the Vault before performing any
      * state-changing operations, such as burning pool shares.
      */
-    function onExitPool(
+    function onRemoveLiquidity(
         address sender,
-        uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
+        uint256[] memory currentBalances,
+        uint256[] memory minAmountsOut,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts);
+    ) external returns (uint256[] memory amountsOut);
 }

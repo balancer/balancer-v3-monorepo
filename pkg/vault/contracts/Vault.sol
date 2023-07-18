@@ -225,12 +225,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
 
         // The bulk of the work is done here: the corresponding Pool hook is called
         // its final balances are computed, assets are transferred, and fees are paid.
-        uint256[] memory amountsIn = IBasePool(pool).onAddLiquidity(
-            msg.sender,
-            balances,
-            maxAmountsIn,
-            userData
-        );
+        uint256[] memory amountsIn = IBasePool(pool).onAddLiquidity(msg.sender, balances, maxAmountsIn, userData);
 
         // The Vault ignores the `sender`: it is up to the Pool to keep track of
         // their participation.
@@ -267,6 +262,51 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
             tokens,
             // We can unsafely cast to int256 because balances are actually stored as uint112
             amountsIn.unsafeCastToInt256(true)
+        );
+    }
+
+    /// @inheritdoc IVault
+    function removeLiquidity(
+        address pool,
+        address sender,
+        Asset[] memory assets,
+        uint256[] memory minAmountsOut,
+        bytes memory userData
+    ) external whenNotPaused nonReentrant withRegisteredPool(pool) {
+        InputHelpers.ensureInputLengthMatch(assets.length, minAmountsOut.length);
+
+        // We first check that the caller passed the Pool's registered tokens in the correct order, and retrieve the
+        // current balance for each.
+        IERC20[] memory tokens = assets.toIERC20(_weth);
+        uint256[] memory balances = _validateTokensAndGetBalances(pool, tokens);
+
+        // The bulk of the work is done here: the corresponding Pool hook is called, its final balances are computed,
+        // assets are transferred, and fees are paid.
+        uint256[] memory amountsOut = IBasePool(pool).onRemoveLiquidity(msg.sender, balances, minAmountsOut, userData);
+
+        uint256[] memory finalBalances = new uint256[](balances.length);
+        for (uint256 i = 0; i < assets.length; ++i) {
+            uint256 amountOut = amountsOut[i];
+            if (amountOut < minAmountsOut[i]) {
+                revert ExitBelowMin();
+            }
+
+            // Send tokens to the recipient
+            _sendAsset(assets[i], amountOut, payable(msg.sender));
+
+            // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
+            finalBalances[i] = balances[i] - amountOut;
+        }
+
+        // All that remains is storing the new Pool balances.
+        _setPoolBalances(pool, finalBalances);
+
+        emit PoolBalanceChanged(
+            pool,
+            sender,
+            tokens,
+            // We can unsafely cast to int256 because balances are actually stored as uint112
+            amountsOut.unsafeCastToInt256(false)
         );
     }
 
@@ -371,6 +411,35 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
             if (amount > 0) {
                 token.safeTransferFrom(sender, address(this), amount);
             }
+        }
+    }
+
+    /**
+     * @dev Sends `amount` of `asset` to `recipient`. If `toInternalBalance` is true, the asset is deposited as Internal
+     * Balance instead of being transferred.
+     *
+     * If `asset` is ETH, `toInternalBalance` must be false (as ETH cannot be held as internal balance), and the funds
+     * are instead sent directly after unwrapping WETH.
+     */
+    function _sendAsset(
+        Asset asset,
+        uint256 amount,
+        address payable recipient
+    ) internal {
+        if (amount == 0) {
+            return;
+        }
+
+        if (asset.isETH()) {
+            // First, the Vault withdraws deposited ETH from the WETH contract, by burning the same amount of WETH
+            // from the Vault. This receipt will be handled by the Vault's `receive`.
+            _weth.withdraw(amount);
+
+            // Then, the withdrawn ETH is sent to the recipient.
+            recipient.sendValue(amount);
+        } else {
+            IERC20 token = asset.asIERC20();
+            token.safeTransfer(recipient, amount);
         }
     }
 }
