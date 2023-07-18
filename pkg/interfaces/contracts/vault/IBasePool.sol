@@ -12,7 +12,7 @@ import "./IVault.sol";
 interface IBasePool {
     event OnAddLiquidityCalled(address sender, uint256[] currentBalances, uint256[] maxAmountsIn, bytes userData);
 
-    event OnExitPoolCalled(address sender, uint256[] currentBalances, bytes userData);
+    event OnRemoveLiquidityCalled(address sender, uint256[] currentBalances, bytes userData);
 
     /**
      * @dev Called by the Vault when a user calls `IVault.joinPool` to add liquidity to this Pool. Returns how many of
