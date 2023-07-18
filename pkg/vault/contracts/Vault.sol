@@ -58,11 +58,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     }
 
     /// @inheritdoc IVault
-    function allowanceOfERC20(
-        address poolToken,
-        address owner,
-        address spender
-    ) external view returns (uint256) {
+    function allowanceOfERC20(address poolToken, address owner, address spender) external view returns (uint256) {
         return _allowanceOfERC20(poolToken, owner, spender);
     }
 
@@ -118,20 +114,12 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     }
 
     /// @inheritdoc IVault
-    function isApprovedForAllERC721(
-        address token,
-        address owner,
-        address operator
-    ) external view returns (bool) {
+    function isApprovedForAllERC721(address token, address owner, address operator) external view returns (bool) {
         return _isApprovedForAllERC721(token, owner, operator);
     }
 
     /// @inheritdoc IVault
-    function approveERC721(
-        address sender,
-        address to,
-        uint256 tokenId
-    ) external withRegisteredPool(msg.sender) {
+    function approveERC721(address sender, address to, uint256 tokenId) external withRegisteredPool(msg.sender) {
         _approveERC721(msg.sender, sender, to, tokenId);
     }
 
@@ -190,12 +178,9 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     }
 
     /// @inheritdoc IVault
-    function getPoolTokens(address pool)
-        external
-        view
-        withRegisteredPool(pool)
-        returns (IERC20[] memory tokens, uint256[] memory balances)
-    {
+    function getPoolTokens(
+        address pool
+    ) external view withRegisteredPool(pool) returns (IERC20[] memory tokens, uint256[] memory balances) {
         return _getPoolTokens(pool);
     }
 
@@ -330,11 +315,10 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
      * `expectedTokens` must exactly equal the token array returned by `getPoolTokens`: both arrays must have the same
      * length, elements and order. Additionally, the Pool must have at least one registered token.
      */
-    function _validateTokensAndGetBalances(address pool, IERC20[] memory expectedTokens)
-        private
-        view
-        returns (uint256[] memory)
-    {
+    function _validateTokensAndGetBalances(
+        address pool,
+        IERC20[] memory expectedTokens
+    ) private view returns (uint256[] memory) {
         (IERC20[] memory actualTokens, uint256[] memory balances) = _getPoolTokens(pool);
         InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
         if (actualTokens.length == 0) {
@@ -385,11 +369,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
      * caller of this function to check that this is true to prevent the Vault from using its own ETH (though the Vault
      * typically doesn't hold any).
      */
-    function _receiveAsset(
-        Asset asset,
-        uint256 amount,
-        address sender
-    ) internal {
+    function _receiveAsset(Asset asset, uint256 amount, address sender) internal {
         if (amount == 0) {
             return;
         }
@@ -420,11 +400,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
      * If `asset` is ETH, `toInternalBalance` must be false (as ETH cannot be held as internal balance), and the funds
      * are instead sent directly after unwrapping WETH.
      */
-    function _sendAsset(
-        Asset asset,
-        uint256 amount,
-        address payable recipient
-    ) internal {
+    function _sendAsset(Asset asset, uint256 amount, address payable recipient) internal {
         if (amount == 0) {
             return;
         }
