@@ -72,22 +72,39 @@ interface IVault {
      * @dev Permissioned function to transfer an ERC20 Balancer Pool Token.
      * Can only be called from a registered pool.
      */
-    function transferERC20(address owner, address to, uint256 amount) external returns (bool);
+    function transferERC20(
+        address owner,
+        address to,
+        uint256 amount
+    ) external returns (bool);
 
     /**
      * @dev Permissioned function to transferFrom an ERC20 Balancer pool token.
      * Can only be called from a registered pool.
      */
-    function transferFromERC20(address spender, address from, address to, uint256 amount) external returns (bool);
+    function transferFromERC20(
+        address spender,
+        address from,
+        address to,
+        uint256 amount
+    ) external returns (bool);
 
     /// @dev Returns an owner's ERC20 BPT allowance for a given spender.
-    function allowanceOfERC20(address poolToken, address owner, address spender) external view returns (uint256);
+    function allowanceOfERC20(
+        address poolToken,
+        address owner,
+        address spender
+    ) external view returns (uint256);
 
     /**
      * @dev Permissioned function to set a sender's ERC20 BPT allowance for a given spender. Can only be called
      * from a registered pool.
      */
-    function approveERC20(address sender, address spender, uint256 amount) external returns (bool);
+    function approveERC20(
+        address sender,
+        address spender,
+        uint256 amount
+    ) external returns (bool);
 
     /*******************************************************************************
                                ERC721 Balancer Pool Tokens 
@@ -103,19 +120,41 @@ interface IVault {
     function getApprovedERC721(address token, uint256 tokenId) external view returns (address);
 
     /// @dev See {IERC721-isApprovedForAll}.
-    function isApprovedForAllERC721(address token, address owner, address operator) external view returns (bool);
+    function isApprovedForAllERC721(
+        address token,
+        address owner,
+        address operator
+    ) external view returns (bool);
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-approve}.
-    function approveERC721(address sender, address to, uint256 tokenId) external;
+    function approveERC721(
+        address sender,
+        address to,
+        uint256 tokenId
+    ) external;
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-setApprovalForAll}.
-    function setApprovalForAllERC721(address sender, address operator, bool approved) external;
+    function setApprovalForAllERC721(
+        address sender,
+        address operator,
+        bool approved
+    ) external;
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-transferFrom}.
-    function transferFromERC721(address sender, address from, address to, uint256 tokenId) external;
+    function transferFromERC721(
+        address sender,
+        address from,
+        address to,
+        uint256 tokenId
+    ) external;
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-safeTransferFrom}.
-    function safeTransferFromERC721(address sender, address from, address to, uint256 tokenId) external;
+    function safeTransferFromERC721(
+        address sender,
+        address from,
+        address to,
+        uint256 tokenId
+    ) external;
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-safeTransferFrom}.
     function safeTransferFromERC721(
@@ -125,6 +164,103 @@ interface IVault {
         uint256 tokenId,
         bytes memory data
     ) external;
+
+    /*******************************************************************************
+                                          Swaps
+    *******************************************************************************/
+
+    /// Swaps
+    ///
+    /// Users can swap tokens with Pools by calling the `swap` and `batchSwap` functions. To do this,
+    /// they need not trust Pool contracts in any way: all security checks are made by the Vault. They must however be
+    /// aware of the Pools' pricing algorithms in order to estimate the prices Pools will quote.
+    ///
+    /// The `swap` function executes a single swap, while `batchSwap` can perform multiple swaps in sequence.
+    /// In each individual swap, tokens of one kind are sent from the sender to the Pool (this is the 'token in'),
+    /// and tokens of another kind are sent from the Pool to the recipient in exchange (this is the 'token out').
+    /// More complex swaps, such as one token in to multiple tokens out can be achieved by batching together
+    /// individual swaps.
+    ///
+    /// There are two swap kinds:
+    ///  - 'given in' swaps, where the amount of tokens in (sent to the Pool) is known, and the Pool determines (via the
+    /// `onSwap` hook) the amount of tokens out (to send to the recipient).
+    ///  - 'given out' swaps, where the amount of tokens out (received from the Pool) is known, and the Pool determines
+    /// (via the `onSwap` hook) the amount of tokens in (to receive from the sender).
+    ///
+    /// Additionally, it is possible to chain swaps using a placeholder input amount, which the Vault replaces with
+    /// the calculated output of the previous swap. If the previous swap was 'given in', this will be the calculated
+    /// tokenOut amount. If the previous swap was 'given out', it will use the calculated tokenIn amount. These extended
+    /// swaps are known as 'multihop' swaps, since they 'hop' through a number of intermediate tokens before arriving at
+    /// the final intended token.
+    ///
+    /// In all cases, tokens are only transferred in and out of the Vault (or withdrawn from and deposited into Internal
+    /// Balance) after all individual swaps have been completed, and the net token balance change computed. This makes
+    /// certain swap patterns, such as multihops, or swaps that interact with the same token pair in multiple Pools, cost
+    /// much less gas than they would otherwise.
+    ///
+    /// It also means that under certain conditions it is possible to perform arbitrage by swapping with multiple
+    /// Pools in a way that results in net token movement out of the Vault (profit), with no tokens being sent in (only
+    /// updating the Pool's internal accounting).
+    ///
+    /// To protect users from front-running or the market changing rapidly, they supply a list of 'limits' for each token
+    /// involved in the swap, where either the maximum number of tokens to send (by passing a positive value) or the
+    /// minimum amount of tokens to receive (by passing a negative value) is specified.
+    ///
+    /// Additionally, a 'deadline' timestamp can also be provided, forcing the swap to fail if it occurs after
+    /// this point in time (e.g. if the transaction failed to be included in a block promptly).
+    ///
+    /// If interacting with Pools that hold WETH, it is possible to both send and receive ETH directly: the Vault will do
+    /// the wrapping and unwrapping. To enable this mechanism, the IAsset sentinel value (the zero address) must be
+    /// passed in the `assets` array instead of the WETH address. Note that it is possible to combine ETH and WETH in the
+    /// same swap. Any excess ETH will be sent back to the caller (not the sender, which is relevant for relayers).
+    ///
+    /// Finally, Internal Balance can be used when either sending or receiving tokens.
+
+
+    /**
+     * @dev Performs a 'given in' swap with a single Pool.
+     *
+     * It returns the amount of tokens taken from the Pool, which must be greater than or equal to `minAmountOut`.
+     *
+     * Emits a `Swap` event.
+     */
+    function swapExactTokenForToken(
+        address pool,
+        Asset assetIn,
+        Asset assetOut,
+        uint256 amountIn,
+        uint256 minAmountOut,
+        uint256 deadline,
+        bytes memory userData
+    ) external payable returns (uint256 amountOut);
+
+    /**
+     * @dev Performs a 'given in' swap with a single Pool.
+     *
+     * It returns the amount of tokens sent to the Pool, which must be less than or equal to `maxAmountIn`.
+     *
+     * Emits a `Swap` event.
+     */
+    function swapTokenForExactToken(
+        address pool,
+        Asset tokenIn,
+        Asset tokenOut,
+        uint256 amountOut,
+        uint256 maxAmountIn,
+        uint256 deadline,
+        bytes memory userData
+    ) external payable returns (uint256 amountIn);
+
+    /**
+     * @dev Emitted for each individual swap performed by `swap` or `batchSwap`.
+     */
+    event Swap(
+        address indexed pool,
+        IERC20 indexed tokenIn,
+        IERC20 indexed tokenOut,
+        uint256 amountIn,
+        uint256 amountOut
+    );
 
     /*******************************************************************************
                                     Add/Remove Liquidity
@@ -170,16 +306,6 @@ interface IVault {
     ) external payable;
 
     /**
-     * @dev Emitted when a user joins or exits a Pool by calling `joinPool` or `exitPool`, respectively.
-     */
-    event PoolBalanceChanged(
-        address indexed poolId,
-        address indexed liquidityProvider,
-        IERC20[] tokens,
-        int256[] deltas
-    );
-
-    /**
      * @dev Called by users to exit a Pool, which transfers tokens from the Pool's balance to `recipient`. This will
      * trigger custom Pool behavior, which will typically ask for something in return from `sender` - often tokenized
      * Pool shares. The amount of tokens that can be withdrawn is limited by the Pool's `cash` balance (see
@@ -220,4 +346,14 @@ interface IVault {
         uint256[] memory minAmountsOut,
         bytes memory userData
     ) external;
+
+    /**
+     * @dev Emitted when a user joins or exits a Pool by calling `joinPool` or `exitPool`, respectively.
+     */
+    event PoolBalanceChanged(
+        address indexed poolId,
+        address indexed liquidityProvider,
+        IERC20[] tokens,
+        int256[] deltas
+    );
 }
