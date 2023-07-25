@@ -387,9 +387,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
         } else {
             IERC20 token = asset.asIERC20();
 
-            if (amount > 0) {
-                token.safeTransferFrom(sender, address(this), amount);
-            }
+            token.safeTransferFrom(sender, address(this), amount);
         }
     }
 
