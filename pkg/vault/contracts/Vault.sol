@@ -164,6 +164,107 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     }
 
     /*******************************************************************************
+                                          Swaps
+    *******************************************************************************/
+
+    /// @inheritdoc IVault
+    function swap(
+        IVault.SingleSwap calldata params
+    ) external payable nonReentrant whenNotPaused returns (uint256 amountOut) {
+        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp > params.deadline) {
+            revert SwapDeadline();
+        }
+
+        if (params.amountGiven == 0) {
+            revert AmountInZero();
+        }
+
+        IERC20 tokenIn = params.assetIn.toIERC20(_weth);
+        IERC20 tokenOut = params.assetOut.toIERC20(_weth);
+        if (tokenIn == tokenOut) {
+            revert CannotSwapSameToken();
+        }
+
+        uint256 tokenInBalance;
+        uint256 tokenOutBalance;
+
+        // We access both token indexes without checking existence, because we will do it manually immediately after.
+        EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolTokenBalances[params.pool];
+        uint256 indexIn = poolBalances.unchecked_indexOf(tokenIn);
+        uint256 indexOut = poolBalances.unchecked_indexOf(tokenOut);
+
+        if (indexIn == 0 || indexOut == 0) {
+            // The tokens might not be registered because the Pool itself is not registered. We check this to provide a
+            // more accurate revert reason.
+            _ensureRegisteredPool(params.pool);
+            revert TokenNotRegistered();
+        }
+
+        // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value - because these are valid,
+        // we can undo this.
+        indexIn -= 1;
+        indexOut -= 1;
+
+        uint256[] memory currentBalances = new uint256[](poolBalances.length());
+
+        for (uint256 i = 0; i < poolBalances.length(); i++) {
+            // Because the iteration is bounded by `tokenAmount`, and no tokens are registered or deregistered here, we
+            // know `i` is a valid token index and can use `unchecked_valueAt` to save storage reads.
+            uint256 balance = poolBalances.unchecked_valueAt(i);
+
+            currentBalances[i] = balance;
+
+            if (i == indexIn) {
+                tokenInBalance = balance;
+            } else if (i == indexOut) {
+                tokenOutBalance = balance;
+            }
+        }
+
+        // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
+        uint256 amountCalculated = IBasePool(params.pool).onSwap(
+            IBasePool.SwapParams({
+                kind: params.kind,
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                amountGiven: params.amountGiven,
+                balances: currentBalances,
+                indexIn: indexIn,
+                indexOut: indexOut,
+                sender: msg.sender,
+                userData: params.userData
+            })
+        );
+        uint256 amountIn;
+        (amountIn, amountOut) = params.kind == SwapKind.GIVEN_IN
+            ? (params.amountGiven, amountCalculated)
+            : (amountCalculated, params.amountGiven);
+
+        tokenInBalance = tokenInBalance + amountIn;
+        tokenOutBalance = tokenOutBalance - amountOut;
+
+        // Because no tokens were registered or deregistered between now or when we retrieved the indexes for
+        // 'token in' and 'token out', we can use `unchecked_setAt` to save storage reads.
+        poolBalances.unchecked_setAt(indexIn, tokenInBalance);
+        poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
+
+        emit Swap(params.pool, tokenIn, tokenOut, amountIn, amountOut);
+
+        if (params.kind == SwapKind.GIVEN_IN ? amountOut < params.limit : amountIn > params.limit) {
+            revert SwapLimit(amountOut, params.limit);
+        }
+
+        _receiveAsset(params.assetIn, amountIn, msg.sender);
+
+        _sendAsset(params.assetOut, amountOut, payable(msg.sender));
+
+        // If the asset in is ETH, then `amountIn` ETH was wrapped into WETH.
+        _handleRemainingEth(params.assetIn.isETH() ? amountIn : 0);
+    }
+
+    /*******************************************************************************
                                     Pool Registration
     *******************************************************************************/
 

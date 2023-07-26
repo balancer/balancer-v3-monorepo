@@ -59,4 +59,29 @@ interface IVaultErrors {
      * @dev
      */
     error InsufficientEth();
+
+    /**
+     * @dev
+     */
+    error SwapDeadline();
+
+    /**
+     * @dev
+     */
+    error AmountInZero();
+
+    /**
+     * @dev
+     */
+    error CannotSwapSameToken();
+
+    /**
+     * @dev
+     */
+    error TokenNotRegistered();
+
+    /**
+     * @dev
+     */
+    error SwapLimit(uint256, uint256);
 }

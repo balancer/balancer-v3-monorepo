@@ -169,8 +169,6 @@ interface IVault {
                                           Swaps
     *******************************************************************************/
 
-    /// Swaps
-    ///
     /// Users can swap tokens with Pools by calling the `swap` and `batchSwap` functions. To do this,
     /// they need not trust Pool contracts in any way: all security checks are made by the Vault. They must however be
     /// aware of the Pools' pricing algorithms in order to estimate the prices Pools will quote.
@@ -213,43 +211,42 @@ interface IVault {
     /// the wrapping and unwrapping. To enable this mechanism, the IAsset sentinel value (the zero address) must be
     /// passed in the `assets` array instead of the WETH address. Note that it is possible to combine ETH and WETH in the
     /// same swap. Any excess ETH will be sent back to the caller (not the sender, which is relevant for relayers).
-    ///
-    /// Finally, Internal Balance can be used when either sending or receiving tokens.
 
+     enum SwapKind { GIVEN_IN, GIVEN_OUT }
 
     /**
-     * @dev Performs a 'given in' swap with a single Pool.
+     * @dev Performs a swap with a single Pool.
      *
-     * It returns the amount of tokens taken from the Pool, which must be greater than or equal to `minAmountOut`.
+     * If the swap is 'given in' (the number of tokens to send to the Pool is known), it returns the amount of tokens
+     * taken from the Pool, which must be greater than or equal to `limit`.
+     *
+     * If the swap is 'given out' (the number of tokens to take from the Pool is known), it returns the amount of tokens
+     * sent to the Pool, which must be less than or equal to `limit`.
      *
      * Emits a `Swap` event.
      */
-    function swapExactTokenForToken(
-        address pool,
-        Asset assetIn,
-        Asset assetOut,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        uint256 deadline,
-        bytes memory userData
-    ) external payable returns (uint256 amountOut);
+    function swap(SingleSwap calldata params) external payable returns (uint256);
 
     /**
-     * @dev Performs a 'given in' swap with a single Pool.
+     * @dev Data for a single swap executed by `swap`. `amount` is either `amountIn` or `amountOut` depending on
+     * the `kind` value.
      *
-     * It returns the amount of tokens sent to the Pool, which must be less than or equal to `maxAmountIn`.
+     * `assetIn` and `assetOut` are either token addresses, or the IAsset sentinel value for ETH (the zero address).
+     * Note that Pools never interact with ETH directly: it will be wrapped to or unwrapped from WETH by the Vault.
      *
-     * Emits a `Swap` event.
+     * The `userData` field is ignored by the Vault, but forwarded to the Pool in the `onSwap` hook, and may be
+     * used to extend swap behavior.
      */
-    function swapTokenForExactToken(
-        address pool,
-        Asset tokenIn,
-        Asset tokenOut,
-        uint256 amountOut,
-        uint256 maxAmountIn,
-        uint256 deadline,
-        bytes memory userData
-    ) external payable returns (uint256 amountIn);
+    struct SingleSwap {
+        SwapKind kind;
+		address pool;
+        Asset assetIn;
+        Asset assetOut;
+        uint256 amountGiven;
+        uint256 limit;
+        uint256 deadline;
+        bytes userData;
+    }
 
     /**
      * @dev Emitted for each individual swap performed by `swap` or `batchSwap`.

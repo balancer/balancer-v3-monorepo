@@ -70,4 +70,48 @@ interface IBasePool {
         uint256[] memory minAmountsOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut);
+
+    /**
+     * @dev This is called by the Vault when a user calls `IVault.swap` or `IVault.batchSwap` to swap with this Pool.
+     * Returns the number of tokens the Pool will grant to the user in a 'given in' swap, or that the user will
+     * grant to the pool in a 'given out' swap.
+     *
+     * This can often be implemented by a `view` function, since many pricing algorithms don't need to track state
+     * changes in swaps. However, contracts implementing this in non-view functions should check that the caller is
+     * indeed the Vault.
+     */
+    function onSwap(SwapParams calldata params) external returns (uint256 amountCalculated);
+
+    // This data structure represents a request for a token swap, where `kind` indicates the swap type ('given in' or
+    // 'given out') which indicates whether or not the amount sent by the pool is known.
+    //
+    // The pool receives `tokenIn` and sends `tokenOut`. `amount` is the number of `tokenIn` tokens the pool will take
+    // in, or the number of `tokenOut` tokens the Pool will send out, depending on the given swap `kind`.
+    //
+    // All other fields are not strictly necessary for most swaps, but are provided to support advanced scenarios in
+    // some Pools.
+    //
+    // `poolId` is the ID of the Pool involved in the swap - this is useful for Pool contracts that implement more than
+    // one Pool.
+    //
+    // The meaning of `lastChangeBlock` depends on the Pool specialization:
+    //  - Two Token or Minimal Swap Info: the last block in which either `tokenIn` or `tokenOut` changed its total
+    //    balance.
+    //  - General: the last block in which *any* of the Pool's registered tokens changed its total balance.
+    //
+    // `from` is the origin address for the funds the Pool receives, and `to` is the destination address
+    // where the Pool sends the outgoing tokens.
+    //
+    // `userData` is extra data provided by the caller - typically a signature from a trusted party.
+    struct SwapParams {
+        IVault.SwapKind kind;
+        IERC20 tokenIn;
+        IERC20 tokenOut;
+        uint256 amountGiven;
+        uint256[] balances;
+        uint256 indexIn;
+        uint256 indexOut;
+        address sender;
+        bytes userData;
+    }
 }

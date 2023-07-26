@@ -1,0 +1,112 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+pragma solidity ^0.8.4;
+
+import "forge-std/Test.sol";
+
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC20Errors.sol";
+import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+
+import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
+
+import { ERC20BalancerPoolToken } from "../../contracts/ERC20BalancerPoolToken.sol";
+import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
+import { Vault } from "../../contracts/Vault.sol";
+import { VaultMock } from "../../contracts/test/VaultMock.sol";
+
+contract VaultSwapTest is Test {
+    using AssetHelpers for address;
+    using AssetHelpers for address[];
+    using AssetHelpers for address[];
+    using ArrayHelpers for address[2];
+    using ArrayHelpers for uint256[2];
+
+    VaultMock vault;
+    ERC20PoolMock pool;
+    ERC20TestToken USDC;
+    ERC20TestToken DAI;
+    address alice = vm.addr(1);
+    address bob = vm.addr(2);
+
+    uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
+    uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
+
+    function setUp() public {
+        vault = new VaultMock(IWETH(address(0)), 30 days, 90 days);
+        USDC = new ERC20TestToken("USDC", "USDC", 6);
+        DAI = new ERC20TestToken("DAI", "DAI", 18);
+        pool = new ERC20PoolMock(
+            vault,
+            "ERC20 Pool",
+            "ERC20POOL",
+            address(0),
+            [address(USDC), address(DAI)].toMemoryArray().asIERC20(),
+            true
+        );
+
+        USDC.mint(bob, USDC_AMOUNT_IN);
+        DAI.mint(bob, DAI_AMOUNT_IN);
+
+        USDC.mint(alice, USDC_AMOUNT_IN);
+        DAI.mint(alice, DAI_AMOUNT_IN);
+
+        vm.startPrank(bob);
+
+        USDC.approve(address(vault), type(uint256).max);
+        DAI.approve(address(vault), type(uint256).max);
+
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+
+        USDC.approve(address(vault), type(uint256).max);
+        DAI.approve(address(vault), type(uint256).max);
+
+        vm.stopPrank();
+
+        vm.label(alice, "alice");
+        vm.label(bob, "bob");
+        vm.label(address(USDC), "USDC");
+        vm.label(address(DAI), "DAI");
+    }
+
+    function testSwap() public {
+        vm.prank(alice);
+        vault.addLiquidity(
+            address(pool),
+            [address(USDC), address(DAI)].toMemoryArray().asAsset(),
+            [uint256(USDC_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
+            bytes("")
+        );
+
+        pool.setMultiplier(1e30);
+
+        vm.prank(bob);
+        vault.swap(
+            IVault.SingleSwap({
+                kind: IVault.SwapKind.GIVEN_IN,
+                pool: address(pool),
+                assetIn: address(USDC).asAsset(),
+                assetOut: address(DAI).asAsset(),
+                amountGiven: USDC_AMOUNT_IN,
+                limit: DAI_AMOUNT_IN,
+                deadline: type(uint256).max,
+                userData: bytes("")
+            })
+        );
+
+        // asssets are transferred to/from Bob
+        assertEq(USDC.balanceOf(bob), 0);
+        assertEq(DAI.balanceOf(bob), 2 * DAI_AMOUNT_IN);
+
+        // assets are adjusted in the pool
+        (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
+        assertEq(balances[0], USDC_AMOUNT_IN * 2);
+        assertEq(balances[1], 0);
+    }
+}

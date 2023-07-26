@@ -79,4 +79,9 @@ library AssetHelpers {
             assets := addresses
         }
     }
+
+    /// @dev Returns an address as an Asset
+    function asAsset(address addr) internal pure returns (Asset asset) {
+        return Asset.wrap(addr);
+    }
 }

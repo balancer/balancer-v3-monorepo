@@ -8,6 +8,8 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import "../ERC20BalancerPoolToken.sol";
 
 contract ERC20PoolMock is ERC20BalancerPoolToken, IBasePool {
+    using FixedPoint for uint256;
+
     IVault private immutable _vault;
 
     constructor(
@@ -45,5 +47,19 @@ contract ERC20PoolMock is ERC20BalancerPoolToken, IBasePool {
         emit OnRemoveLiquidityCalled(sender, currentBalances, userData);
 
         return minAmountsOut;
+    }
+
+    // Amounts in are multiplied by the multiplier, amounts out are divided by it
+    uint256 private _multiplier = FixedPoint.ONE;
+
+    function setMultiplier(uint256 newMultiplier) external {
+        _multiplier = newMultiplier;
+    }
+
+    function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
+        return
+            params.kind == IVault.SwapKind.GIVEN_IN
+                ? params.amountGiven.mulDown(_multiplier)
+                : params.amountGiven.divDown(_multiplier);
     }
 }
