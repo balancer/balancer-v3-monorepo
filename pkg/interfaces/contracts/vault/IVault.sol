@@ -154,24 +154,24 @@ interface IVault {
     ///
     /// In all cases, tokens are only transferred in and out of the Vault (or withdrawn from and deposited into Internal
     /// Balance) after all individual swaps have been completed, and the net token balance change computed. This makes
-    /// certain swap patterns, such as multihops, or swaps that interact with the same token pair in multiple Pools, cost
-    /// much less gas than they would otherwise.
+    /// certain swap patterns, such as multihops, or swaps that interact with the same token pair in multiple Pools,
+    /// cost much less gas than they would otherwise.
     ///
     /// It also means that under certain conditions it is possible to perform arbitrage by swapping with multiple
     /// Pools in a way that results in net token movement out of the Vault (profit), with no tokens being sent in (only
     /// updating the Pool's internal accounting).
     ///
-    /// To protect users from front-running or the market changing rapidly, they supply a list of 'limits' for each token
-    /// involved in the swap, where either the maximum number of tokens to send (by passing a positive value) or the
-    /// minimum amount of tokens to receive (by passing a negative value) is specified.
+    /// To protect users from front-running or the market changing rapidly, they supply a list of 'limits' for each
+    /// token involved in the swap, where either the maximum number of tokens to send (by passing a positive value)
+    /// or the minimum amount of tokens to receive (by passing a negative value) is specified.
     ///
     /// Additionally, a 'deadline' timestamp can also be provided, forcing the swap to fail if it occurs after
     /// this point in time (e.g. if the transaction failed to be included in a block promptly).
     ///
-    /// If interacting with Pools that hold WETH, it is possible to both send and receive ETH directly: the Vault will do
-    /// the wrapping and unwrapping. To enable this mechanism, the IAsset sentinel value (the zero address) must be
-    /// passed in the `assets` array instead of the WETH address. Note that it is possible to combine ETH and WETH in the
-    /// same swap. Any excess ETH will be sent back to the caller (not the sender, which is relevant for relayers).
+    /// If interacting with Pools that hold WETH, it is possible to both send and receive ETH directly: the Vault will
+    /// do the wrapping and unwrapping. To enable this mechanism, the IAsset sentinel value (the zero address) must be
+    /// passed in the `assets` array instead of the WETH address. Note that it is possible to combine ETH and WETH in
+    /// the same swap. Any excess ETH will be sent back to the caller (not the sender, which is relevant for relayers).
 
     enum SwapKind {
         GIVEN_IN,
