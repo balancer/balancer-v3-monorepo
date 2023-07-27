@@ -45,7 +45,7 @@ contract VaultSwapTest is Test {
             "ERC20 Pool",
             "ERC20POOL",
             address(0),
-            [address(USDC), address(DAI)].toMemoryArray().asIERC20(),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             true
         );
 
@@ -79,8 +79,9 @@ contract VaultSwapTest is Test {
         vm.prank(alice);
         vault.addLiquidity(
             address(pool),
-            [address(USDC), address(DAI)].toMemoryArray().asAsset(),
-            [uint256(USDC_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
+            DAI_AMOUNT_IN,
             bytes("")
         );
 
@@ -106,7 +107,7 @@ contract VaultSwapTest is Test {
 
         // assets are adjusted in the pool
         (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
-        assertEq(balances[0], USDC_AMOUNT_IN * 2);
-        assertEq(balances[1], 0);
+        assertEq(balances[0], 0);
+        assertEq(balances[1], USDC_AMOUNT_IN * 2);
     }
 }
