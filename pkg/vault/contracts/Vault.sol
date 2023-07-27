@@ -170,7 +170,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     /// @inheritdoc IVault
     function swap(
         IVault.SingleSwap calldata params
-    ) external payable nonReentrant whenNotPaused returns (uint256 amountOut) {
+    ) external payable nonReentrant whenNotPaused returns (uint256 amountCalculated) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > params.deadline) {
@@ -224,7 +224,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
         }
 
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
-        uint256 amountCalculated = IBasePool(params.pool).onSwap(
+        amountCalculated = IBasePool(params.pool).onSwap(
             IBasePool.SwapParams({
                 kind: params.kind,
                 tokenIn: tokenIn,
@@ -238,6 +238,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
             })
         );
         uint256 amountIn;
+        uint256 amountOut;
         (amountIn, amountOut) = params.kind == SwapKind.GIVEN_IN
             ? (params.amountGiven, amountCalculated)
             : (amountCalculated, params.amountGiven);
