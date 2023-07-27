@@ -30,10 +30,10 @@ contract ERC20PoolMock is ERC20BalancerPoolToken, IBasePool {
         uint256[] memory currentBalances,
         uint256[] memory maxAmountsIn,
         bytes memory userData
-    ) external returns (uint256[] memory amountsIn) {
+    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         emit OnAddLiquidityCalled(sender, currentBalances, maxAmountsIn, userData);
 
-        return maxAmountsIn;
+        return (maxAmountsIn, maxAmountsIn[0]);
     }
 
     function onRemoveLiquidity(

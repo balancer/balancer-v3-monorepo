@@ -199,8 +199,16 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
         address pool,
         Asset[] memory assets,
         uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
         bytes memory userData
-    ) external payable whenNotPaused nonReentrant withRegisteredPool(pool) {
+    )
+        external
+        payable
+        whenNotPaused
+        nonReentrant
+        withRegisteredPool(pool)
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut)
+    {
         InputHelpers.ensureInputLengthMatch(assets.length, maxAmountsIn.length);
 
         // We first check that the caller passed the Pool's registered tokens in the correct order
@@ -210,7 +218,11 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
 
         // The bulk of the work is done here: the corresponding Pool hook is called
         // its final balances are computed, assets are transferred, and fees are paid.
-        uint256[] memory amountsIn = IBasePool(pool).onAddLiquidity(msg.sender, balances, maxAmountsIn, userData);
+        (amountsIn, bptAmountOut) = IBasePool(pool).onAddLiquidity(msg.sender, balances, maxAmountsIn, userData);
+
+        if (bptAmountOut < minBptAmountOut) {
+            revert BtpAmountBelowMin();
+        }
 
         // The Vault ignores the `sender`: it is up to the Pool to keep track of
         // their participation.
@@ -220,11 +232,11 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
         uint256[] memory finalBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < assets.length; ++i) {
             uint256 amountIn = amountsIn[i];
-            if (amountIn > amountsIn[i]) {
+            if (amountIn > maxAmountsIn[i]) {
                 revert JoinAboveMax();
             }
 
-            // Receive assets from the sender - possibly from Internal Balance.
+            // Receive assets from the sender
             Asset asset = assets[i];
             _receiveAsset(asset, amountIn, msg.sender);
 
@@ -235,11 +247,13 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
             finalBalances[i] += amountIn;
         }
 
+        // All that remains is storing the new Pool balances.
+        _setPoolBalances(pool, finalBalances);
+
         // Handle any used and remaining ETH.
         _handleRemainingEth(wrappedEth);
 
-        // All that remains is storing the new Pool balances.
-        _setPoolBalances(pool, finalBalances);
+        _mintERC20(pool, msg.sender, bptAmountOut);
 
         emit PoolBalanceChanged(
             pool,

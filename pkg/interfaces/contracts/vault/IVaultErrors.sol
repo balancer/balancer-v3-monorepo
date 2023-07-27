@@ -59,4 +59,9 @@ interface IVaultErrors {
      * @dev
      */
     error InsufficientEth();
+
+    /**
+     * @dev
+     */
+    error BtpAmountBelowMin();
 }
