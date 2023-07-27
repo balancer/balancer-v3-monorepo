@@ -84,4 +84,9 @@ interface IVaultErrors {
      * @dev
      */
     error SwapLimit(uint256, uint256);
+
+    /**
+     * @dev
+     */
+    error BtpAmountBelowMin();
 }

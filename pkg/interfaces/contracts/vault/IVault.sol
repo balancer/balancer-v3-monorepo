@@ -263,8 +263,9 @@ interface IVault {
         address pool,
         Asset[] memory assets,
         uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
         bytes memory userData
-    ) external payable;
+    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
     /**
      * @dev Called by users to exit a Pool, which transfers tokens from the Pool's balance to `recipient`. This will
@@ -305,14 +306,15 @@ interface IVault {
         address pool,
         Asset[] memory assets,
         uint256[] memory minAmountsOut,
+        uint256 bptAmountIn,
         bytes memory userData
-    ) external;
+    ) external returns (uint256[] memory amountsOut);
 
     /**
      * @dev Emitted when a user joins or exits a Pool by calling `joinPool` or `exitPool`, respectively.
      */
     event PoolBalanceChanged(
-        address indexed poolId,
+        address indexed pool,
         address indexed liquidityProvider,
         IERC20[] tokens,
         int256[] deltas

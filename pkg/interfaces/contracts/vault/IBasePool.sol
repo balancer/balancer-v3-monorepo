@@ -10,9 +10,15 @@ import "./IVault.sol";
  * either IGeneralPool or IMinimalSwapInfoPool
  */
 interface IBasePool {
-    event OnAddLiquidityCalled(address sender, uint256[] currentBalances, uint256[] maxAmountsIn, bytes userData);
+    event OnAddLiquidityCalled(
+        address sender,
+        uint256[] currentBalances,
+        uint256[] maxAmountsIn,
+        uint256 bptAmountOut,
+        bytes userData
+    );
 
-    event OnRemoveLiquidityCalled(address sender, uint256[] currentBalances, bytes userData);
+    event OnRemoveLiquidityCalled(address sender, uint256[] currentBalances, uint256 bptAmountIn, bytes userData);
 
     /**
      * @dev Called by the Vault when a user calls `IVault.joinPool` to add liquidity to this Pool. Returns how many of
@@ -40,7 +46,7 @@ interface IBasePool {
         uint256[] memory currentBalances,
         uint256[] memory maxAmountsIn,
         bytes memory userData
-    ) external returns (uint256[] memory amountsIn);
+    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
     /**
      * @dev Called by the Vault when a user calls `IVault.exitPool` to remove liquidity from this Pool. Returns how many
@@ -68,6 +74,7 @@ interface IBasePool {
         address sender,
         uint256[] memory currentBalances,
         uint256[] memory minAmountsOut,
+        uint256 bptAmountIn,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut);
 
