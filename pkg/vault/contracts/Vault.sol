@@ -269,8 +269,9 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
         address pool,
         Asset[] memory assets,
         uint256[] memory minAmountsOut,
+        uint256 bptAmountIn,
         bytes memory userData
-    ) external whenNotPaused nonReentrant withRegisteredPool(pool) {
+    ) external whenNotPaused nonReentrant withRegisteredPool(pool) returns (uint256[] memory amountsOut) {
         InputHelpers.ensureInputLengthMatch(assets.length, minAmountsOut.length);
 
         // We first check that the caller passed the Pool's registered tokens in the correct order, and retrieve the
@@ -280,7 +281,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
 
         // The bulk of the work is done here: the corresponding Pool hook is called, its final balances are computed,
         // assets are transferred, and fees are paid.
-        uint256[] memory amountsOut = IBasePool(pool).onRemoveLiquidity(msg.sender, balances, minAmountsOut, userData);
+        amountsOut = IBasePool(pool).onRemoveLiquidity(msg.sender, balances, minAmountsOut, bptAmountIn, userData);
 
         uint256[] memory finalBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < assets.length; ++i) {
@@ -298,6 +299,8 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
 
         // All that remains is storing the new Pool balances.
         _setPoolBalances(pool, finalBalances);
+
+        _burnERC20(pool, msg.sender, bptAmountIn);
 
         emit PoolBalanceChanged(
             pool,

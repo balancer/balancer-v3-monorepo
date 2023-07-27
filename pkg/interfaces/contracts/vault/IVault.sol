@@ -258,6 +258,7 @@ interface IVault {
         address pool,
         Asset[] memory assets,
         uint256[] memory minAmountsOut,
+        uint256 bptAmountIn,
         bytes memory userData
-    ) external;
+    ) external returns (uint256[] memory amountsOut);
 }
