@@ -14,6 +14,11 @@ library AssetHelpers {
     using AssetHelpers for *;
     using SafeERC20 for IERC20;
 
+    /**
+     * @dev
+     */
+    error InsufficientEth();
+
     // Sentinel value used to indicate WETH with wrapping/unwrapping semantics. The zero address is a good choice for
     // multiple reasons: it is cheap to pass as a calldata argument, it is a known invalid token and non-contract, and
     // it is an address Pools cannot register as a token.
@@ -106,6 +111,44 @@ library AssetHelpers {
     }
 
     /**
+     * @dev Receives `amount` of `asset` from `sender`. If `fromInternalBalance` is true, it first withdraws as much
+     * as possible from Internal Balance, then transfers any remaining amount.
+     *
+     * If `asset` is ETH, `fromInternalBalance` must be false (as ETH cannot be held as internal balance), and the funds
+     * will be wrapped into WETH.
+     *
+     * WARNING: this function does not check that the contract caller has actually supplied any ETH - it is up to the
+     * caller of this function to check that this is true to prevent the Vault from using its own ETH (though the Vault
+     * typically doesn't hold any).
+     */
+    function retrieve(
+        Asset asset,
+        uint256 amount,
+        address sender,
+        IWETH weth
+    ) internal {
+        if (amount == 0) {
+            return;
+        }
+
+        if (asset.isETH()) {
+            // The ETH amount to receive is deposited into the WETH contract, which will in turn mint WETH for
+            // the Vault at a 1:1 ratio.
+
+            // A check for this condition is also introduced by the compiler, but this one provides a revert reason.
+            // Note we're checking for the Vault's total balance, *not* ETH sent in this transaction.
+            if (address(this).balance < amount) {
+                revert InsufficientEth();
+            }
+            weth.deposit{ value: amount }();
+        } else {
+            IERC20 token = asset.asIERC20();
+
+            token.safeTransferFrom(sender, address(this), amount);
+        }
+    }
+
+    /**
      * @dev Sends `amount` of `asset` to `recipient`. If `toInternalBalance` is true, the asset is deposited as Internal
      * Balance instead of being transferred.
      *
@@ -131,6 +174,26 @@ library AssetHelpers {
             payable(recipient).sendValue(amount);
         } else {
             asset.asIERC20().safeTransfer(recipient, amount);
+        }
+    }
+
+    /**
+     * @dev Returns excess ETH back to the contract caller, assuming `amountUsed` has been spent. Reverts
+     * if the caller sent less ETH than `amountUsed`.
+     *
+     * Because the caller might not know exactly how much ETH a Vault action will require, they may send extra.
+     * Note that this excess value is returned *to the contract caller* (msg.sender). If caller and e.g. swap sender are
+     * not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
+     * returned ETH.
+     */
+    function returnEth(address sender, uint256 amountUsed) internal {
+        if (msg.value < amountUsed) {
+            revert InsufficientEth();
+        }
+
+        uint256 excess = msg.value - amountUsed;
+        if (excess > 0) {
+            payable(sender).sendValue(excess);
         }
     }
 }
