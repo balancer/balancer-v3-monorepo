@@ -80,8 +80,22 @@ library AssetHelpers {
         }
     }
 
+    /// @dev Returns an IERC20 as an Asset
+    function asAsset(IERC20 addr) internal pure returns (Asset asset) {
+        return Asset.wrap(address(addr));
+    }
+
     /// @dev Returns an address as an Asset
     function asAsset(address addr) internal pure returns (Asset asset) {
         return Asset.wrap(addr);
+    }
+
+    /// @dev Returns balance of the asset for `this`
+    function balanceOf(Asset asset) internal view returns (uint256) {
+        if (isETH(asset)) {
+            return address(this).balance;
+        } else {
+            return IERC20(address(Asset.unwrap(asset))).balanceOf(address(this));
+        }
     }
 }
