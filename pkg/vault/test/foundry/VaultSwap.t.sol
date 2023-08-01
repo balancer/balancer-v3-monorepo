@@ -88,7 +88,7 @@ contract VaultSwapTest is Test {
         pool.setMultiplier(1e30);
 
         vm.prank(bob);
-        vault.swap(
+        vault.singleSwap(
             IVault.SingleSwap({
                 kind: IVault.SwapKind.GIVEN_IN,
                 pool: address(pool),

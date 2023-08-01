@@ -72,22 +72,39 @@ interface IVault {
      * @dev Permissioned function to transfer an ERC20 Balancer Pool Token.
      * Can only be called from a registered pool.
      */
-    function transferERC20(address owner, address to, uint256 amount) external returns (bool);
+    function transferERC20(
+        address owner,
+        address to,
+        uint256 amount
+    ) external returns (bool);
 
     /**
      * @dev Permissioned function to transferFrom an ERC20 Balancer pool token.
      * Can only be called from a registered pool.
      */
-    function transferFromERC20(address spender, address from, address to, uint256 amount) external returns (bool);
+    function transferFromERC20(
+        address spender,
+        address from,
+        address to,
+        uint256 amount
+    ) external returns (bool);
 
     /// @dev Returns an owner's ERC20 BPT allowance for a given spender.
-    function allowanceOfERC20(address poolToken, address owner, address spender) external view returns (uint256);
+    function allowanceOfERC20(
+        address poolToken,
+        address owner,
+        address spender
+    ) external view returns (uint256);
 
     /**
      * @dev Permissioned function to set a sender's ERC20 BPT allowance for a given spender. Can only be called
      * from a registered pool.
      */
-    function approveERC20(address sender, address spender, uint256 amount) external returns (bool);
+    function approveERC20(
+        address sender,
+        address spender,
+        uint256 amount
+    ) external returns (bool);
 
     /*******************************************************************************
                                ERC721 Balancer Pool Tokens 
@@ -103,19 +120,41 @@ interface IVault {
     function getApprovedERC721(address token, uint256 tokenId) external view returns (address);
 
     /// @dev See {IERC721-isApprovedForAll}.
-    function isApprovedForAllERC721(address token, address owner, address operator) external view returns (bool);
+    function isApprovedForAllERC721(
+        address token,
+        address owner,
+        address operator
+    ) external view returns (bool);
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-approve}.
-    function approveERC721(address sender, address to, uint256 tokenId) external;
+    function approveERC721(
+        address sender,
+        address to,
+        uint256 tokenId
+    ) external;
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-setApprovalForAll}.
-    function setApprovalForAllERC721(address sender, address operator, bool approved) external;
+    function setApprovalForAllERC721(
+        address sender,
+        address operator,
+        bool approved
+    ) external;
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-transferFrom}.
-    function transferFromERC721(address sender, address from, address to, uint256 tokenId) external;
+    function transferFromERC721(
+        address sender,
+        address from,
+        address to,
+        uint256 tokenId
+    ) external;
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-safeTransferFrom}.
-    function safeTransferFromERC721(address sender, address from, address to, uint256 tokenId) external;
+    function safeTransferFromERC721(
+        address sender,
+        address from,
+        address to,
+        uint256 tokenId
+    ) external;
 
     /// @dev Can only be called by a registered ERC721 pool. See {IERC721-safeTransferFrom}.
     function safeTransferFromERC721(
@@ -189,7 +228,7 @@ interface IVault {
      *
      * Emits a `Swap` event.
      */
-    function swap(SingleSwap calldata params) external payable returns (uint256);
+    function singleSwap(SingleSwap calldata params) external payable returns (uint256);
 
     /**
      * @dev Data for a single swap executed by `swap`. `amount` is either `amountIn` or `amountOut` depending on
@@ -206,6 +245,20 @@ interface IVault {
         address pool;
         Asset assetIn;
         Asset assetOut;
+        uint256 amountGiven;
+        uint256 limit;
+        uint256 deadline;
+        bytes userData;
+    }
+
+    /**
+     * @dev
+     */
+    struct SwapParams {
+        SwapKind kind;
+        address pool;
+        IERC20 tokenIn;
+        IERC20 tokenOut;
         uint256 amountGiven;
         uint256 limit;
         uint256 deadline;

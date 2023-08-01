@@ -89,4 +89,14 @@ interface IVaultErrors {
      * @dev
      */
     error BtpAmountBelowMin();
+
+    /**
+     * @dev
+     */
+    error CurrencyNotSettled();
+
+    /**
+     * @dev
+     */
+    error WrongSender(address, address);
 }
