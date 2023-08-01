@@ -3,11 +3,17 @@
 pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { Asset } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/Asset.sol";
 
 library AssetHelpers {
+    using Address for address payable;
+    using AssetHelpers for *;
+    using SafeERC20 for IERC20;
+
     // Sentinel value used to indicate WETH with wrapping/unwrapping semantics. The zero address is a good choice for
     // multiple reasons: it is cheap to pass as a calldata argument, it is a known invalid token and non-contract, and
     // it is an address Pools cannot register as a token.
@@ -28,7 +34,7 @@ library AssetHelpers {
      * to the WETH contract.
      */
     function toIERC20(Asset asset, IWETH weth) internal pure returns (IERC20) {
-        return isETH(asset) ? weth : asIERC20(asset);
+        return asset.isETH() ? weth : asIERC20(asset);
     }
 
     /// @dev Same as `toIERC20(Asset)`, but for an array.
@@ -92,10 +98,39 @@ library AssetHelpers {
 
     /// @dev Returns balance of the asset for `this`
     function balanceOf(Asset asset) internal view returns (uint256) {
-        if (isETH(asset)) {
+        if (asset.isETH()) {
             return address(this).balance;
         } else {
             return IERC20(address(Asset.unwrap(asset))).balanceOf(address(this));
+        }
+    }
+
+    /**
+     * @dev Sends `amount` of `asset` to `recipient`. If `toInternalBalance` is true, the asset is deposited as Internal
+     * Balance instead of being transferred.
+     *
+     * If `asset` is ETH, `toInternalBalance` must be false (as ETH cannot be held as internal balance), and the funds
+     * are instead sent directly after unwrapping WETH.
+     */
+    function send(
+        Asset asset,
+        address recipient,
+        uint256 amount,
+        IWETH weth
+    ) internal {
+        if (amount == 0) {
+            return;
+        }
+
+        if (asset.isETH()) {
+            // First, the Vault withdraws deposited ETH from the WETH contract, by burning the same amount of WETH
+            // from the Vault. This receipt will be handled by the Vault's `receive`.
+            weth.withdraw(amount);
+
+            // Then, the withdrawn ETH is sent to the recipient.
+            payable(recipient).sendValue(amount);
+        } else {
+            asset.asIERC20().safeTransfer(recipient, amount);
         }
     }
 }
