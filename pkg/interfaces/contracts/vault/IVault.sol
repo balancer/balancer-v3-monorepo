@@ -174,7 +174,7 @@ interface IVault {
      * @dev Emitted when a user joins or exits a Pool by calling `joinPool` or `exitPool`, respectively.
      */
     event PoolBalanceChanged(
-        address indexed poolId,
+        address indexed pool,
         address indexed liquidityProvider,
         IERC20[] tokens,
         int256[] deltas
