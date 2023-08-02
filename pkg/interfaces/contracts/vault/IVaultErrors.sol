@@ -89,7 +89,7 @@ interface IVaultErrors {
     /**
      * @dev
      */
-    error CurrencyNotSettled();
+    error BalanceNotSettled();
 
     /**
      * @dev

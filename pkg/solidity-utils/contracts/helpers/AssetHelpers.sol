@@ -75,6 +75,11 @@ library AssetHelpers {
         }
     }
 
+    /// @dev Returns an Asset as an address
+    function asAddress(Asset asset) internal pure returns (address addr) {
+        return Asset.unwrap(asset);
+    }
+
     /// @dev Returns tokens as an array of address[] memory
     function asAddress(IERC20[] memory tokens) internal pure returns (address[] memory addresses) {
         // solhint-disable-next-line no-inline-assembly
@@ -111,7 +116,7 @@ library AssetHelpers {
     }
 
     /**
-     * @dev Receives `amount` of `asset` from `sender`. If `fromInternalBalance` is true, it first withdraws as much
+     * @dev Receives `amount` of `asset` from `from`. If `fromInternalBalance` is true, it first withdraws as much
      * as possible from Internal Balance, then transfers any remaining amount.
      *
      * If `asset` is ETH, `fromInternalBalance` must be false (as ETH cannot be held as internal balance), and the funds
@@ -123,8 +128,8 @@ library AssetHelpers {
      */
     function retrieve(
         Asset asset,
+        address from,
         uint256 amount,
-        address sender,
         IWETH weth
     ) internal {
         if (amount == 0) {
@@ -144,7 +149,7 @@ library AssetHelpers {
         } else {
             IERC20 token = asset.asIERC20();
 
-            token.safeTransferFrom(sender, address(this), amount);
+            token.safeTransferFrom(from, address(this), amount);
         }
     }
 

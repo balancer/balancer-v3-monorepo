@@ -22,6 +22,8 @@ import { ERC20MultiToken } from "./ERC20MultiToken.sol";
 import { ERC721MultiToken } from "./ERC721MultiToken.sol";
 import { PoolRegistry } from "./PoolRegistry.sol";
 
+import "forge-std/Test.sol";
+
 contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, ReentrancyGuard, TemporarilyPausable {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
@@ -35,38 +37,14 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     IWETH private immutable _weth;
 
     /// @notice
-    address[] senders;
+    address[] handlers;
     /// @notice The total number of nonzero deltas over all active + completed lockers
     uint128 nonzeroDeltaCount;
-    /// @dev Represents the asset due/owed to each sender.
-    /// Must all net to zero when the last sender is released.
+    /// @dev Represents the asset due/owed to each handler.
+    /// Must all net to zero when the last handler is released.
     mapping(address => mapping(Asset => int256)) public assetDeltas;
     /// @notice
     mapping(Asset => uint256) public assetReserves;
-
-    /**
-     * @dev
-     */
-    modifier transient() {
-        senders.push(msg.sender);
-
-        // the caller does everything here, including paying what they owe via calls to settle
-        _;
-
-        if (senders.length == 1) {
-            if (nonzeroDeltaCount != 0) revert CurrencyNotSettled();
-            delete senders;
-            delete nonzeroDeltaCount;
-        } else {
-            senders.pop();
-        }
-    }
-
-    modifier withSender() {
-        address sender = senders[senders.length - 1];
-        if (msg.sender != sender) revert WrongSender(msg.sender, sender);
-        _;
-    }
 
     constructor(
         IWETH weth,
@@ -80,7 +58,34 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
                               Transient Accounting
     *******************************************************************************/
 
-    function settle(Asset asset) external payable withSender returns (uint256 paid) {
+    /**
+     * @dev
+     */
+    modifier transient() {
+        handlers.push(msg.sender);
+
+        // the caller does everything here, including paying what they owe via calls to settle
+        _;
+
+        if (handlers.length == 1) {
+            if (nonzeroDeltaCount != 0) revert BalanceNotSettled();
+            delete handlers;
+            delete nonzeroDeltaCount;
+        } else {
+            handlers.pop();
+        }
+    }
+
+    /**
+     * @dev
+     */
+    modifier withHandler() {
+        address handler = handlers[handlers.length - 1];
+        if (msg.sender != handler) revert WrongSender(msg.sender, handler);
+        _;
+    }
+
+    function settle(Asset asset) public payable withHandler returns (uint256 paid) {
         uint256 reservesBefore = assetReserves[asset];
         assetReserves[asset] = asset.balanceOf();
         paid = assetReserves[asset] - reservesBefore;
@@ -88,26 +93,57 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
         _accountDelta(asset, -paid.toInt256());
     }
 
-     function take(Asset asset, address to, uint256 amount) external withSender {
+    function send(
+        Asset asset,
+        address to,
+        uint256 amount
+    ) public withHandler {
+        // effects
         _accountDelta(asset, amount.toInt256());
-        assetReserves[currency] -= amount;
-        asset.transfer(to, amount);
+        assetReserves[asset] -= amount;
+        // interactions
+        asset.send(to, amount, _weth);
     }
 
-    function mint(Currency currency, address to, uint256 amount) external withSender {
-        _accountDelta(currency, amount.toInt128());
-        _mint(to, currency.toId(), amount, "");
-    }
-    function burn(Currency currency, uint256 amount) internal {
-        _burn(address(this), currency.toId(), amount);
-        _accountDelta(currency, -(amount.toInt128()));
+    function mint(
+        Asset asset,
+        address to,
+        uint256 amount
+    ) public withHandler {
+        _accountDelta(asset, amount.toInt256());
+        _mintERC20(asset.asAddress(), to, amount);
     }
 
+    function retrieve(
+        Asset asset,
+        address from,
+        uint256 amount
+    ) public withHandler {
+        // effects
+        _accountDelta(asset, -(amount.toInt256()));
+        assetReserves[asset] += amount;
+        // interactions
+        asset.retrieve(from, amount, _weth);
+    }
+
+    function burn(Asset asset, uint256 amount) public withHandler {
+        _burnERC20(asset.asAddress(), msg.sender, amount);
+        _accountDelta(asset, -(amount.toInt256()));
+    }
+
+    function getHandler() internal view returns (address) {
+        return handlers[handlers.length - 1];
+    }
+
+    /**
+     * @dev Accounts the delta for the current handler and asset.
+     * Positive delta represents debt, while negative delta represents delta surplus.
+     */
     function _accountDelta(Asset asset, int256 delta) internal {
         if (delta == 0) return;
 
-        address sender = senders[senders.length - 1];
-        int256 current = assetDeltas[sender][asset];
+        address handler = handlers[handlers.length - 1];
+        int256 current = assetDeltas[handler][asset];
         int256 next = current + delta;
 
         unchecked {
@@ -118,7 +154,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
             }
         }
 
-        assetDeltas[sender][asset] = next;
+        assetDeltas[handler][asset] = next;
     }
 
     /*******************************************************************************
@@ -136,7 +172,11 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     }
 
     /// @inheritdoc IVault
-    function allowanceOfERC20(address poolToken, address owner, address spender) external view returns (uint256) {
+    function allowanceOfERC20(
+        address poolToken,
+        address owner,
+        address spender
+    ) external view returns (uint256) {
         return _allowanceOfERC20(poolToken, owner, spender);
     }
 
@@ -152,11 +192,11 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
 
     /// @inheritdoc IVault
     function approveERC20(
-        address sender,
+        address handler,
         address spender,
         uint256 amount
     ) external withRegisteredPool(msg.sender) returns (bool) {
-        _approveERC20(msg.sender, sender, spender, amount);
+        _approveERC20(msg.sender, handler, spender, amount);
         return true;
     }
 
@@ -192,53 +232,61 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     }
 
     /// @inheritdoc IVault
-    function isApprovedForAllERC721(address token, address owner, address operator) external view returns (bool) {
+    function isApprovedForAllERC721(
+        address token,
+        address owner,
+        address operator
+    ) external view returns (bool) {
         return _isApprovedForAllERC721(token, owner, operator);
     }
 
     /// @inheritdoc IVault
-    function approveERC721(address sender, address to, uint256 tokenId) external withRegisteredPool(msg.sender) {
-        _approveERC721(msg.sender, sender, to, tokenId);
+    function approveERC721(
+        address handler,
+        address to,
+        uint256 tokenId
+    ) external withRegisteredPool(msg.sender) {
+        _approveERC721(msg.sender, handler, to, tokenId);
     }
 
     /// @inheritdoc IVault
     function setApprovalForAllERC721(
-        address sender,
+        address handler,
         address operator,
         bool approved
     ) external withRegisteredPool(msg.sender) {
-        _setApprovalForAllERC721(msg.sender, sender, operator, approved);
+        _setApprovalForAllERC721(msg.sender, handler, operator, approved);
     }
 
     /// @inheritdoc IVault
     function transferFromERC721(
-        address sender,
+        address handler,
         address from,
         address to,
         uint256 tokenId
     ) public withRegisteredPool(msg.sender) {
-        _transferFromERC721(msg.sender, sender, from, to, tokenId);
+        _transferFromERC721(msg.sender, handler, from, to, tokenId);
     }
 
     /// @inheritdoc IVault
     function safeTransferFromERC721(
-        address sender,
+        address handler,
         address from,
         address to,
         uint256 tokenId
     ) external withRegisteredPool(msg.sender) {
-        _safeTransferFromERC721(msg.sender, sender, from, to, tokenId);
+        _safeTransferFromERC721(msg.sender, handler, from, to, tokenId);
     }
 
     /// @inheritdoc IVault
     function safeTransferFromERC721(
-        address sender,
+        address handler,
         address from,
         address to,
         uint256 tokenId,
         bytes memory data
     ) external withRegisteredPool(msg.sender) {
-        _safeTransferFromERC721(msg.sender, sender, from, to, tokenId, data);
+        _safeTransferFromERC721(msg.sender, handler, from, to, tokenId, data);
     }
 
     /*******************************************************************************
@@ -246,9 +294,14 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     *******************************************************************************/
 
     /// @inheritdoc IVault
-    function singleSwap(
-        IVault.SingleSwap calldata params
-    ) external payable transient nonReentrant whenNotPaused returns (uint256) {
+    function singleSwap(IVault.SingleSwap calldata params)
+        external
+        payable
+        transient
+        nonReentrant
+        whenNotPaused
+        returns (uint256)
+    {
         IERC20 tokenIn = params.assetIn.toIERC20(_weth);
         IERC20 tokenOut = params.assetOut.toIERC20(_weth);
 
@@ -265,21 +318,31 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
             })
         );
 
-        _receiveAsset(params.assetIn, amountIn, msg.sender);
+        // Receive the assetIn amount
+        retrieve(params.assetIn, msg.sender, amountIn);
 
-        _sendAsset(params.assetOut, amountOut, payable(msg.sender));
+        // Send the assetOut amount
+        send(params.assetOut, msg.sender, amountOut);
 
         // If the asset in is ETH, then `amountIn` ETH was wrapped into WETH.
-        _handleRemainingEth(params.assetIn.isETH() ? amountIn : 0);
+        if (params.assetIn.isETH()) {
+            address(this).returnEth(amountIn);
+        }
 
         emit Swap(params.pool, tokenIn, tokenOut, amountIn, amountOut);
 
         return amountCalculated;
     }
 
-    function swap(
-        IVault.SwapParams memory params
-    ) public withSender returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
+    function swap(IVault.SwapParams memory params)
+        public
+        withHandler
+        returns (
+            uint256 amountCalculated,
+            uint256 amountIn,
+            uint256 amountOut
+        )
+    {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > params.deadline) {
@@ -349,22 +412,22 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
             ? (params.amountGiven, amountCalculated)
             : (amountCalculated, params.amountGiven);
 
-        //tokenInBalance = tokenInBalance + amountIn;
-        //tokenOutBalance = tokenOutBalance - amountOut;
+        tokenInBalance = tokenInBalance + amountIn;
+        tokenOutBalance = tokenOutBalance - amountOut;
+
+        // Because no tokens were registered or deregistered between now or when we retrieved the indexes for
+        // 'token in' and 'token out', we can use `unchecked_setAt` to save storage reads.
+        poolBalances.unchecked_setAt(indexIn, tokenInBalance);
+        poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
 
         if (params.kind == SwapKind.GIVEN_IN ? amountOut < params.limit : amountIn > params.limit) {
             revert SwapLimit(amountOut, params.limit);
         }
 
-        // Because no tokens were registered or deregistered between now or when we retrieved the indexes for
-        // 'token in' and 'token out', we can use `unchecked_setAt` to save storage reads.
-        // poolBalances.unchecked_setAt(indexIn, tokenInBalance);
-        // poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
-
-        // Credit amountIn of tokenIn
-        _accountDelta(params.tokenIn.asAsset(), -int256(amountIn));
-        // Debit amountOut of tokenOut
-        _accountDelta(params.tokenOut.asAsset(), int256(amountOut));
+        // Account amountIn of tokenIn
+        _accountDelta(params.tokenIn.asAsset(), int256(amountIn));
+        // Account amountOut of tokenOut
+        _accountDelta(params.tokenOut.asAsset(), -int256(amountOut));
     }
 
     /*******************************************************************************
@@ -382,9 +445,12 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     }
 
     /// @inheritdoc IVault
-    function getPoolTokens(
-        address pool
-    ) external view withRegisteredPool(pool) returns (IERC20[] memory tokens, uint256[] memory balances) {
+    function getPoolTokens(address pool)
+        external
+        view
+        withRegisteredPool(pool)
+        returns (IERC20[] memory tokens, uint256[] memory balances)
+    {
         return _getPoolTokens(pool);
     }
 
@@ -408,6 +474,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     )
         external
         payable
+        transient
         whenNotPaused
         nonReentrant
         withRegisteredPool(pool)
@@ -428,7 +495,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
             revert BtpAmountBelowMin();
         }
 
-        // The Vault ignores the `sender`: it is up to the Pool to keep track of
+        // The Vault ignores the `handler`: it is up to the Pool to keep track of
         // their participation.
         // We need to track how much of the received ETH was used and wrapped into WETH to return any excess.
         uint256 wrappedEth = 0;
@@ -440,9 +507,11 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
                 revert JoinAboveMax();
             }
 
-            // Receive assets from the sender
+            // Receive assets from the handler
             Asset asset = assets[i];
-            _receiveAsset(asset, amountIn, msg.sender);
+            _accountDelta(asset, int256(amountIn));
+            retrieve(asset, msg.sender, amountIn);
+            settle(asset);
 
             if (asset.isETH()) {
                 wrappedEth = wrappedEth + amountIn;
@@ -455,7 +524,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
         _setPoolBalances(pool, finalBalances);
 
         // Handle any used and remaining ETH.
-        _handleRemainingEth(wrappedEth);
+        address(this).returnEth(wrappedEth);
 
         _mintERC20(pool, msg.sender, bptAmountOut);
 
@@ -489,7 +558,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
             }
 
             // Send tokens to the recipient
-            _sendAsset(assets[i], amountOut, payable(msg.sender));
+            assets[i].send(msg.sender, amountOut, _weth);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
             finalBalances[i] = balances[i] - amountOut;
@@ -530,10 +599,11 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
      * `expectedTokens` must exactly equal the token array returned by `getPoolTokens`: both arrays must have the same
      * length, elements and order. Additionally, the Pool must have at least one registered token.
      */
-    function _validateTokensAndGetBalances(
-        address pool,
-        IERC20[] memory expectedTokens
-    ) private view returns (uint256[] memory) {
+    function _validateTokensAndGetBalances(address pool, IERC20[] memory expectedTokens)
+        private
+        view
+        returns (uint256[] memory)
+    {
         (IERC20[] memory actualTokens, uint256[] memory balances) = _getPoolTokens(pool);
         InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
         if (actualTokens.length == 0) {
@@ -547,87 +617,5 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
         }
 
         return balances;
-    }
-
-    /*******************************************************************************
-                                    Utils
-    *******************************************************************************/
-
-    /**
-     * @dev Returns excess ETH back to the contract caller, assuming `amountUsed` has been spent. Reverts
-     * if the caller sent less ETH than `amountUsed`.
-     *
-     * Because the caller might not know exactly how much ETH a Vault action will require, they may send extra.
-     * Note that this excess value is returned *to the contract caller* (msg.sender). If caller and e.g. swap sender are
-     * not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
-     * returned ETH.
-     */
-    function _handleRemainingEth(uint256 amountUsed) internal {
-        if (msg.value < amountUsed) {
-            revert InsufficientEth();
-        }
-
-        uint256 excess = msg.value - amountUsed;
-        if (excess > 0) {
-            payable(msg.sender).sendValue(excess);
-        }
-    }
-
-    /**
-     * @dev Receives `amount` of `asset` from `sender`. If `fromInternalBalance` is true, it first withdraws as much
-     * as possible from Internal Balance, then transfers any remaining amount.
-     *
-     * If `asset` is ETH, `fromInternalBalance` must be false (as ETH cannot be held as internal balance), and the funds
-     * will be wrapped into WETH.
-     *
-     * WARNING: this function does not check that the contract caller has actually supplied any ETH - it is up to the
-     * caller of this function to check that this is true to prevent the Vault from using its own ETH (though the Vault
-     * typically doesn't hold any).
-     */
-    function _receiveAsset(Asset asset, uint256 amount, address sender) internal {
-        if (amount == 0) {
-            return;
-        }
-
-        if (asset.isETH()) {
-            // The ETH amount to receive is deposited into the WETH contract, which will in turn mint WETH for
-            // the Vault at a 1:1 ratio.
-
-            // A check for this condition is also introduced by the compiler, but this one provides a revert reason.
-            // Note we're checking for the Vault's total balance, *not* ETH sent in this transaction.
-            if (address(this).balance < amount) {
-                revert InsufficientEth();
-            }
-            _weth.deposit{ value: amount }();
-        } else {
-            IERC20 token = asset.asIERC20();
-
-            token.safeTransferFrom(sender, address(this), amount);
-        }
-    }
-
-    /**
-     * @dev Sends `amount` of `asset` to `recipient`. If `toInternalBalance` is true, the asset is deposited as Internal
-     * Balance instead of being transferred.
-     *
-     * If `asset` is ETH, `toInternalBalance` must be false (as ETH cannot be held as internal balance), and the funds
-     * are instead sent directly after unwrapping WETH.
-     */
-    function _sendAsset(Asset asset, uint256 amount, address payable recipient) internal {
-        if (amount == 0) {
-            return;
-        }
-
-        if (asset.isETH()) {
-            // First, the Vault withdraws deposited ETH from the WETH contract, by burning the same amount of WETH
-            // from the Vault. This receipt will be handled by the Vault's `receive`.
-            _weth.withdraw(amount);
-
-            // Then, the withdrawn ETH is sent to the recipient.
-            recipient.sendValue(amount);
-        } else {
-            IERC20 token = asset.asIERC20();
-            token.safeTransfer(recipient, amount);
-        }
     }
 }
