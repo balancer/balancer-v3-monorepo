@@ -37,14 +37,14 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     IWETH private immutable _weth;
 
     /// @notice
-    address[] handlers;
+    address[] private _handlers;
     /// @notice The total number of nonzero deltas over all active + completed lockers
-    uint128 nonzeroDeltaCount;
+    uint128 private _nonzeroDeltaCount;
     /// @dev Represents the asset due/owed to each handler.
     /// Must all net to zero when the last handler is released.
-    mapping(address => mapping(Asset => int256)) public assetDeltas;
+    mapping(address => mapping(Asset => int256)) private _assetDeltas;
     /// @notice
-    mapping(Asset => uint256) public assetReserves;
+    mapping(Asset => uint256) private _assetReserves;
 
     constructor(
         IWETH weth,
@@ -62,17 +62,17 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
      * @dev
      */
     modifier transient() {
-        handlers.push(msg.sender);
+        _handlers.push(msg.sender);
 
         // the caller does everything here, including paying what they owe via calls to settle
         _;
 
-        if (handlers.length == 1) {
-            if (nonzeroDeltaCount != 0) revert BalanceNotSettled();
-            delete handlers;
-            delete nonzeroDeltaCount;
+        if (_handlers.length == 1) {
+            if (_nonzeroDeltaCount != 0) revert BalanceNotSettled();
+            delete _handlers;
+            delete _nonzeroDeltaCount;
         } else {
-            handlers.pop();
+            _handlers.pop();
         }
     }
 
@@ -80,15 +80,15 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
      * @dev
      */
     modifier withHandler() {
-        address handler = handlers[handlers.length - 1];
+        address handler = _handlers[_handlers.length - 1];
         if (msg.sender != handler) revert WrongSender(msg.sender, handler);
         _;
     }
 
     function settle(Asset asset) public payable withHandler returns (uint256 paid) {
-        uint256 reservesBefore = assetReserves[asset];
-        assetReserves[asset] = asset.balanceOf();
-        paid = assetReserves[asset] - reservesBefore;
+        uint256 reservesBefore = _assetReserves[asset];
+        _assetReserves[asset] = asset.balanceOf();
+        paid = _assetReserves[asset] - reservesBefore;
         // subtraction must be safe
         _accountDelta(asset, -paid.toInt256());
     }
@@ -100,7 +100,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     ) public withHandler {
         // effects
         _accountDelta(asset, amount.toInt256());
-        assetReserves[asset] -= amount;
+        _assetReserves[asset] -= amount;
         // interactions
         asset.send(to, amount, _weth);
     }
@@ -121,7 +121,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     ) public withHandler {
         // effects
         _accountDelta(asset, -(amount.toInt256()));
-        assetReserves[asset] += amount;
+        _assetReserves[asset] += amount;
         // interactions
         asset.retrieve(from, amount, _weth);
     }
@@ -132,7 +132,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     }
 
     function getHandler() internal view returns (address) {
-        return handlers[handlers.length - 1];
+        return _handlers[_handlers.length - 1];
     }
 
     /**
@@ -142,19 +142,19 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     function _accountDelta(Asset asset, int256 delta) internal {
         if (delta == 0) return;
 
-        address handler = handlers[handlers.length - 1];
-        int256 current = assetDeltas[handler][asset];
+        address handler = _handlers[_handlers.length - 1];
+        int256 current = _assetDeltas[handler][asset];
         int256 next = current + delta;
 
         unchecked {
             if (next == 0) {
-                nonzeroDeltaCount--;
+                _nonzeroDeltaCount--;
             } else if (current == 0) {
-                nonzeroDeltaCount++;
+                _nonzeroDeltaCount++;
             }
         }
 
-        assetDeltas[handler][asset] = next;
+        _assetDeltas[handler][asset] = next;
     }
 
     /*******************************************************************************
