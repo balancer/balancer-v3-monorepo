@@ -8,6 +8,7 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+import "./Address.sol";
 
 /**
  * @title SafeERC20
@@ -19,6 +20,7 @@ import "@balancer-labs/v3-interfaces/contracts/solidity-utils/openzeppelin/IERC2
  * which allows you to call the safe operations as `token.safeTransfer(...)`, etc.
  */
 library SafeERC20 {
+    using Address for address;
 
     function safeApprove(
         IERC20 token,
@@ -26,10 +28,9 @@ library SafeERC20 {
         uint256 value
     ) internal {
         // Some contracts need their allowance reduced to 0 before setting it to an arbitrary amount.
-        require(
-            (value == 0) || (token.allowance(address(this), to) == 0),
-            "SafeERC20: approve from non-zero to non-zero allowance"
-        );
+        if (value != 0 && token.allowance(address(this), address(to)) != 0) {
+            _callOptionalReturn(address(token), abi.encodeWithSelector(token.approve.selector, to, 0));
+        }
 
         _callOptionalReturn(address(token), abi.encodeWithSelector(token.approve.selector, to, value));
     }
@@ -73,6 +74,9 @@ library SafeERC20 {
         }
 
         // Finally we check the returndata size is either zero or true - note that this check will always pass for EOAs
-        _require(returndata.length == 0 || abi.decode(returndata, (bool)), Errors.SAFE_ERC20_CALL_FAILED);
+        _require(
+            (returndata.length == 0 || abi.decode(returndata, (bool))) && Address.isContract(address(token)),
+            Errors.SAFE_ERC20_CALL_FAILED
+        );
     }
 }
