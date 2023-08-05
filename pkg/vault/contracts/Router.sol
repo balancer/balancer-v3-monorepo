@@ -70,9 +70,6 @@ contract Router is IRouter, ReentrancyGuard {
             params.userData
         );
 
-        // We need to track how much of the received ETH was used and wrapped into WETH to return any excess.
-        uint256 wrappedEth = 0;
-
         for (uint256 i = 0; i < params.assets.length; ++i) {
             // Receive assets from the handler
             Asset asset = params.assets[i];
@@ -80,9 +77,10 @@ contract Router is IRouter, ReentrancyGuard {
 
             IERC20 token = asset.toIERC20(_weth);
 
+            // There can be only one WETH token in the pool
             if (asset.isETH()) {
                 _weth.deposit{ value: amountIn }();
-                wrappedEth = wrappedEth + amountIn;
+                address(params.sender).returnEth(amountIn);
             }
             _vault.retrieve(token, params.sender, amountIn);
         }
@@ -90,7 +88,6 @@ contract Router is IRouter, ReentrancyGuard {
         _vault.mint(IERC20(params.pool), params.sender, bptAmountOut);
 
         // Send remaining ETH to the user
-        address(params.sender).returnEth(wrappedEth);
     }
 
     function removeLiquidity(
@@ -99,20 +96,60 @@ contract Router is IRouter, ReentrancyGuard {
         uint256[] memory minAmountsOut,
         uint256 bptAmountIn,
         bytes memory userData
-    ) external nonReentrant returns (uint256[] memory amountsOut) {
-        IERC20[] memory tokens = assets.toIERC20(_weth);
+    ) external returns (uint256[] memory amountsOut) {
+        return
+            abi.decode(
+                _vault.invoke(
+                    abi.encodeWithSelector(
+                        Router.removeLiquidityCallback.selector,
+                        RemoveLiquidityCallbackParams({
+                            sender: msg.sender,
+                            pool: pool,
+                            assets: assets,
+                            minAmountsOut: minAmountsOut,
+                            bptAmountIn: bptAmountIn,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256[])
+            );
+    }
 
-        amountsOut = _vault.removeLiquidity(pool, tokens, minAmountsOut, bptAmountIn, userData);
+    function removeLiquidityCallback(RemoveLiquidityCallbackParams calldata params)
+        external
+        nonReentrant
+        returns (uint256[] memory amountsOut)
+    {
+        IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
-        for (uint256 i = 0; i < assets.length; ++i) {
+        amountsOut = _vault.removeLiquidity(
+            params.pool,
+            tokens,
+            params.minAmountsOut,
+            params.bptAmountIn,
+            params.userData
+        );
+
+        for (uint256 i = 0; i < params.assets.length; ++i) {
             uint256 amountOut = amountsOut[i];
 
-            // Send tokens to the recipient
-            assets[i].send(msg.sender, amountOut, _weth);
-            // TODO:  Handle ETH properly
+            Asset asset = params.assets[i];
+            IERC20 token = asset.toIERC20(_weth);
+
+            // Receive the asset amountOut
+            _vault.send(token, params.sender, amountOut);
+
+            // There can be only one WETH token in the pool
+            if (asset.isETH()) {
+                // Withdraw WETH to ETH
+                _weth.withdraw(amountOut);
+                // Send ETH to sender
+                payable(params.sender).sendValue(amountOut);
+            }
         }
 
-        _vault.burn(IERC20(pool), msg.sender, bptAmountIn);
+        _vault.burn(IERC20(params.pool), params.sender, params.bptAmountIn);
     }
 
     function swap(SingleSwap calldata params) external payable nonReentrant returns (uint256) {

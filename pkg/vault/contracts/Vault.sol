@@ -132,7 +132,7 @@ contract Vault is IVault, ERC20MultiToken, PoolRegistry, ReentrancyGuard, Tempor
         uint256 amount
     ) public withHandler {
         _spendAllowance(address(token), owner, address(this), amount);
-        _burnERC20(address(token), msg.sender, amount);
+        _burnERC20(address(token), owner, amount);
         _accountDelta(token, -(amount.toInt256()));
     }
 

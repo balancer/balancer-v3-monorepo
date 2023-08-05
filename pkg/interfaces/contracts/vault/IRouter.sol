@@ -64,4 +64,16 @@ interface IRouter {
         uint256 bptAmountIn,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut);
+
+    /**
+     * @dev
+     */
+    struct RemoveLiquidityCallbackParams {
+        address sender;
+        address pool;
+        Asset[] assets;
+        uint256[] minAmountsOut;
+        uint256 bptAmountIn;
+        bytes userData;
+    }
 }

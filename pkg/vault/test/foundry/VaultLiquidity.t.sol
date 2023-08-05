@@ -108,6 +108,8 @@ contract VaultLiquidityTest is Test {
             bytes("")
         );
 
+        pool.approve(address(vault), type(uint256).max);
+
         uint256[] memory amountsOut = router.removeLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
