@@ -6,8 +6,6 @@ import { Asset } from "../solidity-utils/misc/Asset.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IWETH } from "../solidity-utils/misc/IWETH.sol";
-
 /**
  * @dev Full external interface for the Vault core contract - no external or public methods exist in the contract that
  * don't override one of these declarations.
@@ -25,10 +23,6 @@ interface IVault {
     /// Contracts calling view functions in the Vault must make sure the Vault has not already been entered.
     ///
     /// - View functions revert if referring to either unregistered Pools, or unregistered tokens for registered Pools.
-
-    /// @dev Expose the WETH address (for wrapping and unwrapping native ETH).
-    // solhint-disable-next-line func-name-mixedcase
-    function WETH() external view returns (IWETH);
 
     /*******************************************************************************
                                     Pool Registration
@@ -62,15 +56,14 @@ interface IVault {
                                  ERC20 Balancer Pool Tokens 
     *******************************************************************************/
 
-    /// @dev Returns the total supply of an ERC20 Balancer Pool Token.
+    /// @dev Returns the total supply of an ERC20 Token.
     function totalSupplyOfERC20(address poolToken) external view returns (uint256);
 
-    /// @dev Returns an account's balance of an ERC20 Balancer Pool Token.
+    /// @dev Returns an account's balance of an ERC20 Token.
     function balanceOfERC20(address poolToken, address account) external view returns (uint256);
 
     /**
-     * @dev Permissioned function to transfer an ERC20 Balancer Pool Token.
-     * Can only be called from a registered pool.
+     * @dev Function to transfer an ERC20 Token.
      */
     function transferERC20(
         address owner,
@@ -79,8 +72,7 @@ interface IVault {
     ) external returns (bool);
 
     /**
-     * @dev Permissioned function to transferFrom an ERC20 Balancer pool token.
-     * Can only be called from a registered pool.
+     * @dev Function to transferFrom an ERC20 token.
      */
     function transferFromERC20(
         address spender,
@@ -89,7 +81,7 @@ interface IVault {
         uint256 amount
     ) external returns (bool);
 
-    /// @dev Returns an owner's ERC20 BPT allowance for a given spender.
+    /// @dev Returns an owner's ERC20 allowance for a given spender.
     function allowanceOfERC20(
         address poolToken,
         address owner,
@@ -97,8 +89,7 @@ interface IVault {
     ) external view returns (uint256);
 
     /**
-     * @dev Permissioned function to set a sender's ERC20 BPT allowance for a given spender. Can only be called
-     * from a registered pool.
+     * @dev function to set a sender's ERC20 allowance for a given spender.
      */
     function approveERC20(
         address sender,
@@ -107,67 +98,36 @@ interface IVault {
     ) external returns (bool);
 
     /*******************************************************************************
-                               ERC721 Balancer Pool Tokens 
+                              Transient Accounting
     *******************************************************************************/
 
-    /// @dev Returns an account's balance of a Balancer ERC721 pool token.
-    function balanceOfERC721(address token, address owner) external view returns (uint256);
+    function settle(IERC20 token) external returns (uint256 paid);
 
-    /// @dev Returns the owner of an ERC721 Balancer pool token.
-    function ownerOfERC721(address token, uint256 tokenId) external view returns (address);
+    function send(
+        IERC20 token,
+        address to,
+        uint256 amount
+    ) external;
 
-    /// @dev See {IERC721-getApproved}.
-    function getApprovedERC721(address token, uint256 tokenId) external view returns (address);
+    function mint(
+        IERC20 token,
+        address to,
+        uint256 amount
+    ) external;
 
-    /// @dev See {IERC721-isApprovedForAll}.
-    function isApprovedForAllERC721(
-        address token,
+    function retrieve(
+        IERC20 token,
+        address from,
+        uint256 amount
+    ) external;
+
+    function burn(
+        IERC20 token,
         address owner,
-        address operator
-    ) external view returns (bool);
-
-    /// @dev Can only be called by a registered ERC721 pool. See {IERC721-approve}.
-    function approveERC721(
-        address sender,
-        address to,
-        uint256 tokenId
+        uint256 amount
     ) external;
 
-    /// @dev Can only be called by a registered ERC721 pool. See {IERC721-setApprovalForAll}.
-    function setApprovalForAllERC721(
-        address sender,
-        address operator,
-        bool approved
-    ) external;
-
-    /// @dev Can only be called by a registered ERC721 pool. See {IERC721-transferFrom}.
-    function transferFromERC721(
-        address sender,
-        address from,
-        address to,
-        uint256 tokenId
-    ) external;
-
-    /// @dev Can only be called by a registered ERC721 pool. See {IERC721-safeTransferFrom}.
-    function safeTransferFromERC721(
-        address sender,
-        address from,
-        address to,
-        uint256 tokenId
-    ) external;
-
-    /// @dev Can only be called by a registered ERC721 pool. See {IERC721-safeTransferFrom}.
-    function safeTransferFromERC721(
-        address sender,
-        address from,
-        address to,
-        uint256 tokenId,
-        bytes memory data
-    ) external;
-
-    /*******************************************************************************
-                                          Swaps
-    *******************************************************************************/
+    function getHandler() external view returns (address);
 
     /// Users can swap tokens with Pools by calling the `swap` and `batchSwap` functions. To do this,
     /// they need not trust Pool contracts in any way: all security checks are made by the Vault. They must however be
@@ -228,7 +188,13 @@ interface IVault {
      *
      * Emits a `Swap` event.
      */
-    function singleSwap(SingleSwap calldata params) external payable returns (uint256);
+    function swap(SwapParams memory params)
+        external
+        returns (
+            uint256 amountCalculated,
+            uint256 amountIn,
+            uint256 amountOut
+        );
 
     /**
      * @dev Data for a single swap executed by `swap`. `amount` is either `amountIn` or `amountOut` depending on
@@ -239,20 +205,6 @@ interface IVault {
      *
      * The `userData` field is ignored by the Vault, but forwarded to the Pool in the `onSwap` hook, and may be
      * used to extend swap behavior.
-     */
-    struct SingleSwap {
-        SwapKind kind;
-        address pool;
-        Asset assetIn;
-        Asset assetOut;
-        uint256 amountGiven;
-        uint256 limit;
-        uint256 deadline;
-        bytes userData;
-    }
-
-    /**
-     * @dev
      */
     struct SwapParams {
         SwapKind kind;
@@ -275,10 +227,6 @@ interface IVault {
         uint256 amountIn,
         uint256 amountOut
     );
-
-    /*******************************************************************************
-                                    Add/Remove Liquidity
-    *******************************************************************************/
 
     /**
      * @dev Called by users to join a Pool, which transfers tokens from `sender` into the Pool's balance. This will
@@ -314,11 +262,11 @@ interface IVault {
      */
     function addLiquidity(
         address pool,
-        Asset[] memory assets,
+        IERC20[] memory assets,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
     /**
      * @dev Called by users to exit a Pool, which transfers tokens from the Pool's balance to `recipient`. This will
@@ -357,7 +305,7 @@ interface IVault {
      */
     function removeLiquidity(
         address pool,
-        Asset[] memory assets,
+        IERC20[] memory assets,
         uint256[] memory minAmountsOut,
         uint256 bptAmountIn,
         bytes memory userData

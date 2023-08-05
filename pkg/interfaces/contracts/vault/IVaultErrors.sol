@@ -94,5 +94,10 @@ interface IVaultErrors {
     /**
      * @dev
      */
-    error WrongSender(address, address);
+    error WrongHandler(address, address);
+
+    /**
+     * @dev
+     */
+    error NoHandler();
 }

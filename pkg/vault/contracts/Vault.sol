@@ -19,12 +19,11 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 
 import { ERC20MultiToken } from "./ERC20MultiToken.sol";
-import { ERC721MultiToken } from "./ERC721MultiToken.sol";
 import { PoolRegistry } from "./PoolRegistry.sol";
 
 import "forge-std/Test.sol";
 
-contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, ReentrancyGuard, TemporarilyPausable {
+contract Vault is IVault, ERC20MultiToken, PoolRegistry, ReentrancyGuard, TemporarilyPausable {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
     using AssetHelpers for *;
@@ -33,26 +32,19 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     using SafeERC20 for IERC20;
     using SafeCast for *;
 
-    // solhint-disable-next-line var-name-mixedcase
-    IWETH private immutable _weth;
-
     /// @notice
     address[] private _handlers;
     /// @notice The total number of nonzero deltas over all active + completed lockers
     uint128 private _nonzeroDeltaCount;
     /// @dev Represents the asset due/owed to each handler.
     /// Must all net to zero when the last handler is released.
-    mapping(address => mapping(Asset => int256)) private _assetDeltas;
+    mapping(address => mapping(IERC20 => int256)) private _tokenDeltas;
     /// @notice
-    mapping(Asset => uint256) private _assetReserves;
+    mapping(IERC20 => uint256) private _tokenReserves;
 
-    constructor(
-        IWETH weth,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
-    ) TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration) {
-        _weth = weth;
-    }
+    constructor(uint256 pauseWindowDuration, uint256 bufferPeriodDuration)
+        TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
+    {}
 
     /*******************************************************************************
                               Transient Accounting
@@ -80,70 +72,78 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
      * @dev
      */
     modifier withHandler() {
-        address handler = _handlers[_handlers.length - 1];
-        if (msg.sender != handler) revert WrongSender(msg.sender, handler);
+        address handler = getHandler();
+        if (msg.sender != handler) revert WrongHandler(msg.sender, handler);
         _;
     }
 
-    function settle(Asset asset) public payable withHandler returns (uint256 paid) {
-        uint256 reservesBefore = _assetReserves[asset];
-        _assetReserves[asset] = asset.balanceOf();
-        paid = _assetReserves[asset] - reservesBefore;
+    function settle(IERC20 token) public withHandler returns (uint256 paid) {
+        uint256 reservesBefore = _tokenReserves[token];
+        _tokenReserves[token] = token.balanceOf(address(this));
+        paid = _tokenReserves[token] - reservesBefore;
         // subtraction must be safe
-        _accountDelta(asset, -paid.toInt256());
+        _accountDelta(token, -paid.toInt256());
     }
 
     function send(
-        Asset asset,
+        IERC20 token,
         address to,
         uint256 amount
     ) public withHandler {
         // effects
-        _accountDelta(asset, amount.toInt256());
-        _assetReserves[asset] -= amount;
+        _accountDelta(token, amount.toInt256());
+        _tokenReserves[token] -= amount;
         // interactions
-        asset.send(to, amount, _weth);
+        token.safeTransfer(to, amount);
     }
 
     function mint(
-        Asset asset,
+        IERC20 token,
         address to,
         uint256 amount
     ) public withHandler {
-        _accountDelta(asset, amount.toInt256());
-        _mintERC20(asset.asAddress(), to, amount);
+        _accountDelta(token, amount.toInt256());
+        _mintERC20(address(token), to, amount);
     }
 
     function retrieve(
-        Asset asset,
+        IERC20 token,
         address from,
         uint256 amount
     ) public withHandler {
         // effects
-        _accountDelta(asset, -(amount.toInt256()));
-        _assetReserves[asset] += amount;
+        _accountDelta(token, -(amount.toInt256()));
+        _tokenReserves[token] += amount;
         // interactions
-        asset.retrieve(from, amount, _weth);
+        token.safeTransferFrom(from, address(this), amount);
     }
 
-    function burn(Asset asset, uint256 amount) public withHandler {
-        _burnERC20(asset.asAddress(), msg.sender, amount);
-        _accountDelta(asset, -(amount.toInt256()));
+    function burn(
+        IERC20 token,
+        address owner,
+        uint256 amount
+    ) public withHandler {
+        _spendAllowance(address(token), owner, address(this), amount);
+        _burnERC20(address(token), msg.sender, amount);
+        _accountDelta(token, -(amount.toInt256()));
     }
 
-    function getHandler() internal view returns (address) {
+    function getHandler() public view returns (address) {
+        if (_handlers.length == 0) {
+            revert NoHandler();
+        }
         return _handlers[_handlers.length - 1];
     }
 
     /**
-     * @dev Accounts the delta for the current handler and asset.
+     * @dev Accounts the delta for the current handler and token.
      * Positive delta represents debt, while negative delta represents delta surplus.
      */
-    function _accountDelta(Asset asset, int256 delta) internal {
+    function _accountDelta(IERC20 token, int256 delta) internal {
         if (delta == 0) return;
 
         address handler = _handlers[_handlers.length - 1];
-        int256 current = _assetDeltas[handler][asset];
+        int256 current = _tokenDeltas[handler][token];
         int256 next = current + delta;
 
         unchecked {
@@ -154,30 +154,30 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
             }
         }
 
-        _assetDeltas[handler][asset] = next;
+        _tokenDeltas[handler][token] = next;
     }
 
     /*******************************************************************************
-                              ERC20 Balancer Pool Tokens
+                                    ERC20 Tokens
     *******************************************************************************/
 
     /// @inheritdoc IVault
-    function totalSupplyOfERC20(address poolToken) external view returns (uint256) {
-        return _totalSupplyOfERC20(poolToken);
+    function totalSupplyOfERC20(address token) external view returns (uint256) {
+        return _totalSupplyOfERC20(token);
     }
 
     /// @inheritdoc IVault
-    function balanceOfERC20(address poolToken, address account) external view returns (uint256) {
-        return _balanceOfERC20(poolToken, account);
+    function balanceOfERC20(address token, address account) external view returns (uint256) {
+        return _balanceOfERC20(token, account);
     }
 
     /// @inheritdoc IVault
     function allowanceOfERC20(
-        address poolToken,
+        address token,
         address owner,
         address spender
     ) external view returns (uint256) {
-        return _allowanceOfERC20(poolToken, owner, spender);
+        return _allowanceOfERC20(token, owner, spender);
     }
 
     /// @inheritdoc IVault
@@ -185,7 +185,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
         address owner,
         address to,
         uint256 amount
-    ) external withRegisteredPool(msg.sender) returns (bool) {
+    ) external returns (bool) {
         _transferERC20(msg.sender, owner, to, amount);
         return true;
     }
@@ -195,7 +195,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
         address handler,
         address spender,
         uint256 amount
-    ) external withRegisteredPool(msg.sender) returns (bool) {
+    ) external returns (bool) {
         _approveERC20(msg.sender, handler, spender, amount);
         return true;
     }
@@ -206,7 +206,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
         address from,
         address to,
         uint256 amount
-    ) external withRegisteredPool(msg.sender) returns (bool) {
+    ) external returns (bool) {
         _spendAllowance(msg.sender, from, spender, amount);
         _transferERC20(msg.sender, from, to, amount);
         return true;
@@ -216,7 +216,7 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
                                           Swaps
     *******************************************************************************/
 
-    function swap(IVault.SwapParams memory params)
+    function swap(SwapParams memory params)
         public
         whenNotPaused
         withHandler
@@ -308,9 +308,11 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
         }
 
         // Account amountIn of tokenIn
-        _accountDelta(params.tokenIn.asAsset(), int256(amountIn));
+        _accountDelta(params.tokenIn, int256(amountIn));
         // Account amountOut of tokenOut
-        _accountDelta(params.tokenOut.asAsset(), -int256(amountOut));
+        _accountDelta(params.tokenOut, -int256(amountOut));
+
+        emit Swap(params.pool, params.tokenIn, params.tokenOut, amountIn, amountOut);
     }
 
     /*******************************************************************************
@@ -337,12 +339,6 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
         return _getPoolTokens(pool);
     }
 
-    /// @inheritdoc IVault
-    function WETH() public view returns (IWETH) {
-        // solhint-disable-previous-line func-name-mixedcase
-        return _weth;
-    }
-
     /*******************************************************************************
                                     Pools
     *******************************************************************************/
@@ -350,55 +346,42 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     /// @inheritdoc IVault
     function addLiquidity(
         address pool,
-        Asset[] memory assets,
+        IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
     )
         external
-        payable
-        transient
+        withHandler
         whenNotPaused
-        nonReentrant
         withRegisteredPool(pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut)
     {
-        InputHelpers.ensureInputLengthMatch(assets.length, maxAmountsIn.length);
+        InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
 
         // We first check that the caller passed the Pool's registered tokens in the correct order
         // and retrieve the current balance for each.
-        IERC20[] memory tokens = assets.toIERC20(_weth);
         uint256[] memory balances = _validateTokensAndGetBalances(pool, tokens);
 
         // The bulk of the work is done here: the corresponding Pool hook is called
-        // its final balances are computed, assets are transferred, and fees are paid.
+        // its final balances are computed
         (amountsIn, bptAmountOut) = IBasePool(pool).onAddLiquidity(msg.sender, balances, maxAmountsIn, userData);
 
         if (bptAmountOut < minBptAmountOut) {
             revert BtpAmountBelowMin();
         }
 
-        // The Vault ignores the `handler`: it is up to the Pool to keep track of
-        // their participation.
-        // We need to track how much of the received ETH was used and wrapped into WETH to return any excess.
-        uint256 wrappedEth = 0;
-
         uint256[] memory finalBalances = new uint256[](balances.length);
-        for (uint256 i = 0; i < assets.length; ++i) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountIn = amountsIn[i];
             if (amountIn > maxAmountsIn[i]) {
                 revert JoinAboveMax();
             }
 
-            // Receive assets from the handler
-            Asset asset = assets[i];
-            _accountDelta(asset, int256(amountIn));
-            retrieve(asset, msg.sender, amountIn);
-            settle(asset);
-
-            if (asset.isETH()) {
-                wrappedEth = wrappedEth + amountIn;
-            }
+            // Debit of token[i] for amountIn
+            console2.log("before");
+            _accountDelta(tokens[i], int256(amountIn));
+            console2.log("after");
 
             finalBalances[i] += amountIn;
         }
@@ -406,10 +389,8 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
         // All that remains is storing the new Pool balances.
         _setPoolBalances(pool, finalBalances);
 
-        // Handle any used and remaining ETH.
-        address(this).returnEth(wrappedEth);
-
-        _mintERC20(pool, msg.sender, bptAmountOut);
+        // Credit bptAmountOut of pool tokens
+        _accountDelta(IERC20(pool), -int256(bptAmountOut));
 
         emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }
@@ -417,31 +398,28 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
     /// @inheritdoc IVault
     function removeLiquidity(
         address pool,
-        Asset[] memory assets,
+        IERC20[] memory tokens,
         uint256[] memory minAmountsOut,
         uint256 bptAmountIn,
         bytes memory userData
     ) external whenNotPaused nonReentrant withRegisteredPool(pool) returns (uint256[] memory amountsOut) {
-        InputHelpers.ensureInputLengthMatch(assets.length, minAmountsOut.length);
+        InputHelpers.ensureInputLengthMatch(tokens.length, minAmountsOut.length);
 
         // We first check that the caller passed the Pool's registered tokens in the correct order, and retrieve the
         // current balance for each.
-        IERC20[] memory tokens = assets.toIERC20(_weth);
         uint256[] memory balances = _validateTokensAndGetBalances(pool, tokens);
 
-        // The bulk of the work is done here: the corresponding Pool hook is called, its final balances are computed,
-        // assets are transferred, and fees are paid.
+        // The bulk of the work is done here: the corresponding Pool hook is called, its final balances are computed
         amountsOut = IBasePool(pool).onRemoveLiquidity(msg.sender, balances, minAmountsOut, bptAmountIn, userData);
 
         uint256[] memory finalBalances = new uint256[](balances.length);
-        for (uint256 i = 0; i < assets.length; ++i) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountOut = amountsOut[i];
             if (amountOut < minAmountsOut[i]) {
                 revert ExitBelowMin();
             }
-
-            // Send tokens to the recipient
-            assets[i].send(msg.sender, amountOut, _weth);
+            // Credit token[i] for amountIn
+            _accountDelta(tokens[i], -int256(amountOut));
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
             finalBalances[i] = balances[i] - amountOut;
@@ -450,7 +428,8 @@ contract Vault is IVault, ERC20MultiToken, ERC721MultiToken, PoolRegistry, Reent
         // All that remains is storing the new Pool balances.
         _setPoolBalances(pool, finalBalances);
 
-        _burnERC20(pool, msg.sender, bptAmountIn);
+        // Debit bptAmountOut of pool tokens
+        _accountDelta(IERC20(pool), int256(bptAmountIn));
 
         emit PoolBalanceChanged(
             pool,

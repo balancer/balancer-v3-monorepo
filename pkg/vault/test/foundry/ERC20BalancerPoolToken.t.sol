@@ -24,7 +24,7 @@ contract ERC20BalancerPoolTokenTest is Test {
     ERC20PoolMock token;
 
     function setUp() public {
-        vault = new VaultMock(IWETH(address(0)), 30 days, 90 days);
+        vault = new VaultMock(30 days, 90 days);
         token = new ERC20PoolMock(
             vault,
             "ERC20 Pool",

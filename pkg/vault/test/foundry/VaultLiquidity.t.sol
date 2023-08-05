@@ -17,6 +17,7 @@ import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/
 import { ERC20BalancerPoolToken } from "../../contracts/ERC20BalancerPoolToken.sol";
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
+import { Router } from "../../contracts/Router.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
 contract VaultLiquidityTest is Test {
@@ -26,6 +27,7 @@ contract VaultLiquidityTest is Test {
     using ArrayHelpers for uint256[2];
 
     VaultMock vault;
+    Router router;
     ERC20PoolMock pool;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
@@ -35,7 +37,8 @@ contract VaultLiquidityTest is Test {
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
 
     function setUp() public {
-        vault = new VaultMock(IWETH(address(0)), 30 days, 90 days);
+        vault = new VaultMock(30 days, 90 days);
+        router = new Router(IVault(vault), address(0));
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         pool = new ERC20PoolMock(
@@ -64,7 +67,7 @@ contract VaultLiquidityTest is Test {
 
     function testAddLiquidity() public {
         vm.startPrank(alice);
-        (uint256[] memory amountsIn, uint256 bptAmountOut) = vault.addLiquidity(
+        (uint256[] memory amountsIn, uint256 bptAmountOut) = router.addLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
@@ -97,7 +100,7 @@ contract VaultLiquidityTest is Test {
 
     function testRemoveLiquidity() public {
         vm.startPrank(alice);
-        vault.addLiquidity(
+        router.addLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
@@ -105,7 +108,7 @@ contract VaultLiquidityTest is Test {
             bytes("")
         );
 
-        uint256[] memory amountsOut = vault.removeLiquidity(
+        uint256[] memory amountsOut = router.removeLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),

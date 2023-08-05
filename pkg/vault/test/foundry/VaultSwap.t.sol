@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC20Errors.sol";
@@ -17,6 +18,7 @@ import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/
 import { ERC20BalancerPoolToken } from "../../contracts/ERC20BalancerPoolToken.sol";
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
+import { Router } from "../../contracts/Router.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
 contract VaultSwapTest is Test {
@@ -27,6 +29,7 @@ contract VaultSwapTest is Test {
     using ArrayHelpers for uint256[2];
 
     VaultMock vault;
+    Router router;
     ERC20PoolMock pool;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
@@ -37,7 +40,8 @@ contract VaultSwapTest is Test {
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
 
     function setUp() public {
-        vault = new VaultMock(IWETH(address(0)), 30 days, 90 days);
+        vault = new VaultMock(30 days, 90 days);
+        router = new Router(IVault(vault), address(0));
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         pool = new ERC20PoolMock(
@@ -77,7 +81,7 @@ contract VaultSwapTest is Test {
 
     function testSwap() public {
         vm.prank(alice);
-        vault.addLiquidity(
+        router.addLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
@@ -88,8 +92,8 @@ contract VaultSwapTest is Test {
         pool.setMultiplier(1e30);
 
         vm.prank(bob);
-        vault.singleSwap(
-            IVault.SingleSwap({
+        router.swap(
+            IRouter.SingleSwap({
                 kind: IVault.SwapKind.GIVEN_IN,
                 pool: address(pool),
                 assetIn: address(USDC).asAsset(),
