@@ -15,12 +15,22 @@ interface IRouter {
     /**
      * @dev
      */
-    function swap(SingleSwap calldata params) external payable returns (uint256);
+    function swap(
+        IVault.SwapKind kind,
+        address pool,
+        Asset assetIn,
+        Asset assetOut,
+        uint256 amountGiven,
+        uint256 limit,
+        uint256 deadline,
+        bytes calldata userData
+    ) external payable returns (uint256);
 
     /**
      * @dev
      */
-    struct SingleSwap {
+    struct SwapCallbackParams {
+        address sender;
         IVault.SwapKind kind;
         address pool;
         Asset assetIn;

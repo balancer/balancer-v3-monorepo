@@ -93,16 +93,14 @@ contract VaultSwapTest is Test {
 
         vm.prank(bob);
         router.swap(
-            IRouter.SingleSwap({
-                kind: IVault.SwapKind.GIVEN_IN,
-                pool: address(pool),
-                assetIn: address(USDC).asAsset(),
-                assetOut: address(DAI).asAsset(),
-                amountGiven: USDC_AMOUNT_IN,
-                limit: DAI_AMOUNT_IN,
-                deadline: type(uint256).max,
-                userData: bytes("")
-            })
+            IVault.SwapKind.GIVEN_IN,
+            address(pool),
+            address(USDC).asAsset(),
+            address(DAI).asAsset(),
+            USDC_AMOUNT_IN,
+            DAI_AMOUNT_IN,
+            type(uint256).max,
+            bytes("")
         );
 
         // asssets are transferred to/from Bob

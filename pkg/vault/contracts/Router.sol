@@ -152,7 +152,39 @@ contract Router is IRouter, ReentrancyGuard {
         _vault.burn(IERC20(params.pool), params.sender, params.bptAmountIn);
     }
 
-    function swap(SingleSwap calldata params) external payable nonReentrant returns (uint256) {
+    function swap(
+        IVault.SwapKind kind,
+        address pool,
+        Asset assetIn,
+        Asset assetOut,
+        uint256 amountGiven,
+        uint256 limit,
+        uint256 deadline,
+        bytes calldata userData
+    ) external payable returns (uint256) {
+        return
+            abi.decode(
+                _vault.invoke(
+                    abi.encodeWithSelector(
+                        Router.swapCallback.selector,
+                        SwapCallbackParams({
+                            sender: msg.sender,
+                            kind: kind,
+                            pool: pool,
+                            assetIn: assetIn,
+                            assetOut: assetOut,
+                            amountGiven: amountGiven,
+                            limit: limit,
+                            deadline: deadline,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256)
+            );
+    }
+
+    function swapCallback(SwapCallbackParams calldata params) external payable nonReentrant returns (uint256) {
         IERC20 tokenIn = params.assetIn.toIERC20(_weth);
         IERC20 tokenOut = params.assetOut.toIERC20(_weth);
 
@@ -179,7 +211,7 @@ contract Router is IRouter, ReentrancyGuard {
             _vault.settle(_weth);
         } else {
             // Send the assetIn amount to the Vault
-            _vault.retrieve(tokenIn, msg.sender, amountIn);
+            _vault.retrieve(tokenIn, params.sender, amountIn);
         }
 
         // If the assetOut is ETH, then unwrap `amountOut` into ETH.
@@ -188,16 +220,16 @@ contract Router is IRouter, ReentrancyGuard {
             _vault.send(tokenOut, address(this), amountOut);
             // Withdraw WETH to ETH
             _weth.withdraw(amountOut);
-            // Send ETH to msg.sender
-            payable(msg.sender).sendValue(amountOut);
+            // Send ETH to sender
+            payable(params.sender).sendValue(amountOut);
         } else {
             // Receive the tokenOut amountOut
-            _vault.send(tokenOut, msg.sender, amountOut);
+            _vault.send(tokenOut, params.sender, amountOut);
         }
 
         if (params.assetIn.isETH()) {
             // Return the rest of ETH to sender
-            address(msg.sender).returnEth(amountIn);
+            address(params.sender).returnEth(amountIn);
         }
 
         return amountCalculated;
