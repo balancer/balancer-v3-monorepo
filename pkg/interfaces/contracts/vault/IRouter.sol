@@ -13,12 +13,12 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  */
 interface IRouter {
     /**
-     * @dev 
+     * @dev
      */
     function swap(SingleSwap calldata params) external payable returns (uint256);
 
     /**
-     * @dev 
+     * @dev
      */
     struct SingleSwap {
         IVault.SwapKind kind;
@@ -43,7 +43,19 @@ interface IRouter {
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
     /**
-     * @dev 
+     * @dev
+     */
+    struct AddLiquidityCallbackParams {
+        address sender;
+        address pool;
+        Asset[] assets;
+        uint256[] maxAmountsIn;
+        uint256 minBptAmountOut;
+        bytes userData;
+    }
+
+    /**
+     * @dev
      */
     function removeLiquidity(
         address pool,

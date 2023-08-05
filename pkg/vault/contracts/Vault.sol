@@ -28,7 +28,7 @@ contract Vault is IVault, ERC20MultiToken, PoolRegistry, ReentrancyGuard, Tempor
     using InputHelpers for uint256;
     using AssetHelpers for *;
     using ArrayHelpers for uint256[];
-    using Address for address payable;
+    using Address for *;
     using SafeERC20 for IERC20;
     using SafeCast for *;
 
@@ -56,7 +56,7 @@ contract Vault is IVault, ERC20MultiToken, PoolRegistry, ReentrancyGuard, Tempor
     modifier transient() {
         _handlers.push(msg.sender);
 
-        // the caller does everything here, including paying what they owe via calls to settle
+        // the caller does everything here, and has to settle all outstanding balances
         _;
 
         if (_handlers.length == 1) {
@@ -66,6 +66,14 @@ contract Vault is IVault, ERC20MultiToken, PoolRegistry, ReentrancyGuard, Tempor
         } else {
             _handlers.pop();
         }
+    }
+
+    /**
+     * @dev
+     */
+    function invoke(bytes calldata data) external payable transient returns (bytes memory result) {
+        // the caller does everything here, and has to settle all outstanding balances
+        return (msg.sender).functionCall(data);
     }
 
     /**
@@ -379,9 +387,7 @@ contract Vault is IVault, ERC20MultiToken, PoolRegistry, ReentrancyGuard, Tempor
             }
 
             // Debit of token[i] for amountIn
-            console2.log("before");
             _accountDelta(tokens[i], int256(amountIn));
-            console2.log("after");
 
             finalBalances[i] += amountIn;
         }

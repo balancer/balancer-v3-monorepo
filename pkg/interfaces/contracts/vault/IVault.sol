@@ -101,6 +101,8 @@ interface IVault {
                               Transient Accounting
     *******************************************************************************/
 
+    function invoke(bytes calldata data) external payable returns (bytes memory result);
+
     function settle(IERC20 token) external returns (uint256 paid);
 
     function send(

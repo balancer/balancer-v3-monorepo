@@ -12,6 +12,8 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 
+import "forge-std/Test.sol";
+
 contract Router is IRouter, ReentrancyGuard {
     using AssetHelpers for *;
     using Address for address payable;
@@ -32,17 +34,48 @@ contract Router is IRouter, ReentrancyGuard {
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external payable nonReentrant returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
-        IERC20[] memory tokens = assets.toIERC20(_weth);
+    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+        return
+            abi.decode(
+                _vault.invoke(
+                    abi.encodeWithSelector(
+                        Router.addLiquidityCallback.selector,
+                        AddLiquidityCallbackParams({
+                            sender: msg.sender,
+                            pool: pool,
+                            assets: assets,
+                            maxAmountsIn: maxAmountsIn,
+                            minBptAmountOut: minBptAmountOut,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256[], uint256)
+            );
+    }
 
-        (amountsIn, bptAmountOut) = _vault.addLiquidity(pool, tokens, maxAmountsIn, minBptAmountOut, userData);
+    function addLiquidityCallback(AddLiquidityCallbackParams calldata params)
+        external
+        payable
+        nonReentrant
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut)
+    {
+        IERC20[] memory tokens = params.assets.toIERC20(_weth);
+
+        (amountsIn, bptAmountOut) = _vault.addLiquidity(
+            params.pool,
+            tokens,
+            params.maxAmountsIn,
+            params.minBptAmountOut,
+            params.userData
+        );
 
         // We need to track how much of the received ETH was used and wrapped into WETH to return any excess.
         uint256 wrappedEth = 0;
 
-        for (uint256 i = 0; i < assets.length; ++i) {
+        for (uint256 i = 0; i < params.assets.length; ++i) {
             // Receive assets from the handler
-            Asset asset = assets[i];
+            Asset asset = params.assets[i];
             uint256 amountIn = amountsIn[i];
 
             IERC20 token = asset.toIERC20(_weth);
@@ -51,13 +84,13 @@ contract Router is IRouter, ReentrancyGuard {
                 _weth.deposit{ value: amountIn }();
                 wrappedEth = wrappedEth + amountIn;
             }
-            _vault.retrieve(token, msg.sender, amountIn);
+            _vault.retrieve(token, params.sender, amountIn);
         }
 
-        _vault.mint(IERC20(pool), msg.sender, bptAmountOut);
+        _vault.mint(IERC20(params.pool), params.sender, bptAmountOut);
 
-        // Handle any used and remaining ETH.
-        address(msg.sender).returnEth(wrappedEth);
+        // Send remaining ETH to the user
+        address(params.sender).returnEth(wrappedEth);
     }
 
     function removeLiquidity(
@@ -76,6 +109,7 @@ contract Router is IRouter, ReentrancyGuard {
 
             // Send tokens to the recipient
             assets[i].send(msg.sender, amountOut, _weth);
+            // TODO:  Handle ETH properly
         }
 
         _vault.burn(IERC20(pool), msg.sender, bptAmountIn);
