@@ -8,8 +8,8 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 
 import { ReentrancyGuard } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import { TemporarilyPausable } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
@@ -19,9 +19,8 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 
 import { ERC20MultiToken } from "./ERC20MultiToken.sol";
-import { PoolRegistry } from "./PoolRegistry.sol";
 
-contract Vault is IVault, ERC20MultiToken, PoolRegistry, ReentrancyGuard, TemporarilyPausable {
+contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
     using AssetHelpers for *;
@@ -29,6 +28,12 @@ contract Vault is IVault, ERC20MultiToken, PoolRegistry, ReentrancyGuard, Tempor
     using Address for *;
     using SafeERC20 for IERC20;
     using SafeCast for *;
+
+    // Registry of pool addresses.
+    mapping(address => bool) private _isPoolRegistered;
+
+    // Pool -> (token -> balance): Pool's ERC20 tokens balances stored at the Vault.
+    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolTokenBalances;
 
     /// @notice
     address[] private _handlers;
@@ -303,6 +308,73 @@ contract Vault is IVault, ERC20MultiToken, PoolRegistry, ReentrancyGuard, Tempor
         address pool
     ) external view withRegisteredPool(pool) returns (IERC20[] memory tokens, uint256[] memory balances) {
         return _getPoolTokens(pool);
+    }
+
+    /**
+     * @dev Emitted when a Pool is registered by calling `registerPool`.
+     */
+    event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
+
+    /**
+     * @dev Reverts unless `pool` corresponds to a registered Pool.
+     */
+    modifier withRegisteredPool(address pool) {
+        _ensureRegisteredPool(pool);
+        _;
+    }
+
+    /**
+     * @dev Reverts unless `pool` corresponds to a registered Pool.
+     */
+    function _ensureRegisteredPool(address pool) internal view {
+        if (!_isRegisteredPool(pool)) {
+            revert PoolNotRegistered(pool);
+        }
+    }
+
+    function _registerPool(address factory, IERC20[] memory tokens) internal {
+        address pool = msg.sender;
+
+        if (_isRegisteredPool(pool)) {
+            revert PoolAlreadyRegistered(pool);
+        }
+
+        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+
+            if (token == IERC20(address(0))) {
+                revert InvalidToken();
+            }
+
+            // EnumerableMaps require an explicit initial value when creating a key-value pair: we use zero, the same
+            // value that is found in uninitialized storage, which corresponds to an empty balance.
+            bool added = poolTokenBalances.set(tokens[i], 0);
+            if (!added) {
+                revert TokenAlreadyRegistered(tokens[i]);
+            }
+        }
+
+        _isPoolRegistered[pool] = true;
+        emit PoolRegistered(pool, factory, tokens);
+    }
+
+    function _isRegisteredPool(address pool) internal view returns (bool) {
+        return _isPoolRegistered[pool];
+    }
+
+    function _getPoolTokens(address pool) internal view returns (IERC20[] memory tokens, uint256[] memory balances) {
+        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+
+        tokens = new IERC20[](poolTokenBalances.length());
+        balances = new uint256[](tokens.length);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length, we can use
+            // `unchecked_at` as we know `i` is a valid token index, saving storage reads.
+            (tokens[i], balances[i]) = poolTokenBalances.unchecked_at(i);
+        }
     }
 
     /*******************************************************************************
