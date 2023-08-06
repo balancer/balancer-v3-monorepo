@@ -16,7 +16,7 @@ import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
-contract ERC20BalancerPoolTokenTest is Test {
+contract ERC20FacadeTokenTest is Test {
     using AssetHelpers for address[];
     using ArrayHelpers for address[2];
 

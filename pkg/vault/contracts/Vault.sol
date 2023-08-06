@@ -21,8 +21,6 @@ import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openze
 import { ERC20MultiToken } from "./ERC20MultiToken.sol";
 import { PoolRegistry } from "./PoolRegistry.sol";
 
-import "forge-std/Test.sol";
-
 contract Vault is IVault, ERC20MultiToken, PoolRegistry, ReentrancyGuard, TemporarilyPausable {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;

@@ -14,8 +14,6 @@ import { impersonate } from '@balancer-labs/v3-helpers/src/signers';
 import '@balancer-labs/v3-common/setupTests';
 
 describe('Vault', function () {
-  const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
-
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
 
@@ -149,11 +147,7 @@ describe('Vault', function () {
     let timedVault: VaultMock;
 
     sharedBeforeEach('redeploy Vault', async () => {
-      timedVault = await deploy('VaultMock', { args: [WETH, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
-    });
-
-    it('initializes WETH', async () => {
-      expect(await timedVault.WETH()).to.equal(WETH);
+      timedVault = await deploy('VaultMock', { args: [ PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
     });
 
     it('is temporarily pausable', async () => {
