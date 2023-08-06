@@ -55,7 +55,6 @@ interface IVaultErrors {
      */
     error ExitBelowMin();
 
-
     /**
      * @dev
      */

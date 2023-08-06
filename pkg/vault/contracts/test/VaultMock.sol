@@ -13,7 +13,7 @@ contract VaultMock is Vault {
     constructor(
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) Vault( pauseWindowDuration, bufferPeriodDuration) {
+    ) Vault(pauseWindowDuration, bufferPeriodDuration) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

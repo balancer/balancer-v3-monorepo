@@ -65,37 +65,20 @@ interface IVault {
     /**
      * @dev Function to transfer an ERC20 Token.
      */
-    function transferERC20(
-        address owner,
-        address to,
-        uint256 amount
-    ) external returns (bool);
+    function transferERC20(address owner, address to, uint256 amount) external returns (bool);
 
     /**
      * @dev Function to transferFrom an ERC20 token.
      */
-    function transferFromERC20(
-        address spender,
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool);
+    function transferFromERC20(address spender, address from, address to, uint256 amount) external returns (bool);
 
     /// @dev Returns an owner's ERC20 allowance for a given spender.
-    function allowanceOfERC20(
-        address poolToken,
-        address owner,
-        address spender
-    ) external view returns (uint256);
+    function allowanceOfERC20(address poolToken, address owner, address spender) external view returns (uint256);
 
     /**
      * @dev function to set a sender's ERC20 allowance for a given spender.
      */
-    function approveERC20(
-        address sender,
-        address spender,
-        uint256 amount
-    ) external returns (bool);
+    function approveERC20(address sender, address spender, uint256 amount) external returns (bool);
 
     /*******************************************************************************
                               Transient Accounting
@@ -105,29 +88,13 @@ interface IVault {
 
     function settle(IERC20 token) external returns (uint256 paid);
 
-    function send(
-        IERC20 token,
-        address to,
-        uint256 amount
-    ) external;
+    function wire(IERC20 token, address to, uint256 amount) external;
 
-    function mint(
-        IERC20 token,
-        address to,
-        uint256 amount
-    ) external;
+    function mint(IERC20 token, address to, uint256 amount) external;
 
-    function retrieve(
-        IERC20 token,
-        address from,
-        uint256 amount
-    ) external;
+    function retrieve(IERC20 token, address from, uint256 amount) external;
 
-    function burn(
-        IERC20 token,
-        address owner,
-        uint256 amount
-    ) external;
+    function burn(IERC20 token, address owner, uint256 amount) external;
 
     function getHandler() external view returns (address);
 
@@ -190,13 +157,9 @@ interface IVault {
      *
      * Emits a `Swap` event.
      */
-    function swap(SwapParams memory params)
-        external
-        returns (
-            uint256 amountCalculated,
-            uint256 amountIn,
-            uint256 amountOut
-        );
+    function swap(
+        SwapParams memory params
+    ) external returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut);
 
     /**
      * @dev Data for a single swap executed by `swap`. `amount` is either `amountIn` or `amountOut` depending on

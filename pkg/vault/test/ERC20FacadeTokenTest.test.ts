@@ -2,7 +2,6 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20PoolMock } from '../typechain-types/contracts/test/ERC20PoolMock';
-import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
@@ -15,7 +14,6 @@ describe('ERC20FacadeToken', function () {
   let vault: VaultMock;
   let poolA: ERC20PoolMock;
   let poolB: ERC20PoolMock;
-  let tokenA: ERC20TestToken;
 
   let user: SignerWithAddress;
   let other: SignerWithAddress;
@@ -23,7 +21,6 @@ describe('ERC20FacadeToken', function () {
   let factory: SignerWithAddress;
 
   let registeredPoolSigner: SignerWithAddress;
-  let unregisteredPoolSigner: SignerWithAddress;
 
   let poolAAddress: string;
   let poolBAddress: string;

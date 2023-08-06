@@ -29,19 +29,11 @@ abstract contract ERC20MultiToken is IERC20Errors {
         return _balances[token][account];
     }
 
-    function _allowanceOfERC20(
-        address token,
-        address owner,
-        address spender
-    ) internal view returns (uint256) {
+    function _allowanceOfERC20(address token, address owner, address spender) internal view returns (uint256) {
         return _allowances[token][owner][spender];
     }
 
-    function _mintERC20(
-        address token,
-        address to,
-        uint256 amount
-    ) internal {
+    function _mintERC20(address token, address to, uint256 amount) internal {
         if (to == address(0)) {
             revert ERC20InvalidReceiver(to);
         }
@@ -55,11 +47,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
         ERC20FacadeToken(token).emitTransfer(address(0), to, amount);
     }
 
-    function _burnERC20(
-        address token,
-        address from,
-        uint256 amount
-    ) internal {
+    function _burnERC20(address token, address from, uint256 amount) internal {
         if (from == address(0)) {
             revert ERC20InvalidSender(from);
         }
@@ -78,12 +66,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
         ERC20FacadeToken(token).emitTransfer(from, address(0), amount);
     }
 
-    function _transferERC20(
-        address token,
-        address from,
-        address to,
-        uint256 amount
-    ) internal {
+    function _transferERC20(address token, address from, address to, uint256 amount) internal {
         if (from == address(0)) {
             revert ERC20InvalidSender(from);
         }
@@ -107,12 +90,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
         ERC20FacadeToken(token).emitTransfer(from, to, amount);
     }
 
-    function _approveERC20(
-        address token,
-        address owner,
-        address spender,
-        uint256 amount
-    ) internal {
+    function _approveERC20(address token, address owner, address spender, uint256 amount) internal {
         if (owner == address(0)) {
             revert ERC20InvalidApprover(owner);
         }
@@ -125,12 +103,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
         ERC20FacadeToken(token).emitApprove(owner, spender, amount);
     }
 
-    function _spendAllowance(
-        address token,
-        address owner,
-        address spender,
-        uint256 amount
-    ) internal {
+    function _spendAllowance(address token, address owner, address spender, uint256 amount) internal {
         uint256 currentAllowance = _allowances[token][owner][spender];
         if (currentAllowance != type(uint256).max) {
             if (amount > currentAllowance) {

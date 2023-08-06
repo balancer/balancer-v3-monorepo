@@ -126,12 +126,7 @@ library AssetHelpers {
      * caller of this function to check that this is true to prevent the Vault from using its own ETH (though the Vault
      * typically doesn't hold any).
      */
-    function retrieve(
-        Asset asset,
-        address from,
-        uint256 amount,
-        IWETH weth
-    ) internal {
+    function retrieve(Asset asset, address from, uint256 amount, IWETH weth) internal {
         if (amount == 0) {
             return;
         }
@@ -160,12 +155,7 @@ library AssetHelpers {
      * If `asset` is ETH, `toInternalBalance` must be false (as ETH cannot be held as internal balance), and the funds
      * are instead sent directly after unwrapping WETH.
      */
-    function send(
-        Asset asset,
-        address recipient,
-        uint256 amount,
-        IWETH weth
-    ) internal {
+    function send(Asset asset, address recipient, uint256 amount, IWETH weth) internal {
         if (amount == 0) {
             return;
         }

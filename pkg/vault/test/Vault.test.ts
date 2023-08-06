@@ -147,7 +147,7 @@ describe('Vault', function () {
     let timedVault: VaultMock;
 
     sharedBeforeEach('redeploy Vault', async () => {
-      timedVault = await deploy('VaultMock', { args: [ PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
+      timedVault = await deploy('VaultMock', { args: [PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
     });
 
     it('is temporarily pausable', async () => {

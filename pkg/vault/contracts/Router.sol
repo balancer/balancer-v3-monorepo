@@ -52,12 +52,9 @@ contract Router is IRouter, ReentrancyGuard {
             );
     }
 
-    function addLiquidityCallback(AddLiquidityCallbackParams calldata params)
-        external
-        payable
-        nonReentrant
-        returns (uint256[] memory amountsIn, uint256 bptAmountOut)
-    {
+    function addLiquidityCallback(
+        AddLiquidityCallbackParams calldata params
+    ) external payable nonReentrant returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
         (amountsIn, bptAmountOut) = _vault.addLiquidity(
@@ -114,11 +111,9 @@ contract Router is IRouter, ReentrancyGuard {
             );
     }
 
-    function removeLiquidityCallback(RemoveLiquidityCallbackParams calldata params)
-        external
-        nonReentrant
-        returns (uint256[] memory amountsOut)
-    {
+    function removeLiquidityCallback(
+        RemoveLiquidityCallbackParams calldata params
+    ) external nonReentrant returns (uint256[] memory amountsOut) {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
         amountsOut = _vault.removeLiquidity(
@@ -136,7 +131,7 @@ contract Router is IRouter, ReentrancyGuard {
             IERC20 token = asset.toIERC20(_weth);
 
             // Receive the asset amountOut
-            _vault.send(token, params.sender, amountOut);
+            _vault.wire(token, params.sender, amountOut);
 
             // There can be only one WETH token in the pool
             if (asset.isETH()) {
@@ -215,14 +210,14 @@ contract Router is IRouter, ReentrancyGuard {
         // If the assetOut is ETH, then unwrap `amountOut` into ETH.
         if (params.assetOut.isETH()) {
             // Receive the WETH amountOut
-            _vault.send(tokenOut, address(this), amountOut);
+            _vault.wire(tokenOut, address(this), amountOut);
             // Withdraw WETH to ETH
             _weth.withdraw(amountOut);
             // Send ETH to sender
             payable(params.sender).sendValue(amountOut);
         } else {
             // Receive the tokenOut amountOut
-            _vault.send(tokenOut, params.sender, amountOut);
+            _vault.wire(tokenOut, params.sender, amountOut);
         }
 
         if (params.assetIn.isETH()) {
