@@ -30,6 +30,7 @@ describe('ERC20FacadeToken', function () {
   });
 
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { vault: vaultMock, tokens, pools } = await setupEnvironment(factory.address);
 
     vault = vaultMock;
