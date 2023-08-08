@@ -10,7 +10,7 @@ import "./IVault.sol";
  * either IGeneralPool or IMinimalSwapInfoPool
  */
 interface IBasePool {
-    event OnAddLiquidityCalled(
+    event OnLiquidityAdded(
         address sender,
         uint256[] currentBalances,
         uint256[] maxAmountsIn,
@@ -18,7 +18,7 @@ interface IBasePool {
         bytes userData
     );
 
-    event OnRemoveLiquidityCalled(address sender, uint256[] currentBalances, uint256 bptAmountIn, bytes userData);
+    event OnLiquidityRemoved(address sender, uint256[] currentBalances, uint256 bptAmountIn, bytes userData);
 
     /**
      * @dev Called by the Vault when a user calls `IVault.joinPool` to add liquidity to this Pool. Returns how many of
