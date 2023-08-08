@@ -34,8 +34,6 @@ describe('ERC20FacadeToken', function () {
 
     vault = vaultMock;
 
-    tokenA = tokens[0];
-
     poolA = pools[0]; // This pool is registered
     poolB = pools[1]; // This pool is unregistered
 
@@ -55,8 +53,6 @@ describe('ERC20FacadeToken', function () {
     // Simulate a call from the real Pool by "casting" it as a Signer,
     // so it can be used with `connect` like an EOA
     registeredPoolSigner = await impersonate(poolAAddress);
-    // PoolB isn't registered
-    unregisteredPoolSigner = await impersonate(poolBAddress);
   });
 
   describe('minting', async () => {
