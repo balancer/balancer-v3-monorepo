@@ -71,6 +71,14 @@ interface IVault {
         bytes userData;
     }
 
+    event Swap(
+        address indexed pool,
+        IERC20 indexed tokenIn,
+        IERC20 indexed tokenOut,
+        uint256 amountIn,
+        uint256 amountOut
+    );
+
     function addLiquidity(
         address pool,
         IERC20[] memory assets,
