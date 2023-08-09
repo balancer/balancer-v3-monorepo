@@ -173,8 +173,6 @@ interface IVault {
         IERC20 tokenOut;
         /// @notice Amount of token given.
         uint256 amountGiven;
-        /// @notice Limit price for the swap.
-        uint256 limit;
         /// @notice Additional data for the swap.
         bytes userData;
     }
