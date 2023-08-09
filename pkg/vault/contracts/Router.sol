@@ -155,7 +155,7 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 limit,
         uint256 deadline,
         bytes calldata userData
-    ) external payable returns (uint256) {
+    ) external payable returns (uint256 amountCalculated) {
         return
             abi.decode(
                 _vault.invoke(
@@ -235,5 +235,80 @@ contract Router is IRouter, ReentrancyGuard {
         }
 
         return amountCalculated;
+    }
+
+    /// @inheritdoc IRouter
+    function querySwap(
+        IVault.SwapKind kind,
+        address pool,
+        Asset assetIn,
+        Asset assetOut,
+        uint256 amountGiven,
+        bytes calldata userData
+    ) external payable returns (uint256 amountCalculated) {
+        // Invoking querySwapCallback via the _vault contract.
+        try
+            _vault.invoke(
+                // Encode the function call to the Router's querySwapCallback function, with all necessary parameters.
+                abi.encodeWithSelector(
+                    Router.querySwapCallback.selector,
+                    QuerySwapCallbackParams({
+                        sender: msg.sender,
+                        kind: kind,
+                        pool: pool,
+                        assetIn: assetIn,
+                        assetOut: assetOut,
+                        amountGiven: amountGiven,
+                        userData: userData
+                    })
+                )
+            )
+        {
+            // solhint-disable-previous-line no-empty-blocks
+            // This block will always fail, as the design of the swap query ensures it never returns normally.
+            // Instead, it will either throw an error or provide the desired value in the error message.
+        } catch (bytes memory reason) {
+            // If the reason (error message) isn't 32 bytes long, it's assumed to be a string error message
+            // and the transaction is reverted with that message.
+            if (reason.length != 0x20) {
+                // The easiest way to bubble the revert reason is using memory via assembly
+                // solhint-disable-next-line no-inline-assembly
+                assembly {
+                    revert(add(32, reason), mload(reason))
+                }
+            }
+
+            // If the reason is 32 bytes long, it's assumed to be the desired return value and is decoded and returned.
+            return abi.decode(reason, (uint256));
+        }
+    }
+
+    function querySwapCallback(QuerySwapCallbackParams calldata params) external payable nonReentrant {
+        IERC20 tokenIn = params.assetIn.toIERC20(_weth);
+        IERC20 tokenOut = params.assetOut.toIERC20(_weth);
+
+        (uint256 amountCalculated, , ) = _vault.swap(
+            IVault.SwapParams({
+                kind: params.kind,
+                pool: params.pool,
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                amountGiven: params.amountGiven,
+                userData: params.userData
+            })
+        );
+
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            // Load the free memory pointer address
+            let ptr := mload(0x40)
+
+            // Store the value of `amountCalculated` at the address pointed by `ptr`
+            mstore(ptr, amountCalculated)
+
+            // Revert the transaction with `amountCalculated` as the error message
+            // The message is of length x20 (32 bytes in hexadecimal notation)
+            revert(ptr, 0x20)
+        }
     }
 }
