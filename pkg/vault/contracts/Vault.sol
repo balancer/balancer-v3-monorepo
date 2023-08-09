@@ -200,11 +200,6 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     function swap(
         SwapParams memory params
     ) public whenNotPaused withHandler returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
-        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
-        // solhint-disable-next-line not-rely-on-time
-        if (block.timestamp > params.deadline) {
-            revert SwapDeadline();
-        }
 
         if (params.amountGiven == 0) {
             revert AmountInZero();

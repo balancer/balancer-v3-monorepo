@@ -175,8 +175,6 @@ interface IVault {
         uint256 amountGiven;
         /// @notice Limit price for the swap.
         uint256 limit;
-        /// @notice Deadline for the swap.
-        uint256 deadline;
         /// @notice Additional data for the swap.
         bytes userData;
     }

@@ -9,6 +9,7 @@ import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/
 import { ReentrancyGuard } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 
@@ -178,6 +179,12 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     function swapCallback(SwapCallbackParams calldata params) external payable nonReentrant returns (uint256) {
+        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp > params.deadline) {
+            revert IVaultErrors.SwapDeadline();
+        }
+
         IERC20 tokenIn = params.assetIn.toIERC20(_weth);
         IERC20 tokenOut = params.assetOut.toIERC20(_weth);
 
@@ -189,7 +196,6 @@ contract Router is IRouter, ReentrancyGuard {
                 tokenOut: tokenOut,
                 amountGiven: params.amountGiven,
                 limit: params.limit,
-                deadline: params.deadline,
                 userData: params.userData
             })
         );
