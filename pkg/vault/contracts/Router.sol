@@ -53,9 +53,12 @@ contract Router is IRouter, ReentrancyGuard {
             );
     }
 
-    function addLiquidityCallback(
-        AddLiquidityCallbackParams calldata params
-    ) external payable nonReentrant returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+    function addLiquidityCallback(AddLiquidityCallbackParams calldata params)
+        external
+        payable
+        nonReentrant
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut)
+    {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
         (amountsIn, bptAmountOut) = _vault.addLiquidity(
@@ -112,9 +115,11 @@ contract Router is IRouter, ReentrancyGuard {
             );
     }
 
-    function removeLiquidityCallback(
-        RemoveLiquidityCallbackParams calldata params
-    ) external nonReentrant returns (uint256[] memory amountsOut) {
+    function removeLiquidityCallback(RemoveLiquidityCallbackParams calldata params)
+        external
+        nonReentrant
+        returns (uint256[] memory amountsOut)
+    {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
         amountsOut = _vault.removeLiquidity(
@@ -199,6 +204,10 @@ contract Router is IRouter, ReentrancyGuard {
                 userData: params.userData
             })
         );
+
+        if (params.kind == SwapKind.GIVEN_IN ? amountOut < params.limit : amountIn > params.limit) {
+            revert IVaultErrors.SwapLimit(params.kind == SwapKind.GIVEN_IN ? amountOut : amountIn, params.limit);
+        }
 
         // If the assetIn is ETH, then wrap `amountIn` into WETH.
         if (params.assetIn.isETH()) {
