@@ -205,8 +205,8 @@ contract Router is IRouter, ReentrancyGuard {
             })
         );
 
-        if (params.kind == SwapKind.GIVEN_IN ? amountOut < params.limit : amountIn > params.limit) {
-            revert IVaultErrors.SwapLimit(params.kind == SwapKind.GIVEN_IN ? amountOut : amountIn, params.limit);
+        if (params.kind == IVault.SwapKind.GIVEN_IN ? amountOut < params.limit : amountIn > params.limit) {
+            revert IVaultErrors.SwapLimit(params.kind == IVault.SwapKind.GIVEN_IN ? amountOut : amountIn, params.limit);
         }
 
         // If the assetIn is ETH, then wrap `amountIn` into WETH.
