@@ -278,7 +278,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
 
         if (params.kind == SwapKind.GIVEN_IN ? amountOut < params.limit : amountIn > params.limit) {
-            revert SwapLimit(amountOut, params.limit);
+            revert SwapLimit(params.kind == SwapKind.GIVEN_IN ? amountOut : amountIn, params.limit);
         }
 
         // Account amountIn of tokenIn
