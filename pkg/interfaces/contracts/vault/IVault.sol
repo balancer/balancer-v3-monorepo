@@ -59,11 +59,7 @@ interface IVault {
      * @param amount                         Amount of tokens to transfer
      * @return                               True if successful, false otherwise
      */
-    function transferERC20(
-        address owner,
-        address to,
-        uint256 amount
-    ) external returns (bool);
+    function transferERC20(address owner, address to, uint256 amount) external returns (bool);
 
     /**
      * @notice Transfers from a sender to a recipient using an allowance
@@ -73,12 +69,7 @@ interface IVault {
      * @param amount                         Amount of tokens to transfer
      * @return                               True if successful, false otherwise
      */
-    function transferFromERC20(
-        address spender,
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool);
+    function transferFromERC20(address spender, address from, address to, uint256 amount) external returns (bool);
 
     /**
      * @notice Gets allowance of a spender for a given ERC20 token and owner
@@ -87,11 +78,7 @@ interface IVault {
      * @param spender                        Spender's address
      * @return                               Amount of tokens the spender is allowed to spend
      */
-    function allowanceOfERC20(
-        address token,
-        address owner,
-        address spender
-    ) external view returns (uint256);
+    function allowanceOfERC20(address token, address owner, address spender) external view returns (uint256);
 
     /**
      * @notice Approves a spender to spend tokens on behalf of sender
@@ -100,11 +87,7 @@ interface IVault {
      * @param amount                         Amount of tokens to approve
      * @return                               True if successful, false otherwise
      */
-    function approveERC20(
-        address sender,
-        address spender,
-        uint256 amount
-    ) external returns (bool);
+    function approveERC20(address sender, address spender, uint256 amount) external returns (bool);
 
     /*******************************************************************************
                               Transient Accounting
@@ -131,11 +114,7 @@ interface IVault {
      * @param to                             Recipient's address
      * @param amount                         Amount of tokens to send
      */
-    function wire(
-        IERC20 token,
-        address to,
-        uint256 amount
-    ) external;
+    function wire(IERC20 token, address to, uint256 amount) external;
 
     /**
      * @notice Mints tokens to a recipient
@@ -143,11 +122,7 @@ interface IVault {
      * @param to                             Recipient's address
      * @param amount                         Amount of tokens to mint
      */
-    function mint(
-        IERC20 token,
-        address to,
-        uint256 amount
-    ) external;
+    function mint(IERC20 token, address to, uint256 amount) external;
 
     /**
      * @notice Retrieves tokens from a sender
@@ -155,11 +130,7 @@ interface IVault {
      * @param from                           Sender's address
      * @param amount                         Amount of tokens to retrieve
      */
-    function retrieve(
-        IERC20 token,
-        address from,
-        uint256 amount
-    ) external;
+    function retrieve(IERC20 token, address from, uint256 amount) external;
 
     /**
      * @notice Burns tokens from an owner
@@ -167,11 +138,7 @@ interface IVault {
      * @param owner                          Owner's address
      * @param amount                         Amount of tokens to burn
      */
-    function burn(
-        IERC20 token,
-        address owner,
-        uint256 amount
-    ) external;
+    function burn(IERC20 token, address owner, uint256 amount) external;
 
     /**
      * @notice Gets the handler's address
@@ -191,13 +158,9 @@ interface IVault {
      * @return amountIn                      Amount of input tokens for the swap
      * @return amountOut                     Amount of output tokens from the swap
      */
-    function swap(SwapParams memory params)
-        external
-        returns (
-            uint256 amountCalculated,
-            uint256 amountIn,
-            uint256 amountOut
-        );
+    function swap(
+        SwapParams memory params
+    ) external returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut);
 
     struct SwapParams {
         /// @notice Type of the swap.
