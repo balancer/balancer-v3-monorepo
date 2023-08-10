@@ -368,7 +368,13 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
                                     Pool Registration
     *******************************************************************************/
 
-    /// @inheritdoc IVault
+    /**
+     * @dev The function is designed to be called by a pool itself. The function will register the pool,
+     *      setting its tokens with an initial balance of zero. The function also checks for valid token addresses
+     *      and ensures that the pool and tokens aren't already registered.
+     *      Emits a `PoolRegistered` event upon successful registration.
+     * @inheritdoc IVault
+     */
     function registerPool(address factory, IERC20[] memory tokens) external nonReentrant whenNotPaused {
         _registerPool(factory, tokens);
     }
@@ -385,69 +391,84 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         return _getPoolTokens(pool);
     }
 
-    /**
-     * @dev Emitted when a Pool is registered by calling `registerPool`.
-     */
+    /// @dev Emitted when a Pool is registered by calling `registerPool`.
     event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
 
-    /**
-     * @dev Reverts unless `pool` corresponds to a registered Pool.
-     */
+    /// @dev Reverts unless `pool` corresponds to a registered Pool.
     modifier withRegisteredPool(address pool) {
         _ensureRegisteredPool(pool);
         _;
     }
 
-    /**
-     * @dev Reverts unless `pool` corresponds to a registered Pool.
-     */
+    /// @dev Reverts unless `pool` corresponds to a registered Pool.
     function _ensureRegisteredPool(address pool) internal view {
         if (!_isRegisteredPool(pool)) {
             revert PoolNotRegistered(pool);
         }
     }
 
+    /// @dev See `registerPool`
     function _registerPool(address factory, IERC20[] memory tokens) internal {
         address pool = msg.sender;
 
+        // Ensure the pool isn't already registered
         if (_isRegisteredPool(pool)) {
             revert PoolAlreadyRegistered(pool);
         }
 
+        // Retrieve or create the pool's token balances mapping
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
 
+            // Ensure that the token address is valid
             if (token == IERC20(address(0))) {
                 revert InvalidToken();
             }
 
-            // EnumerableMaps require an explicit initial value when creating a key-value pair: we use zero, the same
-            // value that is found in uninitialized storage, which corresponds to an empty balance.
+            // Register the token with an initial balance of zero.
+            // Note: EnumerableMaps require an explicit initial value when creating a key-value pair.
             bool added = poolTokenBalances.set(tokens[i], 0);
+
+            // Ensure the token isn't already registered for the pool
             if (!added) {
                 revert TokenAlreadyRegistered(tokens[i]);
             }
         }
 
+        // Mark the pool as registered
         _isPoolRegistered[pool] = true;
+
+        // Emit an event to log the pool registration
         emit PoolRegistered(pool, factory, tokens);
     }
 
+    /// @dev See `isRegisteredPool`
     function _isRegisteredPool(address pool) internal view returns (bool) {
         return _isPoolRegistered[pool];
     }
 
+    /**
+     * @notice Fetches the tokens and their corresponding balances for a given pool.
+     * @dev Utilizes an enumerable map to obtain pool token balances.
+     * The function is structured to minimize storage reads by leveraging the `unchecked_at` method.
+     *
+     * @param pool The address of the pool for which tokens and balances are to be fetched.
+     * @return tokens An array of token addresses.
+     * @return balances An array of corresponding token balances.
+     */
     function _getPoolTokens(address pool) internal view returns (IERC20[] memory tokens, uint256[] memory balances) {
+        // Retrieve the mapping of tokens and their balances for the specified pool.
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
 
+        // Initialize arrays to store tokens and their balances based on the number of tokens in the pool.
         tokens = new IERC20[](poolTokenBalances.length());
         balances = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length, we can use
-            // `unchecked_at` as we know `i` is a valid token index, saving storage reads.
+            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
+            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes storage reads.
             (tokens[i], balances[i]) = poolTokenBalances.unchecked_at(i);
         }
     }

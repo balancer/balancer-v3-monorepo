@@ -12,9 +12,9 @@ interface IVault {
     *******************************************************************************/
 
     /**
-     * @notice Registers a new pool
-     * @param factory                        Factory address to register pool
-     * @param tokens                         Tokens involved in the pool
+     * @notice Registers a pool, associating it with its factory and the tokens it manages.
+     * @param factory The factory address associated with the pool being registered.
+     * @param tokens An array of token addresses the pool will manage.
      */
     function registerPool(address factory, IERC20[] memory tokens) external;
 
