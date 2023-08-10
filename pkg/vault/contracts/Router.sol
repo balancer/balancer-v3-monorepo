@@ -237,6 +237,10 @@ contract Router is IRouter, ReentrancyGuard {
         return amountCalculated;
     }
 
+    /*******************************************************************************
+                              Transient Accounting
+    *******************************************************************************/
+
     /// @inheritdoc IRouter
     function querySwap(
         IVault.SwapKind kind,
@@ -252,15 +256,12 @@ contract Router is IRouter, ReentrancyGuard {
                 // Encode the function call to the Router's querySwapCallback function, with all necessary parameters.
                 abi.encodeWithSelector(
                     Router.querySwapCallback.selector,
-                    QuerySwapCallbackParams({
-                        sender: msg.sender,
-                        kind: kind,
-                        pool: pool,
-                        assetIn: assetIn,
-                        assetOut: assetOut,
-                        amountGiven: amountGiven,
-                        userData: userData
-                    })
+                    kind,
+                    pool,
+                    assetIn,
+                    assetOut,
+                    amountGiven,
+                    userData
                 )
             )
         {
@@ -283,18 +284,25 @@ contract Router is IRouter, ReentrancyGuard {
         }
     }
 
-    function querySwapCallback(QuerySwapCallbackParams calldata params) external payable nonReentrant {
-        IERC20 tokenIn = params.assetIn.toIERC20(_weth);
-        IERC20 tokenOut = params.assetOut.toIERC20(_weth);
+    function querySwapCallback(
+        IVault.SwapKind kind,
+        address pool,
+        Asset assetIn,
+        Asset assetOut,
+        uint256 amountGiven,
+        bytes calldata userData
+    ) external payable nonReentrant {
+        IERC20 tokenIn = assetIn.toIERC20(_weth);
+        IERC20 tokenOut = assetOut.toIERC20(_weth);
 
         (uint256 amountCalculated, , ) = _vault.swap(
             IVault.SwapParams({
-                kind: params.kind,
-                pool: params.pool,
+                kind: kind,
+                pool: pool,
                 tokenIn: tokenIn,
                 tokenOut: tokenOut,
-                amountGiven: params.amountGiven,
-                userData: params.userData
+                amountGiven: amountGiven,
+                userData: userData
             })
         );
 
