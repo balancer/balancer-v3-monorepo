@@ -179,6 +179,7 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     function swapCallback(SwapCallbackParams calldata params) external payable nonReentrant returns (uint256) {
+        //TODO: check sender is vault
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > params.deadline) {
@@ -241,6 +242,80 @@ contract Router is IRouter, ReentrancyGuard {
                               Transient Accounting
     *******************************************************************************/
 
+    function queryAddLiquidity(
+        address pool,
+        Asset[] memory assets,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+        try
+            _vault.invoke(
+                abi.encodeWithSelector(
+                    Router.addLiquidityCallback.selector,
+                    AddLiquidityCallbackParams({
+                        sender: msg.sender,
+                        pool: pool,
+                        assets: assets,
+                        maxAmountsIn: maxAmountsIn,
+                        minBptAmountOut: minBptAmountOut,
+                        userData: userData
+                    })
+                )
+            )
+        {
+            // solhint-disable-previous-line no-empty-blocks
+            // This block will always fail, as the design of the swap query ensures it never returns normally.
+            // Instead, it will either throw an error or provide the desired value in the error message.
+        } catch (bytes memory reason) {
+            // If the reason (error message) isn't 32 bytes long, it's assumed to be a string error message
+            // and the transaction is reverted with that message.
+            if (reason.length != 0x20) {
+                // The easiest way to bubble the revert reason is using memory via assembly
+                // solhint-disable-next-line no-inline-assembly
+                assembly {
+                    revert(add(32, reason), mload(reason))
+                }
+            }
+
+            // If the reason is 32 bytes long, it's assumed to be the desired return value and is decoded and returned.
+            return abi.decode(reason, (uint256[], uint256));
+        }
+    }
+
+    function addLiquidityCallback(
+        AddLiquidityCallbackParams calldata params
+    ) external payable nonReentrant returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+        IERC20[] memory tokens = params.assets.toIERC20(_weth);
+
+        (amountsIn, bptAmountOut) = _vault.addLiquidity(
+            params.pool,
+            tokens,
+            params.maxAmountsIn,
+            params.minBptAmountOut,
+            params.userData
+        );
+
+        for (uint256 i = 0; i < params.assets.length; ++i) {
+            // Receive assets from the handler
+            Asset asset = params.assets[i];
+            uint256 amountIn = amountsIn[i];
+
+            IERC20 token = asset.toIERC20(_weth);
+
+            // There can be only one WETH token in the pool
+            if (asset.isETH()) {
+                _weth.deposit{ value: amountIn }();
+                address(params.sender).returnEth(amountIn);
+            }
+            _vault.retrieve(token, params.sender, amountIn);
+        }
+
+        _vault.mint(IERC20(params.pool), params.sender, bptAmountOut);
+
+        // Send remaining ETH to the user
+    }
+
     /// @inheritdoc IRouter
     function querySwap(
         IVault.SwapKind kind,
@@ -295,6 +370,9 @@ contract Router is IRouter, ReentrancyGuard {
         IERC20 tokenIn = assetIn.toIERC20(_weth);
         IERC20 tokenOut = assetOut.toIERC20(_weth);
 
+        // TODO: try catch revert with custom reason
+        // check that call does not reverting
+        // if it reverts then add the prefix with right prefix
         (uint256 amountCalculated, , ) = _vault.swap(
             IVault.SwapParams({
                 kind: kind,

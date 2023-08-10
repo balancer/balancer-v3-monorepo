@@ -79,6 +79,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
      */
     function invoke(bytes calldata data) external payable transient returns (bytes memory result) {
         // the caller does everything here, and has to settle all outstanding balances
+        // TODO: make it payble
         return (msg.sender).functionCall(data);
     }
 
@@ -141,6 +142,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         if (delta == 0) return;
 
         address handler = _handlers[_handlers.length - 1];
+        // TODO: use msg.sender explicitly
         int256 current = _tokenDeltas[handler][token];
         int256 next = current + delta;
 

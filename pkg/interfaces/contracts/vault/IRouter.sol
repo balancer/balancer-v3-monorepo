@@ -110,17 +110,4 @@ interface IRouter {
         uint256 amountGiven,
         bytes calldata userData
     ) external payable returns (uint256 amountCalculated);
-
-    /**
-     * @dev
-     */
-    struct QuerySwapCallbackParams {
-        address sender;
-        IVault.SwapKind kind;
-        address pool;
-        Asset assetIn;
-        Asset assetOut;
-        uint256 amountGiven;
-        bytes userData;
-    }
 }
