@@ -38,8 +38,8 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     /// @notice
     address[] private _handlers;
     /// @notice The total number of nonzero deltas over all active + completed lockers
-    uint128 private _nonzeroDeltaCount;
-    /// @dev Represents the asset due/owed to each handler.
+    uint256 private _nonzeroDeltaCount;
+    /// @notice Represents the asset due/owed to each handler.
     /// Must all net to zero when the last handler is released.
     mapping(address => mapping(IERC20 => int256)) private _tokenDeltas;
     /// @notice
@@ -158,6 +158,16 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     /// @inheritdoc IVault
     function getHandlersCount() public view returns (uint256) {
         return _handlers.length;
+    }
+
+    /// @inheritdoc IVault
+    function getNonzeroDeltaCount() public view returns (uint256) {
+        return _nonzeroDeltaCount;
+    }
+
+    /// @inheritdoc IVault
+    function getTokenDelta(address user, IERC20 token) external view returns (int256) {
+        return _tokenDeltas[user][token];
     }
 
     /**

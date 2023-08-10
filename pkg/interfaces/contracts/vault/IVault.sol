@@ -153,6 +153,21 @@ interface IVault {
      */
     function getHandlersCount() external view returns (uint256);
 
+    /**
+     *  @notice Returns the count of non-zero deltas
+     *  @return The current value of _nonzeroDeltaCount
+     */
+    function getNonzeroDeltaCount() external view returns (uint256) ;
+
+    /**
+     * @notice Retrieves the token delta for a specific user and token.
+     * @dev This function allows reading the value from the `_tokenDeltas` mapping.
+     * @param user The address of the user for whom the delta is being fetched.
+     * @param token The token for which the delta is being fetched.
+     * @return The delta of the specified token for the specified user.
+     */
+    function getTokenDelta(address user, IERC20 token) external view returns (int256) ;
+
     enum SwapKind {
         GIVEN_IN,
         GIVEN_OUT
