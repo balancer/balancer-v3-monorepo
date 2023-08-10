@@ -35,14 +35,17 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     // Pool -> (token -> balance): Pool's ERC20 tokens balances stored at the Vault.
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolTokenBalances;
 
-    /// @notice
+    /// @notice List of handlers. It is non-empty only during `invoke` calls.
     address[] private _handlers;
-    /// @notice The total number of nonzero deltas over all active + completed lockers
+    /// @notice The total number of nonzero deltas over all active + completed lockers.
+    /// @dev It is non-zero only during `invoke` calls.
     uint256 private _nonzeroDeltaCount;
     /// @notice Represents the asset due/owed to each handler.
-    /// Must all net to zero when the last handler is released.
+    /// @dev Must all net to zero when the last handler is released.
     mapping(address => mapping(IERC20 => int256)) private _tokenDeltas;
-    /// @notice
+    /// @notice Represents the total reserve of each ERC20 token.
+    /// @dev It should be always equal to `token.balanceOf(vault)`, with only
+    /// exception being during the `invoke` call.
     mapping(IERC20 => uint256) private _tokenReserves;
 
     constructor(uint256 pauseWindowDuration, uint256 bufferPeriodDuration)
@@ -56,38 +59,70 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     *******************************************************************************/
 
     /**
-     * @dev
+     * @dev This modifier is used for functions that temporarily modify the `_tokenDeltas`
+     * of the Vault but expect to revert or settle balances by the end of their execution.
+     * It works by tracking the handlers involved in the execution and ensures that the
+     * balances are properly settled by the time the last handler is executed.
+     *
+     * This is useful for functions like `invoke`, which performs arbitrary external calls:
+     * we can keep track of temporary deltas changes, and make sure they are settled by the
+     * time the external call is complete.
      */
     modifier transient() {
+        // Add the current handler to the list
         _handlers.push(msg.sender);
 
-        // the caller does everything here, and has to settle all outstanding balances
+        // The caller does everything here and has to settle all outstanding balances
         _;
 
+        // Check if it's the last handler
         if (_handlers.length == 1) {
+            // Ensure all balances are settled
             if (_nonzeroDeltaCount != 0) revert BalanceNotSettled();
+
+            // Reset the handlers list
             delete _handlers;
+
+            // Reset the counter
             delete _nonzeroDeltaCount;
         } else {
+            // If it's not the last handler, simply remove it from the list
             _handlers.pop();
         }
     }
 
-    /// @inheritdoc IVault
+    /**
+     * @inheritdoc IVault
+     * @dev Allows the external calling of a function via the Vault contract to
+     * access Vault's functions guarded by `withHandler`.
+     * `transient` modifier ensuring balances changes within the Vault are settled.
+     */
     function invoke(bytes calldata data) external payable transient returns (bytes memory result) {
-        // the caller does everything here, and has to settle all outstanding balances
-        return (msg.sender).functionCall(data);
+        // Executes the function call with value to the msg.sender.
+        return (msg.sender).functionCallWithValue(data, msg.value);
     }
 
     /**
-     * @dev
+     * @dev This modifier ensures that the function it modifies can only be called
+     * by the last handler in the `_handlers` array. This is used to enforce the
+     * order of execution when multiple handlers are in play, ensuring only the
+     * current or "active" handler can invoke certain operations in the Vault.
+     * If no handler is found or the caller is not the expected handler,
+     * it reverts the transaction with specific error messages.
      */
     modifier withHandler() {
+        // If there are no handlers in the list, revert with an error.
         if (_handlers.length == 0) {
             revert NoHandler();
         }
+
+        // Get the last handler from the `_handlers` array.
+        // This represents the current active handler.
         address handler = _handlers[_handlers.length - 1];
+
+        // If the current function caller is not the active handler, revert.
         if (msg.sender != handler) revert WrongHandler(msg.sender, handler);
+
         _;
     }
 
