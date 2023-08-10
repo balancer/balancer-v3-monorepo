@@ -468,7 +468,8 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
-            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes storage reads.
+            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
+            // storage reads.
             (tokens[i], balances[i]) = poolTokenBalances.unchecked_at(i);
         }
     }
