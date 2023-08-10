@@ -168,6 +168,13 @@ interface IVault {
      */
     function getTokenDelta(address user, IERC20 token) external view returns (int256) ;
 
+    /**
+     * @notice Retrieves the reserve of a given token.
+     * @param token The token for which to retrieve the reserve.
+     * @return The amount of reserves for the given token.
+     */
+    function getTokenReserve(IERC20 token) external view returns (uint256) ;
+
     enum SwapKind {
         GIVEN_IN,
         GIVEN_OUT

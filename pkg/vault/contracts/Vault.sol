@@ -156,18 +156,23 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /// @inheritdoc IVault
-    function getHandlersCount() public view returns (uint256) {
+    function getHandlersCount() external view returns (uint256) {
         return _handlers.length;
     }
 
     /// @inheritdoc IVault
-    function getNonzeroDeltaCount() public view returns (uint256) {
+    function getNonzeroDeltaCount() external view returns (uint256) {
         return _nonzeroDeltaCount;
     }
 
     /// @inheritdoc IVault
     function getTokenDelta(address user, IERC20 token) external view returns (int256) {
         return _tokenDeltas[user][token];
+    }
+
+    /// @inheritdoc IVault
+    function getTokenReserve(IERC20 token) external view returns (uint256) {
+        return _tokenReserves[token];
     }
 
     /**
