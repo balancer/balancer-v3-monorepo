@@ -45,10 +45,9 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     /// @notice
     mapping(IERC20 => uint256) private _tokenReserves;
 
-    constructor(
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
-    ) TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration) {
+    constructor(uint256 pauseWindowDuration, uint256 bufferPeriodDuration)
+        TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -74,9 +73,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         }
     }
 
-    /**
-     * @dev
-     */
+    /// @inheritdoc IVault
     function invoke(bytes calldata data) external payable transient returns (bytes memory result) {
         // the caller does everything here, and has to settle all outstanding balances
         return (msg.sender).functionCall(data);
@@ -86,11 +83,15 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
      * @dev
      */
     modifier withHandler() {
-        address handler = getHandler();
+        if (_handlers.length == 0) {
+            revert NoHandler();
+        }
+        address handler = _handlers[_handlers.length - 1];
         if (msg.sender != handler) revert WrongHandler(msg.sender, handler);
         _;
     }
 
+    /// @inheritdoc IVault
     function settle(IERC20 token) public withHandler returns (uint256 paid) {
         uint256 reservesBefore = _tokenReserves[token];
         _tokenReserves[token] = token.balanceOf(address(this));
@@ -99,7 +100,12 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         _accountDelta(token, -paid.toInt256());
     }
 
-    function wire(IERC20 token, address to, uint256 amount) public withHandler {
+    /// @inheritdoc IVault
+    function wire(
+        IERC20 token,
+        address to,
+        uint256 amount
+    ) public withHandler {
         // effects
         _accountDelta(token, amount.toInt256());
         _tokenReserves[token] -= amount;
@@ -107,12 +113,22 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         token.safeTransfer(to, amount);
     }
 
-    function mint(IERC20 token, address to, uint256 amount) public withHandler {
+    /// @inheritdoc IVault
+    function mint(
+        IERC20 token,
+        address to,
+        uint256 amount
+    ) public withHandler {
         _accountDelta(token, amount.toInt256());
         _mintERC20(address(token), to, amount);
     }
 
-    function retrieve(IERC20 token, address from, uint256 amount) public withHandler {
+    /// @inheritdoc IVault
+    function retrieve(
+        IERC20 token,
+        address from,
+        uint256 amount
+    ) public withHandler {
         // effects
         _accountDelta(token, -(amount.toInt256()));
         _tokenReserves[token] += amount;
@@ -120,17 +136,28 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         token.safeTransferFrom(from, address(this), amount);
     }
 
-    function burn(IERC20 token, address owner, uint256 amount) public withHandler {
+    /// @inheritdoc IVault
+    function burn(
+        IERC20 token,
+        address owner,
+        uint256 amount
+    ) public withHandler {
         _spendAllowance(address(token), owner, address(this), amount);
         _burnERC20(address(token), owner, amount);
         _accountDelta(token, -(amount.toInt256()));
     }
 
-    function getHandler() public view returns (address) {
-        if (_handlers.length == 0) {
-            revert NoHandler();
+    /// @inheritdoc IVault
+    function getHandler(uint256 index) public view returns (address) {
+        if (index >= _handlers.length) {
+            revert HandlerOutOfBounds(index);
         }
-        return _handlers[_handlers.length - 1];
+        return _handlers[index];
+    }
+
+    /// @inheritdoc IVault
+    function getHandlersCount() public view returns (uint256) {
+        return _handlers.length;
     }
 
     /**
@@ -170,24 +197,41 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /// @inheritdoc IVault
-    function allowanceOfERC20(address token, address owner, address spender) external view returns (uint256) {
+    function allowanceOfERC20(
+        address token,
+        address owner,
+        address spender
+    ) external view returns (uint256) {
         return _allowanceOfERC20(token, owner, spender);
     }
 
     /// @inheritdoc IVault
-    function transferERC20(address owner, address to, uint256 amount) external returns (bool) {
+    function transferERC20(
+        address owner,
+        address to,
+        uint256 amount
+    ) external returns (bool) {
         _transferERC20(msg.sender, owner, to, amount);
         return true;
     }
 
     /// @inheritdoc IVault
-    function approveERC20(address handler, address spender, uint256 amount) external returns (bool) {
+    function approveERC20(
+        address handler,
+        address spender,
+        uint256 amount
+    ) external returns (bool) {
         _approveERC20(msg.sender, handler, spender, amount);
         return true;
     }
 
     /// @inheritdoc IVault
-    function transferFromERC20(address spender, address from, address to, uint256 amount) external returns (bool) {
+    function transferFromERC20(
+        address spender,
+        address from,
+        address to,
+        uint256 amount
+    ) external returns (bool) {
         _spendAllowance(msg.sender, from, spender, amount);
         _transferERC20(msg.sender, from, to, amount);
         return true;
@@ -197,9 +241,17 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
                                           Swaps
     *******************************************************************************/
 
-    function swap(
-        SwapParams memory params
-    ) public whenNotPaused withHandler returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
+    /// @inheritdoc IVault
+    function swap(SwapParams memory params)
+        public
+        whenNotPaused
+        withHandler
+        returns (
+            uint256 amountCalculated,
+            uint256 amountIn,
+            uint256 amountOut
+        )
+    {
         if (params.amountGiven == 0) {
             revert AmountInZero();
         }
@@ -294,9 +346,12 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /// @inheritdoc IVault
-    function getPoolTokens(
-        address pool
-    ) external view withRegisteredPool(pool) returns (IERC20[] memory tokens, uint256[] memory balances) {
+    function getPoolTokens(address pool)
+        external
+        view
+        withRegisteredPool(pool)
+        returns (IERC20[] memory tokens, uint256[] memory balances)
+    {
         return _getPoolTokens(pool);
     }
 
@@ -487,10 +542,11 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
      * `expectedTokens` must exactly equal the token array returned by `getPoolTokens`: both arrays must have the same
      * length, elements and order. Additionally, the Pool must have at least one registered token.
      */
-    function _validateTokensAndGetBalances(
-        address pool,
-        IERC20[] memory expectedTokens
-    ) private view returns (uint256[] memory) {
+    function _validateTokensAndGetBalances(address pool, IERC20[] memory expectedTokens)
+        private
+        view
+        returns (uint256[] memory)
+    {
         (IERC20[] memory actualTokens, uint256[] memory balances) = _getPoolTokens(pool);
         InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
         if (actualTokens.length == 0) {

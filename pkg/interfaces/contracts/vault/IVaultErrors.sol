@@ -99,4 +99,9 @@ interface IVaultErrors {
      * @dev
      */
     error NoHandler();
+
+    /**
+     * @dev
+     */
+    error HandlerOutOfBounds(uint256);
 }

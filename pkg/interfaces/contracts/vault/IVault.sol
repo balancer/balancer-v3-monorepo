@@ -141,10 +141,17 @@ interface IVault {
     function burn(IERC20 token, address owner, uint256 amount) external;
 
     /**
-     * @notice Gets the handler's address
-     * @return                               Address of the handler
+     * @dev Returns the address at the specified index of the _handlers array.
+     * @param index The index of the handler's address to fetch.
+     * @return The address at the given index.
      */
-    function getHandler() external view returns (address);
+    function getHandler(uint256 index) external view returns (address);
+
+    /**
+     * @dev Returns the total number of handlers.
+     * @return The number of handlers.
+     */
+    function getHandlersCount() external view returns (uint256);
 
     enum SwapKind {
         GIVEN_IN,
