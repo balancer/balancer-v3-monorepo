@@ -157,7 +157,7 @@ interface IVault {
      *  @notice Returns the count of non-zero deltas
      *  @return The current value of _nonzeroDeltaCount
      */
-    function getNonzeroDeltaCount() external view returns (uint256) ;
+    function getNonzeroDeltaCount() external view returns (uint256);
 
     /**
      * @notice Retrieves the token delta for a specific user and token.
@@ -166,14 +166,14 @@ interface IVault {
      * @param token The token for which the delta is being fetched.
      * @return The delta of the specified token for the specified user.
      */
-    function getTokenDelta(address user, IERC20 token) external view returns (int256) ;
+    function getTokenDelta(address user, IERC20 token) external view returns (int256);
 
     /**
      * @notice Retrieves the reserve of a given token.
      * @param token The token for which to retrieve the reserve.
      * @return The amount of reserves for the given token.
      */
-    function getTokenReserve(IERC20 token) external view returns (uint256) ;
+    function getTokenReserve(IERC20 token) external view returns (uint256);
 
     enum SwapKind {
         GIVEN_IN,

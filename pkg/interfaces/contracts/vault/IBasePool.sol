@@ -6,7 +6,6 @@ import "./IVault.sol";
 
 /// @notice Interface for a Base Pool
 interface IBasePool {
-
     /**
      * @notice Add liquidity to the pool
      * @param sender               Address of the sender
