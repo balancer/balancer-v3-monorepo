@@ -12,9 +12,9 @@ interface IVault {
     *******************************************************************************/
 
     /**
-     * @notice Registers a new pool
-     * @param factory                        Factory address to register pool
-     * @param tokens                         Tokens involved in the pool
+     * @notice Registers a pool, associating it with its factory and the tokens it manages.
+     * @param factory The factory address associated with the pool being registered.
+     * @param tokens An array of token addresses the pool will manage.
      */
     function registerPool(address factory, IERC20[] memory tokens) external;
 
@@ -141,10 +141,39 @@ interface IVault {
     function burn(IERC20 token, address owner, uint256 amount) external;
 
     /**
-     * @notice Gets the handler's address
-     * @return                               Address of the handler
+     * @dev Returns the address at the specified index of the _handlers array.
+     * @param index The index of the handler's address to fetch.
+     * @return The address at the given index.
      */
-    function getHandler() external view returns (address);
+    function getHandler(uint256 index) external view returns (address);
+
+    /**
+     * @dev Returns the total number of handlers.
+     * @return The number of handlers.
+     */
+    function getHandlersCount() external view returns (uint256);
+
+    /**
+     *  @notice Returns the count of non-zero deltas
+     *  @return The current value of _nonzeroDeltaCount
+     */
+    function getNonzeroDeltaCount() external view returns (uint256);
+
+    /**
+     * @notice Retrieves the token delta for a specific user and token.
+     * @dev This function allows reading the value from the `_tokenDeltas` mapping.
+     * @param user The address of the user for whom the delta is being fetched.
+     * @param token The token for which the delta is being fetched.
+     * @return The delta of the specified token for the specified user.
+     */
+    function getTokenDelta(address user, IERC20 token) external view returns (int256);
+
+    /**
+     * @notice Retrieves the reserve of a given token.
+     * @param token The token for which to retrieve the reserve.
+     * @return The amount of reserves for the given token.
+     */
+    function getTokenReserve(IERC20 token) external view returns (uint256);
 
     enum SwapKind {
         GIVEN_IN,

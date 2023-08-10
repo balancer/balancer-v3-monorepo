@@ -13,7 +13,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 
-contract Router is IRouter, ReentrancyGuard {
+contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     using AssetHelpers for *;
     using Address for address payable;
 
@@ -21,6 +21,13 @@ contract Router is IRouter, ReentrancyGuard {
 
     // solhint-disable-next-line var-name-mixedcase
     IWETH private immutable _weth;
+
+    modifier onlyVault() {
+        if (msg.sender != address(_vault)) {
+            revert SenderIsNotVault(msg.sender);
+        }
+        _;
+    }
 
     constructor(IVault vault, address weth) {
         _vault = vault;
@@ -55,7 +62,7 @@ contract Router is IRouter, ReentrancyGuard {
 
     function addLiquidityCallback(
         AddLiquidityCallbackParams calldata params
-    ) external payable nonReentrant returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+    ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
         (amountsIn, bptAmountOut) = _vault.addLiquidity(
@@ -114,7 +121,7 @@ contract Router is IRouter, ReentrancyGuard {
 
     function removeLiquidityCallback(
         RemoveLiquidityCallbackParams calldata params
-    ) external nonReentrant returns (uint256[] memory amountsOut) {
+    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
         amountsOut = _vault.removeLiquidity(
@@ -178,8 +185,9 @@ contract Router is IRouter, ReentrancyGuard {
             );
     }
 
-    function swapCallback(SwapCallbackParams calldata params) external payable nonReentrant returns (uint256) {
-        //TODO: check sender is vault
+    function swapCallback(
+        SwapCallbackParams calldata params
+    ) external payable nonReentrant onlyVault returns (uint256) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > params.deadline) {

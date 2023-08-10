@@ -35,14 +35,17 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     // Pool -> (token -> balance): Pool's ERC20 tokens balances stored at the Vault.
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolTokenBalances;
 
-    /// @notice
+    /// @notice List of handlers. It is non-empty only during `invoke` calls.
     address[] private _handlers;
-    /// @notice The total number of nonzero deltas over all active + completed lockers
-    uint128 private _nonzeroDeltaCount;
-    /// @dev Represents the asset due/owed to each handler.
-    /// Must all net to zero when the last handler is released.
+    /// @notice The total number of nonzero deltas over all active + completed lockers.
+    /// @dev It is non-zero only during `invoke` calls.
+    uint256 private _nonzeroDeltaCount;
+    /// @notice Represents the asset due/owed to each handler.
+    /// @dev Must all net to zero when the last handler is released.
     mapping(address => mapping(IERC20 => int256)) private _tokenDeltas;
-    /// @notice
+    /// @notice Represents the total reserve of each ERC20 token.
+    /// @dev It should be always equal to `token.balanceOf(vault)`, with only
+    /// exception being during the `invoke` call.
     mapping(IERC20 => uint256) private _tokenReserves;
 
     constructor(
@@ -57,103 +60,182 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     *******************************************************************************/
 
     /**
-     * @dev
+     * @dev This modifier is used for functions that temporarily modify the `_tokenDeltas`
+     * of the Vault but expect to revert or settle balances by the end of their execution.
+     * It works by tracking the handlers involved in the execution and ensures that the
+     * balances are properly settled by the time the last handler is executed.
+     *
+     * This is useful for functions like `invoke`, which performs arbitrary external calls:
+     * we can keep track of temporary deltas changes, and make sure they are settled by the
+     * time the external call is complete.
      */
     modifier transient() {
+        // Add the current handler to the list
         _handlers.push(msg.sender);
 
-        // the caller does everything here, and has to settle all outstanding balances
+        // The caller does everything here and has to settle all outstanding balances
         _;
 
+        // Check if it's the last handler
         if (_handlers.length == 1) {
+            // Ensure all balances are settled
             if (_nonzeroDeltaCount != 0) revert BalanceNotSettled();
+
+            // Reset the handlers list
             delete _handlers;
+
+            // Reset the counter
             delete _nonzeroDeltaCount;
         } else {
+            // If it's not the last handler, simply remove it from the list
             _handlers.pop();
         }
     }
 
     /**
-     * @dev
+     * @inheritdoc IVault
+     * @dev Allows the external calling of a function via the Vault contract to
+     * access Vault's functions guarded by `withHandler`.
+     * `transient` modifier ensuring balances changes within the Vault are settled.
      */
     function invoke(bytes calldata data) external payable transient returns (bytes memory result) {
-        // the caller does everything here, and has to settle all outstanding balances
-        // TODO: make it payble
-        return (msg.sender).functionCall(data);
+        // Executes the function call with value to the msg.sender.
+        return (msg.sender).functionCallWithValue(data, msg.value);
     }
 
     /**
-     * @dev
+     * @dev This modifier ensures that the function it modifies can only be called
+     * by the last handler in the `_handlers` array. This is used to enforce the
+     * order of execution when multiple handlers are in play, ensuring only the
+     * current or "active" handler can invoke certain operations in the Vault.
+     * If no handler is found or the caller is not the expected handler,
+     * it reverts the transaction with specific error messages.
      */
     modifier withHandler() {
-        address handler = getHandler();
+        // If there are no handlers in the list, revert with an error.
+        if (_handlers.length == 0) {
+            revert NoHandler();
+        }
+
+        // Get the last handler from the `_handlers` array.
+        // This represents the current active handler.
+        address handler = _handlers[_handlers.length - 1];
+
+        // If the current function caller is not the active handler, revert.
         if (msg.sender != handler) revert WrongHandler(msg.sender, handler);
+
         _;
     }
 
+    /// @inheritdoc IVault
     function settle(IERC20 token) public withHandler returns (uint256 paid) {
         uint256 reservesBefore = _tokenReserves[token];
         _tokenReserves[token] = token.balanceOf(address(this));
         paid = _tokenReserves[token] - reservesBefore;
         // subtraction must be safe
-        _accountDelta(token, -paid.toInt256());
+        _accountDelta(token, -paid.toInt256(), msg.sender);
     }
 
+    /// @inheritdoc IVault
     function wire(IERC20 token, address to, uint256 amount) public withHandler {
         // effects
-        _accountDelta(token, amount.toInt256());
+        _accountDelta(token, amount.toInt256(), msg.sender);
         _tokenReserves[token] -= amount;
         // interactions
         token.safeTransfer(to, amount);
     }
 
+    /// @inheritdoc IVault
     function mint(IERC20 token, address to, uint256 amount) public withHandler {
-        _accountDelta(token, amount.toInt256());
+        _accountDelta(token, amount.toInt256(), msg.sender);
         _mintERC20(address(token), to, amount);
     }
 
+    /// @inheritdoc IVault
     function retrieve(IERC20 token, address from, uint256 amount) public withHandler {
         // effects
-        _accountDelta(token, -(amount.toInt256()));
+        _accountDelta(token, -(amount.toInt256()), msg.sender);
         _tokenReserves[token] += amount;
         // interactions
         token.safeTransferFrom(from, address(this), amount);
     }
 
+    /// @inheritdoc IVault
     function burn(IERC20 token, address owner, uint256 amount) public withHandler {
         _spendAllowance(address(token), owner, address(this), amount);
         _burnERC20(address(token), owner, amount);
-        _accountDelta(token, -(amount.toInt256()));
+        _accountDelta(token, -(amount.toInt256()), msg.sender);
     }
 
-    function getHandler() public view returns (address) {
-        if (_handlers.length == 0) {
-            revert NoHandler();
+    /// @inheritdoc IVault
+    function getHandler(uint256 index) public view returns (address) {
+        if (index >= _handlers.length) {
+            revert HandlerOutOfBounds(index);
         }
-        return _handlers[_handlers.length - 1];
+        return _handlers[index];
+    }
+
+    /// @inheritdoc IVault
+    function getHandlersCount() external view returns (uint256) {
+        return _handlers.length;
+    }
+
+    /// @inheritdoc IVault
+    function getNonzeroDeltaCount() external view returns (uint256) {
+        return _nonzeroDeltaCount;
+    }
+
+    /// @inheritdoc IVault
+    function getTokenDelta(address user, IERC20 token) external view returns (int256) {
+        return _tokenDeltas[user][token];
+    }
+
+    /// @inheritdoc IVault
+    function getTokenReserve(IERC20 token) external view returns (uint256) {
+        return _tokenReserves[token];
     }
 
     /**
-     * @dev Accounts the delta for the current handler and token.
-     * Positive delta represents debt, while negative delta represents delta surplus.
+     * @dev Accounts the delta for the given handler and token.
+     * Positive delta represents debt, while negative delta represents surplus.
+     * The function ensures that only the specified handler can update its respective delta.
+     *
+     * @param token   The ERC20 token for which the delta is being accounted.
+     * @param delta   The difference in the token balance.
+     *                Positive indicates a debit or a decrease in Vault's assets,
+     *                negative indicates a credit or an increase in Vault's assets.
+     * @param handler The handler whose balance difference is being accounted for.
+     *                Must be the same as the caller of the function.
      */
-    function _accountDelta(IERC20 token, int256 delta) internal {
+    function _accountDelta(IERC20 token, int256 delta, address handler) internal {
+        // If the delta is zero, there's nothing to account for.
         if (delta == 0) return;
 
-        address handler = _handlers[_handlers.length - 1];
-        // TODO: use msg.sender explicitly
+        // Ensure that the handler specified is indeed the caller.
+        if (handler != msg.sender) {
+            revert WrongHandler(handler, msg.sender);
+        }
+
+        // Get the current recorded delta for this token and handler.
         int256 current = _tokenDeltas[handler][token];
+
+        // Calculate the new delta after accounting for the change.
         int256 next = current + delta;
 
         unchecked {
+            // If the resultant delta becomes zero after this operation,
+            // decrease the count of non-zero deltas.
             if (next == 0) {
                 _nonzeroDeltaCount--;
-            } else if (current == 0) {
+            }
+            // If there was no previous delta (i.e., it was zero) and now we have one,
+            // increase the count of non-zero deltas.
+            else if (current == 0) {
                 _nonzeroDeltaCount++;
             }
         }
 
+        // Update the delta for this token and handler.
         _tokenDeltas[handler][token] = next;
     }
 
@@ -199,6 +281,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
                                           Swaps
     *******************************************************************************/
 
+    /// @inheritdoc IVault
     function swap(
         SwapParams memory params
     ) public whenNotPaused withHandler returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
@@ -274,9 +357,9 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
 
         // Account amountIn of tokenIn
-        _accountDelta(params.tokenIn, int256(amountIn));
+        _accountDelta(params.tokenIn, int256(amountIn), msg.sender);
         // Account amountOut of tokenOut
-        _accountDelta(params.tokenOut, -int256(amountOut));
+        _accountDelta(params.tokenOut, -int256(amountOut), msg.sender);
 
         emit Swap(params.pool, params.tokenIn, params.tokenOut, amountIn, amountOut);
     }
@@ -285,7 +368,13 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
                                     Pool Registration
     *******************************************************************************/
 
-    /// @inheritdoc IVault
+    /**
+     * @dev The function is designed to be called by a pool itself. The function will register the pool,
+     *      setting its tokens with an initial balance of zero. The function also checks for valid token addresses
+     *      and ensures that the pool and tokens aren't already registered.
+     *      Emits a `PoolRegistered` event upon successful registration.
+     * @inheritdoc IVault
+     */
     function registerPool(address factory, IERC20[] memory tokens) external nonReentrant whenNotPaused {
         _registerPool(factory, tokens);
     }
@@ -302,69 +391,84 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         return _getPoolTokens(pool);
     }
 
-    /**
-     * @dev Emitted when a Pool is registered by calling `registerPool`.
-     */
+    /// @dev Emitted when a Pool is registered by calling `registerPool`.
     event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
 
-    /**
-     * @dev Reverts unless `pool` corresponds to a registered Pool.
-     */
+    /// @dev Reverts unless `pool` corresponds to a registered Pool.
     modifier withRegisteredPool(address pool) {
         _ensureRegisteredPool(pool);
         _;
     }
 
-    /**
-     * @dev Reverts unless `pool` corresponds to a registered Pool.
-     */
+    /// @dev Reverts unless `pool` corresponds to a registered Pool.
     function _ensureRegisteredPool(address pool) internal view {
         if (!_isRegisteredPool(pool)) {
             revert PoolNotRegistered(pool);
         }
     }
 
+    /// @dev See `registerPool`
     function _registerPool(address factory, IERC20[] memory tokens) internal {
         address pool = msg.sender;
 
+        // Ensure the pool isn't already registered
         if (_isRegisteredPool(pool)) {
             revert PoolAlreadyRegistered(pool);
         }
 
+        // Retrieve or create the pool's token balances mapping
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
 
+            // Ensure that the token address is valid
             if (token == IERC20(address(0))) {
                 revert InvalidToken();
             }
 
-            // EnumerableMaps require an explicit initial value when creating a key-value pair: we use zero, the same
-            // value that is found in uninitialized storage, which corresponds to an empty balance.
+            // Register the token with an initial balance of zero.
+            // Note: EnumerableMaps require an explicit initial value when creating a key-value pair.
             bool added = poolTokenBalances.set(tokens[i], 0);
+
+            // Ensure the token isn't already registered for the pool
             if (!added) {
                 revert TokenAlreadyRegistered(tokens[i]);
             }
         }
 
+        // Mark the pool as registered
         _isPoolRegistered[pool] = true;
+
+        // Emit an event to log the pool registration
         emit PoolRegistered(pool, factory, tokens);
     }
 
+    /// @dev See `isRegisteredPool`
     function _isRegisteredPool(address pool) internal view returns (bool) {
         return _isPoolRegistered[pool];
     }
 
+    /**
+     * @notice Fetches the tokens and their corresponding balances for a given pool.
+     * @dev Utilizes an enumerable map to obtain pool token balances.
+     * The function is structured to minimize storage reads by leveraging the `unchecked_at` method.
+     *
+     * @param pool The address of the pool for which tokens and balances are to be fetched.
+     * @return tokens An array of token addresses.
+     * @return balances An array of corresponding token balances.
+     */
     function _getPoolTokens(address pool) internal view returns (IERC20[] memory tokens, uint256[] memory balances) {
+        // Retrieve the mapping of tokens and their balances for the specified pool.
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
 
+        // Initialize arrays to store tokens and their balances based on the number of tokens in the pool.
         tokens = new IERC20[](poolTokenBalances.length());
         balances = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length, we can use
-            // `unchecked_at` as we know `i` is a valid token index, saving storage reads.
+            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
+            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes storage reads.
             (tokens[i], balances[i]) = poolTokenBalances.unchecked_at(i);
         }
     }
@@ -409,7 +513,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
             }
 
             // Debit of token[i] for amountIn
-            _accountDelta(tokens[i], int256(amountIn));
+            _accountDelta(tokens[i], int256(amountIn), msg.sender);
 
             finalBalances[i] += amountIn;
         }
@@ -418,7 +522,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         _setPoolBalances(pool, finalBalances);
 
         // Credit bptAmountOut of pool tokens
-        _accountDelta(IERC20(pool), -int256(bptAmountOut));
+        _accountDelta(IERC20(pool), -int256(bptAmountOut), msg.sender);
 
         emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }
@@ -447,7 +551,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
                 revert ExitBelowMin();
             }
             // Credit token[i] for amountIn
-            _accountDelta(tokens[i], -int256(amountOut));
+            _accountDelta(tokens[i], -int256(amountOut), msg.sender);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
             finalBalances[i] = balances[i] - amountOut;
@@ -457,7 +561,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         _setPoolBalances(pool, finalBalances);
 
         // Debit bptAmountOut of pool tokens
-        _accountDelta(IERC20(pool), int256(bptAmountIn));
+        _accountDelta(IERC20(pool), int256(bptAmountIn), msg.sender);
 
         emit PoolBalanceChanged(
             pool,

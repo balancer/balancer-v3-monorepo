@@ -7,31 +7,6 @@ import "./IVault.sol";
 /// @notice Interface for a Base Pool
 interface IBasePool {
     /**
-     * @notice Event emitted when liquidity is added
-     * @param sender               Address of the sender
-     * @param currentBalances      Current balances of the tokens
-     * @param maxAmountsIn         Maximum amounts of tokens to be added
-     * @param bptAmountOut         Amount of BPT tokens minted
-     * @param userData             Additional data provided by the user
-     */
-    event OnLiquidityAdded(
-        address sender,
-        uint256[] currentBalances,
-        uint256[] maxAmountsIn,
-        uint256 bptAmountOut,
-        bytes userData
-    );
-
-    /**
-     * @notice Event emitted when liquidity is removed
-     * @param sender               Address of the sender
-     * @param currentBalances      Current balances of the tokens
-     * @param bptAmountIn          Amount of BPT tokens burnt
-     * @param userData             Additional data provided by the user
-     */
-    event OnLiquidityRemoved(address sender, uint256[] currentBalances, uint256 bptAmountIn, bytes userData);
-
-    /**
      * @notice Add liquidity to the pool
      * @param sender               Address of the sender
      * @param currentBalances      Current balances of the tokens
