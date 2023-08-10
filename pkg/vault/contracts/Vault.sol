@@ -132,7 +132,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         _tokenReserves[token] = token.balanceOf(address(this));
         paid = _tokenReserves[token] - reservesBefore;
         // subtraction must be safe
-        _accountDelta(token, -paid.toInt256());
+        _accountDelta(token, -paid.toInt256(), msg.sender);
     }
 
     /// @inheritdoc IVault
@@ -142,7 +142,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         uint256 amount
     ) public withHandler {
         // effects
-        _accountDelta(token, amount.toInt256());
+        _accountDelta(token, amount.toInt256(), msg.sender);
         _tokenReserves[token] -= amount;
         // interactions
         token.safeTransfer(to, amount);
@@ -154,7 +154,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         address to,
         uint256 amount
     ) public withHandler {
-        _accountDelta(token, amount.toInt256());
+        _accountDelta(token, amount.toInt256(), msg.sender);
         _mintERC20(address(token), to, amount);
     }
 
@@ -165,7 +165,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         uint256 amount
     ) public withHandler {
         // effects
-        _accountDelta(token, -(amount.toInt256()));
+        _accountDelta(token, -(amount.toInt256()), msg.sender);
         _tokenReserves[token] += amount;
         // interactions
         token.safeTransferFrom(from, address(this), amount);
@@ -179,7 +179,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     ) public withHandler {
         _spendAllowance(address(token), owner, address(this), amount);
         _burnERC20(address(token), owner, amount);
-        _accountDelta(token, -(amount.toInt256()));
+        _accountDelta(token, -(amount.toInt256()), msg.sender);
     }
 
     /// @inheritdoc IVault
@@ -211,24 +211,50 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /**
-     * @dev Accounts the delta for the current handler and token.
-     * Positive delta represents debt, while negative delta represents delta surplus.
+     * @dev Accounts the delta for the given handler and token.
+     * Positive delta represents debt, while negative delta represents surplus.
+     * The function ensures that only the specified handler can update its respective delta.
+     *
+     * @param token   The ERC20 token for which the delta is being accounted.
+     * @param delta   The difference in the token balance.
+     *                Positive indicates a debit or a decrease in Vault's assets,
+     *                negative indicates a credit or an increase in Vault's assets.
+     * @param handler The handler whose balance difference is being accounted for.
+     *                Must be the same as the caller of the function.
      */
-    function _accountDelta(IERC20 token, int256 delta) internal {
+    function _accountDelta(
+        IERC20 token,
+        int256 delta,
+        address handler
+    ) internal {
+        // If the delta is zero, there's nothing to account for.
         if (delta == 0) return;
 
-        address handler = _handlers[_handlers.length - 1];
+        // Ensure that the handler specified is indeed the caller.
+        if (handler != msg.sender) {
+            revert WrongHandler(handler, msg.sender);
+        }
+
+        // Get the current recorded delta for this token and handler.
         int256 current = _tokenDeltas[handler][token];
+
+        // Calculate the new delta after accounting for the change.
         int256 next = current + delta;
 
         unchecked {
+            // If the resultant delta becomes zero after this operation,
+            // decrease the count of non-zero deltas.
             if (next == 0) {
                 _nonzeroDeltaCount--;
-            } else if (current == 0) {
+            }
+            // If there was no previous delta (i.e., it was zero) and now we have one,
+            // increase the count of non-zero deltas.
+            else if (current == 0) {
                 _nonzeroDeltaCount++;
             }
         }
 
+        // Update the delta for this token and handler.
         _tokenDeltas[handler][token] = next;
     }
 
@@ -374,9 +400,9 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
 
         // Account amountIn of tokenIn
-        _accountDelta(params.tokenIn, int256(amountIn));
+        _accountDelta(params.tokenIn, int256(amountIn), msg.sender);
         // Account amountOut of tokenOut
-        _accountDelta(params.tokenOut, -int256(amountOut));
+        _accountDelta(params.tokenOut, -int256(amountOut), msg.sender);
 
         emit Swap(params.pool, params.tokenIn, params.tokenOut, amountIn, amountOut);
     }
@@ -512,7 +538,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
             }
 
             // Debit of token[i] for amountIn
-            _accountDelta(tokens[i], int256(amountIn));
+            _accountDelta(tokens[i], int256(amountIn), msg.sender);
 
             finalBalances[i] += amountIn;
         }
@@ -521,7 +547,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         _setPoolBalances(pool, finalBalances);
 
         // Credit bptAmountOut of pool tokens
-        _accountDelta(IERC20(pool), -int256(bptAmountOut));
+        _accountDelta(IERC20(pool), -int256(bptAmountOut), msg.sender);
 
         emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }
@@ -550,7 +576,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
                 revert ExitBelowMin();
             }
             // Credit token[i] for amountIn
-            _accountDelta(tokens[i], -int256(amountOut));
+            _accountDelta(tokens[i], -int256(amountOut), msg.sender);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
             finalBalances[i] = balances[i] - amountOut;
@@ -560,7 +586,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         _setPoolBalances(pool, finalBalances);
 
         // Debit bptAmountOut of pool tokens
-        _accountDelta(IERC20(pool), int256(bptAmountIn));
+        _accountDelta(IERC20(pool), int256(bptAmountIn), msg.sender);
 
         emit PoolBalanceChanged(
             pool,
