@@ -6,21 +6,32 @@ import "./IVault.sol";
 
 /// @notice Interface for a Base Pool
 interface IBasePool {
-    /**
-     * @notice Add liquidity to the pool
-     * @param sender               Address of the sender
-     * @param currentBalances      Current balances of the tokens
-     * @param maxAmountsIn         Maximum amounts of tokens to be added
-     * @param userData             Additional data provided by the user
-     * @return amountsIn           Actual amounts of tokens added
-     * @return bptAmountOut        Amount of BPT tokens minted
-     */
-    function onAddLiquidity(
+    function supportsAddLiquidityProportional() external view returns (bool);
+
+    function supportsExitLiquidityProportional() external view returns (bool);
+
+    function onBeforeAdd(uint256[] memory currentBalances) external;
+
+    function onBeforeRemove(uint256[] memory currentBalances) external;
+
+    function onAddLiquidityUnbalanced(
         address sender,
-        uint256[] memory currentBalances,
-        uint256[] memory maxAmountsIn,
-        bytes memory userData
-    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+        uint256[] memory exactAmountsIn,
+        uint256[] memory currentBalances
+    ) external returns (uint256 bptAmountOut);
+
+    function onAddLiquiditySingleTokenInForExactBptOut(
+        address sender,
+        IERC20 tokenIn,
+        uint256 exactBptAmountOut,
+        uint256[] memory currentBalances
+    ) external returns (uint256 amountIn);
+
+    function onAddLiquidityCustom(
+        address sender,
+        bytes memory userData,
+        uint256[] memory currentBalances
+    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
     /**
      * @notice Remove liquidity from the pool
