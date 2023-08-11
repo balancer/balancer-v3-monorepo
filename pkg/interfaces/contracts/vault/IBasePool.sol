@@ -8,7 +8,7 @@ import "./IVault.sol";
 interface IBasePool {
     function supportsAddLiquidityProportional() external view returns (bool);
 
-    function supportsExitLiquidityProportional() external view returns (bool);
+    function supportsRemoveLiquidityProportional() external view returns (bool);
 
     function onBeforeAdd(uint256[] memory currentBalances) external;
 
