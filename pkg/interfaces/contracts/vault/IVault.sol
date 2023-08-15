@@ -101,6 +101,8 @@ interface IVault {
      */
     function invoke(bytes calldata data) external payable returns (bytes memory result);
 
+    function quote(bytes calldata data) external payable returns (bytes memory result);
+
     /**
      * @notice Settles deltas for a token
      * @param token                          Token's address

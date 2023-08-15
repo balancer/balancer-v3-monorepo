@@ -24,8 +24,8 @@ contract ERC20FacadeToken is IERC20, IERC20Metadata, IVaultErrors {
         _;
     }
 
-    constructor(IVault vault, string memory name_, string memory symbol_) {
-        _vault = vault;
+    constructor(IVault vault_, string memory name_, string memory symbol_) {
+        _vault = vault_;
         _name = name_;
         _symbol = symbol_;
     }

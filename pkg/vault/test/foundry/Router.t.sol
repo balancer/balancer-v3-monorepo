@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC20Errors.sol";
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
@@ -91,26 +92,18 @@ contract RouterTest is Test {
         pool.setMultiplier(1e30);
 
         vm.prank(bob);
-        uint256 amountCalculated = router.querySwap(
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.NotStaticCall.selector)
+        );
+        router.querySwap(
             IVault.SwapKind.GIVEN_IN,
             address(pool),
             address(USDC).asAsset(),
             address(DAI).asAsset(),
             USDC_AMOUNT_IN,
+            DAI_AMOUNT_IN,
+            type(uint256).max,
             bytes("")
         );
-
-
-        // amountCalculated is correct
-        assertEq(amountCalculated, DAI_AMOUNT_IN);
-
-        // asssets are NOT transferred to/from Bob
-        assertEq(USDC.balanceOf(bob), USDC_AMOUNT_IN);
-        assertEq(DAI.balanceOf(bob), DAI_AMOUNT_IN);
-
-        // assets are NOT changed in the pool
-        (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
-        assertEq(balances[0], DAI_AMOUNT_IN);
-        assertEq(balances[1], USDC_AMOUNT_IN);
     }
 }

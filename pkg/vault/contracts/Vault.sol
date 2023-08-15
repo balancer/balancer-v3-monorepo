@@ -103,6 +103,23 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         return (msg.sender).functionCallWithValue(data, msg.value);
     }
 
+    modifier query() {
+        if(tx.origin != address(0)) {
+            revert NotStaticCall();
+
+        }
+
+        // Add the current handler to the list so withHandler won't fail
+        _handlers.push(msg.sender);
+        // The caller can perform operations and doesn't have to settle balances
+        _;
+    }
+
+    function quote(bytes calldata data) external payable query returns (bytes memory result) {
+        // Executes the function call with value to the msg.sender.
+        return (msg.sender).functionCallWithValue(data, msg.value);
+    }
+
     /**
      * @dev This modifier ensures that the function it modifies can only be called
      * by the last handler in the `_handlers` array. This is used to enforce the

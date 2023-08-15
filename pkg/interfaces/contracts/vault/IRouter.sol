@@ -108,6 +108,8 @@ interface IRouter {
         Asset assetIn,
         Asset assetOut,
         uint256 amountGiven,
+        uint256 limit,
+        uint256 deadline,
         bytes calldata userData
     ) external payable returns (uint256 amountCalculated);
 }
