@@ -86,4 +86,25 @@ describe('Queries', function () {
       ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
     });
   });
+
+  describe('removeLiquidity', () => {
+    sharedBeforeEach('add liquidity', async () => {
+      await router
+        .connect(alice)
+        .addLiquidity(await pool.getAddress(), [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], DAI_AMOUNT_IN, '0x');
+    });
+
+    it('queries a removeLiquidity correctly', async () => {
+      const amountsOut = await router
+        .connect(zero)
+        .queryRemoveLiquidity.staticCall(pool, [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], DAI_AMOUNT_IN, '0x');
+      expect(amountsOut).to.be.deep.eq([DAI_AMOUNT_IN, USDC_AMOUNT_IN]);
+    });
+
+    it('reverts if not a static call', async () => {
+      await expect(
+        router.queryRemoveLiquidity.staticCall(pool, [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], DAI_AMOUNT_IN, '0x')
+      ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
+    });
+  });
 });

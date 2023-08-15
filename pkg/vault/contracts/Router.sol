@@ -343,4 +343,43 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             params.userData
         );
     }
+
+    function queryRemoveLiquidity(
+        address pool,
+        Asset[] memory assets,
+        uint256[] memory minAmountsOut,
+        uint256 bptAmountIn,
+        bytes memory userData
+    ) external returns (uint256[] memory amountsOut) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeWithSelector(
+                        Router.queryRemoveLiquidityCallback.selector,
+                        RemoveLiquidityCallbackParams({
+                            sender: msg.sender,
+                            pool: pool,
+                            assets: assets,
+                            minAmountsOut: minAmountsOut,
+                            bptAmountIn: bptAmountIn,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256[])
+            );
+    }
+
+    function queryRemoveLiquidityCallback(
+        RemoveLiquidityCallbackParams calldata params
+    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
+        return
+            _vault.removeLiquidity(
+                params.pool,
+                params.assets.toIERC20(_weth),
+                params.minAmountsOut,
+                params.bptAmountIn,
+                params.userData
+            );
+    }
 }
