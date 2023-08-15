@@ -60,13 +60,9 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
-    function addLiquidityCallback(AddLiquidityCallbackParams calldata params)
-        external
-        payable
-        nonReentrant
-        onlyVault
-        returns (uint256[] memory amountsIn, uint256 bptAmountOut)
-    {
+    function addLiquidityCallback(
+        AddLiquidityCallbackParams calldata params
+    ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
         (amountsIn, bptAmountOut) = _vault.addLiquidity(
@@ -123,12 +119,9 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
-    function removeLiquidityCallback(RemoveLiquidityCallbackParams calldata params)
-        external
-        nonReentrant
-        onlyVault
-        returns (uint256[] memory amountsOut)
-    {
+    function removeLiquidityCallback(
+        RemoveLiquidityCallbackParams calldata params
+    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
         amountsOut = _vault.removeLiquidity(
@@ -192,13 +185,9 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
-    function swapCallback(SwapCallbackParams calldata params)
-        external
-        payable
-        nonReentrant
-        onlyVault
-        returns (uint256)
-    {
+    function swapCallback(
+        SwapCallbackParams calldata params
+    ) external payable nonReentrant onlyVault returns (uint256) {
         (
             uint256 amountCalculated,
             uint256 amountIn,
@@ -241,15 +230,11 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         return amountCalculated;
     }
 
-    function _swapCallback(SwapCallbackParams calldata params)
+    function _swapCallback(
+        SwapCallbackParams calldata params
+    )
         internal
-        returns (
-            uint256 amountCalculated,
-            uint256 amountIn,
-            uint256 amountOut,
-            IERC20 tokenIn,
-            IERC20 tokenOut
-        )
+        returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut, IERC20 tokenIn, IERC20 tokenOut)
     {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
@@ -313,13 +298,9 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
-    function querySwapCallback(SwapCallbackParams calldata params)
-        external
-        payable
-        nonReentrant
-        onlyVault
-        returns (uint256)
-    {
+    function querySwapCallback(
+        SwapCallbackParams calldata params
+    ) external payable nonReentrant onlyVault returns (uint256) {
         (uint256 amountCalculated, , , , ) = _swapCallback(params);
 
         return amountCalculated;

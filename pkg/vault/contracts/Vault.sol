@@ -104,9 +104,9 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     modifier query() {
-        if(tx.origin != address(0)) {
+        if (tx.origin != address(0)) {
+            // solhint-disable-previous-line avoid-tx-origin
             revert NotStaticCall();
-
         }
 
         // Add the current handler to the list so withHandler won't fail
