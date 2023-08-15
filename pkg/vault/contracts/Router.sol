@@ -304,6 +304,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         return amountCalculated;
     }
 
+    /// @inheritdoc IRouter
     function queryAddLiquidity(
         address pool,
         Asset[] memory assets,
@@ -344,6 +345,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         );
     }
 
+    /// @inheritdoc IRouter
     function queryRemoveLiquidity(
         address pool,
         Asset[] memory assets,
