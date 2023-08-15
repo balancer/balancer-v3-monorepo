@@ -8,6 +8,7 @@ import { Router } from '../typechain-types/contracts/test/Router';
 import { BasePoolToken } from '../typechain-types/contracts/BasePoolToken';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
+import { VoidSigner } from 'ethers';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 
@@ -17,6 +18,7 @@ describe('Queries', function () {
   let pool: BasePoolToken;
   let DAI: ERC20TestToken;
   let USDC: ERC20TestToken;
+  let zero: VoidSigner;
 
   const DAI_AMOUNT_IN = fp(1000);
   const USDC_AMOUNT_IN = fp(1000);
@@ -25,6 +27,7 @@ describe('Queries', function () {
   let alice: SignerWithAddress;
 
   before('setup signers', async () => {
+    zero = new VoidSigner('0x0000000000000000000000000000000000000000', ethers.provider);
     [, factory, alice] = await ethers.getSigners();
   });
 
@@ -55,7 +58,6 @@ describe('Queries', function () {
     });
 
     it('queries a swap correctly', async () => {
-      const zero = new ethers.VoidSigner('0x0000000000000000000000000000000000000000', ethers.provider);
       const amountCalculated = await router
         .connect(zero)
         .querySwap.staticCall(0, pool, USDC, DAI, USDC_AMOUNT_IN, DAI_AMOUNT_IN, MAX_UINT256, '0x');
@@ -65,6 +67,22 @@ describe('Queries', function () {
     it('reverts if not a static call', async () => {
       await expect(
         router.querySwap.staticCall(0, pool, USDC, DAI, USDC_AMOUNT_IN, DAI_AMOUNT_IN, MAX_UINT256, '0x')
+      ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
+    });
+  });
+
+  describe('addLiquidity', () => {
+    it('queries a addLiquidity correctly', async () => {
+      const { amountsIn, bptAmountOut } = await router
+        .connect(zero)
+        .queryAddLiquidity.staticCall(pool, [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], DAI_AMOUNT_IN, '0x');
+      expect(amountsIn).to.be.deep.eq([DAI_AMOUNT_IN, USDC_AMOUNT_IN]);
+      expect(bptAmountOut).to.be.eq(DAI_AMOUNT_IN);
+    });
+
+    it('reverts if not a static call', async () => {
+      await expect(
+        router.queryAddLiquidity.staticCall(pool, [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], DAI_AMOUNT_IN, '0x')
       ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
     });
   });

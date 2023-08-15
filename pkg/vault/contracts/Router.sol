@@ -89,8 +89,6 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         }
 
         _vault.mint(IERC20(params.pool), params.sender, bptAmountOut);
-
-        // Send remaining ETH to the user
     }
 
     function removeLiquidity(
@@ -304,5 +302,45 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         (uint256 amountCalculated, , , , ) = _swapCallback(params);
 
         return amountCalculated;
+    }
+
+    function queryAddLiquidity(
+        address pool,
+        Asset[] memory assets,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeWithSelector(
+                        Router.queryAddLiquidityCallback.selector,
+                        AddLiquidityCallbackParams({
+                            sender: msg.sender,
+                            pool: pool,
+                            assets: assets,
+                            maxAmountsIn: maxAmountsIn,
+                            minBptAmountOut: minBptAmountOut,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256[], uint256)
+            );
+    }
+
+    function queryAddLiquidityCallback(
+        AddLiquidityCallbackParams calldata params
+    ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+        IERC20[] memory tokens = params.assets.toIERC20(_weth);
+
+        (amountsIn, bptAmountOut) = _vault.addLiquidity(
+            params.pool,
+            tokens,
+            params.maxAmountsIn,
+            params.minBptAmountOut,
+            params.userData
+        );
     }
 }
