@@ -101,6 +101,12 @@ interface IVault {
      */
     function invoke(bytes calldata data) external payable returns (bytes memory result);
 
+    /**
+     * @notice Invokes a callback on msg.sender with arguments provided in `data`.
+     * Only static calls are allowed, everything else will revert.
+     * @param data                           Contain function signature and args to be passed to the msg.sender
+     * @return result                        Resulting data from the call
+     */
     function quote(bytes calldata data) external payable returns (bytes memory result);
 
     /**

@@ -103,20 +103,31 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         return (msg.sender).functionCallWithValue(data, msg.value);
     }
 
+    /**
+     * @dev Ensure that only static calls are made to the functions with this modifier.
+     * A static call is one where `tx.origin` equals 0x0 for most implementations.
+     * More https://twitter.com/0xkarmacoma/status/1493380279309717505
+     */
     modifier query() {
+        // Check if the transaction initiator is different from the 0x0.
+        // If so, it's not a static call and we revert.
         if (tx.origin != address(0)) {
             // solhint-disable-previous-line avoid-tx-origin
             revert NotStaticCall();
         }
 
-        // Add the current handler to the list so withHandler won't fail
+        // Add the current handler to the list so `withHandler` would not revert
         _handlers.push(msg.sender);
-        // The caller can perform operations and doesn't have to settle balances
         _;
     }
 
+    /**
+     * @inheritdoc IVault
+     * @notice Forward the current call with attached ether to the sender of this transaction.
+     * @dev Allows to query any operations on the Vault with `withHandler` modifier.
+     */
     function quote(bytes calldata data) external payable query returns (bytes memory result) {
-        // Executes the function call with value to the msg.sender.
+        // Forward the incoming call to the original sender of this transaction.
         return (msg.sender).functionCallWithValue(data, msg.value);
     }
 
