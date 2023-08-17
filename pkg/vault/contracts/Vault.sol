@@ -110,7 +110,8 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
      */
     modifier query() {
         // Check if the transaction initiator is different from the 0x0.
-        // If so, it's not a static call and we revert.
+        // If so, it's not a eth_call and we revert.
+        // https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_call
         if (tx.origin != address(0)) {
             // solhint-disable-previous-line avoid-tx-origin
             revert NotStaticCall();
