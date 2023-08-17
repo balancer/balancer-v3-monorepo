@@ -319,8 +319,12 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /// @inheritdoc IVault
-    function approveERC20(address handler, address spender, uint256 amount) external returns (bool) {
-        _approveERC20(msg.sender, handler, spender, amount);
+    function approveERC20(address token, address owner, address spender, uint256 amount) external returns (bool) {
+        if (msg.sender == token) {
+            _approveERC20(msg.sender, owner, spender, amount);
+        } else {
+            _approveERC20(token, msg.sender, spender, amount);
+        }
         return true;
     }
 

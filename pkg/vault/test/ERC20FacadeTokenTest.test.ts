@@ -232,7 +232,9 @@ describe('ERC20FacadeToken', function () {
       });
 
       it('indirect ERC20 approval emits an event on the token', async () => {
-        await expect(await vault.connect(registeredPoolSigner).approveERC20(user.address, relayer.address, bptAmount))
+        await expect(
+          await vault.connect(registeredPoolSigner).approveERC20(registeredPoolSigner, user, relayer, bptAmount)
+        )
           .to.emit(poolA, 'Approval')
           .withArgs(user.address, relayer.address, bptAmount);
       });
@@ -248,20 +250,24 @@ describe('ERC20FacadeToken', function () {
 
     context('sets approval through the vault', async () => {
       sharedBeforeEach('set approval', async () => {
-        await vault.connect(registeredPoolSigner).approveERC20(user.address, relayer.address, bptAmount);
+        await vault.connect(registeredPoolSigner).approveERC20(registeredPoolSigner, user, relayer, bptAmount);
       });
 
       itSetsApprovalsCorrectly();
     });
 
     it('cannot approve from zero address', async () => {
-      await expect(vault.connect(registeredPoolSigner).approveERC20(ZERO_ADDRESS, other.address, bptAmount))
+      await expect(
+        vault.connect(registeredPoolSigner).approveERC20(registeredPoolSigner, ZERO_ADDRESS, other, bptAmount)
+      )
         .to.be.revertedWithCustomError(vault, 'ERC20InvalidApprover')
         .withArgs(ZERO_ADDRESS);
     });
 
     it('cannot approve to zero address', async () => {
-      await expect(vault.connect(registeredPoolSigner).approveERC20(user.address, ZERO_ADDRESS, bptAmount))
+      await expect(
+        vault.connect(registeredPoolSigner).approveERC20(registeredPoolSigner, user, ZERO_ADDRESS, bptAmount)
+      )
         .to.be.revertedWithCustomError(vault, 'ERC20InvalidSpender')
         .withArgs(ZERO_ADDRESS);
     });

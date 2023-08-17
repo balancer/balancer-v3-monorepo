@@ -82,12 +82,13 @@ interface IVault {
 
     /**
      * @notice Approves a spender to spend tokens on behalf of sender
-     * @param sender                         Owner's address
+     * @param token                          Token's address
+     * @param owner                          Owner's address
      * @param spender                        Spender's address
      * @param amount                         Amount of tokens to approve
      * @return                               True if successful, false otherwise
      */
-    function approveERC20(address sender, address spender, uint256 amount) external returns (bool);
+    function approveERC20(address token, address owner, address spender, uint256 amount) external returns (bool);
 
     /*******************************************************************************
                               Transient Accounting

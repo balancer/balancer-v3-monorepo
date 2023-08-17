@@ -34,6 +34,55 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         _weth = IWETH(weth);
     }
 
+    /*******************************************************************************
+                                    Balances
+    *******************************************************************************/
+
+    /// @inheritdoc IRouter
+    function deposit(IERC20 token, uint256 amount) external {
+        // Invoke the depositCallback function in the _vault contract
+        _vault.invoke(abi.encodeWithSelector(Router.depositCallback.selector, msg.sender, token, amount));
+    }
+
+    /**
+     * @notice Handles deposit callbacks
+     * @param sender      The sender address
+     * @param token       The ERC20 token being deposited
+     * @param amount      The amount of token being deposited
+     */
+    function depositCallback(address sender, IERC20 token, uint256 amount) external nonReentrant onlyVault {
+        // Mint the specified amount of the token to the sender's address
+        _vault.mint(token, sender, amount);
+
+        // Retrieve the specified amount of the token from the sender's address
+        _vault.retrieve(token, sender, amount);
+    }
+
+    /// @inheritdoc IRouter
+    function withdraw(IERC20 token, uint256 amount) external {
+        // Invoke the withdrawCallback function in the _vault contract
+        _vault.invoke(abi.encodeWithSelector(Router.withdrawCallback.selector, msg.sender, token, amount));
+    }
+
+    /**
+     * @notice Handles withdrawal callbacks
+     * @param sender      The sender address
+     * @param token       The ERC20 token being withdrawn
+     * @param amount      The amount of token being withdrawn
+     */
+    function withdrawCallback(address sender, IERC20 token, uint256 amount) external nonReentrant onlyVault {
+        // Burn the specified amount of the token from the sender's address
+        _vault.burn(token, sender, amount);
+
+        // Send the specified amount of the token to the sender's address
+        _vault.wire(token, sender, amount);
+    }
+
+    /*******************************************************************************
+                                    Pools
+    *******************************************************************************/
+
+    /// @inheritdoc IRouter
     function addLiquidity(
         address pool,
         Asset[] memory assets,
@@ -91,6 +140,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         _vault.mint(IERC20(params.pool), params.sender, bptAmountOut);
     }
 
+    /// @inheritdoc IRouter
     function removeLiquidity(
         address pool,
         Asset[] memory assets,
@@ -151,6 +201,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         _vault.burn(IERC20(params.pool), params.sender, params.bptAmountIn);
     }
 
+    /// @inheritdoc IRouter
     function swap(
         IVault.SwapKind kind,
         address pool,

@@ -71,7 +71,7 @@ contract ERC20FacadeToken is IERC20, IERC20Metadata, IVaultErrors {
     /// @inheritdoc IERC20
     function approve(address spender, uint256 amount) public returns (bool) {
         // Vault will perform the approval and call emitApprove to emit the event from this contract.
-        _vault.approveERC20(msg.sender, spender, amount);
+        _vault.approveERC20(address(this), msg.sender, spender, amount);
         return true;
     }
 
