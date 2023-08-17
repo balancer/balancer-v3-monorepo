@@ -92,9 +92,36 @@ contract RouterTest is Test {
         pool.setMultiplier(1e30);
 
         vm.prank(bob);
-        vm.expectRevert(
-            abi.encodeWithSelector(IVaultErrors.NotStaticCall.selector)
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.NotStaticCall.selector));
+        router.querySwap(
+            IVault.SwapKind.GIVEN_IN,
+            address(pool),
+            address(USDC).asAsset(),
+            address(DAI).asAsset(),
+            USDC_AMOUNT_IN,
+            DAI_AMOUNT_IN,
+            type(uint256).max,
+            bytes("")
         );
+    }
+
+    function testDisableQueries() public {
+        vm.prank(alice);
+        router.addLiquidity(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
+            DAI_AMOUNT_IN,
+            bytes("")
+        );
+
+        pool.setMultiplier(1e30);
+
+        vault.disableQueries();
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.QueriesDisabled.selector));
+
+        vm.prank(address(0), address(0));
         router.querySwap(
             IVault.SwapKind.GIVEN_IN,
             address(pool),

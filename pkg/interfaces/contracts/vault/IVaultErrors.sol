@@ -109,4 +109,9 @@ interface IVaultErrors {
      * @dev
      */
     error NotStaticCall();
+
+    /**
+     * @dev
+     */
+    error QueriesDisabled();
 }

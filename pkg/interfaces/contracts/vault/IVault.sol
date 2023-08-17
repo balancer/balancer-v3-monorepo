@@ -102,14 +102,6 @@ interface IVault {
     function invoke(bytes calldata data) external payable returns (bytes memory result);
 
     /**
-     * @notice Invokes a callback on msg.sender with arguments provided in `data`.
-     * Only static calls are allowed, everything else will revert.
-     * @param data                           Contain function signature and args to be passed to the msg.sender
-     * @return result                        Resulting data from the call
-     */
-    function quote(bytes calldata data) external payable returns (bytes memory result);
-
-    /**
      * @notice Settles deltas for a token
      * @param token                          Token's address
      * @return paid                          Amount paid during settlement
@@ -258,4 +250,28 @@ interface IVault {
     ) external returns (uint256[] memory amountsOut);
 
     event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
+
+    /*******************************************************************************
+                              Transient Accounting
+    *******************************************************************************/
+
+    /**
+     * @notice Invokes a callback on msg.sender with arguments provided in `data`
+     * to query a set of operations on the Vault.
+     * Only off-chain eth_call are allowed, everything else will revert.
+     * @param data                           Contain function signature and args to be passed to the msg.sender
+     * @return result                        Resulting data from the call
+     */
+    function quote(bytes calldata data) external payable returns (bytes memory result);
+
+    /**
+     * @notice Disables queries functionality on the Vault. Can be called only by governance.
+     */
+    function disableQueries() external;
+
+    /**
+     * @notice Checks if the queries enabled on the Vault.
+     * @return If true, then queries are disabled.
+     */
+    function isQueriesDisabled() external view returns (bool);
 }

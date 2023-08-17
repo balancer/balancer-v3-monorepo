@@ -48,6 +48,9 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     /// exception being during the `invoke` call.
     mapping(IERC20 => uint256) private _tokenReserves;
 
+    /// @notice If set to true, disables query functionality of the Vault. Can be modified only by governance.
+    bool private _isQueriesDisabled;
+
     constructor(
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
@@ -100,35 +103,6 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
      */
     function invoke(bytes calldata data) external payable transient returns (bytes memory result) {
         // Executes the function call with value to the msg.sender.
-        return (msg.sender).functionCallWithValue(data, msg.value);
-    }
-
-    /**
-     * @dev Ensure that only static calls are made to the functions with this modifier.
-     * A static call is one where `tx.origin` equals 0x0 for most implementations.
-     * More https://twitter.com/0xkarmacoma/status/1493380279309717505
-     */
-    modifier query() {
-        // Check if the transaction initiator is different from the 0x0.
-        // If so, it's not a eth_call and we revert.
-        // https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_call
-        if (tx.origin != address(0)) {
-            // solhint-disable-previous-line avoid-tx-origin
-            revert NotStaticCall();
-        }
-
-        // Add the current handler to the list so `withHandler` would not revert
-        _handlers.push(msg.sender);
-        _;
-    }
-
-    /**
-     * @inheritdoc IVault
-     * @notice Forward the current call with attached ether to the sender of this transaction.
-     * @dev Allows to query any operations on the Vault with `withHandler` modifier.
-     */
-    function quote(bytes calldata data) external payable query returns (bytes memory result) {
-        // Forward the incoming call to the original sender of this transaction.
         return (msg.sender).functionCallWithValue(data, msg.value);
     }
 
@@ -266,6 +240,57 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
         // Update the delta for this token and handler.
         _tokenDeltas[handler][token] = next;
+    }
+
+    /*******************************************************************************
+                                    Queries
+    *******************************************************************************/
+
+    /**
+     * @dev Ensure that only static calls are made to the functions with this modifier.
+     * A static call is one where `tx.origin` equals 0x0 for most implementations.
+     * More https://twitter.com/0xkarmacoma/status/1493380279309717505
+     */
+    modifier query() {
+        // Check if the transaction initiator is different from the 0x0.
+        // If so, it's not a eth_call and we revert.
+        // https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_call
+        if (tx.origin != address(0)) {
+            // solhint-disable-previous-line avoid-tx-origin
+            revert NotStaticCall();
+        }
+
+        if (_isQueriesDisabled) {
+            revert QueriesDisabled();
+        }
+
+        // Add the current handler to the list so `withHandler` would not revert
+        _handlers.push(msg.sender);
+        _;
+    }
+
+    /**
+     * @inheritdoc IVault
+     * @dev Allows to query any operations on the Vault with `withHandler` modifier.
+     */
+    function quote(bytes calldata data) external payable query returns (bytes memory result) {
+        // Forward the incoming call to the original sender of this transaction.
+        return (msg.sender).functionCallWithValue(data, msg.value);
+    }
+
+    /**
+     * @inheritdoc IVault
+     */
+    function disableQueries() external {
+        // TODO: Only governance can call this function.
+        _isQueriesDisabled = true;
+    }
+
+    /**
+     * @inheritdoc IVault
+     */
+    function isQueriesDisabled() external view returns (bool) {
+        return _isQueriesDisabled;
     }
 
     /*******************************************************************************
