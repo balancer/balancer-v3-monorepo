@@ -117,7 +117,7 @@ contract RouterTest is Test {
 
         pool.setMultiplier(1e30);
 
-        vault.disableQueries();
+        vault.disableQuery();
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.QueriesDisabled.selector));
 

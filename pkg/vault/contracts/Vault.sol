@@ -49,7 +49,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     mapping(IERC20 => uint256) private _tokenReserves;
 
     /// @notice If set to true, disables query functionality of the Vault. Can be modified only by governance.
-    bool private _isQueriesDisabled;
+    bool private _isQueryDisabled;
 
     constructor(
         uint256 pauseWindowDuration,
@@ -260,7 +260,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
             revert NotStaticCall();
         }
 
-        if (_isQueriesDisabled) {
+        if (_isQueryDisabled) {
             revert QueriesDisabled();
         }
 
@@ -281,16 +281,16 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     /**
      * @inheritdoc IVault
      */
-    function disableQueries() external {
+    function disableQuery() external {
         // TODO: Only governance can call this function.
-        _isQueriesDisabled = true;
+        _isQueryDisabled = true;
     }
 
     /**
      * @inheritdoc IVault
      */
-    function isQueriesDisabled() external view returns (bool) {
-        return _isQueriesDisabled;
+    function isQueryDisabled() external view returns (bool) {
+        return _isQueryDisabled;
     }
 
     /*******************************************************************************

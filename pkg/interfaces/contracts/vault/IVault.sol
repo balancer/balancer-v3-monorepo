@@ -252,7 +252,7 @@ interface IVault {
     event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
 
     /*******************************************************************************
-                              Transient Accounting
+                                    Queries
     *******************************************************************************/
 
     /**
@@ -267,11 +267,11 @@ interface IVault {
     /**
      * @notice Disables queries functionality on the Vault. Can be called only by governance.
      */
-    function disableQueries() external;
+    function disableQuery() external;
 
     /**
      * @notice Checks if the queries enabled on the Vault.
      * @return If true, then queries are disabled.
      */
-    function isQueriesDisabled() external view returns (bool);
+    function isQueryDisabled() external view returns (bool);
 }
