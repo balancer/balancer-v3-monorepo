@@ -34,7 +34,7 @@ interface IVault {
     function getPoolTokens(address pool) external view returns (IERC20[] memory tokens, uint256[] memory balances);
 
     /*******************************************************************************
-                                 ERC20 Balancer Pool Tokens 
+                                    MultiToken
     *******************************************************************************/
 
     /**
@@ -42,7 +42,7 @@ interface IVault {
      * @param token                          Token's address
      * @return                               Total supply of the token
      */
-    function totalSupplyOfERC20(address token) external view returns (uint256);
+    function totalSupply(address token) external view returns (uint256);
 
     /**
      * @notice Gets balance of an account for a given ERC20 token
@@ -50,7 +50,7 @@ interface IVault {
      * @param account                        Account's address
      * @return                               Balance of the account for the token
      */
-    function balanceOfERC20(address token, address account) external view returns (uint256);
+    function balanceOf(address token, address account) external view returns (uint256);
 
     /**
      * @notice Transfers ERC20 token from owner to a recipient
@@ -59,7 +59,7 @@ interface IVault {
      * @param amount                         Amount of tokens to transfer
      * @return                               True if successful, false otherwise
      */
-    function transferERC20(address owner, address to, uint256 amount) external returns (bool);
+    function transfer(address owner, address to, uint256 amount) external returns (bool);
 
     /**
      * @notice Transfers from a sender to a recipient using an allowance
@@ -69,7 +69,7 @@ interface IVault {
      * @param amount                         Amount of tokens to transfer
      * @return                               True if successful, false otherwise
      */
-    function transferFromERC20(address spender, address from, address to, uint256 amount) external returns (bool);
+    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
 
     /**
      * @notice Gets allowance of a spender for a given ERC20 token and owner
@@ -78,7 +78,7 @@ interface IVault {
      * @param spender                        Spender's address
      * @return                               Amount of tokens the spender is allowed to spend
      */
-    function allowanceOfERC20(address token, address owner, address spender) external view returns (uint256);
+    function allowanceOf(address token, address owner, address spender) external view returns (uint256);
 
     /**
      * @notice Approves a spender to spend tokens on behalf of sender
@@ -88,7 +88,7 @@ interface IVault {
      * @param amount                         Amount of tokens to approve
      * @return                               True if successful, false otherwise
      */
-    function approveERC20(address token, address owner, address spender, uint256 amount) external returns (bool);
+    function approve(address token, address owner, address spender, uint256 amount) external returns (bool);
 
     /*******************************************************************************
                               Transient Accounting

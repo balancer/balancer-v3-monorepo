@@ -85,7 +85,7 @@ contract VaultMultiTokenTest is Test {
         assertEq(USDC.balanceOf(alice), 0);
         assertEq(USDC.balanceOf(address(vault)), USDC_AMOUNT_IN);
 
-        assertEq(vault.balanceOfERC20(address(USDC), alice), USDC_AMOUNT_IN);
+        assertEq(vault.balanceOf(address(USDC), alice), USDC_AMOUNT_IN);
     }
 
     function testBurn() public {
@@ -95,16 +95,16 @@ contract VaultMultiTokenTest is Test {
         assertEq(USDC.balanceOf(alice), 0);
         assertEq(USDC.balanceOf(address(vault)), USDC_AMOUNT_IN);
 
-        assertEq(vault.balanceOfERC20(address(USDC), alice), USDC_AMOUNT_IN);
+        assertEq(vault.balanceOf(address(USDC), alice), USDC_AMOUNT_IN);
 
         vm.prank(alice);
-        vault.approveERC20(address(USDC), alice, address(vault), type(uint256).max);
+        vault.approve(address(USDC), alice, address(vault), type(uint256).max);
         vm.prank(alice);
         router.burn(USDC, USDC_AMOUNT_IN);
 
         assertEq(USDC.balanceOf(alice), USDC_AMOUNT_IN);
         assertEq(USDC.balanceOf(address(vault)), 0);
 
-        assertEq(vault.balanceOfERC20(address(USDC), alice), 0);
+        assertEq(vault.balanceOf(address(USDC), alice), 0);
     }
 }

@@ -298,28 +298,28 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     *******************************************************************************/
 
     /// @inheritdoc IVault
-    function totalSupplyOfERC20(address token) external view returns (uint256) {
+    function totalSupply(address token) external view returns (uint256) {
         return _totalSupplyOfERC20(token);
     }
 
     /// @inheritdoc IVault
-    function balanceOfERC20(address token, address account) external view returns (uint256) {
+    function balanceOf(address token, address account) external view returns (uint256) {
         return _balanceOfERC20(token, account);
     }
 
     /// @inheritdoc IVault
-    function allowanceOfERC20(address token, address owner, address spender) external view returns (uint256) {
+    function allowanceOf(address token, address owner, address spender) external view returns (uint256) {
         return _allowanceOfERC20(token, owner, spender);
     }
 
     /// @inheritdoc IVault
-    function transferERC20(address owner, address to, uint256 amount) external returns (bool) {
+    function transfer(address owner, address to, uint256 amount) external returns (bool) {
         _transferERC20(msg.sender, owner, to, amount);
         return true;
     }
 
     /// @inheritdoc IVault
-    function approveERC20(address token, address owner, address spender, uint256 amount) external returns (bool) {
+    function approve(address token, address owner, address spender, uint256 amount) external returns (bool) {
         if (msg.sender == token) {
             _approveERC20(msg.sender, owner, spender, amount);
         } else {
@@ -329,7 +329,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /// @inheritdoc IVault
-    function transferFromERC20(address spender, address from, address to, uint256 amount) external returns (bool) {
+    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool) {
         _spendAllowance(msg.sender, from, spender, amount);
         _transferERC20(msg.sender, from, to, amount);
         return true;
