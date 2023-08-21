@@ -151,7 +151,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     /// @inheritdoc IVault
     function mint(IERC20 token, address to, uint256 amount) public nonReentrant withHandler {
         _accountDelta(token, amount.toInt256(), msg.sender);
-        _mintERC20(address(token), to, amount);
+        _mint(address(token), to, amount);
     }
 
     /// @inheritdoc IVault
@@ -166,7 +166,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     /// @inheritdoc IVault
     function burn(IERC20 token, address owner, uint256 amount) public nonReentrant withHandler {
         _spendAllowance(address(token), owner, address(this), amount);
-        _burnERC20(address(token), owner, amount);
+        _burn(address(token), owner, amount);
         _accountDelta(token, -(amount.toInt256()), msg.sender);
     }
 
@@ -299,31 +299,31 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
     /// @inheritdoc IVault
     function totalSupply(address token) external view returns (uint256) {
-        return _totalSupplyOfERC20(token);
+        return _totalSupply(token);
     }
 
     /// @inheritdoc IVault
     function balanceOf(address token, address account) external view returns (uint256) {
-        return _balanceOfERC20(token, account);
+        return _balanceOf(token, account);
     }
 
     /// @inheritdoc IVault
-    function allowanceOf(address token, address owner, address spender) external view returns (uint256) {
-        return _allowanceOfERC20(token, owner, spender);
+    function allowance(address token, address owner, address spender) external view returns (uint256) {
+        return _allowance(token, owner, spender);
     }
 
     /// @inheritdoc IVault
     function transfer(address owner, address to, uint256 amount) external returns (bool) {
-        _transferERC20(msg.sender, owner, to, amount);
+        _transfer(msg.sender, owner, to, amount);
         return true;
     }
 
     /// @inheritdoc IVault
     function approve(address token, address owner, address spender, uint256 amount) external returns (bool) {
         if (msg.sender == token) {
-            _approveERC20(msg.sender, owner, spender, amount);
+            _approve(msg.sender, owner, spender, amount);
         } else {
-            _approveERC20(token, msg.sender, spender, amount);
+            _approve(token, msg.sender, spender, amount);
         }
         return true;
     }
@@ -331,7 +331,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     /// @inheritdoc IVault
     function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool) {
         _spendAllowance(msg.sender, from, spender, amount);
-        _transferERC20(msg.sender, from, to, amount);
+        _transfer(msg.sender, from, to, amount);
         return true;
     }
 

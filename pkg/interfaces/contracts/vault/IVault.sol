@@ -78,7 +78,7 @@ interface IVault {
      * @param spender                        Spender's address
      * @return                               Amount of tokens the spender is allowed to spend
      */
-    function allowanceOf(address token, address owner, address spender) external view returns (uint256);
+    function allowance(address token, address owner, address spender) external view returns (uint256);
 
     /**
      * @notice Approves a spender to spend tokens on behalf of sender

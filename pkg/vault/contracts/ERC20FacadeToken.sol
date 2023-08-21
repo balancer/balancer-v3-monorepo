@@ -65,7 +65,7 @@ contract ERC20FacadeToken is IERC20, IERC20Metadata, IVaultErrors {
 
     /// @inheritdoc IERC20
     function allowance(address owner, address spender) public view returns (uint256) {
-        return _vault.allowanceOf(address(this), owner, spender);
+        return _vault.allowance(address(this), owner, spender);
     }
 
     /// @inheritdoc IERC20

@@ -18,11 +18,11 @@ contract VaultMock is Vault {
     }
 
     function burnERC20(address poolToken, address from, uint256 amount) external {
-        _burnERC20(poolToken, from, amount);
+        _burn(poolToken, from, amount);
     }
 
     function mintERC20(address poolToken, address to, uint256 amount) external {
-        _mintERC20(poolToken, to, amount);
+        _mint(poolToken, to, amount);
     }
 
     function pause() external {
