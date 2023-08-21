@@ -221,8 +221,8 @@ describe('ERC20FacadeToken', function () {
         expect(await poolA.allowance(user.address, relayer.address)).to.equal(bptAmount);
         expect(await poolA.allowance(user.address, other.address)).to.equal(0);
 
-        expect(await vault.allowanceOf(poolAAddress, user.address, relayer.address)).to.equal(bptAmount);
-        expect(await vault.allowanceOf(poolAAddress, user.address, other.address)).to.equal(0);
+        expect(await vault.allowance(poolAAddress, user.address, relayer.address)).to.equal(bptAmount);
+        expect(await vault.allowance(poolAAddress, user.address, other.address)).to.equal(0);
       });
 
       it('direct ERC20 approval emits an event on the token', async () => {
