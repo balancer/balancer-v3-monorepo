@@ -131,7 +131,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /// @inheritdoc IVault
-    function settle(IERC20 token) public withHandler returns (uint256 paid) {
+    function settle(IERC20 token) public nonReentrant withHandler returns (uint256 paid) {
         uint256 reservesBefore = _tokenReserves[token];
         _tokenReserves[token] = token.balanceOf(address(this));
         paid = _tokenReserves[token] - reservesBefore;
@@ -140,7 +140,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /// @inheritdoc IVault
-    function wire(IERC20 token, address to, uint256 amount) public withHandler {
+    function wire(IERC20 token, address to, uint256 amount) public nonReentrant withHandler {
         // effects
         _accountDelta(token, amount.toInt256(), msg.sender);
         _tokenReserves[token] -= amount;
@@ -149,13 +149,13 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /// @inheritdoc IVault
-    function mint(IERC20 token, address to, uint256 amount) public withHandler {
+    function mint(IERC20 token, address to, uint256 amount) public nonReentrant withHandler {
         _accountDelta(token, amount.toInt256(), msg.sender);
         _mintERC20(address(token), to, amount);
     }
 
     /// @inheritdoc IVault
-    function retrieve(IERC20 token, address from, uint256 amount) public withHandler {
+    function retrieve(IERC20 token, address from, uint256 amount) public nonReentrant withHandler {
         // effects
         _accountDelta(token, -(amount.toInt256()), msg.sender);
         _tokenReserves[token] += amount;
@@ -164,7 +164,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /// @inheritdoc IVault
-    function burn(IERC20 token, address owner, uint256 amount) public withHandler {
+    function burn(IERC20 token, address owner, uint256 amount) public nonReentrant withHandler {
         _spendAllowance(address(token), owner, address(this), amount);
         _burnERC20(address(token), owner, amount);
         _accountDelta(token, -(amount.toInt256()), msg.sender);
