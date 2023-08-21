@@ -48,7 +48,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
      * @notice Handles mint callbacks
      * @param sender      The sender address
      * @param token       The ERC20 token being minted
-     * @param amount      The amount of token being minted 
+     * @param amount      The amount of token being minted
      */
     function mintCallback(address sender, IERC20 token, uint256 amount) external nonReentrant onlyVault {
         // Mint the specified amount of the token to the sender's address
@@ -68,7 +68,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
      * @notice Handles burn callbacks
      * @param sender      The sender address
      * @param token       The ERC20 token being burnt
-     * @param amount      The amount of token being burnt 
+     * @param amount      The amount of token being burnt
      */
     function burnCallback(address sender, IERC20 token, uint256 amount) external nonReentrant onlyVault {
         // Burn the specified amount of the token from the sender's address
