@@ -107,4 +107,12 @@ contract VaultMultiTokenTest is Test {
 
         assertEq(vault.balanceOf(address(USDC), alice), 0);
     }
+
+    function testApprove() public {
+        vault.mintERC20(address(token), address(this), 1337);
+
+        vault.approve(address(token), address(0xBEEF), 1337);
+
+        assertEq(vault.allowance(address(token), address(this), address(0xBEEF)), 1337);
+    }
 }
