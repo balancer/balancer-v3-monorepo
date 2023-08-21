@@ -14,19 +14,19 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  */
 interface IRouter {
     /**
-     * @notice Makes a deposit
-     * @param token       The ERC20 token to deposit
-     * @param amount      The amount of token to deposit
+     * @notice Mints `amount` of `token`
+     * @param token       The ERC20 token to mint
+     * @param amount      The amount of token to mint
      */
-    function deposit(IERC20 token, uint256 amount) external ;
+    function mint(IERC20 token, uint256 amount) external ;
 
 
     /**
-     * @notice Makes a withdrawal
-     * @param token       The ERC20 token to withdraw
-     * @param amount      The amount of token to withdraw
+     * @notice Burns `amount` of `token`
+     * @param token       The ERC20 token to burn
+     * @param amount      The amount of token to burn
      */
-    function withdraw(IERC20 token, uint256 amount) external;
+    function burn(IERC20 token, uint256 amount) external;
 
     /**
      * @notice Executes a swap operation

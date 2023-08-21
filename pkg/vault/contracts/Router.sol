@@ -35,22 +35,22 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     }
 
     /*******************************************************************************
-                                    Balances
+                                    MultiToken
     *******************************************************************************/
 
     /// @inheritdoc IRouter
-    function deposit(IERC20 token, uint256 amount) external {
-        // Invoke the depositCallback function in the _vault contract
-        _vault.invoke(abi.encodeWithSelector(Router.depositCallback.selector, msg.sender, token, amount));
+    function mint(IERC20 token, uint256 amount) external {
+        // Invoke the mintCallback function in the _vault contract
+        _vault.invoke(abi.encodeWithSelector(Router.mintCallback.selector, msg.sender, token, amount));
     }
 
     /**
-     * @notice Handles deposit callbacks
+     * @notice Handles mint callbacks
      * @param sender      The sender address
-     * @param token       The ERC20 token being deposited
-     * @param amount      The amount of token being deposited
+     * @param token       The ERC20 token being minted
+     * @param amount      The amount of token being minted 
      */
-    function depositCallback(address sender, IERC20 token, uint256 amount) external nonReentrant onlyVault {
+    function mintCallback(address sender, IERC20 token, uint256 amount) external nonReentrant onlyVault {
         // Mint the specified amount of the token to the sender's address
         _vault.mint(token, sender, amount);
 
@@ -59,18 +59,18 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     }
 
     /// @inheritdoc IRouter
-    function withdraw(IERC20 token, uint256 amount) external {
-        // Invoke the withdrawCallback function in the _vault contract
-        _vault.invoke(abi.encodeWithSelector(Router.withdrawCallback.selector, msg.sender, token, amount));
+    function burn(IERC20 token, uint256 amount) external {
+        // Invoke the burnCallback function in the _vault contract
+        _vault.invoke(abi.encodeWithSelector(Router.burnCallback.selector, msg.sender, token, amount));
     }
 
     /**
-     * @notice Handles withdrawal callbacks
+     * @notice Handles burn callbacks
      * @param sender      The sender address
-     * @param token       The ERC20 token being withdrawn
-     * @param amount      The amount of token being withdrawn
+     * @param token       The ERC20 token being burnt
+     * @param amount      The amount of token being burnt 
      */
-    function withdrawCallback(address sender, IERC20 token, uint256 amount) external nonReentrant onlyVault {
+    function burnCallback(address sender, IERC20 token, uint256 amount) external nonReentrant onlyVault {
         // Burn the specified amount of the token from the sender's address
         _vault.burn(token, sender, amount);
 

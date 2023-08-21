@@ -71,6 +71,16 @@ contract ERC20FacadeTokenTest is Test {
         assertEq(token.balanceOf(address(this)), 0);
     }
 
+    function testTransfer() public {
+        vault.mintERC20(address(token), address(this), 1e18);
+
+        assertTrue(token.transfer(address(0xBEEF), 1e18));
+        assertEq(token.totalSupply(), 1e18);
+
+        assertEq(token.balanceOf(address(this)), 0);
+        assertEq(token.balanceOf(address(0xBEEF)), 1e18);
+    }
+
     function testTransferFrom() public {
         address from = address(0xABCD);
 
