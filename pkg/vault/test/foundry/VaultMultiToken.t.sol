@@ -30,8 +30,7 @@ contract VaultMultiTokenTest is Test {
     VaultMock vault;
     Router router;
     ERC20PoolMock pool;
-    ERC20TestToken USDC;
-    ERC20TestToken DAI;
+    ERC20TestToken token;
     address alice = vm.addr(1);
     address bob = vm.addr(2);
 
@@ -41,89 +40,97 @@ contract VaultMultiTokenTest is Test {
     function setUp() public {
         vault = new VaultMock(30 days, 90 days);
         router = new Router(IVault(vault), address(0));
-        USDC = new ERC20TestToken("USDC", "USDC", 6);
-        DAI = new ERC20TestToken("DAI", "DAI", 18);
+        token = new ERC20TestToken("token", "token", 6);
         pool = new ERC20PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",
             address(0),
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [address(0x1), address(token)].toMemoryArray().asIERC20(),
             true
         );
 
-        USDC.mint(bob, USDC_AMOUNT_IN);
-        DAI.mint(bob, DAI_AMOUNT_IN);
+        token.mint(bob, USDC_AMOUNT_IN);
 
-        USDC.mint(alice, USDC_AMOUNT_IN);
-        DAI.mint(alice, DAI_AMOUNT_IN);
+        token.mint(alice, USDC_AMOUNT_IN);
 
         vm.startPrank(bob);
 
-        USDC.approve(address(vault), type(uint256).max);
-        DAI.approve(address(vault), type(uint256).max);
+        token.approve(address(vault), type(uint256).max);
 
         vm.stopPrank();
 
         vm.startPrank(alice);
 
-        USDC.approve(address(vault), type(uint256).max);
-        DAI.approve(address(vault), type(uint256).max);
+        token.approve(address(vault), type(uint256).max);
 
         vm.stopPrank();
 
         vm.label(alice, "alice");
         vm.label(bob, "bob");
-        vm.label(address(USDC), "USDC");
-        vm.label(address(DAI), "DAI");
+        vm.label(address(token), "token");
     }
 
     function testMint() public {
         vm.prank(alice);
-        router.mint(USDC, USDC_AMOUNT_IN);
+        router.mint(token, USDC_AMOUNT_IN);
 
-        assertEq(USDC.balanceOf(alice), 0);
-        assertEq(USDC.balanceOf(address(vault)), USDC_AMOUNT_IN);
+        assertEq(token.balanceOf(alice), 0);
+        assertEq(token.balanceOf(address(vault)), USDC_AMOUNT_IN);
 
-        assertEq(vault.balanceOf(address(USDC), alice), USDC_AMOUNT_IN);
+        assertEq(vault.balanceOf(address(token), alice), USDC_AMOUNT_IN);
     }
 
     function testBurn() public {
         vm.prank(alice);
-        router.mint(USDC, USDC_AMOUNT_IN);
+        router.mint(token, USDC_AMOUNT_IN);
 
-        assertEq(USDC.balanceOf(alice), 0);
-        assertEq(USDC.balanceOf(address(vault)), USDC_AMOUNT_IN);
+        assertEq(token.balanceOf(alice), 0);
+        assertEq(token.balanceOf(address(vault)), USDC_AMOUNT_IN);
 
-        assertEq(vault.balanceOf(address(USDC), alice), USDC_AMOUNT_IN);
+        assertEq(vault.balanceOf(address(token), alice), USDC_AMOUNT_IN);
 
         vm.prank(alice);
-        vault.approve(address(USDC), alice, address(vault), type(uint256).max);
+        vault.approve(address(token), address(vault), type(uint256).max);
         vm.prank(alice);
-        router.burn(USDC, USDC_AMOUNT_IN);
+        router.burn(token, USDC_AMOUNT_IN);
 
-        assertEq(USDC.balanceOf(alice), USDC_AMOUNT_IN);
-        assertEq(USDC.balanceOf(address(vault)), 0);
+        assertEq(token.balanceOf(alice), USDC_AMOUNT_IN);
+        assertEq(token.balanceOf(address(vault)), 0);
 
-        assertEq(vault.balanceOf(address(USDC), alice), 0);
+        assertEq(vault.balanceOf(address(token), alice), 0);
     }
 
     function testApprove() public {
-        vault.mintERC20(address(USDC), address(this), 1337);
+        vault.approve(address(token), address(0xBEEF), 1337);
 
-        vault.approve(address(USDC), address(this), address(0xBEEF), 1337);
-
-        assertEq(vault.allowance(address(USDC), address(this), address(0xBEEF)), 1337);
+        assertEq(vault.allowance(address(token), address(this), address(0xBEEF)), 1337);
     }
 
-    function testApproveBurn() public {
-        vault.mintERC20(address(token), address(this), 1337);
+    function testTransfer() public {
+        vault.mintERC20(address(token), address(this), 1e18);
 
-        token.approve(address(0xBEEF), 1337);
+        assertTrue(vault.transfer(address(token), address(0xBEEF), 1e18));
+        assertEq(vault.totalSupply(address(token)), 1e18);
 
-        vault.burnERC20(address(token), address(this), 1337);
-
-        assertEq(token.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOf(address(token), address(this)), 0);
+        assertEq(vault.balanceOf(address(token), address(0xBEEF)), 1e18);
     }
 
+    function testTransferFrom() public {
+        address from = address(0xABCD);
+
+        vault.mintERC20(address(token), from, 1e18);
+
+        vm.prank(from);
+        vault.approve(address(token), address(this), 1e18);
+
+        assertTrue(vault.transferFrom(address(token), from, address(0xBEEF), 1e18));
+        assertEq(vault.totalSupply(address(token)), 1e18);
+
+        assertEq(vault.allowance(address(token), from, address(this)), 0);
+
+        assertEq(vault.balanceOf(address(token), from), 0);
+        assertEq(vault.balanceOf(address(token), address(0xBEEF)), 1e18);
+    }
 }

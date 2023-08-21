@@ -17,12 +17,12 @@ contract VaultMock is Vault {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function burnERC20(address poolToken, address from, uint256 amount) external {
-        _burn(poolToken, from, amount);
+    function burnERC20(address token, address from, uint256 amount) external {
+        _burn(token, from, amount);
     }
 
-    function mintERC20(address poolToken, address to, uint256 amount) external {
-        _mint(poolToken, to, amount);
+    function mintERC20(address token, address to, uint256 amount) external {
+        _mint(token, to, amount);
     }
 
     function pause() external {
