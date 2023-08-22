@@ -16,6 +16,20 @@ import { ERC20FacadeToken } from "./ERC20FacadeToken.sol";
 abstract contract ERC20MultiToken is IERC20Errors {
     using Address for address;
 
+    /**
+     * @dev Emitted when `value` tokens are moved from one account (`from`) to
+     * another (`to`).
+     *
+     * Note that `value` may be zero.
+     */
+    event Transfer(address indexed token, address indexed from, address indexed to, uint256 value);
+
+    /**
+     * @dev Emitted when the allowance of a `spender` for an `owner` is set by
+     * a call to {approve}. `value` is the new allowance.
+     */
+    event Approval(address indexed token, address indexed owner, address indexed spender, uint256 value);
+
     // token -> (owner -> balance): Users' balances
     mapping(address => mapping(address => uint256)) private _balances;
 
@@ -48,6 +62,8 @@ abstract contract ERC20MultiToken is IERC20Errors {
             _balances[token][to] += amount;
         }
 
+        emit Transfer(token, address(0), to, amount);
+
         // We use a low-level call here because only `ERC20FacadeToken` tokens implement `emitTransfer`.
         // Standard tokens, such as USDC, do not implement `emitTransfer`, so this call would fail.
         // While this is expected behavior and not an issue in itself, malicious ERC20 contracts
@@ -72,6 +88,8 @@ abstract contract ERC20MultiToken is IERC20Errors {
             // Overflow not possible: amount <= accountBalance <= totalSupply.
             _totalSupplyOf[token] -= amount;
         }
+
+        emit Transfer(token, from, address(0), amount);
 
         // We use a low-level call here because only `ERC20FacadeToken` tokens implement `emitTransfer`.
         // Standard tokens, such as USDC, do not implement `emitTransfer`, so this call would fail.
@@ -103,6 +121,8 @@ abstract contract ERC20MultiToken is IERC20Errors {
             _balances[token][to] += amount;
         }
 
+        emit Transfer(token, from, to, amount);
+
         // We use a low-level call here because only `ERC20FacadeToken` tokens implement `emitTransfer`.
         // Standard tokens, such as USDC, do not implement `emitTransfer`, so this call would fail.
         // While this is expected behavior and not an issue in itself, malicious ERC20 contracts
@@ -122,6 +142,8 @@ abstract contract ERC20MultiToken is IERC20Errors {
         }
 
         _allowances[token][owner][spender] = amount;
+
+        emit Approval(token, owner, spender, amount);
 
         // We use a low-level call here because only `ERC20FacadeToken` tokens implement `emitApprove`.
         // Standard tokens, such as USDC, do not implement `emitApprove`, so this call would fail.
