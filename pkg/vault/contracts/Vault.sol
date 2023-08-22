@@ -313,7 +313,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /// @inheritdoc IVault
-    function transferFacade(address owner, address to, uint256 amount) external returns (bool) {
+    function transferWith(address owner, address to, uint256 amount) external returns (bool) {
         _transfer(msg.sender, owner, to, amount);
         return true;
     }
@@ -325,7 +325,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /// @inheritdoc IVault
-    function approveFacade(address owner, address spender, uint256 amount) external returns (bool) {
+    function approveWith(address owner, address spender, uint256 amount) external returns (bool) {
         _approve(msg.sender, owner, spender, amount);
         return true;
     }
@@ -337,7 +337,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /// @inheritdoc IVault
-    function transferFromFacade(address spender, address from, address to, uint256 amount) external returns (bool) {
+    function transferFromWith(address spender, address from, address to, uint256 amount) external returns (bool) {
         _spendAllowance(msg.sender, from, spender, amount);
         _transfer(msg.sender, from, to, amount);
         return true;

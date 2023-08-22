@@ -68,7 +68,7 @@ interface IVault {
      * @param amount                         Amount of tokens to transfer
      * @return                               True if successful, false otherwise
      */
-    function transferFacade(address owner, address to, uint256 amount) external returns (bool);
+    function transferWith(address owner, address to, uint256 amount) external returns (bool);
 
     /**
      * @notice Transfers from a sender to a recipient using an allowance
@@ -88,7 +88,7 @@ interface IVault {
      * @param amount                         Amount of tokens to transfer
      * @return                               True if successful, false otherwise
      */
-    function transferFromFacade(address spender, address from, address to, uint256 amount) external returns (bool);
+    function transferFromWith(address spender, address from, address to, uint256 amount) external returns (bool);
 
     /**
      * @notice Gets allowance of a spender for a given ERC20 token and owner
@@ -106,7 +106,7 @@ interface IVault {
      * @param amount                         Amount of tokens to approve
      * @return                               True if successful, false otherwise
      */
-    function approveFacade(address owner, address spender, uint256 amount) external returns (bool);
+    function approveWith(address owner, address spender, uint256 amount) external returns (bool);
 
     /**
      * @notice Approves a spender to spend tokens on behalf of sender

@@ -18,8 +18,7 @@ interface IRouter {
      * @param token       The ERC20 token to mint
      * @param amount      The amount of token to mint
      */
-    function mint(IERC20 token, uint256 amount) external ;
-
+    function mint(IERC20 token, uint256 amount) external;
 
     /**
      * @notice Burns `amount` of `token`
