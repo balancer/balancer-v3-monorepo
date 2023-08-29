@@ -7,7 +7,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault, Config } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { BasePoolToken } from "../BasePoolToken.sol";
 
@@ -15,6 +15,8 @@ contract ERC20PoolMock is BasePoolToken, IBasePool {
     using FixedPoint for uint256;
 
     IVault private immutable _vault;
+
+    bool public failOnAfterSwap;
 
     constructor(
         IVault vault,
@@ -27,7 +29,7 @@ contract ERC20PoolMock is BasePoolToken, IBasePool {
         _vault = vault;
 
         if (registerPool) {
-            vault.registerPool(factory, tokens);
+            vault.registerPool(factory, tokens, Config.wrap(0));
         }
     }
 
@@ -53,8 +55,19 @@ contract ERC20PoolMock is BasePoolToken, IBasePool {
     // Amounts in are multiplied by the multiplier, amounts out are divided by it
     uint256 private _multiplier = FixedPoint.ONE;
 
+    function setFailOnAfterSwap(bool fail) external {
+        failOnAfterSwap = fail;
+    }
+
     function setMultiplier(uint256 newMultiplier) external {
         _multiplier = newMultiplier;
+    }
+
+    function onAfterSwap(
+        IBasePool.SwapParams calldata params,
+        uint256 amountCalculated
+    ) external view override returns (bool success) {
+        return params.tokenIn != params.tokenOut && amountCalculated > 0 && !failOnAfterSwap;
     }
 
     function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
