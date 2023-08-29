@@ -22,6 +22,15 @@ interface IBasePool {
         bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
+    function onAfterAddLiquidity(
+        address sender,
+        uint256[] memory currentBalances,
+        uint256[] memory maxAmountsIn,
+        bytes memory userData,
+        uint256[] memory amountsIn,
+        uint256 bptAmountOut
+    ) external returns (bool success);
+
     /**
      * @notice Remove liquidity from the pool
      * @param sender               Address of the sender
@@ -39,6 +48,15 @@ interface IBasePool {
         bytes memory userData
     ) external returns (uint256[] memory amountsOut);
 
+    function onAfterRemoveLiquidity(
+        address sender,
+        uint256[] memory currentBalances,
+        uint256[] memory minAmountsOut,
+        uint256 bptAmountIn,
+        bytes memory userData,
+        uint256[] memory amountsOut
+    ) external returns (bool success);
+
     /**
      * @notice Execute a swap in the pool
      * @param params               Parameters of the swap
@@ -47,7 +65,7 @@ interface IBasePool {
     function onSwap(SwapParams calldata params) external returns (uint256 amountCalculated);
 
     /**
-     * @notice Called after a swap to give the Pool an opportunity to perform actions 
+     * @notice Called after a swap to give the Pool an opportunity to perform actions
      * once the balances have been updated by the swap.
      * @param params               Parameters of the swap
      * @param amountCalculated     Calculated amount after the swap

@@ -8,13 +8,11 @@ library ConfigLib {
     // Bitwise flags for pool's config
     uint256 public constant POOL_REGISTERED_FLAG = 1 << 0;
     uint256 public constant AFTER_SWAP_FLAG = 1 << 1;
+    uint256 public constant AFTER_ADD_LIQUIDITY_FLAG = 1 << 2;
+    uint256 public constant AFTER_REMOVE_LIQUIDITY_FLAG = 1 << 3;
 
     function addFlags(Config config, uint256 flags) internal pure returns (Config) {
         return Config.wrap(Config.unwrap(config) | flags);
-    }
-
-    function shouldCallAfterSwap(Config config) internal pure returns (bool) {
-        return Config.unwrap(config) & AFTER_SWAP_FLAG != 0;
     }
 
     function addRegistration(Config config) internal pure returns (Config) {
@@ -23,5 +21,17 @@ library ConfigLib {
 
     function isPoolRegistered(Config config) internal pure returns (bool) {
         return Config.unwrap(config) & POOL_REGISTERED_FLAG != 0;
+    }
+
+    function shouldCallAfterSwap(Config config) internal pure returns (bool) {
+        return Config.unwrap(config) & AFTER_SWAP_FLAG != 0;
+    }
+
+    function shouldCallAfterAddLiquidity(Config config) internal pure returns (bool) {
+        return Config.unwrap(config) & AFTER_ADD_LIQUIDITY_FLAG != 0;
+    }
+
+    function shouldCallAfterRemoveLiquidity(Config config) internal pure returns (bool) {
+        return Config.unwrap(config) & AFTER_REMOVE_LIQUIDITY_FLAG != 0;
     }
 }

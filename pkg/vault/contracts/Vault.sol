@@ -626,6 +626,14 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         // Credit bptAmountOut of pool tokens
         _accountDelta(IERC20(pool), -int256(bptAmountOut), msg.sender);
 
+        if (_poolConfig[pool].shouldCallAfterAddLiquidity() == true) {
+            if (
+                IBasePool(pool).onAfterAddLiquidity(msg.sender, balances, maxAmountsIn, userData, amountsIn, bptAmountOut) == false
+            ) {
+                revert HookCallFailed();
+            }
+        }
+
         emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }
 
@@ -664,6 +672,14 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
         // Debit bptAmountOut of pool tokens
         _accountDelta(IERC20(pool), int256(bptAmountIn), msg.sender);
+
+        if (_poolConfig[pool].shouldCallAfterRemoveLiquidity() == true) {
+            if (
+                IBasePool(pool).onAfterRemoveLiquidity(msg.sender, balances, minAmountsOut, bptAmountIn, userData, amountsOut) == false
+            ) {
+                revert HookCallFailed();
+            }
+        }
 
         emit PoolBalanceChanged(
             pool,
