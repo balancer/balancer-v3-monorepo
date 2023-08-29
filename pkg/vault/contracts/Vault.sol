@@ -628,7 +628,14 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
         if (_poolConfig[pool].shouldCallAfterAddLiquidity() == true) {
             if (
-                IBasePool(pool).onAfterAddLiquidity(msg.sender, balances, maxAmountsIn, userData, amountsIn, bptAmountOut) == false
+                IBasePool(pool).onAfterAddLiquidity(
+                    msg.sender,
+                    balances,
+                    maxAmountsIn,
+                    userData,
+                    amountsIn,
+                    bptAmountOut
+                ) == false
             ) {
                 revert HookCallFailed();
             }
@@ -675,7 +682,14 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
         if (_poolConfig[pool].shouldCallAfterRemoveLiquidity() == true) {
             if (
-                IBasePool(pool).onAfterRemoveLiquidity(msg.sender, balances, minAmountsOut, bptAmountIn, userData, amountsOut) == false
+                IBasePool(pool).onAfterRemoveLiquidity(
+                    msg.sender,
+                    balances,
+                    minAmountsOut,
+                    bptAmountIn,
+                    userData,
+                    amountsOut
+                ) == false
             ) {
                 revert HookCallFailed();
             }

@@ -49,7 +49,7 @@ contract ERC20PoolMock is BasePoolToken, IBasePool {
         bytes memory,
         uint256[] calldata,
         uint256
-    ) view external returns (bool) {
+    ) external view returns (bool) {
         return !failOnHook;
     }
 
@@ -70,7 +70,7 @@ contract ERC20PoolMock is BasePoolToken, IBasePool {
         uint256,
         bytes memory,
         uint256[] calldata
-    ) view external returns (bool) {
+    ) external view returns (bool) {
         return !failOnHook;
     }
 
