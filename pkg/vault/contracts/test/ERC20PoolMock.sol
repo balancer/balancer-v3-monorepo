@@ -7,9 +7,10 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault, Config } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { BasePoolToken } from "../BasePoolToken.sol";
+import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 
 contract ERC20PoolMock is BasePoolToken, IBasePool {
     using FixedPoint for uint256;
@@ -29,7 +30,7 @@ contract ERC20PoolMock is BasePoolToken, IBasePool {
         _vault = vault;
 
         if (registerPool) {
-            vault.registerPool(factory, tokens, Config.wrap(0));
+            vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig());
         }
     }
 

@@ -5,8 +5,13 @@ pragma solidity ^0.8.4;
 import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-// @notice Config type to store entire configuration of the pool
-type Config is uint256;
+/// @notice Struct to represent a pool configuration
+struct PoolConfig {
+    bool isRegisteredPool;
+    bool shouldCallAfterSwap;
+    bool shouldCallAfterAddLiquidity;
+    bool shouldCallAfterRemoveLiquidity;
+}
 
 /// @notice Interface for the Vault
 interface IVault {
@@ -18,8 +23,9 @@ interface IVault {
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
      * @param factory The factory address associated with the pool being registered.
      * @param tokens An array of token addresses the pool will manage.
+     * @param config Config for the pool
      */
-    function registerPool(address factory, IERC20[] memory tokens, Config config) external;
+    function registerPool(address factory, IERC20[] memory tokens, PoolConfig calldata config) external;
 
     /**
      * @notice Checks if a pool is registered
@@ -39,9 +45,9 @@ interface IVault {
     /**
      * @notice Gets config of a pool
      * @param pool                           Address of the pool
-     * @return                               Config for a the pool
+     * @return                               Config for the pool
      */
-    function getPoolConfig(address pool) external view returns (Config);
+    function getPoolConfig(address pool) external view returns (PoolConfig memory);
 
     /*******************************************************************************
                                     MultiToken

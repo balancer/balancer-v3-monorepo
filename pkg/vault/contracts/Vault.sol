@@ -7,7 +7,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import { IVault, Config } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
@@ -19,7 +19,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 
 import { ERC20MultiToken } from "./ERC20MultiToken.sol";
-import { ConfigLib } from "./lib/ConfigLib.sol";
+import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 
 contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
@@ -29,10 +29,10 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     using Address for *;
     using SafeERC20 for IERC20;
     using SafeCast for *;
-    using ConfigLib for Config;
+    using PoolConfigLib for PoolConfig;
 
     // Registry of pool configs.
-    mapping(address => Config) internal _poolConfig;
+    mapping(address => PoolConfigBits) internal _poolConfig;
 
     // Pool -> (token -> balance): Pool's ERC20 tokens balances stored at the Vault.
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolTokenBalances;
@@ -471,7 +471,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
      *      Emits a `PoolRegistered` event upon successful registration.
      * @inheritdoc IVault
      */
-    function registerPool(address factory, IERC20[] memory tokens, Config config) external nonReentrant whenNotPaused {
+    function registerPool(address factory, IERC20[] memory tokens, PoolConfig calldata config) external nonReentrant whenNotPaused {
         _registerPool(factory, tokens, config);
     }
 
@@ -481,8 +481,8 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /// @inheritdoc IVault
-    function getPoolConfig(address pool) external view returns (Config) {
-        return _poolConfig[pool];
+    function getPoolConfig(address pool) external view returns (PoolConfig memory) {
+        return _poolConfig[pool].toPoolConfig();
     }
 
     /// @inheritdoc IVault
@@ -509,7 +509,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /// @dev See `registerPool`
-    function _registerPool(address factory, IERC20[] memory tokens, Config config) internal {
+    function _registerPool(address factory, IERC20[] memory tokens, PoolConfig memory config) internal {
         address pool = msg.sender;
 
         // Ensure the pool isn't already registered
@@ -539,7 +539,8 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         }
 
         // Store config and mark the pool as registered
-        _poolConfig[pool] = config.addRegistration();
+        config.isRegisteredPool = true;
+        _poolConfig[pool] = config.fromPoolConfig();
 
         // Emit an event to log the pool registration
         emit PoolRegistered(pool, factory, tokens);

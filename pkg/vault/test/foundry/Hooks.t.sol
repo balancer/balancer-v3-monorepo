@@ -7,7 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
-import { IVault, Config } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC20Errors.sol";
@@ -19,7 +19,7 @@ import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
-import { ConfigLib } from "../../contracts/lib/ConfigLib.sol";
+import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
 contract VaultSwapTest is Test {
@@ -28,7 +28,6 @@ contract VaultSwapTest is Test {
     using AssetHelpers for address[];
     using ArrayHelpers for address[2];
     using ArrayHelpers for uint256[2];
-    using ConfigLib for Config;
 
     VaultMock vault;
     Router router;
@@ -55,7 +54,9 @@ contract VaultSwapTest is Test {
             true
         );
 
-        vault.setConfig(address(pool), vault.getPoolConfig(address(pool)).addFlags(ConfigLib.AFTER_SWAP_FLAG));
+        PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.shouldCallAfterSwap = true;
+        vault.setConfig(address(pool), config);
 
         USDC.mint(bob, USDC_AMOUNT_IN);
         DAI.mint(bob, DAI_AMOUNT_IN);
