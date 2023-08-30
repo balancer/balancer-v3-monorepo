@@ -38,6 +38,7 @@ contract ERC20FacadeTokenTest is Test {
     function testMetadata() public {
         assertEq(token.name(), "ERC20 Pool");
         assertEq(token.symbol(), "ERC20POOL");
+        assertEq(token.decimals(), 18);
     }
 
     function testMint() public {
