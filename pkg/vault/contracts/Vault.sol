@@ -471,7 +471,11 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
      *      Emits a `PoolRegistered` event upon successful registration.
      * @inheritdoc IVault
      */
-    function registerPool(address factory, IERC20[] memory tokens, PoolConfig calldata config) external nonReentrant whenNotPaused {
+    function registerPool(
+        address factory,
+        IERC20[] memory tokens,
+        PoolConfig calldata config
+    ) external nonReentrant whenNotPaused {
         _registerPool(factory, tokens, config);
     }
 
