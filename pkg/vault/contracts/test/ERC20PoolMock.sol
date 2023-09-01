@@ -16,6 +16,7 @@ contract ERC20PoolMock is BasePoolToken, IBasePool {
     using FixedPoint for uint256;
 
     IVault private immutable _vault;
+    IERC20[] _tokens;
 
     bool public failOnHook;
 
@@ -23,15 +24,14 @@ contract ERC20PoolMock is BasePoolToken, IBasePool {
         IVault vault,
         string memory name,
         string memory symbol,
-        address factory,
-        IERC20[] memory tokens,
-        bool registerPool
+        IERC20[] memory tokens
     ) BasePoolToken(vault, name, symbol) {
         _vault = vault;
+        _tokens = tokens;
+    }
 
-        if (registerPool) {
-            vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig());
-        }
+    function register(address factory) external {
+        _vault.registerPool(factory, _tokens, PoolConfigBits.wrap(0).toPoolConfig());
     }
 
     function onAddLiquidity(

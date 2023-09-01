@@ -15,6 +15,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 
+import { PoolConfigBits, PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
@@ -45,10 +46,10 @@ contract VaultMultiTokenTest is Test {
             vault,
             "ERC20 Pool",
             "ERC20POOL",
-            address(0),
-            [address(0x1), address(token)].toMemoryArray().asIERC20(),
-            true
+            [address(0x1), address(token)].toMemoryArray().asIERC20()
         );
+
+        pool.register(address(0));
 
         token.mint(bob, USDC_AMOUNT_IN);
 

@@ -29,9 +29,7 @@ contract ERC20FacadeTokenTest is Test {
             vault,
             "ERC20 Pool",
             "ERC20POOL",
-            address(0),
-            [address(0x1), address(0x2)].toMemoryArray().asIERC20(),
-            true
+            [address(0x1), address(0x2)].toMemoryArray().asIERC20()
         );
     }
 

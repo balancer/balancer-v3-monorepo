@@ -47,10 +47,9 @@ contract VaultSwapTest is Test {
             vault,
             "ERC20 Pool",
             "ERC20POOL",
-            address(0),
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
-            true
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20()
         );
+        pool.register(address(0));
 
         USDC.mint(bob, USDC_AMOUNT_IN);
         DAI.mint(bob, DAI_AMOUNT_IN);

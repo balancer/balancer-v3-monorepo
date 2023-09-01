@@ -49,10 +49,9 @@ contract VaultSwapTest is Test {
             vault,
             "ERC20 Pool",
             "ERC20POOL",
-            address(0),
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
-            true
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20()
         );
+        pool.register(address(0));
 
         PoolConfig memory config = vault.getPoolConfig(address(pool));
         config.shouldCallAfterSwap = true;
