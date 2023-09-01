@@ -31,8 +31,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
 
-
-     uint256 private constant MINIMUM_BPT = 1e6;
+    uint256 private constant _MINIMUM_BPT = 1e6;
 
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
@@ -550,7 +549,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         _poolConfig[pool] = config.fromPoolConfig();
 
         // Force mint pool's tokens so `totalSupply` is never zero
-        _mint(address(pool), address(this), MINIMUM_BPT);
+        _mint(address(pool), address(this), _MINIMUM_BPT);
 
         // Emit an event to log the pool registration
         emit PoolRegistered(pool, factory, tokens);
