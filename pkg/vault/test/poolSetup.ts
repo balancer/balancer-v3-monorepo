@@ -30,10 +30,11 @@ export async function setupEnvironment(factory: string): Promise<{
   const poolBTokens = [tokenAAddress, tokenCAddress];
 
   const poolA: ERC20PoolMock = await deploy('ERC20PoolMock', {
-    args: [vaultAddress, 'Pool A', 'POOLA', factory, poolATokens, true],
+    args: [vaultAddress, 'Pool A', 'POOLA', poolATokens],
   });
+  await poolA.register(factory);
   const poolB: ERC20PoolMock = await deploy('ERC20PoolMock', {
-    args: [vaultAddress, 'Pool B', 'POOLB', factory, poolBTokens, false],
+    args: [vaultAddress, 'Pool B', 'POOLB', poolBTokens],
   });
 
   return { vault: vault, tokens: [tokenA, tokenB, tokenC], pools: [poolA, poolB] };

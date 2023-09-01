@@ -4,10 +4,11 @@ import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20PoolMock } from '../typechain-types/contracts/test/ERC20PoolMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS, MINIMUM_BPT } from '@balancer-labs/v3-helpers/src/constants';
 import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { impersonate } from '@balancer-labs/v3-helpers/src/signers';
 import { setupEnvironment } from './poolSetup';
+
 import '@balancer-labs/v3-common/setupTests';
 
 describe('ERC20FacadeToken', function () {
@@ -71,11 +72,11 @@ describe('ERC20FacadeToken', function () {
       expect(await vault.balanceOf(poolBAddress, user.address)).to.equal(0);
 
       // user has the total supply (directly on pool token)
-      expect(await poolA.totalSupply()).to.equal(bptAmount);
+      expect(await poolA.totalSupply()).to.equal(bptAmount + MINIMUM_BPT);
       expect(await poolB.totalSupply()).to.equal(0);
 
       // user has the total supply (indirectly, through vault)
-      expect(await vault.totalSupply(poolAAddress)).to.equal(bptAmount);
+      expect(await vault.totalSupply(poolAAddress)).to.equal(bptAmount + MINIMUM_BPT);
       expect(await vault.totalSupply(poolBAddress)).to.equal(0);
     });
 
@@ -112,10 +113,10 @@ describe('ERC20FacadeToken', function () {
       expect(await vault.balanceOf(poolAAddress, user.address)).to.equal(remainingBalance);
 
       // user has the total supply (directly on pool token)
-      expect(await poolA.totalSupply()).to.equal(remainingBalance);
+      expect(await poolA.totalSupply()).to.equal(remainingBalance + MINIMUM_BPT);
 
       // user has the total supply (indirectly, through vault)
-      expect(await vault.totalSupply(poolAAddress)).to.equal(remainingBalance);
+      expect(await vault.totalSupply(poolAAddress)).to.equal(remainingBalance + MINIMUM_BPT);
     });
 
     it('burning ERC20 BPT emits a transfer event on the token', async () => {
@@ -278,7 +279,7 @@ describe('ERC20FacadeToken', function () {
         expect(await poolA.balanceOf(relayer.address)).to.equal(bptAmount);
 
         // Supply doesn't change
-        expect(await poolA.totalSupply()).to.equal(totalSupply);
+        expect(await poolA.totalSupply()).to.equal(totalSupply + MINIMUM_BPT);
       });
     }
 

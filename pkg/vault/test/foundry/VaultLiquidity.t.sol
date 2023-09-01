@@ -34,6 +34,7 @@ contract VaultLiquidityTest is Test {
 
     uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
+    uint256 private constant MINIMUM_BPT = 1e6;
 
     function setUp() public {
         vault = new VaultMock(30 days, 90 days);
@@ -61,6 +62,10 @@ contract VaultLiquidityTest is Test {
         vm.label(alice, "alice");
         vm.label(address(USDC), "USDC");
         vm.label(address(DAI), "DAI");
+    }
+
+    function testMinimalSupply() public {
+        assertEq(pool.totalSupply(), MINIMUM_BPT);
     }
 
     function testAddLiquidity() public {

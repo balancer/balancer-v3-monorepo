@@ -40,8 +40,9 @@ describe('Queries', function () {
     USDC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['USDC', 'USDC', 18] });
 
     pool = await deploy('ERC20PoolMock', {
-      args: [vaultAddress, 'Pool', 'POOL', factory, [DAI, USDC], true],
+      args: [vaultAddress, 'Pool', 'POOL', [DAI, USDC]],
     });
+    await pool.register(factory);
 
     await USDC.mint(alice, USDC_AMOUNT_IN);
     await DAI.mint(alice, DAI_AMOUNT_IN);
