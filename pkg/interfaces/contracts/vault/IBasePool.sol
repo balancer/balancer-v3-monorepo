@@ -7,6 +7,26 @@ import "./IVault.sol";
 /// @notice Interface for a Base Pool
 interface IBasePool {
     /**
+     * @dev 
+     */
+    error MinTokens();
+
+    /**
+     * @dev 
+     */
+    error MaxTokens();
+
+    /**
+     * @dev 
+     */
+    error CallerNotVault();
+
+    /**
+     * @dev 
+     */
+    error MinimumBpt();
+
+    /**
      * @notice Add liquidity to the pool
      * @param sender               Address of the sender
      * @param currentBalances      Current balances of the tokens
