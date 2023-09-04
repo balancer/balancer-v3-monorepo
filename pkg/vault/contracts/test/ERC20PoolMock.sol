@@ -5,14 +5,15 @@ pragma solidity ^0.8.4;
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { ERC20FacadeToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20FacadeToken.sol";
+
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { BasePoolToken } from "../BasePoolToken.sol";
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 
-contract ERC20PoolMock is BasePoolToken, IBasePool {
+contract ERC20PoolMock is ERC20FacadeToken, IBasePool {
     using FixedPoint for uint256;
 
     IVault private immutable _vault;
@@ -26,7 +27,7 @@ contract ERC20PoolMock is BasePoolToken, IBasePool {
         address factory,
         IERC20[] memory tokens,
         bool registerPool
-    ) BasePoolToken(vault, name, symbol) {
+    ) ERC20FacadeToken(vault, name, symbol) {
         _vault = vault;
 
         if (registerPool) {
@@ -86,10 +87,12 @@ contract ERC20PoolMock is BasePoolToken, IBasePool {
         _multiplier = newMultiplier;
     }
 
-    function onAfterSwap(
-        IBasePool.SwapParams calldata params,
-        uint256 amountCalculated
-    ) external view override returns (bool success) {
+    function onAfterSwap(IBasePool.SwapParams calldata params, uint256 amountCalculated)
+        external
+        view
+        override
+        returns (bool success)
+    {
         return params.tokenIn != params.tokenOut && amountCalculated > 0 && !failOnHook;
     }
 

@@ -4,7 +4,7 @@ pragma solidity ^0.8.4;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC20Errors.sol";
+import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/token/IERC20Errors.sol";
 
 import { ERC20FacadeToken } from "./ERC20FacadeToken.sol";
 

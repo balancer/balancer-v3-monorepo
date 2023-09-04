@@ -7,6 +7,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/token/IERC20MultiToken.sol";
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -17,8 +18,8 @@ import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import { ERC20MultiToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20MultiToken.sol";
 
-import { ERC20MultiToken } from "./ERC20MultiToken.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 
 contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
@@ -299,53 +300,53 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
                                     ERC20 Tokens
     *******************************************************************************/
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IERC20MultiToken
     function totalSupply(address token) external view returns (uint256) {
         return _totalSupply(token);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IERC20MultiToken
     function balanceOf(address token, address account) external view returns (uint256) {
         return _balanceOf(token, account);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IERC20MultiToken
     function allowance(address token, address owner, address spender) external view returns (uint256) {
         return _allowance(token, owner, spender);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IERC20MultiToken
     function transferWith(address owner, address to, uint256 amount) external returns (bool) {
         _transfer(msg.sender, owner, to, amount);
         return true;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IERC20MultiToken
     function transfer(address token, address to, uint256 amount) external returns (bool) {
         _transfer(token, msg.sender, to, amount);
         return true;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IERC20MultiToken
     function approveWith(address owner, address spender, uint256 amount) external returns (bool) {
         _approve(msg.sender, owner, spender, amount);
         return true;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IERC20MultiToken
     function approve(address token, address spender, uint256 amount) external returns (bool) {
         _approve(token, msg.sender, spender, amount);
         return true;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IERC20MultiToken
     function transferFromWith(address spender, address from, address to, uint256 amount) external returns (bool) {
         _spendAllowance(msg.sender, from, spender, amount);
         _transfer(msg.sender, from, to, amount);
         return true;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IERC20MultiToken
     function transferFrom(address token, address from, address to, uint256 amount) external returns (bool) {
         _spendAllowance(token, from, msg.sender, amount);
         _transfer(token, from, to, amount);

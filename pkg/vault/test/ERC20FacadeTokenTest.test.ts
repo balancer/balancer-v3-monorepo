@@ -202,13 +202,13 @@ describe('ERC20FacadeToken', function () {
 
     it('cannot emit transfer event except through the Vault', async () => {
       await expect(poolA.connect(user).emitTransfer(user.address, other.address, totalSupply))
-        .to.be.revertedWithCustomError(poolA, 'SenderIsNotVault')
+        .to.be.revertedWithCustomError(poolA, 'SenderIsNotMultiToken')
         .withArgs(user.address);
     });
 
     it('cannot emit approval event except through the Vault', async () => {
       await expect(poolA.connect(user).emitApprove(user.address, other.address, totalSupply))
-        .to.be.revertedWithCustomError(poolA, 'SenderIsNotVault')
+        .to.be.revertedWithCustomError(poolA, 'SenderIsNotMultiToken')
         .withArgs(user.address);
     });
   });
