@@ -5,6 +5,7 @@ pragma solidity ^0.8.4;
 import { IERC20MultiToken } from "../solidity-utils/token/IERC20MultiToken.sol";
 import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IBasePool } from "./IBasePool.sol";
 
 /// @notice Struct to represent a pool configuration
 struct PoolConfig {
@@ -181,6 +182,7 @@ interface IVault is IERC20MultiToken {
      * @param assets                         Assets involved in the liquidity
      * @param maxAmountsIn                   Maximum amounts of input assets
      * @param minBptAmountOut                Minimum output pool token amount
+     * @param kind                           Add liquidity kind
      * @param userData                       Additional user data
      * @return amountsIn                     Actual amounts of input assets
      * @return bptAmountOut                  Output pool token amount
@@ -190,6 +192,7 @@ interface IVault is IERC20MultiToken {
         IERC20[] memory assets,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
+        IBasePool.AddLiquidityKind kind,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
@@ -198,17 +201,20 @@ interface IVault is IERC20MultiToken {
      * @param pool                           Address of the pool
      * @param assets                         Assets involved in the liquidity removal
      * @param minAmountsOut                  Minimum amounts of output assets
-     * @param bptAmountIn                    Input pool token amount
+     * @param maxBptAmountIn                 Input pool token amount
+     * @param kind                           Remove liquidity kind
      * @param userData                       Additional user data
      * @return amountsOut                    Actual amounts of output assets
+     * @return bptAmountIn                   Actual amount of BPT burnt
      */
     function removeLiquidity(
         address pool,
         IERC20[] memory assets,
         uint256[] memory minAmountsOut,
-        uint256 bptAmountIn,
+        uint256 maxBptAmountIn,
+        IBasePool.RemoveLiquidityKind kind,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut);
+    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
 
     event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
 

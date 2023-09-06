@@ -39,9 +39,11 @@ contract ERC20PoolMock is ERC20FacadeToken, IBasePool {
         address,
         uint256[] memory,
         uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        AddLiquidityKind,
         bytes memory
     ) external pure returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
-        return (maxAmountsIn, maxAmountsIn[0]);
+        return (maxAmountsIn, minBptAmountOut);
     }
 
     function onAfterAddLiquidity(
@@ -59,10 +61,11 @@ contract ERC20PoolMock is ERC20FacadeToken, IBasePool {
         address,
         uint256[] memory,
         uint256[] memory minAmountsOut,
-        uint256,
+        uint256 maxBptAmountIn,
+        RemoveLiquidityKind,
         bytes memory
-    ) external pure returns (uint256[] memory amountsOut) {
-        return minAmountsOut;
+    ) external pure returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
+        return (minAmountsOut, maxBptAmountIn);
     }
 
     function onAfterRemoveLiquidity(

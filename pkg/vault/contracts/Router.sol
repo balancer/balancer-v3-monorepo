@@ -9,6 +9,7 @@ import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/
 import { ReentrancyGuard } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
@@ -50,7 +51,11 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
      * @param token       The ERC20 token being minted
      * @param amount      The amount of token being minted
      */
-    function mintCallback(address sender, IERC20 token, uint256 amount) external nonReentrant onlyVault {
+    function mintCallback(
+        address sender,
+        IERC20 token,
+        uint256 amount
+    ) external nonReentrant onlyVault {
         // Mint the specified amount of the token to the sender's address
         _vault.mint(token, sender, amount);
 
@@ -70,7 +75,11 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
      * @param token       The ERC20 token being burnt
      * @param amount      The amount of token being burnt
      */
-    function burnCallback(address sender, IERC20 token, uint256 amount) external nonReentrant onlyVault {
+    function burnCallback(
+        address sender,
+        IERC20 token,
+        uint256 amount
+    ) external nonReentrant onlyVault {
         // Burn the specified amount of the token from the sender's address
         _vault.burn(token, sender, amount);
 
@@ -88,6 +97,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         Asset[] memory assets,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
+        IBasePool.AddLiquidityKind kind,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         return
@@ -101,6 +111,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
                             assets: assets,
                             maxAmountsIn: maxAmountsIn,
                             minBptAmountOut: minBptAmountOut,
+                            kind: kind,
                             userData: userData
                         })
                     )
@@ -109,9 +120,13 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
-    function addLiquidityCallback(
-        AddLiquidityCallbackParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+    function addLiquidityCallback(AddLiquidityCallbackParams calldata params)
+        external
+        payable
+        nonReentrant
+        onlyVault
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut)
+    {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
         (amountsIn, bptAmountOut) = _vault.addLiquidity(
@@ -119,6 +134,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             tokens,
             params.maxAmountsIn,
             params.minBptAmountOut,
+            params.kind,
             params.userData
         );
 
@@ -145,9 +161,10 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         address pool,
         Asset[] memory assets,
         uint256[] memory minAmountsOut,
-        uint256 bptAmountIn,
+        uint256 maxBptAmountIn,
+        IBasePool.RemoveLiquidityKind kind,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut) {
+    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
         return
             abi.decode(
                 _vault.invoke(
@@ -158,25 +175,30 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
                             pool: pool,
                             assets: assets,
                             minAmountsOut: minAmountsOut,
-                            bptAmountIn: bptAmountIn,
+                            maxBptAmountIn: maxBptAmountIn,
+                            kind: kind,
                             userData: userData
                         })
                     )
                 ),
-                (uint256[])
+                (uint256[], uint256)
             );
     }
 
-    function removeLiquidityCallback(
-        RemoveLiquidityCallbackParams calldata params
-    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
+    function removeLiquidityCallback(RemoveLiquidityCallbackParams calldata params)
+        external
+        nonReentrant
+        onlyVault
+        returns (uint256[] memory amountsOut, uint256 bptAmountIn)
+    {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
-        amountsOut = _vault.removeLiquidity(
+        (amountsOut, bptAmountIn) = _vault.removeLiquidity(
             params.pool,
             tokens,
             params.minAmountsOut,
-            params.bptAmountIn,
+            params.maxBptAmountIn,
+            params.kind,
             params.userData
         );
 
@@ -198,7 +220,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             }
         }
 
-        _vault.burn(IERC20(params.pool), params.sender, params.bptAmountIn);
+        _vault.burn(IERC20(params.pool), params.sender, params.maxBptAmountIn);
     }
 
     /// @inheritdoc IRouter
@@ -234,9 +256,13 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
-    function swapCallback(
-        SwapCallbackParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256) {
+    function swapCallback(SwapCallbackParams calldata params)
+        external
+        payable
+        nonReentrant
+        onlyVault
+        returns (uint256)
+    {
         (
             uint256 amountCalculated,
             uint256 amountIn,
@@ -279,11 +305,15 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         return amountCalculated;
     }
 
-    function _swapCallback(
-        SwapCallbackParams calldata params
-    )
+    function _swapCallback(SwapCallbackParams calldata params)
         internal
-        returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut, IERC20 tokenIn, IERC20 tokenOut)
+        returns (
+            uint256 amountCalculated,
+            uint256 amountIn,
+            uint256 amountOut,
+            IERC20 tokenIn,
+            IERC20 tokenOut
+        )
     {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
@@ -347,9 +377,13 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
-    function querySwapCallback(
-        SwapCallbackParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256) {
+    function querySwapCallback(SwapCallbackParams calldata params)
+        external
+        payable
+        nonReentrant
+        onlyVault
+        returns (uint256)
+    {
         (uint256 amountCalculated, , , , ) = _swapCallback(params);
 
         return amountCalculated;
@@ -361,6 +395,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         Asset[] memory assets,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
+        IBasePool.AddLiquidityKind kind,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         return
@@ -374,6 +409,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
                             assets: assets,
                             maxAmountsIn: maxAmountsIn,
                             minBptAmountOut: minBptAmountOut,
+                            kind: kind,
                             userData: userData
                         })
                     )
@@ -382,9 +418,13 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
-    function queryAddLiquidityCallback(
-        AddLiquidityCallbackParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+    function queryAddLiquidityCallback(AddLiquidityCallbackParams calldata params)
+        external
+        payable
+        nonReentrant
+        onlyVault
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut)
+    {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
         (amountsIn, bptAmountOut) = _vault.addLiquidity(
@@ -392,6 +432,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             tokens,
             params.maxAmountsIn,
             params.minBptAmountOut,
+            params.kind,
             params.userData
         );
     }
@@ -401,9 +442,10 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         address pool,
         Asset[] memory assets,
         uint256[] memory minAmountsOut,
-        uint256 bptAmountIn,
+        uint256 maxBptAmountIn,
+        IBasePool.RemoveLiquidityKind kind,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut) {
+    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
         return
             abi.decode(
                 _vault.quote(
@@ -414,24 +456,29 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
                             pool: pool,
                             assets: assets,
                             minAmountsOut: minAmountsOut,
-                            bptAmountIn: bptAmountIn,
+                            maxBptAmountIn: maxBptAmountIn,
+                            kind: kind,
                             userData: userData
                         })
                     )
                 ),
-                (uint256[])
+                (uint256[], uint256)
             );
     }
 
-    function queryRemoveLiquidityCallback(
-        RemoveLiquidityCallbackParams calldata params
-    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
+    function queryRemoveLiquidityCallback(RemoveLiquidityCallbackParams calldata params)
+        external
+        nonReentrant
+        onlyVault
+        returns (uint256[] memory amountsOut, uint256 bptAmountIn)
+    {
         return
             _vault.removeLiquidity(
                 params.pool,
                 params.assets.toIERC20(_weth),
                 params.minAmountsOut,
-                params.bptAmountIn,
+                params.maxBptAmountIn,
+                params.kind,
                 params.userData
             );
     }

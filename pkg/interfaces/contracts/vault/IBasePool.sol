@@ -7,44 +7,68 @@ import "./IVault.sol";
 /// @notice Interface for a Base Pool
 interface IBasePool {
     /**
-     * @dev 
+     * @dev
      */
     error MinTokens();
 
     /**
-     * @dev 
+     * @dev
      */
     error MaxTokens();
 
     /**
-     * @dev 
+     * @dev
      */
     error CallerNotVault();
 
     /**
-     * @dev 
+     * @dev
      */
     error MinimumBpt();
 
     /**
+     * @dev
+     */
+    error UnhandledJoinKind();
+    /**
+     * @dev
+     */
+    error UnhandledExitKind();
+
+    enum AddLiquidityKind {
+        EXACT_TOKENS_IN_FOR_BPT_OUT,
+        TOKEN_IN_FOR_EXACT_BPT_OUT,
+        ALL_TOKENS_IN_FOR_EXACT_BPT_OUT
+    }
+    enum RemoveLiquidityKind {
+        EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
+        EXACT_BPT_IN_FOR_TOKENS_OUT,
+        BPT_IN_FOR_EXACT_TOKENS_OUT
+    }
+
+    /**
      * @notice Add liquidity to the pool
      * @param sender               Address of the sender
-     * @param currentBalances      Current balances of the tokens
+     * @param balances             Current balances of the tokens
      * @param maxAmountsIn         Maximum amounts of tokens to be added
+     * @param minBptAmountOut      Minimum amount of BPT to receive
+     * @param kind                 Add liquidity kind
      * @param userData             Additional data provided by the user
      * @return amountsIn           Actual amounts of tokens added
      * @return bptAmountOut        Amount of BPT tokens minted
      */
     function onAddLiquidity(
         address sender,
-        uint256[] memory currentBalances,
+        uint256[] memory balances,
         uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        AddLiquidityKind kind,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
     function onAfterAddLiquidity(
         address sender,
-        uint256[] memory currentBalances,
+        uint256[] memory balances,
         uint256[] memory maxAmountsIn,
         bytes memory userData,
         uint256[] memory amountsIn,
@@ -54,23 +78,26 @@ interface IBasePool {
     /**
      * @notice Remove liquidity from the pool
      * @param sender               Address of the sender
-     * @param currentBalances      Current balances of the tokens
+     * @param balances      Current balances of the tokens
      * @param minAmountsOut        Minimum amounts of tokens to be removed
-     * @param bptAmountIn          Amount of BPT tokens burnt
+     * @param maxBptAmountIn       Maximum amount of BPT tokens burnt
+     * @param kind                 Remove liquidity kind
      * @param userData             Additional data provided by the user
      * @return amountsOut          Actual amounts of tokens removed
+     * @return bptAmountIn         Actual amount of BPT burned
      */
     function onRemoveLiquidity(
         address sender,
-        uint256[] memory currentBalances,
+        uint256[] memory balances,
         uint256[] memory minAmountsOut,
-        uint256 bptAmountIn,
+        uint256 maxBptAmountIn,
+        RemoveLiquidityKind kind,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut);
+    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
 
     function onAfterRemoveLiquidity(
         address sender,
-        uint256[] memory currentBalances,
+        uint256[] memory balances,
         uint256[] memory minAmountsOut,
         uint256 bptAmountIn,
         bytes memory userData,

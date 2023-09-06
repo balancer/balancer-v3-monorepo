@@ -88,6 +88,11 @@ interface IVaultErrors {
     /**
      * @dev
      */
+    error BtpAmountAboveMax();
+
+    /**
+     * @dev
+     */
     error BalanceNotSettled();
 
     /**

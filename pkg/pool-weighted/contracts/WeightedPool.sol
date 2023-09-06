@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { BasePoolMath } from "@balancer-labs/v3-pool-utils/contracts/lib/BasePoolMath.sol";
 import { BasePool } from "@balancer-labs/v3-pool-utils/contracts/BasePool.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -20,7 +21,7 @@ import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weigh
  */
 contract WeightedPool is BasePool, IWeightedPool {
     using FixedPoint for uint256;
-    using ScalingHelpers for IERC20;
+    using ScalingHelpers for *;
 
     IERC20 internal immutable _token0;
     IERC20 internal immutable _token1;
@@ -46,9 +47,8 @@ contract WeightedPool is BasePool, IWeightedPool {
         NewPoolParams memory params,
         IVault vault,
         uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner
-    ) {
+        uint256 bufferPeriodDuration
+    ) BasePool(vault, params.name, params.symbol, params.tokens, pauseWindowDuration, bufferPeriodDuration) {
         uint256 numTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
 
@@ -96,11 +96,11 @@ contract WeightedPool is BasePool, IWeightedPool {
         return normalizedWeights;
     }
 
-    function _getMaxTokens() internal pure virtual returns (uint256) {
+    function _getMaxTokens() internal pure virtual override returns (uint256) {
         return 2;
     }
 
-    function _getTotalTokens() internal view virtual returns (uint256) {
+    function _getTotalTokens() internal view virtual override returns (uint256) {
         return 2;
     }
 
@@ -108,7 +108,7 @@ contract WeightedPool is BasePool, IWeightedPool {
      * @dev Returns the scaling factor for one of the Pool's tokens. Reverts if `token` is not a token registered by the
      * Pool.
      */
-    function _scalingFactor(IERC20 token) internal view virtual returns (uint256) {
+    function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
         // prettier-ignore
         if (token == _token0) { return _getScalingFactor0(); }
         else if (token == _token1) { return _getScalingFactor1(); }
@@ -117,7 +117,7 @@ contract WeightedPool is BasePool, IWeightedPool {
         }
     }
 
-    function _scalingFactors() internal view virtual returns (uint256[] memory) {
+    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
         uint256[] memory scalingFactors = new uint256[](2);
 
         scalingFactors[0] = _getScalingFactor0();
@@ -150,14 +150,14 @@ contract WeightedPool is BasePool, IWeightedPool {
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function getInvariant() public view returns (uint256) {
-        (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+        (, uint256[] memory balances) = _vault.getPoolTokens(address(this));
 
         // Since the Pool hooks always work with upscaled balances, we manually
         // upscale here for consistency
-        _upscaleArray(balances, _scalingFactors());
+        balances.upscaleArray(_scalingFactors());
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
-        return WeightedMath._calculateInvariant(normalizedWeights, balances);
+        return WeightedMath.calculateInvariant(normalizedWeights, balances);
     }
 
     function getNormalizedWeights() external view returns (uint256[] memory) {
@@ -166,93 +166,49 @@ contract WeightedPool is BasePool, IWeightedPool {
 
     /// Swap
 
-    // Swap Hooks
-
-    function onSwap(
-        IBasePool.SwapParams memory request,
-        uint256 balanceTokenIn,
-        uint256 balanceTokenOut
-    ) public override onlyVault() returns (uint256) {
+    function onSwap(IBasePool.SwapParams memory request) public onlyVault returns (uint256) {
         uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
         uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
 
-        balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
-        balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
+        uint256 balanceTokenIn = request.balances[request.indexIn].upscale(scalingFactorTokenIn);
+        uint256 balanceTokenOut = request.balances[request.indexOut].upscale(scalingFactorTokenOut);
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            // All token amounts are upscaled.
-            request.amount = _upscale(request.amount, scalingFactorTokenIn);
-
-            uint256 amountOut = _onSwapGivenIn(request, balanceTokenIn, balanceTokenOut);
+            uint256 amountOut = WeightedMath.calcOutGivenIn(
+                balanceTokenIn,
+                _getNormalizedWeight(request.tokenIn),
+                balanceTokenOut,
+                _getNormalizedWeight(request.tokenOut),
+                // All token amounts are upscaled.
+                request.amountGiven.upscale(scalingFactorTokenIn)
+            );
 
             // amountOut tokens are exiting the Pool, so we round down.
-            return _downscaleDown(amountOut, scalingFactorTokenOut);
+            return amountOut.downscaleDown(scalingFactorTokenOut);
         } else {
             // All token amounts are upscaled.
-            request.amount = _upscale(request.amount, scalingFactorTokenOut);
 
-            uint256 amountIn = _onSwapGivenOut(request, balanceTokenIn, balanceTokenOut);
+            uint256 amountIn = WeightedMath.calcInGivenOut(
+                balanceTokenIn,
+                _getNormalizedWeight(request.tokenIn),
+                balanceTokenOut,
+                _getNormalizedWeight(request.tokenOut),
+                request.amountGiven.upscale(scalingFactorTokenOut)
+            );
 
             // amountIn tokens are entering the Pool, so we round up.
-            amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
+            amountIn = amountIn.downscaleUp(scalingFactorTokenIn);
 
             // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
             return amountIn;
         }
     }
 
-    /*
-     * @dev Called when a swap with the Pool occurs, where the amount of tokens entering the Pool is known.
-     *
-     * Returns the amount of tokens that will be taken from the Pool in return.
-     *
-     * All amounts inside `swapRequest`, `balanceTokenIn`, and `balanceTokenOut` are upscaled. The swap fee has already
-     * been deducted from `swapRequest.amount`.
-     *
-     * The return value is also considered upscaled, and will be downscaled (rounding down) before returning it to the
-     * Vault.
-     */
-    function _onSwapGivenIn(
-        SwapRequest memory swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) internal virtual override returns (uint256) {
-        return
-            WeightedMath._calcOutGivenIn(
-                currentBalanceTokenIn,
-                _getNormalizedWeight(swapRequest.tokenIn),
-                currentBalanceTokenOut,
-                _getNormalizedWeight(swapRequest.tokenOut),
-                swapRequest.amount
-            );
+    function onAfterSwap(SwapParams calldata params, uint256 amountCalculated) external returns (bool success) {
+        return true;
     }
 
-    /*
-     * @dev Called when a swap with the Pool occurs, where the amount of tokens exiting the Pool is known.
-     *
-     * Returns the amount of tokens that will be granted to the Pool in return.
-     *
-     * All amounts inside `swapRequest`, `balanceTokenIn`, and `balanceTokenOut` are upscaled.
-     *
-     * The return value is also considered upscaled, and will be downscaled (rounding up) before applying the swap fee
-     * and returning it to the Vault.
-     */
-    function _onSwapGivenOut(
-        SwapRequest memory swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) internal virtual override returns (uint256) {
-        return
-            WeightedMath._calcInGivenOut(
-                currentBalanceTokenIn,
-                _getNormalizedWeight(swapRequest.tokenIn),
-                currentBalanceTokenOut,
-                _getNormalizedWeight(swapRequest.tokenOut),
-                swapRequest.amount
-            );
-    }
-
-    // Initialize
+    /// Initialize
 
     function _onInitializePool(
         bytes32,
@@ -260,258 +216,151 @@ contract WeightedPool is BasePool, IWeightedPool {
         address,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal virtual override returns (uint256, uint256[] memory) {
-        WeightedPoolUserData.JoinKind kind = userData.joinKind();
-        _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
-
-        uint256[] memory amountsIn = userData.initialAmountsIn();
-        InputHelpers.ensureInputLengthMatch(amountsIn.length, scalingFactors.length);
-        _upscaleArray(amountsIn, scalingFactors);
-
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-        uint256 invariantAfterJoin = WeightedMath._calculateInvariant(normalizedWeights, amountsIn);
-
-        // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
-        // consistent in Pools with similar compositions but different number of tokens.
-        uint256 bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
-
-        // Initialization is still a join, so we need to do post-join work. Since we are not paying protocol fees,
-        // and all we need to do is update the invariant, call `_updatePostJoinExit` here instead of `_afterJoinExit`.
-        _updatePostJoinExit(invariantAfterJoin);
-
-        return (bptAmountOut, amountsIn);
+    ) internal returns (uint256, uint256[] memory) {
+        // uint256[] memory amountsIn = userData.initialAmountsIn();
+        // InputHelpers.ensureInputLengthMatch(amountsIn.length, scalingFactors.length);
+        // amountsIn.upscaleArray(scalingFactors);
+        // uint256[] memory normalizedWeights = _getNormalizedWeights();
+        // uint256 invariantAfterJoin = WeightedMath.calculateInvariant(normalizedWeights, amountsIn);
+        // // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
+        // // consistent in Pools with similar compositions but different number of tokens.
+        // uint256 bptAmountOut = invariantAfterJoin * amountsIn.length;
+        // return (bptAmountOut, amountsIn);
     }
 
-    // Join
-
-    function _onJoinPool(
-        bytes32,
-        address sender,
-        address,
-        uint256[] memory balances,
-        uint256,
-        uint256,
-        uint256[] memory scalingFactors,
-        bytes memory userData
-    ) internal virtual override returns (uint256, uint256[] memory) {
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-
-        (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
-            sender,
-            balances,
-            normalizedWeights,
-            scalingFactors,
-            preJoinExitSupply,
-            userData
-        );
-
-        return (bptAmountOut, amountsIn);
-    }
+    // Add Liquidity
 
     /**
-     * @dev Dispatch code which decodes the provided userdata to perform the specified join type.
-     * Inheriting contracts may override this function to add additional join types or extra conditions to allow
-     * or disallow joins under certain circumstances.
+     * @notice Vault hook for adding liquidity to a pool (including the first time, "initializing" the pool).
+     * @dev This function can only be called from the Vault, from `joinPool`.
+     * @inheritdoc IBasePool
      */
-    function _doJoin(
-        address,
-        uint256[] memory balances,
-        uint256[] memory normalizedWeights,
-        uint256[] memory scalingFactors,
-        uint256 totalSupply,
-        bytes memory userData
-    ) internal view virtual returns (uint256, uint256[] memory) {
-        WeightedPoolUserData.JoinKind kind = userData.joinKind();
-
-        if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
-            return _joinExactTokensInForBPTOut(balances, normalizedWeights, scalingFactors, totalSupply, userData);
-        } else if (kind == WeightedPoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            return _joinTokenInForExactBPTOut(balances, normalizedWeights, totalSupply, userData);
-        } else if (kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
-            return _joinAllTokensInForExactBPTOut(balances, totalSupply, userData);
-        } else {
-            _revert(Errors.UNHANDLED_JOIN_KIND);
-        }
-    }
-
-    function _joinExactTokensInForBPTOut(
-        uint256[] memory balances,
-        uint256[] memory normalizedWeights,
-        uint256[] memory scalingFactors,
-        uint256 totalSupply,
-        bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
-        (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
-        InputHelpers.ensureInputLengthMatch(balances.length, amountsIn.length);
-
-        _upscaleArray(amountsIn, scalingFactors);
-
-        uint256 bptAmountOut = WeightedMath._calcBptOutGivenExactTokensIn(
-            balances,
-            normalizedWeights,
-            amountsIn,
-            totalSupply,
-            getSwapFeePercentage()
-        );
-
-        _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
-
-        return (bptAmountOut, amountsIn);
-    }
-
-    function _joinTokenInForExactBPTOut(
-        uint256[] memory balances,
-        uint256[] memory normalizedWeights,
-        uint256 totalSupply,
-        bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
-        (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
-        // Note that there is no maximum amountIn parameter: this is handled by `IVault.joinPool`.
-
-        _require(tokenIndex < balances.length, Errors.OUT_OF_BOUNDS);
-
-        uint256 amountIn = WeightedMath._calcTokenInGivenExactBptOut(
-            balances[tokenIndex],
-            normalizedWeights[tokenIndex],
-            bptAmountOut,
-            totalSupply,
-            getSwapFeePercentage()
-        );
-
-        // We join in a single token, so we initialize amountsIn with zeros
-        uint256[] memory amountsIn = new uint256[](balances.length);
-        // And then assign the result to the selected token
-        amountsIn[tokenIndex] = amountIn;
-
-        return (bptAmountOut, amountsIn);
-    }
-
-    function _joinAllTokensInForExactBPTOut(
-        uint256[] memory balances,
-        uint256 totalSupply,
-        bytes memory userData
-    ) private pure returns (uint256, uint256[] memory) {
-        uint256 bptAmountOut = userData.allTokensInForExactBptOut();
-        // Note that there is no maximum amountsIn parameter: this is handled by `IVault.joinPool`.
-
-        uint256[] memory amountsIn = WeightedMath._calcAllTokensInGivenExactBptOut(balances, bptAmountOut, totalSupply);
-
-        return (bptAmountOut, amountsIn);
-    }
-
-    // Exit
-
-    function _onExitPool(
-        bytes32,
+    function onAddLiquidity(
         address sender,
-        address,
         uint256[] memory balances,
-        uint256,
-        uint256,
-        uint256[] memory scalingFactors,
+        uint256[] memory amountsIn,
+        uint256 minBptAmountOut,
+        AddLiquidityKind kind,
         bytes memory userData
-    ) internal virtual override returns (uint256, uint256[] memory) {
+    ) external onlyVault returns (uint256[] memory, uint256 bptAmountOut) {
+        uint256[] memory scalingFactors = _scalingFactors();
+        balances.upscaleArray(scalingFactors);
+        amountsIn.upscaleArray(scalingFactors);
+
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
-            sender,
-            balances,
-            normalizedWeights,
-            scalingFactors,
-            preJoinExitSupply,
-            userData
-        );
+        if (kind == AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+            InputHelpers.ensureInputLengthMatch(balances.length, amountsIn.length);
 
-        return (bptAmountIn, amountsOut);
+            bptAmountOut = WeightedMath.calcBptOutGivenExactTokensIn(
+                balances,
+                normalizedWeights,
+                amountsIn,
+                totalSupply(),
+                getSwapFeePercentage()
+            );
+        } else if (kind == AddLiquidityKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+            // tokenIndex of the token in always has to be zero
+            uint256 amountIn = WeightedMath.calcTokenInGivenExactBptOut(
+                balances[0],
+                normalizedWeights[0],
+                minBptAmountOut,
+                totalSupply(),
+                getSwapFeePercentage()
+            );
+
+            // And then assign the result to the selected token
+            amountsIn[0] = amountIn;
+            bptAmountOut = minBptAmountOut;
+        } else if (kind == AddLiquidityKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
+            amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, totalSupply(), minBptAmountOut);
+            bptAmountOut = minBptAmountOut;
+        } else {
+            revert UnhandledJoinKind();
+        }
+
+        // amountsIn are amounts entering the Pool, so we round up.
+        amountsIn.downscaleUpArray(scalingFactors);
+
+        return (amountsIn, bptAmountOut);
     }
+
+    function onAfterAddLiquidity(
+        address sender,
+        uint256[] memory balances,
+        uint256[] memory maxAmountsIn,
+        bytes memory userData,
+        uint256[] memory amountsIn,
+        uint256 bptAmountOut
+    ) external returns (bool success) {
+        return true;
+    }
+
+    // Remove Liquidity
 
     /**
-     * @dev Dispatch code which decodes the provided userdata to perform the specified exit type.
-     * Inheriting contracts may override this function to add additional exit types or extra conditions to allow
-     * or disallow exit under certain circumstances.
+     * @notice Vault hook for removing liquidity from a pool.
+     * @dev This function can only be called from the Vault, from `exitPool`.
      */
-    function _doExit(
-        address,
+    function onRemoveLiquidity(
+        address sender,
         uint256[] memory balances,
-        uint256[] memory normalizedWeights,
-        uint256[] memory scalingFactors,
-        uint256 totalSupply,
+        uint256[] memory minAmountsOut,
+        uint256 maxBptAmountIn,
+        RemoveLiquidityKind kind,
         bytes memory userData
-    ) internal view virtual returns (uint256, uint256[] memory) {
-        WeightedPoolUserData.ExitKind kind = userData.exitKind();
+    ) external onlyVault returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
+        uint256[] memory scalingFactors = _scalingFactors();
+        balances.upscaleArray(scalingFactors);
+        amountsOut.upscaleArray(scalingFactors);
 
-        if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            return _exitExactBPTInForTokenOut(balances, normalizedWeights, totalSupply, userData);
-        } else if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
-            return _exitExactBPTInForTokensOut(balances, totalSupply, userData);
-        } else if (kind == WeightedPoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
-            return _exitBPTInForExactTokensOut(balances, normalizedWeights, scalingFactors, totalSupply, userData);
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+
+        if (kind == RemoveLiquidityKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+            // tokenIndex of token in always has to be 0 token
+            uint256 amountOut = WeightedMath.calcTokenOutGivenExactBptIn(
+                balances[0],
+                normalizedWeights[0],
+                maxBptAmountIn,
+                totalSupply(),
+                getSwapFeePercentage()
+            );
+
+            // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
+            // And then assign the result to the selected token
+            amountsOut[0] = amountOut;
+            bptAmountIn = maxBptAmountIn;
+        } else if (kind == RemoveLiquidityKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+            amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, bptAmountIn, totalSupply());
+            bptAmountIn = maxBptAmountIn;
+        } else if (kind == RemoveLiquidityKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
+            InputHelpers.ensureInputLengthMatch(amountsOut.length, balances.length);
+
+            // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
+            bptAmountIn = WeightedMath.calcBptInGivenExactTokensOut(
+                balances,
+                normalizedWeights,
+                amountsOut,
+                totalSupply(),
+                getSwapFeePercentage()
+            );
         } else {
-            _revert(Errors.UNHANDLED_EXIT_KIND);
+            revert UnhandledExitKind();
         }
+        // amountsOut are amounts exiting the Pool, so we round down.
+        amountsOut.downscaleDownArray(scalingFactors);
+
+        return (amountsOut, bptAmountIn);
     }
 
-    function _exitExactBPTInForTokenOut(
+    function onAfterRemoveLiquidity(
+        address sender,
         uint256[] memory balances,
-        uint256[] memory normalizedWeights,
-        uint256 totalSupply,
-        bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
-        (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
-        // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
-
-        _require(tokenIndex < balances.length, Errors.OUT_OF_BOUNDS);
-
-        uint256 amountOut = WeightedMath._calcTokenOutGivenExactBptIn(
-            balances[tokenIndex],
-            normalizedWeights[tokenIndex],
-            bptAmountIn,
-            totalSupply,
-            getSwapFeePercentage()
-        );
-
-        // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
-        // We exit in a single token, so we initialize amountsOut with zeros
-        uint256[] memory amountsOut = new uint256[](balances.length);
-        // And then assign the result to the selected token
-        amountsOut[tokenIndex] = amountOut;
-
-        return (bptAmountIn, amountsOut);
-    }
-
-    function _exitExactBPTInForTokensOut(
-        uint256[] memory balances,
-        uint256 totalSupply,
-        bytes memory userData
-    ) private pure returns (uint256, uint256[] memory) {
-        uint256 bptAmountIn = userData.exactBptInForTokensOut();
-        // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
-
-        uint256[] memory amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, totalSupply);
-        return (bptAmountIn, amountsOut);
-    }
-
-    function _exitBPTInForExactTokensOut(
-        uint256[] memory balances,
-        uint256[] memory normalizedWeights,
-        uint256[] memory scalingFactors,
-        uint256 totalSupply,
-        bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
-        (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
-        InputHelpers.ensureInputLengthMatch(amountsOut.length, balances.length);
-        _upscaleArray(amountsOut, scalingFactors);
-
-        // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
-        uint256 bptAmountIn = WeightedMath._calcBptInGivenExactTokensOut(
-            balances,
-            normalizedWeights,
-            amountsOut,
-            totalSupply,
-            getSwapFeePercentage()
-        );
-        _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
-
-        return (bptAmountIn, amountsOut);
+        uint256[] memory minAmountsOut,
+        uint256 bptAmountIn,
+        bytes memory userData,
+        uint256[] memory amountsOut
+    ) external returns (bool success) {
+        return true;
     }
 }
