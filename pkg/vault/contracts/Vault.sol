@@ -571,7 +571,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
             if (amountOut < minAmountsOut[i]) {
                 revert ExitBelowMin();
             }
-            // Credit token[i] for amountIn
+            // Credit token[i] for amountOut
             _supplyCredit(tokens[i], amountOut, msg.sender);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
