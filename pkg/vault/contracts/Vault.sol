@@ -162,9 +162,9 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
     /// @inheritdoc IVault
     function burn(IERC20 token, address owner, uint256 amount) public withHandler {
+        _supplyCredit(token, amount, msg.sender);
         _spendAllowance(address(token), owner, address(this), amount);
         _burnERC20(address(token), owner, amount);
-        _supplyCredit(token, amount, msg.sender);
     }
 
     /// @inheritdoc IVault
