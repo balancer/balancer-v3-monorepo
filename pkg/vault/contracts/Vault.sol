@@ -545,7 +545,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         // Credit bptAmountOut of pool tokens
         _supplyCredit(IERC20(pool), bptAmountOut, msg.sender);
 
-        emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
+        emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.safeCastToInt256(true));
     }
 
     /// @inheritdoc IVault
@@ -588,8 +588,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
             pool,
             msg.sender,
             tokens,
-            // We can unsafely cast to int256 because balances are actually stored as uint112
-            amountsOut.unsafeCastToInt256(false)
+            amountsOut.safeCastToInt256(false)
         );
     }
 
