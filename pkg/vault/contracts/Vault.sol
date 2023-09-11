@@ -536,7 +536,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
             // Debit of token[i] for amountIn
             _takeDebt(tokens[i], amountIn, msg.sender);
 
-            finalBalances[i] += amountIn;
+            finalBalances[i] = balances[i] + amountIn;
         }
 
         // All that remains is storing the new Pool balances.
