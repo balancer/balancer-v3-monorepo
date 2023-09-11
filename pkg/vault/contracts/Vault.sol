@@ -581,7 +581,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         // All that remains is storing the new Pool balances.
         _setPoolBalances(pool, finalBalances);
 
-        // Debit bptAmountOut of pool tokens
+        // Debit bptAmountIn of pool tokens
         _takeDebt(IERC20(pool), bptAmountIn, msg.sender);
 
         emit PoolBalanceChanged(
