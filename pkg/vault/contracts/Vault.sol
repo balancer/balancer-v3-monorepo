@@ -584,12 +584,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         // Debit bptAmountIn of pool tokens
         _takeDebt(IERC20(pool), bptAmountIn, msg.sender);
 
-        emit PoolBalanceChanged(
-            pool,
-            msg.sender,
-            tokens,
-            amountsOut.safeCastToInt256(false)
-        );
+        emit PoolBalanceChanged(pool, msg.sender, tokens, amountsOut.safeCastToInt256(false));
     }
 
     /**
