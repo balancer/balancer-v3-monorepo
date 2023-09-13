@@ -94,6 +94,35 @@ abstract contract BasePool is IBasePool, ERC20FacadeToken, TemporarilyPausable {
         _unpause();
     }
 
+    /// Hooks
+
+    function onAfterSwap(SwapParams calldata, uint256) pure external returns (bool ) {
+        revert HookNotImplemented();
+    }
+
+
+    function onAfterAddLiquidity(
+        address,
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory,
+        uint256[] memory,
+        uint256
+    ) pure external returns (bool ) {
+        revert HookNotImplemented();
+    }
+
+    function onAfterRemoveLiquidity(
+        address,
+        uint256[] memory,
+        uint256[] memory,
+        uint256,
+        bytes memory,
+        uint256[] memory
+    ) pure external returns (bool ) {
+        revert HookNotImplemented();
+    }
+
     /// Scaling
 
     /**

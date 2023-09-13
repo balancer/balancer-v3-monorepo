@@ -2,7 +2,9 @@
 
 pragma solidity ^0.8.4;
 
-import "./IVault.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { IVault } from "./IVault.sol";
 
 /// @notice Interface for a Base Pool
 interface IBasePool {
@@ -30,21 +32,32 @@ interface IBasePool {
      * @dev
      */
     error UnhandledJoinKind();
+
     /**
      * @dev
      */
     error UnhandledExitKind();
+
+    /**
+     * @dev
+     */
+    error HookNotImplemented();
 
     enum AddLiquidityKind {
         EXACT_TOKENS_IN_FOR_BPT_OUT,
         TOKEN_IN_FOR_EXACT_BPT_OUT,
         ALL_TOKENS_IN_FOR_EXACT_BPT_OUT
     }
+
     enum RemoveLiquidityKind {
         EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
         EXACT_BPT_IN_FOR_TOKENS_OUT,
         BPT_IN_FOR_EXACT_TOKENS_OUT
     }
+
+    function onInitialize(uint256[] memory amountsIn, bytes memory userData)
+        external
+        returns (uint256, uint256[] memory);
 
     /**
      * @notice Add liquidity to the pool

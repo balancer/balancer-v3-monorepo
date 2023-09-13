@@ -649,6 +649,49 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     *******************************************************************************/
 
     /// @inheritdoc IVault
+    function initialize(
+        address pool,
+        IERC20[] memory tokens,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        bytes memory userData
+    ) external
+        withHandler
+        whenNotPaused
+        withRegisteredPool(pool)
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+
+        InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
+
+        uint256[] memory balances = _validateTokensAndGetBalances(pool, tokens);
+
+        (amountsIn, bptAmountOut) = IBasePool(pool).onInitialize(
+            msg.sender,
+            amountsIn,
+            userData
+        );
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            uint256 amountIn = amountsIn[i];
+            if (amountIn > maxAmountsIn[i]) {
+                revert JoinAboveMax();
+            }
+
+            // Debit of token[i] for amountIn
+            _accountDelta(tokens[i], int256(amountIn), msg.sender);
+        }
+
+        // Store the new Pool balances.
+        _setPoolBalances(pool, amountsIn);
+
+        // Credit bptAmountOut of pool tokens
+        _accountDelta(IERC20(pool), -int256(bptAmountOut), msg.sender);
+
+        emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
+    }
+
+
+    /// @inheritdoc IVault
     function addLiquidity(
         address pool,
         IERC20[] memory tokens,

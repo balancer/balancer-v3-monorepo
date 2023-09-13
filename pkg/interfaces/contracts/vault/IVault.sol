@@ -21,6 +21,12 @@ interface IVault is IERC20MultiToken {
                                     Pool Registration
     *******************************************************************************/
 
+    function onInitialize(
+        address sender,
+        uint256[] memory amountsIn,
+        bytes memory userData
+    ) external returns (uint256, uint256[] memory);
+
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
      * @param factory The factory address associated with the pool being registered.
