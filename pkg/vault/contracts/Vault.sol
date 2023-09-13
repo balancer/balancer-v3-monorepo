@@ -308,7 +308,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         SwapParams memory params
     ) public whenNotPaused withHandler returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         if (params.amountGiven == 0) {
-            revert AmountInZero();
+            revert AmountGivenZero();
         }
 
         if (params.tokenIn == params.tokenOut) {
