@@ -14,7 +14,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 
-import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
+import { PoolMock } from "@balancer-labs/v3-pool-utils/contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
@@ -28,7 +28,7 @@ contract VaultMultiTokenTest is Test {
 
     VaultMock vault;
     Router router;
-    ERC20PoolMock pool;
+    PoolMock pool;
     ERC20TestToken token;
     address alice = vm.addr(1);
     address bob = vm.addr(2);
@@ -40,7 +40,7 @@ contract VaultMultiTokenTest is Test {
         vault = new VaultMock(30 days, 90 days);
         router = new Router(IVault(vault), address(0));
         token = new ERC20TestToken("token", "token", 6);
-        pool = new ERC20PoolMock(
+        pool = new PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",

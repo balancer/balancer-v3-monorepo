@@ -12,7 +12,8 @@ import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20FacadeToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20FacadeToken.sol";
 
-import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
+import { PoolMock } from "@balancer-labs/v3-pool-utils/contracts/test/PoolMock.sol";
+import { ERC20FacadeToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20FacadeToken.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
@@ -21,11 +22,11 @@ contract ERC20FacadeTokenTest is Test {
     using ArrayHelpers for address[2];
 
     VaultMock vault;
-    ERC20PoolMock token;
+    PoolMock token;
 
     function setUp() public {
         vault = new VaultMock(30 days, 90 days);
-        token = new ERC20PoolMock(
+        token = new PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",

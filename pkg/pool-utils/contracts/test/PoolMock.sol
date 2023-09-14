@@ -11,12 +11,12 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
+import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 
-contract ERC20PoolMock is ERC20FacadeToken, IBasePool {
+import { BasePool } from "../BasePool.sol";
+
+contract PoolMock is BasePool {
     using FixedPoint for uint256;
-
-    IVault private immutable _vault;
 
     bool public failOnHook;
 
@@ -27,12 +27,17 @@ contract ERC20PoolMock is ERC20FacadeToken, IBasePool {
         address factory,
         IERC20[] memory tokens,
         bool registerPool
-    ) ERC20FacadeToken(vault, name, symbol) {
-        _vault = vault;
-
+    ) BasePool(vault, name, symbol, tokens, 30 days, 90 days) {
         if (registerPool) {
             vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig());
         }
+    }
+
+    function onInitialize(
+        uint256[] memory amountsIn,
+        bytes memory
+    ) external view onlyVault returns (uint256, uint256[] memory) {
+        return (amountsIn[0], amountsIn);
     }
 
     function onAddLiquidity(
@@ -53,7 +58,7 @@ contract ERC20PoolMock is ERC20FacadeToken, IBasePool {
         bytes memory,
         uint256[] calldata,
         uint256
-    ) external view returns (bool) {
+    ) external override view returns (bool) {
         return !failOnHook;
     }
 
@@ -64,7 +69,7 @@ contract ERC20PoolMock is ERC20FacadeToken, IBasePool {
         uint256 maxBptAmountIn,
         RemoveLiquidityKind,
         bytes memory
-    ) external pure returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
+    ) external override pure returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
         return (minAmountsOut, maxBptAmountIn);
     }
 
@@ -75,7 +80,7 @@ contract ERC20PoolMock is ERC20FacadeToken, IBasePool {
         uint256,
         bytes memory,
         uint256[] calldata
-    ) external view returns (bool) {
+    ) external override view returns (bool) {
         return !failOnHook;
     }
 
@@ -104,5 +109,26 @@ contract ERC20PoolMock is ERC20FacadeToken, IBasePool {
             params.kind == IVault.SwapKind.GIVEN_IN
                 ? params.amountGiven.mulDown(_multiplier)
                 : params.amountGiven.divDown(_multiplier);
+    }
+
+    function _getMaxTokens() internal pure virtual override returns (uint256) {
+        return 2;
+    }
+
+    function _getTotalTokens() internal view virtual override returns (uint256) {
+        return 2;
+    }
+
+    function _scalingFactor(IERC20 ) internal view virtual override returns (uint256) {
+        return 1;
+    }
+
+    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
+        uint256[] memory scalingFactors = new uint256[](2);
+
+        scalingFactors[0] = 1;
+        scalingFactors[1] = 1;
+
+        return scalingFactors;
     }
 }

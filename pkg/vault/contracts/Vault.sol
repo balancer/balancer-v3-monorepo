@@ -653,7 +653,6 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         address pool,
         IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
-        uint256 minBptAmountOut,
         bytes memory userData
     ) external
         withHandler
@@ -663,10 +662,9 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
         InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
 
-        uint256[] memory balances = _validateTokensAndGetBalances(pool, tokens);
+         _validateTokensAndGetBalances(pool, tokens);
 
-        (amountsIn, bptAmountOut) = IBasePool(pool).onInitialize(
-            msg.sender,
+        ( bptAmountOut, amountsIn) = IBasePool(pool).onInitialize(
             amountsIn,
             userData
         );
