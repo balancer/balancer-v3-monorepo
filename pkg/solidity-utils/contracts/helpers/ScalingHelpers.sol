@@ -90,6 +90,6 @@ library ScalingHelpers {
 
         // Tokens with more than 18 decimals are not supported.
         uint256 decimalsDifference = 18 - tokenDecimals;
-        return FixedPoint.ONE * 10**decimalsDifference;
+        return FixedPoint.ONE * 10 ** decimalsDifference;
     }
 }

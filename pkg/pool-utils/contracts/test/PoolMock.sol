@@ -58,7 +58,7 @@ contract PoolMock is BasePool {
         bytes memory,
         uint256[] calldata,
         uint256
-    ) external override view returns (bool) {
+    ) external view override returns (bool) {
         return !failOnHook;
     }
 
@@ -69,7 +69,7 @@ contract PoolMock is BasePool {
         uint256 maxBptAmountIn,
         RemoveLiquidityKind,
         bytes memory
-    ) external override pure returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
+    ) external pure override returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
         return (minAmountsOut, maxBptAmountIn);
     }
 
@@ -80,7 +80,7 @@ contract PoolMock is BasePool {
         uint256,
         bytes memory,
         uint256[] calldata
-    ) external override view returns (bool) {
+    ) external view override returns (bool) {
         return !failOnHook;
     }
 
@@ -95,12 +95,10 @@ contract PoolMock is BasePool {
         _multiplier = newMultiplier;
     }
 
-    function onAfterSwap(IBasePool.SwapParams calldata params, uint256 amountCalculated)
-        external
-        view
-        override
-        returns (bool success)
-    {
+    function onAfterSwap(
+        IBasePool.SwapParams calldata params,
+        uint256 amountCalculated
+    ) external view override returns (bool success) {
         return params.tokenIn != params.tokenOut && amountCalculated > 0 && !failOnHook;
     }
 
@@ -119,7 +117,7 @@ contract PoolMock is BasePool {
         return 2;
     }
 
-    function _scalingFactor(IERC20 ) internal view virtual override returns (uint256) {
+    function _scalingFactor(IERC20) internal view virtual override returns (uint256) {
         return 1;
     }
 

@@ -28,11 +28,7 @@ contract ERC20FacadeToken is IERC20, IERC20Metadata {
         _;
     }
 
-    constructor(
-        IERC20MultiToken multiToken_,
-        string memory name_,
-        string memory symbol_
-    ) {
+    constructor(IERC20MultiToken multiToken_, string memory name_, string memory symbol_) {
         _multiToken = multiToken_;
         _name = name_;
         _symbol = symbol_;
@@ -84,11 +80,7 @@ contract ERC20FacadeToken is IERC20, IERC20Metadata {
     }
 
     /// @inheritdoc IERC20
-    function transferFrom(
-        address from,
-        address to,
-        uint256 amount
-    ) public returns (bool) {
+    function transferFrom(address from, address to, uint256 amount) public returns (bool) {
         // MultiToken will perform the transfer and call emitTransfer to emit the event from this contract.
         _multiToken.transferFromWith(msg.sender, from, to, amount);
         return true;
@@ -102,20 +94,12 @@ contract ERC20FacadeToken is IERC20, IERC20Metadata {
     /// only from the token contract. These events are NOT defined in the MultiToken contract.
 
     /// @dev Emit the Transfer event. This function can only be called by the MultiToken.
-    function emitTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) external onlyMultiToken {
+    function emitTransfer(address from, address to, uint256 amount) external onlyMultiToken {
         emit Transfer(from, to, amount);
     }
 
     /// @dev Emit the Approval event. This function can only be called by the MultiToken.
-    function emitApprove(
-        address owner,
-        address spender,
-        uint256 amount
-    ) external onlyMultiToken {
+    function emitApprove(address owner, address spender, uint256 amount) external onlyMultiToken {
         emit Approval(owner, spender, amount);
     }
 }

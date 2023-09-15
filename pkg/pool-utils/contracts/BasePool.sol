@@ -96,10 +96,9 @@ abstract contract BasePool is IBasePool, ERC20FacadeToken, TemporarilyPausable {
 
     /// Hooks
 
-    function onAfterSwap(SwapParams calldata, uint256) view virtual external returns (bool ) {
+    function onAfterSwap(SwapParams calldata, uint256) external view virtual returns (bool) {
         revert HookNotImplemented();
     }
-
 
     function onAfterAddLiquidity(
         address,
@@ -108,7 +107,7 @@ abstract contract BasePool is IBasePool, ERC20FacadeToken, TemporarilyPausable {
         bytes memory,
         uint256[] memory,
         uint256
-    ) view virtual external returns (bool ) {
+    ) external view virtual returns (bool) {
         revert HookNotImplemented();
     }
 
@@ -119,7 +118,7 @@ abstract contract BasePool is IBasePool, ERC20FacadeToken, TemporarilyPausable {
         uint256,
         bytes memory,
         uint256[] memory
-    ) view virtual external returns (bool ) {
+    ) external view virtual returns (bool) {
         revert HookNotImplemented();
     }
 

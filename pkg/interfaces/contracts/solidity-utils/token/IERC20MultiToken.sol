@@ -28,11 +28,7 @@ interface IERC20MultiToken {
      * @param amount                         Amount of tokens to transfer
      * @return                               True if successful, false otherwise
      */
-    function transfer(
-        address token,
-        address to,
-        uint256 amount
-    ) external returns (bool);
+    function transfer(address token, address to, uint256 amount) external returns (bool);
 
     /**
      * @notice Transfers ERC20 token from owner to a recipient
@@ -41,11 +37,7 @@ interface IERC20MultiToken {
      * @param amount                         Amount of tokens to transfer
      * @return                               True if successful, false otherwise
      */
-    function transferWith(
-        address owner,
-        address to,
-        uint256 amount
-    ) external returns (bool);
+    function transferWith(address owner, address to, uint256 amount) external returns (bool);
 
     /**
      * @notice Transfers from a sender to a recipient using an allowance
@@ -55,12 +47,7 @@ interface IERC20MultiToken {
      * @param amount                         Amount of tokens to transfer
      * @return                               True if successful, false otherwise
      */
-    function transferFrom(
-        address token,
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool);
+    function transferFrom(address token, address from, address to, uint256 amount) external returns (bool);
 
     /**
      * @notice Transfers from a sender to a recipient using an allowance
@@ -70,12 +57,7 @@ interface IERC20MultiToken {
      * @param amount                         Amount of tokens to transfer
      * @return                               True if successful, false otherwise
      */
-    function transferFromWith(
-        address spender,
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool);
+    function transferFromWith(address spender, address from, address to, uint256 amount) external returns (bool);
 
     /**
      * @notice Gets allowance of a spender for a given ERC20 token and owner
@@ -84,11 +66,7 @@ interface IERC20MultiToken {
      * @param spender                        Spender's address
      * @return                               Amount of tokens the spender is allowed to spend
      */
-    function allowance(
-        address token,
-        address owner,
-        address spender
-    ) external view returns (uint256);
+    function allowance(address token, address owner, address spender) external view returns (uint256);
 
     /**
      * @notice Approves a spender to spend tokens on behalf of sender
@@ -97,11 +75,7 @@ interface IERC20MultiToken {
      * @param amount                         Amount of tokens to approve
      * @return                               True if successful, false otherwise
      */
-    function approveWith(
-        address owner,
-        address spender,
-        uint256 amount
-    ) external returns (bool);
+    function approveWith(address owner, address spender, uint256 amount) external returns (bool);
 
     /**
      * @notice Approves a spender to spend tokens on behalf of sender
@@ -110,9 +84,5 @@ interface IERC20MultiToken {
      * @param amount                         Amount of tokens to approve
      * @return                               True if successful, false otherwise
      */
-    function approve(
-        address token,
-        address spender,
-        uint256 amount
-    ) external returns (bool);
+    function approve(address token, address spender, uint256 amount) external returns (bool);
 }

@@ -55,9 +55,10 @@ interface IBasePool {
         BPT_IN_FOR_EXACT_TOKENS_OUT
     }
 
-    function onInitialize(uint256[] memory amountsIn, bytes memory userData)
-        external
-        returns (uint256, uint256[] memory);
+    function onInitialize(
+        uint256[] memory amountsIn,
+        bytes memory userData
+    ) external returns (uint256, uint256[] memory);
 
     /**
      * @notice Add liquidity to the pool
