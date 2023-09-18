@@ -278,9 +278,6 @@ interface IVault is IERC20MultiToken {
 
     /**
      * @dev Returns true if the pool is paused, and false otherwise.
-     *
-     * Once the Buffer Period expires, the gas cost of calling this function is reduced dramatically, as storage is no
-     * longer accessed.
      */
     function poolPaused(address pool) external view returns (bool);
 
