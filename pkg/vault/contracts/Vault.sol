@@ -8,12 +8,12 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/token/IERC20MultiToken.sol";
-import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault, PoolConfig, PoolRegistrationConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { ReentrancyGuard } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
-import { TemporarilyPausable } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
+import { TemporarilyPausable, PausableConstants } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -31,9 +31,12 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     using SafeERC20 for IERC20;
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
+    using PoolConfigLib for PoolRegistrationConfig;
 
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
+    // Registry of pool registration timestamps.
+    mapping(address => uint256) internal _poolRegisterTimestamp;
 
     // Pool -> (token -> balance): Pool's ERC20 tokens balances stored at the Vault.
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolTokenBalances;
@@ -410,6 +413,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     function swap(SwapParams memory params)
         public
         whenNotPaused
+        whenPoolNotPaused(params.pool)
         withHandler
         returns (
             uint256 amountCalculated,
@@ -531,7 +535,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     function registerPool(
         address factory,
         IERC20[] memory tokens,
-        PoolConfig calldata config
+        PoolRegistrationConfig calldata config
     ) external nonReentrant whenNotPaused {
         _registerPool(factory, tokens, config);
     }
@@ -543,7 +547,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
     /// @inheritdoc IVault
     function getPoolConfig(address pool) external view returns (PoolConfig memory) {
-        return _poolConfig[pool].toPoolConfig();
+        return _poolConfig[pool].toPoolConfig(_poolRegisterTimestamp[pool]);
     }
 
     /// @inheritdoc IVault
@@ -576,13 +580,21 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     function _registerPool(
         address factory,
         IERC20[] memory tokens,
-        PoolConfig memory config
+        PoolRegistrationConfig memory config
     ) internal {
         address pool = msg.sender;
 
         // Ensure the pool isn't already registered
         if (_isRegisteredPool(pool)) {
             revert PoolAlreadyRegistered(pool);
+        }
+
+        if (config.pauseWindowDuration > PausableConstants.MAX_PAUSE_WINDOW_DURATION) {
+            revert PoolPauseWindowDurationTooLarge(pool);
+        }
+
+        if (config.bufferPeriodDuration > PausableConstants.MAX_BUFFER_PERIOD_DURATION) {
+            revert PoolBufferPeriodDurationTooLarge(pool);
         }
 
         // Retrieve or create the pool's token balances mapping
@@ -607,8 +619,10 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         }
 
         // Store config and mark the pool as registered
-        config.isRegisteredPool = true;
-        _poolConfig[pool] = config.fromPoolConfig();
+        _poolConfig[pool] = config.fromPoolRegistrationConfig();
+        _poolConfig[pool].addRegistration();
+
+        _poolRegisterTimestamp[pool] = block.timestamp;
 
         // Emit an event to log the pool registration
         emit PoolRegistered(pool, factory, tokens);
@@ -645,6 +659,96 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /*******************************************************************************
+                                    Pool Pause
+    *******************************************************************************/
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is not paused.
+     */
+    modifier whenPoolNotPaused(address pool) {
+        _requirePoolNotPaused(pool);
+        _;
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is paused.
+     */
+    modifier whenPoolPaused(address pool) {
+        _requirePoolPaused(pool);
+        _;
+    }
+
+    /// @inheritdoc IVault
+    function pausePool(address pool) external {
+        _pausePool(pool);
+    }
+
+    /// @inheritdoc IVault
+    function unpausePool(address pool) external {
+        _unpausePool(pool);
+    }
+
+    /// @inheritdoc IVault
+    function poolPaused(address pool) public view override returns (bool) {
+        return 
+            block.timestamp <= _poolConfig[pool].bufferPeriodEndTime(_poolRegisterTimestamp[pool]) && 
+            _poolConfig[pool].isPoolPaused();
+    }
+
+    /// @inheritdoc IVault
+    function getPoolPauseEndTimes(address pool) 
+        public
+        view
+        override
+        returns (uint256 pauseWindowEndTime, uint256 bufferPeriodEndTime)
+    {
+        return (
+            _poolConfig[pool].pauseWindowEndTime(_poolRegisterTimestamp[pool]),
+            _poolConfig[pool].bufferPeriodEndTime(_poolRegisterTimestamp[pool])
+        );
+    }
+
+    /**
+     * @dev Sets the pause state to `paused`. The pool can only be paused until the end of the Pause Window, and
+     * unpaused until the end of the Buffer Period.
+     *
+     * Once the Buffer Period expires, this function reverts unconditionally.
+     */
+    function _pausePool(address pool) internal whenPoolNotPaused(pool) {
+        if (block.timestamp >= _poolConfig[pool].pauseWindowEndTime(_poolRegisterTimestamp[pool])) {
+            revert PoolPauseWindowExpired(pool);
+        }
+        _poolConfig[pool] = _poolConfig[pool].addPoolPaused();
+        emit Paused(msg.sender);
+    }
+
+    /**
+     * @dev Returns the contract to a normal (unpaused) state.
+     */
+    function _unpausePool(address pool) internal whenPoolPaused(pool) {
+        _poolConfig[pool] = _poolConfig[pool].addPoolUnpaused();
+        emit PoolUnpaused(msg.sender, pool);
+    }
+
+    /**
+     * @dev Throws if the contract is paused.
+     */
+    function _requirePoolNotPaused(address pool) internal view {
+        if (poolPaused(pool)) {
+            revert PoolAlreadyPaused(pool);
+        }
+    }
+
+    /**
+     * @dev Throws if the contract is not paused.
+     */
+    function _requirePoolPaused(address pool) internal view {
+        if (!poolPaused(pool)) {
+            revert PoolAlreadyUnpaused(pool);
+        }
+    }
+
+    /*******************************************************************************
                                     Pools
     *******************************************************************************/
 
@@ -661,6 +765,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         withHandler
         whenNotPaused
         withRegisteredPool(pool)
+        whenPoolNotPaused(pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut)
     {
         InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
@@ -737,6 +842,11 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         returns (uint256[] memory amountsOut, uint256 bptAmountIn)
     {
         InputHelpers.ensureInputLengthMatch(tokens.length, minAmountsOut.length);
+
+        //TODO: this should actually only permit recovery exits.
+        if (kind != IBasePool.RemoveLiquidityKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+            _requirePoolNotPaused(pool);
+        }
 
         // We first check that the caller passed the Pool's registered tokens in the correct order, and retrieve the
         // current balance for each.

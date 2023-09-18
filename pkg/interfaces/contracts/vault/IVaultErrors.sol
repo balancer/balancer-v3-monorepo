@@ -124,4 +124,29 @@ interface IVaultErrors {
      * @dev
      */
     error HookCallFailed();
+
+    /**
+     * @dev Error indicating that the maximum pause window duration has been exceeded.
+     */
+    error PoolPauseWindowDurationTooLarge(address pool);
+
+    /**
+     * @dev Error indicating that the maximum buffer period duration has been exceeded.
+     */
+    error PoolBufferPeriodDurationTooLarge(address pool);
+
+    /**
+     * @dev Error indicating that the pause window has expired.
+     */
+    error PoolPauseWindowExpired(address pool);
+
+    /**
+     * @dev Error indicating that the pool is already paused.
+     */
+    error PoolAlreadyPaused(address pool);
+
+    /**
+     * @dev Error indicating that the pool is already unpaused.
+     */
+    error PoolAlreadyUnpaused(address pool);
 }

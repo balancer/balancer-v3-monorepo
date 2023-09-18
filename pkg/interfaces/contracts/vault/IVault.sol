@@ -7,9 +7,24 @@ import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IBasePool } from "./IBasePool.sol";
 
-/// @notice Struct to represent a pool configuration
+/// @notice Struct to represent a pool's registration configuration
+struct PoolRegistrationConfig {
+    uint256 pauseWindowDuration;
+    uint256 bufferPeriodDuration;
+
+    bool shouldCallAfterSwap;
+    bool shouldCallAfterAddLiquidity;
+    bool shouldCallAfterRemoveLiquidity;
+}
+
+/// @notice Struct to represent the pool's configuration and state
 struct PoolConfig {
-    bool isRegisteredPool;
+    bool isRegistered;
+    bool isPaused;
+
+    uint256 pauseWindowEndTime;
+    uint256 bufferPeriodEndTime;
+
     bool shouldCallAfterSwap;
     bool shouldCallAfterAddLiquidity;
     bool shouldCallAfterRemoveLiquidity;
@@ -27,7 +42,7 @@ interface IVault is IERC20MultiToken {
      * @param tokens An array of token addresses the pool will manage.
      * @param config Config for the pool
      */
-    function registerPool(address factory, IERC20[] memory tokens, PoolConfig calldata config) external;
+    function registerPool(address factory, IERC20[] memory tokens, PoolRegistrationConfig calldata config) external;
 
     /**
      * @notice Checks if a pool is registered
@@ -241,4 +256,50 @@ interface IVault is IERC20MultiToken {
      * @return If true, then queries are disabled.
      */
     function isQueryDisabled() external view returns (bool);
+
+    /*******************************************************************************
+                                    Pool Pause
+    *******************************************************************************/
+
+    /**
+     * @notice Pause the pool: an emergency action which disables all pool functions except proportional exits.
+     * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
+     * deployment (see `TemporarilyPausable`).
+     */
+    function pausePool(address pool) external;
+
+    /**
+     * @notice Reverse a `pause` operation, and restore a pool to normal functionality.
+     * @dev This is a permissioned function that will only work on a paused pool within the Buffer Period set during
+     * pool factory deployment (see `TemporarilyPausable`). Note that any paused pools will automatically unpause
+     * after the Buffer Period expires.
+     */
+    function unpausePool(address pool) external;
+
+    /**
+     * @dev Returns true if the pool is paused, and false otherwise.
+     *
+     * Once the Buffer Period expires, the gas cost of calling this function is reduced dramatically, as storage is no
+     * longer accessed.
+     */
+    function poolPaused(address pool) external view returns (bool);
+
+    /**
+     * @dev Returns the end times of the pause window and buffer period.
+     */
+    function getPoolPauseEndTimes(address pool) external view returns (uint256 pauseWindowEndTime, uint256 bufferPeriodEndTime);
+
+    /**
+     * @dev Emitted when the pool pause is triggered by `account`.
+     * @param account The account address that triggered the pause event.
+     * @param pool The pool that was paused.
+     */
+    event PoolPaused(address indexed account, address indexed pool);
+
+    /**
+     * @dev Emitted when the pool pause is lifted by `account`.
+     * @param account The account address that triggered the pause event.
+     * @param pool The pool that was paused.
+     */
+    event PoolUnpaused(address indexed account, address indexed pool);
 }

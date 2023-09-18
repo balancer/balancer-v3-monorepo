@@ -9,7 +9,7 @@ import { ERC20FacadeToken } from "@balancer-labs/v3-solidity-utils/contracts/tok
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault, PoolConfig, PoolRegistrationConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 
@@ -31,7 +31,17 @@ contract ERC20PoolMock is ERC20FacadeToken, IBasePool {
         _vault = vault;
 
         if (registerPool) {
-            vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig());
+            vault.registerPool(
+                factory,
+                tokens,
+                PoolRegistrationConfig({
+                    pauseWindowDuration: 730 days,
+                    bufferPeriodDuration: 365 days,
+                    shouldCallAfterSwap: false,
+                    shouldCallAfterAddLiquidity: false,
+                    shouldCallAfterRemoveLiquidity: false
+                })
+            );
         }
     }
 

@@ -109,6 +109,6 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
  * @dev Keep the maximum durations in a single place.
  */
 library PausableConstants {
-    uint256 public constant MAX_PAUSE_WINDOW_DURATION = 270 days;
-    uint256 public constant MAX_BUFFER_PERIOD_DURATION = 90 days;
+    uint256 public constant MAX_PAUSE_WINDOW_DURATION = 1095 days; // 3 years
+    uint256 public constant MAX_BUFFER_PERIOD_DURATION = 365 days; // 1 year
 }

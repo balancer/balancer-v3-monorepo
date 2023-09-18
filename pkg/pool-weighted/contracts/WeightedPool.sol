@@ -45,10 +45,8 @@ contract WeightedPool is BasePool, IWeightedPool {
 
     constructor(
         NewPoolParams memory params,
-        IVault vault,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
-    ) BasePool(vault, params.name, params.symbol, params.tokens, pauseWindowDuration, bufferPeriodDuration) {
+        IVault vault
+    ) BasePool(vault, params.name, params.symbol, params.tokens) {
         uint256 numTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
 
