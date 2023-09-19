@@ -73,6 +73,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             params.userData
         );
 
+        uint256 ethAmountIn;
         for (uint256 i = 0; i < params.assets.length; ++i) {
             // Receive assets from the handler
             Asset asset = params.assets[i];
@@ -83,7 +84,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             // There can be only one WETH token in the pool
             if (asset.isETH()) {
                 _weth.deposit{ value: amountIn }();
-                address(params.sender).returnEth(amountIn);
+                ethAmountIn = amountIn;
             }
             _vault.retrieve(token, params.sender, amountIn);
         }
@@ -91,6 +92,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         _vault.mint(IERC20(params.pool), params.sender, bptAmountOut);
 
         // Send remaining ETH to the user
+        address(params.sender).returnEth(ethAmountIn);
     }
 
     function removeLiquidity(
@@ -132,6 +134,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             params.userData
         );
 
+        uint256 ethAmountOut;
         for (uint256 i = 0; i < params.assets.length; ++i) {
             uint256 amountOut = amountsOut[i];
 
@@ -145,12 +148,14 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             if (asset.isETH()) {
                 // Withdraw WETH to ETH
                 _weth.withdraw(amountOut);
-                // Send ETH to sender
-                payable(params.sender).sendValue(amountOut);
+                ethAmountOut = amountOut;
             }
         }
 
         _vault.burn(IERC20(params.pool), params.sender, params.bptAmountIn);
+
+        // Send ETH to sender
+        payable(params.sender).sendValue(ethAmountOut);
     }
 
     function swap(
