@@ -2,7 +2,6 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20PoolMock } from '../typechain-types/contracts/test/ERC20PoolMock';
-import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
@@ -11,11 +10,10 @@ import { impersonate } from '@balancer-labs/v3-helpers/src/signers';
 import { setupEnvironment } from './poolSetup';
 import '@balancer-labs/v3-common/setupTests';
 
-describe('ERC20BalancerPoolToken', function () {
+describe('ERC20FacadeToken', function () {
   let vault: VaultMock;
   let poolA: ERC20PoolMock;
   let poolB: ERC20PoolMock;
-  let tokenA: ERC20TestToken;
 
   let user: SignerWithAddress;
   let other: SignerWithAddress;
@@ -23,7 +21,6 @@ describe('ERC20BalancerPoolToken', function () {
   let factory: SignerWithAddress;
 
   let registeredPoolSigner: SignerWithAddress;
-  let unregisteredPoolSigner: SignerWithAddress;
 
   let poolAAddress: string;
   let poolBAddress: string;
@@ -33,11 +30,10 @@ describe('ERC20BalancerPoolToken', function () {
   });
 
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { vault: vaultMock, tokens, pools } = await setupEnvironment(factory.address);
 
     vault = vaultMock;
-
-    tokenA = tokens[0];
 
     poolA = pools[0]; // This pool is registered
     poolB = pools[1]; // This pool is unregistered
@@ -58,8 +54,6 @@ describe('ERC20BalancerPoolToken', function () {
     // Simulate a call from the real Pool by "casting" it as a Signer,
     // so it can be used with `connect` like an EOA
     registeredPoolSigner = await impersonate(poolAAddress);
-    // PoolB isn't registered
-    unregisteredPoolSigner = await impersonate(poolBAddress);
   });
 
   describe('minting', async () => {
@@ -188,15 +182,6 @@ describe('ERC20BalancerPoolToken', function () {
       itTransfersBPTCorrectly();
     });
 
-    it('vault cannot transfer a non-BPT ERC20 token', async () => {
-      await tokenA.mint(user.address, bptAmount);
-      expect(await tokenA.balanceOf(user.address)).to.equal(bptAmount);
-
-      await expect(vault.connect(unregisteredPoolSigner).transferERC20(user.address, other.address, bptAmount))
-        .to.be.revertedWithCustomError(vault, 'PoolNotRegistered')
-        .withArgs(poolBAddress);
-    });
-
     it('cannot transfer ERC20 BPT from zero address', async () => {
       await expect(vault.connect(registeredPoolSigner).transferERC20(ZERO_ADDRESS, other.address, bptAmount))
         .to.be.revertedWithCustomError(vault, 'ERC20InvalidSender')
@@ -280,15 +265,6 @@ describe('ERC20BalancerPoolToken', function () {
         .to.be.revertedWithCustomError(vault, 'ERC20InvalidSpender')
         .withArgs(ZERO_ADDRESS);
     });
-
-    it('vault cannot approve a non-BPT token', async () => {
-      await tokenA.mint(user.address, bptAmount);
-      expect(await tokenA.balanceOf(user.address)).to.equal(bptAmount);
-
-      await expect(vault.connect(unregisteredPoolSigner).approveERC20(user.address, relayer.address, bptAmount))
-        .to.be.revertedWithCustomError(vault, 'PoolNotRegistered')
-        .withArgs(poolBAddress);
-    });
   });
 
   describe('transferFrom', () => {
@@ -342,19 +318,6 @@ describe('ERC20BalancerPoolToken', function () {
       )
         .to.emit(poolA, 'Transfer')
         .withArgs(user.address, relayer.address, bptAmount);
-    });
-
-    it('vault cannot transfer a non-BPT ERC20 token', async () => {
-      await tokenA.mint(user.address, bptAmount);
-      expect(await tokenA.balanceOf(user.address)).to.equal(bptAmount);
-
-      await expect(
-        vault
-          .connect(unregisteredPoolSigner)
-          .transferFromERC20(relayer.address, user.address, relayer.address, bptAmount)
-      )
-        .to.be.revertedWithCustomError(vault, 'PoolNotRegistered')
-        .withArgs(poolBAddress);
     });
 
     it('cannot transfer ERC20 BPT to zero address', async () => {

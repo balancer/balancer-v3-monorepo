@@ -12,12 +12,10 @@ export async function setupEnvironment(factory: string): Promise<{
   tokens: ERC20TestToken[];
   pools: ERC20PoolMock[];
 }> {
-  const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
-
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
 
-  const vault: VaultMock = await deploy('VaultMock', { args: [WETH, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
+  const vault: VaultMock = await deploy('VaultMock', { args: [PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
   const vaultAddress = await vault.getAddress();
 
   const tokenA: ERC20TestToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });

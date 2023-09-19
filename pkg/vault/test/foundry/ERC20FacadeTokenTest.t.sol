@@ -9,14 +9,14 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC20Errors.sol";
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
-import { ERC20BalancerPoolToken } from "../../contracts/ERC20BalancerPoolToken.sol";
-import { ArrayHelpers } from "../../contracts/test/ArrayHelpers.sol";
+import { ERC20FacadeToken } from "../../contracts/ERC20FacadeToken.sol";
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
-contract ERC20BalancerPoolTokenTest is Test {
+contract ERC20FacadeTokenTest is Test {
     using AssetHelpers for address[];
     using ArrayHelpers for address[2];
 
@@ -24,7 +24,7 @@ contract ERC20BalancerPoolTokenTest is Test {
     ERC20PoolMock token;
 
     function setUp() public {
-        vault = new VaultMock(IWETH(address(0)), 30 days, 90 days);
+        vault = new VaultMock(30 days, 90 days);
         token = new ERC20PoolMock(
             vault,
             "ERC20 Pool",

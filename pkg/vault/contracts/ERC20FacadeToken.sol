@@ -9,10 +9,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /**
- * @notice Base contract for all ERC20 Balancer pools. Often abbreviated as "BPT" = Balancer Pool Token.
- * @dev These are the base of all ERC20 pools; there is a corresponding contract for ERC721 Pools.
+ * @notice A full ERC20 compatible token with all the data and implementation delegated to the ERC20Multitoken contract
  */
-contract ERC20BalancerPoolToken is IERC20, IERC20Metadata, IVaultErrors {
+contract ERC20FacadeToken is IERC20, IERC20Metadata, IVaultErrors {
     IVault private immutable _vault;
 
     string private _name;

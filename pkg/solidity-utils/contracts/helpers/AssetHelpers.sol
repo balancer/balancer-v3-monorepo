@@ -2,13 +2,23 @@
 
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
-
-type Asset is address;
+import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { Asset } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/Asset.sol";
 
 library AssetHelpers {
+    using Address for address payable;
+    using AssetHelpers for *;
+    using SafeERC20 for IERC20;
+
+    /**
+     * @dev
+     */
+    error InsufficientEth();
+
     // Sentinel value used to indicate WETH with wrapping/unwrapping semantics. The zero address is a good choice for
     // multiple reasons: it is cheap to pass as a calldata argument, it is a known invalid token and non-contract, and
     // it is an address Pools cannot register as a token.
@@ -29,7 +39,7 @@ library AssetHelpers {
      * to the WETH contract.
      */
     function toIERC20(Asset asset, IWETH weth) internal pure returns (IERC20) {
-        return isETH(asset) ? weth : asIERC20(asset);
+        return asset.isETH() ? weth : asIERC20(asset);
     }
 
     /// @dev Same as `toIERC20(Asset)`, but for an array.
@@ -57,11 +67,128 @@ library AssetHelpers {
         }
     }
 
+    /// @dev Returns assets as an array of address[] memory
+    function asAddress(Asset[] memory assets) internal pure returns (address[] memory addresses) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            addresses := assets
+        }
+    }
+
+    /// @dev Returns an Asset as an address
+    function asAddress(Asset asset) internal pure returns (address addr) {
+        return Asset.unwrap(asset);
+    }
+
     /// @dev Returns tokens as an array of address[] memory
     function asAddress(IERC20[] memory tokens) internal pure returns (address[] memory addresses) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             addresses := tokens
+        }
+    }
+
+    /// @dev Returns addresses as an array of Asset[] memory
+    function asAsset(address[] memory addresses) internal pure returns (Asset[] memory assets) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            assets := addresses
+        }
+    }
+
+    /// @dev Returns an IERC20 as an Asset
+    function asAsset(IERC20 addr) internal pure returns (Asset asset) {
+        return Asset.wrap(address(addr));
+    }
+
+    /// @dev Returns an address as an Asset
+    function asAsset(address addr) internal pure returns (Asset asset) {
+        return Asset.wrap(addr);
+    }
+
+    /// @dev Returns balance of the asset for `this`
+    function balanceOf(Asset asset) internal view returns (uint256) {
+        if (asset.isETH()) {
+            return address(this).balance;
+        } else {
+            return IERC20(address(Asset.unwrap(asset))).balanceOf(address(this));
+        }
+    }
+
+    /**
+     * @dev Receives `amount` of `asset` from `from`. If `fromInternalBalance` is true, it first withdraws as much
+     * as possible from Internal Balance, then transfers any remaining amount.
+     *
+     * If `asset` is ETH, `fromInternalBalance` must be false (as ETH cannot be held as internal balance), and the funds
+     * will be wrapped into WETH.
+     *
+     * WARNING: this function does not check that the contract caller has actually supplied any ETH - it is up to the
+     * caller of this function to check that this is true to prevent the Vault from using its own ETH (though the Vault
+     * typically doesn't hold any).
+     */
+    function retrieve(Asset asset, address from, uint256 amount, IWETH weth) internal {
+        if (amount == 0) {
+            return;
+        }
+
+        if (asset.isETH()) {
+            // The ETH amount to receive is deposited into the WETH contract, which will in turn mint WETH for
+            // the Vault at a 1:1 ratio.
+
+            // A check for this condition is also introduced by the compiler, but this one provides a revert reason.
+            // Note we're checking for the Vault's total balance, *not* ETH sent in this transaction.
+            if (address(this).balance < amount) {
+                revert InsufficientEth();
+            }
+            weth.deposit{ value: amount }();
+        } else {
+            IERC20 token = asset.asIERC20();
+
+            token.safeTransferFrom(from, address(this), amount);
+        }
+    }
+
+    /**
+     * @dev Sends `amount` of `asset` to `recipient`. If `toInternalBalance` is true, the asset is deposited as Internal
+     * Balance instead of being transferred.
+     *
+     * If `asset` is ETH, `toInternalBalance` must be false (as ETH cannot be held as internal balance), and the funds
+     * are instead sent directly after unwrapping WETH.
+     */
+    function send(Asset asset, address recipient, uint256 amount, IWETH weth) internal {
+        if (amount == 0) {
+            return;
+        }
+
+        if (asset.isETH()) {
+            // First, the Vault withdraws deposited ETH from the WETH contract, by burning the same amount of WETH
+            // from the Vault. This receipt will be handled by the Vault's `receive`.
+            weth.withdraw(amount);
+
+            // Then, the withdrawn ETH is sent to the recipient.
+            payable(recipient).sendValue(amount);
+        } else {
+            asset.asIERC20().safeTransfer(recipient, amount);
+        }
+    }
+
+    /**
+     * @dev Returns excess ETH back to the contract caller, assuming `amountUsed` has been spent. Reverts
+     * if the caller sent less ETH than `amountUsed`.
+     *
+     * Because the caller might not know exactly how much ETH a Vault action will require, they may send extra.
+     * Note that this excess value is returned *to the contract caller* (msg.sender). If caller and e.g. swap sender are
+     * not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
+     * returned ETH.
+     */
+    function returnEth(address sender, uint256 amountUsed) internal {
+        if (msg.value < amountUsed) {
+            revert InsufficientEth();
+        }
+
+        uint256 excess = msg.value - amountUsed;
+        if (excess > 0) {
+            payable(sender).sendValue(excess);
         }
     }
 }

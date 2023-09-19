@@ -2,125 +2,253 @@
 
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Asset } from "../solidity-utils/misc/Asset.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../solidity-utils/misc/IWETH.sol";
-
-/**
- * @dev Full external interface for the Vault core contract - no external or public methods exist in the contract that
- * don't override one of these declarations.
- */
+/// @notice Interface for the Vault
 interface IVault {
-    /// Generalities about the Vault:
-    ///
-    /// The Vault supports standard ERC20 and ERC721 pool tokens. The only deviation from the standards that
-    /// is supported is functions that fail to return an expected boolean value: in these scenarios, a non-reverting
-    /// call is assumed to be successful.
-    ///
-    /// - All non-view functions in the Vault are non-reentrant: calling them while another one is mid-execution (e.g.
-    /// while execution control is transferred to a token contract during a swap) will result in a revert. View
-    /// functions can be called in a re-reentrant way, but doing so might cause them to return inconsistent results.
-    /// Contracts calling view functions in the Vault must make sure the Vault has not already been entered.
-    ///
-    /// - View functions revert if referring to either unregistered Pools, or unregistered tokens for registered Pools.
-
-    /// @dev Expose the WETH address (for wrapping and unwrapping native ETH).
-    // solhint-disable-next-line func-name-mixedcase
-    function WETH() external view returns (IWETH);
-
     /*******************************************************************************
                                     Pool Registration
     *******************************************************************************/
 
     /**
-     * @dev Registers the caller account as a Pool. Must be called by the Pool's contract. Pools and tokens cannot
-     * be deregistered.
-     *
-     * Pools can only interact with tokens they have registered. Users join a Pool by transferring registered tokens,
-     * exit by receiving registered tokens, and can only swap registered tokens.
-     *
-     * Emits a `PoolRegistered` event.
-     * @param factory Address of the factory that deployed this pool
-     * @param tokens Tokens registered with this pool
+     * @notice Registers a pool, associating it with its factory and the tokens it manages.
+     * @param factory The factory address associated with the pool being registered.
+     * @param tokens An array of token addresses the pool will manage.
      */
     function registerPool(address factory, IERC20[] memory tokens) external;
 
-    /// @dev Returns whether or not an address corresponds to a registered pool.
+    /**
+     * @notice Checks if a pool is registered
+     * @param pool                           Address of the pool to check
+     * @return                               True if the pool is registered, false otherwise
+     */
     function isRegisteredPool(address pool) external view returns (bool);
 
     /**
-     * @dev Returns a Pool's registered tokens and balances.
-     *
-     * The order of the `tokens` and `balances` arrays is the same order that will be used in `joinPool`, `exitPool`,
-     * as well as in all Pool hooks (where applicable).
+     * @notice Gets tokens and their balances of a pool
+     * @param pool                           Address of the pool
+     * @return tokens                        List of tokens in the pool
+     * @return balances                      Corresponding balances of the tokens
      */
     function getPoolTokens(address pool) external view returns (IERC20[] memory tokens, uint256[] memory balances);
+
+    /// @notice Emitted when a Pool is registered by calling `registerPool`.
+    event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
 
     /*******************************************************************************
                                  ERC20 Balancer Pool Tokens 
     *******************************************************************************/
 
-    /// @dev Returns the total supply of an ERC20 Balancer Pool Token.
-    function totalSupplyOfERC20(address poolToken) external view returns (uint256);
-
-    /// @dev Returns an account's balance of an ERC20 Balancer Pool Token.
-    function balanceOfERC20(address poolToken, address account) external view returns (uint256);
+    /**
+     * @notice Gets total supply of a given ERC20 token
+     * @param token                          Token's address
+     * @return                               Total supply of the token
+     */
+    function totalSupplyOfERC20(address token) external view returns (uint256);
 
     /**
-     * @dev Permissioned function to transfer an ERC20 Balancer Pool Token.
-     * Can only be called from a registered pool.
+     * @notice Gets balance of an account for a given ERC20 token
+     * @param token                          Token's address
+     * @param account                        Account's address
+     * @return                               Balance of the account for the token
+     */
+    function balanceOfERC20(address token, address account) external view returns (uint256);
+
+    /**
+     * @notice Transfers ERC20 token from owner to a recipient
+     * @param owner                          Owner's address
+     * @param to                             Recipient's address
+     * @param amount                         Amount of tokens to transfer
+     * @return                               True if successful, false otherwise
      */
     function transferERC20(address owner, address to, uint256 amount) external returns (bool);
 
     /**
-     * @dev Permissioned function to transferFrom an ERC20 Balancer pool token.
-     * Can only be called from a registered pool.
+     * @notice Transfers from a sender to a recipient using an allowance
+     * @param spender                        Address allowed to perform the transfer
+     * @param from                           Sender's address
+     * @param to                             Recipient's address
+     * @param amount                         Amount of tokens to transfer
+     * @return                               True if successful, false otherwise
      */
     function transferFromERC20(address spender, address from, address to, uint256 amount) external returns (bool);
 
-    /// @dev Returns an owner's ERC20 BPT allowance for a given spender.
-    function allowanceOfERC20(address poolToken, address owner, address spender) external view returns (uint256);
+    /**
+     * @notice Gets allowance of a spender for a given ERC20 token and owner
+     * @param token                          Token's address
+     * @param owner                          Owner's address
+     * @param spender                        Spender's address
+     * @return                               Amount of tokens the spender is allowed to spend
+     */
+    function allowanceOfERC20(address token, address owner, address spender) external view returns (uint256);
 
     /**
-     * @dev Permissioned function to set a sender's ERC20 BPT allowance for a given spender. Can only be called
-     * from a registered pool.
+     * @notice Approves a spender to spend tokens on behalf of sender
+     * @param sender                         Owner's address
+     * @param spender                        Spender's address
+     * @param amount                         Amount of tokens to approve
+     * @return                               True if successful, false otherwise
      */
     function approveERC20(address sender, address spender, uint256 amount) external returns (bool);
 
     /*******************************************************************************
-                               ERC721 Balancer Pool Tokens 
+                              Transient Accounting
     *******************************************************************************/
 
-    /// @dev Returns an account's balance of a Balancer ERC721 pool token.
-    function balanceOfERC721(address token, address owner) external view returns (uint256);
+    /**
+     * @notice Invokes a callback on msg.sender with arguments provided in `data`.
+     * Callback is `transient`, meaning all balances for the caller have to be settled at the end.
+     * @param data                           Contain function signature and args to be passed to the msg.sender
+     * @return result                        Resulting data from the call
+     */
+    function invoke(bytes calldata data) external payable returns (bytes memory result);
 
-    /// @dev Returns the owner of an ERC721 Balancer pool token.
-    function ownerOfERC721(address token, uint256 tokenId) external view returns (address);
+    /**
+     * @notice Settles deltas for a token
+     * @param token                          Token's address
+     * @return paid                          Amount paid during settlement
+     */
+    function settle(IERC20 token) external returns (uint256 paid);
 
-    /// @dev See {IERC721-getApproved}.
-    function getApprovedERC721(address token, uint256 tokenId) external view returns (address);
+    /**
+     * @notice Sends tokens to a recipient
+     * @param token                          Token's address
+     * @param to                             Recipient's address
+     * @param amount                         Amount of tokens to send
+     */
+    function wire(IERC20 token, address to, uint256 amount) external;
 
-    /// @dev See {IERC721-isApprovedForAll}.
-    function isApprovedForAllERC721(address token, address owner, address operator) external view returns (bool);
+    /**
+     * @notice Mints tokens to a recipient
+     * @param token                          Token's address
+     * @param to                             Recipient's address
+     * @param amount                         Amount of tokens to mint
+     */
+    function mint(IERC20 token, address to, uint256 amount) external;
 
-    /// @dev Can only be called by a registered ERC721 pool. See {IERC721-approve}.
-    function approveERC721(address sender, address to, uint256 tokenId) external;
+    /**
+     * @notice Retrieves tokens from a sender
+     * @param token                          Token's address
+     * @param from                           Sender's address
+     * @param amount                         Amount of tokens to retrieve
+     */
+    function retrieve(IERC20 token, address from, uint256 amount) external;
 
-    /// @dev Can only be called by a registered ERC721 pool. See {IERC721-setApprovalForAll}.
-    function setApprovalForAllERC721(address sender, address operator, bool approved) external;
+    /**
+     * @notice Burns tokens from an owner
+     * @param token                          Token's address
+     * @param owner                          Owner's address
+     * @param amount                         Amount of tokens to burn
+     */
+    function burn(IERC20 token, address owner, uint256 amount) external;
 
-    /// @dev Can only be called by a registered ERC721 pool. See {IERC721-transferFrom}.
-    function transferFromERC721(address sender, address from, address to, uint256 tokenId) external;
+    /**
+     * @dev Returns the address at the specified index of the _handlers array.
+     * @param index The index of the handler's address to fetch.
+     * @return The address at the given index.
+     */
+    function getHandler(uint256 index) external view returns (address);
 
-    /// @dev Can only be called by a registered ERC721 pool. See {IERC721-safeTransferFrom}.
-    function safeTransferFromERC721(address sender, address from, address to, uint256 tokenId) external;
+    /**
+     * @dev Returns the total number of handlers.
+     * @return The number of handlers.
+     */
+    function getHandlersCount() external view returns (uint256);
 
-    /// @dev Can only be called by a registered ERC721 pool. See {IERC721-safeTransferFrom}.
-    function safeTransferFromERC721(
-        address sender,
-        address from,
-        address to,
-        uint256 tokenId,
-        bytes memory data
-    ) external;
+    /**
+     *  @notice Returns the count of non-zero deltas
+     *  @return The current value of _nonzeroDeltaCount
+     */
+    function getNonzeroDeltaCount() external view returns (uint256);
+
+    /**
+     * @notice Retrieves the token delta for a specific user and token.
+     * @dev This function allows reading the value from the `_tokenDeltas` mapping.
+     * @param user The address of the user for whom the delta is being fetched.
+     * @param token The token for which the delta is being fetched.
+     * @return The delta of the specified token for the specified user.
+     */
+    function getTokenDelta(address user, IERC20 token) external view returns (int256);
+
+    /**
+     * @notice Retrieves the reserve of a given token.
+     * @param token The token for which to retrieve the reserve.
+     * @return The amount of reserves for the given token.
+     */
+    function getTokenReserve(IERC20 token) external view returns (uint256);
+
+    enum SwapKind {
+        GIVEN_IN,
+        GIVEN_OUT
+    }
+
+    /**
+     * @notice Swaps tokens based on provided parameters
+     * @param params                         Parameters for the swap
+     * @return amountCalculated              Calculated swap amount
+     * @return amountIn                      Amount of input tokens for the swap
+     * @return amountOut                     Amount of output tokens from the swap
+     */
+    function swap(
+        SwapParams memory params
+    ) external returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut);
+
+    struct SwapParams {
+        /// @notice Type of the swap.
+        SwapKind kind;
+        /// @notice Address of the pool.
+        address pool;
+        /// @notice Token given in the swap.
+        IERC20 tokenIn;
+        /// @notice Token received from the swap.
+        IERC20 tokenOut;
+        /// @notice Amount of token given.
+        uint256 amountGiven;
+        /// @notice Additional data for the swap.
+        bytes userData;
+    }
+
+    event Swap(
+        address indexed pool,
+        IERC20 indexed tokenIn,
+        IERC20 indexed tokenOut,
+        uint256 amountIn,
+        uint256 amountOut
+    );
+
+    /**
+     * @notice Adds liquidity to a pool
+     * @param pool                           Address of the pool
+     * @param assets                         Assets involved in the liquidity
+     * @param amountsIn                      Desired amounts of input assets
+     * @param userData                       Additional user data
+     * @return calculatedAmountsIn           Actual amounts of input assets
+     * @return bptAmountOut                  Output pool token amount
+     */
+    function addLiquidity(
+        address pool,
+        IERC20[] memory assets,
+        uint256[] memory amountsIn,
+        bytes memory userData
+    ) external returns (uint256[] memory calculatedAmountsIn, uint256 bptAmountOut);
+
+    /**
+     * @notice Removes liquidity from a pool
+     * @param pool                           Address of the pool
+     * @param assets                         Assets involved in the liquidity removal
+     * @param amountsOut                     Desired amounts of output assets
+     * @param bptAmountIn                    Input pool token amount
+     * @param userData                       Additional user data
+     * @return calculatedAmountsOut          Actual amounts of output assets
+     */
+    function removeLiquidity(
+        address pool,
+        IERC20[] memory assets,
+        uint256[] memory amountsOut,
+        uint256 bptAmountIn,
+        bytes memory userData
+    ) external returns (uint256[] memory calculatedAmountsOut);
+
+    event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
 }

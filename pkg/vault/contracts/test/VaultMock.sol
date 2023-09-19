@@ -11,10 +11,9 @@ import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/
 
 contract VaultMock is Vault {
     constructor(
-        IWETH weth,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) Vault(weth, pauseWindowDuration, bufferPeriodDuration) {
+    ) Vault(pauseWindowDuration, bufferPeriodDuration) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -24,22 +23,6 @@ contract VaultMock is Vault {
 
     function mintERC20(address poolToken, address to, uint256 amount) external {
         _mintERC20(poolToken, to, amount);
-    }
-
-    function mintERC721(address poolToken, address to, uint256 tokenId) external {
-        _mintERC721(poolToken, to, tokenId);
-    }
-
-    function burnERC721(address poolToken, uint256 tokenId) external {
-        _burnERC721(poolToken, tokenId);
-    }
-
-    function safeMintERC721(address poolToken, address to, uint256 tokenId) external {
-        _safeMintERC721(poolToken, msg.sender, to, tokenId);
-    }
-
-    function safeMintERC721(address poolToken, address to, uint256 tokenId, bytes memory data) external {
-        _safeMintERC721(poolToken, msg.sender, to, tokenId, data);
     }
 
     function pause() external {
