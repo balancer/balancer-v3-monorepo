@@ -69,15 +69,22 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             params.pool,
             tokens,
             params.maxAmountsIn,
-            params.minBptAmountOut,
             params.userData
         );
+
+        if (bptAmountOut < params.minBptAmountOut) {
+            revert IVaultErrors.BtpAmountBelowMin();
+        }
 
         uint256 ethAmountIn;
         for (uint256 i = 0; i < params.assets.length; ++i) {
             // Receive assets from the handler
             Asset asset = params.assets[i];
             uint256 amountIn = amountsIn[i];
+
+            if (amountIn > params.maxAmountsIn[i]) {
+                revert IVaultErrors.JoinAboveMax();
+            }
 
             IERC20 token = asset.toIERC20(_weth);
 

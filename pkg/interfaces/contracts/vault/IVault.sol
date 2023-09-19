@@ -221,19 +221,17 @@ interface IVault {
      * @notice Adds liquidity to a pool
      * @param pool                           Address of the pool
      * @param assets                         Assets involved in the liquidity
-     * @param maxAmountsIn                   Maximum amounts of input assets
-     * @param minBptAmountOut                Minimum output pool token amount
+     * @param givenAmountsIn                 Maximum amounts of input assets
      * @param userData                       Additional user data
-     * @return amountsIn                     Actual amounts of input assets
+     * @return takenAmountsIn                Actual amounts of input assets
      * @return bptAmountOut                  Output pool token amount
      */
     function addLiquidity(
         address pool,
         IERC20[] memory assets,
-        uint256[] memory maxAmountsIn,
-        uint256 minBptAmountOut,
+        uint256[] memory givenAmountsIn,
         bytes memory userData
-    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+    ) external returns (uint256[] memory takenAmountsIn, uint256 bptAmountOut);
 
     /**
      * @notice Removes liquidity from a pool
