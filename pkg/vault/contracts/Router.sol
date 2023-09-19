@@ -144,6 +144,9 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         uint256 ethAmountOut;
         for (uint256 i = 0; i < params.assets.length; ++i) {
             uint256 amountOut = amountsOut[i];
+            if (amountOut < params.minAmountsOut[i]) {
+                revert IVaultErrors.ExitBelowMin();
+            }
 
             Asset asset = params.assets[i];
             IERC20 token = asset.toIERC20(_weth);

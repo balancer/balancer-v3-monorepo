@@ -501,16 +501,16 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     function addLiquidity(
         address pool,
         IERC20[] memory tokens,
-        uint256[] memory maxAmountsIn,
+        uint256[] memory amountsIn,
         bytes memory userData
     )
         external
         withHandler
         whenNotPaused
         withRegisteredPool(pool)
-        returns (uint256[] memory amountsIn, uint256 bptAmountOut)
+        returns (uint256[] memory calculatedAmountsIn, uint256 bptAmountOut)
     {
-        InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
+        InputHelpers.ensureInputLengthMatch(tokens.length, amountsIn.length);
 
         // We first check that the caller passed the Pool's registered tokens in the correct order
         // and retrieve the current balance for each.
@@ -518,11 +518,11 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
         // The bulk of the work is done here: the corresponding Pool hook is called
         // its final balances are computed
-        (amountsIn, bptAmountOut) = IBasePool(pool).onAddLiquidity(msg.sender, balances, maxAmountsIn, userData);
+        (calculatedAmountsIn, bptAmountOut) = IBasePool(pool).onAddLiquidity(msg.sender, balances, amountsIn, userData);
 
         uint256[] memory finalBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            uint256 amountIn = amountsIn[i];
+            uint256 amountIn = calculatedAmountsIn[i];
 
             // Debit of token[i] for amountIn
             _takeDebt(tokens[i], amountIn, msg.sender);
@@ -536,32 +536,29 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         // Credit bptAmountOut of pool tokens
         _supplyCredit(IERC20(pool), bptAmountOut, msg.sender);
 
-        emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.safeCastToInt256(true));
+        emit PoolBalanceChanged(pool, msg.sender, tokens, calculatedAmountsIn.safeCastToInt256(true));
     }
 
     /// @inheritdoc IVault
     function removeLiquidity(
         address pool,
         IERC20[] memory tokens,
-        uint256[] memory minAmountsOut,
+        uint256[] memory amountsOut,
         uint256 bptAmountIn,
         bytes memory userData
-    ) external whenNotPaused nonReentrant withRegisteredPool(pool) returns (uint256[] memory amountsOut) {
-        InputHelpers.ensureInputLengthMatch(tokens.length, minAmountsOut.length);
+    ) external whenNotPaused nonReentrant withRegisteredPool(pool) returns (uint256[] memory calculatedAmountsOut) {
+        InputHelpers.ensureInputLengthMatch(tokens.length, amountsOut.length);
 
         // We first check that the caller passed the Pool's registered tokens in the correct order, and retrieve the
         // current balance for each.
         uint256[] memory balances = _validateTokensAndGetBalances(pool, tokens);
 
         // The bulk of the work is done here: the corresponding Pool hook is called, its final balances are computed
-        amountsOut = IBasePool(pool).onRemoveLiquidity(msg.sender, balances, minAmountsOut, bptAmountIn, userData);
+        calculatedAmountsOut = IBasePool(pool).onRemoveLiquidity(msg.sender, balances, amountsOut, bptAmountIn, userData);
 
         uint256[] memory finalBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            uint256 amountOut = amountsOut[i];
-            if (amountOut < minAmountsOut[i]) {
-                revert ExitBelowMin();
-            }
+            uint256 amountOut = calculatedAmountsOut[i];
             // Credit token[i] for amountOut
             _supplyCredit(tokens[i], amountOut, msg.sender);
 
@@ -575,7 +572,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         // Debit bptAmountIn of pool tokens
         _takeDebt(IERC20(pool), bptAmountIn, msg.sender);
 
-        emit PoolBalanceChanged(pool, msg.sender, tokens, amountsOut.safeCastToInt256(false));
+        emit PoolBalanceChanged(pool, msg.sender, tokens, calculatedAmountsOut.safeCastToInt256(false));
     }
 
     /**

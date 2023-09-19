@@ -221,34 +221,34 @@ interface IVault {
      * @notice Adds liquidity to a pool
      * @param pool                           Address of the pool
      * @param assets                         Assets involved in the liquidity
-     * @param givenAmountsIn                 Maximum amounts of input assets
+     * @param amountsIn                      Desired amounts of input assets
      * @param userData                       Additional user data
-     * @return takenAmountsIn                Actual amounts of input assets
+     * @return calculatedAmountsIn           Actual amounts of input assets
      * @return bptAmountOut                  Output pool token amount
      */
     function addLiquidity(
         address pool,
         IERC20[] memory assets,
-        uint256[] memory givenAmountsIn,
+        uint256[] memory amountsIn,
         bytes memory userData
-    ) external returns (uint256[] memory takenAmountsIn, uint256 bptAmountOut);
+    ) external returns (uint256[] memory calculatedAmountsIn, uint256 bptAmountOut);
 
     /**
      * @notice Removes liquidity from a pool
      * @param pool                           Address of the pool
      * @param assets                         Assets involved in the liquidity removal
-     * @param minAmountsOut                  Minimum amounts of output assets
+     * @param amountsOut                     Desired amounts of output assets
      * @param bptAmountIn                    Input pool token amount
      * @param userData                       Additional user data
-     * @return amountsOut                    Actual amounts of output assets
+     * @return calculatedAmountsOut          Actual amounts of output assets
      */
     function removeLiquidity(
         address pool,
         IERC20[] memory assets,
-        uint256[] memory minAmountsOut,
+        uint256[] memory amountsOut,
         uint256 bptAmountIn,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut);
+    ) external returns (uint256[] memory calculatedAmountsOut);
 
     event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
 }
