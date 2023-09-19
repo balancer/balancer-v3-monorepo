@@ -554,7 +554,13 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         uint256[] memory balances = _validateTokensAndGetBalances(pool, tokens);
 
         // The bulk of the work is done here: the corresponding Pool hook is called, its final balances are computed
-        calculatedAmountsOut = IBasePool(pool).onRemoveLiquidity(msg.sender, balances, amountsOut, bptAmountIn, userData);
+        calculatedAmountsOut = IBasePool(pool).onRemoveLiquidity(
+            msg.sender,
+            balances,
+            amountsOut,
+            bptAmountIn,
+            userData
+        );
 
         uint256[] memory finalBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
