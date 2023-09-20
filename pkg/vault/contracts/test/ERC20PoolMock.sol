@@ -9,10 +9,10 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { BasePoolToken } from "../BasePoolToken.sol";
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
+import { ERC20FacadeToken } from "../ERC20FacadeToken.sol";
 
-contract ERC20PoolMock is BasePoolToken, IBasePool {
+contract ERC20PoolMock is ERC20FacadeToken, IBasePool {
     using FixedPoint for uint256;
 
     IVault private immutable _vault;
@@ -26,7 +26,7 @@ contract ERC20PoolMock is BasePoolToken, IBasePool {
         address factory,
         IERC20[] memory tokens,
         bool registerPool
-    ) BasePoolToken(vault, name, symbol) {
+    ) ERC20FacadeToken(vault, name, symbol) {
         _vault = vault;
 
         if (registerPool) {
