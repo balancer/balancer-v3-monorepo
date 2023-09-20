@@ -136,13 +136,13 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         _tokenReserves[token] = token.balanceOf(address(this));
         paid = _tokenReserves[token] - reservesBefore;
         // subtraction must be safe
-        _accountDelta(token, -paid.toInt256(), msg.sender);
+        _supplyCredit(token, paid, msg.sender);
     }
 
     /// @inheritdoc IVault
     function wire(IERC20 token, address to, uint256 amount) public withHandler {
         // effects
-        _accountDelta(token, amount.toInt256(), msg.sender);
+        _takeDebt(token, amount, msg.sender);
         _tokenReserves[token] -= amount;
         // interactions
         token.safeTransfer(to, amount);
@@ -150,14 +150,14 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
     /// @inheritdoc IVault
     function mint(IERC20 token, address to, uint256 amount) public withHandler {
-        _accountDelta(token, amount.toInt256(), msg.sender);
+        _takeDebt(token, amount, msg.sender);
         _mintERC20(address(token), to, amount);
     }
 
     /// @inheritdoc IVault
     function retrieve(IERC20 token, address from, uint256 amount) public withHandler {
         // effects
-        _accountDelta(token, -(amount.toInt256()), msg.sender);
+        _supplyCredit(token, amount, msg.sender);
         _tokenReserves[token] += amount;
         // interactions
         token.safeTransferFrom(from, address(this), amount);
@@ -165,9 +165,30 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
     /// @inheritdoc IVault
     function burn(IERC20 token, address owner, uint256 amount) public withHandler {
+        _supplyCredit(token, amount, msg.sender);
         _spendAllowance(address(token), owner, address(this), amount);
         _burnERC20(address(token), owner, amount);
-        _accountDelta(token, -(amount.toInt256()), msg.sender);
+    }
+
+    /** @notice Records the `debt` for a given handler and token.
+     *
+     * @param token   The ERC20 token for which the `debt` will be accounted.
+     * @param debt    The amount of `token` taken from the Vault in favor of the `handler`.
+     * @param handler The account responsible for the debt.
+     */
+    function _takeDebt(IERC20 token, uint256 debt, address handler) internal {
+        _accountDelta(token, debt.toInt256(), handler);
+    }
+
+    /**
+     * @notice Records the `credit` for a given handler and token.
+     *
+     * @param token   The ERC20 token for which the 'credit' will be accounted.
+     * @param credit  The amount of `token` supplied to the Vault in favor of the `handler`.
+     * @param handler The account credited with the amount.
+     */
+    function _supplyCredit(IERC20 token, uint256 credit, address handler) internal {
+        _accountDelta(token, -credit.toInt256(), handler);
     }
 
     /// @inheritdoc IVault
@@ -199,46 +220,46 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /**
-     * @dev Accounts the delta for the given handler and token.
-     * Positive delta represents debt, while negative delta represents surplus.
-     * The function ensures that only the specified handler can update its respective delta.
+     * @notice Manages the delta for a specific handler and token.
+     * @dev A positive delta indicates debt, while a negative delta indicates surplus.
+     * This function ensures that only the specified handler can modify its respective delta.
      *
-     * @param token   The ERC20 token for which the delta is being accounted.
-     * @param delta   The difference in the token balance.
-     *                Positive indicates a debit or a decrease in Vault's assets,
-     *                negative indicates a credit or an increase in Vault's assets.
-     * @param handler The handler whose balance difference is being accounted for.
-     *                Must be the same as the caller of the function.
+     * @param token   The ERC20 token for which the delta will be accounted.
+     * @param delta   The variation in the token balance.
+     *                A positive value indicates a debit or a decrease in Vault's assets.
+     *                A negative value indicates a credit or an increase in Vault's assets.
+     * @param handler The handler whose balance variation is being accounted for.
+     *                Must match the caller of the function.
      */
     function _accountDelta(IERC20 token, int256 delta, address handler) internal {
-        // If the delta is zero, there's nothing to account for.
+        // Skip if the delta is zero.
         if (delta == 0) return;
 
-        // Ensure that the handler specified is indeed the caller.
+        // Confirm the specified handler is the caller.
         if (handler != msg.sender) {
             revert WrongHandler(handler, msg.sender);
         }
 
-        // Get the current recorded delta for this token and handler.
+        // Retrieve the current recorded delta for this token and handler.
         int256 current = _tokenDeltas[handler][token];
 
-        // Calculate the new delta after accounting for the change.
+        // Compute the new delta after considering the change.
         int256 next = current + delta;
 
         unchecked {
-            // If the resultant delta becomes zero after this operation,
-            // decrease the count of non-zero deltas.
+            // If the resultant delta is zero after this operation,
+            // decrement the count of non-zero deltas.
             if (next == 0) {
                 _nonzeroDeltaCount--;
             }
-            // If there was no previous delta (i.e., it was zero) and now we have one,
-            // increase the count of non-zero deltas.
+            // If there wasn't any previous delta (i.e., it was zero) and now there's one,
+            // increment the count of non-zero deltas.
             else if (current == 0) {
                 _nonzeroDeltaCount++;
             }
         }
 
-        // Update the delta for this token and handler.
+        // Store the updated delta for this token and handler.
         _tokenDeltas[handler][token] = next;
     }
 
