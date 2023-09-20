@@ -65,13 +65,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
-        (amountsIn, bptAmountOut) = _vault.addLiquidity(
-            params.pool,
-            tokens,
-            params.maxAmountsIn,
-            params.minBptAmountOut,
-            params.userData
-        );
+        (amountsIn, bptAmountOut) = _vault.addLiquidity(params.pool, tokens, params.maxAmountsIn, params.userData);
 
         if (bptAmountOut < params.minBptAmountOut) {
             revert IVaultErrors.BtpAmountBelowMin();
@@ -304,8 +298,6 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         Asset assetIn,
         Asset assetOut,
         uint256 amountGiven,
-        uint256 limit,
-        uint256 deadline,
         bytes calldata userData
     ) external payable returns (uint256 amountCalculated) {
         return
@@ -320,8 +312,8 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
                             assetIn: assetIn,
                             assetOut: assetOut,
                             amountGiven: amountGiven,
-                            limit: limit,
-                            deadline: deadline,
+                            limit: kind == IVault.SwapKind.GIVEN_IN ? 0 : type(uint256).max,
+                            deadline: type(uint256).max,
                             userData: userData
                         })
                     )
@@ -370,13 +362,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
-        (amountsIn, bptAmountOut) = _vault.addLiquidity(
-            params.pool,
-            tokens,
-            params.maxAmountsIn,
-            params.minBptAmountOut,
-            params.userData
-        );
+        (amountsIn, bptAmountOut) = _vault.addLiquidity(params.pool, tokens, params.maxAmountsIn, params.userData);
     }
 
     /// @inheritdoc IRouter
