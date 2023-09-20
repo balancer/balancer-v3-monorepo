@@ -33,6 +33,9 @@ interface IVault {
      */
     function getPoolTokens(address pool) external view returns (IERC20[] memory tokens, uint256[] memory balances);
 
+    /// @notice Emitted when a Pool is registered by calling `registerPool`.
+    event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
+
     /*******************************************************************************
                                  ERC20 Balancer Pool Tokens 
     *******************************************************************************/
