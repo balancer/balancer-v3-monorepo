@@ -221,7 +221,7 @@ interface IVault {
      * Legacy functions eeded for tests to pass
      */
 
-   /**
+    /**
      * @notice Adds liquidity to a pool
      * @param pool                           Address of the pool
      * @param assets                         Assets involved in the liquidity

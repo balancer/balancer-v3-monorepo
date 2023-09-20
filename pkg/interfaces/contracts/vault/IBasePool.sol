@@ -29,7 +29,7 @@ interface IBasePool {
         uint256[] memory maxAmountsIn,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
-    
+
     function onAddLiquidityUnbalanced(
         address sender,
         uint256[] memory exactAmountsIn,
