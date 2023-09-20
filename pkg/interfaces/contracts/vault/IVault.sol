@@ -218,7 +218,7 @@ interface IVault {
     );
 
     /**
-     * Legacy functions eeded for tests to pass
+     * Legacy functions needed for tests to pass
      */
 
     /**
