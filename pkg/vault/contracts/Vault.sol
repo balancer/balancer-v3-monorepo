@@ -170,27 +170,6 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         _burnERC20(address(token), owner, amount);
     }
 
-    /** @notice Records the `debt` for a given handler and token.
-     *
-     * @param token   The ERC20 token for which the `debt` will be accounted.
-     * @param debt    The amount of `token` taken from the Vault in favor of the `handler`.
-     * @param handler The account responsible for the debt.
-     */
-    function _takeDebt(IERC20 token, uint256 debt, address handler) internal {
-        _accountDelta(token, debt.toInt256(), handler);
-    }
-
-    /**
-     * @notice Records the `credit` for a given handler and token.
-     *
-     * @param token   The ERC20 token for which the 'credit' will be accounted.
-     * @param credit  The amount of `token` supplied to the Vault in favor of the `handler`.
-     * @param handler The account credited with the amount.
-     */
-    function _supplyCredit(IERC20 token, uint256 credit, address handler) internal {
-        _accountDelta(token, -credit.toInt256(), handler);
-    }
-
     /// @inheritdoc IVault
     function getHandler(uint256 index) public view returns (address) {
         if (index >= _handlers.length) {
@@ -217,6 +196,28 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     /// @inheritdoc IVault
     function getTokenReserve(IERC20 token) external view returns (uint256) {
         return _tokenReserves[token];
+    }
+
+    /**
+     * @notice Records the `debt` for a given handler and token.
+     *
+     * @param token   The ERC20 token for which the `debt` will be accounted.
+     * @param debt    The amount of `token` taken from the Vault in favor of the `handler`.
+     * @param handler The account responsible for the debt.
+     */
+    function _takeDebt(IERC20 token, uint256 debt, address handler) internal {
+        _accountDelta(token, debt.toInt256(), handler);
+    }
+
+    /**
+     * @notice Records the `credit` for a given handler and token.
+     *
+     * @param token   The ERC20 token for which the 'credit' will be accounted.
+     * @param credit  The amount of `token` supplied to the Vault in favor of the `handler`.
+     * @param handler The account credited with the amount.
+     */
+    function _supplyCredit(IERC20 token, uint256 credit, address handler) internal {
+        _accountDelta(token, -credit.toInt256(), handler);
     }
 
     /**
