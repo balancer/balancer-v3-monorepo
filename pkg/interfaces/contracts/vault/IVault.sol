@@ -221,34 +221,58 @@ interface IVault {
      * @notice Adds liquidity to a pool
      * @param pool                           Address of the pool
      * @param assets                         Assets involved in the liquidity
-     * @param amountsIn                      Desired amounts of input assets
+     * @param maxAmountsIn                   Maximum amounts of input assets
      * @param userData                       Additional user data
-     * @return calculatedAmountsIn           Actual amounts of input assets
+     * @return amountsIn                     Actual amounts of input assets
      * @return bptAmountOut                  Output pool token amount
      */
     function addLiquidity(
         address pool,
         IERC20[] memory assets,
-        uint256[] memory amountsIn,
+        uint256[] memory maxAmountsIn,
         bytes memory userData
-    ) external returns (uint256[] memory calculatedAmountsIn, uint256 bptAmountOut);
+    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
     /**
      * @notice Removes liquidity from a pool
      * @param pool                           Address of the pool
      * @param assets                         Assets involved in the liquidity removal
-     * @param amountsOut                     Desired amounts of output assets
+     * @param minAmountsOut                  Minimum amounts of output assets
      * @param bptAmountIn                    Input pool token amount
      * @param userData                       Additional user data
-     * @return calculatedAmountsOut          Actual amounts of output assets
+     * @return amountsOut                    Actual amounts of output assets
      */
     function removeLiquidity(
         address pool,
         IERC20[] memory assets,
-        uint256[] memory amountsOut,
+        uint256[] memory minAmountsOut,
         uint256 bptAmountIn,
         bytes memory userData
-    ) external returns (uint256[] memory calculatedAmountsOut);
+    ) external returns (uint256[] memory amountsOut);
 
     event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
+
+    /*******************************************************************************
+                                    Queries
+    *******************************************************************************/
+
+    /**
+     * @notice Invokes a callback on msg.sender with arguments provided in `data`
+     * to query a set of operations on the Vault.
+     * Only off-chain eth_call are allowed, everything else will revert.
+     * @param data                           Contain function signature and args to be passed to the msg.sender
+     * @return result                        Resulting data from the call
+     */
+    function quote(bytes calldata data) external payable returns (bytes memory result);
+
+    /**
+     * @notice Disables queries functionality on the Vault. Can be called only by governance.
+     */
+    function disableQuery() external;
+
+    /**
+     * @notice Checks if the queries enabled on the Vault.
+     * @return If true, then queries are disabled.
+     */
+    function isQueryDisabled() external view returns (bool);
 }

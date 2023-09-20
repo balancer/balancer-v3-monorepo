@@ -104,4 +104,14 @@ interface IVaultErrors {
      * @dev
      */
     error HandlerOutOfBounds(uint256);
+
+    /**
+     * @dev
+     */
+    error NotStaticCall();
+
+    /**
+     * @dev
+     */
+    error QueriesDisabled();
 }

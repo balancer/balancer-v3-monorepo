@@ -48,6 +48,9 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     /// exception being during the `invoke` call.
     mapping(IERC20 => uint256) private _tokenReserves;
 
+    /// @notice If set to true, disables query functionality of the Vault. Can be modified only by governance.
+    bool private _isQueryDisabled;
+
     constructor(
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
@@ -259,6 +262,57 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
         // Store the updated delta for this token and handler.
         _tokenDeltas[handler][token] = next;
+    }
+
+    /*******************************************************************************
+                                    Queries
+    *******************************************************************************/
+
+    /**
+     * @dev Ensure that only static calls are made to the functions with this modifier.
+     * A static call is one where `tx.origin` equals 0x0 for most implementations.
+     * More https://twitter.com/0xkarmacoma/status/1493380279309717505
+     */
+    modifier query() {
+        // Check if the transaction initiator is different from 0x0.
+        // If so, it's not a eth_call and we revert.
+        // https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_call
+        if (tx.origin != address(0)) {
+            // solhint-disable-previous-line avoid-tx-origin
+            revert NotStaticCall();
+        }
+
+        if (_isQueryDisabled) {
+            revert QueriesDisabled();
+        }
+
+        // Add the current handler to the list so `withHandler` does not revert
+        _handlers.push(msg.sender);
+        _;
+    }
+
+    /**
+     * @inheritdoc IVault
+     * @dev Allows querying any operation on the Vault that has the `withHandler` modifier.
+     */
+    function quote(bytes calldata data) external payable query returns (bytes memory result) {
+        // Forward the incoming call to the original sender of this transaction.
+        return (msg.sender).functionCallWithValue(data, msg.value);
+    }
+
+    /**
+     * @inheritdoc IVault
+     */
+    function disableQuery() external {
+        // TODO: Only governance can call this function.
+        _isQueryDisabled = true;
+    }
+
+    /**
+     * @inheritdoc IVault
+     */
+    function isQueryDisabled() external view returns (bool) {
+        return _isQueryDisabled;
     }
 
     /*******************************************************************************
@@ -501,16 +555,16 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     function addLiquidity(
         address pool,
         IERC20[] memory tokens,
-        uint256[] memory amountsIn,
+        uint256[] memory maxAmountsIn,
         bytes memory userData
     )
         external
         withHandler
         whenNotPaused
         withRegisteredPool(pool)
-        returns (uint256[] memory calculatedAmountsIn, uint256 bptAmountOut)
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut)
     {
-        InputHelpers.ensureInputLengthMatch(tokens.length, amountsIn.length);
+        InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
 
         // We first check that the caller passed the Pool's registered tokens in the correct order
         // and retrieve the current balance for each.
@@ -518,11 +572,14 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
         // The bulk of the work is done here: the corresponding Pool hook is called
         // its final balances are computed
-        (calculatedAmountsIn, bptAmountOut) = IBasePool(pool).onAddLiquidity(msg.sender, balances, amountsIn, userData);
+        (amountsIn, bptAmountOut) = IBasePool(pool).onAddLiquidity(msg.sender, balances, maxAmountsIn, userData);
 
         uint256[] memory finalBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            uint256 amountIn = calculatedAmountsIn[i];
+            uint256 amountIn = amountsIn[i];
+            if (amountIn > maxAmountsIn[i]) {
+                revert JoinAboveMax();
+            }
 
             // Debit of token[i] for amountIn
             _takeDebt(tokens[i], amountIn, msg.sender);
@@ -536,36 +593,31 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         // Credit bptAmountOut of pool tokens
         _supplyCredit(IERC20(pool), bptAmountOut, msg.sender);
 
-        emit PoolBalanceChanged(pool, msg.sender, tokens, calculatedAmountsIn.safeCastToInt256(true));
+        emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }
 
     /// @inheritdoc IVault
     function removeLiquidity(
         address pool,
         IERC20[] memory tokens,
-        uint256[] memory amountsOut,
+        uint256[] memory minAmountsOut,
         uint256 bptAmountIn,
         bytes memory userData
-    ) external whenNotPaused nonReentrant withRegisteredPool(pool) returns (uint256[] memory calculatedAmountsOut) {
-        InputHelpers.ensureInputLengthMatch(tokens.length, amountsOut.length);
+    ) external whenNotPaused nonReentrant withRegisteredPool(pool) returns (uint256[] memory amountsOut) {
+        InputHelpers.ensureInputLengthMatch(tokens.length, minAmountsOut.length);
 
         // We first check that the caller passed the Pool's registered tokens in the correct order, and retrieve the
         // current balance for each.
         uint256[] memory balances = _validateTokensAndGetBalances(pool, tokens);
 
         // The bulk of the work is done here: the corresponding Pool hook is called, its final balances are computed
-        calculatedAmountsOut = IBasePool(pool).onRemoveLiquidity(
-            msg.sender,
-            balances,
-            amountsOut,
-            bptAmountIn,
-            userData
-        );
+        amountsOut = IBasePool(pool).onRemoveLiquidity(msg.sender, balances, minAmountsOut, bptAmountIn, userData);
 
         uint256[] memory finalBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            uint256 amountOut = calculatedAmountsOut[i];
-            // Credit token[i] for amountOut
+            uint256 amountOut = amountsOut[i];
+
+            // Credit token[i] for amountIn
             _supplyCredit(tokens[i], amountOut, msg.sender);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
@@ -575,10 +627,16 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         // All that remains is storing the new Pool balances.
         _setPoolBalances(pool, finalBalances);
 
-        // Debit bptAmountIn of pool tokens
+        // Debit bptAmountOut of pool tokens
         _takeDebt(IERC20(pool), bptAmountIn, msg.sender);
 
-        emit PoolBalanceChanged(pool, msg.sender, tokens, calculatedAmountsOut.safeCastToInt256(false));
+        emit PoolBalanceChanged(
+            pool,
+            msg.sender,
+            tokens,
+            // We can unsafely cast to int256 because balances are actually stored as uint112
+            amountsOut.unsafeCastToInt256(false)
+        );
     }
 
     /**

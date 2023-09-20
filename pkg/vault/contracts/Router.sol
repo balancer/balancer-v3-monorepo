@@ -255,4 +255,153 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
 
         return amountCalculated;
     }
+
+    function _swapCallback(
+        SwapCallbackParams calldata params
+    )
+        internal
+        returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut, IERC20 tokenIn, IERC20 tokenOut)
+    {
+        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp > params.deadline) {
+            revert IVaultErrors.SwapDeadline();
+        }
+
+        tokenIn = params.assetIn.toIERC20(_weth);
+        tokenOut = params.assetOut.toIERC20(_weth);
+
+        (amountCalculated, amountIn, amountOut) = _vault.swap(
+            IVault.SwapParams({
+                kind: params.kind,
+                pool: params.pool,
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                amountGiven: params.amountGiven,
+                userData: params.userData
+            })
+        );
+
+        if (params.kind == IVault.SwapKind.GIVEN_IN ? amountOut < params.limit : amountIn > params.limit) {
+            revert IVaultErrors.SwapLimit(params.kind == IVault.SwapKind.GIVEN_IN ? amountOut : amountIn, params.limit);
+        }
+    }
+
+    /*******************************************************************************
+                                    Queries
+    *******************************************************************************/
+
+    /// @inheritdoc IRouter
+    function querySwap(
+        IVault.SwapKind kind,
+        address pool,
+        Asset assetIn,
+        Asset assetOut,
+        uint256 amountGiven,
+        bytes calldata userData
+    ) external payable returns (uint256 amountCalculated) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeWithSelector(
+                        Router.querySwapCallback.selector,
+                        SwapCallbackParams({
+                            sender: msg.sender,
+                            kind: kind,
+                            pool: pool,
+                            assetIn: assetIn,
+                            assetOut: assetOut,
+                            amountGiven: amountGiven,
+                            limit: kind == IVault.SwapKind.GIVEN_IN ? 0 : type(uint256).max,
+                            deadline: type(uint256).max,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256)
+            );
+    }
+
+    function querySwapCallback(
+        SwapCallbackParams calldata params
+    ) external payable nonReentrant onlyVault returns (uint256) {
+        (uint256 amountCalculated, , , , ) = _swapCallback(params);
+
+        return amountCalculated;
+    }
+
+    /// @inheritdoc IRouter
+    function queryAddLiquidity(
+        address pool,
+        Asset[] memory assets,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeWithSelector(
+                        Router.queryAddLiquidityCallback.selector,
+                        AddLiquidityCallbackParams({
+                            sender: msg.sender,
+                            pool: pool,
+                            assets: assets,
+                            maxAmountsIn: maxAmountsIn,
+                            minBptAmountOut: minBptAmountOut,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256[], uint256)
+            );
+    }
+
+    function queryAddLiquidityCallback(
+        AddLiquidityCallbackParams calldata params
+    ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+        IERC20[] memory tokens = params.assets.toIERC20(_weth);
+
+        (amountsIn, bptAmountOut) = _vault.addLiquidity(params.pool, tokens, params.maxAmountsIn, params.userData);
+    }
+
+    /// @inheritdoc IRouter
+    function queryRemoveLiquidity(
+        address pool,
+        Asset[] memory assets,
+        uint256[] memory minAmountsOut,
+        uint256 bptAmountIn,
+        bytes memory userData
+    ) external returns (uint256[] memory amountsOut) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeWithSelector(
+                        Router.queryRemoveLiquidityCallback.selector,
+                        RemoveLiquidityCallbackParams({
+                            sender: msg.sender,
+                            pool: pool,
+                            assets: assets,
+                            minAmountsOut: minAmountsOut,
+                            bptAmountIn: bptAmountIn,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256[])
+            );
+    }
+
+    function queryRemoveLiquidityCallback(
+        RemoveLiquidityCallbackParams calldata params
+    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
+        return
+            _vault.removeLiquidity(
+                params.pool,
+                params.assets.toIERC20(_weth),
+                params.minAmountsOut,
+                params.bptAmountIn,
+                params.userData
+            );
+    }
 }
