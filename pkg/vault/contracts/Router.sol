@@ -65,13 +65,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
-        (amountsIn, bptAmountOut) = _vault.addLiquidity(
-            params.pool,
-            tokens,
-            params.maxAmountsIn,
-            params.minBptAmountOut,
-            params.userData
-        );
+        (amountsIn, bptAmountOut) = _vault.addLiquidity(params.pool, tokens, params.maxAmountsIn, params.userData);
 
         if (bptAmountOut < params.minBptAmountOut) {
             revert IVaultErrors.BtpAmountBelowMin();
@@ -368,13 +362,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
-        (amountsIn, bptAmountOut) = _vault.addLiquidity(
-            params.pool,
-            tokens,
-            params.maxAmountsIn,
-            params.minBptAmountOut,
-            params.userData
-        );
+        (amountsIn, bptAmountOut) = _vault.addLiquidity(params.pool, tokens, params.maxAmountsIn, params.userData);
     }
 
     /// @inheritdoc IRouter

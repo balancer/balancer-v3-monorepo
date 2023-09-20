@@ -556,7 +556,6 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         address pool,
         IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
-        uint256,
         bytes memory userData
     )
         external
