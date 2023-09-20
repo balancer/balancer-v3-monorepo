@@ -33,6 +33,9 @@ interface IVault {
      */
     function getPoolTokens(address pool) external view returns (IERC20[] memory tokens, uint256[] memory balances);
 
+    /// @notice Emitted when a Pool is registered by calling `registerPool`.
+    event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
+
     /*******************************************************************************
                                  ERC20 Balancer Pool Tokens 
     *******************************************************************************/
@@ -214,6 +217,28 @@ interface IVault {
         uint256 amountOut
     );
 
+    /**
+     * Legacy functions eeded for tests to pass
+     */
+
+   /**
+     * @notice Adds liquidity to a pool
+     * @param pool                           Address of the pool
+     * @param assets                         Assets involved in the liquidity
+     * @param maxAmountsIn                   Maximum amounts of input assets
+     * @param minBptAmountOut                Minimum output pool token amount
+     * @param userData                       Additional user data
+     * @return amountsIn                     Actual amounts of input assets
+     * @return bptAmountOut                  Output pool token amount
+     */
+    function addLiquidity(
+        address pool,
+        IERC20[] memory assets,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        bytes memory userData
+    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+
     function addLiquidityProportional(
         address pool,
         uint256[] memory maxAmountsIn,
@@ -255,4 +280,28 @@ interface IVault {
     ) external returns (uint256[] memory amountsOut);
 
     event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
+
+    /*******************************************************************************
+                                    Queries
+    *******************************************************************************/
+
+    /**
+     * @notice Invokes a callback on msg.sender with arguments provided in `data`
+     * to query a set of operations on the Vault.
+     * Only off-chain eth_call are allowed, everything else will revert.
+     * @param data                           Contain function signature and args to be passed to the msg.sender
+     * @return result                        Resulting data from the call
+     */
+    function quote(bytes calldata data) external payable returns (bytes memory result);
+
+    /**
+     * @notice Disables queries functionality on the Vault. Can be called only by governance.
+     */
+    function disableQuery() external;
+
+    /**
+     * @notice Checks if the queries enabled on the Vault.
+     * @return If true, then queries are disabled.
+     */
+    function isQueryDisabled() external view returns (bool);
 }

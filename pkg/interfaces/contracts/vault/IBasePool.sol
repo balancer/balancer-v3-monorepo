@@ -14,6 +14,22 @@ interface IBasePool {
 
     function onBeforeRemove(uint256[] memory currentBalances) external;
 
+    /**
+     * @notice Add liquidity to the pool
+     * @param sender               Address of the sender
+     * @param currentBalances      Current balances of the tokens
+     * @param maxAmountsIn         Maximum amounts of tokens to be added
+     * @param userData             Additional data provided by the user
+     * @return amountsIn           Actual amounts of tokens added
+     * @return bptAmountOut        Amount of BPT tokens minted
+     */
+    function onAddLiquidity(
+        address sender,
+        uint256[] memory currentBalances,
+        uint256[] memory maxAmountsIn,
+        bytes memory userData
+    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+    
     function onAddLiquidityUnbalanced(
         address sender,
         uint256[] memory exactAmountsIn,

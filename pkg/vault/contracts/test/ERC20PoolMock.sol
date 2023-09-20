@@ -63,4 +63,47 @@ contract ERC20PoolMock is ERC20FacadeToken, IBasePool {
                 ? params.amountGiven.mulDown(_multiplier)
                 : params.amountGiven.divDown(_multiplier);
     }
+
+    function supportsAddLiquidityProportional() external pure override returns (bool) {
+        return true;
+    }
+
+    function supportsRemoveLiquidityProportional() external pure override returns (bool){
+        return true;
+    }
+
+    function onBeforeAdd(uint256[] memory currentBalances) external override {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function onBeforeRemove(uint256[] memory currentBalances) external override {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function onAddLiquidityUnbalanced(
+        address,
+        uint256[] memory exactAmountsIn,
+        uint256[] memory
+    ) external pure override returns (uint256 bptAmountOut) {
+        bptAmountOut = exactAmountsIn[0];
+    }
+
+    function onAddLiquiditySingleTokenInForExactBptOut(
+        address,
+        IERC20,
+        uint256 exactBptAmountOut,
+        uint256[] memory
+    ) external pure override returns (uint256 amountIn) {
+        return exactBptAmountOut;
+    }
+
+    function onAddLiquidityCustom(
+        address,
+        bytes memory userData,
+        uint256[] memory currentBalances
+    ) external pure override returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
+        amountsIn = currentBalances;
+        bptAmountOut = currentBalances[0];
+        returnData = userData;
+    }
 }

@@ -15,12 +15,12 @@
 pragma solidity ^0.8.4;
 
 library BasePoolMath {
-
     function computeProportionalAmountsIn(
         uint256[] memory balances,
         uint256 bptTotalSupply,
         uint256 bptAmountOut
     ) internal pure returns (uint256[] memory amountsIn) {
+        // solhint-disable-previous-line no-empty-blocks
         /************************************************************************************
         // computeProportionalAmountsIn                                                    //
         // (per token)                                                                     //
@@ -29,10 +29,8 @@ library BasePoolMath {
         // bptOut = bptAmountOut           \  bptTotalSupply  /                            //
         // bpt = bptTotalSupply                                                            //
         ************************************************************************************/
-
         // Since we're computing amounts in, we round up overall. This means rounding up on both the
         // multiplication and division.
-
         /* uint256 bptRatio = bptAmountOut.divUp(bptTotalSupply);
 
         amountsIn = new uint256[](balances.length);
@@ -46,6 +44,7 @@ library BasePoolMath {
         uint256 bptTotalSupply,
         uint256 bptAmountIn
     ) internal pure returns (uint256[] memory amountsOut) {
+        // solhint-disable-previous-line no-empty-blocks
         /**********************************************************************************************
         // computeProportionalAmountsOut                                                             //
         // (per token)                                                                               //
@@ -54,10 +53,8 @@ library BasePoolMath {
         // bptIn = bptAmountIn             \     bptTotalSupply    /                                 //
         // bpt = bptTotalSupply                                                                      //
         **********************************************************************************************/
-
         // Since we're computing an amount out, we round down overall. This means rounding down on both the
         // multiplication and division.
-
         /* uint256 bptRatio = bptAmountIn.divDown(bptTotalSupply);
 
         amountsOut = new uint256[](balances.length);

@@ -26,6 +26,8 @@ export const MAX_WEIGHTED_TOKENS = 100;
 
 export const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
+export const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+
 export const MAX_IN_RATIO = bn('0.3e18');
 export const MAX_OUT_RATIO = bn('0.3e18');
 export const MAX_RELATIVE_ERROR = 0.0001; //Max relative error

@@ -63,7 +63,7 @@ interface IVaultErrors {
     /**
      * @dev
      */
-    error AmountInZero();
+    error AmountGivenZero();
 
     /**
      * @dev
@@ -109,4 +109,14 @@ interface IVaultErrors {
      * @dev
      */
     error DoesNotSupportAddLiquidityProportional(address pool);
+
+    /**
+     * @dev
+     */
+    error NotStaticCall();
+
+    /**
+     * @dev
+     */
+    error QueriesDisabled();
 }
