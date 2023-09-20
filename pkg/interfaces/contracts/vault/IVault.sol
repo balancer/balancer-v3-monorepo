@@ -250,7 +250,6 @@ interface IVault {
      * @param pool                           Address of the pool
      * @param assets                         Assets involved in the liquidity
      * @param maxAmountsIn                   Maximum amounts of input assets
-     * @param minBptAmountOut                Minimum output pool token amount
      * @param userData                       Additional user data
      * @return amountsIn                     Actual amounts of input assets
      * @return bptAmountOut                  Output pool token amount
@@ -259,7 +258,6 @@ interface IVault {
         address pool,
         IERC20[] memory assets,
         uint256[] memory maxAmountsIn,
-        uint256 minBptAmountOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
