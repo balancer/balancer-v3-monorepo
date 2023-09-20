@@ -362,7 +362,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         SwapParams memory params
     ) public whenNotPaused withHandler returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         if (params.amountGiven == 0) {
-            revert AmountInZero();
+            revert AmountGivenZero();
         }
 
         if (params.tokenIn == params.tokenOut) {
@@ -496,9 +496,6 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     ) external view withRegisteredPool(pool) returns (IERC20[] memory tokens, uint256[] memory balances) {
         return _getPoolTokens(pool);
     }
-
-    /// @dev Emitted when a Pool is registered by calling `registerPool`.
-    event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
 
     /// @dev Reverts unless `pool` corresponds to a registered Pool.
     modifier withRegisteredPool(address pool) {

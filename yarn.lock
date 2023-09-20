@@ -175,7 +175,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@balancer-labs/v3-pool-utils@workspace:pkg/pool-utils":
+"@balancer-labs/v3-pool-utils@workspace:*, @balancer-labs/v3-pool-utils@workspace:pkg/pool-utils":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v3-pool-utils@workspace:pkg/pool-utils"
   dependencies:
@@ -207,6 +207,7 @@ __metadata:
   dependencies:
     "@balancer-labs/solidity-toolbox": "workspace:*"
     "@balancer-labs/v3-interfaces": "workspace:*"
+    "@balancer-labs/v3-pool-utils": "workspace:*"
     "@balancer-labs/v3-solidity-utils": "workspace:*"
     "@typescript-eslint/eslint-plugin": "npm:^5.41.0"
     "@typescript-eslint/parser": "npm:^5.41.0"

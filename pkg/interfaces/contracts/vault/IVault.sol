@@ -58,6 +58,9 @@ interface IVault is IERC20MultiToken {
      */
     function getPoolConfig(address pool) external view returns (PoolConfig memory);
 
+    /// @notice Emitted when a Pool is registered by calling `registerPool`.
+    event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
+
     /*******************************************************************************
                               Transient Accounting
     *******************************************************************************/
