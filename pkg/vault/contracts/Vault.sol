@@ -273,7 +273,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
      * More https://twitter.com/0xkarmacoma/status/1493380279309717505
      */
     modifier query() {
-        // Check if the transaction initiator is different from the 0x0.
+        // Check if the transaction initiator is different from 0x0.
         // If so, it's not a eth_call and we revert.
         // https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_call
         if (tx.origin != address(0)) {
@@ -285,14 +285,14 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
             revert QueriesDisabled();
         }
 
-        // Add the current handler to the list so `withHandler` would not revert
+        // Add the current handler to the list so `withHandler` does not revert
         _handlers.push(msg.sender);
         _;
     }
 
     /**
      * @inheritdoc IVault
-     * @dev Allows to query any operations on the Vault with `withHandler` modifier.
+     * @dev Allows querying any operation on the Vault that has the `withHandler` modifier.
      */
     function quote(bytes calldata data) external payable query returns (bytes memory result) {
         // Forward the incoming call to the original sender of this transaction.

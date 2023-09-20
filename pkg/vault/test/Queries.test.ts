@@ -72,7 +72,7 @@ describe('Queries', function () {
   });
 
   describe('addLiquidity', () => {
-    it('queries a addLiquidity correctly', async () => {
+    it('queries addLiquidity correctly', async () => {
       const { amountsIn, bptAmountOut } = await router
         .connect(zero)
         .queryAddLiquidity.staticCall(pool, [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], DAI_AMOUNT_IN, '0x');
