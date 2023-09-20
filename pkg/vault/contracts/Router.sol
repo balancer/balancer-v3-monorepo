@@ -122,22 +122,34 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             params.userData
         );
 
+        if (bptAmountOut < params.minBptAmountOut) {
+            revert IVaultErrors.BtpAmountBelowMin();
+        }
+
+        uint256 ethAmountIn;
         for (uint256 i = 0; i < params.assets.length; ++i) {
             // Receive assets from the handler
             Asset asset = params.assets[i];
             uint256 amountIn = amountsIn[i];
+
+            if (amountIn > params.maxAmountsIn[i]) {
+                revert IVaultErrors.JoinAboveMax();
+            }
 
             IERC20 token = asset.toIERC20(_weth);
 
             // There can be only one WETH token in the pool
             if (asset.isETH()) {
                 _weth.deposit{ value: amountIn }();
-                address(params.sender).returnEth(amountIn);
+                ethAmountIn = amountIn;
             }
             _vault.retrieve(token, params.sender, amountIn);
         }
 
         _vault.mint(IERC20(params.pool), params.sender, bptAmountOut);
+
+        // Send remaining ETH to the user
+        address(params.sender).returnEth(ethAmountIn);
     }
 
     /// @inheritdoc IRouter
@@ -180,8 +192,12 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             params.userData
         );
 
+        uint256 ethAmountOut;
         for (uint256 i = 0; i < params.assets.length; ++i) {
             uint256 amountOut = amountsOut[i];
+            if (amountOut < params.minAmountsOut[i]) {
+                revert IVaultErrors.ExitBelowMin();
+            }
 
             Asset asset = params.assets[i];
             IERC20 token = asset.toIERC20(_weth);
@@ -193,12 +209,14 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             if (asset.isETH()) {
                 // Withdraw WETH to ETH
                 _weth.withdraw(amountOut);
-                // Send ETH to sender
-                payable(params.sender).sendValue(amountOut);
+                ethAmountOut = amountOut;
             }
         }
 
         _vault.burn(IERC20(params.pool), params.sender, params.bptAmountIn);
+
+        // Send ETH to sender
+        payable(params.sender).sendValue(ethAmountOut);
     }
 
     /// @inheritdoc IRouter
@@ -211,7 +229,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         uint256 limit,
         uint256 deadline,
         bytes calldata userData
-    ) external payable returns (uint256 amountCalculated) {
+    ) external payable returns (uint256) {
         return
             abi.decode(
                 _vault.invoke(
@@ -237,13 +255,29 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     function swapCallback(
         SwapCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256) {
-        (
-            uint256 amountCalculated,
-            uint256 amountIn,
-            uint256 amountOut,
-            IERC20 tokenIn,
-            IERC20 tokenOut
-        ) = _swapCallback(params);
+        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp > params.deadline) {
+            revert IVaultErrors.SwapDeadline();
+        }
+
+        IERC20 tokenIn = params.assetIn.toIERC20(_weth);
+        IERC20 tokenOut = params.assetOut.toIERC20(_weth);
+
+        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _vault.swap(
+            IVault.SwapParams({
+                kind: params.kind,
+                pool: params.pool,
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                amountGiven: params.amountGiven,
+                userData: params.userData
+            })
+        );
+
+        if (params.kind == IVault.SwapKind.GIVEN_IN ? amountOut < params.limit : amountIn > params.limit) {
+            revert IVaultErrors.SwapLimit(params.kind == IVault.SwapKind.GIVEN_IN ? amountOut : amountIn, params.limit);
+        }
 
         // If the assetIn is ETH, then wrap `amountIn` into WETH.
         if (params.assetIn.isETH()) {

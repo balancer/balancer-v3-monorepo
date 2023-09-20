@@ -63,7 +63,7 @@ interface IVaultErrors {
     /**
      * @dev
      */
-    error AmountInZero();
+    error AmountGivenZero();
 
     /**
      * @dev
