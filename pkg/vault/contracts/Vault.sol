@@ -432,9 +432,9 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
 
         // Account amountIn of tokenIn
-        _accountDelta(params.tokenIn, int256(amountIn), msg.sender);
+        _takeDebt(params.tokenIn, amountIn, msg.sender);
         // Account amountOut of tokenOut
-        _accountDelta(params.tokenOut, -int256(amountOut), msg.sender);
+        _supplyCredit(params.tokenOut, amountOut, msg.sender);
 
         emit Swap(params.pool, params.tokenIn, params.tokenOut, amountIn, amountOut);
     }
@@ -586,16 +586,16 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
             }
 
             // Debit of token[i] for amountIn
-            _accountDelta(tokens[i], int256(amountIn), msg.sender);
+            _takeDebt(tokens[i], amountIn, msg.sender);
 
-            finalBalances[i] += amountIn;
+            finalBalances[i] = balances[i] + amountIn;
         }
 
         // All that remains is storing the new Pool balances.
         _setPoolBalances(pool, finalBalances);
 
         // Credit bptAmountOut of pool tokens
-        _accountDelta(IERC20(pool), -int256(bptAmountOut), msg.sender);
+        _supplyCredit(IERC20(pool), bptAmountOut, msg.sender);
 
         emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }
@@ -624,7 +624,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
                 revert ExitBelowMin();
             }
             // Credit token[i] for amountIn
-            _accountDelta(tokens[i], -int256(amountOut), msg.sender);
+            _supplyCredit(tokens[i], amountOut, msg.sender);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
             finalBalances[i] = balances[i] - amountOut;
@@ -634,7 +634,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         _setPoolBalances(pool, finalBalances);
 
         // Debit bptAmountOut of pool tokens
-        _accountDelta(IERC20(pool), int256(bptAmountIn), msg.sender);
+        _takeDebt(IERC20(pool), bptAmountIn, msg.sender);
 
         emit PoolBalanceChanged(
             pool,
