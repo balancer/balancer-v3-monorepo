@@ -555,7 +555,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         address pool,
         IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
-        uint256 minBptAmountOut,
+        uint256,
         bytes memory userData
     )
         external
@@ -573,10 +573,6 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         // The bulk of the work is done here: the corresponding Pool hook is called
         // its final balances are computed
         (amountsIn, bptAmountOut) = IBasePool(pool).onAddLiquidity(msg.sender, balances, maxAmountsIn, userData);
-
-        if (bptAmountOut < minBptAmountOut) {
-            revert BtpAmountBelowMin();
-        }
 
         uint256[] memory finalBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
@@ -620,9 +616,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         uint256[] memory finalBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountOut = amountsOut[i];
-            if (amountOut < minAmountsOut[i]) {
-                revert ExitBelowMin();
-            }
+
             // Credit token[i] for amountIn
             _supplyCredit(tokens[i], amountOut, msg.sender);
 
