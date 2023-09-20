@@ -60,14 +60,15 @@ describe('Queries', function () {
     it('queries a swap correctly', async () => {
       const amountCalculated = await router
         .connect(zero)
-        .querySwap.staticCall(0, pool, USDC, DAI, USDC_AMOUNT_IN, DAI_AMOUNT_IN, MAX_UINT256, '0x');
+        .querySwap.staticCall(0, pool, USDC, DAI, USDC_AMOUNT_IN, '0x');
       expect(amountCalculated).to.be.eq(DAI_AMOUNT_IN);
     });
 
     it('reverts if not a static call', async () => {
-      await expect(
-        router.querySwap.staticCall(0, pool, USDC, DAI, USDC_AMOUNT_IN, DAI_AMOUNT_IN, MAX_UINT256, '0x')
-      ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
+      await expect(router.querySwap.staticCall(0, pool, USDC, DAI, USDC_AMOUNT_IN, '0x')).to.be.revertedWithCustomError(
+        vault,
+        'NotStaticCall'
+      );
     });
   });
 
