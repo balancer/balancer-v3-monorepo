@@ -137,13 +137,13 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         _tokenReserves[token] = token.balanceOf(address(this));
         paid = _tokenReserves[token] - reservesBefore;
         // subtraction must be safe
-        _accountDelta(token, -paid.toInt256(), msg.sender);
+        _supplyCredit(token, paid, msg.sender);
     }
 
     /// @inheritdoc IVault
     function wire(IERC20 token, address to, uint256 amount) public withHandler {
         // effects
-        _accountDelta(token, amount.toInt256(), msg.sender);
+        _takeDebt(token, amount, msg.sender);
         _tokenReserves[token] -= amount;
         // interactions
         token.safeTransfer(to, amount);
@@ -151,14 +151,14 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
     /// @inheritdoc IVault
     function mint(IERC20 token, address to, uint256 amount) public withHandler {
-        _accountDelta(token, amount.toInt256(), msg.sender);
+        _takeDebt(token, amount, msg.sender);
         _mintERC20(address(token), to, amount);
     }
 
     /// @inheritdoc IVault
     function retrieve(IERC20 token, address from, uint256 amount) public withHandler {
         // effects
-        _accountDelta(token, -(amount.toInt256()), msg.sender);
+        _supplyCredit(token, amount, msg.sender);
         _tokenReserves[token] += amount;
         // interactions
         token.safeTransferFrom(from, address(this), amount);
@@ -166,9 +166,9 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
     /// @inheritdoc IVault
     function burn(IERC20 token, address owner, uint256 amount) public withHandler {
+        _supplyCredit(token, amount, msg.sender);
         _spendAllowance(address(token), owner, address(this), amount);
         _burnERC20(address(token), owner, amount);
-        _accountDelta(token, -(amount.toInt256()), msg.sender);
     }
 
     /// @inheritdoc IVault
@@ -434,9 +434,9 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
 
         // Account amountIn of tokenIn
-        _accountDelta(params.tokenIn, int256(amountIn), msg.sender);
+        _takeDebt(params.tokenIn, amountIn, msg.sender);
         // Account amountOut of tokenOut
-        _accountDelta(params.tokenOut, -int256(amountOut), msg.sender);
+        _supplyCredit(params.tokenOut, amountOut, msg.sender);
 
         emit Swap(params.pool, params.tokenIn, params.tokenOut, amountIn, amountOut);
     }
@@ -583,16 +583,16 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
             }
 
             // Debit of token[i] for amountIn
-            _accountDelta(tokens[i], int256(amountIn), msg.sender);
+            _takeDebt(tokens[i], amountIn, msg.sender);
 
-            finalBalances[i] += amountIn;
+            finalBalances[i] = balances[i] + amountIn;
         }
 
         // All that remains is storing the new Pool balances.
         _setPoolBalances(pool, finalBalances);
 
         // Credit bptAmountOut of pool tokens
-        _accountDelta(IERC20(pool), -int256(bptAmountOut), msg.sender);
+        _supplyCredit(IERC20(pool), bptAmountOut, msg.sender);
 
         emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }
