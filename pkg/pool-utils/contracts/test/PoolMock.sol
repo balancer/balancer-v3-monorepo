@@ -29,15 +29,15 @@ contract PoolMock is BasePool {
         bool registerPool
     ) BasePool(vault, name, symbol, tokens, 30 days, 90 days) {
         if (registerPool) {
-            vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig());
+            vault.registerPool(address(this), factory, tokens, PoolConfigBits.wrap(0).toPoolConfig());
         }
     }
 
     function onInitialize(
         uint256[] memory amountsIn,
         bytes memory
-    ) external view onlyVault returns (uint256, uint256[] memory) {
-        return (amountsIn[0], amountsIn);
+    ) external view onlyVault returns (uint256[] memory, uint256) {
+        return (amountsIn, amountsIn[0]);
     }
 
     function onAddLiquidity(
