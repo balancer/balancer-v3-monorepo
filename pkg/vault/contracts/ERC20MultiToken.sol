@@ -33,7 +33,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
     // token -> (owner -> balance): Users' balances
     mapping(address => mapping(address => uint256)) private _balances;
 
-    // token -> (owner -> (spender -> allowance))
+    // token -> (owner -> (spender -> allowance)): Users' allowances
     mapping(address => mapping(address => mapping(address => uint256))) private _allowances;
 
     // token -> total supply

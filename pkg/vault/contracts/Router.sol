@@ -40,7 +40,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
 
     /// @inheritdoc IRouter
     function mint(IERC20 token, uint256 amount) external {
-        // Invoke the mintCallback function in the _vault contract
+        // Invoke the mintCallback function in the Vault contract
         _vault.invoke(abi.encodeWithSelector(Router.mintCallback.selector, msg.sender, token, amount));
     }
 
