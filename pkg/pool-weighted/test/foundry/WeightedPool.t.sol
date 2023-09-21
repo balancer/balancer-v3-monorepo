@@ -22,8 +22,7 @@ import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol"
 import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 
 contract WeightedPoolTest is Test {
-    using AssetHelpers for address[];
-    using AssetHelpers for address[];
+    using AssetHelpers for *;
     using ArrayHelpers for address[2];
     using ArrayHelpers for uint256[2];
 
@@ -35,8 +34,12 @@ contract WeightedPoolTest is Test {
     address alice = vm.addr(1);
     address bob = vm.addr(2);
 
-    uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
-    uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
+    uint256 constant USDC_AMOUNT = 1e3 * 1e6;
+    uint256 constant DAI_AMOUNT = 1e3 * 1e18;
+
+    uint256 constant DAI_AMOUNT_IN = 1 * 1e18;
+    uint256 constant USDC_AMOUNT_OUT = 1 * 1e6;
+
     uint256 constant DELTA = 1e9;
 
     function setUp() public {
@@ -59,11 +62,11 @@ contract WeightedPoolTest is Test {
 
         vault.registerPool(address(pool), address(0), tokens, PoolConfigBits.wrap(0).toPoolConfig());
 
-        USDC.mint(alice, USDC_AMOUNT_IN);
-        DAI.mint(alice, DAI_AMOUNT_IN);
+        USDC.mint(alice, USDC_AMOUNT);
+        DAI.mint(alice, DAI_AMOUNT);
 
-        USDC.mint(bob, USDC_AMOUNT_IN);
-        DAI.mint(bob, DAI_AMOUNT_IN);
+        USDC.mint(bob, USDC_AMOUNT);
+        DAI.mint(bob, DAI_AMOUNT);
 
         vm.startPrank(alice);
         USDC.approve(address(vault), type(uint256).max);
@@ -89,10 +92,10 @@ contract WeightedPoolTest is Test {
         (uint256[] memory amountsIn, uint256 bptAmountOut) = router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
+            [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             // Initial BTP is invariant * tokens.length
             // Account for the precision less
-            DAI_AMOUNT_IN * 2 - DELTA,
+            DAI_AMOUNT * 2 - DELTA,
             bytes("")
         );
 
@@ -101,22 +104,22 @@ contract WeightedPoolTest is Test {
         assertEq(DAI.balanceOf(alice), 0);
 
         // assets are stored in the Vault
-        assertEq(USDC.balanceOf(address(vault)), USDC_AMOUNT_IN);
-        assertEq(DAI.balanceOf(address(vault)), DAI_AMOUNT_IN);
+        assertEq(USDC.balanceOf(address(vault)), USDC_AMOUNT);
+        assertEq(DAI.balanceOf(address(vault)), DAI_AMOUNT);
 
         // assets are deposited to the pool
         (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
-        assertEq(balances[0], DAI_AMOUNT_IN);
-        assertEq(balances[1], USDC_AMOUNT_IN);
+        assertEq(balances[0], DAI_AMOUNT);
+        assertEq(balances[1], USDC_AMOUNT);
 
         // amountsIn should be correct
-        assertEq(amountsIn[0], DAI_AMOUNT_IN);
-        assertEq(amountsIn[1], USDC_AMOUNT_IN);
+        assertEq(amountsIn[0], DAI_AMOUNT);
+        assertEq(amountsIn[1], USDC_AMOUNT);
 
         // should mint correct amount of BPT tokens
         // Account for the precision less
         assertApproxEqAbs(pool.balanceOf(alice), bptAmountOut, DELTA);
-        assertApproxEqAbs(bptAmountOut, DAI_AMOUNT_IN * 2, DELTA);
+        assertApproxEqAbs(bptAmountOut, DAI_AMOUNT * 2, DELTA);
     }
 
     function testAddLiquidity() public {
@@ -125,10 +128,10 @@ contract WeightedPoolTest is Test {
         router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
+            [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             // Initial BTP is invariant * tokens.length
             // Account for the precision less
-            DAI_AMOUNT_IN * 2 - DELTA,
+            DAI_AMOUNT * 2 - DELTA,
             bytes("")
         );
 
@@ -136,8 +139,8 @@ contract WeightedPoolTest is Test {
         (uint256[] memory amountsIn, uint256 bptAmountOut) = router.addLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            DAI_AMOUNT_IN,
+            [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
+            DAI_AMOUNT,
             IBasePool.AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
             bytes("")
         );
@@ -147,21 +150,21 @@ contract WeightedPoolTest is Test {
         assertEq(DAI.balanceOf(bob), 0);
 
         // assets are stored in the Vault
-        assertEq(USDC.balanceOf(address(vault)), USDC_AMOUNT_IN * 2);
-        assertEq(DAI.balanceOf(address(vault)), DAI_AMOUNT_IN * 2);
+        assertEq(USDC.balanceOf(address(vault)), USDC_AMOUNT * 2);
+        assertEq(DAI.balanceOf(address(vault)), DAI_AMOUNT * 2);
 
         // assets are deposited to the pool
         (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
-        assertEq(balances[0], DAI_AMOUNT_IN * 2);
-        assertEq(balances[1], USDC_AMOUNT_IN * 2);
+        assertEq(balances[0], DAI_AMOUNT * 2);
+        assertEq(balances[1], USDC_AMOUNT * 2);
 
         // amountsIn should be correct
-        assertEq(amountsIn[0], DAI_AMOUNT_IN);
-        assertEq(amountsIn[1], USDC_AMOUNT_IN);
+        assertEq(amountsIn[0], DAI_AMOUNT);
+        assertEq(amountsIn[1], USDC_AMOUNT);
 
         // should mint correct amount of BPT tokens
         assertApproxEqAbs(pool.balanceOf(bob), bptAmountOut, DELTA);
-        assertApproxEqAbs(bptAmountOut, DAI_AMOUNT_IN * 2, DELTA);
+        assertApproxEqAbs(bptAmountOut, DAI_AMOUNT * 2, DELTA);
     }
 
     function testRemoveLiquidity() public {
@@ -170,10 +173,10 @@ contract WeightedPoolTest is Test {
         router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
+            [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             // Initial BTP is invariant * tokens.length
             // Account for the precision less
-            DAI_AMOUNT_IN * 2 - DELTA,
+            DAI_AMOUNT * 2 - DELTA,
             bytes("")
         );
 
@@ -181,8 +184,8 @@ contract WeightedPoolTest is Test {
         router.addLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            DAI_AMOUNT_IN,
+            [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
+            DAI_AMOUNT,
             IBasePool.AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
             bytes("")
         );
@@ -194,7 +197,7 @@ contract WeightedPoolTest is Test {
         (uint256[] memory amountsOut, uint256 bptAmountIn) = router.removeLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(less(DAI_AMOUNT_IN)), uint256(less(USDC_AMOUNT_IN))].toMemoryArray(),
+            [uint256(less(DAI_AMOUNT, 1e4)), uint256(less(USDC_AMOUNT, 1e4))].toMemoryArray(),
             bobBtpBalance,
             IBasePool.RemoveLiquidityKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
             bytes("")
@@ -203,28 +206,66 @@ contract WeightedPoolTest is Test {
         vm.stopPrank();
 
         // asssets are transferred to Bob
-        assertApproxEqAbs(USDC.balanceOf(bob), USDC_AMOUNT_IN, DELTA);
-        assertApproxEqAbs(DAI.balanceOf(bob), DAI_AMOUNT_IN, DELTA);
+        assertApproxEqAbs(USDC.balanceOf(bob), USDC_AMOUNT, DELTA);
+        assertApproxEqAbs(DAI.balanceOf(bob), DAI_AMOUNT, DELTA);
 
         // assets are stored in the Vault
-        assertApproxEqAbs(USDC.balanceOf(address(vault)), USDC_AMOUNT_IN, DELTA);
-        assertApproxEqAbs(DAI.balanceOf(address(vault)), DAI_AMOUNT_IN, DELTA);
+        assertApproxEqAbs(USDC.balanceOf(address(vault)), USDC_AMOUNT, DELTA);
+        assertApproxEqAbs(DAI.balanceOf(address(vault)), DAI_AMOUNT, DELTA);
 
         // assets are deposited to the pool
         (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
-        assertApproxEqAbs(balances[0], DAI_AMOUNT_IN, DELTA);
-        assertApproxEqAbs(balances[1], USDC_AMOUNT_IN, DELTA);
+        assertApproxEqAbs(balances[0], DAI_AMOUNT, DELTA);
+        assertApproxEqAbs(balances[1], USDC_AMOUNT, DELTA);
 
         // amountsOut are correct
-        assertApproxEqAbs(amountsOut[0], DAI_AMOUNT_IN, DELTA);
-        assertApproxEqAbs(amountsOut[1], USDC_AMOUNT_IN, DELTA);
+        assertApproxEqAbs(amountsOut[0], DAI_AMOUNT, DELTA);
+        assertApproxEqAbs(amountsOut[1], USDC_AMOUNT, DELTA);
 
         // should mint correct amount of BPT tokens
         assertEq(pool.balanceOf(bob), 0);
         assertEq(bobBtpBalance, bptAmountIn);
     }
 
-    function less(uint256 amount) internal pure returns (uint256) {
-        return (amount * 9999) / 10000;
+    function testSwap() public {
+        vm.prank(alice);
+        router.initialize(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
+            // Initial BTP is invariant * tokens.length
+            // Account for the precision less
+            DAI_AMOUNT * 2 - DELTA,
+            bytes("")
+        );
+
+        vm.prank(bob);
+        uint256 amountCalculated = router.swap(
+            IVault.SwapKind.GIVEN_IN,
+            address(pool),
+            DAI.asAsset(),
+            USDC.asAsset(),
+            DAI_AMOUNT_IN,
+            less(USDC_AMOUNT_OUT, 1e3),
+            type(uint256).max,
+            bytes("")
+        );
+
+        // asssets are transferred from Bob
+        assertEq(USDC.balanceOf(bob), USDC_AMOUNT + amountCalculated);
+        assertEq(DAI.balanceOf(bob), DAI_AMOUNT - DAI_AMOUNT_IN);
+
+        // assets are stored in the Vault
+        assertEq(USDC.balanceOf(address(vault)), USDC_AMOUNT - amountCalculated);
+        assertEq(DAI.balanceOf(address(vault)), DAI_AMOUNT + DAI_AMOUNT_IN);
+
+        // assets are deposited to the pool
+        (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
+        assertEq(balances[0], DAI_AMOUNT+ DAI_AMOUNT_IN);
+        assertEq(balances[1], USDC_AMOUNT- amountCalculated);
+    }
+
+    function less(uint256 amount, uint256 base) internal pure returns (uint256) {
+        return (amount * (base - 1)) / base;
     }
 }
