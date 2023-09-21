@@ -101,8 +101,6 @@ contract RouterTest is Test {
             address(USDC).asAsset(),
             address(DAI).asAsset(),
             USDC_AMOUNT_IN,
-            DAI_AMOUNT_IN,
-            type(uint256).max,
             bytes("")
         );
     }
@@ -131,8 +129,6 @@ contract RouterTest is Test {
             address(USDC).asAsset(),
             address(DAI).asAsset(),
             USDC_AMOUNT_IN,
-            DAI_AMOUNT_IN,
-            type(uint256).max,
             bytes("")
         );
     }

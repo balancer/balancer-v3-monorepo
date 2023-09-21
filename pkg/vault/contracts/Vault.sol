@@ -139,13 +139,13 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         _tokenReserves[token] = token.balanceOf(address(this));
         paid = _tokenReserves[token] - reservesBefore;
         // subtraction must be safe
-        _accountDelta(token, -paid.toInt256(), msg.sender);
+        _supplyCredit(token, paid, msg.sender);
     }
 
     /// @inheritdoc IVault
     function wire(IERC20 token, address to, uint256 amount) public nonReentrant withHandler {
         // effects
-        _accountDelta(token, amount.toInt256(), msg.sender);
+        _takeDebt(token, amount, msg.sender);
         _tokenReserves[token] -= amount;
         // interactions
         token.safeTransfer(to, amount);
@@ -153,14 +153,14 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
     /// @inheritdoc IVault
     function mint(IERC20 token, address to, uint256 amount) public nonReentrant withHandler {
-        _accountDelta(token, amount.toInt256(), msg.sender);
+        _takeDebt(token, amount, msg.sender);
         _mint(address(token), to, amount);
     }
 
     /// @inheritdoc IVault
     function retrieve(IERC20 token, address from, uint256 amount) public nonReentrant withHandler {
         // effects
-        _accountDelta(token, -(amount.toInt256()), msg.sender);
+        _supplyCredit(token, amount, msg.sender);
         _tokenReserves[token] += amount;
         // interactions
         token.safeTransferFrom(from, address(this), amount);
@@ -168,9 +168,9 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
     /// @inheritdoc IVault
     function burn(IERC20 token, address owner, uint256 amount) public nonReentrant withHandler {
+        _supplyCredit(token, amount, msg.sender);
         _spendAllowance(address(token), owner, address(this), amount);
         _burn(address(token), owner, amount);
-        _accountDelta(token, -(amount.toInt256()), msg.sender);
     }
 
     /// @inheritdoc IVault
@@ -199,6 +199,28 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     /// @inheritdoc IVault
     function getTokenReserve(IERC20 token) external view returns (uint256) {
         return _tokenReserves[token];
+    }
+
+    /**
+     * @notice Records the `debt` for a given handler and token.
+     *
+     * @param token   The ERC20 token for which the `debt` will be accounted.
+     * @param debt    The amount of `token` taken from the Vault in favor of the `handler`.
+     * @param handler The account responsible for the debt.
+     */
+    function _takeDebt(IERC20 token, uint256 debt, address handler) internal {
+        _accountDelta(token, debt.toInt256(), handler);
+    }
+
+    /**
+     * @notice Records the `credit` for a given handler and token.
+     *
+     * @param token   The ERC20 token for which the 'credit' will be accounted.
+     * @param credit  The amount of `token` supplied to the Vault in favor of the `handler`.
+     * @param handler The account credited with the amount.
+     */
+    function _supplyCredit(IERC20 token, uint256 credit, address handler) internal {
+        _accountDelta(token, -credit.toInt256(), handler);
     }
 
     /**
@@ -255,7 +277,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
      * More https://twitter.com/0xkarmacoma/status/1493380279309717505
      */
     modifier query() {
-        // Check if the transaction initiator is different from the 0x0.
+        // Check if the transaction initiator is different from 0x0.
         // If so, it's not a eth_call and we revert.
         // https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_call
         if (tx.origin != address(0)) {
@@ -267,14 +289,14 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
             revert QueriesDisabled();
         }
 
-        // Add the current handler to the list so `withHandler` would not revert
+        // Add the current handler to the list so `withHandler` does not revert
         _handlers.push(msg.sender);
         _;
     }
 
     /**
      * @inheritdoc IVault
-     * @dev Allows to query any operations on the Vault with `withHandler` modifier.
+     * @dev Allows querying any operation on the Vault that has the `withHandler` modifier.
      */
     function quote(bytes calldata data) external payable query returns (bytes memory result) {
         // Forward the incoming call to the original sender of this transaction.
@@ -652,16 +674,9 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
             userData
         );
 
-        if (bptAmountOut < minBptAmountOut) {
-            revert BtpAmountBelowMin();
-        }
-
         uint256[] memory finalBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountIn = amountsIn[i];
-            if (amountIn > maxAmountsIn[i]) {
-                revert JoinAboveMax();
-            }
 
             // Debit of token[i] for amountIn
             _accountDelta(tokens[i], int256(amountIn), msg.sender);
@@ -724,18 +739,12 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
             userData
         );
 
-        if (bptAmountIn > maxBptAmountIn) {
-            revert BtpAmountAboveMax();
-        }
-
         uint256[] memory finalBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountOut = amountsOut[i];
-            if (amountOut < minAmountsOut[i]) {
-                revert ExitBelowMin();
-            }
+
             // Credit token[i] for amountIn
-            _accountDelta(tokens[i], -int256(amountOut), msg.sender);
+            _supplyCredit(tokens[i], amountOut, msg.sender);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
             finalBalances[i] = balances[i] - amountOut;
@@ -745,7 +754,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         _setPoolBalances(pool, finalBalances);
 
         // Debit bptAmountOut of pool tokens
-        _accountDelta(IERC20(pool), int256(bptAmountIn), msg.sender);
+        _takeDebt(IERC20(pool), bptAmountIn, msg.sender);
 
         if (_poolConfig[pool].shouldCallAfterRemoveLiquidity() == true) {
             if (
