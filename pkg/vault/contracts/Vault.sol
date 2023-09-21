@@ -452,9 +452,9 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
 
         // Account amountIn of tokenIn
-        _accountDelta(params.tokenIn, int256(amountIn), msg.sender);
+        _takeDebt(params.tokenIn, amountIn, msg.sender);
         // Account amountOut of tokenOut
-        _accountDelta(params.tokenOut, -int256(amountOut), msg.sender);
+        _supplyCredit(params.tokenOut, amountOut, msg.sender);
 
         emit Swap(params.pool, params.tokenIn, params.tokenOut, amountIn, amountOut);
     }
@@ -596,21 +596,18 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         uint256[] memory finalBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountIn = amountsIn[i];
-            if (amountIn > maxAmountsIn[i]) {
-                revert JoinAboveMax();
-            }
 
             // Debit of token[i] for amountIn
-            _accountDelta(tokens[i], int256(amountIn), msg.sender);
+            _takeDebt(tokens[i], amountIn, msg.sender);
 
-            finalBalances[i] += amountIn;
+            finalBalances[i] = balances[i] + amountIn;
         }
 
         // All that remains is storing the new Pool balances.
         _setPoolBalances(pool, finalBalances);
 
         // Credit bptAmountOut of pool tokens
-        _accountDelta(IERC20(pool), -int256(bptAmountOut), msg.sender);
+        _supplyCredit(IERC20(pool), bptAmountOut, msg.sender);
 
         emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }
