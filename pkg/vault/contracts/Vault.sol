@@ -20,6 +20,8 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { ERC20MultiToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20MultiToken.sol";
 
+import "forge-std/console2.sol";
+
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 
 contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
@@ -466,18 +468,19 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     *******************************************************************************/
 
     /**
-     * @dev The function is designed to be called by a pool itself. The function will register the pool,
-     *      setting its tokens with an initial balance of zero. The function also checks for valid token addresses
+     * @dev The function will register the pool, setting its tokens with an initial balance of zero.
+     *      The function also checks for valid token addresses
      *      and ensures that the pool and tokens aren't already registered.
      *      Emits a `PoolRegistered` event upon successful registration.
      * @inheritdoc IVault
      */
     function registerPool(
+        address pool,
         address factory,
         IERC20[] memory tokens,
         PoolConfig calldata config
     ) external nonReentrant whenNotPaused {
-        _registerPool(factory, tokens, config);
+        _registerPool(pool, factory, tokens, config);
     }
 
     /// @inheritdoc IVault
@@ -514,9 +517,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /// @dev See `registerPool`
-    function _registerPool(address factory, IERC20[] memory tokens, PoolConfig memory config) internal {
-        address pool = msg.sender;
-
+    function _registerPool(address pool, address factory, IERC20[] memory tokens, PoolConfig memory config) internal {
         // Ensure the pool isn't already registered
         if (_isRegisteredPool(pool)) {
             revert PoolAlreadyRegistered(pool);
@@ -602,13 +603,10 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
         _validateTokensAndGetBalances(pool, tokens);
 
-        (bptAmountOut, amountsIn) = IBasePool(pool).onInitialize(amountsIn, userData);
+        ( amountsIn, bptAmountOut) = IBasePool(pool).onInitialize(maxAmountsIn, userData);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountIn = amountsIn[i];
-            if (amountIn > maxAmountsIn[i]) {
-                revert JoinAboveMax();
-            }
 
             // Debit of token[i] for amountIn
             _accountDelta(tokens[i], int256(amountIn), msg.sender);
@@ -669,7 +667,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
             // Debit of token[i] for amountIn
             _accountDelta(tokens[i], int256(amountIn), msg.sender);
 
-            finalBalances[i] += amountIn;
+            finalBalances[i] = balances[i] + amountIn;
         }
 
         // All that remains is storing the new Pool balances.

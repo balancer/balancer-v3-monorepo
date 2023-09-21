@@ -214,8 +214,9 @@ contract WeightedPool is BasePool, IWeightedPool {
     function onInitialize(
         uint256[] memory amountsIn,
         bytes memory
-    ) external view onlyVault returns (uint256, uint256[] memory) {
-        amountsIn.upscaleArray(_scalingFactors());
+    ) external view onlyVault returns (uint256[] memory, uint256) {
+        uint256[] memory scalingFactors = _scalingFactors();
+        amountsIn.upscaleArray(scalingFactors);
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
         uint256 invariantAfterJoin = WeightedMath.calculateInvariant(normalizedWeights, amountsIn);
@@ -225,7 +226,10 @@ contract WeightedPool is BasePool, IWeightedPool {
         // but different number of tokens.
         uint256 bptAmountOut = invariantAfterJoin * amountsIn.length;
 
-        return (bptAmountOut, amountsIn);
+        // amountsIn are amounts entering the Pool, so we round up.
+        amountsIn.downscaleUpArray(scalingFactors);
+
+        return (amountsIn, bptAmountOut);
     }
 
     // Add Liquidity
@@ -320,7 +324,7 @@ contract WeightedPool is BasePool, IWeightedPool {
             amountsOut[0] = amountOut;
             bptAmountIn = maxBptAmountIn;
         } else if (kind == RemoveLiquidityKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
-            amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, bptAmountIn, totalSupply());
+            amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, totalSupply(), maxBptAmountIn);
             bptAmountIn = maxBptAmountIn;
         } else if (kind == RemoveLiquidityKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             InputHelpers.ensureInputLengthMatch(minAmountsOut.length, balances.length);

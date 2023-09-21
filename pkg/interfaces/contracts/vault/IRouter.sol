@@ -75,6 +75,29 @@ interface IRouter {
         bytes userData;
     }
 
+    function initialize(
+        address pool,
+        Asset[] memory tokens,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+
+    struct InitializeCallbackParams {
+        /// @notice Address of the sender
+        address sender;
+        /// @notice Address of the liquidity pool
+        address pool;
+        /// @notice Array of assets to add
+        Asset[] assets;
+        /// @notice Maximum amounts of assets to be added
+        uint256[] maxAmountsIn;
+        /// @notice Minimum pool tokens to be received
+        uint256 minBptAmountOut;
+        /// @notice Additional data required for adding liquidity
+        bytes userData;
+    }
+
     /**
      * @notice Adds liquidity to a pool
      * @param pool                  Address of the liquidity pool

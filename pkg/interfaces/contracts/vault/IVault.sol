@@ -30,11 +30,12 @@ interface IVault is IERC20MultiToken {
 
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
+     * @param pool    The pool to register.
      * @param factory The factory address associated with the pool being registered.
-     * @param tokens An array of token addresses the pool will manage.
-     * @param config Config for the pool
+     * @param tokens  An array of token addresses the pool will manage.
+     * @param config  Config for the pool
      */
-    function registerPool(address factory, IERC20[] memory tokens, PoolConfig calldata config) external;
+    function registerPool(address pool, address factory, IERC20[] memory tokens, PoolConfig calldata config) external;
 
     /**
      * @notice Checks if a pool is registered

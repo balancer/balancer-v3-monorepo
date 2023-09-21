@@ -58,7 +58,7 @@ interface IBasePool {
     function onInitialize(
         uint256[] memory amountsIn,
         bytes memory userData
-    ) external returns (uint256, uint256[] memory);
+    ) external returns (uint256[] memory, uint256);
 
     /**
      * @notice Add liquidity to the pool

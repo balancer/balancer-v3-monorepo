@@ -14,6 +14,8 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 
+import "forge-std/console2.sol";
+
 contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     using AssetHelpers for *;
     using Address for address payable;
@@ -82,6 +84,77 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     /*******************************************************************************
                                     Pools
     *******************************************************************************/
+
+    /// @inheritdoc IRouter
+    function initialize(
+        address pool,
+        Asset[] memory assets,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+        return
+            abi.decode(
+                _vault.invoke(
+                    abi.encodeWithSelector(
+                        Router.initializeCallback.selector,
+                        InitializeCallbackParams({
+                            sender: msg.sender,
+                            pool: pool,
+                            assets: assets,
+                            maxAmountsIn: maxAmountsIn,
+                            minBptAmountOut: minBptAmountOut,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256[], uint256)
+            );
+    }
+
+    function initializeCallback(
+        InitializeCallbackParams calldata params
+    ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+        IERC20[] memory tokens = params.assets.toIERC20(_weth);
+
+        (amountsIn, bptAmountOut) = _vault.initialize(
+            params.pool,
+            tokens,
+            params.maxAmountsIn,
+            params.userData
+        );
+
+        if (bptAmountOut < params.minBptAmountOut) {
+            revert IVaultErrors.BtpAmountBelowMin();
+        }
+
+        uint256 ethAmountIn;
+        for (uint256 i = 0; i < params.assets.length; ++i) {
+            // Receive assets from the handler
+            Asset asset = params.assets[i];
+            uint256 amountIn = amountsIn[i];
+
+            if (amountIn > params.maxAmountsIn[i]) {
+                revert IVaultErrors.JoinAboveMax();
+            }
+
+            IERC20 token = asset.toIERC20(_weth);
+
+            // There can be only one WETH token in the pool
+            if (asset.isETH()) {
+                _weth.deposit{ value: amountIn }();
+                ethAmountIn = amountIn;
+            }
+            // transfer tokens from the user to the Vault
+            _vault.retrieve(token, params.sender, amountIn);
+        }
+
+        // mint pool tokens
+        _vault.mint(IERC20(params.pool), params.sender, bptAmountOut);
+
+        // return ETH dust
+        address(params.sender).returnEth(ethAmountIn);
+    }
 
     /// @inheritdoc IRouter
     function addLiquidity(
