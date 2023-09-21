@@ -164,7 +164,9 @@ describe('ERC20PoolToken', function () {
       });
 
       it('indirect ERC20 BPT transfer emits a transfer event on the token', async () => {
-        await expect(await vault.connect(registeredPoolSigner).poolTokenTransfer(user.address, other.address, bptAmount))
+        await expect(
+          await vault.connect(registeredPoolSigner).poolTokenTransfer(user.address, other.address, bptAmount)
+        )
           .to.emit(poolA, 'Transfer')
           .withArgs(user.address, other.address, bptAmount);
       });
@@ -316,7 +318,9 @@ describe('ERC20PoolToken', function () {
 
     it('cannot transfer ERC20 BPT to zero address', async () => {
       await expect(
-        vault.connect(registeredPoolSigner).poolTokenTransferFrom(relayer.address, user.address, ZERO_ADDRESS, bptAmount)
+        vault
+          .connect(registeredPoolSigner)
+          .poolTokenTransferFrom(relayer.address, user.address, ZERO_ADDRESS, bptAmount)
       )
         .to.be.revertedWithCustomError(vault, 'ERC20InvalidReceiver')
         .withArgs(ZERO_ADDRESS);
