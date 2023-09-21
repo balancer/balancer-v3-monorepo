@@ -14,8 +14,6 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 
-import "forge-std/console2.sol";
-
 contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     using AssetHelpers for *;
     using Address for address payable;
@@ -117,12 +115,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
-        (amountsIn, bptAmountOut) = _vault.initialize(
-            params.pool,
-            tokens,
-            params.maxAmountsIn,
-            params.userData
-        );
+        (amountsIn, bptAmountOut) = _vault.initialize(params.pool, tokens, params.maxAmountsIn, params.userData);
 
         if (bptAmountOut < params.minBptAmountOut) {
             revert IVaultErrors.BtpAmountBelowMin();

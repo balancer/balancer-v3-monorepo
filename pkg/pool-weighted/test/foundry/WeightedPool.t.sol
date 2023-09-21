@@ -115,8 +115,8 @@ contract WeightedPoolTest is Test {
 
         // should mint correct amount of BPT tokens
         // Account for the precision less
-        assertApproxEqAbs(pool.balanceOf(alice), bptAmountOut , DELTA);
-        assertApproxEqAbs(bptAmountOut, DAI_AMOUNT_IN * 2 , DELTA);
+        assertApproxEqAbs(pool.balanceOf(alice), bptAmountOut, DELTA);
+        assertApproxEqAbs(bptAmountOut, DAI_AMOUNT_IN * 2, DELTA);
     }
 
     function testAddLiquidity() public {
@@ -160,8 +160,8 @@ contract WeightedPoolTest is Test {
         assertEq(amountsIn[1], USDC_AMOUNT_IN);
 
         // should mint correct amount of BPT tokens
-        assertApproxEqAbs(pool.balanceOf(bob), bptAmountOut , DELTA);
-        assertApproxEqAbs(bptAmountOut, DAI_AMOUNT_IN * 2 , DELTA);
+        assertApproxEqAbs(pool.balanceOf(bob), bptAmountOut, DELTA);
+        assertApproxEqAbs(bptAmountOut, DAI_AMOUNT_IN * 2, DELTA);
     }
 
     function testRemoveLiquidity() public {
@@ -224,8 +224,7 @@ contract WeightedPoolTest is Test {
         assertEq(bobBtpBalance, bptAmountIn);
     }
 
-
-    function less(uint256 amount) pure internal returns (uint256) {
-        return amount * 9999/10000;
+    function less(uint256 amount) internal pure returns (uint256) {
+        return (amount * 9999) / 10000;
     }
 }

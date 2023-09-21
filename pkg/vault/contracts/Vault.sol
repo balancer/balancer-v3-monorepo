@@ -20,8 +20,6 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { ERC20MultiToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20MultiToken.sol";
 
-import "forge-std/console2.sol";
-
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 
 contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
@@ -603,7 +601,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
         _validateTokensAndGetBalances(pool, tokens);
 
-        ( amountsIn, bptAmountOut) = IBasePool(pool).onInitialize(maxAmountsIn, userData);
+        (amountsIn, bptAmountOut) = IBasePool(pool).onInitialize(maxAmountsIn, userData);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountIn = amountsIn[i];

@@ -96,9 +96,10 @@ describe('Queries', function () {
 
     it('queries a removeLiquidity correctly', async () => {
       const { amountsOut, bptAmountIn } = await router
-              .connect(zero)
-              .queryRemoveLiquidity.staticCall(pool, [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], DAI_AMOUNT_IN, 0, '0x');
-            expect(amountsOut).to.be.deep.eq([ amountsOut, bptAmountIn } = await router
+        .connect(zero)
+        .queryRemoveLiquidity.staticCall(pool, [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], DAI_AMOUNT_IN, 0, '0x');
+      expect(amountsOut).to.be.deep.eq([amountsOut, bptAmountIn]);
+      await router
         .connect(zero)
         .queryRemoveLiquidity.staticCall(pool, [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], DAI_AMOUNT_IN, 0, '0x');
       expect(amountsOut).to.be.deep.eq([DAI_AMOUNT_IN, USDC_AMOUNT_IN]);
