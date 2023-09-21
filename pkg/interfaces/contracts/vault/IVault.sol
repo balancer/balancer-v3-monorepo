@@ -65,15 +65,6 @@ interface IVault {
     function transfer(address token, address to, uint256 amount) external returns (bool);
 
     /**
-     * @notice Transfers ERC20 token from owner to a recipient
-     * @param owner                          Owner's address
-     * @param to                             Recipient's address
-     * @param amount                         Amount of tokens to transfer
-     * @return                               True if successful, false otherwise
-     */
-    function transferWith(address owner, address to, uint256 amount) external returns (bool);
-
-    /**
      * @notice Transfers from a sender to a recipient using an allowance
      * @param token                          Token's address
      * @param from                           Sender's address
@@ -82,16 +73,6 @@ interface IVault {
      * @return                               True if successful, false otherwise
      */
     function transferFrom(address token, address from, address to, uint256 amount) external returns (bool);
-
-    /**
-     * @notice Transfers from a sender to a recipient using an allowance
-     * @param spender                        Address allowed to perform the transfer
-     * @param from                           Sender's address
-     * @param to                             Recipient's address
-     * @param amount                         Amount of tokens to transfer
-     * @return                               True if successful, false otherwise
-     */
-    function transferFromWith(address spender, address from, address to, uint256 amount) external returns (bool);
 
     /**
      * @notice Gets allowance of a spender for a given ERC20 token and owner
@@ -104,21 +85,46 @@ interface IVault {
 
     /**
      * @notice Approves a spender to spend tokens on behalf of sender
-     * @param owner                          Owner's address
-     * @param spender                        Spender's address
-     * @param amount                         Amount of tokens to approve
-     * @return                               True if successful, false otherwise
-     */
-    function approveWith(address owner, address spender, uint256 amount) external returns (bool);
-
-    /**
-     * @notice Approves a spender to spend tokens on behalf of sender
      * @param token                          Token's address
      * @param spender                        Spender's address
      * @param amount                         Amount of tokens to approve
      * @return                               True if successful, false otherwise
      */
     function approve(address token, address spender, uint256 amount) external returns (bool);
+
+    /**
+     * @notice Transfers pool token from owner to a recipient.
+     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
+     * the pool contract, so msg.sender is used as the token address.
+     * @param owner                          Owner's address
+     * @param to                             Recipient's address
+     * @param amount                         Amount of tokens to transfer
+     * @return                               True if successful, false otherwise
+     */
+    function poolTokenTransfer(address owner, address to, uint256 amount) external returns (bool);
+
+    /**
+     * @notice Transfers pool token from a sender to a recipient using an allowance
+     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
+     * the pool contract, so msg.sender is used as the token address.
+     * @param spender                        Address allowed to perform the transfer
+     * @param from                           Sender's address
+     * @param to                             Recipient's address
+     * @param amount                         Amount of tokens to transfer
+     * @return                               True if successful, false otherwise
+     */
+    function poolTokenTransferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
+
+    /**
+     * @notice Approves a spender to spend pool tokens on behalf of sender
+     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
+     * the pool contract, so msg.sender is used as the token address.
+     * @param owner                          Owner's address
+     * @param spender                        Spender's address
+     * @param amount                         Amount of tokens to approve
+     * @return                               True if successful, false otherwise
+     */
+    function poolTokenApprove(address owner, address spender, uint256 amount) external returns (bool);
 
     /*******************************************************************************
                               Transient Accounting
