@@ -48,7 +48,12 @@ abstract contract ERC20MultiToken is IERC20Errors {
     }
 
     function _allowance(address token, address owner, address spender) internal view returns (uint256) {
-        return _allowances[token][owner][spender];
+        // MultiToken have infinite allowances
+        if (spender == address(this)) {
+            return type(uint256).max;
+        } else {
+            return _allowances[token][owner][spender];
+        }
     }
 
     function _mint(address token, address to, uint256 amount) internal {
@@ -155,7 +160,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
     }
 
     function _spendAllowance(address token, address owner, address spender, uint256 amount) internal {
-        uint256 currentAllowance = _allowances[token][owner][spender];
+        uint256 currentAllowance = _allowance(token, owner, spender);
         if (currentAllowance != type(uint256).max) {
             if (amount > currentAllowance) {
                 revert ERC20InsufficientAllowance(spender, currentAllowance, amount);
