@@ -132,4 +132,20 @@ contract VaultMultiTokenTest is Test {
         assertEq(vault.balanceOf(address(token), from), 0);
         assertEq(vault.balanceOf(address(token), address(0xBEEF)), 1e18);
     }
+
+    function testVaultAllowance() public {
+        vault.mintERC20(address(token), address(0xABCD), 1e18);
+
+        vm.prank(address(vault));
+        // test that Vault has the allowance for any token and can move funds
+        vault.transferFrom(address(token), address(0xABCD), address(0xBEEF), 1e18);
+
+        assertEq(vault.totalSupply(address(token)), 1e18);
+
+        assertEq(vault.allowance(address(token), address(0xABCD), address(vault)), type(uint256).max);
+
+        assertEq(vault.balanceOf(address(token), address(0xABCD)), 0);
+        assertEq(vault.balanceOf(address(token), address(0xBEEF)), 1e18);
+
+    }
 }

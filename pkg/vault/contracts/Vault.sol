@@ -7,7 +7,6 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/token/IERC20MultiToken.sol";
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -322,56 +321,56 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
                                     ERC20 Tokens
     *******************************************************************************/
 
-    /// @inheritdoc IERC20MultiToken
+    /// @inheritdoc IVault
     function totalSupply(address token) external view returns (uint256) {
         return _totalSupply(token);
     }
 
-    /// @inheritdoc IERC20MultiToken
+    /// @inheritdoc IVault
     function balanceOf(address token, address account) external view returns (uint256) {
         return _balanceOf(token, account);
     }
 
-    /// @inheritdoc IERC20MultiToken
+    /// @inheritdoc IVault
     function allowance(address token, address owner, address spender) external view returns (uint256) {
         return _allowance(token, owner, spender);
     }
 
-    /// @inheritdoc IERC20MultiToken
-    function transferWith(address owner, address to, uint256 amount) external returns (bool) {
-        _transfer(msg.sender, owner, to, amount);
-        return true;
-    }
-
-    /// @inheritdoc IERC20MultiToken
+    /// @inheritdoc IVault
     function transfer(address token, address to, uint256 amount) external returns (bool) {
         _transfer(token, msg.sender, to, amount);
         return true;
     }
 
-    /// @inheritdoc IERC20MultiToken
-    function approveWith(address owner, address spender, uint256 amount) external returns (bool) {
-        _approve(msg.sender, owner, spender, amount);
-        return true;
-    }
-
-    /// @inheritdoc IERC20MultiToken
+    /// @inheritdoc IVault
     function approve(address token, address spender, uint256 amount) external returns (bool) {
         _approve(token, msg.sender, spender, amount);
         return true;
     }
 
-    /// @inheritdoc IERC20MultiToken
-    function transferFromWith(address spender, address from, address to, uint256 amount) external returns (bool) {
-        _spendAllowance(msg.sender, from, spender, amount);
-        _transfer(msg.sender, from, to, amount);
-        return true;
-    }
-
-    /// @inheritdoc IERC20MultiToken
+    /// @inheritdoc IVault
     function transferFrom(address token, address from, address to, uint256 amount) external returns (bool) {
         _spendAllowance(token, from, msg.sender, amount);
         _transfer(token, from, to, amount);
+        return true;
+    }
+
+    /// @inheritdoc IVault
+    function poolTokenTransfer(address owner, address to, uint256 amount) external returns (bool) {
+        _transfer(msg.sender, owner, to, amount);
+        return true;
+    }
+
+    /// @inheritdoc IVault
+    function poolTokenApprove(address owner, address spender, uint256 amount) external returns (bool) {
+        _approve(msg.sender, owner, spender, amount);
+        return true;
+    }
+
+    /// @inheritdoc IVault
+    function poolTokenTransferFrom(address spender, address from, address to, uint256 amount) external returns (bool) {
+        _spendAllowance(msg.sender, from, spender, amount);
+        _transfer(msg.sender, from, to, amount);
         return true;
     }
 

@@ -13,9 +13,4 @@ interface IWeightedPool {
      * @dev
      */
     error NormalizedWeightInvariant();
-
-    /**
-     * @dev
-     */
-    error InvalidToken();
 }

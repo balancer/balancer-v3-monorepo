@@ -6,7 +6,7 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/token/IERC20Errors.sol";
 
-import { ERC20FacadeToken } from "./ERC20FacadeToken.sol";
+import { ERC20PoolToken } from "./ERC20PoolToken.sol";
 
 /**
  * @notice Store Token data and handle accounting for all tokens in the Vault.
@@ -33,7 +33,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
     // token -> (owner -> balance): Users' balances
     mapping(address => mapping(address => uint256)) private _balances;
 
-    // token -> (owner -> (spender -> allowance))
+    // token -> (owner -> (spender -> allowance)): Users' allowances
     mapping(address => mapping(address => mapping(address => uint256))) private _allowances;
 
     // token -> total supply
@@ -48,7 +48,12 @@ abstract contract ERC20MultiToken is IERC20Errors {
     }
 
     function _allowance(address token, address owner, address spender) internal view returns (uint256) {
-        return _allowances[token][owner][spender];
+        // MultiToken have infinite allowances
+        if (spender == address(this)) {
+            return type(uint256).max;
+        } else {
+            return _allowances[token][owner][spender];
+        }
     }
 
     function _mint(address token, address to, uint256 amount) internal {
@@ -64,11 +69,11 @@ abstract contract ERC20MultiToken is IERC20Errors {
 
         emit Transfer(token, address(0), to, amount);
 
-        // We use a low-level call here because only `ERC20FacadeToken` tokens implement `emitTransfer`.
+        // We use a low-level call here because only `ERC20PoolToken` tokens implement `emitTransfer`.
         // Standard tokens, such as USDC, do not implement `emitTransfer`, so this call would fail.
         // While this is expected behavior and not an issue in itself, malicious ERC20 contracts
         // might exploit it for reentrancy. Hence, caution is needed.
-        try ERC20FacadeToken(token).emitTransfer(address(0), to, amount) {} catch {
+        try ERC20PoolToken(token).emitTransfer(address(0), to, amount) {} catch {
             // solhint-disable-previous-line no-empty-blocks
         }
     }
@@ -91,11 +96,11 @@ abstract contract ERC20MultiToken is IERC20Errors {
 
         emit Transfer(token, from, address(0), amount);
 
-        // We use a low-level call here because only `ERC20FacadeToken` tokens implement `emitTransfer`.
+        // We use a low-level call here because only `ERC20PoolToken` tokens implement `emitTransfer`.
         // Standard tokens, such as USDC, do not implement `emitTransfer`, so this call would fail.
         // While this is expected behavior and not an issue in itself, malicious ERC20 contracts
         // might exploit it for reentrancy. Hence, caution is needed.
-        try ERC20FacadeToken(token).emitTransfer(from, address(0), amount) {} catch {
+        try ERC20PoolToken(token).emitTransfer(from, address(0), amount) {} catch {
             // solhint-disable-previous-line no-empty-blocks
         }
     }
@@ -123,11 +128,11 @@ abstract contract ERC20MultiToken is IERC20Errors {
 
         emit Transfer(token, from, to, amount);
 
-        // We use a low-level call here because only `ERC20FacadeToken` tokens implement `emitTransfer`.
+        // We use a low-level call here because only `ERC20PoolToken` tokens implement `emitTransfer`.
         // Standard tokens, such as USDC, do not implement `emitTransfer`, so this call would fail.
         // While this is expected behavior and not an issue in itself, malicious ERC20 contracts
         // might exploit it for reentrancy. Hence, caution is needed.
-        try ERC20FacadeToken(token).emitTransfer(from, to, amount) {} catch {
+        try ERC20PoolToken(token).emitTransfer(from, to, amount) {} catch {
             // solhint-disable-previous-line no-empty-blocks
         }
     }
@@ -145,17 +150,17 @@ abstract contract ERC20MultiToken is IERC20Errors {
 
         emit Approval(token, owner, spender, amount);
 
-        // We use a low-level call here because only `ERC20FacadeToken` tokens implement `emitApprove`.
+        // We use a low-level call here because only `ERC20PoolToken` tokens implement `emitApprove`.
         // Standard tokens, such as USDC, do not implement `emitApprove`, so this call would fail.
         // While this is expected behavior and not an issue in itself, malicious ERC20 contracts
         // might exploit it for reentrancy. Hence, caution is needed.
-        try ERC20FacadeToken(token).emitApprove(owner, spender, amount) {} catch {
+        try ERC20PoolToken(token).emitApprove(owner, spender, amount) {} catch {
             // solhint-disable-previous-line no-empty-blocks
         }
     }
 
     function _spendAllowance(address token, address owner, address spender, uint256 amount) internal {
-        uint256 currentAllowance = _allowances[token][owner][spender];
+        uint256 currentAllowance = _allowance(token, owner, spender);
         if (currentAllowance != type(uint256).max) {
             if (amount > currentAllowance) {
                 revert ERC20InsufficientAllowance(spender, currentAllowance, amount);

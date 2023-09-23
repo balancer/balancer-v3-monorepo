@@ -10,14 +10,12 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/token/IERC20Errors.sol";
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { ERC20FacadeToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20FacadeToken.sol";
-
 import { PoolMock } from "@balancer-labs/v3-pool-utils/contracts/test/PoolMock.sol";
-import { ERC20FacadeToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20FacadeToken.sol";
+import { ERC20PoolToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20PoolToken.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
-contract ERC20FacadeTokenTest is Test {
+contract ERC20PoolTokenTest is Test {
     using AssetHelpers for address[];
     using ArrayHelpers for address[2];
 

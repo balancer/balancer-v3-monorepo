@@ -7,7 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
-import { ERC20FacadeToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20FacadeToken.sol";
+import { ERC20PoolToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20PoolToken.sol";
 import { TemporarilyPausable } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
@@ -15,7 +15,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 /**
  * @notice Reference implementation for the base layer of a Pool contract.
  */
-abstract contract BasePool is IBasePool, ERC20FacadeToken, TemporarilyPausable {
+abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
     using FixedPoint for uint256;
     using ScalingHelpers for *;
 
@@ -26,13 +26,6 @@ abstract contract BasePool is IBasePool, ERC20FacadeToken, TemporarilyPausable {
     uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
     uint256 private constant _SWAP_FEE_PERCENTAGE = 0;
 
-    modifier onlyVault() {
-        if (msg.sender != address(_vault)) {
-            revert CallerNotVault();
-        }
-        _;
-    }
-
     constructor(
         IVault vault,
         string memory name,
@@ -40,7 +33,7 @@ abstract contract BasePool is IBasePool, ERC20FacadeToken, TemporarilyPausable {
         IERC20[] memory tokens,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) ERC20FacadeToken(vault, name, symbol) TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration) {
+    ) ERC20PoolToken(vault, name, symbol) TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration) {
         _vault = vault;
         if (tokens.length < _MIN_TOKENS) {
             revert MinTokens();

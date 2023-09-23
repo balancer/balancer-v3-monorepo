@@ -4,16 +4,18 @@ pragma solidity ^0.8.4;
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { ERC20PoolToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20PoolToken.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { BasePool } from "../BasePool.sol";
+import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 
-contract PoolMock is BasePool {
+contract ERC20PoolMock is ERC20PoolToken, IBasePool {
     using FixedPoint for uint256;
+
+    IVault private immutable _vault;
 
     bool public failOnHook;
 
@@ -24,7 +26,9 @@ contract PoolMock is BasePool {
         address factory,
         IERC20[] memory tokens,
         bool registerPool
-    ) BasePool(vault, name, symbol, tokens, 30 days, 90 days) {
+    ) ERC20PoolToken(vault, name, symbol) {
+        _vault = vault;
+
         if (registerPool) {
             vault.registerPool(address(this), factory, tokens, PoolConfigBits.wrap(0).toPoolConfig());
         }
@@ -32,20 +36,20 @@ contract PoolMock is BasePool {
 
     function onInitialize(
         uint256[] memory amountsIn,
-        bytes memory
-    ) external view onlyVault returns (uint256[] memory, uint256) {
-        return (amountsIn, amountsIn[0]);
+        bytes memory userData
+    ) external override returns (uint256[] memory, uint256) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     function onAddLiquidity(
         address,
         uint256[] memory,
         uint256[] memory maxAmountsIn,
-        uint256 minBptAmountOut,
+        uint256,
         AddLiquidityKind,
         bytes memory
-    ) external pure returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
-        return (maxAmountsIn, minBptAmountOut);
+    ) external pure override returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+        return (maxAmountsIn, maxAmountsIn[0]);
     }
 
     function onAfterAddLiquidity(
@@ -104,26 +108,5 @@ contract PoolMock is BasePool {
             params.kind == IVault.SwapKind.GIVEN_IN
                 ? params.amountGiven.mulDown(_multiplier)
                 : params.amountGiven.divDown(_multiplier);
-    }
-
-    function _getMaxTokens() internal pure virtual override returns (uint256) {
-        return 8;
-    }
-
-    function _getTotalTokens() internal view virtual override returns (uint256) {
-        return 2;
-    }
-
-    function _scalingFactor(IERC20) internal view virtual override returns (uint256) {
-        return 1;
-    }
-
-    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
-        uint256[] memory scalingFactors = new uint256[](2);
-
-        scalingFactors[0] = 1;
-        scalingFactors[1] = 1;
-
-        return scalingFactors;
     }
 }
