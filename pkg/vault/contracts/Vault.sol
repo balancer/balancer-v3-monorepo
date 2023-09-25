@@ -459,16 +459,17 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         _supplyCredit(params.tokenOut, amountOut, msg.sender);
 
         if (_poolConfig[params.pool].shouldCallAfterSwap() == true) {
+            // if hook is enabled, then update balances
             if (
                 IBasePool(params.pool).onAfterSwap(
-                    IBasePool.SwapParams({
+                    IBasePool.AfterSwapParams({
                         kind: params.kind,
                         tokenIn: params.tokenIn,
                         tokenOut: params.tokenOut,
-                        amountGiven: params.amountGiven,
-                        balances: currentBalances,
-                        indexIn: indexIn,
-                        indexOut: indexOut,
+                        amountIn: amountIn,
+                        amountOut: amountOut,
+                        tokenInBalance: tokenInBalance,
+                        tokenOutBalance: tokenOutBalance,
                         sender: msg.sender,
                         userData: params.userData
                     }),
