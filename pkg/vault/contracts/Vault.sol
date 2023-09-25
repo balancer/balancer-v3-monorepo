@@ -53,7 +53,10 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     /// exception being during the `invoke` call.
     mapping(IERC20 => uint256) private _tokenReserves;
 
-    /// @notice If set to true, disables query functionality of the Vault. Can be modified only by governance.
+    /**
+     * @notice If set to true, disables query functionality (quote function) in the Vault.
+     * @dev Can only by modified by goverannce.
+     */
     bool private _isQueryDisabled;
 
     constructor(
@@ -292,7 +295,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         }
 
         if (_isQueryDisabled) {
-            revert QueriesDisabled();
+            revert QueryDisabled();
         }
 
         // Add the current handler to the list so `withHandler` does not revert
@@ -309,16 +312,37 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         return (msg.sender).functionCallWithValue(data, msg.value);
     }
 
-    /**
-     * @inheritdoc IVault
-     */
+    /// @inheritdoc IVault
     function disableQuery() external authenticate {
-        _isQueryDisabled = true;
+        _setDisableQuery(true);
     }
 
-    /**
-     * @inheritdoc IVault
-     */
+    /// @inheritdoc IVault
+    function enableQuery() external authenticate {
+        _setDisableQuery(false);
+    }
+
+    function _setDisableQuery(bool disableQuery_) private {
+        bool currentlyDisabled = _isQueryDisabled;
+
+        if (disableQuery_) {
+            if (currentlyDisabled) {
+                revert QueryAlreadyDisabled();
+            }
+
+            emit QueriesDisabled(msg.sender);
+        } else {
+            if (!currentlyDisabled) {
+                revert QueryNotDisabled();
+            }
+
+            emit QueriesEnabled(msg.sender);
+        }
+
+        _isQueryDisabled = disableQuery_;
+    }
+
+    /// @inheritdoc IVault
     function isQueryDisabled() external view returns (bool) {
         return _isQueryDisabled;
     }

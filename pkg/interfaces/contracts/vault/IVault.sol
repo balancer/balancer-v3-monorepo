@@ -292,6 +292,10 @@ interface IVault {
                                     Queries
     *******************************************************************************/
 
+    event QueriesDisabled(address indexed account);
+
+    event QueriesEnabled(address indexed account);
+
     /**
      * @notice Invokes a callback on msg.sender with arguments provided in `data`
      * to query a set of operations on the Vault.
@@ -302,12 +306,17 @@ interface IVault {
     function quote(bytes calldata data) external payable returns (bytes memory result);
 
     /**
-     * @notice Disables queries functionality on the Vault. Can be called only by governance.
+     * @notice Disable query functionality on the Vault. Can only be called by governance.
      */
     function disableQuery() external;
 
     /**
-     * @notice Checks if the queries enabled on the Vault.
+     * @notice Reenable query functionality on the Vault. Can only be called by governance.
+     */
+    function enableQuery() external;
+
+    /**
+     * @notice Checks if the query functionality is enabled on the Vault.
      * @return If true, then queries are disabled.
      */
     function isQueryDisabled() external view returns (bool);

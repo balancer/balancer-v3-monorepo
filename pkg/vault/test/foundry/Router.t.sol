@@ -130,7 +130,7 @@ contract RouterTest is Test {
         vm.prank(alice);
         vault.disableQuery();
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.QueriesDisabled.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.QueryDisabled.selector));
 
         vm.prank(address(0), address(0));
         router.querySwap(
