@@ -10,8 +10,10 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 
 import { ReentrancyGuard } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { TemporarilyPausable } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -20,7 +22,7 @@ import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openze
 
 import { ERC20MultiToken } from "./ERC20MultiToken.sol";
 
-contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
+contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
     using AssetHelpers for *;
@@ -28,6 +30,9 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     using Address for *;
     using SafeERC20 for IERC20;
     using SafeCast for *;
+
+    // Upgradeable contract in charge of setting permissions.
+    IAuthorizer private _authorizer;
 
     // Registry of pool addresses.
     mapping(address => bool) private _isPoolRegistered;
@@ -52,10 +57,14 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     bool private _isQueryDisabled;
 
     constructor(
+        IAuthorizer authorizer,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration) {
-        // solhint-disable-previous-line no-empty-blocks
+    )
+        Authentication(bytes32(uint256(uint160(address(this)))))
+        TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
+    {
+        _authorizer = authorizer;
     }
 
     /*******************************************************************************
@@ -303,8 +312,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     /**
      * @inheritdoc IVault
      */
-    function disableQuery() external {
-        // TODO: Only governance can call this function.
+    function disableQuery() external authenticate {
         _isQueryDisabled = true;
     }
 
@@ -693,5 +701,30 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         }
 
         return balances;
+    }
+
+    function setVaultPaused(bool paused) external authenticate {}
+
+    /*******************************************************************************
+                                    Authentication
+    *******************************************************************************/
+
+    /// @inheritdoc IVault
+    function getAuthorizer() external view returns (IAuthorizer) {
+        return _authorizer;
+    }
+
+    /// @inheritdoc IVault
+    function setAuthorizer(IAuthorizer newAuthorizer) external authenticate {
+        _authorizer = newAuthorizer;
+
+        emit AuthorizerChanged(newAuthorizer);
+    }
+
+    /**
+     * @dev Access control is delegated to the Authorizer
+     */
+    function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
+        return _authorizer.canPerform(actionId, user, address(this));
     }
 }

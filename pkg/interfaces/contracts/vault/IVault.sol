@@ -2,8 +2,10 @@
 
 pragma solidity ^0.8.4;
 
-import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { Asset } from "../solidity-utils/misc/Asset.sol";
+import { IAuthorizer } from "./IAuthorizer.sol";
 
 /// @notice Interface for the Vault
 interface IVault {
@@ -309,4 +311,35 @@ interface IVault {
      * @return If true, then queries are disabled.
      */
     function isQueryDisabled() external view returns (bool);
+
+    /*******************************************************************************
+                                Authentication
+    *******************************************************************************/
+
+    /**
+     * @dev Returns the Vault's Authorizer.
+     */
+    function getAuthorizer() external view returns (IAuthorizer);
+
+    /**
+     * @dev Sets a new Authorizer for the Vault. The caller must be allowed by the current Authorizer to do this.
+     *
+     * Emits an `AuthorizerChanged` event.
+     */
+    function setAuthorizer(IAuthorizer newAuthorizer) external;
+
+    /// @dev Emitted when a new authorizer is set by `setAuthorizer`.
+    event AuthorizerChanged(IAuthorizer indexed newAuthorizer);
+
+    /**
+     * @dev Safety mechanism to pause most Vault operations in the event of an emergency - typically detection of an
+     * error in some part of the system.
+     *
+     * The Vault can only be paused during an initial time period, after which pausing is forever disabled.
+     *
+     * While the contract is paused, the following features are disabled:
+     * - swaps
+     * - joining and exiting Pools
+     */
+    function setVaultPaused(bool paused) external;
 }
