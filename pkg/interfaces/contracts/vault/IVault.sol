@@ -350,5 +350,8 @@ interface IVault {
      * - swaps
      * - joining and exiting Pools
      */
-    function setVaultPaused(bool paused) external;
+
+    function pauseVault() external;
+
+    function unpauseVault() external;
 }
