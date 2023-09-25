@@ -703,7 +703,13 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         return balances;
     }
 
-    function setVaultPaused(bool paused) external authenticate {}
+    /**
+     * @dev Pause (or unpause) the Vault. Not calling it simply setPaused, since there Will be
+     * another function for pausing pools.
+     */
+    function setVaultPaused(bool paused) external authenticate {
+        _setPaused(paused);
+    }
 
     /*******************************************************************************
                                     Authentication

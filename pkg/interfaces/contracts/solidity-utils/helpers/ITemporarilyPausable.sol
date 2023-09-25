@@ -36,6 +36,11 @@ interface ITemporarilyPausable {
     error PauseWindowExpired();
 
     /**
+     * @dev Error indicating that the buffer period has expired.
+     */
+    error BufferPeriodExpired();
+
+    /**
      * @dev Error indicating that the contract is already paused.
      */
     error AlreadyPaused();

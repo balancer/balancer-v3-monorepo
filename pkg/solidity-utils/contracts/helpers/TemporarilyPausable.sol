@@ -103,12 +103,36 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
             revert AlreadyUnpaused();
         }
     }
+
+    /**
+     * @dev Sets the pause state to `paused`. The contract can only be paused until the end of the Pause Window, and
+     * unpaused until the end of the Buffer Period.
+     *
+     * Once the Buffer Period expires, this function reverts unconditionally.
+     */
+    function _setPaused(bool pausedFlag) internal {
+        if (pausedFlag) {
+            if (block.timestamp >= _pauseWindowEndTime) {
+                revert PauseWindowExpired();
+            }
+
+            emit Paused(msg.sender);
+        } else {
+            if (block.timestamp >= _bufferPeriodEndTime) {
+                revert BufferPeriodExpired();
+            }
+
+            emit Unpaused(msg.sender);
+        }
+
+        _paused = pausedFlag;
+    }
 }
 
 /**
  * @dev Keep the maximum durations in a single place.
  */
 library PausableConstants {
-    uint256 public constant MAX_PAUSE_WINDOW_DURATION = 270 days;
+    uint256 public constant MAX_PAUSE_WINDOW_DURATION = 5 * 52 weeks;
     uint256 public constant MAX_BUFFER_PERIOD_DURATION = 90 days;
 }
