@@ -10,6 +10,11 @@ type PoolConfigBits is uint256;
 using PoolConfigLib for PoolConfigBits global;
 
 library PoolConfigLib {
+
+    /// [  252 bit |               1 bit         |         1 bit            |     1 bit       |     1 bit       ]
+    /// [ not used | after remove liquidity hook | after add liquidity hook | after swap hook | pool registered ]
+    /// |MSB                                                                                                 LSB|
+
     // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
     uint8 public constant AFTER_SWAP_OFFSET = 1;
