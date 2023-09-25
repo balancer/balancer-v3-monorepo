@@ -10,11 +10,17 @@ type PoolConfigBits is uint256;
 using PoolConfigLib for PoolConfigBits global;
 
 library PoolConfigLib {
+    // Bit offsets for pool config
+    uint8 public constant POOL_REGISTERED_OFFSET = 0;
+    uint8 public constant AFTER_SWAP_OFFSET = 1;
+    uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = 2;
+    uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = 3;
+
     // Bitwise flags for pool's config
-    uint256 public constant POOL_REGISTERED_FLAG = 1;
-    uint256 public constant AFTER_SWAP_FLAG = 1 << 1;
-    uint256 public constant AFTER_ADD_LIQUIDITY_FLAG = 1 << 2;
-    uint256 public constant AFTER_REMOVE_LIQUIDITY_FLAG = 1 << 3;
+    uint256 public constant POOL_REGISTERED_FLAG = 1 << POOL_REGISTERED_OFFSET;
+    uint256 public constant AFTER_SWAP_FLAG = 1 << AFTER_SWAP_OFFSET;
+    uint256 public constant AFTER_ADD_LIQUIDITY_FLAG = 1 << AFTER_ADD_LIQUIDITY_OFFSET;
+    uint256 public constant AFTER_REMOVE_LIQUIDITY_FLAG = 1 << AFTER_REMOVE_LIQUIDITY_OFFSET;
 
     function addFlags(PoolConfigBits config, uint256 flags) internal pure returns (PoolConfigBits) {
         return PoolConfigBits.wrap(PoolConfigBits.unwrap(config) | flags);
