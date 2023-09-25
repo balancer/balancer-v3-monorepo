@@ -17,7 +17,9 @@ export async function setupEnvironment(factory: string): Promise<{
   const BUFFER_PERIOD_DURATION = MONTH;
 
   const authorizer: BasicAuthorizerMock = await deploy('v3-solidity-utils/BasicAuthorizerMock');
-  const vault: VaultMock = await deploy('VaultMock', { args: [authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
+  const vault: VaultMock = await deploy('VaultMock', {
+    args: [authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
+  });
   const vaultAddress = await vault.getAddress();
 
   const tokenA: ERC20TestToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });

@@ -150,7 +150,9 @@ describe('Vault', function () {
 
     sharedBeforeEach('redeploy Vault', async () => {
       authorizer = await deploy('v3-solidity-utils/BasicAuthorizerMock');
-      timedVault = await deploy('VaultMock', { args: [authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
+      timedVault = await deploy('VaultMock', {
+        args: [authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
+      });
     });
 
     it('is temporarily pausable', async () => {
