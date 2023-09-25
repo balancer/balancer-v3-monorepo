@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC20Errors.sol";
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -23,8 +24,10 @@ contract ERC20PoolTokenTest is Test {
     VaultMock vault;
     ERC20PoolMock token;
 
+    IAuthorizer constant ZERO_ADDRESS = IAuthorizer(address(0));
+
     function setUp() public {
-        vault = new VaultMock(30 days, 90 days);
+        vault = new VaultMock(ZERO_ADDRESS, 30 days, 90 days);
         token = new ERC20PoolMock(
             vault,
             "ERC20 Pool",

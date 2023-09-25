@@ -13,10 +13,11 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC20Errors.sol";
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
-
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
+import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
@@ -29,6 +30,7 @@ contract RouterTest is Test {
     using ArrayHelpers for uint256[2];
 
     VaultMock vault;
+    BasicAuthorizerMock authorizer;
     Router router;
     ERC20PoolMock pool;
     ERC20TestToken USDC;
@@ -38,9 +40,11 @@ contract RouterTest is Test {
 
     uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
+    IAuthorizer constant ZERO_ADDRESS = IAuthorizer(address(0));
 
     function setUp() public {
-        vault = new VaultMock(30 days, 90 days);
+        authorizer = new BasicAuthorizerMock();
+        vault = new VaultMock(authorizer, 30 days, 90 days);
         router = new Router(IVault(vault), address(0));
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
@@ -115,6 +119,15 @@ contract RouterTest is Test {
 
         pool.setMultiplier(1e30);
 
+        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+
+        vault.disableQuery();
+
+        // Authorize alice
+        bytes32 disableQueryRole = vault.getActionId(IVault.disableQuery.selector);
+
+        authorizer.grantRole(disableQueryRole, alice);
+        vm.prank(alice);
         vault.disableQuery();
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.QueriesDisabled.selector));

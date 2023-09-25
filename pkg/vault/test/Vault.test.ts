@@ -12,6 +12,7 @@ import { bn } from '@balancer-labs/v3-helpers/src/numbers';
 import { setupEnvironment } from './poolSetup';
 import { impersonate } from '@balancer-labs/v3-helpers/src/signers';
 import '@balancer-labs/v3-common/setupTests';
+import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -145,9 +146,11 @@ describe('Vault', function () {
 
   describe('initialization', () => {
     let timedVault: VaultMock;
+    let authorizer: BasicAuthorizerMock;
 
     sharedBeforeEach('redeploy Vault', async () => {
-      timedVault = await deploy('VaultMock', { args: [PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
+      authorizer = await deploy('v3-solidity-utils/BasicAuthorizerMock');
+      timedVault = await deploy('VaultMock', { args: [authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
     });
 
     it('is temporarily pausable', async () => {
