@@ -49,10 +49,10 @@ library PoolConfigLib {
     function fromPoolConfig(PoolConfig memory config) internal pure returns (PoolConfigBits) {
         return
             PoolConfigBits.wrap(
-                uint256(config.isRegisteredPool ? 1 : 0) |
-                    uint256((config.shouldCallAfterSwap ? 1 : 0) << 1) |
-                    uint256((config.shouldCallAfterAddLiquidity ? 1 : 0) << 2) |
-                    uint256((config.shouldCallAfterRemoveLiquidity ? 1 : 0) << 3)
+                uint256((config.isRegisteredPool ? 1 : 0) << POOL_REGISTERED_OFFSET) |
+                    uint256((config.shouldCallAfterSwap ? 1 : 0) << AFTER_SWAP_OFFSET) |
+                    uint256((config.shouldCallAfterAddLiquidity ? 1 : 0) << AFTER_ADD_LIQUIDITY_OFFSET) |
+                    uint256((config.shouldCallAfterRemoveLiquidity ? 1 : 0) << AFTER_REMOVE_LIQUIDITY_OFFSET)
             );
     }
 
