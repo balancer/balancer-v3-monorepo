@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC20Errors.sol";
@@ -69,6 +70,12 @@ contract VaultMultiTokenTest is Test {
         vm.label(alice, "alice");
         vm.label(bob, "bob");
         vm.label(address(token), "token");
+    }
+
+    function testMintPoolToken() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.InvalidToken.selector));
+        router.mint(pool, USDC_AMOUNT_IN);
     }
 
     function testMint() public {

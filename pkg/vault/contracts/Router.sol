@@ -114,7 +114,13 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
-        (amountsIn, bptAmountOut) = _vault.addLiquidity(params.pool, tokens, params.maxAmountsIn, params.userData);
+        (amountsIn, bptAmountOut) = _vault.addLiquidity(
+            params.pool,
+            params.sender,
+            tokens,
+            params.maxAmountsIn,
+            params.userData
+        );
 
         if (bptAmountOut < params.minBptAmountOut) {
             revert IVaultErrors.BtpAmountBelowMin();
@@ -139,8 +145,6 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             }
             _vault.retrieve(token, params.sender, amountIn);
         }
-
-        _vault.mint(IERC20(params.pool), params.sender, bptAmountOut);
 
         // Send remaining ETH to the user
         address(params.sender).returnEth(ethAmountIn);
@@ -178,8 +182,10 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
+        // removeLiquidity should be only allowed for approved routers
         amountsOut = _vault.removeLiquidity(
             params.pool,
+            params.sender,
             tokens,
             params.minAmountsOut,
             params.bptAmountIn,
@@ -206,8 +212,6 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
                 ethAmountOut = amountOut;
             }
         }
-
-        _vault.burn(IERC20(params.pool), params.sender, params.bptAmountIn);
 
         // Send ETH to sender
         payable(params.sender).sendValue(ethAmountOut);
@@ -413,7 +417,13 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
-        (amountsIn, bptAmountOut) = _vault.addLiquidity(params.pool, tokens, params.maxAmountsIn, params.userData);
+        (amountsIn, bptAmountOut) = _vault.addLiquidity(
+            params.pool,
+            params.sender,
+            tokens,
+            params.maxAmountsIn,
+            params.userData
+        );
     }
 
     /// @inheritdoc IRouter
@@ -449,6 +459,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         return
             _vault.removeLiquidity(
                 params.pool,
+                params.sender,
                 params.assets.toIERC20(_weth),
                 params.minAmountsOut,
                 params.bptAmountIn,

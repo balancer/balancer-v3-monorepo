@@ -282,6 +282,7 @@ interface IVault {
      */
     function addLiquidity(
         address pool,
+        address recipient,
         IERC20[] memory assets,
         uint256[] memory maxAmountsIn,
         bytes memory userData
@@ -298,6 +299,7 @@ interface IVault {
      */
     function removeLiquidity(
         address pool,
+        address recipient,
         IERC20[] memory assets,
         uint256[] memory minAmountsOut,
         uint256 bptAmountIn,
