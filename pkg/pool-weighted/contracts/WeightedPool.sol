@@ -76,6 +76,17 @@ contract WeightedPool is BasePool, IWeightedPool {
 
         _normalizedWeight0 = params.normalizedWeights[0];
         _normalizedWeight1 = params.normalizedWeights[1];
+
+        vault.registerPool(
+            msg.sender,
+            params.tokens,
+            PoolConfig({
+                isRegisteredPool: false,
+                shouldCallAfterAddLiquidity: false,
+                shouldCallAfterRemoveLiquidity: false,
+                shouldCallAfterSwap: false
+            })
+        );
     }
 
     function _getNormalizedWeight(IERC20 token) internal view virtual returns (uint256) {

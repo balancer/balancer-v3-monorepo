@@ -18,7 +18,6 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { ERC20MultiToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20MultiToken.sol";
-
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 
 contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
@@ -495,12 +494,11 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
      * @inheritdoc IVault
      */
     function registerPool(
-        address pool,
         address factory,
         IERC20[] memory tokens,
         PoolConfig calldata config
     ) external nonReentrant whenNotPaused {
-        _registerPool(pool, factory, tokens, config);
+        _registerPool(factory, tokens, config);
     }
 
     /// @inheritdoc IVault
@@ -534,7 +532,9 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /// @dev See `registerPool`
-    function _registerPool(address pool, address factory, IERC20[] memory tokens, PoolConfig memory config) internal {
+    function _registerPool(address factory, IERC20[] memory tokens, PoolConfig memory config) internal {
+        address pool = msg.sender;
+
         // Ensure the pool isn't already registered
         if (_isRegisteredPool(pool)) {
             revert PoolAlreadyRegistered(pool);

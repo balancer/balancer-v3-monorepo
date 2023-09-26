@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.4;
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { ERC20PoolToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20PoolToken.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { ERC20PoolToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20PoolToken.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 
@@ -30,7 +30,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         _vault = vault;
 
         if (registerPool) {
-            vault.registerPool(address(this), factory, tokens, PoolConfigBits.wrap(0).toPoolConfig());
+            vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig());
         }
     }
 
@@ -59,7 +59,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         bytes memory,
         uint256[] calldata,
         uint256
-    ) external view override returns (bool) {
+    ) external view returns (bool) {
         return !failOnHook;
     }
 
@@ -81,7 +81,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         uint256,
         bytes memory,
         uint256[] calldata
-    ) external view override returns (bool) {
+    ) external view returns (bool) {
         return !failOnHook;
     }
 

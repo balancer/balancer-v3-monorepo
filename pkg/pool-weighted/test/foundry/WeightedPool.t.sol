@@ -60,8 +60,6 @@ contract WeightedPoolTest is Test {
             90 days
         );
 
-        vault.registerPool(address(pool), address(0), tokens, PoolConfigBits.wrap(0).toPoolConfig());
-
         USDC.mint(alice, USDC_AMOUNT);
         DAI.mint(alice, DAI_AMOUNT);
 
@@ -261,8 +259,8 @@ contract WeightedPoolTest is Test {
 
         // assets are deposited to the pool
         (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
-        assertEq(balances[0], DAI_AMOUNT+ DAI_AMOUNT_IN);
-        assertEq(balances[1], USDC_AMOUNT- amountCalculated);
+        assertEq(balances[0], DAI_AMOUNT + DAI_AMOUNT_IN);
+        assertEq(balances[1], USDC_AMOUNT - amountCalculated);
     }
 
     function less(uint256 amount, uint256 base) internal pure returns (uint256) {
