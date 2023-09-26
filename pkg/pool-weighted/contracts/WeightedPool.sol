@@ -82,6 +82,7 @@ contract WeightedPool is BasePool, IWeightedPool {
             params.tokens,
             PoolConfig({
                 isRegisteredPool: false,
+                isInitializedPool: false,
                 shouldCallAfterAddLiquidity: false,
                 shouldCallAfterRemoveLiquidity: false,
                 shouldCallAfterSwap: false
