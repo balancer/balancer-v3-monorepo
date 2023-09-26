@@ -30,7 +30,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         _vault = vault;
 
         if (registerPool) {
-            vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig());
+            vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig().hooks);
         }
     }
 
