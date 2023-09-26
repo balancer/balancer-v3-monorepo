@@ -64,7 +64,7 @@ contract ERC20PoolTokenMint is Test {
         vm.label(address(DAI), "DAI");
     }
 
-    function testPoolTokenTotalSupplyAfterMint() public {
+    function testPoolTotalSupplyAfterMint() public {
         vm.startPrank(alice);
         (, uint256 bptAmountOut) = router.addLiquidity(
             address(pool),
@@ -74,10 +74,16 @@ contract ERC20PoolTokenMint is Test {
             bytes("")
         );
 
-        uint256 totalSupplyBeforeMint =  vault.totalSupply(address(pool));
+        uint256 totalSupplyBeforeMint = vault.totalSupply(address(pool));
 
+        // Prior to mint, pool.totalSupply() == totalSupplyBeforeMint
+        assertEq(pool.totalSupply(), totalSupplyBeforeMint);
+
+        // deposit BPT to internal balance.
         router.mint(IERC20(pool), bptAmountOut);
 
+        // The total supply of the pool should eq totalSupplyBeforeMint, we have not increased BPT supply.
+        // Instead, pool.TotalSupply() == totalSupplyBeforeMint + bptAmountOut
         assertEq(pool.totalSupply(), totalSupplyBeforeMint);
         assertEq(vault.totalSupply(address(pool)), totalSupplyBeforeMint);
 
