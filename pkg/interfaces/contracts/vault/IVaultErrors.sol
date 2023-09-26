@@ -76,4 +76,7 @@ interface IVaultErrors {
 
     /// @dev
     error QueryNotDisabled();
+
+    /// @dev
+    error HookCallFailed();
 }
