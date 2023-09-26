@@ -7,7 +7,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
@@ -19,6 +19,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 
 import { ERC20MultiToken } from "./ERC20MultiToken.sol";
+import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 
 contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
@@ -28,9 +29,10 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     using Address for *;
     using SafeERC20 for IERC20;
     using SafeCast for *;
+    using PoolConfigLib for PoolConfig;
 
-    // Registry of pool addresses.
-    mapping(address => bool) private _isPoolRegistered;
+    // Registry of pool configs.
+    mapping(address => PoolConfigBits) internal _poolConfig;
 
     // Pool -> (token -> balance): Pool's ERC20 tokens balances stored at the Vault.
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolTokenBalances;
@@ -437,6 +439,28 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         // Account amountOut of tokenOut
         _supplyCredit(params.tokenOut, amountOut, msg.sender);
 
+        if (_poolConfig[params.pool].shouldCallAfterSwap() == true) {
+            // if hook is enabled, then update balances
+            if (
+                IBasePool(params.pool).onAfterSwap(
+                    IBasePool.AfterSwapParams({
+                        kind: params.kind,
+                        tokenIn: params.tokenIn,
+                        tokenOut: params.tokenOut,
+                        amountIn: amountIn,
+                        amountOut: amountOut,
+                        tokenInBalance: tokenInBalance,
+                        tokenOutBalance: tokenOutBalance,
+                        sender: msg.sender,
+                        userData: params.userData
+                    }),
+                    amountCalculated
+                ) == false
+            ) {
+                revert HookCallFailed();
+            }
+        }
+
         emit Swap(params.pool, params.tokenIn, params.tokenOut, amountIn, amountOut);
     }
 
@@ -451,13 +475,22 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
      *      Emits a `PoolRegistered` event upon successful registration.
      * @inheritdoc IVault
      */
-    function registerPool(address factory, IERC20[] memory tokens) external nonReentrant whenNotPaused {
-        _registerPool(factory, tokens);
+    function registerPool(
+        address factory,
+        IERC20[] memory tokens,
+        PoolConfig calldata config
+    ) external nonReentrant whenNotPaused {
+        _registerPool(factory, tokens, config);
     }
 
     /// @inheritdoc IVault
     function isRegisteredPool(address pool) external view returns (bool) {
         return _isRegisteredPool(pool);
+    }
+
+    /// @inheritdoc IVault
+    function getPoolConfig(address pool) external view returns (PoolConfig memory) {
+        return _poolConfig[pool].toPoolConfig();
     }
 
     /// @inheritdoc IVault
@@ -481,7 +514,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /// @dev See `registerPool`
-    function _registerPool(address factory, IERC20[] memory tokens) internal {
+    function _registerPool(address factory, IERC20[] memory tokens, PoolConfig memory config) internal {
         address pool = msg.sender;
 
         // Ensure the pool isn't already registered
@@ -510,8 +543,9 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
             }
         }
 
-        // Mark the pool as registered
-        _isPoolRegistered[pool] = true;
+        // Store config and mark the pool as registered
+        config.isRegisteredPool = true;
+        _poolConfig[pool] = config.fromPoolConfig();
 
         // Emit an event to log the pool registration
         emit PoolRegistered(pool, factory, tokens);
@@ -519,7 +553,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
     /// @dev See `isRegisteredPool`
     function _isRegisteredPool(address pool) internal view returns (bool) {
-        return _isPoolRegistered[pool];
+        return _poolConfig[pool].isPoolRegistered();
     }
 
     /**
@@ -593,6 +627,21 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         // Credit bptAmountOut of pool tokens
         _supplyCredit(IERC20(pool), bptAmountOut, msg.sender);
 
+        if (_poolConfig[pool].shouldCallAfterAddLiquidity() == true) {
+            if (
+                IBasePool(pool).onAfterAddLiquidity(
+                    msg.sender,
+                    balances,
+                    maxAmountsIn,
+                    userData,
+                    amountsIn,
+                    bptAmountOut
+                ) == false
+            ) {
+                revert HookCallFailed();
+            }
+        }
+
         emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }
 
@@ -629,6 +678,21 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
         // Debit bptAmountOut of pool tokens
         _takeDebt(IERC20(pool), bptAmountIn, msg.sender);
+
+        if (_poolConfig[pool].shouldCallAfterRemoveLiquidity() == true) {
+            if (
+                IBasePool(pool).onAfterRemoveLiquidity(
+                    msg.sender,
+                    balances,
+                    minAmountsOut,
+                    bptAmountIn,
+                    userData,
+                    amountsOut
+                ) == false
+            ) {
+                revert HookCallFailed();
+            }
+        }
 
         emit PoolBalanceChanged(
             pool,
