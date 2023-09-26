@@ -626,14 +626,14 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
             uint256 amountIn = amountsIn[i];
 
             // Debit of token[i] for amountIn
-            _accountDelta(tokens[i], int256(amountIn), msg.sender);
+            _takeDebt(tokens[i], amountIn, msg.sender);
         }
 
         // Store the new Pool balances.
         _setPoolBalances(pool, amountsIn);
 
         // Credit bptAmountOut of pool tokens
-        _accountDelta(IERC20(pool), -int256(bptAmountOut), msg.sender);
+        _supplyCredit(IERC20(pool), bptAmountOut, msg.sender);
 
         emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }
