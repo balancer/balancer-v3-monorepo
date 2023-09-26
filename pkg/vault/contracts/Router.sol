@@ -419,7 +419,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
 
         (amountsIn, bptAmountOut) = _vault.addLiquidity(
             params.pool,
-            params.sender,
+            address(0x1),
             tokens,
             params.maxAmountsIn,
             params.userData
@@ -456,10 +456,12 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     function queryRemoveLiquidityCallback(
         RemoveLiquidityCallbackParams calldata params
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
+        // Have to mint pool tokens to 0x1 address, because removeLiquidity will burn them
+        _vault.mint(IERC20(params.pool), address(0x1), params.bptAmountIn);
         return
             _vault.removeLiquidity(
                 params.pool,
-                params.sender,
+                address(0x1),
                 params.assets.toIERC20(_weth),
                 params.minAmountsOut,
                 params.bptAmountIn,

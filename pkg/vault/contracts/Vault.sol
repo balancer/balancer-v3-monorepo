@@ -153,8 +153,8 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
     /// @inheritdoc IVault
     function mint(IERC20 token, address to, uint256 amount) public nonReentrant withHandler {
-        // minting pool tokens is not allowed
-        if (_isRegisteredPool(address(token))) {
+        // minting pool tokens is not allowed, except for query calls
+        if (_isRegisteredPool(address(token)) && tx.origin != address(0)) {
             revert InvalidToken();
         }
         _takeDebt(token, amount, msg.sender);
