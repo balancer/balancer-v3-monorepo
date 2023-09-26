@@ -2,8 +2,10 @@
 
 pragma solidity ^0.8.4;
 
-import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { Asset } from "../solidity-utils/misc/Asset.sol";
+import { IAuthorizer } from "./IAuthorizer.sol";
 
 struct PoolHooks {
     bool shouldCallAfterSwap;
@@ -305,6 +307,25 @@ interface IVault {
     ) external returns (uint256[] memory amountsOut);
 
     event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
+
+    /*******************************************************************************
+                                Authentication
+    *******************************************************************************/
+
+    /**
+     * @dev Returns the Vault's Authorizer.
+     */
+    function getAuthorizer() external view returns (IAuthorizer);
+
+    /**
+     * @dev Sets a new Authorizer for the Vault. The caller must be allowed by the current Authorizer to do this.
+     *
+     * Emits an `AuthorizerChanged` event.
+     */
+    function setAuthorizer(IAuthorizer newAuthorizer) external;
+
+    /// @dev Emitted when a new authorizer is set by `setAuthorizer`.
+    event AuthorizerChanged(IAuthorizer indexed newAuthorizer);
 
     /*******************************************************************************
                                     Queries

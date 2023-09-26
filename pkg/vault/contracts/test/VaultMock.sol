@@ -9,6 +9,7 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 
@@ -16,9 +17,10 @@ contract VaultMock is Vault {
     using PoolConfigLib for PoolConfig;
 
     constructor(
+        IAuthorizer authorizer,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) Vault(pauseWindowDuration, bufferPeriodDuration) {
+    ) Vault(authorizer, pauseWindowDuration, bufferPeriodDuration) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
