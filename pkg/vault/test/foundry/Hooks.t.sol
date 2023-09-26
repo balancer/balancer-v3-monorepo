@@ -57,7 +57,7 @@ contract VaultSwapTest is Test {
         );
 
         PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.shouldCallAfterSwap = true;
+        config.hooks.shouldCallAfterSwap = true;
         vault.setConfig(address(pool), config);
 
         USDC.mint(bob, USDC_AMOUNT_IN);
