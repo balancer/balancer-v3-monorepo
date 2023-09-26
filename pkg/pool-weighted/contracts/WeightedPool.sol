@@ -204,6 +204,13 @@ contract WeightedPool is BasePool, IWeightedPool {
         }
     }
 
+    function onAfterSwap(
+        IBasePool.AfterSwapParams calldata params,
+        uint256 amountCalculated
+    ) external pure override returns (bool success) {
+        return params.tokenIn != params.tokenOut && amountCalculated > 0;
+    }
+
     /// Initialize
 
     /**

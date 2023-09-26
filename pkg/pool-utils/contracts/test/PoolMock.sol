@@ -93,7 +93,7 @@ contract PoolMock is BasePool {
     }
 
     function onAfterSwap(
-        IBasePool.SwapParams calldata params,
+        IBasePool.AfterSwapParams calldata params,
         uint256 amountCalculated
     ) external view override returns (bool success) {
         return params.tokenIn != params.tokenOut && amountCalculated > 0 && !failOnHook;
