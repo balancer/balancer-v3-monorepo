@@ -9,6 +9,7 @@ import { IBasePool } from "./IBasePool.sol";
 /// @notice Struct to represent a pool configuration
 struct PoolConfig {
     bool isRegisteredPool;
+    bool isInitializedPool;
     bool shouldCallAfterSwap;
     bool shouldCallAfterAddLiquidity;
     bool shouldCallAfterRemoveLiquidity;
@@ -24,7 +25,8 @@ interface IVault {
         address pool,
         IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
-        bytes memory userData
+        bytes memory userData,
+        PoolConfig calldata config
     ) external returns (uint256[] memory, uint256 bptAmountOut);
 
     /**
@@ -44,6 +46,13 @@ interface IVault {
     function isRegisteredPool(address pool) external view returns (bool);
 
     /**
+     * @notice Checks if a pool is registered
+     * @param pool                           Address of the pool to check
+     * @return                               True if the pool is registered, false otherwise
+     */
+    function isInitializedPool(address pool) external view returns (bool);
+
+    /**
      * @notice Gets tokens and their balances of a pool
      * @param pool                           Address of the pool
      * @return tokens                        List of tokens in the pool
@@ -60,6 +69,9 @@ interface IVault {
 
     /// @notice Emitted when a Pool is registered by calling `registerPool`.
     event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
+
+    /// @notice Emitted when a Pool is initialized by calling `initialize`.
+    event PoolInitialized(address indexed pool);
 
     /*******************************************************************************
                                     MultiToken
