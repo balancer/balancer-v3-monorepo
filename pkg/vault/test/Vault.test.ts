@@ -5,6 +5,7 @@ import { MONTH, fromNow } from '@balancer-labs/v3-helpers/src/time';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20BalancerPoolToken } from '../typechain-types/contracts/ERC20BalancerPoolToken';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
+import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
@@ -144,10 +145,14 @@ describe('Vault', function () {
   });
 
   describe('initialization', () => {
+    let authorizer: BasicAuthorizerMock;
     let timedVault: VaultMock;
 
     sharedBeforeEach('redeploy Vault', async () => {
-      timedVault = await deploy('VaultMock', { args: [PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
+      authorizer = await deploy('v3-solidity-utils/BasicAuthorizerMock');
+      timedVault = await deploy('VaultMock', {
+        args: [authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
+      });
     });
 
     it('is temporarily pausable', async () => {
