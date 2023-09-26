@@ -22,6 +22,15 @@ interface IBasePool {
         bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
+    function onAfterAddLiquidity(
+        address sender,
+        uint256[] memory currentBalances,
+        uint256[] memory maxAmountsIn,
+        bytes memory userData,
+        uint256[] memory amountsIn,
+        uint256 bptAmountOut
+    ) external returns (bool success);
+
     /**
      * @notice Remove liquidity from the pool
      * @param sender               Address of the sender
@@ -38,6 +47,15 @@ interface IBasePool {
         uint256 bptAmountIn,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut);
+
+    function onAfterRemoveLiquidity(
+        address sender,
+        uint256[] memory currentBalances,
+        uint256[] memory minAmountsOut,
+        uint256 bptAmountIn,
+        bytes memory userData,
+        uint256[] memory amountsOut
+    ) external returns (bool success);
 
     /**
      * @notice Execute a swap in the pool
@@ -65,6 +83,27 @@ interface IBasePool {
         /// @notice Address of the sender
         address sender;
         /// @notice Additional data provided by the user
+        bytes userData;
+    }
+
+    /**
+     * @notice Called after a swap to give the Pool an opportunity to perform actions
+     * once the balances have been updated by the swap.
+     * @param params               Parameters of the swap
+     * @param amountCalculated     Calculated amount after the swap
+     * @return success             True if call was a success
+     */
+    function onAfterSwap(AfterSwapParams calldata params, uint256 amountCalculated) external returns (bool success);
+
+    struct AfterSwapParams {
+        IVault.SwapKind kind;
+        IERC20 tokenIn;
+        IERC20 tokenOut;
+        uint256 amountIn;
+        uint256 amountOut;
+        uint256 tokenInBalance;
+        uint256 tokenOutBalance;
+        address sender;
         bytes userData;
     }
 }
