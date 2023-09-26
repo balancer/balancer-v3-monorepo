@@ -12,7 +12,7 @@ import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/We
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
-import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault, PoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 
@@ -80,9 +80,7 @@ contract WeightedPool is BasePool, IWeightedPool {
         vault.registerPool(
             msg.sender,
             params.tokens,
-            PoolConfig({
-                isRegisteredPool: false,
-                isInitializedPool: false,
+            PoolHooks({
                 shouldCallAfterAddLiquidity: false,
                 shouldCallAfterRemoveLiquidity: false,
                 shouldCallAfterSwap: false
