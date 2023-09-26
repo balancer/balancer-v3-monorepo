@@ -15,6 +15,7 @@ struct PoolHooks {
 /// @notice Struct to represent a pool configuration
 struct PoolConfig {
     bool isRegisteredPool;
+    bool isInitializedPool;
     PoolHooks hooks;
 }
 
@@ -47,6 +48,13 @@ interface IVault {
     function isRegisteredPool(address pool) external view returns (bool);
 
     /**
+     * @notice Checks if a pool is initialized
+     * @param pool                           Address of the pool to check
+     * @return                               True if the pool is initialized, false otherwise
+     */
+    function isInitializedPool(address pool) external view returns (bool);
+
+    /**
      * @notice Gets tokens and their balances of a pool
      * @param pool                           Address of the pool
      * @return tokens                        List of tokens in the pool
@@ -63,6 +71,9 @@ interface IVault {
 
     /// @notice Emitted when a Pool is registered by calling `registerPool`.
     event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
+
+    /// @notice Emitted when a Pool is initialized by calling `initialize`.
+    event PoolInitialized(address indexed pool);
 
     /*******************************************************************************
                                     MultiToken

@@ -508,6 +508,11 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /// @inheritdoc IVault
+    function isInitializedPool(address pool) external view returns (bool) {
+        return _isInitializedPool(pool);
+    }
+
+    /// @inheritdoc IVault
     function getPoolConfig(address pool) external view returns (PoolConfig memory) {
         return _poolConfig[pool].toPoolConfig();
     }
@@ -577,6 +582,10 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         return _poolConfig[pool].isPoolRegistered();
     }
 
+    function _isInitializedPool(address pool) internal view returns (bool) {
+        return _poolConfig[pool].isPoolInitialized();
+    }
+
     /**
      * @notice Fetches the tokens and their corresponding balances for a given pool.
      * @dev Utilizes an enumerable map to obtain pool token balances.
@@ -619,6 +628,12 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         withRegisteredPool(pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut)
     {
+        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
+
+        if (config.isInitializedPool) {
+            revert PoolAlreadyInitialized(pool);
+        }
+
         InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
 
         _validateTokensAndGetBalances(pool, tokens);
@@ -637,6 +652,13 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
         // Credit bptAmountOut of pool tokens
         _supplyCredit(IERC20(pool), bptAmountOut, msg.sender);
+
+        // Store config and mark the pool as initialized
+        config.isInitializedPool = true;
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        // Emit an event to log the pool initialization
+        emit PoolInitialized(pool);
 
         emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }

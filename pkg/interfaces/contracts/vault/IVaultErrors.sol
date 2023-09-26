@@ -10,6 +10,9 @@ interface IVaultErrors {
      */
     error PoolAlreadyRegistered(address pool);
 
+    /// @dev Error indicating that the pool has already been initialized. `initialize` may only be called once.
+    error PoolAlreadyInitialized(address pool);
+
     /**
      * @dev Error indicating that a referenced pool has not been registered.
      */

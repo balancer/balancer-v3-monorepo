@@ -13,18 +13,20 @@ using PoolConfigLib for PoolConfigBits global;
 library PoolConfigLib {
     using WordCodec for bytes32;
 
-    /// [  252 bit |               1 bit         |         1 bit            |     1 bit       |     1 bit       ]
-    /// [ not used | after remove liquidity hook | after add liquidity hook | after swap hook | pool registered ]
-    /// |MSB                                                                                                 LSB|
+    /// [  251 bit |    1 bit     |   1 bit   |    1 bit   |    1 bit    |    1 bit   ]
+    /// [ not used | after remove | after add | after swap | initialized | registered ]
+    /// |MSB                                                                       LSB|
 
     // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
-    uint8 public constant AFTER_SWAP_OFFSET = 1;
-    uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = 2;
-    uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = 3;
+    uint8 public constant POOL_INITIALIZED_OFFSET = 1;
+    uint8 public constant AFTER_SWAP_OFFSET = 2;
+    uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = 3;
+    uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = 4;
 
     // Bitwise flags for pool's config
     uint256 public constant POOL_REGISTERED_FLAG = 1 << POOL_REGISTERED_OFFSET;
+    uint256 public constant POOL_INITIALIZED_FLAG = 1 << POOL_INITIALIZED_OFFSET;
     uint256 public constant AFTER_SWAP_FLAG = 1 << AFTER_SWAP_OFFSET;
     uint256 public constant AFTER_ADD_LIQUIDITY_FLAG = 1 << AFTER_ADD_LIQUIDITY_OFFSET;
     uint256 public constant AFTER_REMOVE_LIQUIDITY_FLAG = 1 << AFTER_REMOVE_LIQUIDITY_OFFSET;
@@ -35,6 +37,10 @@ library PoolConfigLib {
 
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_REGISTERED_OFFSET);
+    }
+
+    function isPoolInitialized(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(POOL_INITIALIZED_OFFSET);
     }
 
     function shouldCallAfterSwap(PoolConfigBits config) internal pure returns (bool) {
@@ -54,6 +60,7 @@ library PoolConfigLib {
             PoolConfigBits.wrap(
                 bytes32(0)
                     .insertBool(config.isRegisteredPool, POOL_REGISTERED_OFFSET)
+                    .insertBool(config.isInitializedPool, POOL_INITIALIZED_OFFSET)
                     .insertBool(config.hooks.shouldCallAfterSwap, AFTER_SWAP_OFFSET)
                     .insertBool(config.hooks.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET)
                     .insertBool(config.hooks.shouldCallAfterRemoveLiquidity, AFTER_REMOVE_LIQUIDITY_OFFSET)
@@ -64,6 +71,7 @@ library PoolConfigLib {
         return
             PoolConfig({
                 isRegisteredPool: config.isPoolRegistered(),
+                isInitializedPool: config.isPoolInitialized(),
                 hooks: PoolHooks({
                     shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),
                     shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity(),
