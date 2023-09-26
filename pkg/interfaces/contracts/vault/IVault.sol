@@ -46,9 +46,9 @@ interface IVault {
     function isRegisteredPool(address pool) external view returns (bool);
 
     /**
-     * @notice Checks if a pool is registered
+     * @notice Checks if a pool is initialized
      * @param pool                           Address of the pool to check
-     * @return                               True if the pool is registered, false otherwise
+     * @return                               True if the pool is initialized, false otherwise
      */
     function isInitializedPool(address pool) external view returns (bool);
 
