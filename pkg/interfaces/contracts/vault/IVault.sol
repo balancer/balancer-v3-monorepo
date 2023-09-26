@@ -29,8 +29,7 @@ interface IVault {
         address pool,
         IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
-        bytes memory userData,
-        PoolConfig calldata config
+        bytes memory userData
     ) external returns (uint256[] memory, uint256 bptAmountOut);
 
     /**

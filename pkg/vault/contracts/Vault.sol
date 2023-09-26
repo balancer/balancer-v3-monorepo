@@ -620,8 +620,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         address pool,
         IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
-        bytes memory userData,
-        PoolConfig memory config
+        bytes memory userData
     )
         external
         withHandler
@@ -629,6 +628,8 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         withRegisteredPool(pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut)
     {
+        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
+
         if (config.isInitializedPool) {
             revert PoolAlreadyInitialized(pool);
         }
