@@ -88,6 +88,12 @@ contract VaultMultiTokenTest is Test {
         assertEq(vault.balanceOf(address(token), alice), USDC_AMOUNT_IN);
     }
 
+    function testBurnPoolToken() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.InvalidToken.selector));
+        router.burn(pool, USDC_AMOUNT_IN);
+    }
+
     function testBurn() public {
         vm.prank(alice);
         router.mint(token, USDC_AMOUNT_IN);
