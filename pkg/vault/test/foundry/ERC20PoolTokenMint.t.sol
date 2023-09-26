@@ -6,9 +6,7 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
-import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/token/IERC20Errors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -20,11 +18,9 @@ import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
-import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
-contract VaultSwapTest is Test {
-    using AssetHelpers for address;
+contract ERC20PoolTokenMint is Test {
     using AssetHelpers for address[];
     using AssetHelpers for address[];
     using ArrayHelpers for address[2];
@@ -36,7 +32,6 @@ contract VaultSwapTest is Test {
     ERC20TestToken USDC;
     ERC20TestToken DAI;
     address alice = vm.addr(1);
-    address bob = vm.addr(2);
 
     uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
@@ -55,22 +50,8 @@ contract VaultSwapTest is Test {
             true
         );
 
-        PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.shouldCallAfterSwap = true;
-        vault.setConfig(address(pool), config);
-
-        USDC.mint(bob, USDC_AMOUNT_IN);
-        DAI.mint(bob, DAI_AMOUNT_IN);
-
         USDC.mint(alice, USDC_AMOUNT_IN);
         DAI.mint(alice, DAI_AMOUNT_IN);
-
-        vm.startPrank(bob);
-
-        USDC.approve(address(vault), type(uint256).max);
-        DAI.approve(address(vault), type(uint256).max);
-
-        vm.stopPrank();
 
         vm.startPrank(alice);
 
@@ -80,14 +61,13 @@ contract VaultSwapTest is Test {
         vm.stopPrank();
 
         vm.label(alice, "alice");
-        vm.label(bob, "bob");
         vm.label(address(USDC), "USDC");
         vm.label(address(DAI), "DAI");
     }
 
-    function testOnAfterSwapHook() public {
-        vm.prank(alice);
-        router.addLiquidity(
+    function testPoolTotalSupplyAfterMint() public {
+        vm.startPrank(alice);
+        (, uint256 bptAmountOut) = router.addLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
@@ -96,48 +76,19 @@ contract VaultSwapTest is Test {
             bytes("")
         );
 
-        pool.setMultiplier(1e30);
+        uint256 totalSupplyBeforeMint = vault.totalSupply(address(pool));
 
-        vm.prank(bob);
-        // should not fail
-        router.swap(
-            IVault.SwapKind.GIVEN_IN,
-            address(pool),
-            address(USDC).asAsset(),
-            address(DAI).asAsset(),
-            USDC_AMOUNT_IN,
-            DAI_AMOUNT_IN,
-            type(uint256).max,
-            bytes("")
-        );
-    }
+        // Prior to mint, pool.totalSupply() == totalSupplyBeforeMint
+        assertEq(pool.totalSupply(), totalSupplyBeforeMint);
 
-    function testOnAfterSwapHookRevert() public {
-        vm.prank(alice);
-        router.addLiquidity(
-            address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            DAI_AMOUNT_IN,
-            IBasePool.AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
-            bytes("")
-        );
+        // deposit BPT to internal balance.
+        router.mint(IERC20(pool), bptAmountOut);
 
-        pool.setMultiplier(1e30);
+        // The total supply of the pool should eq totalSupplyBeforeMint, we have not increased BPT supply.
+        // Instead, pool.TotalSupply() == totalSupplyBeforeMint + bptAmountOut
+        assertEq(pool.totalSupply(), totalSupplyBeforeMint);
+        assertEq(vault.totalSupply(address(pool)), totalSupplyBeforeMint);
 
-        pool.setFailOnAfterSwap(true);
-        vm.prank(bob);
-        // should not fail
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.HookCallFailed.selector));
-        router.swap(
-            IVault.SwapKind.GIVEN_IN,
-            address(pool),
-            address(USDC).asAsset(),
-            address(DAI).asAsset(),
-            USDC_AMOUNT_IN,
-            DAI_AMOUNT_IN,
-            type(uint256).max,
-            bytes("")
-        );
+        vm.stopPrank();
     }
 }

@@ -82,7 +82,7 @@ interface IBasePool {
 
     function onAfterAddLiquidity(
         address sender,
-        uint256[] memory balances,
+        uint256[] memory currentBalances,
         uint256[] memory maxAmountsIn,
         bytes memory userData,
         uint256[] memory amountsIn,
@@ -92,7 +92,7 @@ interface IBasePool {
     /**
      * @notice Remove liquidity from the pool
      * @param sender               Address of the sender
-     * @param balances      Current balances of the tokens
+     * @param balances             Current balances of the tokens
      * @param minAmountsOut        Minimum amounts of tokens to be removed
      * @param maxBptAmountIn       Maximum amount of BPT tokens burnt
      * @param kind                 Remove liquidity kind
@@ -111,7 +111,7 @@ interface IBasePool {
 
     function onAfterRemoveLiquidity(
         address sender,
-        uint256[] memory balances,
+        uint256[] memory currentBalances,
         uint256[] memory minAmountsOut,
         uint256 bptAmountIn,
         bytes memory userData,
