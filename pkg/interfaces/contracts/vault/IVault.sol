@@ -69,7 +69,7 @@ interface IVault {
      * @param token                          Token's address
      * @return                               Total supply of the token
      */
-    function totalSupplyOfERC20(address token) external view returns (uint256);
+    function totalSupply(address token) external view returns (uint256);
 
     /**
      * @notice Gets balance of an account for a given ERC20 token
@@ -77,26 +77,30 @@ interface IVault {
      * @param account                        Account's address
      * @return                               Balance of the account for the token
      */
-    function balanceOfERC20(address token, address account) external view returns (uint256);
+    function balanceOf(address token, address account) external view returns (uint256);
 
     /**
-     * @notice Transfers ERC20 token from owner to a recipient
+     * @notice Transfers pool token from owner to a recipient.
+     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
+     * the pool contract, so msg.sender is used as the token address.
      * @param owner                          Owner's address
      * @param to                             Recipient's address
      * @param amount                         Amount of tokens to transfer
      * @return                               True if successful, false otherwise
      */
-    function transferERC20(address owner, address to, uint256 amount) external returns (bool);
+    function transfer(address owner, address to, uint256 amount) external returns (bool);
 
     /**
-     * @notice Transfers from a sender to a recipient using an allowance
+     * @notice Transfers pool token from a sender to a recipient using an allowance
+     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
+     * the pool contract, so msg.sender is used as the token address.
      * @param spender                        Address allowed to perform the transfer
      * @param from                           Sender's address
      * @param to                             Recipient's address
      * @param amount                         Amount of tokens to transfer
      * @return                               True if successful, false otherwise
      */
-    function transferFromERC20(address spender, address from, address to, uint256 amount) external returns (bool);
+    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
 
     /**
      * @notice Gets allowance of a spender for a given ERC20 token and owner
@@ -105,16 +109,18 @@ interface IVault {
      * @param spender                        Spender's address
      * @return                               Amount of tokens the spender is allowed to spend
      */
-    function allowanceOfERC20(address token, address owner, address spender) external view returns (uint256);
+    function allowance(address token, address owner, address spender) external view returns (uint256);
 
     /**
-     * @notice Approves a spender to spend tokens on behalf of sender
-     * @param sender                         Owner's address
+     * @notice Approves a spender to spend pool tokens on behalf of sender
+     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
+     * the pool contract, so msg.sender is used as the token address.
+     * @param owner                          Owner's address
      * @param spender                        Spender's address
      * @param amount                         Amount of tokens to approve
      * @return                               True if successful, false otherwise
      */
-    function approveERC20(address sender, address spender, uint256 amount) external returns (bool);
+    function approve(address owner, address spender, uint256 amount) external returns (bool);
 
     /*******************************************************************************
                               Transient Accounting

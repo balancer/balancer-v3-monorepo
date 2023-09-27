@@ -4,7 +4,7 @@ pragma solidity ^0.8.4;
 
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC20Errors.sol";
 
-import { ERC20FacadeToken } from "./ERC20FacadeToken.sol";
+import { ERC20PoolToken } from "./ERC20PoolToken.sol";
 
 /**
  * @notice Store Token data and handle accounting for all tokens in the Vault.
@@ -19,35 +19,35 @@ abstract contract ERC20MultiToken is IERC20Errors {
     mapping(address => mapping(address => mapping(address => uint256))) private _allowances;
 
     // token -> total supply
-    mapping(address => uint256) private _totalSupply;
+    mapping(address => uint256) private _totalSupplyOf;
 
-    function _totalSupplyOfERC20(address token) internal view returns (uint256) {
-        return _totalSupply[token];
+    function _totalSupply(address token) internal view returns (uint256) {
+        return _totalSupplyOf[token];
     }
 
-    function _balanceOfERC20(address token, address account) internal view returns (uint256) {
+    function _balanceOf(address token, address account) internal view returns (uint256) {
         return _balances[token][account];
     }
 
-    function _allowanceOfERC20(address token, address owner, address spender) internal view returns (uint256) {
+    function _allowance(address token, address owner, address spender) internal view returns (uint256) {
         return _allowances[token][owner][spender];
     }
 
-    function _mintERC20(address token, address to, uint256 amount) internal {
+    function _mint(address token, address to, uint256 amount) internal {
         if (to == address(0)) {
             revert ERC20InvalidReceiver(to);
         }
 
-        _totalSupply[token] += amount;
+        _totalSupplyOf[token] += amount;
         unchecked {
             // Overflow not possible: balance + amount is at most totalSupply + amount, which is checked above.
             _balances[token][to] += amount;
         }
 
-        ERC20FacadeToken(token).emitTransfer(address(0), to, amount);
+        ERC20PoolToken(token).emitTransfer(address(0), to, amount);
     }
 
-    function _burnERC20(address token, address from, uint256 amount) internal {
+    function _burn(address token, address from, uint256 amount) internal {
         if (from == address(0)) {
             revert ERC20InvalidSender(from);
         }
@@ -60,13 +60,13 @@ abstract contract ERC20MultiToken is IERC20Errors {
         unchecked {
             _balances[token][from] = accountBalance - amount;
             // Overflow not possible: amount <= accountBalance <= totalSupply.
-            _totalSupply[token] -= amount;
+            _totalSupplyOf[token] -= amount;
         }
 
-        ERC20FacadeToken(token).emitTransfer(from, address(0), amount);
+        ERC20PoolToken(token).emitTransfer(from, address(0), amount);
     }
 
-    function _transferERC20(address token, address from, address to, uint256 amount) internal {
+    function _transfer(address token, address from, address to, uint256 amount) internal {
         if (from == address(0)) {
             revert ERC20InvalidSender(from);
         }
@@ -87,10 +87,10 @@ abstract contract ERC20MultiToken is IERC20Errors {
             _balances[token][to] += amount;
         }
 
-        ERC20FacadeToken(token).emitTransfer(from, to, amount);
+        ERC20PoolToken(token).emitTransfer(from, to, amount);
     }
 
-    function _approveERC20(address token, address owner, address spender, uint256 amount) internal {
+    function _approve(address token, address owner, address spender, uint256 amount) internal {
         if (owner == address(0)) {
             revert ERC20InvalidApprover(owner);
         }
@@ -100,7 +100,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
         }
 
         _allowances[token][owner][spender] = amount;
-        ERC20FacadeToken(token).emitApprove(owner, spender, amount);
+        ERC20PoolToken(token).emitApprove(owner, spender, amount);
     }
 
     function _spendAllowance(address token, address owner, address spender, uint256 amount) internal {
@@ -111,7 +111,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
             }
 
             unchecked {
-                _approveERC20(token, owner, spender, currentAllowance - amount);
+                _approve(token, owner, spender, currentAllowance - amount);
             }
         }
     }

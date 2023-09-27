@@ -163,7 +163,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     /// @inheritdoc IVault
     function mint(IERC20 token, address to, uint256 amount) public withHandler {
         _takeDebt(token, amount, msg.sender);
-        _mintERC20(address(token), to, amount);
+        _mint(address(token), to, amount);
     }
 
     /// @inheritdoc IVault
@@ -179,7 +179,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     function burn(IERC20 token, address owner, uint256 amount) public withHandler {
         _supplyCredit(token, amount, msg.sender);
         _spendAllowance(address(token), owner, address(this), amount);
-        _burnERC20(address(token), owner, amount);
+        _burn(address(token), owner, amount);
     }
 
     /// @inheritdoc IVault
@@ -331,36 +331,36 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     *******************************************************************************/
 
     /// @inheritdoc IVault
-    function totalSupplyOfERC20(address token) external view returns (uint256) {
-        return _totalSupplyOfERC20(token);
+    function totalSupply(address token) external view returns (uint256) {
+        return _totalSupply(token);
     }
 
     /// @inheritdoc IVault
-    function balanceOfERC20(address token, address account) external view returns (uint256) {
-        return _balanceOfERC20(token, account);
+    function balanceOf(address token, address account) external view returns (uint256) {
+        return _balanceOf(token, account);
     }
 
     /// @inheritdoc IVault
-    function allowanceOfERC20(address token, address owner, address spender) external view returns (uint256) {
-        return _allowanceOfERC20(token, owner, spender);
+    function allowance(address token, address owner, address spender) external view returns (uint256) {
+        return _allowance(token, owner, spender);
     }
 
     /// @inheritdoc IVault
-    function transferERC20(address owner, address to, uint256 amount) external returns (bool) {
-        _transferERC20(msg.sender, owner, to, amount);
+    function transfer(address owner, address to, uint256 amount) external returns (bool) {
+        _transfer(msg.sender, owner, to, amount);
         return true;
     }
 
     /// @inheritdoc IVault
-    function approveERC20(address handler, address spender, uint256 amount) external returns (bool) {
-        _approveERC20(msg.sender, handler, spender, amount);
+    function approve(address owner, address spender, uint256 amount) external returns (bool) {
+        _approve(msg.sender, owner, spender, amount);
         return true;
     }
 
     /// @inheritdoc IVault
-    function transferFromERC20(address spender, address from, address to, uint256 amount) external returns (bool) {
+    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool) {
         _spendAllowance(msg.sender, from, spender, amount);
-        _transferERC20(msg.sender, from, to, amount);
+        _transfer(msg.sender, from, to, amount);
         return true;
     }
 
