@@ -160,7 +160,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         return
             abi.decode(
-                _vault.invoke(
+                _vault.invoke{value: msg.value}(
                     abi.encodeWithSelector(
                         Router.addLiquidityCallback.selector,
                         AddLiquidityCallbackParams({
@@ -305,7 +305,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     ) external payable returns (uint256) {
         return
             abi.decode(
-                _vault.invoke(
+                _vault.invoke{value: msg.value}(
                     abi.encodeWithSelector(
                         Router.swapCallback.selector,
                         SwapCallbackParams({
@@ -432,7 +432,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     ) external payable returns (uint256 amountCalculated) {
         return
             abi.decode(
-                _vault.quote(
+                _vault.quote{value: msg.value}(
                     abi.encodeWithSelector(
                         Router.querySwapCallback.selector,
                         SwapCallbackParams({
@@ -471,7 +471,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         return
             abi.decode(
-                _vault.quote(
+                _vault.quote{value: msg.value}(
                     abi.encodeWithSelector(
                         Router.queryAddLiquidityCallback.selector,
                         AddLiquidityCallbackParams({
