@@ -86,12 +86,12 @@ interface IVaultErrors {
     /**
      * @dev
      */
-    error BtpAmountBelowMin();
+    error BptAmountBelowMin();
 
     /**
      * @dev
      */
-    error BtpAmountAboveMax();
+    error BptAmountAboveMax();
 
     /**
      * @dev

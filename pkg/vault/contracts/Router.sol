@@ -118,7 +118,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         (amountsIn, bptAmountOut) = _vault.initialize(params.pool, tokens, params.maxAmountsIn, params.userData);
 
         if (bptAmountOut < params.minBptAmountOut) {
-            revert IVaultErrors.BtpAmountBelowMin();
+            revert IVaultErrors.BptAmountBelowMin();
         }
 
         uint256 ethAmountIn;
@@ -193,7 +193,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         );
 
         if (bptAmountOut < params.minBptAmountOut) {
-            revert IVaultErrors.BtpAmountBelowMin();
+            revert IVaultErrors.BptAmountBelowMin();
         }
 
         uint256 ethAmountIn;

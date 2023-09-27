@@ -91,7 +91,7 @@ contract WeightedPoolTest is Test {
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
-            // Initial BTP is invariant * tokens.length
+            // Initial BPT is invariant * tokens.length
             // Account for the precision less
             DAI_AMOUNT * 2 - DELTA,
             bytes("")
@@ -127,7 +127,7 @@ contract WeightedPoolTest is Test {
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
-            // Initial BTP is invariant * tokens.length
+            // Initial BPT is invariant * tokens.length
             // Account for the precision less
             DAI_AMOUNT * 2 - DELTA,
             bytes("")
@@ -172,7 +172,7 @@ contract WeightedPoolTest is Test {
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
-            // Initial BTP is invariant * tokens.length
+            // Initial BPT is invariant * tokens.length
             // Account for the precision less
             DAI_AMOUNT * 2 - DELTA,
             bytes("")
@@ -190,13 +190,13 @@ contract WeightedPoolTest is Test {
 
         pool.approve(address(vault), type(uint256).max);
 
-        uint256 bobBtpBalance = pool.balanceOf(bob);
+        uint256 bobBptBalance = pool.balanceOf(bob);
 
         (uint256[] memory amountsOut, uint256 bptAmountIn) = router.removeLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(less(DAI_AMOUNT, 1e4)), uint256(less(USDC_AMOUNT, 1e4))].toMemoryArray(),
-            bobBtpBalance,
+            bobBptBalance,
             IBasePool.RemoveLiquidityKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
             bytes("")
         );
@@ -222,7 +222,7 @@ contract WeightedPoolTest is Test {
 
         // should mint correct amount of BPT tokens
         assertEq(pool.balanceOf(bob), 0);
-        assertEq(bobBtpBalance, bptAmountIn);
+        assertEq(bobBptBalance, bptAmountIn);
     }
 
     function testSwap() public {
@@ -231,7 +231,7 @@ contract WeightedPoolTest is Test {
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
-            // Initial BTP is invariant * tokens.length
+            // Initial BPT is invariant * tokens.length
             // Account for the precision less
             DAI_AMOUNT * 2 - DELTA,
             bytes("")
