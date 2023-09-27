@@ -12,9 +12,7 @@ import { TemporarilyPausable } from "@balancer-labs/v3-solidity-utils/contracts/
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
-/**
- * @notice Reference implementation for the base layer of a Pool contract.
- */
+/// @notice Reference implementation for the base layer of a Pool contract.
 abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
     using FixedPoint for uint256;
     using ScalingHelpers for *;

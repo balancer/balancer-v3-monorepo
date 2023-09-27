@@ -8,39 +8,22 @@ import { IVault } from "./IVault.sol";
 
 /// @notice Interface for a Base Pool
 interface IBasePool {
-    /**
-     * @dev
-     */
+    /// @dev Indicates the number of pool tokens is below the minimum allowed.
     error MinTokens();
 
-    /**
-     * @dev
-     */
+    /// @dev Indicates the number of pool tokens is above the maximum allowed.
     error MaxTokens();
 
-    /**
-     * @dev
-     */
+    /// @dev Indicates the caller is not allowed to execute this function; it should be executed by the Vault only.
     error CallerNotVault();
 
-    /**
-     * @dev
-     */
-    error MinimumBpt();
-
-    /**
-     * @dev
-     */
+    /// @dev Indicates that the pool does not support the given join kind.
     error UnhandledJoinKind();
 
-    /**
-     * @dev
-     */
+    /// @dev Indicates that the pool does not support the given exit kind.
     error UnhandledExitKind();
 
-    /**
-     * @dev
-     */
+    /// @dev Indicates that the pool does not implement a hook that it was configured for.
     error HookNotImplemented();
 
     enum AddLiquidityKind {

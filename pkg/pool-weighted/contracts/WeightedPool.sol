@@ -23,8 +23,12 @@ contract WeightedPool is BasePool, IWeightedPool {
     using FixedPoint for uint256;
     using ScalingHelpers for *;
 
+    uint256 private immutable _totalTokens;
+
     IERC20 internal immutable _token0;
     IERC20 internal immutable _token1;
+    IERC20 internal immutable _token2;
+    IERC20 internal immutable _token3;
 
     // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
@@ -32,9 +36,13 @@ contract WeightedPool is BasePool, IWeightedPool {
 
     uint256 internal immutable _scalingFactor0;
     uint256 internal immutable _scalingFactor1;
+    uint256 internal immutable _scalingFactor2;
+    uint256 internal immutable _scalingFactor3;
 
     uint256 internal immutable _normalizedWeight0;
     uint256 internal immutable _normalizedWeight1;
+    uint256 internal immutable _normalizedWeight2;
+    uint256 internal immutable _normalizedWeight3;
 
     struct NewPoolParams {
         string name;
@@ -51,6 +59,8 @@ contract WeightedPool is BasePool, IWeightedPool {
     ) BasePool(vault, params.name, params.symbol, params.tokens, pauseWindowDuration, bufferPeriodDuration) {
         uint256 numTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
+
+        _totalTokens = numTokens;
 
         // Ensure each normalized weight is above the minimum
         uint256 normalizedSum = 0;
@@ -70,12 +80,18 @@ contract WeightedPool is BasePool, IWeightedPool {
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _token0 = params.tokens[0];
         _token1 = params.tokens[1];
+        _token2 = numTokens > 2 ? params.tokens[2] : IERC20(address(0));
+        _token3 = numTokens > 3 ? params.tokens[3] : IERC20(address(0));
 
         _scalingFactor0 = params.tokens[0].computeScalingFactor();
         _scalingFactor1 = params.tokens[1].computeScalingFactor();
+        _scalingFactor2 = numTokens > 2 ? params.tokens[2].computeScalingFactor() : 0;
+        _scalingFactor3 = numTokens > 3 ? params.tokens[3].computeScalingFactor() : 0;
 
         _normalizedWeight0 = params.normalizedWeights[0];
         _normalizedWeight1 = params.normalizedWeights[1];
+        _normalizedWeight2 = numTokens > 2 ? params.normalizedWeights[2] : 0;
+        _normalizedWeight3 = numTokens > 3 ? params.normalizedWeights[3] : 0;
 
         vault.registerPool(
             msg.sender,
@@ -92,16 +108,21 @@ contract WeightedPool is BasePool, IWeightedPool {
         // prettier-ignore
         if (token == _token0) { return _normalizedWeight0; }
         else if (token == _token1) { return _normalizedWeight1; }
+        else if (token == _token2) { return _normalizedWeight2; }
+        else if (token == _token3) { return _normalizedWeight3; }
         else {
             revert InvalidToken();
         }
     }
 
     function _getNormalizedWeights() internal view virtual returns (uint256[] memory) {
-        uint256[] memory normalizedWeights = new uint256[](2);
+        uint256 totalTokens = _getTotalTokens();
+        uint256[] memory normalizedWeights = new uint256[](totalTokens);
 
         normalizedWeights[0] = _normalizedWeight0;
         normalizedWeights[1] = _normalizedWeight1;
+        if (totalTokens > 2) { normalizedWeights[2] = _normalizedWeight2; } else { return normalizedWeights; }
+        if (totalTokens > 3) { normalizedWeights[3] = _normalizedWeight3; } else { return normalizedWeights; }
 
         return normalizedWeights;
     }
@@ -111,7 +132,7 @@ contract WeightedPool is BasePool, IWeightedPool {
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
-        return 2;
+        return _totalTokens;
     }
 
     /**
@@ -122,16 +143,24 @@ contract WeightedPool is BasePool, IWeightedPool {
         // prettier-ignore
         if (token == _token0) { return _getScalingFactor0(); }
         else if (token == _token1) { return _getScalingFactor1(); }
+        else if (token == _token2) { return _getScalingFactor2(); }
+        else if (token == _token3) { return _getScalingFactor3(); }
         else {
             revert InvalidToken();
         }
     }
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {
-        uint256[] memory scalingFactors = new uint256[](2);
+        uint256 totalTokens = _getTotalTokens();
+        uint256[] memory scalingFactors = new uint256[](totalTokens);
 
-        scalingFactors[0] = _getScalingFactor0();
-        scalingFactors[1] = _getScalingFactor1();
+        // prettier-ignore
+        {
+            scalingFactors[0] = _getScalingFactor0();
+            scalingFactors[1] = _getScalingFactor1();
+            if (totalTokens > 2) { scalingFactors[2] = _getScalingFactor2(); } else { return scalingFactors; }
+            if (totalTokens > 3) { scalingFactors[3] = _getScalingFactor3(); } else { return scalingFactors; }
+        }
 
         return scalingFactors;
     }
@@ -144,21 +173,15 @@ contract WeightedPool is BasePool, IWeightedPool {
         return _scalingFactor1;
     }
 
-    /**
-     * @dev Returns the current value of the invariant.
-     *
-     * **IMPORTANT NOTE**: calling this function within a Vault context (i.e. in the middle of a join or an exit) is
-     * potentially unsafe, since the returned value is manipulable. It is up to the caller to ensure safety.
-     *
-     * Calculating the invariant requires the state of the pool to be in sync with the state of the Vault.
-     * That condition may not be true in the middle of a join or an exit.
-     *
-     * To call this function safely, attempt to trigger the reentrancy guard in the Vault by calling a non-reentrant
-     * function before calling `getInvariant`. That will make the transaction revert in an unsafe context.
-     * (See `whenNotInVaultContext` in `WeightedPool`).
-     *
-     * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
-     */
+    function _getScalingFactor2() internal view returns (uint256) {
+        return _scalingFactor2;
+    }
+
+    function _getScalingFactor3() internal view returns (uint256) {
+        return _scalingFactor3;
+    }
+
+    /// @dev Returns the current value of the invariant.
     function getInvariant() public view returns (uint256) {
         (, uint256[] memory balances) = _vault.getPoolTokens(address(this));
 
@@ -223,11 +246,7 @@ contract WeightedPool is BasePool, IWeightedPool {
 
     /// Initialize
 
-    /**
-     * @notice
-     * @dev
-     * @inheritdoc IBasePool
-     */
+    /// @inheritdoc IBasePool
     function onInitialize(
         uint256[] memory amountsIn,
         bytes memory
@@ -249,13 +268,7 @@ contract WeightedPool is BasePool, IWeightedPool {
         return (amountsIn, bptAmountOut);
     }
 
-    // Add Liquidity
-
-    /**
-     * @notice Vault hook for adding liquidity to a pool (including the first time, "initializing" the pool).
-     * @dev This function can only be called from the Vault, from `joinPool`.
-     * @inheritdoc IBasePool
-     */
+    /// @inheritdoc IBasePool
     function onAddLiquidity(
         address,
         uint256[] memory balances,
@@ -281,18 +294,9 @@ contract WeightedPool is BasePool, IWeightedPool {
                 getSwapFeePercentage()
             );
         } else if (kind == AddLiquidityKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            // tokenIndex of the token in always has to be zero
-            uint256 amountIn = WeightedMath.calcTokenInGivenExactBptOut(
-                balances[0],
-                normalizedWeights[0],
-                minBptAmountOut,
-                totalSupply(),
-                getSwapFeePercentage()
-            );
-
-            // And then assign the result to the selected token
-            amountsIn[0] = amountIn;
-            bptAmountOut = minBptAmountOut;
+            // The token in cannot be specified with these arguments without relying on `userData`.
+            // This shall be implemented in the future with explicit arguments.
+            revert UnhandledJoinKind();
         } else if (kind == AddLiquidityKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
             amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, totalSupply(), minBptAmountOut);
             bptAmountOut = minBptAmountOut;
@@ -306,12 +310,7 @@ contract WeightedPool is BasePool, IWeightedPool {
         return (amountsIn, bptAmountOut);
     }
 
-    // Remove Liquidity
-
-    /**
-     * @notice Vault hook for removing liquidity from a pool.
-     * @dev This function can only be called from the Vault, from `exitPool`.
-     */
+    /// @inheritdoc IBasePool
     function onRemoveLiquidity(
         address,
         uint256[] memory balances,
@@ -327,19 +326,10 @@ contract WeightedPool is BasePool, IWeightedPool {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
         if (kind == RemoveLiquidityKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            // tokenIndex of token in always has to be 0 token
-            uint256 amountOut = WeightedMath.calcTokenOutGivenExactBptIn(
-                balances[0],
-                normalizedWeights[0],
-                maxBptAmountIn,
-                totalSupply(),
-                getSwapFeePercentage()
-            );
+            // The token in cannot be specified with these arguments without relying on `userData`.
+            // This shall be implemented in the future with explicit arguments.
+            revert UnhandledExitKind();
 
-            // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
-            // And then assign the result to the selected token
-            amountsOut[0] = amountOut;
-            bptAmountIn = maxBptAmountIn;
         } else if (kind == RemoveLiquidityKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, totalSupply(), maxBptAmountIn);
             bptAmountIn = maxBptAmountIn;
