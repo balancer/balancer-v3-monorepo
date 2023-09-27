@@ -7,7 +7,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault, PoolConfig, PoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
@@ -486,9 +486,9 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     function registerPool(
         address factory,
         IERC20[] memory tokens,
-        PoolConfig calldata config
+        PoolHooks calldata poolHooks
     ) external nonReentrant whenNotPaused {
-        _registerPool(factory, tokens, config);
+        _registerPool(factory, tokens, poolHooks);
     }
 
     /// @inheritdoc IVault
@@ -522,7 +522,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     }
 
     /// @dev See `registerPool`
-    function _registerPool(address factory, IERC20[] memory tokens, PoolConfig memory config) internal {
+    function _registerPool(address factory, IERC20[] memory tokens, PoolHooks memory hooksConfig) internal {
         address pool = msg.sender;
 
         // Ensure the pool isn't already registered
@@ -552,7 +552,9 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         }
 
         // Store config and mark the pool as registered
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
         config.isRegisteredPool = true;
+        config.hooks = hooksConfig;
         _poolConfig[pool] = config.fromPoolConfig();
 
         // Emit an event to log the pool registration
