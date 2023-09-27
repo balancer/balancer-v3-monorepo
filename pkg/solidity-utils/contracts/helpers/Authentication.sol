@@ -29,17 +29,13 @@ abstract contract Authentication is IAuthentication {
         _actionIdDisambiguator = actionIdDisambiguator;
     }
 
-    /**
-     * @dev Reverts unless the caller is allowed to call this function. Should only be applied to external functions.
-     */
+    /// @dev Reverts unless the caller is allowed to call this function. Should only be applied to external functions.
     modifier authenticate() {
         _authenticateCaller();
         _;
     }
 
-    /**
-     * @dev Reverts unless the caller is allowed to call the entry point function.
-     */
+    /// @dev Reverts unless the caller is allowed to call the entry point function.
     function _authenticateCaller() internal view {
         bytes32 actionId = getActionId(msg.sig);
 

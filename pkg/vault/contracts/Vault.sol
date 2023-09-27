@@ -703,9 +703,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         emit AuthorizerChanged(newAuthorizer);
     }
 
-    /**
-     * @dev Access control is delegated to the Authorizer
-     */
+    /// @dev Access control is delegated to the Authorizer
     function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
         return _authorizer.canPerform(actionId, user, address(this));
     }

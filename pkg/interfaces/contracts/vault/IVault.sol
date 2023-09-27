@@ -258,9 +258,7 @@ interface IVault {
                                 Authentication
     *******************************************************************************/
 
-    /**
-     * @dev Returns the Vault's Authorizer.
-     */
+    /// @dev Returns the Vault's Authorizer.
     function getAuthorizer() external view returns (IAuthorizer);
 
     /**
@@ -286,9 +284,7 @@ interface IVault {
      */
     function quote(bytes calldata data) external payable returns (bytes memory result);
 
-    /**
-     * @notice Disables queries functionality on the Vault. Can be called only by governance.
-     */
+    /// @notice Disables queries functionality on the Vault. Can be called only by governance.
     function disableQuery() external;
 
     /**
