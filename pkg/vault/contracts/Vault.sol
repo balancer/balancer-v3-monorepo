@@ -447,7 +447,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // Account amountOut of tokenOut
         _supplyCredit(params.tokenOut, amountOut, msg.sender);
 
-        if (_poolConfig[params.pool].shouldCallAfterSwap() == true) {
+        if (_poolConfig[params.pool].shouldCallAfterSwap()) {
             // if hook is enabled, then update balances
             if (
                 IBasePool(params.pool).onAfterSwap(
@@ -637,7 +637,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // Credit bptAmountOut of pool tokens
         _supplyCredit(IERC20(pool), bptAmountOut, msg.sender);
 
-        if (_poolConfig[pool].shouldCallAfterAddLiquidity() == true) {
+        if (_poolConfig[pool].shouldCallAfterAddLiquidity()) {
             if (
                 IBasePool(pool).onAfterAddLiquidity(
                     msg.sender,
@@ -689,7 +689,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // Debit bptAmountOut of pool tokens
         _takeDebt(IERC20(pool), bptAmountIn, msg.sender);
 
-        if (_poolConfig[pool].shouldCallAfterRemoveLiquidity() == true) {
+        if (_poolConfig[pool].shouldCallAfterRemoveLiquidity()) {
             if (
                 IBasePool(pool).onAfterRemoveLiquidity(
                     msg.sender,
