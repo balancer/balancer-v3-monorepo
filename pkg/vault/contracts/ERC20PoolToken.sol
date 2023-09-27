@@ -9,9 +9,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /**
- * @notice A full ERC20 compatible token with all the data and implementation delegated to the ERC20Multitoken contract
+ * @notice A full ERC20 compatible token with all the data and implementation delegated to the ERC20MultiToken contract
  */
-contract ERC20FacadeToken is IERC20, IERC20Metadata, IVaultErrors {
+contract ERC20PoolToken is IERC20, IERC20Metadata, IVaultErrors {
     IVault private immutable _vault;
 
     string private _name;
@@ -48,37 +48,37 @@ contract ERC20FacadeToken is IERC20, IERC20Metadata, IVaultErrors {
 
     /// @inheritdoc IERC20
     function totalSupply() public view returns (uint256) {
-        return _vault.totalSupplyOfERC20(address(this));
+        return _vault.totalSupply(address(this));
     }
 
     /// @inheritdoc IERC20
     function balanceOf(address account) public view returns (uint256) {
-        return _vault.balanceOfERC20(address(this), account);
+        return _vault.balanceOf(address(this), account);
     }
 
     /// @inheritdoc IERC20
     function transfer(address to, uint256 amount) public returns (bool) {
         // Vault will perform the transfer and call emitTransfer to emit the event from this contract.
-        _vault.transferERC20(msg.sender, to, amount);
+        _vault.transfer(msg.sender, to, amount);
         return true;
     }
 
     /// @inheritdoc IERC20
     function allowance(address owner, address spender) public view returns (uint256) {
-        return _vault.allowanceOfERC20(address(this), owner, spender);
+        return _vault.allowance(address(this), owner, spender);
     }
 
     /// @inheritdoc IERC20
     function approve(address spender, uint256 amount) public returns (bool) {
         // Vault will perform the approval and call emitApprove to emit the event from this contract.
-        _vault.approveERC20(msg.sender, spender, amount);
+        _vault.approve(msg.sender, spender, amount);
         return true;
     }
 
     /// @inheritdoc IERC20
     function transferFrom(address from, address to, uint256 amount) public returns (bool) {
         // Vault will perform the transfer and call emitTransfer to emit the event from this contract.
-        _vault.transferFromERC20(msg.sender, from, to, amount);
+        _vault.transferFrom(msg.sender, from, to, amount);
         return true;
     }
 

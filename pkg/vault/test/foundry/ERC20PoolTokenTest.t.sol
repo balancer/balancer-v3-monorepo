@@ -12,12 +12,12 @@ import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 
-import { ERC20FacadeToken } from "../../contracts/ERC20FacadeToken.sol";
+import { ERC20PoolToken } from "../../contracts/ERC20PoolToken.sol";
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
-contract ERC20FacadeTokenTest is Test {
+contract ERC20PoolTokenTest is Test {
     using AssetHelpers for address[];
     using ArrayHelpers for address[2];
 
