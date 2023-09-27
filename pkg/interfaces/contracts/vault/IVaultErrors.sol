@@ -119,4 +119,9 @@ interface IVaultErrors {
      * @dev
      */
     error QueriesDisabled();
+
+    /**
+     * @dev
+     */
+    error HookCallFailed();
 }

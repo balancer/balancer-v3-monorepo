@@ -6,7 +6,9 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
+import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/tokens/IERC20Errors.sol";
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
@@ -17,9 +19,11 @@ import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
+import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
-contract VaultLiquidityTest is Test {
+contract VaultSwapTest is Test {
+    using AssetHelpers for address;
     using AssetHelpers for address[];
     using AssetHelpers for address[];
     using ArrayHelpers for address[2];
@@ -32,6 +36,7 @@ contract VaultLiquidityTest is Test {
     ERC20TestToken USDC;
     ERC20TestToken DAI;
     address alice = vm.addr(1);
+    address bob = vm.addr(2);
 
     uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
@@ -51,8 +56,22 @@ contract VaultLiquidityTest is Test {
             true
         );
 
+        PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.hooks.shouldCallAfterSwap = true;
+        vault.setConfig(address(pool), config);
+
+        USDC.mint(bob, USDC_AMOUNT_IN);
+        DAI.mint(bob, DAI_AMOUNT_IN);
+
         USDC.mint(alice, USDC_AMOUNT_IN);
         DAI.mint(alice, DAI_AMOUNT_IN);
+
+        vm.startPrank(bob);
+
+        USDC.approve(address(vault), type(uint256).max);
+        DAI.approve(address(vault), type(uint256).max);
+
+        vm.stopPrank();
 
         vm.startPrank(alice);
 
@@ -62,45 +81,13 @@ contract VaultLiquidityTest is Test {
         vm.stopPrank();
 
         vm.label(alice, "alice");
+        vm.label(bob, "bob");
         vm.label(address(USDC), "USDC");
         vm.label(address(DAI), "DAI");
     }
 
-    function testAddLiquidity() public {
-        vm.startPrank(alice);
-        (uint256[] memory amountsIn, uint256 bptAmountOut) = router.addLiquidity(
-            address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            DAI_AMOUNT_IN,
-            bytes("")
-        );
-        vm.stopPrank();
-
-        // asssets are transferred from Alice
-        assertEq(USDC.balanceOf(alice), 0);
-        assertEq(DAI.balanceOf(alice), 0);
-
-        // assets are stored in the Vault
-        assertEq(USDC.balanceOf(address(vault)), USDC_AMOUNT_IN);
-        assertEq(DAI.balanceOf(address(vault)), DAI_AMOUNT_IN);
-
-        // assets are deposited to the pool
-        (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
-        assertEq(balances[0], DAI_AMOUNT_IN);
-        assertEq(balances[1], USDC_AMOUNT_IN);
-
-        // amountsIn should be correct
-        assertEq(amountsIn[0], DAI_AMOUNT_IN);
-        assertEq(amountsIn[1], USDC_AMOUNT_IN);
-
-        // should mint correct amount of BPT tokens
-        assertEq(pool.balanceOf(alice), bptAmountOut);
-        assertEq(bptAmountOut, DAI_AMOUNT_IN);
-    }
-
-    function testRemoveLiquidity() public {
-        vm.startPrank(alice);
+    function testOnAfterSwapHook() public {
+        vm.prank(alice);
         router.addLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
@@ -109,9 +96,25 @@ contract VaultLiquidityTest is Test {
             bytes("")
         );
 
-        pool.approve(address(vault), type(uint256).max);
+        pool.setMultiplier(1e30);
 
-        uint256[] memory amountsOut = router.removeLiquidity(
+        vm.prank(bob);
+        // should not fail
+        router.swap(
+            IVault.SwapKind.GIVEN_IN,
+            address(pool),
+            address(USDC).asAsset(),
+            address(DAI).asAsset(),
+            USDC_AMOUNT_IN,
+            DAI_AMOUNT_IN,
+            type(uint256).max,
+            bytes("")
+        );
+    }
+
+    function testOnAfterSwapHookRevert() public {
+        vm.prank(alice);
+        router.addLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
@@ -119,23 +122,21 @@ contract VaultLiquidityTest is Test {
             bytes("")
         );
 
-        vm.stopPrank();
+        pool.setMultiplier(1e30);
 
-        // asssets are transferred from Alice
-        assertEq(USDC.balanceOf(alice), USDC_AMOUNT_IN);
-        assertEq(DAI.balanceOf(alice), DAI_AMOUNT_IN);
-
-        // assets are stored in the Vault
-        assertEq(USDC.balanceOf(address(vault)), 0);
-        assertEq(DAI.balanceOf(address(vault)), 0);
-
-        // assets are deposited to the pool
-        (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
-        assertEq(balances[0], 0);
-        assertEq(balances[1], 0);
-
-        // amountsOut are correct
-        assertEq(amountsOut[0], DAI_AMOUNT_IN);
-        assertEq(amountsOut[1], USDC_AMOUNT_IN);
+        pool.setFailOnAfterSwap(true);
+        vm.prank(bob);
+        // should not fail
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.HookCallFailed.selector));
+        router.swap(
+            IVault.SwapKind.GIVEN_IN,
+            address(pool),
+            address(USDC).asAsset(),
+            address(DAI).asAsset(),
+            USDC_AMOUNT_IN,
+            DAI_AMOUNT_IN,
+            type(uint256).max,
+            bytes("")
+        );
     }
 }

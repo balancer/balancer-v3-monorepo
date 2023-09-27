@@ -2,8 +2,24 @@
 
 pragma solidity ^0.8.4;
 
-import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { Asset } from "../solidity-utils/misc/Asset.sol";
+import { IAuthorizer } from "./IAuthorizer.sol";
+
+/// @notice Represents a pool's hooks to be called
+struct PoolHooks {
+    bool shouldCallAfterSwap;
+    bool shouldCallAfterAddLiquidity;
+    bool shouldCallAfterRemoveLiquidity;
+}
+
+/// @notice Represents a pool's configuration
+struct PoolConfig {
+    bool isRegisteredPool;
+    bool isInitializedPool;
+    PoolHooks hooks;
+}
 
 /// @notice Interface for the Vault
 interface IVault {
@@ -15,8 +31,9 @@ interface IVault {
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
      * @param factory The factory address associated with the pool being registered.
      * @param tokens An array of token addresses the pool will manage.
+     * @param config Config for the pool
      */
-    function registerPool(address factory, IERC20[] memory tokens) external;
+    function registerPool(address factory, IERC20[] memory tokens, PoolHooks calldata config) external;
 
     /**
      * @notice Checks if a pool is registered
@@ -32,6 +49,13 @@ interface IVault {
      * @return balances                      Corresponding balances of the tokens
      */
     function getPoolTokens(address pool) external view returns (IERC20[] memory tokens, uint256[] memory balances);
+
+    /**
+     * @notice Gets config of a pool
+     * @param pool                           Address of the pool
+     * @return                               Config for the pool
+     */
+    function getPoolConfig(address pool) external view returns (PoolConfig memory);
 
     /// @notice Emitted when a Pool is registered by calling `registerPool`.
     event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
@@ -280,6 +304,23 @@ interface IVault {
     event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
 
     /*******************************************************************************
+                                Authentication
+    *******************************************************************************/
+
+    /// @dev Returns the Vault's Authorizer.
+    function getAuthorizer() external view returns (IAuthorizer);
+
+    /**
+     * @dev Sets a new Authorizer for the Vault. The caller must be allowed by the current Authorizer to do this.
+     *
+     * Emits an `AuthorizerChanged` event.
+     */
+    function setAuthorizer(IAuthorizer newAuthorizer) external;
+
+    /// @dev Emitted when a new authorizer is set by `setAuthorizer`.
+    event AuthorizerChanged(IAuthorizer indexed newAuthorizer);
+
+    /*******************************************************************************
                                     Queries
     *******************************************************************************/
 
@@ -292,9 +333,7 @@ interface IVault {
      */
     function quote(bytes calldata data) external payable returns (bytes memory result);
 
-    /**
-     * @notice Disables queries functionality on the Vault. Can be called only by governance.
-     */
+    /// @notice Disables queries functionality on the Vault. Can be called only by governance.
     function disableQuery() external;
 
     /**

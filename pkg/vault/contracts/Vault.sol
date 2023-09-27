@@ -7,9 +7,10 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault, PoolConfig, PoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 
 import { ReentrancyGuard } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import { TemporarilyPausable } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
@@ -17,11 +18,13 @@ import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 
 import { ERC20MultiToken } from "./ERC20MultiToken.sol";
 import { BasePoolMath } from "./libraries/BasePoolMath.sol";
+import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 
-contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
+contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
     using AssetHelpers for *;
@@ -29,9 +32,10 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     using Address for *;
     using SafeERC20 for IERC20;
     using SafeCast for *;
+    using PoolConfigLib for PoolConfig;
 
-    // Registry of pool addresses.
-    mapping(address => bool) private _isPoolRegistered;
+    // Registry of pool configs.
+    mapping(address => PoolConfigBits) internal _poolConfig;
 
     // Pool -> (token -> balance): Pool's ERC20 tokens balances stored at the Vault.
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolTokenBalances;
@@ -49,14 +53,21 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     /// exception being during the `invoke` call.
     mapping(IERC20 => uint256) private _tokenReserves;
 
+    // Upgradeable contract in charge of setting permissions.
+    IAuthorizer private _authorizer;
+
     /// @notice If set to true, disables query functionality of the Vault. Can be modified only by governance.
     bool private _isQueryDisabled;
 
     constructor(
+        IAuthorizer authorizer,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration) {
-        // solhint-disable-previous-line no-empty-blocks
+    )
+        Authentication(bytes32(uint256(uint160(address(this)))))
+        TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
+    {
+        _authorizer = authorizer;
     }
 
     /*******************************************************************************
@@ -304,8 +315,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     /**
      * @inheritdoc IVault
      */
-    function disableQuery() external {
-        // TODO: Only governance can call this function.
+    function disableQuery() external authenticate {
         _isQueryDisabled = true;
     }
 
@@ -438,6 +448,28 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         // Account amountOut of tokenOut
         _supplyCredit(params.tokenOut, amountOut, msg.sender);
 
+        if (_poolConfig[params.pool].shouldCallAfterSwap()) {
+            // if hook is enabled, then update balances
+            if (
+                IBasePool(params.pool).onAfterSwap(
+                    IBasePool.AfterSwapParams({
+                        kind: params.kind,
+                        tokenIn: params.tokenIn,
+                        tokenOut: params.tokenOut,
+                        amountIn: amountIn,
+                        amountOut: amountOut,
+                        tokenInBalance: tokenInBalance,
+                        tokenOutBalance: tokenOutBalance,
+                        sender: msg.sender,
+                        userData: params.userData
+                    }),
+                    amountCalculated
+                ) == false
+            ) {
+                revert HookCallFailed();
+            }
+        }
+
         emit Swap(params.pool, params.tokenIn, params.tokenOut, amountIn, amountOut);
     }
 
@@ -452,13 +484,22 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
      *      Emits a `PoolRegistered` event upon successful registration.
      * @inheritdoc IVault
      */
-    function registerPool(address factory, IERC20[] memory tokens) external nonReentrant whenNotPaused {
-        _registerPool(factory, tokens);
+    function registerPool(
+        address factory,
+        IERC20[] memory tokens,
+        PoolHooks calldata poolHooks
+    ) external nonReentrant whenNotPaused {
+        _registerPool(factory, tokens, poolHooks);
     }
 
     /// @inheritdoc IVault
     function isRegisteredPool(address pool) external view returns (bool) {
         return _isRegisteredPool(pool);
+    }
+
+    /// @inheritdoc IVault
+    function getPoolConfig(address pool) external view returns (PoolConfig memory) {
+        return _poolConfig[pool].toPoolConfig();
     }
 
     /// @inheritdoc IVault
@@ -482,7 +523,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
     }
 
     /// @dev See `registerPool`
-    function _registerPool(address factory, IERC20[] memory tokens) internal {
+    function _registerPool(address factory, IERC20[] memory tokens, PoolHooks memory hooksConfig) internal {
         address pool = msg.sender;
 
         // Ensure the pool isn't already registered
@@ -511,8 +552,11 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
             }
         }
 
-        // Mark the pool as registered
-        _isPoolRegistered[pool] = true;
+        // Store config and mark the pool as registered
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        config.isRegisteredPool = true;
+        config.hooks = hooksConfig;
+        _poolConfig[pool] = config.fromPoolConfig();
 
         // Emit an event to log the pool registration
         emit PoolRegistered(pool, factory, tokens);
@@ -520,7 +564,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
     /// @dev See `isRegisteredPool`
     function _isRegisteredPool(address pool) internal view returns (bool) {
-        return _isPoolRegistered[pool];
+        return _poolConfig[pool].isPoolRegistered();
     }
 
     /**
@@ -593,6 +637,21 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
         // Credit bptAmountOut of pool tokens
         _supplyCredit(IERC20(pool), bptAmountOut, msg.sender);
+
+        if (_poolConfig[pool].shouldCallAfterAddLiquidity()) {
+            if (
+                IBasePool(pool).onAfterAddLiquidity(
+                    msg.sender,
+                    balances,
+                    maxAmountsIn,
+                    userData,
+                    amountsIn,
+                    bptAmountOut
+                ) == false
+            ) {
+                revert HookCallFailed();
+            }
+        }
 
         emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }
@@ -713,6 +772,21 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         // Debit bptAmountOut of pool tokens
         _takeDebt(IERC20(pool), bptAmountIn, msg.sender);
 
+        if (_poolConfig[pool].shouldCallAfterRemoveLiquidity()) {
+            if (
+                IBasePool(pool).onAfterRemoveLiquidity(
+                    msg.sender,
+                    balances,
+                    minAmountsOut,
+                    bptAmountIn,
+                    userData,
+                    amountsOut
+                ) == false
+            ) {
+                revert HookCallFailed();
+            }
+        }
+
         emit PoolBalanceChanged(
             pool,
             msg.sender,
@@ -760,5 +834,26 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         }
 
         return balances;
+    }
+
+    /*******************************************************************************
+                                    Authentication
+    *******************************************************************************/
+
+    /// @inheritdoc IVault
+    function getAuthorizer() external view returns (IAuthorizer) {
+        return _authorizer;
+    }
+
+    /// @inheritdoc IVault
+    function setAuthorizer(IAuthorizer newAuthorizer) external nonReentrant authenticate {
+        _authorizer = newAuthorizer;
+
+        emit AuthorizerChanged(newAuthorizer);
+    }
+
+    /// @dev Access control is delegated to the Authorizer
+    function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
+        return _authorizer.canPerform(actionId, user, address(this));
     }
 }
