@@ -671,7 +671,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         IBasePool(pool).onBeforeAdd(balances);
 
-        amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, _totalSupplyOfERC20(pool), bptAmountOut);
+        amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, _totalSupply(pool), bptAmountOut);
 
         // check amountsIn < maxAmountsIn
         // _accountDeltas
