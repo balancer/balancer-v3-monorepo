@@ -1,6 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { deploy } from '@balancer-labs/v3-helpers/src/contract';
+import { Contract } from 'ethers';
+import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH, fromNow } from '@balancer-labs/v3-helpers/src/time';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20BalancerPoolToken } from '../typechain-types/contracts/ERC20BalancerPoolToken';
@@ -12,6 +13,8 @@ import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constan
 import { bn } from '@balancer-labs/v3-helpers/src/numbers';
 import { setupEnvironment } from './poolSetup';
 import { impersonate } from '@balancer-labs/v3-helpers/src/signers';
+import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer';
+import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import '@balancer-labs/v3-common/setupTests';
 
 describe('Vault', function () {
@@ -26,6 +29,7 @@ describe('Vault', function () {
   let tokenC: ERC20TestToken;
 
   let factory: SignerWithAddress;
+  let alice: SignerWithAddress;
 
   let tokenAAddress: string;
   let tokenBAddress: string;
@@ -39,7 +43,7 @@ describe('Vault', function () {
   let duplicateTokens: string[];
 
   before('setup signers', async () => {
-    [, factory] = await ethers.getSigners();
+    [, factory, alice] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
@@ -161,6 +165,56 @@ describe('Vault', function () {
       const [pauseWindowEndTime, bufferPeriodEndTime] = await timedVault.getPauseEndTimes();
       expect(pauseWindowEndTime).to.equal(await fromNow(PAUSE_WINDOW_DURATION));
       expect(bufferPeriodEndTime).to.equal((await fromNow(PAUSE_WINDOW_DURATION)) + bn(BUFFER_PERIOD_DURATION));
+    });
+  });
+
+  describe('authorizer', () => {
+    let oldAuthorizer: Contract;
+    let newAuthorizer: NullAuthorizer;
+    let oldAuthorizerAddress: string;
+
+    sharedBeforeEach('get old and deploy new authorizer', async () => {
+      oldAuthorizerAddress = await vault.getAuthorizer();
+      oldAuthorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', oldAuthorizerAddress);
+
+      newAuthorizer = await deploy('NullAuthorizer');
+    });
+
+    context('without permission', () => {
+      it('cannot change authorizer', async () => {
+        await expect(vault.setAuthorizer(await newAuthorizer.getAddress())).to.be.revertedWithCustomError(
+          vault,
+          'SenderNotAllowed'
+        );
+      });
+    });
+
+    context('with permission', () => {
+      let newAuthorizerAddress: string;
+
+      sharedBeforeEach('grant permission', async () => {
+        const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+
+        await oldAuthorizer.grantRole(setAuthorizerAction, alice.address);
+      });
+
+      it('can change authorizer', async () => {
+        newAuthorizerAddress = await newAuthorizer.getAddress();
+
+        await expect(await vault.connect(alice).setAuthorizer(newAuthorizerAddress))
+          .to.emit(vault, 'AuthorizerChanged')
+          .withArgs(newAuthorizerAddress);
+
+        expect(await vault.getAuthorizer()).to.equal(newAuthorizerAddress);
+      });
+
+      it('the null authorizer allows everything', async () => {
+        await vault.connect(alice).setAuthorizer(newAuthorizerAddress);
+
+        await vault.setAuthorizer(oldAuthorizerAddress);
+
+        expect(await vault.getAuthorizer()).to.equal(oldAuthorizerAddress);
+      });
     });
   });
 });
