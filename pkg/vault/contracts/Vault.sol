@@ -657,11 +657,11 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
             finalBalances[i] = balances[i] + amountIn;
         }
 
-        // All that remains is storing the new Pool balances.
+        // Store the new pool balances.
         _setPoolBalances(pool, finalBalances);
 
-        // Pool tokens are excluded from transient accounting and burned/minted immediately
-        // Mint pool tokens
+        // When adding liquidity, we must mint tokens concurrently with updating pool balances,
+        // as the pool's math relies on totalSupply.
         _mint(address(pool), recipient, bptAmountOut);
 
         if (_poolConfig[pool].shouldCallAfterAddLiquidity() == true) {
@@ -715,11 +715,11 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
             finalBalances[i] = balances[i] - amountOut;
         }
 
-        // All that remains is storing the new Pool balances.
+        // Store the new pool balances.
         _setPoolBalances(pool, finalBalances);
 
-        // Pool tokens are excluded from transient accounting and burned/minted immediately
-        // Burn pool tokens
+        // When removing liquidity, we must burn tokens concurrently with updating pool balances,
+        // as the pool's math relies on totalSupply.
         _burn(address(pool), recipient, bptAmountIn);
 
         if (_poolConfig[pool].shouldCallAfterRemoveLiquidity() == true) {
