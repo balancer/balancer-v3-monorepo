@@ -151,16 +151,6 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         token.safeTransfer(to, amount);
     }
 
-    /// @inheritdoc IVault
-    function mint(IERC20 token, address to, uint256 amount) public nonReentrant withHandler {
-        // minting pool tokens is not allowed, except for query calls
-        if (_isRegisteredPool(address(token)) && tx.origin != address(0)) {
-            revert InvalidToken();
-        }
-        _takeDebt(token, amount, msg.sender);
-        _mint(address(token), to, amount);
-    }
-
     /**
      * @inheritdoc IVault
      * @dev This function can drain users of their tokens because users grant allowance to the Vault.
@@ -172,17 +162,6 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         _tokenReserves[token] += amount;
         // interactions
         token.safeTransferFrom(from, address(this), amount);
-    }
-
-    /// @inheritdoc IVault
-    function burn(IERC20 token, address owner, uint256 amount) public nonReentrant withHandler {
-        // burning pool tokens is not allowed
-        if (_isRegisteredPool(address(token))) {
-            revert InvalidToken();
-        }
-        _supplyCredit(token, amount, msg.sender);
-        _spendAllowance(address(token), owner, address(this), amount);
-        _burn(address(token), owner, amount);
     }
 
     /// @inheritdoc IVault
@@ -626,7 +605,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
      */
     function addLiquidity(
         address pool,
-        address recipient,
+        address to,
         IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
         bytes memory userData
@@ -662,7 +641,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
 
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
-        _mint(address(pool), recipient, bptAmountOut);
+        _mint(address(pool), to, bptAmountOut);
 
         if (_poolConfig[pool].shouldCallAfterAddLiquidity() == true) {
             if (
@@ -689,7 +668,7 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
      */
     function removeLiquidity(
         address pool,
-        address recipient,
+        address from,
         IERC20[] memory tokens,
         uint256[] memory minAmountsOut,
         uint256 bptAmountIn,
@@ -718,9 +697,12 @@ contract Vault is IVault, IVaultErrors, ERC20MultiToken, ReentrancyGuard, Tempor
         // Store the new pool balances.
         _setPoolBalances(pool, finalBalances);
 
+        // We are not spending the allowance of the Vault here because the Vault has infinite allowances
+        // for all pool tokens. This allows us to save on gas as well as eliminate extra approval transactions
+        // from the users.
         // When removing liquidity, we must burn tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
-        _burn(address(pool), recipient, bptAmountIn);
+        _burn(address(pool), from, bptAmountIn);
 
         if (_poolConfig[pool].shouldCallAfterRemoveLiquidity() == true) {
             if (

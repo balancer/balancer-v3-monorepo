@@ -107,8 +107,6 @@ contract VaultLiquidityTest is Test {
             bytes("")
         );
 
-        pool.approve(address(vault), type(uint256).max);
-
         uint256[] memory amountsOut = router.removeLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
@@ -135,5 +133,8 @@ contract VaultLiquidityTest is Test {
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN);
         assertEq(amountsOut[1], USDC_AMOUNT_IN);
+
+        // should burn correct amount of BPT tokens
+        assertEq(pool.balanceOf(alice), 0);
     }
 }

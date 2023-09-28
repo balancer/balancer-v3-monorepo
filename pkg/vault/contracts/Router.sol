@@ -35,50 +35,6 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     }
 
     /*******************************************************************************
-                                    MultiToken
-    *******************************************************************************/
-
-    /// @inheritdoc IRouter
-    function mint(IERC20 token, uint256 amount) external {
-        // Invoke the mintCallback function in the Vault contract
-        _vault.invoke(abi.encodeWithSelector(Router.mintCallback.selector, msg.sender, token, amount));
-    }
-
-    /**
-     * @notice Handles mint callbacks
-     * @param sender      The sender address
-     * @param token       The ERC20 token being minted
-     * @param amount      The amount of token being minted
-     */
-    function mintCallback(address sender, IERC20 token, uint256 amount) external nonReentrant onlyVault {
-        // Mint the specified amount of the token to the sender's address
-        _vault.mint(token, sender, amount);
-
-        // Retrieve the specified amount of the token from the sender's address
-        _vault.retrieve(token, sender, amount);
-    }
-
-    /// @inheritdoc IRouter
-    function burn(IERC20 token, uint256 amount) external {
-        // Invoke the burnCallback function in the _vault contract
-        _vault.invoke(abi.encodeWithSelector(Router.burnCallback.selector, msg.sender, token, amount));
-    }
-
-    /**
-     * @notice Handles burn callbacks
-     * @param sender      The sender address
-     * @param token       The ERC20 token being burnt
-     * @param amount      The amount of token being burnt
-     */
-    function burnCallback(address sender, IERC20 token, uint256 amount) external nonReentrant onlyVault {
-        // Burn the specified amount of the token from the sender's address
-        _vault.burn(token, sender, amount);
-
-        // Send the specified amount of the token to the sender's address
-        _vault.wire(token, sender, amount);
-    }
-
-    /*******************************************************************************
                                     Pools
     *******************************************************************************/
 
@@ -419,7 +375,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
 
         (amountsIn, bptAmountOut) = _vault.addLiquidity(
             params.pool,
-            address(0x1),
+            params.sender,
             tokens,
             params.maxAmountsIn,
             params.userData
@@ -456,12 +412,10 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     function queryRemoveLiquidityCallback(
         RemoveLiquidityCallbackParams calldata params
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
-        // Have to mint pool tokens to 0x1 address, because removeLiquidity will burn them
-        _vault.mint(IERC20(params.pool), address(0x1), params.bptAmountIn);
         return
             _vault.removeLiquidity(
                 params.pool,
-                address(0x1),
+                params.sender,
                 params.assets.toIERC20(_weth),
                 params.minAmountsOut,
                 params.bptAmountIn,
