@@ -10,8 +10,10 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/token/IERC20Errors.sol";
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { PoolMock } from "@balancer-labs/v3-pool-utils/contracts/test/PoolMock.sol";
+import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ERC20PoolToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20PoolToken.sol";
+
+import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
@@ -20,11 +22,13 @@ contract ERC20PoolTokenTest is Test {
     using ArrayHelpers for address[2];
 
     VaultMock vault;
-    PoolMock token;
+    BasicAuthorizerMock authorizer;
+    ERC20PoolMock token;
 
     function setUp() public {
-        vault = new VaultMock(30 days, 90 days);
-        token = new PoolMock(
+        authorizer = new BasicAuthorizerMock();
+        vault = new VaultMock(authorizer, 30 days, 90 days);
+        token = new ERC20PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",

@@ -12,8 +12,8 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/token/IERC20Errors.sol";
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
+import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 
 import { PoolMock } from "@balancer-labs/v3-pool-utils/contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
@@ -28,6 +28,7 @@ contract VaultLiquidityTest is Test {
 
     VaultMock vault;
     Router router;
+    BasicAuthorizerMock authorizer;
     PoolMock pool;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
@@ -37,7 +38,8 @@ contract VaultLiquidityTest is Test {
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
 
     function setUp() public {
-        vault = new VaultMock(30 days, 90 days);
+        authorizer = new BasicAuthorizerMock();
+        vault = new VaultMock(authorizer, 30 days, 90 days);
         router = new Router(IVault(vault), address(0));
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);

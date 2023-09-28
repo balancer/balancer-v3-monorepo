@@ -2,9 +2,10 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
-import { PoolConfigStructOutput, VaultMock } from '../../vault/typechain-types/contracts/test/VaultMock';
-import { Router } from '../../vault/typechain-types/contracts/Router';
+import { PoolConfigStructOutput, VaultMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/VaultMock';
+import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
+import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
 import { PoolMock } from '@balancer-labs/v3-pool-utils/typechain-types/contracts/test/PoolMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
@@ -32,7 +33,10 @@ describe('WeightedPool', function () {
     const PAUSE_WINDOW_DURATION = MONTH * 3;
     const BUFFER_PERIOD_DURATION = MONTH;
 
-    vault = await deploy('v3-vault/VaultMock', { args: [PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION] });
+    const authorizer: BasicAuthorizerMock = await deploy('v3-solidity-utils/BasicAuthorizerMock');
+    vault = await deploy('v3-vault/VaultMock', {
+      args: [await authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
+    });
     vaultAddress = await vault.getAddress();
 
     router = await deploy('v3-vault/Router', { args: [vaultAddress, ZERO_ADDRESS] });

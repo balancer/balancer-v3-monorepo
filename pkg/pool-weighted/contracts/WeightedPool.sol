@@ -116,6 +116,7 @@ contract WeightedPool is BasePool, IWeightedPool {
     }
 
     function _getNormalizedWeights() internal view virtual returns (uint256[] memory) {
+        // solhint-disable
         uint256 totalTokens = _getTotalTokens();
         uint256[] memory normalizedWeights = new uint256[](totalTokens);
 

@@ -36,50 +36,6 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     }
 
     /*******************************************************************************
-                                    MultiToken
-    *******************************************************************************/
-
-    /// @inheritdoc IRouter
-    function mint(IERC20 token, uint256 amount) external {
-        // Invoke the mintCallback function in the Vault contract
-        _vault.invoke(abi.encodeWithSelector(Router.mintCallback.selector, msg.sender, token, amount));
-    }
-
-    /**
-     * @notice Handles mint callbacks
-     * @param sender      The sender address
-     * @param token       The ERC20 token being minted
-     * @param amount      The amount of token being minted
-     */
-    function mintCallback(address sender, IERC20 token, uint256 amount) external nonReentrant onlyVault {
-        // Mint the specified amount of the token to the sender's address
-        _vault.mint(token, sender, amount);
-
-        // Retrieve the specified amount of the token from the sender's address
-        _vault.retrieve(token, sender, amount);
-    }
-
-    /// @inheritdoc IRouter
-    function burn(IERC20 token, uint256 amount) external {
-        // Invoke the burnCallback function in the _vault contract
-        _vault.invoke(abi.encodeWithSelector(Router.burnCallback.selector, msg.sender, token, amount));
-    }
-
-    /**
-     * @notice Handles burn callbacks
-     * @param sender      The sender address
-     * @param token       The ERC20 token being burnt
-     * @param amount      The amount of token being burnt
-     */
-    function burnCallback(address sender, IERC20 token, uint256 amount) external nonReentrant onlyVault {
-        // Burn the specified amount of the token from the sender's address
-        _vault.burn(token, sender, amount);
-
-        // Send the specified amount of the token to the sender's address
-        _vault.wire(token, sender, amount);
-    }
-
-    /*******************************************************************************
                                     Pools
     *******************************************************************************/
 
@@ -93,7 +49,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         return
             abi.decode(
-                _vault.invoke(
+                _vault.invoke{ value: msg.value }(
                     abi.encodeWithSelector(
                         Router.initializeCallback.selector,
                         InitializeCallbackParams({
@@ -160,7 +116,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         return
             abi.decode(
-                _vault.invoke{value: msg.value}(
+                _vault.invoke{ value: msg.value }(
                     abi.encodeWithSelector(
                         Router.addLiquidityCallback.selector,
                         AddLiquidityCallbackParams({
@@ -305,7 +261,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     ) external payable returns (uint256) {
         return
             abi.decode(
-                _vault.invoke{value: msg.value}(
+                _vault.invoke{ value: msg.value }(
                     abi.encodeWithSelector(
                         Router.swapCallback.selector,
                         SwapCallbackParams({
@@ -432,7 +388,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     ) external payable returns (uint256 amountCalculated) {
         return
             abi.decode(
-                _vault.quote{value: msg.value}(
+                _vault.quote{ value: msg.value }(
                     abi.encodeWithSelector(
                         Router.querySwapCallback.selector,
                         SwapCallbackParams({
@@ -471,7 +427,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         return
             abi.decode(
-                _vault.quote{value: msg.value}(
+                _vault.quote{ value: msg.value }(
                     abi.encodeWithSelector(
                         Router.queryAddLiquidityCallback.selector,
                         AddLiquidityCallbackParams({

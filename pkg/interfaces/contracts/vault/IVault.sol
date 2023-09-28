@@ -2,17 +2,19 @@
 
 pragma solidity ^0.8.4;
 
-import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IBasePool } from "./IBasePool.sol";
+import { Asset } from "../solidity-utils/misc/Asset.sol";
+import { IAuthorizer } from "./IAuthorizer.sol";
 
+/// @notice Represents a pool's hooks to be called
 struct PoolHooks {
     bool shouldCallAfterSwap;
     bool shouldCallAfterAddLiquidity;
     bool shouldCallAfterRemoveLiquidity;
 }
 
-/// @notice Struct to represent a pool configuration
+/// @notice Represents a pool's configuration
 struct PoolConfig {
     bool isRegisteredPool;
     bool isInitializedPool;
@@ -95,43 +97,6 @@ interface IVault {
     function balanceOf(address token, address account) external view returns (uint256);
 
     /**
-     * @notice Transfers ERC20 token from owner to a recipient
-     * @param token                          Token's address
-     * @param to                             Recipient's address
-     * @param amount                         Amount of tokens to transfer
-     * @return                               True if successful, false otherwise
-     */
-    function transfer(address token, address to, uint256 amount) external returns (bool);
-
-    /**
-     * @notice Transfers from a sender to a recipient using an allowance
-     * @param token                          Token's address
-     * @param from                           Sender's address
-     * @param to                             Recipient's address
-     * @param amount                         Amount of tokens to transfer
-     * @return                               True if successful, false otherwise
-     */
-    function transferFrom(address token, address from, address to, uint256 amount) external returns (bool);
-
-    /**
-     * @notice Gets allowance of a spender for a given ERC20 token and owner
-     * @param token                          Token's address
-     * @param owner                          Owner's address
-     * @param spender                        Spender's address
-     * @return                               Amount of tokens the spender is allowed to spend
-     */
-    function allowance(address token, address owner, address spender) external view returns (uint256);
-
-    /**
-     * @notice Approves a spender to spend tokens on behalf of sender
-     * @param token                          Token's address
-     * @param spender                        Spender's address
-     * @param amount                         Amount of tokens to approve
-     * @return                               True if successful, false otherwise
-     */
-    function approve(address token, address spender, uint256 amount) external returns (bool);
-
-    /**
      * @notice Transfers pool token from owner to a recipient.
      * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
      * the pool contract, so msg.sender is used as the token address.
@@ -140,7 +105,7 @@ interface IVault {
      * @param amount                         Amount of tokens to transfer
      * @return                               True if successful, false otherwise
      */
-    function poolTokenTransfer(address owner, address to, uint256 amount) external returns (bool);
+    function transfer(address owner, address to, uint256 amount) external returns (bool);
 
     /**
      * @notice Transfers pool token from a sender to a recipient using an allowance
@@ -152,7 +117,16 @@ interface IVault {
      * @param amount                         Amount of tokens to transfer
      * @return                               True if successful, false otherwise
      */
-    function poolTokenTransferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
+    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
+
+    /**
+     * @notice Gets allowance of a spender for a given ERC20 token and owner
+     * @param token                          Token's address
+     * @param owner                          Owner's address
+     * @param spender                        Spender's address
+     * @return                               Amount of tokens the spender is allowed to spend
+     */
+    function allowance(address token, address owner, address spender) external view returns (uint256);
 
     /**
      * @notice Approves a spender to spend pool tokens on behalf of sender
@@ -163,7 +137,7 @@ interface IVault {
      * @param amount                         Amount of tokens to approve
      * @return                               True if successful, false otherwise
      */
-    function poolTokenApprove(address owner, address spender, uint256 amount) external returns (bool);
+    function approve(address owner, address spender, uint256 amount) external returns (bool);
 
     /*******************************************************************************
                               Transient Accounting
@@ -333,6 +307,23 @@ interface IVault {
     event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
 
     /*******************************************************************************
+                                Authentication
+    *******************************************************************************/
+
+    /// @dev Returns the Vault's Authorizer.
+    function getAuthorizer() external view returns (IAuthorizer);
+
+    /**
+     * @dev Sets a new Authorizer for the Vault. The caller must be allowed by the current Authorizer to do this.
+     *
+     * Emits an `AuthorizerChanged` event.
+     */
+    function setAuthorizer(IAuthorizer newAuthorizer) external;
+
+    /// @dev Emitted when a new authorizer is set by `setAuthorizer`.
+    event AuthorizerChanged(IAuthorizer indexed newAuthorizer);
+
+    /*******************************************************************************
                                     Queries
     *******************************************************************************/
 
@@ -345,9 +336,7 @@ interface IVault {
      */
     function quote(bytes calldata data) external payable returns (bytes memory result);
 
-    /**
-     * @notice Disables queries functionality on the Vault. Can be called only by governance.
-     */
+    /// @notice Disables queries functionality on the Vault. Can be called only by governance.
     function disableQuery() external;
 
     /**

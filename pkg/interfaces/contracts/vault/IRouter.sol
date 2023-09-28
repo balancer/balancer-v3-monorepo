@@ -15,20 +15,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  */
 interface IRouter {
     /**
-     * @notice Mints `amount` of `token`
-     * @param token       The ERC20 token to mint
-     * @param amount      The amount of token to mint
-     */
-    function mint(IERC20 token, uint256 amount) external;
-
-    /**
-     * @notice Burns `amount` of `token`
-     * @param token       The ERC20 token to burn
-     * @param amount      The amount of token to burn
-     */
-    function burn(IERC20 token, uint256 amount) external;
-
-    /**
      * @notice Executes a swap operation
      * @param kind                  Type of swap
      * @param pool                  Address of the liquidity pool

@@ -12,7 +12,7 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/token/IERC20Errors.sol";
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-
+import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
@@ -43,7 +43,8 @@ contract WeightedPoolTest is Test {
     uint256 constant DELTA = 1e9;
 
     function setUp() public {
-        vault = new VaultMock(30 days, 90 days);
+        BasicAuthorizerMock authorizer = new BasicAuthorizerMock();
+        vault = new VaultMock(authorizer, 30 days, 90 days);
         router = new Router(IVault(vault), address(0));
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);

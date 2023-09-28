@@ -9,7 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /**
- * @notice A fully ERC20-compatible token with all the data and implementation delegated to the ERC20MultiToken contract
+ * @notice A full ERC20 compatible token with all the data and implementation delegated to the ERC20MultiToken contract
  */
 contract ERC20PoolToken is IERC20, IERC20Metadata, IVaultErrors {
     IVault private immutable _vault;
@@ -59,7 +59,7 @@ contract ERC20PoolToken is IERC20, IERC20Metadata, IVaultErrors {
     /// @inheritdoc IERC20
     function transfer(address to, uint256 amount) public returns (bool) {
         // Vault will perform the transfer and call emitTransfer to emit the event from this contract.
-        _vault.poolTokenTransfer(msg.sender, to, amount);
+        _vault.transfer(msg.sender, to, amount);
         return true;
     }
 
@@ -71,14 +71,14 @@ contract ERC20PoolToken is IERC20, IERC20Metadata, IVaultErrors {
     /// @inheritdoc IERC20
     function approve(address spender, uint256 amount) public returns (bool) {
         // Vault will perform the approval and call emitApprove to emit the event from this contract.
-        _vault.poolTokenApprove(msg.sender, spender, amount);
+        _vault.approve(msg.sender, spender, amount);
         return true;
     }
 
     /// @inheritdoc IERC20
     function transferFrom(address from, address to, uint256 amount) public returns (bool) {
         // Vault will perform the transfer and call emitTransfer to emit the event from this contract.
-        _vault.poolTokenTransferFrom(msg.sender, from, to, amount);
+        _vault.transferFrom(msg.sender, from, to, amount);
         return true;
     }
 

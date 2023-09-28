@@ -7,6 +7,7 @@ import { Vault } from "../Vault.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 
@@ -16,18 +17,19 @@ contract VaultMock is Vault {
     using PoolConfigLib for PoolConfig;
 
     constructor(
+        IAuthorizer authorizer,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) Vault(pauseWindowDuration, bufferPeriodDuration) {
+    ) Vault(authorizer, pauseWindowDuration, bufferPeriodDuration) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function burnERC20(address token, address from, uint256 amount) external {
-        _burn(token, from, amount);
+    function burnERC20(address poolToken, address from, uint256 amount) external {
+        _burn(poolToken, from, amount);
     }
 
-    function mintERC20(address token, address to, uint256 amount) external {
-        _mint(token, to, amount);
+    function mintERC20(address poolToken, address to, uint256 amount) external {
+        _mint(poolToken, to, amount);
     }
 
     function setConfig(address pool, PoolConfig calldata config) external {

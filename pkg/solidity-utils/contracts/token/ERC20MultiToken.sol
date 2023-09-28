@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.4;
 
-import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/token/IERC20Errors.sol";
 
 import { ERC20PoolToken } from "./ERC20PoolToken.sol";
@@ -14,26 +12,10 @@ import { ERC20PoolToken } from "./ERC20PoolToken.sol";
  * with the ERC20 API on the token side. It also allows for the minting and burning of tokens on the multi-token side.
  */
 abstract contract ERC20MultiToken is IERC20Errors {
-    using Address for address;
-
-    /**
-     * @dev Emitted when `value` tokens are moved from one account (`from`) to
-     * another (`to`).
-     *
-     * Note that `value` may be zero.
-     */
-    event Transfer(address indexed token, address indexed from, address indexed to, uint256 value);
-
-    /**
-     * @dev Emitted when the allowance of a `spender` for an `owner` is set by
-     * a call to {approve}. `value` is the new allowance.
-     */
-    event Approval(address indexed token, address indexed owner, address indexed spender, uint256 value);
-
     // token -> (owner -> balance): Users' balances
     mapping(address => mapping(address => uint256)) private _balances;
 
-    // token -> (owner -> (spender -> allowance)): Users' allowances
+    // token -> (owner -> (spender -> allowance))
     mapping(address => mapping(address => mapping(address => uint256))) private _allowances;
 
     // token -> total supply
@@ -48,12 +30,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
     }
 
     function _allowance(address token, address owner, address spender) internal view returns (uint256) {
-        // MultiToken have infinite allowances
-        if (spender == address(this)) {
-            return type(uint256).max;
-        } else {
-            return _allowances[token][owner][spender];
-        }
+        return _allowances[token][owner][spender];
     }
 
     function _mint(address token, address to, uint256 amount) internal {
@@ -67,15 +44,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
             _balances[token][to] += amount;
         }
 
-        emit Transfer(token, address(0), to, amount);
-
-        // We use a low-level call here because only `ERC20PoolToken` tokens implement `emitTransfer`.
-        // Standard tokens, such as USDC, do not implement `emitTransfer`, so this call would fail.
-        // While this is expected behavior and not an issue in itself, malicious ERC20 contracts
-        // might exploit it for reentrancy. Hence, caution is needed.
-        try ERC20PoolToken(token).emitTransfer(address(0), to, amount) {} catch {
-            // solhint-disable-previous-line no-empty-blocks
-        }
+        ERC20PoolToken(token).emitTransfer(address(0), to, amount);
     }
 
     function _burn(address token, address from, uint256 amount) internal {
@@ -94,15 +63,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
             _totalSupplyOf[token] -= amount;
         }
 
-        emit Transfer(token, from, address(0), amount);
-
-        // We use a low-level call here because only `ERC20PoolToken` tokens implement `emitTransfer`.
-        // Standard tokens, such as USDC, do not implement `emitTransfer`, so this call would fail.
-        // While this is expected behavior and not an issue in itself, malicious ERC20 contracts
-        // might exploit it for reentrancy. Hence, caution is needed.
-        try ERC20PoolToken(token).emitTransfer(from, address(0), amount) {} catch {
-            // solhint-disable-previous-line no-empty-blocks
-        }
+        ERC20PoolToken(token).emitTransfer(from, address(0), amount);
     }
 
     function _transfer(address token, address from, address to, uint256 amount) internal {
@@ -126,15 +87,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
             _balances[token][to] += amount;
         }
 
-        emit Transfer(token, from, to, amount);
-
-        // We use a low-level call here because only `ERC20PoolToken` tokens implement `emitTransfer`.
-        // Standard tokens, such as USDC, do not implement `emitTransfer`, so this call would fail.
-        // While this is expected behavior and not an issue in itself, malicious ERC20 contracts
-        // might exploit it for reentrancy. Hence, caution is needed.
-        try ERC20PoolToken(token).emitTransfer(from, to, amount) {} catch {
-            // solhint-disable-previous-line no-empty-blocks
-        }
+        ERC20PoolToken(token).emitTransfer(from, to, amount);
     }
 
     function _approve(address token, address owner, address spender, uint256 amount) internal {
@@ -147,20 +100,11 @@ abstract contract ERC20MultiToken is IERC20Errors {
         }
 
         _allowances[token][owner][spender] = amount;
-
-        emit Approval(token, owner, spender, amount);
-
-        // We use a low-level call here because only `ERC20PoolToken` tokens implement `emitApprove`.
-        // Standard tokens, such as USDC, do not implement `emitApprove`, so this call would fail.
-        // While this is expected behavior and not an issue in itself, malicious ERC20 contracts
-        // might exploit it for reentrancy. Hence, caution is needed.
-        try ERC20PoolToken(token).emitApprove(owner, spender, amount) {} catch {
-            // solhint-disable-previous-line no-empty-blocks
-        }
+        ERC20PoolToken(token).emitApprove(owner, spender, amount);
     }
 
     function _spendAllowance(address token, address owner, address spender, uint256 amount) internal {
-        uint256 currentAllowance = _allowance(token, owner, spender);
+        uint256 currentAllowance = _allowances[token][owner][spender];
         if (currentAllowance != type(uint256).max) {
             if (amount > currentAllowance) {
                 revert ERC20InsufficientAllowance(spender, currentAllowance, amount);
