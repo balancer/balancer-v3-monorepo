@@ -200,6 +200,7 @@ contract WeightedPool is BasePool, IWeightedPool {
 
     /// Swap
 
+    /// @inheritdoc IBasePool
     function onSwap(IBasePool.SwapParams memory request) public view onlyVault returns (uint256) {
         uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
         uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
@@ -238,6 +239,7 @@ contract WeightedPool is BasePool, IWeightedPool {
         }
     }
 
+    /// @inheritdoc IBasePool
     function onAfterSwap(
         IBasePool.AfterSwapParams calldata params,
         uint256 amountCalculated
