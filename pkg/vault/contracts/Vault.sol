@@ -342,38 +342,19 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     }
 
     /// @inheritdoc IVault
-    function transfer(address token, address to, uint256 amount) external returns (bool) {
-        _transfer(token, msg.sender, to, amount);
-        return true;
-    }
-
-    /// @inheritdoc IVault
-    function approve(address token, address spender, uint256 amount) external returns (bool) {
-        _approve(token, msg.sender, spender, amount);
-        return true;
-    }
-
-    /// @inheritdoc IVault
-    function transferFrom(address token, address from, address to, uint256 amount) external returns (bool) {
-        _spendAllowance(token, from, msg.sender, amount);
-        _transfer(token, from, to, amount);
-        return true;
-    }
-
-    /// @inheritdoc IVault
-    function poolTokenTransfer(address owner, address to, uint256 amount) external returns (bool) {
+    function transfer(address owner, address to, uint256 amount) external returns (bool) {
         _transfer(msg.sender, owner, to, amount);
         return true;
     }
 
     /// @inheritdoc IVault
-    function poolTokenApprove(address owner, address spender, uint256 amount) external returns (bool) {
+    function approve(address owner, address spender, uint256 amount) external returns (bool) {
         _approve(msg.sender, owner, spender, amount);
         return true;
     }
 
     /// @inheritdoc IVault
-    function poolTokenTransferFrom(address spender, address from, address to, uint256 amount) external returns (bool) {
+    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool) {
         _spendAllowance(msg.sender, from, spender, amount);
         _transfer(msg.sender, from, to, amount);
         return true;
