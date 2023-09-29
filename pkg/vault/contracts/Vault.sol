@@ -280,8 +280,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // Check if the transaction initiator is different from 0x0.
         // If so, it's not a eth_call and we revert.
         // https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_call
-        if (tx.origin != address(0)) {
-            // solhint-disable-previous-line avoid-tx-origin
+        if (!_isStaticCall()) {
             revert NotStaticCall();
         }
 
@@ -292,6 +291,12 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // Add the current handler to the list so `withHandler` does not revert
         _handlers.push(msg.sender);
         _;
+    }
+
+    /// @dev Detects if call is static
+    function _isStaticCall() internal view returns (bool) {
+        return tx.origin == address(0);
+        // solhint-disable-previous-line avoid-tx-origin
     }
 
     /**
@@ -705,9 +710,15 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // Store the new pool balances.
         _setPoolBalances(pool, finalBalances);
 
-        // We are not spending the allowance of the Vault here because the Vault has infinite allowances
-        // for all pool tokens. This allows us to save on gas as well as eliminate extra approval transactions
-        // from the users.
+        // The Vault has infinite allowance for every pool token, allowing it to burn tokens without prior approval.
+        // However, untrusted routers must receive preapproval to burn pool tokens.
+        _spendAllowance(address(pool), from, address(this), bptAmountIn);
+        // TODO: Support untrusted routers
+        // _spendAllowance(address(pool), from, msg.sender, bptAmountIn);
+        if (!_isQueryDisabled || _isStaticCall()) {
+            // Increase `from` balance to ensure the burn function succeeds.
+            _balances[address(pool)][from] += bptAmountIn;
+        }
         // When removing liquidity, we must burn tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
         _burn(address(pool), from, bptAmountIn);

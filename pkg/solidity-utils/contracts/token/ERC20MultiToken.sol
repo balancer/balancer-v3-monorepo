@@ -31,7 +31,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
     event Approval(address indexed token, address indexed owner, address indexed spender, uint256 value);
 
     // token -> (owner -> balance): Users' balances
-    mapping(address => mapping(address => uint256)) private _balances;
+    mapping(address => mapping(address => uint256)) internal _balances;
 
     // token -> (owner -> (spender -> allowance)): Users' allowances
     mapping(address => mapping(address => mapping(address => uint256))) private _allowances;
@@ -57,8 +57,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
     }
 
     function _mint(address token, address to, uint256 amount) internal {
-        // Allow minting to the zero address for static calls to enable the query feature.
-        if (to == address(0) && tx.origin != address(0)) {
+        if (to == address(0)) {
             // solhint-disable-previous-line avoid-tx-origin
             revert ERC20InvalidReceiver(to);
         }
@@ -76,30 +75,19 @@ abstract contract ERC20MultiToken is IERC20Errors {
     }
 
     function _burn(address token, address from, uint256 amount) internal {
-        // Allow burning from the zero address for static calls to to enable the query feature.
-        bool isStaticCall = (tx.origin == address(0) && from == address(0));
-        // solhint-disable-previous-line avoid-tx-origin
-        if (from == address(0) && !isStaticCall) {
+        if (from == address(0)) {
             revert ERC20InvalidSender(from);
         }
 
         uint256 accountBalance = _balances[token][from];
-        // Allow static calls to burn any supply amount from the zero address in order
-        // to enable the query feature.
-        if (isStaticCall) {
-            _balances[token][from] = accountBalance > amount ? accountBalance - amount : 0;
-            // Overflow not possible: amount <= accountBalance <= totalSupply.
-            _totalSupplyOf[token] = _totalSupplyOf[token] > amount ? _totalSupplyOf[token] - amount : 0;
-        } else {
-            if (amount > accountBalance) {
-                revert ERC20InsufficientBalance(from, accountBalance, amount);
-            }
+        if (amount > accountBalance) {
+            revert ERC20InsufficientBalance(from, accountBalance, amount);
+        }
 
-            unchecked {
-                _balances[token][from] = accountBalance - amount;
-                // Overflow not possible: amount <= accountBalance <= totalSupply.
-                _totalSupplyOf[token] -= amount;
-            }
+        unchecked {
+            _balances[token][from] = accountBalance - amount;
+            // Overflow not possible: amount <= accountBalance <= totalSupply.
+            _totalSupplyOf[token] -= amount;
         }
 
         emit Transfer(token, from, address(0), amount);

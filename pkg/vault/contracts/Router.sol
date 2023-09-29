@@ -343,6 +343,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
 
     /// @inheritdoc IRouter
     function queryAddLiquidity(
+        address sender,
         address pool,
         Asset[] memory assets,
         uint256[] memory maxAmountsIn,
@@ -355,7 +356,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
                     abi.encodeWithSelector(
                         Router.queryAddLiquidityCallback.selector,
                         AddLiquidityCallbackParams({
-                            sender: msg.sender,
+                            sender: sender != address(0) ? sender : address(this),
                             pool: pool,
                             assets: assets,
                             maxAmountsIn: maxAmountsIn,
@@ -384,6 +385,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
 
     /// @inheritdoc IRouter
     function queryRemoveLiquidity(
+        address sender,
         address pool,
         Asset[] memory assets,
         uint256[] memory minAmountsOut,
@@ -396,7 +398,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
                     abi.encodeWithSelector(
                         Router.queryRemoveLiquidityCallback.selector,
                         RemoveLiquidityCallbackParams({
-                            sender: msg.sender,
+                            sender: sender != address(0) ? sender : address(this),
                             pool: pool,
                             assets: assets,
                             minAmountsOut: minAmountsOut,
