@@ -715,7 +715,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         _spendAllowance(address(pool), from, address(this), bptAmountIn);
         // TODO: Support untrusted routers
         // _spendAllowance(address(pool), from, msg.sender, bptAmountIn);
-        if (!_isQueryDisabled || _isStaticCall()) {
+        if (!_isQueryDisabled && _isStaticCall()) {
             // Increase `from` balance to ensure the burn function succeeds.
             _balances[address(pool)][from] += bptAmountIn;
         }
