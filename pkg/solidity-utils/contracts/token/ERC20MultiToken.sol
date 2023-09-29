@@ -58,7 +58,6 @@ abstract contract ERC20MultiToken is IERC20Errors {
 
     function _mint(address token, address to, uint256 amount) internal {
         if (to == address(0)) {
-            // solhint-disable-previous-line avoid-tx-origin
             revert ERC20InvalidReceiver(to);
         }
 
