@@ -119,4 +119,9 @@ interface IVaultErrors {
      * @dev
      */
     error HookCallFailed();
+
+    /**
+     * @dev
+     */
+    error RouterNotTrusted();
 }

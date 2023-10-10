@@ -165,9 +165,9 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     /**
      * @inheritdoc IVault
      * @dev This function can drain users of their tokens because users grant allowance to the Vault.
-     *      Only approved routers should be permitted to invoke it.
+     *      Only trusted routers should be permitted to invoke it.
      */
-    function retrieve(IERC20 token, address from, uint256 amount) public nonReentrant withHandler {
+    function retrieve(IERC20 token, address from, uint256 amount) public nonReentrant withHandler onlyTrustedRouter {
         // effects
         _supplyCredit(token, amount, msg.sender);
         _tokenReserves[token] += amount;
@@ -295,7 +295,6 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         _;
     }
 
-
     /**
      * @inheritdoc IVault
      * @dev Allows querying any operation on the Vault that has the `withHandler` modifier.
@@ -320,7 +319,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     }
 
     /*******************************************************************************
-                                    ERC20 Tokens
+                                    Pool Tokens
     *******************************************************************************/
 
     /// @inheritdoc IVault
@@ -589,6 +588,12 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
                                     Pools
     *******************************************************************************/
 
+    /// @dev Rejects routers not approved by governance and users
+    modifier onlyTrustedRouter() {
+        _onlyTrustedRouter(msg.sender);
+        _;
+    }
+
     /**
      * @inheritdoc IVault
      * @dev Caution should be exercised when adding liquidity because the Vault has the capability
@@ -690,7 +695,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         // The Vault has infinite allowance for every pool token, allowing it to burn tokens without prior approval.
         // However, untrusted routers must receive preapproval to burn pool tokens.
-        _spendAllowance(address(pool), from, address(this), bptAmountIn);
+        _spendAllowance(address(pool), from, _isTrustedRouter(msg.sender) ? address(this) : msg.sender, bptAmountIn);
         // TODO: Support untrusted routers
         // _spendAllowance(address(pool), from, msg.sender, bptAmountIn);
         if (!_isQueryDisabled && AddressHelpers.isStaticCall()) {
@@ -763,6 +768,17 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         }
 
         return balances;
+    }
+
+    function _onlyTrustedRouter(address sender) internal pure {
+        if (!_isTrustedRouter(sender)) {
+            revert RouterNotTrusted();
+        }
+    }
+
+    function _isTrustedRouter(address) internal pure returns (bool) {
+        //TODO: Implement based on approval by governance and user
+        return true;
     }
 
     /*******************************************************************************
