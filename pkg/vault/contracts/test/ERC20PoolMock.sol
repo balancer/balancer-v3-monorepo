@@ -103,7 +103,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         return true;
     }
 
-    function supportsRemoveLiquidityProportional() external pure override returns (bool){
+    function supportsRemoveLiquidityProportional() external pure override returns (bool) {
         return true;
     }
 
@@ -123,7 +123,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         bptAmountOut = exactAmountsIn[0];
     }
 
-    function onaddLiquiditySingleAsset(
+    function onAddLiquiditySingleAsset(
         address,
         IERC20,
         uint256 exactBptAmountOut,

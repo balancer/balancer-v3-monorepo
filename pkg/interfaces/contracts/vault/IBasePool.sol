@@ -36,7 +36,20 @@ interface IBasePool {
         uint256[] memory currentBalances
     ) external returns (uint256 bptAmountOut);
 
-    function onaddLiquiditySingleAsset(
+    function onAddLiquidityUnbalancedNative(
+        address sender,
+        uint256[] memory exactAmountsIn,
+        uint256[] memory currentBalances
+    ) external returns (uint256 bptAmountOut);
+
+    function onAddLiquiditySingleAsset(
+        address sender,
+        IERC20 tokenIn,
+        uint256 exactBptAmountOut,
+        uint256[] memory currentBalances
+    ) external returns (uint256 amountIn);
+
+    function onAddLiquiditySingleAssetNative(
         address sender,
         IERC20 tokenIn,
         uint256 exactBptAmountOut,

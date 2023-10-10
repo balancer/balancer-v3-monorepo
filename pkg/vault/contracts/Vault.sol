@@ -679,6 +679,14 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // emit PoolBalanceChanged
     }
 
+    function addLiquidityProportionalNative(
+        address pool,
+        uint256[] memory maxAmountsIn,
+        uint256 exactBptAmountOut
+    ) external withHandler whenNotPaused withRegisteredPool(pool) returns (uint256[] memory amountsIn) {
+        // TODO: implement
+    }
+
     function addLiquidityUnbalanced(
         address pool,
         uint256[] memory exactAmountsIn,
@@ -696,6 +704,14 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // emit PoolBalanceChanged
     }
 
+    function addLiquidityUnbalancedNative(
+        address pool,
+        uint256[] memory exactAmountsIn,
+        uint256
+    ) external withHandler whenNotPaused withRegisteredPool(pool) returns (uint256 bptAmountOut) {
+        // TODO: implement
+    }
+
     function addLiquiditySingleAsset(
         address pool,
         IERC20 tokenIn,
@@ -705,16 +721,19 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         IBasePool(pool).onBeforeAdd(balances);
 
-        amountIn = IBasePool(pool).onaddLiquiditySingleAsset(
-            msg.sender,
-            tokenIn,
-            exactBptAmountOut,
-            balances
-        );
+        amountIn = IBasePool(pool).onAddLiquiditySingleAsset(msg.sender, tokenIn, exactBptAmountOut, balances);
 
         // _accountDeltas
         // _setPoolBalances
         // emit PoolBalanceChanged
+    }
+
+    function addLiquiditySingleAssetNative(
+        address pool,
+        IERC20 tokenIn,
+        uint256 exactBptAmountOut
+    ) external withHandler whenNotPaused withRegisteredPool(pool) returns (uint256 amountIn) {
+        // TODO: implement
     }
 
     function addLiquidityCustom(
