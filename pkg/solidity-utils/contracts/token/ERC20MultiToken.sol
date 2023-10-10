@@ -9,7 +9,7 @@ import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-ut
 import { ERC20PoolToken } from "./ERC20PoolToken.sol";
 
 /**
- * @notice Store Token data and handle accounting for all tokens in the Vault.
+ * @notice Store Token data and handle accounting for pool tokens in the Vault.
  * @dev The ERC20MultiToken is an ERC20-focused multi-token implementation that is fully compatible
  * with the ERC20 API on the token side. It also allows for the minting and burning of tokens on the multi-token side.
  */
@@ -17,7 +17,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
     using Address for address;
 
     /**
-     * @dev Emitted when `value` tokens are moved from one account (`from`) to
+     * @dev Emitted when pool tokens are moved from one account (`from`) to
      * another (`to`).
      *
      * Note that `value` may be zero.
@@ -30,7 +30,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
      */
     event Approval(address indexed token, address indexed owner, address indexed spender, uint256 value);
 
-    // token -> (owner -> balance): Users' balances
+    // token -> (owner -> balance): Users' pool tokens balances
     mapping(address => mapping(address => uint256)) internal _balances;
 
     // token -> (owner -> (spender -> allowance)): Users' allowances

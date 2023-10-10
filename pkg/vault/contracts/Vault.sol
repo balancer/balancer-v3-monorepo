@@ -15,6 +15,8 @@ import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAutho
 import { ReentrancyGuard } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import { TemporarilyPausable } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
+import { AddressHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AddressHelpers.sol";
+
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
@@ -280,7 +282,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // Check if the transaction initiator is different from 0x0.
         // If so, it's not a eth_call and we revert.
         // https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_call
-        if (!_isStaticCall()) {
+        if (!AddressHelpers.isStaticCall()) {
             revert NotStaticCall();
         }
 
@@ -293,11 +295,6 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         _;
     }
 
-    /// @dev Detects if call is static
-    function _isStaticCall() internal view returns (bool) {
-        return tx.origin == address(0);
-        // solhint-disable-previous-line avoid-tx-origin
-    }
 
     /**
      * @inheritdoc IVault
@@ -696,7 +693,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         _spendAllowance(address(pool), from, address(this), bptAmountIn);
         // TODO: Support untrusted routers
         // _spendAllowance(address(pool), from, msg.sender, bptAmountIn);
-        if (!_isQueryDisabled && _isStaticCall()) {
+        if (!_isQueryDisabled && AddressHelpers.isStaticCall()) {
             // Increase `from` balance to ensure the burn function succeeds.
             _balances[address(pool)][from] += bptAmountIn;
         }
