@@ -58,7 +58,6 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
 
     /**
      * @notice Return the current value of the swap fee percentage.
-     * @dev This is stored in `_miscData`.
      */
     function getSwapFeePercentage() public pure virtual returns (uint256) {
         return _SWAP_FEE_PERCENTAGE;
