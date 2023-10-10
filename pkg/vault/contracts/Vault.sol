@@ -166,6 +166,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
      * @inheritdoc IVault
      * @dev This function can drain users of their tokens because users grant allowance to the Vault.
      *      Only trusted routers should be permitted to invoke it.
+     *      Untrusted routers should use `settle` instead.
      */
     function retrieve(IERC20 token, address from, uint256 amount) public nonReentrant withHandler onlyTrustedRouter {
         // effects
@@ -659,8 +660,8 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
     /**
      * @inheritdoc IVault
-     * @dev Only approved routers should be allowed to remove liquidity,
-     *      as they can burn pool tokens belonging to any user.
+     * @dev Trusted routers can burn pool tokens belonging to any user and require no prior approval from the user.
+     *      Untrusted routers require prior approval from the user.
      */
     function removeLiquidity(
         address pool,
