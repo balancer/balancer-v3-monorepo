@@ -637,7 +637,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // as the pool's math relies on totalSupply.
         _mint(address(pool), to, bptAmountOut);
 
-        if (_poolConfig[pool].shouldCallAfterAddLiquidity() == true) {
+        if (_poolConfig[pool].shouldCallAfterAddLiquidity()) {
             if (
                 IBasePool(pool).onAfterAddLiquidity(
                     msg.sender,
