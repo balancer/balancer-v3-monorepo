@@ -659,7 +659,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     function addLiquidityProportional(
         address pool,
         uint256[] memory maxAmountsIn,
-        uint256 bptAmountOut
+        uint256 exactBptAmountOut
     ) external withHandler whenNotPaused withRegisteredPool(pool) returns (uint256[] memory amountsIn) {
         if (!IBasePool(pool).supportsAddLiquidityProportional()) {
             revert DoesNotSupportAddLiquidityProportional(pool);
@@ -671,7 +671,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         IBasePool(pool).onBeforeAdd(balances);
 
-        amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, _totalSupply(pool), bptAmountOut);
+        amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, _totalSupply(pool), exactBptAmountOut);
 
         // check amountsIn < maxAmountsIn
         // _accountDeltas
@@ -696,7 +696,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // emit PoolBalanceChanged
     }
 
-    function addLiquiditySingleTokenInForExactBptOut(
+    function addLiquiditySingleAsset(
         address pool,
         IERC20 tokenIn,
         uint256 exactBptAmountOut
@@ -705,7 +705,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         IBasePool(pool).onBeforeAdd(balances);
 
-        amountIn = IBasePool(pool).onAddLiquiditySingleTokenInForExactBptOut(
+        amountIn = IBasePool(pool).onaddLiquiditySingleAsset(
             msg.sender,
             tokenIn,
             exactBptAmountOut,

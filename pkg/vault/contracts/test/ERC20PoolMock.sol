@@ -123,7 +123,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         bptAmountOut = exactAmountsIn[0];
     }
 
-    function onAddLiquiditySingleTokenInForExactBptOut(
+    function onaddLiquiditySingleAsset(
         address,
         IERC20,
         uint256 exactBptAmountOut,
