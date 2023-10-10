@@ -398,7 +398,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
                     abi.encodeWithSelector(
                         Router.queryRemoveLiquidityCallback.selector,
                         RemoveLiquidityCallbackParams({
-                            sender: sender != address(0) ? sender : address(this),
+                            sender: sender == address(0) ? address(this) : sender,
                             pool: pool,
                             assets: assets,
                             minAmountsOut: minAmountsOut,
