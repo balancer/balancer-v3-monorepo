@@ -18,6 +18,7 @@ struct PoolHooks {
 struct PoolConfig {
     bool isRegisteredPool;
     bool isInitializedPool;
+    bool hasDynamicSwapFee;
     PoolHooks hooks;
 }
 
@@ -167,28 +168,12 @@ interface IVault {
     function wire(IERC20 token, address to, uint256 amount) external;
 
     /**
-     * @notice Mints tokens to a recipient
-     * @param token                          Token's address
-     * @param to                             Recipient's address
-     * @param amount                         Amount of tokens to mint
-     */
-    function mint(IERC20 token, address to, uint256 amount) external;
-
-    /**
      * @notice Retrieves tokens from a sender
      * @param token                          Token's address
      * @param from                           Sender's address
      * @param amount                         Amount of tokens to retrieve
      */
     function retrieve(IERC20 token, address from, uint256 amount) external;
-
-    /**
-     * @notice Burns tokens from an owner
-     * @param token                          Token's address
-     * @param owner                          Owner's address
-     * @param amount                         Amount of tokens to burn
-     */
-    function burn(IERC20 token, address owner, uint256 amount) external;
 
     /**
      * @dev Returns the address at the specified index of the _handlers array.
@@ -267,44 +252,59 @@ interface IVault {
     /**
      * @notice Adds liquidity to a pool
      * @param pool                           Address of the pool
+     * @param to                             Address of user to mint to
      * @param assets                         Assets involved in the liquidity
      * @param maxAmountsIn                   Maximum amounts of input assets
-     * @param minBptAmountOut                Minimum output pool token amount
-     * @param kind                           Add liquidity kind
      * @param userData                       Additional user data
      * @return amountsIn                     Actual amounts of input assets
      * @return bptAmountOut                  Output pool token amount
      */
     function addLiquidity(
         address pool,
+        address to,
         IERC20[] memory assets,
         uint256[] memory maxAmountsIn,
-        uint256 minBptAmountOut,
-        IBasePool.AddLiquidityKind kind,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
     /**
      * @notice Removes liquidity from a pool
      * @param pool                           Address of the pool
+     * @param from                           Address of user to burn from
      * @param assets                         Assets involved in the liquidity removal
      * @param minAmountsOut                  Minimum amounts of output assets
-     * @param maxBptAmountIn                 Input pool token amount
-     * @param kind                           Remove liquidity kind
+     * @param bptAmountIn                    Input pool token amount
      * @param userData                       Additional user data
      * @return amountsOut                    Actual amounts of output assets
-     * @return bptAmountIn                   Actual amount of BPT burnt
      */
     function removeLiquidity(
         address pool,
+        address from,
         IERC20[] memory assets,
         uint256[] memory minAmountsOut,
-        uint256 maxBptAmountIn,
-        IBasePool.RemoveLiquidityKind kind,
+        uint256 bptAmountIn,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
+    ) external returns (uint256[] memory amountsOut);
 
     event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
+
+    /*******************************************************************************
+                                   Fees
+    *******************************************************************************/
+
+    /**
+     * @notice Sets new swap fee percentage.
+     * @param newSwapFeePercentage  New swap fee percentage
+     */
+    function setSwapFeePercentage(uint256 newSwapFeePercentage) external;
+
+    /**
+     * @notice Returns current swap fee percentage
+     * @return Current swap fee percentage
+     */
+    function getSwapFeePercentage() external view returns (uint256);
+
+    event SwapFeePercentageChanged(uint256 newSwapFeePercentage);
 
     /*******************************************************************************
                                 Authentication

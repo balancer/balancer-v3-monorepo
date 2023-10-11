@@ -22,7 +22,6 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
     uint256 private constant _MIN_TOKENS = 2;
 
     uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
-    uint256 private constant _SWAP_FEE_PERCENTAGE = 0;
 
     constructor(
         IVault vault,
@@ -56,12 +55,6 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
         return _DEFAULT_MINIMUM_BPT;
     }
 
-    /**
-     * @notice Return the current value of the swap fee percentage.
-     */
-    function getSwapFeePercentage() public pure virtual returns (uint256) {
-        return _SWAP_FEE_PERCENTAGE;
-    }
 
     /// TemporarilyPausable
 

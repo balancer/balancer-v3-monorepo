@@ -13,20 +13,22 @@ using PoolConfigLib for PoolConfigBits global;
 library PoolConfigLib {
     using WordCodec for bytes32;
 
-    /// [  251 bit |    1 bit     |   1 bit   |    1 bit   |    1 bit    |    1 bit   ]
-    /// [ not used | after remove | after add | after swap | initialized | registered ]
-    /// |MSB                                                                       LSB|
+    /// [  250 bit |    1 bit     |    1 bit  |   1 bit    |     1 bit   |    1 bit    |    1 bit   ]
+    /// [ not used | after remove | after add | after swap | dynamic fee | initialized | registered ]
+    /// |MSB                                                                                     LSB|
 
     // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
     uint8 public constant POOL_INITIALIZED_OFFSET = 1;
-    uint8 public constant AFTER_SWAP_OFFSET = 2;
-    uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = 3;
-    uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = 4;
+    uint8 public constant DYNAMIC_SWAP_FEE = 2;
+    uint8 public constant AFTER_SWAP_OFFSET = 3;
+    uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = 4;
+    uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = 5;
 
     // Bitwise flags for pool's config
     uint256 public constant POOL_REGISTERED_FLAG = 1 << POOL_REGISTERED_OFFSET;
     uint256 public constant POOL_INITIALIZED_FLAG = 1 << POOL_INITIALIZED_OFFSET;
+    uint256 public constant DYNAMIC_SWAP_FEE_FLAG = 1 << DYNAMIC_SWAP_FEE;
     uint256 public constant AFTER_SWAP_FLAG = 1 << AFTER_SWAP_OFFSET;
     uint256 public constant AFTER_ADD_LIQUIDITY_FLAG = 1 << AFTER_ADD_LIQUIDITY_OFFSET;
     uint256 public constant AFTER_REMOVE_LIQUIDITY_FLAG = 1 << AFTER_REMOVE_LIQUIDITY_OFFSET;
@@ -41,6 +43,10 @@ library PoolConfigLib {
 
     function isPoolInitialized(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_INITIALIZED_OFFSET);
+    }
+
+    function hasDynamicSwapFee(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(DYNAMIC_SWAP_FEE_FLAG);
     }
 
     function shouldCallAfterSwap(PoolConfigBits config) internal pure returns (bool) {
@@ -72,6 +78,7 @@ library PoolConfigLib {
             PoolConfig({
                 isRegisteredPool: config.isPoolRegistered(),
                 isInitializedPool: config.isPoolInitialized(),
+                hasDynamicSwapFee: config.hasDynamicSwapFee(),
                 hooks: PoolHooks({
                     shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),
                     shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity(),

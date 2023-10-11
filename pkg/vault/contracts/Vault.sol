@@ -53,6 +53,10 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     /// exception being during the `invoke` call.
     mapping(IERC20 => uint256) private _tokenReserves;
 
+
+    // The protocol swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
+    uint256 private _protocolSwapFeePercentage;
+
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer private _authorizer;
 
@@ -414,6 +418,12 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
             } else if (i == indexOut) {
                 tokenOutBalance = balance;
             }
+        }
+
+        if (params.kind == IVault.SwapKind.GIVEN_IN) {
+            // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
+            // This returns amount - fee amount, so we round up (favoring a higher fee amount).
+            params.amount -= params.amount.mulUp(0);
         }
 
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
@@ -830,6 +840,14 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         return balances;
     }
+
+    /*******************************************************************************
+                                        Fees
+    *******************************************************************************/
+
+    function setSwapFeePercentage(uint256 newSwapFeePercentage) external;
+
+    function getSwapFeePercentage() external view returns (uint256);
 
     /*******************************************************************************
                                     Authentication
