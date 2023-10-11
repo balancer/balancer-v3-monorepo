@@ -427,7 +427,6 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
             }
         }
 
-
         if (params.kind == IVault.SwapKind.GIVEN_IN) {
             // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
             // This returns amount - fee amount, so we round up (favoring a higher fee amount).
@@ -449,10 +448,9 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
             })
         );
 
-
         if (params.kind == IVault.SwapKind.GIVEN_OUT) {
-           // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
-           // This returns amount + fee amount, so we round up (favoring a higher fee amount).
+            // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
+            // This returns amount + fee amount, so we round up (favoring a higher fee amount).
             amountCalculated += amountCalculated.divUp(_getSwapFee(config).complement());
         }
 
@@ -499,12 +497,12 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     }
 
     /// @dev Returns swap fee for the pool
-    function _getSwapFee(PoolConfigBits config) internal view returns (uint256) {
-        if(config.hasDynamicSwapFee()) {
+    function _getSwapFee(PoolConfigBits config) internal pure returns (uint256) {
+        if (config.hasDynamicSwapFee()) {
             // TODO: Fetch dynamic swap fee from the pool using callback
             return 0;
         } else {
-            return 0;
+            return config.getStaticSwapFee();
         }
     }
 

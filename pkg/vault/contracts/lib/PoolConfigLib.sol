@@ -21,14 +21,18 @@ library PoolConfigLib {
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
     uint8 public constant POOL_INITIALIZED_OFFSET = 1;
     uint8 public constant DYNAMIC_SWAP_FEE = 2;
-    uint8 public constant AFTER_SWAP_OFFSET = 3;
-    uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = 4;
-    uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = 5;
+    // takes 20 bits to represent values up to 1'000'000 which should be enough for the swap fee
+    uint8 public constant STATIC_SWAP_FEE_SIZE = 20;
+    uint8 public constant STATIC_SWAP_FEE = 2 + STATIC_SWAP_FEE_SIZE;
+    uint8 public constant AFTER_SWAP_OFFSET = 3 + STATIC_SWAP_FEE_SIZE;
+    uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = 4 + STATIC_SWAP_FEE_SIZE;
+    uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = 5 + STATIC_SWAP_FEE_SIZE;
 
     // Bitwise flags for pool's config
     uint256 public constant POOL_REGISTERED_FLAG = 1 << POOL_REGISTERED_OFFSET;
     uint256 public constant POOL_INITIALIZED_FLAG = 1 << POOL_INITIALIZED_OFFSET;
     uint256 public constant DYNAMIC_SWAP_FEE_FLAG = 1 << DYNAMIC_SWAP_FEE;
+    uint256 public constant STATIC_SWAP_FEE_FLAG = 1 << STATIC_SWAP_FEE;
     uint256 public constant AFTER_SWAP_FLAG = 1 << AFTER_SWAP_OFFSET;
     uint256 public constant AFTER_ADD_LIQUIDITY_FLAG = 1 << AFTER_ADD_LIQUIDITY_OFFSET;
     uint256 public constant AFTER_REMOVE_LIQUIDITY_FLAG = 1 << AFTER_REMOVE_LIQUIDITY_OFFSET;
@@ -47,6 +51,10 @@ library PoolConfigLib {
 
     function hasDynamicSwapFee(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(DYNAMIC_SWAP_FEE_FLAG);
+    }
+
+    function getStaticSwapFee(PoolConfigBits config) internal pure returns (uint256) {
+        return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_FLAG, STATIC_SWAP_FEE_SIZE);
     }
 
     function shouldCallAfterSwap(PoolConfigBits config) internal pure returns (bool) {
