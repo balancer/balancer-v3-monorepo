@@ -268,7 +268,7 @@ interface IVault {
     /**
      * @notice Adds liquidity to a pool
      * @param pool                           Address of the pool
-     * @param tokens                         Assets involved in the liquidity
+     * @param assets                         Assets involved in the liquidity
      * @param maxAmountsIn                   Maximum amounts of input assets
      * @param minBptAmountOut                Minimum output pool token amount
      * @param kind                           Add liquidity kind
@@ -290,9 +290,12 @@ interface IVault {
      * @param pool                           Address of the pool
      * @param assets                         Assets involved in the liquidity removal
      * @param minAmountsOut                  Minimum amounts of output assets
+     * @param maxBptAmountIn                 Input pool token amount	     
      * @param bptAmountIn                    Input pool token amount
+     * @param kind                           Remove liquidity kind
      * @param userData                       Additional user data
      * @return amountsOut                    Actual amounts of output assets
+     * @return bptAmountIn                   Actual amount of BPT burnt
      */
     function removeLiquidity(
         address pool,
