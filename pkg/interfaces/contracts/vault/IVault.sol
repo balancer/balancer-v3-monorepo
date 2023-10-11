@@ -167,7 +167,7 @@ interface IVault {
      */
     function wire(IERC20 token, address to, uint256 amount) external;
 
-     /**
+    /**
      * @notice Mints tokens to a recipient
      * @param token                          Token's address
      * @param to                             Recipient's address
@@ -183,7 +183,7 @@ interface IVault {
      */
     function retrieve(IERC20 token, address from, uint256 amount) external;
 
-     /**
+    /**
      * @notice Burns tokens from an owner
      * @param token                          Token's address
      * @param owner                          Owner's address
@@ -270,13 +270,15 @@ interface IVault {
      * @param pool                           Address of the pool
      * @param tokens                         Assets involved in the liquidity
      * @param maxAmountsIn                   Maximum amounts of input assets
+     * @param minBptAmountOut                Minimum output pool token amount
+     * @param kind                           Add liquidity kind
      * @param userData                       Additional user data
      * @return amountsIn                     Actual amounts of input assets
      * @return bptAmountOut                  Output pool token amount
      */
     function addLiquidity(
         address pool,
-        IERC20[] memory tokens,
+        IERC20[] memory assets,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         IBasePool.AddLiquidityKind kind,
@@ -286,7 +288,7 @@ interface IVault {
     /**
      * @notice Removes liquidity from a pool
      * @param pool                           Address of the pool
-     * @param tokens                         Assets involved in the liquidity removal
+     * @param assets                         Assets involved in the liquidity removal
      * @param minAmountsOut                  Minimum amounts of output assets
      * @param bptAmountIn                    Input pool token amount
      * @param userData                       Additional user data
@@ -294,7 +296,7 @@ interface IVault {
      */
     function removeLiquidity(
         address pool,
-        IERC20[] memory tokens,
+        IERC20[] memory assets,
         uint256[] memory minAmountsOut,
         uint256 maxBptAmountIn,
         IBasePool.RemoveLiquidityKind kind,
