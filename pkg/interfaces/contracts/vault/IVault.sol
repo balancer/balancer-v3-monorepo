@@ -290,7 +290,7 @@ interface IVault {
      * @param pool                           Address of the pool
      * @param assets                         Assets involved in the liquidity removal
      * @param minAmountsOut                  Minimum amounts of output assets
-     * @param maxBptAmountIn                 Input pool token amount	     
+     * @param maxBptAmountIn                 Input pool token amount
      * @param kind                           Remove liquidity kind
      * @param userData                       Additional user data
      * @return amountsOut                    Actual amounts of output assets
