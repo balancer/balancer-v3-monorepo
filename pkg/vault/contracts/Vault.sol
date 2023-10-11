@@ -20,6 +20,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { ERC20MultiToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20MultiToken.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 
@@ -33,6 +34,11 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
     using PoolConfigLib for PoolHooks;
+    using FixedPoint for uint256;
+
+
+    // Absolute maximum fee percentages (1e18 = 100%, 1e16 = 1%).
+    uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
 
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
@@ -423,7 +429,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         if (params.kind == IVault.SwapKind.GIVEN_IN) {
             // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
             // This returns amount - fee amount, so we round up (favoring a higher fee amount).
-            params.amount -= params.amount.mulUp(0);
+            params.amountGiven -= params.amountGiven.mulUp(0);
         }
 
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
@@ -845,9 +851,17 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
                                         Fees
     *******************************************************************************/
 
-    function setSwapFeePercentage(uint256 newSwapFeePercentage) external;
+    function setProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external authenticate {
+        if(newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
+            revert ProtocolSwapFeePercentageTooHigh();
+        }
+        _protocolSwapFeePercentage = newProtocolSwapFeePercentage;
+        emit SwapFeePercentageChanged(newProtocolSwapFeePercentage);
+    }
 
-    function getSwapFeePercentage() external view returns (uint256);
+    function getProtocolSwapFeePercentage() external view returns (uint256) {
+        return _protocolSwapFeePercentage;
+    }
 
     /*******************************************************************************
                                     Authentication
