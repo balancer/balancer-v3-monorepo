@@ -388,6 +388,9 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
             revert CannotSwapSameToken();
         }
 
+        // Read pool config once to save on gas
+        PoolConfigBits config = _poolConfig[params.pool];
+
         // We access both token indexes without checking existence, because we will do it manually immediately after.
         EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolTokenBalances[params.pool];
         uint256 indexIn = poolBalances.unchecked_indexOf(params.tokenIn);
@@ -424,10 +427,11 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
             }
         }
 
+
         if (params.kind == IVault.SwapKind.GIVEN_IN) {
             // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
             // This returns amount - fee amount, so we round up (favoring a higher fee amount).
-            params.amountGiven -= params.amountGiven.mulUp(0);
+            params.amountGiven -= params.amountGiven.mulUp(_getSwapFee(config));
         }
 
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
@@ -444,6 +448,13 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
                 userData: params.userData
             })
         );
+
+
+        if (params.kind == IVault.SwapKind.GIVEN_OUT) {
+           // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
+           // This returns amount + fee amount, so we round up (favoring a higher fee amount).
+            amountCalculated += amountCalculated.divUp(_getSwapFee(config).complement());
+        }
 
         (amountIn, amountOut) = params.kind == SwapKind.GIVEN_IN
             ? (params.amountGiven, amountCalculated)
@@ -462,7 +473,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // Account amountOut of tokenOut
         _supplyCredit(params.tokenOut, amountOut, msg.sender);
 
-        if (_poolConfig[params.pool].shouldCallAfterSwap()) {
+        if (config.shouldCallAfterSwap()) {
             // if hook is enabled, then update balances
             if (
                 IBasePool(params.pool).onAfterSwap(
@@ -485,6 +496,16 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         }
 
         emit Swap(params.pool, params.tokenIn, params.tokenOut, amountIn, amountOut);
+    }
+
+    /// @dev Returns swap fee for the pool
+    function _getSwapFee(PoolConfigBits config) internal view returns (uint256) {
+        if(config.hasDynamicSwapFee()) {
+            // TODO: Fetch dynamic swap fee from the pool using callback
+            return 0;
+        } else {
+            return 0;
+        }
     }
 
     /*******************************************************************************
