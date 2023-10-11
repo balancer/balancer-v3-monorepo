@@ -122,8 +122,16 @@ contract WeightedPool is BasePool, IWeightedPool {
 
         normalizedWeights[0] = _normalizedWeight0;
         normalizedWeights[1] = _normalizedWeight1;
-        if (totalTokens > 2) { normalizedWeights[2] = _normalizedWeight2; } else { return normalizedWeights; }
-        if (totalTokens > 3) { normalizedWeights[3] = _normalizedWeight3; } else { return normalizedWeights; }
+        if (totalTokens > 2) {
+            normalizedWeights[2] = _normalizedWeight2;
+        } else {
+            return normalizedWeights;
+        }
+        if (totalTokens > 3) {
+            normalizedWeights[3] = _normalizedWeight3;
+        } else {
+            return normalizedWeights;
+        }
 
         return normalizedWeights;
     }
@@ -294,7 +302,8 @@ contract WeightedPool is BasePool, IWeightedPool {
                 normalizedWeights,
                 amountsIn,
                 totalSupply(),
-                getSwapFeePercentage()
+                // TODO: provide swap fee percentage
+                0 // getSwapFeePercentage
             );
         } else if (kind == AddLiquidityKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             // The token in cannot be specified with these arguments without relying on `userData`.
@@ -332,7 +341,6 @@ contract WeightedPool is BasePool, IWeightedPool {
             // The token in cannot be specified with these arguments without relying on `userData`.
             // This shall be implemented in the future with explicit arguments.
             revert UnhandledExitKind();
-
         } else if (kind == RemoveLiquidityKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, totalSupply(), maxBptAmountIn);
             bptAmountIn = maxBptAmountIn;
@@ -345,7 +353,8 @@ contract WeightedPool is BasePool, IWeightedPool {
                 normalizedWeights,
                 minAmountsOut,
                 totalSupply(),
-                getSwapFeePercentage()
+                // TODO: provide swap fee percentage
+                0 // getSwapFeePercentage
             );
         } else {
             revert UnhandledExitKind();

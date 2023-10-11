@@ -36,7 +36,6 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     using PoolConfigLib for PoolHooks;
     using FixedPoint for uint256;
 
-
     // Absolute maximum fee percentages (1e18 = 100%, 1e16 = 1%).
     uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
 
@@ -58,7 +57,6 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     /// @dev It should be always equal to `token.balanceOf(vault)`, with only
     /// exception being during the `invoke` call.
     mapping(IERC20 => uint256) private _tokenReserves;
-
 
     // The protocol swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
     uint256 private _protocolSwapFeePercentage;
@@ -852,7 +850,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     *******************************************************************************/
 
     function setProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external authenticate {
-        if(newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
+        if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
             revert ProtocolSwapFeePercentageTooHigh();
         }
         _protocolSwapFeePercentage = newProtocolSwapFeePercentage;
