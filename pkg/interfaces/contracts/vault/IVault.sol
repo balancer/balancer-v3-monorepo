@@ -325,6 +325,47 @@ interface IVault {
         bytes memory userData
     ) external returns (uint256[] memory amountsOut);
 
+    function removeLiquidityProportional(
+        address pool,
+        uint256[] memory maxAmountsOut,
+        uint256 exactBptAmountIn
+    ) external returns (uint256[] memory amountsOut);
+
+    function removeLiquidityProportionalNative(
+        address pool,
+        uint256[] memory maxAmountsOut,
+        uint256 exactBptAmountIn
+    ) external returns (uint256[] memory amountsOut);
+
+    function removeLiquidityUnbalanced(
+        address pool,
+        uint256[] memory exactAmountsOut,
+        uint256 maxBptAmountIn
+    ) external returns (uint256 bptAmountIn);
+
+    function removeLiquidityUnbalancedNative(
+        address pool,
+        uint256[] memory exactAmountsOut,
+        uint256 maxBptAmountIn
+    ) external returns (uint256 bptAmountIn);
+
+    function removeLiquiditySingleAsset(
+        address pool,
+        IERC20 tokenOut,
+        uint256 exactBptAmountIn
+    ) external returns (uint256 amountOut);
+
+    function removeLiquiditySingleAssetNative(
+        address pool,
+        IERC20 tokenOut, // TODO: check if we're able to omit this parameter, since we already know that it's the native asset
+        uint256 exactBptAmountIn
+    ) external returns (uint256 amountOut);
+
+    function removeLiquidityCustom(
+        address pool,
+        bytes memory userData
+    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn, bytes memory returnData);
+
     event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
 
     /*******************************************************************************
