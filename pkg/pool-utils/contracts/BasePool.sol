@@ -23,6 +23,7 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
 
     uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
 
+
     constructor(
         IVault vault,
         string memory name,
@@ -54,7 +55,6 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
     function _getMinimumBpt() internal pure virtual returns (uint256) {
         return _DEFAULT_MINIMUM_BPT;
     }
-
 
     /// TemporarilyPausable
 

@@ -132,4 +132,9 @@ interface IVaultErrors {
      * @dev
      */
     error ProtocolSwapFeePercentageTooHigh();
+
+    /**
+     * @dev
+     */
+    error MaxSwapFeePercentage();
 }

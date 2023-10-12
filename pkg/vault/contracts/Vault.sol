@@ -39,6 +39,10 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     // Absolute maximum fee percentages (1e18 = 100%, 1e16 = 1%).
     uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
 
+    // We allow 0% swap fee.
+    // 1e6 corresponds to a 100% fee.
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e5; // 10% - this fits in 20 bits
+
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
 
@@ -59,6 +63,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     mapping(IERC20 => uint256) private _tokenReserves;
 
     // The protocol swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
+    // TODO: Consider packing it with some other variable; 24 bits should be enough for this one
     uint256 private _protocolSwapFeePercentage;
 
     // Upgradeable contract in charge of setting permissions.
@@ -868,16 +873,38 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
                                         Fees
     *******************************************************************************/
 
-    function setProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external authenticate {
+    /// @inheritdoc IVault
+    function setProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external whenNotPaused authenticate {
         if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
             revert ProtocolSwapFeePercentageTooHigh();
         }
         _protocolSwapFeePercentage = newProtocolSwapFeePercentage;
-        emit SwapFeePercentageChanged(newProtocolSwapFeePercentage);
+        emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
     }
 
     function getProtocolSwapFeePercentage() external view returns (uint256) {
         return _protocolSwapFeePercentage;
+    }
+
+    /**
+     * @inheritdoc IVault
+     * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
+     * bounds set by [0, MAX_SWAP_FEE_PERCENTAGE]. Emits the SwapFeePercentageChanged event.
+     */
+    function setSwapFeePercentage(address pool, uint24 swapFeePercentage) external authenticate whenNotPaused {
+        _setSwapFeePercentage(pool, swapFeePercentage);
+    }
+
+
+    function _setSwapFeePercentage(address pool, uint24 swapFeePercentage) internal virtual {
+        if(swapFeePercentage > _MAX_SWAP_FEE_PERCENTAGE) {
+            revert MaxSwapFeePercentage();
+        }
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        config.staticSwapFee = swapFeePercentage;
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
     /*******************************************************************************

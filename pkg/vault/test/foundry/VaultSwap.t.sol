@@ -115,4 +115,39 @@ contract VaultSwapTest is Test {
         assertEq(balances[0], 0);
         assertEq(balances[1], USDC_AMOUNT_IN * 2);
     }
+
+    function testSwapFee() public {
+        vm.prank(alice);
+        router.addLiquidity(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
+            DAI_AMOUNT_IN,
+            IBasePool.AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+            bytes("")
+        );
+
+        pool.setMultiplier(1e30);
+
+        vm.prank(bob);
+        router.swap(
+            IVault.SwapKind.GIVEN_IN,
+            address(pool),
+            address(USDC).asAsset(),
+            address(DAI).asAsset(),
+            USDC_AMOUNT_IN,
+            DAI_AMOUNT_IN,
+            type(uint256).max,
+            bytes("")
+        );
+
+        // asssets are transferred to/from Bob
+        assertEq(USDC.balanceOf(bob), 0);
+        assertEq(DAI.balanceOf(bob), 2 * DAI_AMOUNT_IN);
+
+        // assets are adjusted in the pool
+        (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
+        assertEq(balances[0], 0);
+        assertEq(balances[1], USDC_AMOUNT_IN * 2);
+    }
 }
