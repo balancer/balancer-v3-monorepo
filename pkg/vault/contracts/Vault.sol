@@ -24,6 +24,8 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 
+import "forge-std/safeconsole.sol";
+
 contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
@@ -381,6 +383,13 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
                                           Swaps
     *******************************************************************************/
 
+    struct SwapVars {
+        PoolConfigBits config;
+        uint256 swapFee;
+        uint256 indexIn;
+        uint256 indexOut;
+    }
+
     /// @inheritdoc IVault
     function swap(
         SwapParams memory params
@@ -393,15 +402,21 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
             revert CannotSwapSameToken();
         }
 
+        SwapVars memory vars = SwapVars({
         // Read pool config once to save on gas
-        PoolConfigBits config = _poolConfig[params.pool];
+            config : _poolConfig[params.pool],
+            swapFee: 0,
+            indexIn: 0,
+            indexOut: 0
+        });
+
 
         // We access both token indexes without checking existence, because we will do it manually immediately after.
         EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolTokenBalances[params.pool];
-        uint256 indexIn = poolBalances.unchecked_indexOf(params.tokenIn);
-        uint256 indexOut = poolBalances.unchecked_indexOf(params.tokenOut);
+        vars.indexIn = poolBalances.unchecked_indexOf(params.tokenIn);
+        vars.indexOut = poolBalances.unchecked_indexOf(params.tokenOut);
 
-        if (indexIn == 0 || indexOut == 0) {
+        if (vars.indexIn == 0 || vars.indexOut == 0) {
             // The tokens might not be registered because the Pool itself is not registered. We check this to provide a
             // more accurate revert reason.
             _ensureRegisteredPool(params.pool);
@@ -410,8 +425,8 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value - because these are valid,
         // we can undo this.
-        indexIn -= 1;
-        indexOut -= 1;
+        vars.indexIn -= 1;
+        vars.indexOut -= 1;
 
         uint256 tokenInBalance;
         uint256 tokenOutBalance;
@@ -425,17 +440,17 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
             currentBalances[i] = balance;
 
-            if (i == indexIn) {
+            if (i == vars.indexIn) {
                 tokenInBalance = balance;
-            } else if (i == indexOut) {
+            } else if (i == vars.indexOut) {
                 tokenOutBalance = balance;
             }
         }
 
         if (params.kind == IVault.SwapKind.GIVEN_IN) {
-            // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
-            // This returns amount - fee amount, so we round up (favoring a higher fee amount).
-            params.amountGiven -= params.amountGiven.mulUp(_getSwapFee(config));
+            // Fees are subtracted before scaling. Round up.
+            // TODO: Implement fixed math for various precision units
+            vars.swapFee = ((params.amountGiven * _getSwapFee(vars.config) - 1) / PoolConfigLib.SWAP_FEE_PRECISION) + 1;
         }
 
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
@@ -444,39 +459,40 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
                 kind: params.kind,
                 tokenIn: params.tokenIn,
                 tokenOut: params.tokenOut,
-                amountGiven: params.amountGiven,
+                amountGiven: params.amountGiven - vars.swapFee,
                 balances: currentBalances,
-                indexIn: indexIn,
-                indexOut: indexOut,
+                indexIn: vars.indexIn,
+                indexOut: vars.indexOut,
                 sender: msg.sender,
                 userData: params.userData
             })
         );
 
         if (params.kind == IVault.SwapKind.GIVEN_OUT) {
-            // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
-            // This returns amount + fee amount, so we round up (favoring a higher fee amount).
-            amountCalculated += amountCalculated.divUp(_getSwapFee(config).complement());
+            // Fees are added after scaling happens. Round up.
+            vars.swapFee = (amountCalculated * PoolConfigLib.SWAP_FEE_PRECISION) / (PoolConfigLib.SWAP_FEE_PRECISION - _getSwapFee(vars.config)) + 1;
+            amountCalculated += vars.swapFee;
         }
 
         (amountIn, amountOut) = params.kind == SwapKind.GIVEN_IN
             ? (params.amountGiven, amountCalculated)
             : (amountCalculated, params.amountGiven);
 
-        tokenInBalance = tokenInBalance + amountIn;
+        // We charge swap fee on amountIn
+        tokenInBalance = tokenInBalance + amountIn - vars.swapFee;
         tokenOutBalance = tokenOutBalance - amountOut;
 
         // Because no tokens were registered or deregistered between now or when we retrieved the indexes for
         // 'token in' and 'token out', we can use `unchecked_setAt` to save storage reads.
-        poolBalances.unchecked_setAt(indexIn, tokenInBalance);
-        poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
+        poolBalances.unchecked_setAt(vars.indexIn, tokenInBalance);
+        poolBalances.unchecked_setAt(vars.indexOut, tokenOutBalance);
 
         // Account amountIn of tokenIn
         _takeDebt(params.tokenIn, amountIn, msg.sender);
         // Account amountOut of tokenOut
         _supplyCredit(params.tokenOut, amountOut, msg.sender);
 
-        if (config.shouldCallAfterSwap()) {
+        if (vars.config.shouldCallAfterSwap()) {
             // if hook is enabled, then update balances
             if (
                 IBasePool(params.pool).onAfterSwap(
@@ -895,9 +911,8 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         _setSwapFeePercentage(pool, swapFeePercentage);
     }
 
-
     function _setSwapFeePercentage(address pool, uint24 swapFeePercentage) internal virtual {
-        if(swapFeePercentage > _MAX_SWAP_FEE_PERCENTAGE) {
+        if (swapFeePercentage > _MAX_SWAP_FEE_PERCENTAGE) {
             revert MaxSwapFeePercentage();
         }
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);

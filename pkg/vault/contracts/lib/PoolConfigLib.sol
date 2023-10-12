@@ -7,6 +7,8 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { PoolConfig, PoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 
+import "forge-std/safeconsole.sol";
+
 // @notice Config type to store entire configuration of the pool
 type PoolConfigBits is bytes32;
 
@@ -16,9 +18,11 @@ library PoolConfigLib {
     using SafeCast for *;
     using WordCodec for bytes32;
 
-    /// [  250 bit |    1 bit     |    1 bit  |   1 bit    |     1 bit   |    1 bit    |    1 bit   ]
-    /// [ not used | after remove | after add | after swap | dynamic fee | initialized | registered ]
-    /// |MSB                                                                                     LSB|
+    /// [  236 bit |    1 bit     |    1 bit  |   1 bit    |    24 bit  |    1 bit    |    1 bit    |    1 bit   ]
+    /// [ not used | after remove | after add | after swap | static fee | dynamic fee | initialized | registered ]
+    /// |MSB                                                                                                  LSB|
+
+    uint24 public constant SWAP_FEE_PRECISION = 1e6;
 
     // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
@@ -57,7 +61,7 @@ library PoolConfigLib {
     }
 
     function getStaticSwapFee(PoolConfigBits config) internal pure returns (uint24) {
-        return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_FLAG, STATIC_SWAP_FEE_SIZE).toUint24();
+        return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, STATIC_SWAP_FEE_SIZE).toUint24();
     }
 
     function shouldCallAfterSwap(PoolConfigBits config) internal pure returns (bool) {
