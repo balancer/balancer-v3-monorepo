@@ -56,6 +56,21 @@ contract MockWordCodec {
         return WordCodec.decodeInt(value, offset, bitLength);
     }
 
+    function insertBool(
+        bytes32 word,
+        bool value,
+        uint256 offset
+    ) external pure returns (bytes32 result) {
+        return WordCodec.insertBool(word, value, offset);    
+    }
+
+    function decodeBool(
+        bytes32 word,
+        uint256 offset
+    ) external pure returns (bool result) {
+        return WordCodec.decodeBool(word, offset);    
+    }
+
     function clearWordAtPosition(
         bytes32 word,
         uint256 offset,

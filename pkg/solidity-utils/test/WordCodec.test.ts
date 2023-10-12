@@ -305,6 +305,32 @@ describe('WordCodec', () => {
                 });
             }
         });
+
+        describe('bool', () => {
+            async function assertBoolInsertion(value: boolean, offset: number) {
+                const result = await lib.insertBool(word, value, offset);
+
+                // We must be able to restore the original value+
+                expect(await lib.decodeBool(result, offset)).to.equal(value);
+                // All other bits should match the original word
+                const mask = negate(BigInt(1) << BigInt(offset));
+                const clearedResult = BigInt(mask) & BigInt(result);
+                const clearedWord = BigInt(mask) & BigInt(word);
+                expect(clearedResult).to.equal(clearedWord);
+            }
+
+            for (const offset of [0, 50, 150, 254]) {
+                context(`with offset ${offset}`, () => {
+                    it('inserts true', async () => {
+                        await assertBoolInsertion(true, offset);
+                    });
+
+                    it('inserts false', async () => {
+                        await assertBoolInsertion(false, offset);
+                    });
+                });
+            }
+        });
     });
 
     describe('helpers', () => {
