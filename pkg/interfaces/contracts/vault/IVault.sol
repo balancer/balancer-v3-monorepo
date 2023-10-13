@@ -273,31 +273,13 @@ interface IVault {
         uint256 exactBptAmountOut
     ) external returns (uint256[] memory amountsIn);
 
-    function addLiquidityProportionalNative(
-        address pool,
-        uint256[] memory maxAmountsIn,
-        uint256 exactBptAmountOut
-    ) external returns (uint256[] memory amountsIn);
-
     function addLiquidityUnbalanced(
         address pool,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut
     ) external returns (uint256 bptAmountOut);
 
-    function addLiquidityUnbalancedNative(
-        address pool,
-        uint256[] memory exactAmountsIn,
-        uint256 minBptAmountOut
-    ) external returns (uint256 bptAmountOut);
-
     function addLiquiditySingleAsset(
-        address pool,
-        IERC20 tokenIn,
-        uint256 exactBptAmountOut
-    ) external returns (uint256 amountIn);
-
-    function addLiquiditySingleAssetNative(
         address pool,
         IERC20 tokenIn,
         uint256 exactBptAmountOut
@@ -331,19 +313,7 @@ interface IVault {
         uint256 exactBptAmountIn
     ) external returns (uint256[] memory amountsOut);
 
-    function removeLiquidityProportionalNative(
-        address pool,
-        uint256[] memory maxAmountsOut,
-        uint256 exactBptAmountIn
-    ) external returns (uint256[] memory amountsOut);
-
     function removeLiquidityUnbalanced(
-        address pool,
-        uint256[] memory exactAmountsOut,
-        uint256 maxBptAmountIn
-    ) external returns (uint256 bptAmountIn);
-
-    function removeLiquidityUnbalancedNative(
         address pool,
         uint256[] memory exactAmountsOut,
         uint256 maxBptAmountIn
@@ -352,12 +322,6 @@ interface IVault {
     function removeLiquiditySingleAsset(
         address pool,
         IERC20 tokenOut,
-        uint256 exactBptAmountIn
-    ) external returns (uint256 amountOut);
-
-    function removeLiquiditySingleAssetNative(
-        address pool,
-        IERC20 tokenOut, // TODO: check if we're able to omit this parameter, since we already know that it's the native asset
         uint256 exactBptAmountIn
     ) external returns (uint256 amountOut);
 

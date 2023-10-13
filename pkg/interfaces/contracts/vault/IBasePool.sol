@@ -36,20 +36,7 @@ interface IBasePool {
         uint256[] memory currentBalances
     ) external returns (uint256 bptAmountOut);
 
-    function onAddLiquidityUnbalancedNative(
-        address sender,
-        uint256[] memory exactAmountsIn,
-        uint256[] memory currentBalances
-    ) external returns (uint256 bptAmountOut);
-
     function onAddLiquiditySingleAsset(
-        address sender,
-        IERC20 tokenIn,
-        uint256 exactBptAmountOut,
-        uint256[] memory currentBalances
-    ) external returns (uint256 amountIn);
-
-    function onAddLiquiditySingleAssetNative(
         address sender,
         IERC20 tokenIn,
         uint256 exactBptAmountOut,
@@ -94,22 +81,9 @@ interface IBasePool {
         uint256[] memory currentBalances
     ) external returns (uint256 bptAmountIn);
 
-    function onRemoveLiquidityUnbalancedNative(
-        address sender,
-        uint256[] memory exactAmountsOut,
-        uint256[] memory currentBalances
-    ) external returns (uint256 bptAmountIn);
-
     function onRemoveLiquiditySingleAsset(
         address sender,
         IERC20 tokenOut,
-        uint256 exactBptAmountIn,
-        uint256[] memory currentBalances
-    ) external returns (uint256 amountOut);
-
-    function onRemoveLiquiditySingleAssetNative(
-        address sender,
-        IERC20 tokenOut, // TODO: check if we're able to omit this parameter, since we already know that it's the native asset
         uint256 exactBptAmountIn,
         uint256[] memory currentBalances
     ) external returns (uint256 amountOut);
