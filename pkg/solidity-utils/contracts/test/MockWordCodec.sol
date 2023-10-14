@@ -3,7 +3,7 @@
 pragma solidity ^0.8.4;
 
 import "../helpers/WordCodec.sol";
-import "../helpers/WordCodecHelpers.sol";
+import "./WordCodecHelpers.sol";
 
 contract MockWordCodec {
     function insertUint(
