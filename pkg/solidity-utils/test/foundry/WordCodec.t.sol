@@ -131,6 +131,7 @@ contract WordCodecTest is Test {
         uint256 offset,
         uint256 bitLength
     ) external {
+        vm.assume(bitLength > 0 && bitLength < 256);
         uint256 referenceDecodeUint = uint256(word >> offset) & ((1 << bitLength) - 1);
         uint256 decodeUint = WordCodec.decodeUint(word, offset, bitLength);
 
@@ -142,7 +143,7 @@ contract WordCodecTest is Test {
         uint256 offset,
         uint256 bitLength
     ) external {
-        vm.assume(bitLength > 0);
+        vm.assume(bitLength > 0 && bitLength < 256);
         int256 maxInt = int256((1 << (bitLength - 1)) - 1);
         uint256 mask = (1 << bitLength) - 1;
         int256 value = int256(uint256(word >> offset) & mask);
