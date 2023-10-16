@@ -24,8 +24,6 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 
-import "forge-std/safeconsole.sol";
-
 contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
@@ -383,6 +381,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
                                           Swaps
     *******************************************************************************/
 
+    // Helper struct to avoid stack too deep errors
     struct SwapVars {
         PoolConfigBits config;
         uint256 swapFee;
@@ -403,13 +402,12 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         }
 
         SwapVars memory vars = SwapVars({
-        // Read pool config once to save on gas
-            config : _poolConfig[params.pool],
+            // Read pool config once to save on gas
+            config: _poolConfig[params.pool],
             swapFee: 0,
             indexIn: 0,
             indexOut: 0
         });
-
 
         // We access both token indexes without checking existence, because we will do it manually immediately after.
         EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolTokenBalances[params.pool];
@@ -450,7 +448,10 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         if (params.kind == IVault.SwapKind.GIVEN_IN) {
             // Fees are subtracted before scaling. Round up.
             // TODO: Implement fixed math for various precision units
-            vars.swapFee = ((params.amountGiven * _getSwapFee(vars.config) - 1) / PoolConfigLib.SWAP_FEE_PRECISION) + 1;
+            uint256 swapFeePercentage = _getSwapFeePercentage(vars.config);
+            vars.swapFee = swapFeePercentage != 0
+                ? ((params.amountGiven * swapFeePercentage - 1) / PoolConfigLib.SWAP_FEE_PRECISION) + 1
+                : 0;
         }
 
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
@@ -469,8 +470,13 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         );
 
         if (params.kind == IVault.SwapKind.GIVEN_OUT) {
+            uint256 swapFeePercentage = _getSwapFeePercentage(vars.config);
             // Fees are added after scaling happens. Round up.
-            vars.swapFee = (amountCalculated * PoolConfigLib.SWAP_FEE_PRECISION) / (PoolConfigLib.SWAP_FEE_PRECISION - _getSwapFee(vars.config)) + 1;
+            vars.swapFee = swapFeePercentage != 0
+                ? (amountCalculated * PoolConfigLib.SWAP_FEE_PRECISION) /
+                    (PoolConfigLib.SWAP_FEE_PRECISION - _getSwapFeePercentage(vars.config)) +
+                    1
+                : 0;
             amountCalculated += vars.swapFee;
         }
 
@@ -518,7 +524,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     }
 
     /// @dev Returns swap fee for the pool
-    function _getSwapFee(PoolConfigBits config) internal pure returns (uint256) {
+    function _getSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
         if (config.hasDynamicSwapFee()) {
             // TODO: Fetch dynamic swap fee from the pool using callback
             return 0;

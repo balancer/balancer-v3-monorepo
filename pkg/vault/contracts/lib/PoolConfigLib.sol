@@ -7,8 +7,6 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { PoolConfig, PoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 
-import "forge-std/safeconsole.sol";
-
 // @notice Config type to store entire configuration of the pool
 type PoolConfigBits is bytes32;
 
@@ -30,7 +28,7 @@ library PoolConfigLib {
     uint8 public constant DYNAMIC_SWAP_FEE_OFFSET = 2;
     // 24 bits represent values up to 2^24 - 1 = 16,777,216 − 1 which should be enough for the swap fee
     uint8 public constant STATIC_SWAP_FEE_SIZE = 24;
-    uint8 public constant STATIC_SWAP_FEE_OFFSET = 2 + STATIC_SWAP_FEE_SIZE;
+    uint8 public constant STATIC_SWAP_FEE_OFFSET = 3;
     uint8 public constant AFTER_SWAP_OFFSET = 3 + STATIC_SWAP_FEE_SIZE;
     uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = 4 + STATIC_SWAP_FEE_SIZE;
     uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = 5 + STATIC_SWAP_FEE_SIZE;

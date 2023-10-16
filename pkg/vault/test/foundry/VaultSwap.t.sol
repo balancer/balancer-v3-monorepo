@@ -132,7 +132,7 @@ contract VaultSwapTest is Test {
         authorizer.grantRole(vault.getActionId(IVault.setSwapFeePercentage.selector), alice);
         vm.prank(alice);
         vault.setSwapFeePercentage(address(pool), 1e4);
-        uint256 amountOutWithFee = DAI_AMOUNT_IN * 99 / 100;
+        uint256 amountOutWithFee = (DAI_AMOUNT_IN * 99) / 100;
 
         vm.prank(bob);
         router.swap(
@@ -154,6 +154,6 @@ contract VaultSwapTest is Test {
         // assets are adjusted in the pool
         (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
         assertEq(balances[0], DAI_AMOUNT_IN / 100);
-        assertEq(balances[1], USDC_AMOUNT_IN + USDC_AMOUNT_IN * 99 / 100);
+        assertEq(balances[1], USDC_AMOUNT_IN + (USDC_AMOUNT_IN * 99) / 100);
     }
 }
