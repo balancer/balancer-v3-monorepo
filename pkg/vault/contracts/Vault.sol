@@ -472,7 +472,10 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
             uint256 swapFeePercentage = _getSwapFeePercentage(vars.config);
             // Fees are added after scaling happens. Round up.
             vars.swapFee = swapFeePercentage != 0
-                ? amountCalculated.divUp(swapFeePercentage.complement(), PoolConfigLib.SWAP_FEE_PRECISION)
+                ? amountCalculated.divUp(
+                    swapFeePercentage.complement(PoolConfigLib.SWAP_FEE_PRECISION),
+                    PoolConfigLib.SWAP_FEE_PRECISION
+                ) - amountCalculated
                 : 0;
             amountCalculated += vars.swapFee;
         }

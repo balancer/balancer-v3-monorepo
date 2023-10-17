@@ -116,7 +116,7 @@ contract VaultSwapTest is Test {
         assertEq(balances[1], USDC_AMOUNT_IN * 2);
     }
 
-    function testSwapFee() public {
+    function testSwapFeeGivenIn() public {
         vm.prank(alice);
         router.addLiquidity(
             address(pool),
@@ -155,5 +155,47 @@ contract VaultSwapTest is Test {
         (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
         assertEq(balances[0], DAI_AMOUNT_IN / 100);
         assertEq(balances[1], USDC_AMOUNT_IN + (USDC_AMOUNT_IN * 99) / 100);
+    }
+
+    function testSwapFeeGivenOut() public {
+        uint256 USDC_DELTA = (USDC_AMOUNT_IN * 100) / 99 + 1 - USDC_AMOUNT_IN;
+        USDC.mint(bob, USDC_AMOUNT_IN);
+
+        vm.prank(alice);
+        router.addLiquidity(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
+            DAI_AMOUNT_IN,
+            IBasePool.AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+            bytes("")
+        );
+
+        pool.setMultiplier(1e30);
+
+        authorizer.grantRole(vault.getActionId(IVault.setSwapFeePercentage.selector), alice);
+        vm.prank(alice);
+        vault.setSwapFeePercentage(address(pool), 1e4);
+
+        vm.prank(bob);
+        router.swap(
+            IVault.SwapKind.GIVEN_OUT,
+            address(pool),
+            address(USDC).asAsset(),
+            address(DAI).asAsset(),
+            DAI_AMOUNT_IN,
+            (USDC_AMOUNT_IN * 100) / 99 + 1,
+            type(uint256).max,
+            bytes("")
+        );
+
+        // asssets are transferred to/from Bob
+        assertApproxEqAbs(USDC.balanceOf(bob), USDC_AMOUNT_IN, USDC_DELTA);
+        assertEq(DAI.balanceOf(bob), 2 * DAI_AMOUNT_IN);
+
+        // assets are adjusted in the pool
+        (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
+        assertEq(balances[0], 0);
+        assertEq(balances[1], 2 * USDC_AMOUNT_IN);
     }
 }
