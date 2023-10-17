@@ -447,11 +447,8 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         if (params.kind == IVault.SwapKind.GIVEN_IN) {
             // Fees are subtracted before scaling. Round up.
-            // TODO: Implement fixed math for various precision units
             uint256 swapFeePercentage = _getSwapFeePercentage(vars.config);
-            vars.swapFee = swapFeePercentage != 0
-                ? ((params.amountGiven * swapFeePercentage - 1) / PoolConfigLib.SWAP_FEE_PRECISION) + 1
-                : 0;
+            vars.swapFee = swapFeePercentage != 0 ? params.amountGiven.mulUp(swapFeePercentage, PoolConfigLib.SWAP_FEE_PRECISION) : 0;
         }
 
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
@@ -472,11 +469,8 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         if (params.kind == IVault.SwapKind.GIVEN_OUT) {
             uint256 swapFeePercentage = _getSwapFeePercentage(vars.config);
             // Fees are added after scaling happens. Round up.
-            vars.swapFee = swapFeePercentage != 0
-                ? (amountCalculated * PoolConfigLib.SWAP_FEE_PRECISION) /
-                    (PoolConfigLib.SWAP_FEE_PRECISION - _getSwapFeePercentage(vars.config)) +
-                    1
-                : 0;
+            vars.swapFee = swapFeePercentage != 0 ?
+                amountCalculated.divUp(swapFeePercentage.complement(), PoolConfigLib.SWAP_FEE_PRECISION) : 0;
             amountCalculated += vars.swapFee;
         }
 
