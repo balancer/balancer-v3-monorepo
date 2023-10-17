@@ -928,6 +928,12 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
+
+    function getSwapFeePercentage(address pool) external view returns (uint24) {
+        return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFee;
+    }
+
+
     /*******************************************************************************
                                     Authentication
     *******************************************************************************/

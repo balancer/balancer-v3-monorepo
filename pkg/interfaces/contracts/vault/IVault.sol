@@ -322,18 +322,25 @@ interface IVault {
 
     /**
      * @notice Returns current swap fee percentage for the protocol
-     * @return Current swap fee percentage
+     * @return Current swap fee percentage for the protocol
      */
     function getProtocolSwapFeePercentage() external view returns (uint256);
 
     /**
      * @notice Sets new swap fee percentage for the pool.
-     * @param pool                  Pool address to change swap fee for.
+     * @param pool               Pool address to change swap fee for.
      * @param swapFeePercentage  New swap fee percentage
      */
     function setSwapFeePercentage(address pool, uint24 swapFeePercentage) external;
 
     event SwapFeePercentageChanged(uint24 swapFeePercentage);
+
+    /**
+     * @notice Returns current swap fee percentage for the pool
+     * @param pool               Pool address to change swap fee for.
+     * @return Current swap fee percentage
+     */
+    function getSwapFeePercentage(address pool) external view returns (uint24);
 
     /*******************************************************************************
                                 Authentication
