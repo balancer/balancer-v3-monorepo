@@ -39,7 +39,6 @@ library WordCodec {
     // Masks are values with the least significant N bits set. They can be used to extract an encoded value from a word,
     // or to insert a new one replacing the old.
     uint256 private constant _MASK_1 = 2 ** (1) - 1;
-    uint256 private constant _MASK_192 = 2 ** (192) - 1;
 
     // In-place insertion
 
@@ -150,17 +149,6 @@ library WordCodec {
         assembly {
             result := and(shr(offset, word), 1)
         }
-    }
-
-    /**
-     * @dev Inserts a 192 bit value shifted by an offset into a 256 bit word, replacing the old value.
-     * Returns the new word.
-     *
-     * Assumes `value` can be represented using 192 bits.
-     */
-    function insertBits192(bytes32 word, bytes32 value, uint256 offset) internal pure returns (bytes32) {
-        bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_192 << offset));
-        return clearedWord | bytes32((uint256(value) & _MASK_192) << offset);
     }
 
     /**
