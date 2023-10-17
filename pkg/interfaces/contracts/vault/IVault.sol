@@ -335,7 +335,6 @@ interface IVault {
 
     event SwapFeePercentageChanged(uint24 swapFeePercentage);
 
-
     /*******************************************************************************
                                 Authentication
     *******************************************************************************/
