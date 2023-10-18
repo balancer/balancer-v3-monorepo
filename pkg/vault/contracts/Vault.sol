@@ -696,9 +696,9 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         // The Vault has infinite allowance for every pool token, allowing it to burn tokens without prior approval.
         // However, untrusted routers must receive preapproval to burn pool tokens.
-        _spendAllowance(address(pool), from, _isTrustedRouter(msg.sender) ? address(this) : msg.sender, bptAmountIn);
-        // TODO: Support untrusted routers
-        // _spendAllowance(address(pool), from, msg.sender, bptAmountIn);
+        if (!_isTrustedRouter(msg.sender)) {
+            _spendAllowance(address(pool), from, msg.sender, bptAmountIn);
+        }
         if (!_isQueryDisabled && AddressHelpers.isStaticCall()) {
             // Increase `from` balance to ensure the burn function succeeds.
             _balances[address(pool)][from] += bptAmountIn;
