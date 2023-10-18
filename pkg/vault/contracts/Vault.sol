@@ -15,7 +15,7 @@ import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAutho
 import { ReentrancyGuard } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import { TemporarilyPausable } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
-import { AddressHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AddressHelpers.sol";
+import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -283,8 +283,8 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // Check if the transaction initiator is different from 0x0.
         // If so, it's not a eth_call and we revert.
         // https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_call
-        if (!AddressHelpers.isStaticCall()) {
-            revert AddressHelpers.NotStaticCall();
+        if (!EVMCallModeHelpers.isStaticCall()) {
+            revert EVMCallModeHelpers.NotStaticCall();
         }
 
         if (_isQueryDisabled) {
@@ -700,7 +700,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         if (!_isTrustedRouter(msg.sender)) {
             _spendAllowance(address(pool), from, msg.sender, bptAmountIn);
         }
-        if (!_isQueryDisabled && AddressHelpers.isStaticCall()) {
+        if (!_isQueryDisabled && EVMCallModeHelpers.isStaticCall()) {
             // Increase `from` balance to ensure the burn function succeeds.
             _increase(pool, from, bptAmountIn);
         }
