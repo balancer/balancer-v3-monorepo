@@ -85,12 +85,11 @@ contract RouterTest is Test {
 
     function testQuerySwap() public {
         vm.prank(alice);
-        router.addLiquidity(
+        router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             DAI_AMOUNT_IN,
-            IBasePool.AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
             bytes("")
         );
 
@@ -110,12 +109,11 @@ contract RouterTest is Test {
 
     function testDisableQueries() public {
         vm.prank(alice);
-        router.addLiquidity(
+        router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             DAI_AMOUNT_IN,
-            IBasePool.AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
             bytes("")
         );
 

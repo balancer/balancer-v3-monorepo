@@ -11,12 +11,13 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/token/IERC20Errors.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces//contracts/vault/IVaultErrors.sol";
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
-
 import { PoolMock } from "@balancer-labs/v3-pool-utils/contracts/test/PoolMock.sol";
+
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
@@ -83,12 +84,11 @@ contract VaultSwapTest is Test {
 
     function testSwap() public {
         vm.prank(alice);
-        router.addLiquidity(
+        router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             DAI_AMOUNT_IN,
-            IBasePool.AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
             bytes("")
         );
 
@@ -114,5 +114,19 @@ contract VaultSwapTest is Test {
         (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
         assertEq(balances[0], 0);
         assertEq(balances[1], USDC_AMOUNT_IN * 2);
+    }
+
+    function testSwapNotInitialized() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, address(pool)));
+        router.swap(
+            IVault.SwapKind.GIVEN_IN,
+            address(pool),
+            address(USDC).asAsset(),
+            address(DAI).asAsset(),
+            USDC_AMOUNT_IN,
+            DAI_AMOUNT_IN,
+            type(uint256).max,
+            bytes("")
+        );
     }
 }

@@ -371,7 +371,13 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     /// @inheritdoc IVault
     function swap(
         SwapParams memory params
-    ) public whenNotPaused withHandler returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
+    )
+        public
+        whenNotPaused
+        withHandler
+        withInitializedPool(params.pool)
+        returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
+    {
         if (params.amountGiven == 0) {
             revert AmountGivenZero();
         }
@@ -474,7 +480,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     }
 
     /*******************************************************************************
-                                    Pool Registration
+                            Pool Registration and Initialization
     *******************************************************************************/
 
     /**
@@ -572,6 +578,20 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         return _poolConfig[pool].isPoolRegistered();
     }
 
+    /// @dev Reverts unless `pool` corresponds to an initialized Pool.
+    modifier withInitializedPool(address pool) {
+        _ensureInitializedPool(pool);
+        _;
+    }
+
+    /// @dev Reverts unless `pool` corresponds to an initialized Pool.
+    function _ensureInitializedPool(address pool) internal view {
+        if (!_isInitializedPool(pool)) {
+            revert PoolNotInitialized(pool);
+        }
+    }
+
+    /// @dev See `isInitialized`
     function _isInitializedPool(address pool) internal view returns (bool) {
         return _poolConfig[pool].isPoolInitialized();
     }
@@ -665,7 +685,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         external
         withHandler
         whenNotPaused
-        withRegisteredPool(pool)
+        withInitializedPool(pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut)
     {
         InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
@@ -731,7 +751,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         external
         whenNotPaused
         nonReentrant
-        withRegisteredPool(pool)
+        withInitializedPool(pool)
         returns (uint256[] memory amountsOut, uint256 bptAmountIn)
     {
         InputHelpers.ensureInputLengthMatch(tokens.length, minAmountsOut.length);

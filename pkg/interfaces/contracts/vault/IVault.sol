@@ -51,6 +51,7 @@ interface IVault {
 
     /**
      * @notice Checks if a pool is initialized
+     * @dev An initialized pool can be considered registered as well.
      * @param pool                           Address of the pool to check
      * @return                               True if the pool is initialized, false otherwise
      */

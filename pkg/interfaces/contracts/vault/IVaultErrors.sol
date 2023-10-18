@@ -19,6 +19,11 @@ interface IVaultErrors {
     error PoolNotRegistered(address pool);
 
     /**
+     * @dev Error indicating that a referenced pool has not been registered.
+     */
+    error PoolNotInitialized(address pool);
+
+    /**
      * @dev Error indicating an attempt to register an invalid token.
      */
     error InvalidToken();
