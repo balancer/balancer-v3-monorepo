@@ -129,7 +129,7 @@ interface IVaultErrors {
     /**
      * @dev
      */
-    error HookCallFailed();
+    error CallbackFailed();
 
     /**
      * @dev

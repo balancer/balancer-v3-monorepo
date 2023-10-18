@@ -17,7 +17,7 @@ import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
-import { AddressHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AddressHelpers.sol";
+import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 
 import { PoolMock } from "@balancer-labs/v3-pool-utils/contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
@@ -97,7 +97,7 @@ contract RouterTest is Test {
         pool.setMultiplier(1e30);
 
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(AddressHelpers.NotStaticCall.selector));
+        vm.expectRevert(abi.encodeWithSelector(EVMCallModeHelpers.NotStaticCall.selector));
         router.querySwap(
             IVault.SwapKind.GIVEN_IN,
             address(pool),

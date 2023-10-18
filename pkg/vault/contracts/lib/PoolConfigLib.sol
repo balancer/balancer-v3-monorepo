@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.4;
 
-import { PoolConfig, PoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { PoolConfig, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 
 // @notice Config type to store entire configuration of the pool
@@ -61,9 +61,9 @@ library PoolConfigLib {
                 bytes32(0)
                     .insertBool(config.isRegisteredPool, POOL_REGISTERED_OFFSET)
                     .insertBool(config.isInitializedPool, POOL_INITIALIZED_OFFSET)
-                    .insertBool(config.hooks.shouldCallAfterSwap, AFTER_SWAP_OFFSET)
-                    .insertBool(config.hooks.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET)
-                    .insertBool(config.hooks.shouldCallAfterRemoveLiquidity, AFTER_REMOVE_LIQUIDITY_OFFSET)
+                    .insertBool(config.callbacks.shouldCallAfterSwap, AFTER_SWAP_OFFSET)
+                    .insertBool(config.callbacks.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET)
+                    .insertBool(config.callbacks.shouldCallAfterRemoveLiquidity, AFTER_REMOVE_LIQUIDITY_OFFSET)
             );
     }
 
@@ -72,7 +72,7 @@ library PoolConfigLib {
             PoolConfig({
                 isRegisteredPool: config.isPoolRegistered(),
                 isInitializedPool: config.isPoolInitialized(),
-                hooks: PoolHooks({
+                callbacks: PoolCallbacks({
                     shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),
                     shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity(),
                     shouldCallAfterSwap: config.shouldCallAfterSwap()

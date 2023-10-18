@@ -28,7 +28,7 @@ contract PoolMock is BasePool {
         bool registerPool
     ) BasePool(vault, name, symbol, tokens, 30 days, 90 days) {
         if (registerPool) {
-            vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig().hooks);
+            vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
         }
     }
 
