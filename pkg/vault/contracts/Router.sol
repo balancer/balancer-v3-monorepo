@@ -71,7 +71,13 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
-        (amountsIn, bptAmountOut) = _vault.initialize(params.pool, tokens, params.maxAmountsIn, params.userData);
+        (amountsIn, bptAmountOut) = _vault.initialize(
+            params.pool,
+            params.sender,
+            tokens,
+            params.maxAmountsIn,
+            params.userData
+        );
 
         if (bptAmountOut < params.minBptAmountOut) {
             revert IVaultErrors.BptAmountBelowMin();
@@ -94,13 +100,10 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
             }
+
             // transfer tokens from the user to the Vault
             _vault.retrieve(token, params.sender, amountIn);
         }
-
-        // TODO: adjust with changes from #105.
-        // mint pool tokens
-        _vault.mint(IERC20(params.pool), params.sender, bptAmountOut);
 
         // return ETH dust
         address(params.sender).returnEth(ethAmountIn);
@@ -142,6 +145,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
 
         (amountsIn, bptAmountOut) = _vault.addLiquidity(
             params.pool,
+            params.sender,
             tokens,
             params.maxAmountsIn,
             params.minBptAmountOut,
@@ -172,8 +176,6 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             }
             _vault.retrieve(token, params.sender, amountIn);
         }
-
-        _vault.mint(IERC20(params.pool), params.sender, bptAmountOut);
 
         // Send remaining ETH to the user
         address(params.sender).returnEth(ethAmountIn);
@@ -215,6 +217,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
 
         (amountsOut, bptAmountIn) = _vault.removeLiquidity(
             params.pool,
+            params.sender,
             tokens,
             params.minAmountsOut,
             params.maxBptAmountIn,
@@ -242,8 +245,6 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
                 ethAmountOut = amountOut;
             }
         }
-
-        _vault.burn(IERC20(params.pool), params.sender, params.maxBptAmountIn);
 
         // Send ETH to sender
         payable(params.sender).sendValue(ethAmountOut);
@@ -432,7 +433,9 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
                     abi.encodeWithSelector(
                         Router.queryAddLiquidityCallback.selector,
                         AddLiquidityCallbackParams({
-                            sender: msg.sender,
+                            // we use router as a sender to simplify basic query functions
+                            // but it is possible to add liquidity to any recepient
+                            sender: address(this),
                             pool: pool,
                             assets: assets,
                             maxAmountsIn: maxAmountsIn,
@@ -453,6 +456,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
 
         (amountsIn, bptAmountOut) = _vault.addLiquidity(
             params.pool,
+            params.sender,
             tokens,
             params.maxAmountsIn,
             params.minBptAmountOut,
@@ -476,7 +480,9 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
                     abi.encodeWithSelector(
                         Router.queryRemoveLiquidityCallback.selector,
                         RemoveLiquidityCallbackParams({
-                            sender: msg.sender,
+                            // We use router as a sender to simplify basic query functions
+                            // but it is possible to remove liquidity from any sender
+                            sender: address(this),
                             pool: pool,
                             assets: assets,
                             minAmountsOut: minAmountsOut,
@@ -496,6 +502,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         return
             _vault.removeLiquidity(
                 params.pool,
+                params.sender,
                 params.assets.toIERC20(_weth),
                 params.minAmountsOut,
                 params.maxBptAmountIn,

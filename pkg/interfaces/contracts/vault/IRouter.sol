@@ -103,23 +103,21 @@ interface IRouter {
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
-    /**
-     * @notice Contains parameters required for addLiquidity callback
-     */
+    /// Contains parameters required for addLiquidity callback
     struct AddLiquidityCallbackParams {
-        /// @notice Address of the sender
+        // Address of the sender
         address sender;
-        /// @notice Address of the liquidity pool
+        // Address of the liquidity pool
         address pool;
-        /// @notice Array of assets to add
+        // Array of assets to add
         Asset[] assets;
-        /// @notice Maximum amounts of assets to be added
+        // Maximum amounts of assets to be added
         uint256[] maxAmountsIn;
-        /// @notice Minimum pool tokens to be received
+        // Minimum pool tokens to be received
         uint256 minBptAmountOut;
-        /// @notice Add liquidity kind
+        /// Add liquidity kind
         IBasePool.AddLiquidityKind kind;
-        /// @notice Additional data required for adding liquidity
+        // Additional data required for adding liquidity
         bytes userData;
     }
 

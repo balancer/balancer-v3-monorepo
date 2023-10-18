@@ -15,6 +15,8 @@ import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAutho
 import { ReentrancyGuard } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import { TemporarilyPausable } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
+import { AddressHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AddressHelpers.sol";
+
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
@@ -160,26 +162,18 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         token.safeTransfer(to, amount);
     }
 
-    /// @inheritdoc IVault
-    function mint(IERC20 token, address to, uint256 amount) public nonReentrant withHandler {
-        _takeDebt(token, amount, msg.sender);
-        _mint(address(token), to, amount);
-    }
-
-    /// @inheritdoc IVault
-    function retrieve(IERC20 token, address from, uint256 amount) public nonReentrant withHandler {
+    /**
+     * @inheritdoc IVault
+     * @dev This function can drain users of their tokens because users grant allowance to the Vault.
+     *      Only trusted routers should be permitted to invoke it.
+     *      Untrusted routers should use `settle` instead.
+     */
+    function retrieve(IERC20 token, address from, uint256 amount) public nonReentrant withHandler onlyTrustedRouter {
         // effects
         _supplyCredit(token, amount, msg.sender);
         _tokenReserves[token] += amount;
         // interactions
         token.safeTransferFrom(from, address(this), amount);
-    }
-
-    /// @inheritdoc IVault
-    function burn(IERC20 token, address owner, uint256 amount) public nonReentrant withHandler {
-        _supplyCredit(token, amount, msg.sender);
-        _spendAllowance(address(token), owner, address(this), amount);
-        _burn(address(token), owner, amount);
     }
 
     /// @inheritdoc IVault
@@ -289,9 +283,8 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // Check if the transaction initiator is different from 0x0.
         // If so, it's not a eth_call and we revert.
         // https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_call
-        if (tx.origin != address(0)) {
-            // solhint-disable-previous-line avoid-tx-origin
-            revert NotStaticCall();
+        if (!AddressHelpers.isStaticCall()) {
+            revert AddressHelpers.NotStaticCall();
         }
 
         if (_isQueryDisabled) {
@@ -327,7 +320,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     }
 
     /*******************************************************************************
-                                    ERC20 Tokens
+                                    Pool Tokens
     *******************************************************************************/
 
     /// @inheritdoc IVault
@@ -625,9 +618,16 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
                                     Pools
     *******************************************************************************/
 
+    /// @dev Rejects routers not approved by governance and users
+    modifier onlyTrustedRouter() {
+        _onlyTrustedRouter(msg.sender);
+        _;
+    }
+
     /// @inheritdoc IVault
     function initialize(
         address pool,
+        address to,
         IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
         bytes memory userData
@@ -660,9 +660,10 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // Store the new Pool balances.
         _setPoolBalances(pool, amountsIn);
 
-        // TODO: adjust with changes from #105. Enforce minimum BPT?
-        // Credit bptAmountOut of pool tokens
-        _supplyCredit(IERC20(pool), bptAmountOut, msg.sender);
+        // TODO: enforce minimum BPT?
+        // When adding liquidity, we must mint tokens concurrently with updating pool balances,
+        // as the pool's math relies on totalSupply.
+        _mint(address(pool), to, bptAmountOut);
 
         // Store config and mark the pool as initialized
         config.isInitializedPool = true;
@@ -674,9 +675,14 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }
 
-    /// @inheritdoc IVault
+    /**
+     * @inheritdoc IVault
+     * @dev Caution should be exercised when adding liquidity because the Vault has the capability
+     *      to transfer tokens from any user, given that it holds all allowances.
+     */
     function addLiquidity(
         address pool,
+        address to,
         IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
@@ -716,11 +722,12 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
             finalBalances[i] = balances[i] + amountIn;
         }
 
-        // All that remains is storing the new Pool balances.
+        // Store the new pool balances.
         _setPoolBalances(pool, finalBalances);
 
-        // Credit bptAmountOut of pool tokens
-        _supplyCredit(IERC20(pool), bptAmountOut, msg.sender);
+        // When adding liquidity, we must mint tokens concurrently with updating pool balances,
+        // as the pool's math relies on totalSupply.
+        _mint(address(pool), to, bptAmountOut);
 
         if (_poolConfig[pool].shouldCallAfterAddLiquidity()) {
             if (
@@ -740,9 +747,14 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }
 
-    /// @inheritdoc IVault
+    /**
+     * @inheritdoc IVault
+     * @dev Trusted routers can burn pool tokens belonging to any user and require no prior approval from the user.
+     *      Untrusted routers require prior approval from the user.
+     */
     function removeLiquidity(
         address pool,
+        address from,
         IERC20[] memory tokens,
         uint256[] memory minAmountsOut,
         uint256 maxBptAmountIn,
@@ -782,11 +794,21 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
             finalBalances[i] = balances[i] - amountOut;
         }
 
-        // All that remains is storing the new Pool balances.
+        // Store the new pool balances.
         _setPoolBalances(pool, finalBalances);
 
-        // Debit bptAmountOut of pool tokens
-        _takeDebt(IERC20(pool), bptAmountIn, msg.sender);
+        // The Vault has infinite allowance for every pool token, allowing it to burn tokens without prior approval.
+        // However, untrusted routers must receive preapproval to burn pool tokens.
+        if (!_isTrustedRouter(msg.sender)) {
+            _spendAllowance(address(pool), from, msg.sender, bptAmountIn);
+        }
+        if (!_isQueryDisabled && AddressHelpers.isStaticCall()) {
+            // Increase `from` balance to ensure the burn function succeeds.
+            _increase(pool, from, bptAmountIn);
+        }
+        // When removing liquidity, we must burn tokens concurrently with updating pool balances,
+        // as the pool's math relies on totalSupply.
+        _burn(address(pool), from, bptAmountIn);
 
         if (_poolConfig[pool].shouldCallAfterRemoveLiquidity()) {
             if (
@@ -850,6 +872,17 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         }
 
         return balances;
+    }
+
+    function _onlyTrustedRouter(address sender) internal pure {
+        if (!_isTrustedRouter(sender)) {
+            revert RouterNotTrusted();
+        }
+    }
+
+    function _isTrustedRouter(address) internal pure returns (bool) {
+        //TODO: Implement based on approval by governance and user
+        return true;
     }
 
     /*******************************************************************************

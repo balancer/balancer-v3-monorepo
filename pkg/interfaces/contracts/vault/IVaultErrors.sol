@@ -121,15 +121,15 @@ interface IVaultErrors {
     /**
      * @dev
      */
-    error NotStaticCall();
-
-    /**
-     * @dev
-     */
     error QueriesDisabled();
 
     /**
      * @dev
      */
     error HookCallFailed();
+
+    /**
+     * @dev
+     */
+    error RouterNotTrusted();
 }
