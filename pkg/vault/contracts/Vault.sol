@@ -284,7 +284,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // If so, it's not a eth_call and we revert.
         // https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_call
         if (!AddressHelpers.isStaticCall()) {
-            revert NotStaticCall();
+            revert AddressHelpers.NotStaticCall();
         }
 
         if (_isQueryDisabled) {
@@ -701,7 +701,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         }
         if (!_isQueryDisabled && AddressHelpers.isStaticCall()) {
             // Increase `from` balance to ensure the burn function succeeds.
-            _balances[address(pool)][from] += bptAmountIn;
+            _pump(pool, from, bptAmountIn);
         }
         // When removing liquidity, we must burn tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
