@@ -57,7 +57,7 @@ contract VaultSwapTest is Test {
         );
 
         PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.hooks.shouldCallAfterSwap = true;
+        config.callbacks.shouldCallAfterSwap = true;
         vault.setConfig(address(pool), config);
 
         USDC.mint(bob, USDC_AMOUNT_IN);
@@ -86,7 +86,7 @@ contract VaultSwapTest is Test {
         vm.label(address(DAI), "DAI");
     }
 
-    function testOnAfterSwapHook() public {
+    function testOnAfterSwapCallback() public {
         vm.prank(alice);
         router.addLiquidity(
             address(pool),
@@ -112,7 +112,7 @@ contract VaultSwapTest is Test {
         );
     }
 
-    function testOnAfterSwapHookRevert() public {
+    function testOnAfterSwapCallbackRevert() public {
         vm.prank(alice);
         router.addLiquidity(
             address(pool),
@@ -127,7 +127,7 @@ contract VaultSwapTest is Test {
         pool.setFailOnAfterSwap(true);
         vm.prank(bob);
         // should not fail
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.HookCallFailed.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.CallbackFailed.selector));
         router.swap(
             IVault.SwapKind.GIVEN_IN,
             address(pool),

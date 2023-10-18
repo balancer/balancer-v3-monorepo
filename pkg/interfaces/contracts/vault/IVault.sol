@@ -7,8 +7,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
 
-/// @notice Represents a pool's hooks to be called
-struct PoolHooks {
+/// @notice Represents a pool's callbacks
+struct PoolCallbacks {
     bool shouldCallAfterSwap;
     bool shouldCallAfterAddLiquidity;
     bool shouldCallAfterRemoveLiquidity;
@@ -18,7 +18,7 @@ struct PoolHooks {
 struct PoolConfig {
     bool isRegisteredPool;
     bool isInitializedPool;
-    PoolHooks hooks;
+    PoolCallbacks callbacks;
 }
 
 /// @notice Interface for the Vault
@@ -33,7 +33,7 @@ interface IVault {
      * @param tokens An array of token addresses the pool will manage.
      * @param config Config for the pool
      */
-    function registerPool(address factory, IERC20[] memory tokens, PoolHooks calldata config) external;
+    function registerPool(address factory, IERC20[] memory tokens, PoolCallbacks calldata config) external;
 
     /**
      * @notice Checks if a pool is registered

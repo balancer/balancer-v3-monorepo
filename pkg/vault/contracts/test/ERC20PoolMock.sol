@@ -16,7 +16,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
 
     IVault private immutable _vault;
 
-    bool public failOnHook;
+    bool public failOnCallback;
 
     constructor(
         IVault vault,
@@ -29,7 +29,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         _vault = vault;
 
         if (registerPool) {
-            vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig().hooks);
+            vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
         }
     }
 
@@ -50,7 +50,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         uint256[] calldata,
         uint256
     ) external view returns (bool) {
-        return !failOnHook;
+        return !failOnCallback;
     }
 
     function onRemoveLiquidity(
@@ -71,14 +71,14 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         bytes memory,
         uint256[] calldata
     ) external view returns (bool) {
-        return !failOnHook;
+        return !failOnCallback;
     }
 
     // Amounts in are multiplied by the multiplier, amounts out are divided by it
     uint256 private _multiplier = FixedPoint.ONE;
 
     function setFailOnAfterSwap(bool fail) external {
-        failOnHook = fail;
+        failOnCallback = fail;
     }
 
     function setMultiplier(uint256 newMultiplier) external {
@@ -89,7 +89,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         IBasePool.AfterSwapParams calldata params,
         uint256 amountCalculated
     ) external view override returns (bool success) {
-        return params.tokenIn != params.tokenOut && amountCalculated > 0 && !failOnHook;
+        return params.tokenIn != params.tokenOut && amountCalculated > 0 && !failOnCallback;
     }
 
     function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
