@@ -399,7 +399,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
                         Router.queryRemoveLiquidityCallback.selector,
                         RemoveLiquidityCallbackParams({
                             // We use router as a sender to simplify basic query functions
-                            // but it is possible to remove liquidity from any sener
+                            // but it is possible to remove liquidity from any sender
                             sender: address(this),
                             pool: pool,
                             assets: assets,
