@@ -660,6 +660,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // Store the new Pool balances.
         _setPoolBalances(pool, amountsIn);
 
+        // TODO: adjust with changes from #105. Enforce minimum BPT?
         // Credit bptAmountOut of pool tokens
         _supplyCredit(IERC20(pool), bptAmountOut, msg.sender);
 

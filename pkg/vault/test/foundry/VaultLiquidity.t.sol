@@ -133,6 +133,7 @@ contract VaultLiquidityTest is Test {
             bytes("")
         );
 
+        // TODO: adjust with changes from #105 (remove, infinite allowance).
         pool.approve(address(vault), type(uint256).max);
 
         (uint256[] memory amountsOut, ) = router.removeLiquidity(
@@ -166,6 +167,7 @@ contract VaultLiquidityTest is Test {
 
     function testRemoveLiquidityNotInitialized() public {
         vm.startPrank(alice);
+        // TODO: adjust with changes from #105 (remove, infinite allowance).
         pool.approve(address(vault), type(uint256).max);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, address(pool)));

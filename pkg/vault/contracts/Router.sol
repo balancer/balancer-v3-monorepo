@@ -98,6 +98,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             _vault.retrieve(token, params.sender, amountIn);
         }
 
+        // TODO: adjust with changes from #105.
         // mint pool tokens
         _vault.mint(IERC20(params.pool), params.sender, bptAmountOut);
 
