@@ -8,14 +8,14 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-import { IVault, PoolConfig, PoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault, PoolConfig, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 
 import { TemporarilyPausable } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
-import { AddressHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AddressHelpers.sol";
+import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -34,7 +34,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     using SafeERC20 for IERC20;
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
-    using PoolConfigLib for PoolHooks;
+    using PoolConfigLib for PoolCallbacks;
 
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
@@ -274,17 +274,10 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
                                     Queries
     *******************************************************************************/
 
-    /**
-     * @dev Ensure that only static calls are made to the functions with this modifier.
-     * A static call is one where `tx.origin` equals 0x0 for most implementations.
-     * More https://twitter.com/0xkarmacoma/status/1493380279309717505
-     */
+    /// @dev Ensure that only static calls are made to the functions with this modifier.
     modifier query() {
-        // Check if the transaction initiator is different from 0x0.
-        // If so, it's not a eth_call and we revert.
-        // https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_call
-        if (!AddressHelpers.isStaticCall()) {
-            revert AddressHelpers.NotStaticCall();
+        if (!EVMCallModeHelpers.isStaticCall()) {
+            revert EVMCallModeHelpers.NotStaticCall();
         }
 
         if (_isQueryDisabled) {
@@ -442,7 +435,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         _supplyCredit(params.tokenOut, amountOut, msg.sender);
 
         if (_poolConfig[params.pool].shouldCallAfterSwap()) {
-            // if hook is enabled, then update balances
+            // if callback is enabled, then update balances
             if (
                 IBasePool(params.pool).onAfterSwap(
                     IBasePool.AfterSwapParams({
@@ -459,7 +452,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
                     amountCalculated
                 ) == false
             ) {
-                revert HookCallFailed();
+                revert CallbackFailed();
             }
         }
 
@@ -480,9 +473,9 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     function registerPool(
         address factory,
         IERC20[] memory tokens,
-        PoolHooks calldata poolHooks
+        PoolCallbacks calldata poolCallbacks
     ) external nonReentrant whenNotPaused {
-        _registerPool(factory, tokens, poolHooks);
+        _registerPool(factory, tokens, poolCallbacks);
     }
 
     /// @inheritdoc IVault
@@ -516,7 +509,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     }
 
     /// @dev See `registerPool`
-    function _registerPool(address factory, IERC20[] memory tokens, PoolHooks memory hooksConfig) internal {
+    function _registerPool(address factory, IERC20[] memory tokens, PoolCallbacks memory callbackConfig) internal {
         address pool = msg.sender;
 
         // Ensure the pool isn't already registered
@@ -548,7 +541,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
         config.isRegisteredPool = true;
-        config.hooks = hooksConfig;
+        config.callbacks = callbackConfig;
         _poolConfig[pool] = config.fromPoolConfig();
 
         // Emit an event to log the pool registration
@@ -619,7 +612,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // and retrieve the current balance for each.
         uint256[] memory balances = _validateTokensAndGetBalances(pool, tokens);
 
-        // The bulk of the work is done here: the corresponding Pool hook is called
+        // The bulk of the work is done here: the corresponding Pool callback is invoked
         // its final balances are computed
         (amountsIn, bptAmountOut) = IBasePool(pool).onAddLiquidity(msg.sender, balances, maxAmountsIn, userData);
 
@@ -651,7 +644,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
                     bptAmountOut
                 ) == false
             ) {
-                revert HookCallFailed();
+                revert CallbackFailed();
             }
         }
 
@@ -661,7 +654,8 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     /**
      * @inheritdoc IVault
      * @dev Trusted routers can burn pool tokens belonging to any user and require no prior approval from the user.
-     *      Untrusted routers require prior approval from the user.
+     * Untrusted routers require prior approval from the user. This is the only function allowed to call
+     * _queryModeBalanceIncrease (and only in a query context).
      */
     function removeLiquidity(
         address pool,
@@ -677,7 +671,8 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // current balance for each.
         uint256[] memory balances = _validateTokensAndGetBalances(pool, tokens);
 
-        // The bulk of the work is done here: the corresponding Pool hook is called, its final balances are computed
+        // The bulk of the work is done here: the corresponding Pool callback is invoked,
+        // and its final balances are computed
         amountsOut = IBasePool(pool).onRemoveLiquidity(msg.sender, balances, minAmountsOut, bptAmountIn, userData);
 
         uint256[] memory finalBalances = new uint256[](balances.length);
@@ -699,9 +694,9 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         if (!_isTrustedRouter(msg.sender)) {
             _spendAllowance(address(pool), from, msg.sender, bptAmountIn);
         }
-        if (!_isQueryDisabled && AddressHelpers.isStaticCall()) {
+        if (!_isQueryDisabled && EVMCallModeHelpers.isStaticCall()) {
             // Increase `from` balance to ensure the burn function succeeds.
-            _increase(pool, from, bptAmountIn);
+            _queryModeBalanceIncrease(pool, from, bptAmountIn);
         }
         // When removing liquidity, we must burn tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
@@ -718,7 +713,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
                     amountsOut
                 ) == false
             ) {
-                revert HookCallFailed();
+                revert CallbackFailed();
             }
         }
 
