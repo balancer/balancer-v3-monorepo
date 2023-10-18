@@ -1,10 +1,10 @@
 import { expect } from 'chai';
-import { Contract, BigNumberish, zeroPadValue, toBeHex } from 'ethers';
+import { Contract, zeroPadValue, toBeHex } from 'ethers';
 
 import { bn, negate } from '@balancer-labs/v3-helpers/src/numbers';
 import { random } from 'lodash';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
-import { ONES_BYTES32, ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
+import { ONE, ZERO, ONES_BYTES32, ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
 
 describe('WordCodec', () => {
   let lib: Contract;
@@ -14,15 +14,15 @@ describe('WordCodec', () => {
   });
 
   function getMaxUnsigned(bits: number): bigint {
-    return (BigInt(1) << BigInt(bits)) - BigInt(1);
+    return (ONE << BigInt(bits)) - ONE;
   }
 
   function getMaxSigned(bits: number): bigint {
-    return (BigInt(1) << BigInt(bits - 1)) - BigInt(1);
+    return (ONE << BigInt(bits - 1)) - ONE;
   }
 
   function getMinSigned(bits: number): bigint {
-    return (BigInt(1) << BigInt(bits - 1)) * -BigInt(1);
+    return (ONE << BigInt(bits - 1)) * BigInt(-ONE);
   }
 
   describe('encode', () => {
@@ -39,13 +39,13 @@ describe('WordCodec', () => {
         await expect(lib.encodeUint(0, 256, 0)).to.be.revertedWithCustomError(lib, 'OutOfBounds');
       });
 
-      async function assertUnsignedEncoding(value: BigNumberish, offset: number, bits: number) {
+      async function assertUnsignedEncoding(value: BigInt, offset: number, bits: number) {
         const result = await lib.encodeUint(value, offset, bits);
 
         // We must be able to restore the original value
         expect(await lib.decodeUint(result, offset, bits)).to.equal(value);
         // All other bits should be clear
-        expect(negate(((BigInt(1) << BigInt(bits)) - BigInt(1)) << BigInt(offset)) & BigInt(result)).to.equal(0);
+        expect(negate(((ONE << BigInt(bits)) - ONE) << BigInt(offset)) & BigInt(result)).to.equal(0);
       }
 
       // We want to be able to use 2 bit values, so we can only go up to offset 254. We only cover part of the offset
@@ -56,7 +56,7 @@ describe('WordCodec', () => {
         context(`with offset ${offset}`, () => {
           it('encodes small values of all bit sizes', async () => {
             for (let bits = 2; bits <= MAX_BITS; bits++) {
-              await assertUnsignedEncoding(1, offset, bits);
+              await assertUnsignedEncoding(ONE, offset, bits);
             }
           });
 
@@ -69,13 +69,13 @@ describe('WordCodec', () => {
           it('reverts with large values', async () => {
             for (let bits = 2; bits <= MAX_BITS; bits++) {
               await expect(
-                assertUnsignedEncoding(getMaxUnsigned(bits) + bn(1), offset, bits)
+                assertUnsignedEncoding(getMaxUnsigned(bits) + ONE, offset, bits)
               ).to.be.revertedWithCustomError(lib, 'CodecOverflow');
             }
           });
 
           it('reverts with large bitsize', async () => {
-            await expect(assertUnsignedEncoding(0, offset, MAX_BITS + 1)).to.be.revertedWithCustomError(
+            await expect(assertUnsignedEncoding(ZERO, offset, MAX_BITS + 1)).to.be.revertedWithCustomError(
               lib,
               'OutOfBounds'
             );
@@ -97,13 +97,13 @@ describe('WordCodec', () => {
         await expect(lib.encodeInt(0, 256, 0)).to.be.revertedWithCustomError(lib, 'OutOfBounds');
       });
 
-      async function assertSignedEncoding(value: BigNumberish, offset: number, bits: number) {
+      async function assertSignedEncoding(value: BigInt, offset: number, bits: number) {
         const result = await lib.encodeInt(value, offset, bits);
 
         // We must be able to restore the original value
         expect(await lib.decodeInt(result, offset, bits)).to.equal(value);
         // All other bits should be clear
-        expect(negate(((BigInt(1) << BigInt(bits)) - BigInt(1)) << BigInt(offset)) & BigInt(result)).to.equal(0);
+        expect(negate(((ONE << BigInt(bits)) - ONE) << BigInt(offset)) & BigInt(result)).to.equal(0);
       }
 
       // We want to be able to use 2 bit values, so we can only go up to offset 254. We only cover part of the offset
@@ -114,13 +114,13 @@ describe('WordCodec', () => {
         context(`with offset ${offset}`, () => {
           it('encodes small positive values of all bit sizes', async () => {
             for (let bits = 2; bits <= MAX_BITS; bits++) {
-              await assertSignedEncoding(1, offset, bits);
+              await assertSignedEncoding(ONE, offset, bits);
             }
           });
 
           it('encodes small negative values of all bit sizes', async () => {
             for (let bits = 2; bits <= MAX_BITS; bits++) {
-              await assertSignedEncoding(-1, offset, bits);
+              await assertSignedEncoding(BigInt(-ONE), offset, bits);
             }
           });
 
@@ -139,7 +139,7 @@ describe('WordCodec', () => {
           it('reverts with large positive values', async () => {
             for (let bits = 2; bits <= MAX_BITS; bits++) {
               await expect(
-                assertSignedEncoding(getMaxSigned(bits) + bn(1), offset, bits)
+                assertSignedEncoding(getMaxSigned(bits) + ONE, offset, bits)
               ).to.be.revertedWithCustomError(lib, 'CodecOverflow');
             }
           });
@@ -147,13 +147,13 @@ describe('WordCodec', () => {
           it('reverts with large negative values', async () => {
             for (let bits = 2; bits <= MAX_BITS; bits++) {
               await expect(
-                assertSignedEncoding(getMinSigned(bits) - bn(1), offset, bits)
+                assertSignedEncoding(getMinSigned(bits) - ONE, offset, bits)
               ).to.be.revertedWithCustomError(lib, 'CodecOverflow');
             }
           });
 
           it('reverts with large bitsize', async () => {
-            await expect(assertSignedEncoding(0, offset, MAX_BITS + 1)).to.be.revertedWithCustomError(
+            await expect(assertSignedEncoding(ZERO, offset, MAX_BITS + 1)).to.be.revertedWithCustomError(
               lib,
               'OutOfBounds'
             );
@@ -178,13 +178,13 @@ describe('WordCodec', () => {
         await expect(lib.insertUint(word, 256, 0, 256)).to.be.revertedWithCustomError(lib, 'OutOfBounds');
       });
 
-      async function assertUnsignedInsertion(value: BigNumberish, offset: number, bits: number) {
+      async function assertUnsignedInsertion(value: BigInt, offset: number, bits: number) {
         const result = await lib.insertUint(word, value, offset, bits);
 
         // We must be able to restore the original value+
         expect(await lib.decodeUint(result, offset, bits)).to.equal(value);
         // All other bits should match the original word
-        const mask = negate(((BigInt(1) << BigInt(bits)) - BigInt(1)) << BigInt(offset));
+        const mask = negate(((ONE << BigInt(bits)) - ONE) << BigInt(offset));
         const clearedResult = BigInt(mask) & BigInt(result);
         const clearedWord = BigInt(mask) & BigInt(word);
         expect(clearedResult).to.equal(clearedWord);
@@ -211,13 +211,13 @@ describe('WordCodec', () => {
           it('reverts with large values', async () => {
             for (let bits = 2; bits <= MAX_BITS; bits++) {
               await expect(
-                assertUnsignedInsertion(getMaxUnsigned(bits) + bn(1), offset, bits)
+                assertUnsignedInsertion(getMaxUnsigned(bits) + ONE, offset, bits)
               ).to.be.revertedWithCustomError(lib, 'CodecOverflow');
             }
           });
 
           it('reverts with large bitsize', async () => {
-            await expect(assertUnsignedInsertion(0, offset, MAX_BITS + 1)).to.be.revertedWithCustomError(
+            await expect(assertUnsignedInsertion(ZERO, offset, MAX_BITS + 1)).to.be.revertedWithCustomError(
               lib,
               'OutOfBounds'
             );
@@ -239,13 +239,13 @@ describe('WordCodec', () => {
         await expect(lib.insertInt(word, 256, 0, 256)).to.be.revertedWithCustomError(lib, 'OutOfBounds');
       });
 
-      async function assertSignedInsertion(value: BigNumberish, offset: number, bits: number) {
+      async function assertSignedInsertion(value: BigInt, offset: number, bits: number) {
         const result = await lib.insertInt(word, value, offset, bits);
 
         // We must be able to restore the original value
         expect(await lib.decodeInt(result, offset, bits)).to.equal(value);
         // All other bits should match the original word
-        const mask = negate(((BigInt(1) << BigInt(bits)) - BigInt(1)) << BigInt(offset));
+        const mask = negate(((ONE << BigInt(bits)) - ONE) << BigInt(offset));
         const clearedResult = BigInt(mask) & BigInt(result);
         const clearedWord = BigInt(mask) & BigInt(word);
         expect(clearedResult).to.equal(clearedWord);
@@ -259,13 +259,13 @@ describe('WordCodec', () => {
         context(`with offset ${offset}`, () => {
           it('inserts small positive values of all bit sizes', async () => {
             for (let bits = 2; bits <= MAX_BITS; bits++) {
-              await assertSignedInsertion(1, offset, bits);
+              await assertSignedInsertion(ONE, offset, bits);
             }
           });
 
           it('inserts small negative values of all bit sizes', async () => {
             for (let bits = 2; bits <= MAX_BITS; bits++) {
-              await assertSignedInsertion(-1, offset, bits);
+              await assertSignedInsertion(BigInt(-1), offset, bits);
             }
           });
 
@@ -284,7 +284,7 @@ describe('WordCodec', () => {
           it('reverts with large positive values', async () => {
             for (let bits = 2; bits <= MAX_BITS; bits++) {
               await expect(
-                assertSignedInsertion(getMaxSigned(bits) + bn(1), offset, bits)
+                assertSignedInsertion(getMaxSigned(bits) + ONE, offset, bits)
               ).to.be.revertedWithCustomError(lib, 'CodecOverflow');
             }
           });
@@ -292,13 +292,13 @@ describe('WordCodec', () => {
           it('reverts with large negative values', async () => {
             for (let bits = 2; bits <= MAX_BITS; bits++) {
               await expect(
-                assertSignedInsertion(getMinSigned(bits) - bn(1), offset, bits)
+                assertSignedInsertion(getMinSigned(bits) - ONE, offset, bits)
               ).to.be.revertedWithCustomError(lib, 'CodecOverflow');
             }
           });
 
           it('reverts with large bitsize', async () => {
-            await expect(assertSignedInsertion(0, offset, MAX_BITS + 1)).to.be.revertedWithCustomError(
+            await expect(assertSignedInsertion(ZERO, offset, MAX_BITS + 1)).to.be.revertedWithCustomError(
               lib,
               'OutOfBounds'
             );
@@ -314,7 +314,7 @@ describe('WordCodec', () => {
         // We must be able to restore the original value+
         expect(await lib.decodeBool(result, offset)).to.equal(value);
         // All other bits should match the original word
-        const mask = negate(BigInt(1) << BigInt(offset));
+        const mask = negate(ONE << BigInt(offset));
         const clearedResult = BigInt(mask) & BigInt(result);
         const clearedWord = BigInt(mask) & BigInt(word);
         expect(clearedResult).to.equal(clearedWord);
