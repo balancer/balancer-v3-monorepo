@@ -701,7 +701,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         }
         if (!_isQueryDisabled && AddressHelpers.isStaticCall()) {
             // Increase `from` balance to ensure the burn function succeeds.
-            _pump(pool, from, bptAmountIn);
+            _increase(pool, from, bptAmountIn);
         }
         // When removing liquidity, we must burn tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.

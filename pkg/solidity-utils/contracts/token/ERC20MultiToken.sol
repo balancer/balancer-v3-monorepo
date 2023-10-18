@@ -61,7 +61,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
      * @dev DO NOT CALL THIS METHOD.
      *      Should only be allowed to be called inside IVault.removeLiquidity to enable queries.
      */
-    function _pump(address token, address to, uint256 amount) internal {
+    function _increase(address token, address to, uint256 amount) internal {
         if (!AddressHelpers.isStaticCall()) {
             revert AddressHelpers.NotStaticCall();
         }
