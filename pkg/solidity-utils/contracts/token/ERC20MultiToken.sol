@@ -32,7 +32,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
     event Approval(address indexed token, address indexed owner, address indexed spender, uint256 value);
 
     // token -> (owner -> balance): Users' pool tokens balances
-    mapping(address => mapping(address => uint256)) internal _balances;
+    mapping(address => mapping(address => uint256)) private _balances;
 
     // token -> (owner -> (spender -> allowance)): Users' allowances
     mapping(address => mapping(address => mapping(address => uint256))) private _allowances;
