@@ -5,7 +5,7 @@ pragma solidity ^0.8.4;
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/token/IERC20Errors.sol";
-import { AddressHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AddressHelpers.sol";
+import { AddressHelpers } from "../helpers/AddressHelpers.sol";
 
 import { ERC20PoolToken } from "./ERC20PoolToken.sol";
 
