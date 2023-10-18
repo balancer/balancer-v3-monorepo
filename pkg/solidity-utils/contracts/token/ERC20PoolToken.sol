@@ -11,7 +11,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 /**
  * @notice A full ERC20 compatible token with all the data and implementation delegated to the ERC20MultiToken contract
  */
-contract ERC20PoolToken is IERC20, IERC20Metadata, IVaultErrors {
+contract ERC20PoolToken is IERC20, IERC20Metadata {
     IVault private immutable _vault;
 
     string private _name;
@@ -19,7 +19,7 @@ contract ERC20PoolToken is IERC20, IERC20Metadata, IVaultErrors {
 
     modifier onlyVault() {
         if (msg.sender != address(_vault)) {
-            revert SenderIsNotVault(msg.sender);
+            revert IVaultErrors.SenderIsNotVault(msg.sender);
         }
         _;
     }

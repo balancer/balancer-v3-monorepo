@@ -13,6 +13,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { IVault, PoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 
@@ -111,7 +112,7 @@ contract WeightedPool is BasePool, IWeightedPool {
         else if (token == _token2) { return _normalizedWeight2; }
         else if (token == _token3) { return _normalizedWeight3; }
         else {
-            revert InvalidToken();
+            revert IVaultErrors.InvalidToken();
         }
     }
 
@@ -147,7 +148,7 @@ contract WeightedPool is BasePool, IWeightedPool {
         else if (token == _token2) { return _getScalingFactor2(); }
         else if (token == _token3) { return _getScalingFactor3(); }
         else {
-            revert InvalidToken();
+            revert IVaultErrors.InvalidToken();
         }
     }
 
