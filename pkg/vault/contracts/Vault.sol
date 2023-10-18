@@ -15,6 +15,8 @@ import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAutho
 
 import { TemporarilyPausable } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
+import { AddressHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AddressHelpers.sol";
+
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
@@ -32,6 +34,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     using SafeERC20 for IERC20;
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
+    using PoolConfigLib for PoolHooks;
 
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
@@ -142,7 +145,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     }
 
     /// @inheritdoc IVault
-    function settle(IERC20 token) public withHandler returns (uint256 paid) {
+    function settle(IERC20 token) public nonReentrant withHandler returns (uint256 paid) {
         uint256 reservesBefore = _tokenReserves[token];
         _tokenReserves[token] = token.balanceOf(address(this));
         paid = _tokenReserves[token] - reservesBefore;
@@ -151,7 +154,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     }
 
     /// @inheritdoc IVault
-    function wire(IERC20 token, address to, uint256 amount) public withHandler {
+    function wire(IERC20 token, address to, uint256 amount) public nonReentrant withHandler {
         // effects
         _takeDebt(token, amount, msg.sender);
         _tokenReserves[token] -= amount;
@@ -159,26 +162,18 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         token.safeTransfer(to, amount);
     }
 
-    /// @inheritdoc IVault
-    function mint(IERC20 token, address to, uint256 amount) public withHandler {
-        _takeDebt(token, amount, msg.sender);
-        _mint(address(token), to, amount);
-    }
-
-    /// @inheritdoc IVault
-    function retrieve(IERC20 token, address from, uint256 amount) public withHandler {
+    /**
+     * @inheritdoc IVault
+     * @dev This function can drain users of their tokens because users grant allowance to the Vault.
+     *      Only trusted routers should be permitted to invoke it.
+     *      Untrusted routers should use `settle` instead.
+     */
+    function retrieve(IERC20 token, address from, uint256 amount) public nonReentrant withHandler onlyTrustedRouter {
         // effects
         _supplyCredit(token, amount, msg.sender);
         _tokenReserves[token] += amount;
         // interactions
         token.safeTransferFrom(from, address(this), amount);
-    }
-
-    /// @inheritdoc IVault
-    function burn(IERC20 token, address owner, uint256 amount) public withHandler {
-        _supplyCredit(token, amount, msg.sender);
-        _spendAllowance(address(token), owner, address(this), amount);
-        _burn(address(token), owner, amount);
     }
 
     /// @inheritdoc IVault
@@ -232,46 +227,46 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     }
 
     /**
-     * @notice Manages the delta for a specific handler and token.
-     * @dev A positive delta indicates debt, while a negative delta indicates surplus.
-     * This function ensures that only the specified handler can modify its respective delta.
+     * @dev Accounts the delta for the given handler and token.
+     * Positive delta represents debt, while negative delta represents surplus.
+     * The function ensures that only the specified handler can update its respective delta.
      *
-     * @param token   The ERC20 token for which the delta will be accounted.
-     * @param delta   The variation in the token balance.
-     *                A positive value indicates a debit or a decrease in Vault's assets.
-     *                A negative value indicates a credit or an increase in Vault's assets.
-     * @param handler The handler whose balance variation is being accounted for.
-     *                Must match the caller of the function.
+     * @param token   The ERC20 token for which the delta is being accounted.
+     * @param delta   The difference in the token balance.
+     *                Positive indicates a debit or a decrease in Vault's assets,
+     *                negative indicates a credit or an increase in Vault's assets.
+     * @param handler The handler whose balance difference is being accounted for.
+     *                Must be the same as the caller of the function.
      */
     function _accountDelta(IERC20 token, int256 delta, address handler) internal {
-        // Skip if the delta is zero.
+        // If the delta is zero, there's nothing to account for.
         if (delta == 0) return;
 
-        // Confirm the specified handler is the caller.
+        // Ensure that the handler specified is indeed the caller.
         if (handler != msg.sender) {
             revert WrongHandler(handler, msg.sender);
         }
 
-        // Retrieve the current recorded delta for this token and handler.
+        // Get the current recorded delta for this token and handler.
         int256 current = _tokenDeltas[handler][token];
 
-        // Compute the new delta after considering the change.
+        // Calculate the new delta after accounting for the change.
         int256 next = current + delta;
 
         unchecked {
-            // If the resultant delta is zero after this operation,
-            // decrement the count of non-zero deltas.
+            // If the resultant delta becomes zero after this operation,
+            // decrease the count of non-zero deltas.
             if (next == 0) {
                 _nonzeroDeltaCount--;
             }
-            // If there wasn't any previous delta (i.e., it was zero) and now there's one,
-            // increment the count of non-zero deltas.
+            // If there was no previous delta (i.e., it was zero) and now we have one,
+            // increase the count of non-zero deltas.
             else if (current == 0) {
                 _nonzeroDeltaCount++;
             }
         }
 
-        // Store the updated delta for this token and handler.
+        // Update the delta for this token and handler.
         _tokenDeltas[handler][token] = next;
     }
 
@@ -288,9 +283,8 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // Check if the transaction initiator is different from 0x0.
         // If so, it's not a eth_call and we revert.
         // https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_call
-        if (tx.origin != address(0)) {
-            // solhint-disable-previous-line avoid-tx-origin
-            revert NotStaticCall();
+        if (!AddressHelpers.isStaticCall()) {
+            revert AddressHelpers.NotStaticCall();
         }
 
         if (_isQueryDisabled) {
@@ -326,7 +320,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     }
 
     /*******************************************************************************
-                                    ERC20 Tokens
+                                    Pool Tokens
     *******************************************************************************/
 
     /// @inheritdoc IVault
@@ -595,9 +589,20 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
                                     Pools
     *******************************************************************************/
 
-    /// @inheritdoc IVault
+    /// @dev Rejects routers not approved by governance and users
+    modifier onlyTrustedRouter() {
+        _onlyTrustedRouter(msg.sender);
+        _;
+    }
+
+    /**
+     * @inheritdoc IVault
+     * @dev Caution should be exercised when adding liquidity because the Vault has the capability
+     *      to transfer tokens from any user, given that it holds all allowances.
+     */
     function addLiquidity(
         address pool,
+        address to,
         IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
         bytes memory userData
@@ -621,9 +626,6 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         uint256[] memory finalBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountIn = amountsIn[i];
-            if (amountIn > maxAmountsIn[i]) {
-                revert JoinAboveMax();
-            }
 
             // Debit of token[i] for amountIn
             _takeDebt(tokens[i], amountIn, msg.sender);
@@ -631,11 +633,12 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
             finalBalances[i] = balances[i] + amountIn;
         }
 
-        // All that remains is storing the new Pool balances.
+        // Store the new pool balances.
         _setPoolBalances(pool, finalBalances);
 
-        // Credit bptAmountOut of pool tokens
-        _supplyCredit(IERC20(pool), bptAmountOut, msg.sender);
+        // When adding liquidity, we must mint tokens concurrently with updating pool balances,
+        // as the pool's math relies on totalSupply.
+        _mint(address(pool), to, bptAmountOut);
 
         if (_poolConfig[pool].shouldCallAfterAddLiquidity()) {
             if (
@@ -655,9 +658,14 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }
 
-    /// @inheritdoc IVault
+    /**
+     * @inheritdoc IVault
+     * @dev Trusted routers can burn pool tokens belonging to any user and require no prior approval from the user.
+     *      Untrusted routers require prior approval from the user.
+     */
     function removeLiquidity(
         address pool,
+        address from,
         IERC20[] memory tokens,
         uint256[] memory minAmountsOut,
         uint256 bptAmountIn,
@@ -683,11 +691,21 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
             finalBalances[i] = balances[i] - amountOut;
         }
 
-        // All that remains is storing the new Pool balances.
+        // Store the new pool balances.
         _setPoolBalances(pool, finalBalances);
 
-        // Debit bptAmountOut of pool tokens
-        _takeDebt(IERC20(pool), bptAmountIn, msg.sender);
+        // The Vault has infinite allowance for every pool token, allowing it to burn tokens without prior approval.
+        // However, untrusted routers must receive preapproval to burn pool tokens.
+        if (!_isTrustedRouter(msg.sender)) {
+            _spendAllowance(address(pool), from, msg.sender, bptAmountIn);
+        }
+        if (!_isQueryDisabled && AddressHelpers.isStaticCall()) {
+            // Increase `from` balance to ensure the burn function succeeds.
+            _increase(pool, from, bptAmountIn);
+        }
+        // When removing liquidity, we must burn tokens concurrently with updating pool balances,
+        // as the pool's math relies on totalSupply.
+        _burn(address(pool), from, bptAmountIn);
 
         if (_poolConfig[pool].shouldCallAfterRemoveLiquidity()) {
             if (
@@ -751,6 +769,17 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         }
 
         return balances;
+    }
+
+    function _onlyTrustedRouter(address sender) internal pure {
+        if (!_isTrustedRouter(sender)) {
+            revert RouterNotTrusted();
+        }
+    }
+
+    function _isTrustedRouter(address) internal pure returns (bool) {
+        //TODO: Implement based on approval by governance and user
+        return true;
     }
 
     /*******************************************************************************

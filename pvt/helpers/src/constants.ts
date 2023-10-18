@@ -1,6 +1,9 @@
 import { ethers } from 'ethers';
 import { maxUint, maxInt, minInt, bn } from './numbers';
 
+export const ZERO = 0n;
+export const ONE = 1n;
+
 export const MAX_UINT256: bigint = maxUint(256);
 export const MAX_UINT112: bigint = maxUint(112);
 export const MAX_UINT96: bigint = maxUint(96);
