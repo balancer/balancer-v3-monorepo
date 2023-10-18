@@ -79,28 +79,14 @@ describe('Queries', function () {
     it('queries addLiquidity correctly', async () => {
       const { amountsIn, bptAmountOut } = await router
         .connect(zero)
-        .queryAddLiquidity.staticCall(
-          zero.address,
-          pool,
-          [DAI, USDC],
-          [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
-          DAI_AMOUNT_IN,
-          '0x'
-        );
+        .queryAddLiquidity.staticCall(pool, [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], DAI_AMOUNT_IN, '0x');
       expect(amountsIn).to.be.deep.eq([DAI_AMOUNT_IN, USDC_AMOUNT_IN]);
       expect(bptAmountOut).to.be.eq(DAI_AMOUNT_IN);
     });
 
     it('reverts if not a static call', async () => {
       await expect(
-        router.queryAddLiquidity.staticCall(
-          zero.address,
-          pool,
-          [DAI, USDC],
-          [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
-          DAI_AMOUNT_IN,
-          '0x'
-        )
+        router.queryAddLiquidity.staticCall(pool, [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], DAI_AMOUNT_IN, '0x')
       ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
     });
   });
@@ -115,27 +101,13 @@ describe('Queries', function () {
     it('queries a removeLiquidity correctly', async () => {
       const amountsOut = await router
         .connect(zero)
-        .queryRemoveLiquidity.staticCall(
-          zero.address,
-          pool,
-          [DAI, USDC],
-          [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
-          DAI_AMOUNT_IN,
-          '0x'
-        );
+        .queryRemoveLiquidity.staticCall(pool, [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], DAI_AMOUNT_IN, '0x');
       expect(amountsOut).to.be.deep.eq([DAI_AMOUNT_IN, USDC_AMOUNT_IN]);
     });
 
     it('reverts if not a static call', async () => {
       await expect(
-        router.queryRemoveLiquidity.staticCall(
-          zero.address,
-          pool,
-          [DAI, USDC],
-          [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
-          DAI_AMOUNT_IN,
-          '0x'
-        )
+        router.queryRemoveLiquidity.staticCall(pool, [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], DAI_AMOUNT_IN, '0x')
       ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
     });
   });

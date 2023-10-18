@@ -150,7 +150,6 @@ interface IRouter {
 
     /**
      * @notice Queries addLiquidity operation without executing it
-     * @param sender                Address of the account to query for
      * @param pool                  Address of the liquidity pool
      * @param assets                Array of assets to add
      * @param maxAmountsIn          Maximum amounts of assets to be added
@@ -160,7 +159,6 @@ interface IRouter {
      * @return bptAmountOut         Expected pool tokens to receive
      */
     function queryAddLiquidity(
-        address sender,
         address pool,
         Asset[] memory assets,
         uint256[] memory maxAmountsIn,
@@ -170,7 +168,6 @@ interface IRouter {
 
     /**
      * @notice Queries removeLiquidity operation without executing it
-     * @param sender                Address of the account to query for
      * @param pool                  Address of the liquidity pool
      * @param assets                Array of assets to remove
      * @param minAmountsOut         Minimum amounts of assets expected
@@ -179,7 +176,6 @@ interface IRouter {
      * @return amountsOut           Expected amounts of assets to receive
      */
     function queryRemoveLiquidity(
-        address sender,
         address pool,
         Asset[] memory assets,
         uint256[] memory minAmountsOut,
