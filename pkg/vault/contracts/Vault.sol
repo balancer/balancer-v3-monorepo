@@ -274,15 +274,8 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
                                     Queries
     *******************************************************************************/
 
-    /**
-     * @dev Ensure that only static calls are made to the functions with this modifier.
-     * A static call is one where `tx.origin` equals 0x0 for most implementations.
-     * More https://twitter.com/0xkarmacoma/status/1493380279309717505
-     */
+    /// @dev Ensure that only static calls are made to the functions with this modifier.
     modifier query() {
-        // Check if the transaction initiator is different from 0x0.
-        // If so, it's not a eth_call and we revert.
-        // https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_call
         if (!EVMCallModeHelpers.isStaticCall()) {
             revert EVMCallModeHelpers.NotStaticCall();
         }
