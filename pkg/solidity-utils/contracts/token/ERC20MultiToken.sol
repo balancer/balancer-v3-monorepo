@@ -62,13 +62,13 @@ abstract contract ERC20MultiToken is IERC20Errors {
      *      Should only be allowed to be called IVault.removeLiquidity to enable
      *      queries.
      */
-    function _pump(address token, address from, uint256 amount) internal {
+    function _pump(address token, address to, uint256 amount) internal {
         if (!AddressHelpers.isStaticCall()) {
             revert AddressHelpers.NotStaticCall();
         }
 
-        // Increase `from` balance to ensure the burn function succeeds during query.
-        _balances[address(token)][from] += amount;
+        // Increase `to` balance to ensure the burn function succeeds during query.
+        _balances[address(token)][to] += amount;
     }
 
     function _mint(address token, address to, uint256 amount) internal {
