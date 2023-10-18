@@ -61,7 +61,7 @@ interface IVault {
     event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
 
     /*******************************************************************************
-                                 ERC20 Balancer Pool Tokens 
+                                    MultiToken
     *******************************************************************************/
 
     /**
@@ -78,6 +78,15 @@ interface IVault {
      * @return                               Balance of the account for the token
      */
     function balanceOf(address token, address account) external view returns (uint256);
+
+    /**
+     * @notice Gets allowance of a spender for a given ERC20 token and owner
+     * @param token                          Token's address
+     * @param owner                          Owner's address
+     * @param spender                        Spender's address
+     * @return                               Amount of tokens the spender is allowed to spend
+     */
+    function allowance(address token, address owner, address spender) external view returns (uint256);
 
     /**
      * @notice Transfers pool token from owner to a recipient.
@@ -101,15 +110,6 @@ interface IVault {
      * @return                               True if successful, false otherwise
      */
     function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
-
-    /**
-     * @notice Gets allowance of a spender for a given ERC20 token and owner
-     * @param token                          Token's address
-     * @param owner                          Owner's address
-     * @param spender                        Spender's address
-     * @return                               Amount of tokens the spender is allowed to spend
-     */
-    function allowance(address token, address owner, address spender) external view returns (uint256);
 
     /**
      * @notice Approves a spender to spend pool tokens on behalf of sender
@@ -150,28 +150,12 @@ interface IVault {
     function wire(IERC20 token, address to, uint256 amount) external;
 
     /**
-     * @notice Mints tokens to a recipient
-     * @param token                          Token's address
-     * @param to                             Recipient's address
-     * @param amount                         Amount of tokens to mint
-     */
-    function mint(IERC20 token, address to, uint256 amount) external;
-
-    /**
      * @notice Retrieves tokens from a sender
      * @param token                          Token's address
      * @param from                           Sender's address
      * @param amount                         Amount of tokens to retrieve
      */
     function retrieve(IERC20 token, address from, uint256 amount) external;
-
-    /**
-     * @notice Burns tokens from an owner
-     * @param token                          Token's address
-     * @param owner                          Owner's address
-     * @param amount                         Amount of tokens to burn
-     */
-    function burn(IERC20 token, address owner, uint256 amount) external;
 
     /**
      * @dev Returns the address at the specified index of the _handlers array.
@@ -250,6 +234,7 @@ interface IVault {
     /**
      * @notice Adds liquidity to a pool
      * @param pool                           Address of the pool
+     * @param to                             Address of user to mint to
      * @param assets                         Assets involved in the liquidity
      * @param maxAmountsIn                   Maximum amounts of input assets
      * @param userData                       Additional user data
@@ -258,6 +243,7 @@ interface IVault {
      */
     function addLiquidity(
         address pool,
+        address to,
         IERC20[] memory assets,
         uint256[] memory maxAmountsIn,
         bytes memory userData
@@ -266,6 +252,7 @@ interface IVault {
     /**
      * @notice Removes liquidity from a pool
      * @param pool                           Address of the pool
+     * @param from                           Address of user to burn from
      * @param assets                         Assets involved in the liquidity removal
      * @param minAmountsOut                  Minimum amounts of output assets
      * @param bptAmountIn                    Input pool token amount
@@ -274,6 +261,7 @@ interface IVault {
      */
     function removeLiquidity(
         address pool,
+        address from,
         IERC20[] memory assets,
         uint256[] memory minAmountsOut,
         uint256 bptAmountIn,
