@@ -39,7 +39,7 @@ describe('WordCodec', () => {
         await expect(lib.encodeUint(0, 256, 0)).to.be.revertedWithCustomError(lib, 'OutOfBounds');
       });
 
-      async function assertUnsignedEncoding(value: BigInt, offset: number, bits: number) {
+      async function assertUnsignedEncoding(value: bigint, offset: number, bits: number) {
         const result = await lib.encodeUint(value, offset, bits);
 
         // We must be able to restore the original value
@@ -97,7 +97,7 @@ describe('WordCodec', () => {
         await expect(lib.encodeInt(0, 256, 0)).to.be.revertedWithCustomError(lib, 'OutOfBounds');
       });
 
-      async function assertSignedEncoding(value: BigInt, offset: number, bits: number) {
+      async function assertSignedEncoding(value: bigint, offset: number, bits: number) {
         const result = await lib.encodeInt(value, offset, bits);
 
         // We must be able to restore the original value
@@ -138,17 +138,19 @@ describe('WordCodec', () => {
 
           it('reverts with large positive values', async () => {
             for (let bits = 2; bits <= MAX_BITS; bits++) {
-              await expect(
-                assertSignedEncoding(getMaxSigned(bits) + ONE, offset, bits)
-              ).to.be.revertedWithCustomError(lib, 'CodecOverflow');
+              await expect(assertSignedEncoding(getMaxSigned(bits) + ONE, offset, bits)).to.be.revertedWithCustomError(
+                lib,
+                'CodecOverflow'
+              );
             }
           });
 
           it('reverts with large negative values', async () => {
             for (let bits = 2; bits <= MAX_BITS; bits++) {
-              await expect(
-                assertSignedEncoding(getMinSigned(bits) - ONE, offset, bits)
-              ).to.be.revertedWithCustomError(lib, 'CodecOverflow');
+              await expect(assertSignedEncoding(getMinSigned(bits) - ONE, offset, bits)).to.be.revertedWithCustomError(
+                lib,
+                'CodecOverflow'
+              );
             }
           });
 
@@ -178,7 +180,7 @@ describe('WordCodec', () => {
         await expect(lib.insertUint(word, 256, 0, 256)).to.be.revertedWithCustomError(lib, 'OutOfBounds');
       });
 
-      async function assertUnsignedInsertion(value: BigInt, offset: number, bits: number) {
+      async function assertUnsignedInsertion(value: bigint, offset: number, bits: number) {
         const result = await lib.insertUint(word, value, offset, bits);
 
         // We must be able to restore the original value+
@@ -239,7 +241,7 @@ describe('WordCodec', () => {
         await expect(lib.insertInt(word, 256, 0, 256)).to.be.revertedWithCustomError(lib, 'OutOfBounds');
       });
 
-      async function assertSignedInsertion(value: BigInt, offset: number, bits: number) {
+      async function assertSignedInsertion(value: bigint, offset: number, bits: number) {
         const result = await lib.insertInt(word, value, offset, bits);
 
         // We must be able to restore the original value
@@ -283,17 +285,19 @@ describe('WordCodec', () => {
 
           it('reverts with large positive values', async () => {
             for (let bits = 2; bits <= MAX_BITS; bits++) {
-              await expect(
-                assertSignedInsertion(getMaxSigned(bits) + ONE, offset, bits)
-              ).to.be.revertedWithCustomError(lib, 'CodecOverflow');
+              await expect(assertSignedInsertion(getMaxSigned(bits) + ONE, offset, bits)).to.be.revertedWithCustomError(
+                lib,
+                'CodecOverflow'
+              );
             }
           });
 
           it('reverts with large negative values', async () => {
             for (let bits = 2; bits <= MAX_BITS; bits++) {
-              await expect(
-                assertSignedInsertion(getMinSigned(bits) - ONE, offset, bits)
-              ).to.be.revertedWithCustomError(lib, 'CodecOverflow');
+              await expect(assertSignedInsertion(getMinSigned(bits) - ONE, offset, bits)).to.be.revertedWithCustomError(
+                lib,
+                'CodecOverflow'
+              );
             }
           });
 
