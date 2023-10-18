@@ -15,6 +15,8 @@ import { BasePool } from "../BasePool.sol";
 contract PoolMock is BasePool {
     using FixedPoint for uint256;
 
+    uint256 public constant MIN_INIT_BPT = 1e10;
+
     bool public failOnHook;
 
     constructor(
@@ -34,7 +36,7 @@ contract PoolMock is BasePool {
         uint256[] memory amountsIn,
         bytes memory
     ) external view onlyVault returns (uint256[] memory, uint256) {
-        return (amountsIn, amountsIn[0]);
+        return (amountsIn, MIN_INIT_BPT > amountsIn[0] ? MIN_INIT_BPT : amountsIn[0]);
     }
 
     function onAddLiquidity(

@@ -34,6 +34,7 @@ contract VaultLiquidityTest is Test {
     ERC20TestToken USDC;
     ERC20TestToken DAI;
     address alice = vm.addr(1);
+    address bob = vm.addr(2);
 
     uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
@@ -64,20 +65,16 @@ contract VaultLiquidityTest is Test {
         vm.stopPrank();
 
         vm.label(alice, "alice");
+        vm.label(bob, "bob");
         vm.label(address(USDC), "USDC");
         vm.label(address(DAI), "DAI");
     }
 
     function testAddLiquidity() public {
-        vm.startPrank(alice);
-        router.initialize(
-            address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(0), uint256(0)].toMemoryArray(),
-            0,
-            bytes("")
-        );
+        // Use a different account to initialize so that the main LP is clean at the start of the test.
+        _mockInitialize(bob);
 
+        vm.startPrank(alice);
         (uint256[] memory amountsIn, uint256 bptAmountOut) = router.addLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
@@ -112,6 +109,7 @@ contract VaultLiquidityTest is Test {
 
     function testAddLiquidityNotInitialized() public {
         vm.startPrank(alice);
+
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, address(pool)));
         router.addLiquidity(
             address(pool),
@@ -124,12 +122,17 @@ contract VaultLiquidityTest is Test {
     }
 
     function testRemoveLiquidity() public {
+        // Use a different account to initialize so that the main LP is clean at the start of the test.
+        _mockInitialize(bob);
+
         vm.startPrank(alice);
-        router.initialize(
+
+        router.addLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             DAI_AMOUNT_IN,
+            IBasePool.AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
             bytes("")
         );
 
@@ -175,6 +178,20 @@ contract VaultLiquidityTest is Test {
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             DAI_AMOUNT_IN,
             IBasePool.RemoveLiquidityKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+            bytes("")
+        );
+    }
+
+    function _mockInitialize(address initializer) internal {
+        vm.startPrank(initializer);
+
+        // The mock pool can be initialized with no liquidity; it mints some BPT to the initializer
+        // to comply with the vault's required minimum.
+        router.initialize(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [uint256(0), uint256(0)].toMemoryArray(),
+            0,
             bytes("")
         );
     }

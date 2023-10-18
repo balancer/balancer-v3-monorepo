@@ -36,6 +36,9 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     using PoolConfigLib for PoolConfig;
     using PoolConfigLib for PoolHooks;
 
+    // Minimum BPT amount minted upon initialization.
+    uint256 private constant _MINIMUM_BPT = 1e6;
+
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
 
@@ -650,6 +653,10 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         (amountsIn, bptAmountOut) = IBasePool(pool).onInitialize(maxAmountsIn, userData);
 
+        if (bptAmountOut < _MINIMUM_BPT) {
+            revert BptAmountBelowAbsoluteMin();
+        }
+
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountIn = amountsIn[i];
 
@@ -660,10 +667,11 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // Store the new Pool balances.
         _setPoolBalances(pool, amountsIn);
 
-        // TODO: enforce minimum BPT?
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
-        _mint(address(pool), to, bptAmountOut);
+        // At this point we know that bptAmountOut >= _MINIMUM_BPT, so this will not revert.
+        _mint(address(pool), to, bptAmountOut - _MINIMUM_BPT);
+        _mintToAddressZero(address(pool), _MINIMUM_BPT);
 
         // Store config and mark the pool as initialized
         config.isInitializedPool = true;

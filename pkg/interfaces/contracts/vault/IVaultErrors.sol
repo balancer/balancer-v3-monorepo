@@ -88,6 +88,9 @@ interface IVaultErrors {
      */
     error SwapLimit(uint256, uint256);
 
+    /// @dev Error indicating the BPT amount involved in the operation is below the absolute minimum.
+    error BptAmountBelowAbsoluteMin();
+
     /**
      * @dev
      */
