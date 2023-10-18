@@ -661,7 +661,8 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     /**
      * @inheritdoc IVault
      * @dev Trusted routers can burn pool tokens belonging to any user and require no prior approval from the user.
-     *      Untrusted routers require prior approval from the user.
+     * Untrusted routers require prior approval from the user. This is the only function allowed to call
+     * _queryModeBalanceIncrease (and only in a query context).
      */
     function removeLiquidity(
         address pool,
@@ -702,7 +703,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         }
         if (!_isQueryDisabled && EVMCallModeHelpers.isStaticCall()) {
             // Increase `from` balance to ensure the burn function succeeds.
-            _increase(pool, from, bptAmountIn);
+            _queryModeBalanceIncrease(pool, from, bptAmountIn);
         }
         // When removing liquidity, we must burn tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.

@@ -58,10 +58,12 @@ abstract contract ERC20MultiToken is IERC20Errors {
     }
 
     /**
-     * @dev DO NOT CALL THIS METHOD.
-     *      Should only be allowed to be called inside IVault.removeLiquidity to enable queries.
+     * @dev DO NOT CALL THIS METHOD!
+     * Only `removeLiquidity` in the Vault may call this - in a query context - to allow burning tokens the caller
+     * does not have.
      */
-    function _increase(address token, address to, uint256 amount) internal {
+    function _queryModeBalanceIncrease(address token, address to, uint256 amount) internal {
+        // Enforce that this can only be called in a read-only, query context.
         if (!EVMCallModeHelpers.isStaticCall()) {
             revert EVMCallModeHelpers.NotStaticCall();
         }
