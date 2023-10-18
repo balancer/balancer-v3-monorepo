@@ -5,7 +5,7 @@ pragma solidity ^0.8.4;
 import "../helpers/WordCodec.sol";
 import "./WordCodecHelpers.sol";
 
-contract MockWordCodec {
+contract WordCodecMock {
     function insertUint(
         bytes32 word,
         uint256 value,

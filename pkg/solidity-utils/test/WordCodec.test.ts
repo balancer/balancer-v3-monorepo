@@ -10,7 +10,7 @@ describe('WordCodec', () => {
   let lib: Contract;
 
   before('deploy lib', async () => {
-    lib = await deploy('MockWordCodec');
+    lib = await deploy('WordCodecMock');
   });
 
   function getMaxUnsigned(bits: number): bigint {
