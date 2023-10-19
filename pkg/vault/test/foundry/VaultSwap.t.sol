@@ -95,7 +95,7 @@ contract VaultSwapTest is Test {
         return (amount * 100) / (100 - percentage) + 1 - amount;
     }
 
-    function setupPool() public {
+    function initPool() public {
         vm.prank(alice);
         router.addLiquidity(
             address(pool),
@@ -110,7 +110,7 @@ contract VaultSwapTest is Test {
     }
 
     function testSwap() public {
-        setupPool();
+        initPool();
 
         vm.prank(bob);
         router.swap(
@@ -139,7 +139,7 @@ contract VaultSwapTest is Test {
 
         USDC.mint(bob, USDC_AMOUNT_IN);
 
-        setupPool();
+        initPool();
 
         authorizer.grantRole(vault.getActionId(IVault.setSwapFeePercentage.selector), alice);
         vm.prank(alice);
@@ -174,7 +174,7 @@ contract VaultSwapTest is Test {
         uint256 USDC_SWAP_FEE = getSwapFee(USDC_AMOUNT_IN, 1);
         USDC.mint(bob, USDC_AMOUNT_IN);
 
-        setupPool();
+        initPool();
 
         vm.prank(alice);
 
