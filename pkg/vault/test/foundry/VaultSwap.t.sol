@@ -170,6 +170,46 @@ contract VaultSwapTest is Test {
         assertEq(balances[1], 2 * USDC_AMOUNT_IN + USDC_SWAP_FEE);
     }
 
+    function testProtocolSwapFeeGivenIn() public {
+        uint256 USDC_SWAP_FEE = getSwapFee(USDC_AMOUNT_IN, 1);
+
+        USDC.mint(bob, USDC_AMOUNT_IN);
+
+        initPool();
+
+        authorizer.grantRole(vault.getActionId(IVault.setSwapFeePercentage.selector), alice);
+        vm.prank(alice);
+        vault.setSwapFeePercentage(address(pool), 1e4); // %1
+
+        authorizer.grantRole(vault.getActionId(IVault.setProtocolSwapFeePercentage.selector), alice);
+        vm.prank(alice);
+        vault.setProtocolSwapFeePercentage(50e4); // %50
+
+        uint256 bobUsdcBeforeSwap = USDC.balanceOf(bob);
+        uint256 bobDaiBeforeSwap = DAI.balanceOf(bob);
+
+        vm.prank(bob);
+        router.swap(
+            IVault.SwapKind.GIVEN_IN,
+            address(pool),
+            address(USDC).asAsset(),
+            address(DAI).asAsset(),
+            USDC_AMOUNT_IN + USDC_SWAP_FEE,
+            DAI_AMOUNT_IN,
+            type(uint256).max,
+            bytes("")
+        );
+
+        // asssets are transferred to/from Bob
+        assertEq(USDC.balanceOf(bob), bobUsdcBeforeSwap - (USDC_AMOUNT_IN + USDC_SWAP_FEE));
+        assertEq(DAI.balanceOf(bob), bobDaiBeforeSwap + DAI_AMOUNT_IN);
+
+        // assets are adjusted in the pool
+        (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
+        assertEq(balances[0], 0);
+        assertEq(balances[1], 2 * USDC_AMOUNT_IN + USDC_SWAP_FEE);
+    }
+
     function testSwapFeeGivenOut() public {
         uint256 USDC_SWAP_FEE = getSwapFee(USDC_AMOUNT_IN, 1);
         USDC.mint(bob, USDC_AMOUNT_IN);

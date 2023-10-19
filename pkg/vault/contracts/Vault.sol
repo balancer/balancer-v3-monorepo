@@ -489,9 +489,10 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
 
         // Charge protocolSwapFee
-        uint256 protocolSwapFee = (_protocolSwapFeePercentage > 0 && vars.swapFee > 0) ? vars.swapFee.mulUp(_protocolSwapFeePercentage, PoolConfigLib.SWAP_FEE_PRECISION) :0;
-        if(protocolSwapFee > 0) {
+        if(_protocolSwapFeePercentage > 0 && vars.swapFee > 0) {
+            uint256 protocolSwapFee = vars.swapFee.mulUp(_protocolSwapFeePercentage, PoolConfigLib.SWAP_FEE_PRECISION);
             _protocolSwapFees[params.tokenIn] = protocolSwapFee;
+            emit ProtocolSwapFee(params.pool, params.tokenIn, protocolSwapFee);
         }
 
         // We charge swap fee on amountIn

@@ -421,6 +421,9 @@ interface IVault {
      */
     function getSwapFeePercentage(address pool) external view returns (uint24);
 
+
+    event ProtocolSwapFee(address pool, IERC20 tokenIn, uint256 protocolSwapFee);
+
     /*******************************************************************************
                                     Queries
     *******************************************************************************/
