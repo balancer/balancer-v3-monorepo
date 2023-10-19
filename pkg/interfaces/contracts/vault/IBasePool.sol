@@ -8,12 +8,6 @@ import { IVault } from "./IVault.sol";
 
 /// @notice Interface for a Base Pool
 interface IBasePool {
-    /// @dev Indicates the number of pool tokens is below the minimum allowed.
-    error MinTokens();
-
-    /// @dev Indicates the number of pool tokens is above the maximum allowed.
-    error MaxTokens();
-
     /// @dev Indicates the caller is not allowed to execute this function; it should be executed by the Vault only.
     error CallerNotVault();
 
@@ -23,8 +17,8 @@ interface IBasePool {
     /// @dev Indicates that the pool does not support the given exit kind.
     error UnhandledExitKind();
 
-    /// @dev Indicates that the pool does not implement a hook that it was configured for.
-    error HookNotImplemented();
+    /// @dev Indicates that the pool does not implement a callback that it was configured for.
+    error CallbackNotImplemented();
 
     enum AddLiquidityKind {
         EXACT_TOKENS_IN_FOR_BPT_OUT,

@@ -19,7 +19,7 @@ interface IVaultErrors {
     error PoolNotRegistered(address pool);
 
     /**
-     * @dev Error indicating that a referenced pool has not been registered.
+     * @dev Error indicating that a referenced pool has not been initialized.
      */
     error PoolNotInitialized(address pool);
 
