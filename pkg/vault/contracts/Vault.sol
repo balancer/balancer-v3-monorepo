@@ -360,12 +360,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     /// @inheritdoc IVault
     function swap(
         SwapParams memory params
-    )
-        public
-        whenNotPaused
-        withHandler
-        returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
-    {
+    ) public whenNotPaused withHandler returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         if (params.amountGiven == 0) {
             revert AmountGivenZero();
         }
