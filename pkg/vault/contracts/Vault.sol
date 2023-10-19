@@ -364,7 +364,6 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         public
         whenNotPaused
         withHandler
-        withInitializedPool(params.pool)
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
     {
         if (params.amountGiven == 0) {
@@ -386,6 +385,9 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
             _ensureRegisteredPool(params.pool);
             revert TokenNotRegistered();
         }
+
+        // At this point we know that both the pool and tokens are registered. We now check that the pool is initalized
+        _ensureInitializedPool(params.pool);
 
         // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value - because these are valid,
         // we can undo this.
