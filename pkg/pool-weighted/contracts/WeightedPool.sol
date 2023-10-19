@@ -187,7 +187,7 @@ contract WeightedPool is BasePool, IWeightedPool {
     function getInvariant() public view returns (uint256) {
         (, uint256[] memory balances) = _vault.getPoolTokens(address(this));
 
-        // Since the Pool hooks always work with upscaled balances, we manually
+        // Since the Pool callbacks always work with upscaled balances, we manually
         // upscale here for consistency
         balances.upscaleArray(_scalingFactors());
 
