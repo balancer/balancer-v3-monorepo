@@ -19,6 +19,7 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
 
     IVault internal immutable _vault;
 
+    // TODO: move this to Vault.
     uint256 private constant _MIN_TOKENS = 2;
 
     uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
@@ -44,17 +45,6 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
     function _getTotalTokens() internal view virtual returns (uint256);
 
     function _getMaxTokens() internal pure virtual returns (uint256);
-
-    /**
-     * @dev Returns the minimum BPT supply. This amount is minted to the zero address during initialization, effectively
-     * locking it.
-     *
-     * This is useful to make sure Pool initialization happens only once, but derived Pools can change this value (even
-     * to zero) by overriding this function.
-     */
-    function _getMinimumBpt() internal pure virtual returns (uint256) {
-        return _DEFAULT_MINIMUM_BPT;
-    }
 
     /**
      * @notice Return the current value of the swap fee percentage.
@@ -87,7 +77,7 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
     /// Hooks
 
     function onAfterSwap(SwapParams calldata, uint256) external view virtual returns (bool) {
-        revert HookNotImplemented();
+        revert CallbackNotImplemented();
     }
 
     function onAfterAddLiquidity(
@@ -98,7 +88,7 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
         uint256[] memory,
         uint256
     ) external view virtual returns (bool) {
-        revert HookNotImplemented();
+        revert CallbackNotImplemented();
     }
 
     function onAfterRemoveLiquidity(
@@ -109,7 +99,7 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
         bytes memory,
         uint256[] memory
     ) external view virtual returns (bool) {
-        revert HookNotImplemented();
+        revert CallbackNotImplemented();
     }
 
     /// Scaling

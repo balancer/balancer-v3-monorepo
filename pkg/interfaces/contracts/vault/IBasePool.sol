@@ -20,6 +20,13 @@ interface IBasePool {
     /// @dev Indicates that the pool does not implement a callback that it was configured for.
     error CallbackNotImplemented();
 
+    // TODO: move this to Vault.
+    /// @dev Indicates the number of pool tokens is below the minimum allowed.
+    error MinTokens();
+
+    /// @dev Indicates the number of pool tokens is above the maximum allowed.
+    error MaxTokens();
+
     enum AddLiquidityKind {
         EXACT_TOKENS_IN_FOR_BPT_OUT,
         TOKEN_IN_FOR_EXACT_BPT_OUT,
@@ -32,10 +39,18 @@ interface IBasePool {
         BPT_IN_FOR_EXACT_TOKENS_OUT
     }
 
+    /**
+     * @notice Initialize pool with seed funds
+     * @dev The vault enforces that this callback will only be called once
+     * @param maxAmountsIn Maximum amounts of tokens to be added
+     * @param userData Additional (optional) data provided by the user
+     * @return amountsIn Actual amounts of tokens added
+     * @return bptAmountOut Amount of BPT tokens minted
+     */
     function onInitialize(
-        uint256[] memory amountsIn,
+        uint256[] memory maxAmountsIn,
         bytes memory userData
-    ) external returns (uint256[] memory, uint256);
+    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
     /**
      * @notice Add liquidity to the pool

@@ -109,7 +109,7 @@ contract PoolMock is BasePool {
     }
 
     function _getMaxTokens() internal pure virtual override returns (uint256) {
-        return 8;
+        return 4;
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {

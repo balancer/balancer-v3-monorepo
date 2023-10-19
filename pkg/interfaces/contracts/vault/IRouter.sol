@@ -70,17 +70,17 @@ interface IRouter {
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
     struct InitializeCallbackParams {
-        /// Address of the sender
+        // Address of the sender
         address sender;
-        /// Address of the liquidity pool
+        // Address of the liquidity pool
         address pool;
-        /// Array of assets to add
+        // Array of assets to add
         Asset[] assets;
-        /// Maximum amounts of assets to be added
+        // Maximum amounts of assets to be added
         uint256[] maxAmountsIn;
-        /// Minimum pool tokens to be received
+        // Minimum pool tokens to be received
         uint256 minBptAmountOut;
-        /// Additional data required for adding liquidity
+        // Additional data required for adding liquidity
         bytes userData;
     }
 
