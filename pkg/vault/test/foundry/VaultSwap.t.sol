@@ -145,6 +145,8 @@ contract VaultSwapTest is Test {
         vm.prank(alice);
         vault.setSwapFeePercentage(address(pool), 1e4);
 
+        uint256 bobBalanceBeforeSwap = USDC.balanceOf(bob);
+
         vm.prank(bob);
         router.swap(
             IVault.SwapKind.GIVEN_IN,
@@ -158,7 +160,7 @@ contract VaultSwapTest is Test {
         );
 
         // asssets are transferred to/from Bob
-        assertEq(USDC.balanceOf(bob), USDC_AMOUNT_IN - USDC_SWAP_FEE);
+        assertEq(USDC.balanceOf(bob), bobBalanceBeforeSwap - (USDC_AMOUNT_IN + USDC_SWAP_FEE));
         assertEq(DAI.balanceOf(bob), 2 * DAI_AMOUNT_IN);
 
         // assets are adjusted in the pool
@@ -187,6 +189,8 @@ contract VaultSwapTest is Test {
         vm.prank(alice);
         vault.setSwapFeePercentage(address(pool), 1e4);
 
+        uint256 bobBalanceBeforeSwap = USDC.balanceOf(bob);
+
         vm.prank(bob);
         router.swap(
             IVault.SwapKind.GIVEN_OUT,
@@ -194,13 +198,13 @@ contract VaultSwapTest is Test {
             address(USDC).asAsset(),
             address(DAI).asAsset(),
             DAI_AMOUNT_IN,
-            (USDC_AMOUNT_IN * 100) / 99 + 1,
+            USDC_AMOUNT_IN + USDC_SWAP_FEE,
             type(uint256).max,
             bytes("")
         );
 
         // asssets are transferred to/from Bob
-        assertEq(USDC.balanceOf(bob), USDC_AMOUNT_IN - USDC_SWAP_FEE);
+        assertEq(USDC.balanceOf(bob), bobBalanceBeforeSwap - (USDC_AMOUNT_IN + USDC_SWAP_FEE));
         assertEq(DAI.balanceOf(bob), 2 * DAI_AMOUNT_IN);
 
         // assets are adjusted in the pool
