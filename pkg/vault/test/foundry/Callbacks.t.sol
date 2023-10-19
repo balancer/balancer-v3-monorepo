@@ -93,7 +93,7 @@ contract VaultSwapTest is Test {
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            DAI_AMOUNT_IN,
+            0,
             bytes("")
         );
 
@@ -119,7 +119,7 @@ contract VaultSwapTest is Test {
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            DAI_AMOUNT_IN,
+            0,
             bytes("")
         );
 

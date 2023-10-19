@@ -24,16 +24,8 @@ struct PoolConfig {
 /// @notice Interface for the Vault
 interface IVault {
     /*******************************************************************************
-                                    Pool Registration
+                        Pool Registration and initialization
     *******************************************************************************/
-
-    function initialize(
-        address pool,
-        address to,
-        IERC20[] memory tokens,
-        uint256[] memory maxAmountsIn,
-        bytes memory userData
-    ) external returns (uint256[] memory, uint256 bptAmountOut);
 
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
@@ -42,6 +34,27 @@ interface IVault {
      * @param config Config for the pool
      */
     function registerPool(address factory, IERC20[] memory tokens, PoolCallbacks calldata config) external;
+
+    /**
+     * @notice Initializes a registered pool by adding liquidity; mints BPT tokens for the first time in exchange.
+     * @dev The initial liquidity should make the pool mint at least `_MINIMUM_BPT` tokens, otherwise the
+     * initialization will fail. Besides the BPT minted to the given target address (`to`), `_MINIMUM_BPT` tokens are
+     * minted to address(0).
+     * @param pool Address of the pool to initialize
+     * @param to Address that will receive the output BPT.
+     * @param tokens tokens involved in the liquidity provision
+     * @param maxAmountsIn Maximum amounts of input tokens
+     * @param userData Additional (optional) data for the initialization
+     * @return amountsIn Actual amounts of input tokens
+     * @return bptAmountOut Output pool token amount
+     */
+    function initialize(
+        address pool,
+        address to,
+        IERC20[] memory tokens,
+        uint256[] memory maxAmountsIn,
+        bytes memory userData
+    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
     /**
      * @notice Checks if a pool is registered

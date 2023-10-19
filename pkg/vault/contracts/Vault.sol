@@ -646,6 +646,8 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         if (bptAmountOut < _MINIMUM_BPT) {
             revert BptAmountBelowAbsoluteMin();
         }
+        // At this point we know that bptAmountOut >= _MINIMUM_BPT, so this will not revert.
+        bptAmountOut -= _MINIMUM_BPT;
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountIn = amountsIn[i];
@@ -659,8 +661,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
-        // At this point we know that bptAmountOut >= _MINIMUM_BPT, so this will not revert.
-        _mint(address(pool), to, bptAmountOut - _MINIMUM_BPT);
+        _mint(address(pool), to, bptAmountOut);
         _mintToAddressZero(address(pool), _MINIMUM_BPT);
 
         // Store config and mark the pool as initialized
