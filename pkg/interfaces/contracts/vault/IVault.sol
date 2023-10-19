@@ -383,19 +383,23 @@ interface IVault {
      * @notice Sets new swap fee percentage for the protocol.
      * @param newSwapFeePercentage  New swap fee percentage
      */
-    function setProtocolSwapFeePercentage(uint256 newSwapFeePercentage) external;
+    function setProtocolSwapFeePercentage(uint24 newSwapFeePercentage) external;
 
+<<<<<<< HEAD
     /**
      * @notice The Protocol swap fee percentage has changed.
      * @param swapFeePercentage The new percentage
      */
     event ProtocolSwapFeePercentageChanged(uint256 swapFeePercentage);
+=======
+    event ProtocolSwapFeePercentageChanged(uint24 swapFeePercentage);
+>>>>>>> 4f4acb8 (Update swap fee data type to uint24 in Vault.sol and IVault.sol)
 
     /**
      * @notice Returns current swap fee percentage for the protocol
      * @return Current swap fee percentage for the protocol
      */
-    function getProtocolSwapFeePercentage() external view returns (uint256);
+    function getProtocolSwapFeePercentage() external view returns (uint24);
 
     /**
      * @notice Sets new swap fee percentage for the pool.
