@@ -90,7 +90,12 @@ contract VaultSwapTest is Test {
         );
     }
 
-    function testSwap() public {
+    function getSwapFee(uint256 amount, uint256 percentage) public pure returns (uint256) {
+        // round up
+        return (amount * 100) / (100 - percentage) + 1 - amount;
+    }
+
+    function setupPool() public {
         vm.prank(alice);
         router.addLiquidity(
             address(pool),
@@ -102,6 +107,10 @@ contract VaultSwapTest is Test {
         );
 
         pool.setMultiplier(1e30);
+    }
+
+    function testSwap() public {
+        setupPool();
 
         vm.prank(bob);
         router.swap(
@@ -126,20 +135,11 @@ contract VaultSwapTest is Test {
     }
 
     function testSwapFeeGivenIn() public {
-        uint256 USDC_SWAP_FEE = (USDC_AMOUNT_IN * 100) / 99 + 1 - USDC_AMOUNT_IN;
+        uint256 USDC_SWAP_FEE = getSwapFee(USDC_AMOUNT_IN, 1);
+
         USDC.mint(bob, USDC_AMOUNT_IN);
 
-        vm.prank(alice);
-        router.addLiquidity(
-            address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            DAI_AMOUNT_IN,
-            IBasePool.AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
-            bytes("")
-        );
-
-        pool.setMultiplier(1e30);
+        setupPool();
 
         authorizer.grantRole(vault.getActionId(IVault.setSwapFeePercentage.selector), alice);
         vm.prank(alice);
@@ -171,20 +171,12 @@ contract VaultSwapTest is Test {
     }
 
     function testSwapFeeGivenOut() public {
-        uint256 USDC_SWAP_FEE = (USDC_AMOUNT_IN * 100) / 99 + 1 - USDC_AMOUNT_IN;
+        uint256 USDC_SWAP_FEE = getSwapFee(USDC_AMOUNT_IN, 1);
         USDC.mint(bob, USDC_AMOUNT_IN);
 
-        vm.prank(alice);
-        router.addLiquidity(
-            address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            DAI_AMOUNT_IN,
-            IBasePool.AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
-            bytes("")
-        );
+        setupPool();
 
-        pool.setMultiplier(1e30);
+        vm.prank(alice);
 
         authorizer.grantRole(vault.getActionId(IVault.setSwapFeePercentage.selector), alice);
         vm.prank(alice);
