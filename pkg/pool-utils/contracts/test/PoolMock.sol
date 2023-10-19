@@ -17,7 +17,7 @@ contract PoolMock is BasePool {
 
     uint256 public constant MIN_INIT_BPT = 1e10;
 
-    bool public failOnHook;
+    bool public failOnCallback;
 
     constructor(
         IVault vault,
@@ -58,7 +58,7 @@ contract PoolMock is BasePool {
         uint256[] calldata,
         uint256
     ) external view override returns (bool) {
-        return !failOnHook;
+        return !failOnCallback;
     }
 
     function onRemoveLiquidity(
@@ -80,14 +80,14 @@ contract PoolMock is BasePool {
         bytes memory,
         uint256[] calldata
     ) external view override returns (bool) {
-        return !failOnHook;
+        return !failOnCallback;
     }
 
     // Amounts in are multiplied by the multiplier, amounts out are divided by it
     uint256 private _multiplier = FixedPoint.ONE;
 
     function setFailOnAfterSwap(bool fail) external {
-        failOnHook = fail;
+        failOnCallback = fail;
     }
 
     function setMultiplier(uint256 newMultiplier) external {
@@ -98,7 +98,7 @@ contract PoolMock is BasePool {
         IBasePool.AfterSwapParams calldata params,
         uint256 amountCalculated
     ) external view override returns (bool success) {
-        return params.tokenIn != params.tokenOut && amountCalculated > 0 && !failOnHook;
+        return params.tokenIn != params.tokenOut && amountCalculated > 0 && !failOnCallback;
     }
 
     function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {

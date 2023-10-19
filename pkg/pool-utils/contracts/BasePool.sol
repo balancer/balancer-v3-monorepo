@@ -74,7 +74,7 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
         _unpause();
     }
 
-    /// Hooks
+    /// Callbacks
 
     function onAfterSwap(SwapParams calldata, uint256) external view virtual returns (bool) {
         revert CallbackNotImplemented();
@@ -121,7 +121,7 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
 
     /**
      * @dev Same as `_scalingFactor()`, except for all registered tokens (in the same order as registered). The Vault
-     * will always pass balances in this order when calling any of the Pool hooks.
+     * will always pass balances in this order when calling any of the Pool callbacks.
      */
     function _scalingFactors() internal view virtual returns (uint256[] memory);
 
