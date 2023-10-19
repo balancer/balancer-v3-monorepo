@@ -45,12 +45,10 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     uint256 private constant _MIN_TOKENS = 2;
     uint256 private constant _MAX_TOKENS = 4;
 
-    // Absolute maximum fee percentages (1e18 = 100%, 1e16 = 1%).
-    uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
-
-    // We allow 0% swap fee.
     // 1e6 corresponds to a 100% fee.
-    // TODO: Consider packing it with some other data
+    uint24 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e4; // 50%
+
+    // 1e6 corresponds to a 100% fee.
     uint24 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e5; // 10% - this fits in 24 bits
 
     // Registry of pool configs.
@@ -80,9 +78,14 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
      */
     mapping(IERC20 => uint256) private _tokenReserves;
 
+    // We allow 0% swap fee.
     // The protocol swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
     // TODO: Consider packing it with some other variable; 24 bits should be enough for this one
     uint24 private _protocolSwapFeePercentage;
+
+    // Token -> fee: Protocol's swap fees accumulated in the Vault for harvest.
+    mapping(IERC20 => uint256) _protocolSwapFees;
+
 
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer private _authorizer;
@@ -457,7 +460,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
                 kind: params.kind,
                 tokenIn: params.tokenIn,
                 tokenOut: params.tokenOut,
-                // swapFee would be zero here for GIVEN_IN
+                // swapFee would be zero here for GIVEN_OUT
                 amountGiven: params.amountGiven - vars.swapFee,
                 balances: currentBalances,
                 indexIn: vars.indexIn,
@@ -483,6 +486,13 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         (amountIn, amountOut) = params.kind == SwapKind.GIVEN_IN
             ? (params.amountGiven, amountCalculated)
             : (amountCalculated, params.amountGiven);
+
+
+        // Charge protocolSwapFee
+        uint256 protocolSwapFee = (_protocolSwapFeePercentage > 0 && vars.swapFee > 0) ? vars.swapFee.mulUp(_protocolSwapFeePercentage, PoolConfigLib.SWAP_FEE_PRECISION) :0;
+        if(protocolSwapFee > 0) {
+            _protocolSwapFees[params.tokenIn] = protocolSwapFee;
+        }
 
         // We charge swap fee on amountIn
         tokenInBalance = tokenInBalance + amountIn;
