@@ -360,7 +360,13 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     /// @inheritdoc IVault
     function swap(
         SwapParams memory params
-    ) public whenNotPaused withHandler returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
+    )
+        public
+        whenNotPaused
+        withHandler
+        withInitializedPool(params.pool)
+        returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
+    {
         if (params.amountGiven == 0) {
             revert AmountGivenZero();
         }
@@ -371,18 +377,10 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         // We access both token indexes without checking existence, because we will do it manually immediately after.
         EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolTokenBalances[params.pool];
+        // We require the pool to be initialized, which means it's also registered.
+        // Therefore, these indexes must be always valid.
         uint256 indexIn = poolBalances.unchecked_indexOf(params.tokenIn);
         uint256 indexOut = poolBalances.unchecked_indexOf(params.tokenOut);
-
-        if (indexIn == 0 || indexOut == 0) {
-            // The tokens might not be registered because the Pool itself is not registered. We check this to provide a
-            // more accurate revert reason.
-            _ensureRegisteredPool(params.pool);
-            revert TokenNotRegistered();
-        }
-
-        // At this point we know that both the pool and tokens are registered. We now check that the pool is initalized
-        _ensureInitializedPool(params.pool);
 
         // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value - because these are valid,
         // we can undo this.
@@ -646,8 +644,6 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         if (bptAmountOut < _MINIMUM_BPT) {
             revert BptAmountBelowAbsoluteMin();
         }
-        // At this point we know that bptAmountOut >= _MINIMUM_BPT, so this will not revert.
-        bptAmountOut -= _MINIMUM_BPT;
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountIn = amountsIn[i];
@@ -661,6 +657,8 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
+        // At this point we know that bptAmountOut >= _MINIMUM_BPT, so this will not revert.
+        bptAmountOut -= _MINIMUM_BPT;
         _mint(address(pool), to, bptAmountOut);
         _mintToAddressZero(address(pool), _MINIMUM_BPT);
 
