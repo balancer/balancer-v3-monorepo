@@ -376,11 +376,15 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         }
 
         // We access both token indexes without checking existence, because we will do it manually immediately after.
-        EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolTokenBalances[params.pool];
-        // We require the pool to be initialized, which means it's also registered.
-        // Therefore, these indexes must be always valid.
+        EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolTokenBalances[params.pool];        
         uint256 indexIn = poolBalances.unchecked_indexOf(params.tokenIn);
         uint256 indexOut = poolBalances.unchecked_indexOf(params.tokenOut);
+
+        if (indexIn == 0 || indexOut == 0) {
+            // We require the pool to be initialized, which means it's also registered.
+            // This can only happen if the tokens are not registered.
+            revert TokenNotRegistered();
+        }
 
         // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value - because these are valid,
         // we can undo this.
