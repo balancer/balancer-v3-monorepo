@@ -36,6 +36,9 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     using PoolConfigLib for PoolConfig;
     using PoolConfigLib for PoolCallbacks;
 
+    // Minimum BPT amount minted upon initialization.
+    uint256 private constant _MINIMUM_BPT = 1e6;
+
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
 
@@ -357,7 +360,13 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     /// @inheritdoc IVault
     function swap(
         SwapParams memory params
-    ) public whenNotPaused withHandler returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
+    )
+        public
+        whenNotPaused
+        withHandler
+        withInitializedPool(params.pool)
+        returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
+    {
         if (params.amountGiven == 0) {
             revert AmountGivenZero();
         }
@@ -372,9 +381,8 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         uint256 indexOut = poolBalances.unchecked_indexOf(params.tokenOut);
 
         if (indexIn == 0 || indexOut == 0) {
-            // The tokens might not be registered because the Pool itself is not registered. We check this to provide a
-            // more accurate revert reason.
-            _ensureRegisteredPool(params.pool);
+            // We require the pool to be initialized, which means it's also registered.
+            // This can only happen if the tokens are not registered.
             revert TokenNotRegistered();
         }
 
@@ -460,12 +468,12 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     }
 
     /*******************************************************************************
-                                    Pool Registration
+                            Pool Registration and Initialization
     *******************************************************************************/
 
     /**
-     * @dev The function is designed to be called by a pool itself. The function will register the pool,
-     *      setting its tokens with an initial balance of zero. The function also checks for valid token addresses
+     * @dev The function will register the pool, setting its tokens with an initial balance of zero.
+     *      The function also checks for valid token addresses
      *      and ensures that the pool and tokens aren't already registered.
      *      Emits a `PoolRegistered` event upon successful registration.
      * @inheritdoc IVault
@@ -481,6 +489,11 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     /// @inheritdoc IVault
     function isRegisteredPool(address pool) external view returns (bool) {
         return _isRegisteredPool(pool);
+    }
+
+    /// @inheritdoc IVault
+    function isInitializedPool(address pool) external view returns (bool) {
+        return _isInitializedPool(pool);
     }
 
     /// @inheritdoc IVault
@@ -553,6 +566,24 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         return _poolConfig[pool].isPoolRegistered();
     }
 
+    /// @dev Reverts unless `pool` corresponds to an initialized Pool.
+    modifier withInitializedPool(address pool) {
+        _ensureInitializedPool(pool);
+        _;
+    }
+
+    /// @dev Reverts unless `pool` corresponds to an initialized Pool.
+    function _ensureInitializedPool(address pool) internal view {
+        if (!_isInitializedPool(pool)) {
+            revert PoolNotInitialized(pool);
+        }
+    }
+
+    /// @dev See `isInitialized`
+    function _isInitializedPool(address pool) internal view returns (bool) {
+        return _poolConfig[pool].isPoolInitialized();
+    }
+
     /**
      * @notice Fetches the tokens and their corresponding balances for a given pool.
      * @dev Utilizes an enumerable map to obtain pool token balances.
@@ -588,12 +619,8 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         _;
     }
 
-    /**
-     * @inheritdoc IVault
-     * @dev Caution should be exercised when adding liquidity because the Vault has the capability
-     *      to transfer tokens from any user, given that it holds all allowances.
-     */
-    function addLiquidity(
+    /// @inheritdoc IVault
+    function initialize(
         address pool,
         address to,
         IERC20[] memory tokens,
@@ -606,6 +633,69 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         withRegisteredPool(pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut)
     {
+        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
+
+        if (config.isInitializedPool) {
+            revert PoolAlreadyInitialized(pool);
+        }
+
+        InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
+
+        _validateTokensAndGetBalances(pool, tokens);
+
+        (amountsIn, bptAmountOut) = IBasePool(pool).onInitialize(maxAmountsIn, userData);
+
+        if (bptAmountOut < _MINIMUM_BPT) {
+            revert BptAmountBelowAbsoluteMin();
+        }
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            uint256 amountIn = amountsIn[i];
+
+            // Debit of token[i] for amountIn
+            _takeDebt(tokens[i], amountIn, msg.sender);
+        }
+
+        // Store the new Pool balances.
+        _setPoolBalances(pool, amountsIn);
+
+        // When adding liquidity, we must mint tokens concurrently with updating pool balances,
+        // as the pool's math relies on totalSupply.
+        // At this point we know that bptAmountOut >= _MINIMUM_BPT, so this will not revert.
+        bptAmountOut -= _MINIMUM_BPT;
+        _mint(address(pool), to, bptAmountOut);
+        _mintToAddressZero(address(pool), _MINIMUM_BPT);
+
+        // Store config and mark the pool as initialized
+        config.isInitializedPool = true;
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        // Emit an event to log the pool initialization
+        emit PoolInitialized(pool);
+
+        emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
+    }
+
+    /**
+     * @inheritdoc IVault
+     * @dev Caution should be exercised when adding liquidity because the Vault has the capability
+     *      to transfer tokens from any user, given that it holds all allowances.
+     */
+    function addLiquidity(
+        address pool,
+        address to,
+        IERC20[] memory tokens,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        IBasePool.AddLiquidityKind kind,
+        bytes memory userData
+    )
+        external
+        withHandler
+        whenNotPaused
+        withInitializedPool(pool)
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut)
+    {
         InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
 
         // We first check that the caller passed the Pool's registered tokens in the correct order
@@ -614,7 +704,14 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked
         // its final balances are computed
-        (amountsIn, bptAmountOut) = IBasePool(pool).onAddLiquidity(msg.sender, balances, maxAmountsIn, userData);
+        (amountsIn, bptAmountOut) = IBasePool(pool).onAddLiquidity(
+            msg.sender,
+            balances,
+            maxAmountsIn,
+            minBptAmountOut,
+            kind,
+            userData
+        );
 
         uint256[] memory finalBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
@@ -662,9 +759,16 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         address from,
         IERC20[] memory tokens,
         uint256[] memory minAmountsOut,
-        uint256 bptAmountIn,
+        uint256 maxBptAmountIn,
+        IBasePool.RemoveLiquidityKind kind,
         bytes memory userData
-    ) external whenNotPaused nonReentrant withRegisteredPool(pool) returns (uint256[] memory amountsOut) {
+    )
+        external
+        whenNotPaused
+        nonReentrant
+        withInitializedPool(pool)
+        returns (uint256[] memory amountsOut, uint256 bptAmountIn)
+    {
         InputHelpers.ensureInputLengthMatch(tokens.length, minAmountsOut.length);
 
         // We first check that the caller passed the Pool's registered tokens in the correct order, and retrieve the
@@ -673,7 +777,14 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked,
         // and its final balances are computed
-        amountsOut = IBasePool(pool).onRemoveLiquidity(msg.sender, balances, minAmountsOut, bptAmountIn, userData);
+        (amountsOut, bptAmountIn) = IBasePool(pool).onRemoveLiquidity(
+            msg.sender,
+            balances,
+            minAmountsOut,
+            maxBptAmountIn,
+            kind,
+            userData
+        );
 
         uint256[] memory finalBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < tokens.length; ++i) {

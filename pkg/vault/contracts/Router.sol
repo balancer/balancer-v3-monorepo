@@ -9,6 +9,7 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
@@ -39,11 +40,82 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     *******************************************************************************/
 
     /// @inheritdoc IRouter
+    function initialize(
+        address pool,
+        Asset[] memory assets,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+        return
+            abi.decode(
+                _vault.invoke{ value: msg.value }(
+                    abi.encodeWithSelector(
+                        Router.initializeCallback.selector,
+                        InitializeCallbackParams({
+                            sender: msg.sender,
+                            pool: pool,
+                            assets: assets,
+                            maxAmountsIn: maxAmountsIn,
+                            minBptAmountOut: minBptAmountOut,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256[], uint256)
+            );
+    }
+
+    function initializeCallback(
+        InitializeCallbackParams calldata params
+    ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+        IERC20[] memory tokens = params.assets.toIERC20(_weth);
+
+        (amountsIn, bptAmountOut) = _vault.initialize(
+            params.pool,
+            params.sender,
+            tokens,
+            params.maxAmountsIn,
+            params.userData
+        );
+
+        if (bptAmountOut < params.minBptAmountOut) {
+            revert IVaultErrors.BptAmountBelowMin();
+        }
+
+        uint256 ethAmountIn;
+        for (uint256 i = 0; i < params.assets.length; ++i) {
+            // Receive assets from the handler
+            Asset asset = params.assets[i];
+            uint256 amountIn = amountsIn[i];
+
+            if (amountIn > params.maxAmountsIn[i]) {
+                revert IVaultErrors.JoinAboveMax();
+            }
+
+            IERC20 token = asset.toIERC20(_weth);
+
+            // There can be only one WETH token in the pool
+            if (asset.isETH()) {
+                _weth.deposit{ value: amountIn }();
+                ethAmountIn = amountIn;
+            }
+
+            // transfer tokens from the user to the Vault
+            _vault.retrieve(token, params.sender, amountIn);
+        }
+
+        // return ETH dust
+        address(params.sender).returnEth(ethAmountIn);
+    }
+
+    /// @inheritdoc IRouter
     function addLiquidity(
         address pool,
         Asset[] memory assets,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
+        IBasePool.AddLiquidityKind kind,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         return
@@ -57,6 +129,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
                             assets: assets,
                             maxAmountsIn: maxAmountsIn,
                             minBptAmountOut: minBptAmountOut,
+                            kind: kind,
                             userData: userData
                         })
                     )
@@ -75,11 +148,13 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             params.sender,
             tokens,
             params.maxAmountsIn,
+            params.minBptAmountOut,
+            params.kind,
             params.userData
         );
 
         if (bptAmountOut < params.minBptAmountOut) {
-            revert IVaultErrors.BtpAmountBelowMin();
+            revert IVaultErrors.BptAmountBelowMin();
         }
 
         uint256 ethAmountIn;
@@ -111,9 +186,10 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         address pool,
         Asset[] memory assets,
         uint256[] memory minAmountsOut,
-        uint256 bptAmountIn,
+        uint256 maxBptAmountIn,
+        IBasePool.RemoveLiquidityKind kind,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut) {
+    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
         return
             abi.decode(
                 _vault.invoke(
@@ -124,27 +200,28 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
                             pool: pool,
                             assets: assets,
                             minAmountsOut: minAmountsOut,
-                            bptAmountIn: bptAmountIn,
+                            maxBptAmountIn: maxBptAmountIn,
+                            kind: kind,
                             userData: userData
                         })
                     )
                 ),
-                (uint256[])
+                (uint256[], uint256)
             );
     }
 
     function removeLiquidityCallback(
         RemoveLiquidityCallbackParams calldata params
-    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
+    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
-        // removeLiquidity should be only allowed for approved routers
-        amountsOut = _vault.removeLiquidity(
+        (amountsOut, bptAmountIn) = _vault.removeLiquidity(
             params.pool,
             params.sender,
             tokens,
             params.minAmountsOut,
-            params.bptAmountIn,
+            params.maxBptAmountIn,
+            params.kind,
             params.userData
         );
 
@@ -347,6 +424,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         Asset[] memory assets,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
+        IBasePool.AddLiquidityKind kind,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         return
@@ -362,6 +440,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
                             assets: assets,
                             maxAmountsIn: maxAmountsIn,
                             minBptAmountOut: minBptAmountOut,
+                            kind: kind,
                             userData: userData
                         })
                     )
@@ -380,6 +459,8 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             params.sender,
             tokens,
             params.maxAmountsIn,
+            params.minBptAmountOut,
+            params.kind,
             params.userData
         );
     }
@@ -389,9 +470,10 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         address pool,
         Asset[] memory assets,
         uint256[] memory minAmountsOut,
-        uint256 bptAmountIn,
+        uint256 maxBptAmountIn,
+        IBasePool.RemoveLiquidityKind kind,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut) {
+    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
         return
             abi.decode(
                 _vault.quote(
@@ -404,25 +486,27 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
                             pool: pool,
                             assets: assets,
                             minAmountsOut: minAmountsOut,
-                            bptAmountIn: bptAmountIn,
+                            maxBptAmountIn: maxBptAmountIn,
+                            kind: kind,
                             userData: userData
                         })
                     )
                 ),
-                (uint256[])
+                (uint256[], uint256)
             );
     }
 
     function queryRemoveLiquidityCallback(
         RemoveLiquidityCallbackParams calldata params
-    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
+    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
         return
             _vault.removeLiquidity(
                 params.pool,
                 params.sender,
                 params.assets.toIERC20(_weth),
                 params.minAmountsOut,
-                params.bptAmountIn,
+                params.maxBptAmountIn,
+                params.kind,
                 params.userData
             );
     }

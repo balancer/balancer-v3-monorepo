@@ -3,7 +3,7 @@
 pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
+import { IBasePool } from "./IBasePool.sol";
 import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
 
@@ -24,7 +24,7 @@ struct PoolConfig {
 /// @notice Interface for the Vault
 interface IVault {
     /*******************************************************************************
-                                    Pool Registration
+                        Pool Registration and initialization
     *******************************************************************************/
 
     /**
@@ -36,11 +36,40 @@ interface IVault {
     function registerPool(address factory, IERC20[] memory tokens, PoolCallbacks calldata config) external;
 
     /**
+     * @notice Initializes a registered pool by adding liquidity; mints BPT tokens for the first time in exchange.
+     * @dev The initial liquidity should make the pool mint at least `_MINIMUM_BPT` tokens, otherwise the
+     * initialization will fail. Besides the BPT minted to the given target address (`to`), `_MINIMUM_BPT` tokens are
+     * minted to address(0).
+     * @param pool Address of the pool to initialize
+     * @param to Address that will receive the output BPT.
+     * @param tokens tokens involved in the liquidity provision
+     * @param maxAmountsIn Maximum amounts of input tokens
+     * @param userData Additional (optional) data for the initialization
+     * @return amountsIn Actual amounts of input tokens
+     * @return bptAmountOut Output pool token amount
+     */
+    function initialize(
+        address pool,
+        address to,
+        IERC20[] memory tokens,
+        uint256[] memory maxAmountsIn,
+        bytes memory userData
+    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+
+    /**
      * @notice Checks if a pool is registered
      * @param pool                           Address of the pool to check
      * @return                               True if the pool is registered, false otherwise
      */
     function isRegisteredPool(address pool) external view returns (bool);
+
+    /**
+     * @notice Checks if a pool is initialized
+     * @dev An initialized pool can be considered registered as well.
+     * @param pool                           Address of the pool to check
+     * @return                               True if the pool is initialized, false otherwise
+     */
+    function isInitializedPool(address pool) external view returns (bool);
 
     /**
      * @notice Gets tokens and their balances of a pool
@@ -59,6 +88,9 @@ interface IVault {
 
     /// @notice Emitted when a Pool is registered by calling `registerPool`.
     event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
+
+    /// @notice Emitted when a Pool is initialized by calling `initialize`.
+    event PoolInitialized(address indexed pool);
 
     /*******************************************************************************
                                     MultiToken
@@ -237,6 +269,8 @@ interface IVault {
      * @param to                             Address of user to mint to
      * @param assets                         Assets involved in the liquidity
      * @param maxAmountsIn                   Maximum amounts of input assets
+     * @param minBptAmountOut                Minimum output pool token amount
+     * @param kind                           Add liquidity kind
      * @param userData                       Additional user data
      * @return amountsIn                     Actual amounts of input assets
      * @return bptAmountOut                  Output pool token amount
@@ -246,6 +280,8 @@ interface IVault {
         address to,
         IERC20[] memory assets,
         uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        IBasePool.AddLiquidityKind kind,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
@@ -255,18 +291,21 @@ interface IVault {
      * @param from                           Address of user to burn from
      * @param assets                         Assets involved in the liquidity removal
      * @param minAmountsOut                  Minimum amounts of output assets
-     * @param bptAmountIn                    Input pool token amount
+     * @param maxBptAmountIn                 Input pool token amount
+     * @param kind                           Remove liquidity kind
      * @param userData                       Additional user data
      * @return amountsOut                    Actual amounts of output assets
+     * @return bptAmountIn                   Actual amount of BPT burnt
      */
     function removeLiquidity(
         address pool,
         address from,
         IERC20[] memory assets,
         uint256[] memory minAmountsOut,
-        uint256 bptAmountIn,
+        uint256 maxBptAmountIn,
+        IBasePool.RemoveLiquidityKind kind,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut);
+    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
 
     event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
 

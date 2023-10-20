@@ -8,14 +8,16 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/token/IERC20Errors.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces//contracts/vault/IVaultErrors.sol";
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
+import { PoolMock } from "@balancer-labs/v3-pool-utils/contracts/test/PoolMock.sol";
 
-import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
@@ -30,7 +32,7 @@ contract VaultSwapTest is Test {
     VaultMock vault;
     Router router;
     BasicAuthorizerMock authorizer;
-    ERC20PoolMock pool;
+    PoolMock pool;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
     address alice = vm.addr(1);
@@ -45,7 +47,7 @@ contract VaultSwapTest is Test {
         router = new Router(IVault(vault), address(0));
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
-        pool = new ERC20PoolMock(
+        pool = new PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",
@@ -82,11 +84,11 @@ contract VaultSwapTest is Test {
 
     function testSwap() public {
         vm.prank(alice);
-        router.addLiquidity(
+        router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            DAI_AMOUNT_IN,
+            0,
             bytes("")
         );
 
@@ -112,5 +114,19 @@ contract VaultSwapTest is Test {
         (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
         assertEq(balances[0], 0);
         assertEq(balances[1], USDC_AMOUNT_IN * 2);
+    }
+
+    function testSwapNotInitialized() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, address(pool)));
+        router.swap(
+            IVault.SwapKind.GIVEN_IN,
+            address(pool),
+            address(USDC).asAsset(),
+            address(DAI).asAsset(),
+            USDC_AMOUNT_IN,
+            DAI_AMOUNT_IN,
+            type(uint256).max,
+            bytes("")
+        );
     }
 }

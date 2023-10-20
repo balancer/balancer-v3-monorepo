@@ -19,11 +19,7 @@ contract ERC20TestToken is ERC20 {
         _mint(recipient, amount);
     }
 
-    // burnWithoutAllowance was created to allow burning tokens without approval. Example of use:
-    //
-    // MockGearboxVault.sol can't use burnFrom function (from ERC20Burnable) in unit tests, since
-    // MockGearboxVault doesn't have permission to burn relayer wrapped tokens and relayer is not a Signer
-    function burnWithoutAllowance(address sender, uint256 amount) external {
+    function burn(address sender, uint256 amount) external {
         _burn(sender, amount);
     }
 }
