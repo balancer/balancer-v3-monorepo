@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
-import { ERC20PoolMock } from '../typechain-types/contracts/test/ERC20PoolMock';
+import { PoolMock } from '@balancer-labs/v3-pool-utils/typechain-types/contracts/test/PoolMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
@@ -12,8 +12,8 @@ import '@balancer-labs/v3-common/setupTests';
 
 describe('ERC20PoolToken', function () {
   let vault: VaultMock;
-  let poolA: ERC20PoolMock;
-  let poolB: ERC20PoolMock;
+  let poolA: PoolMock;
+  let poolB: PoolMock;
 
   let user: SignerWithAddress;
   let other: SignerWithAddress;
@@ -252,12 +252,6 @@ describe('ERC20PoolToken', function () {
       });
 
       itSetsApprovalsCorrectly();
-    });
-
-    it('cannot approve from zero address', async () => {
-      await expect(vault.connect(registeredPoolSigner).approve(ZERO_ADDRESS, other.address, bptAmount))
-        .to.be.revertedWithCustomError(vault, 'ERC20InvalidApprover')
-        .withArgs(ZERO_ADDRESS);
     });
 
     it('cannot approve to zero address', async () => {

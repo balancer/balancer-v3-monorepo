@@ -10,10 +10,18 @@ interface IVaultErrors {
      */
     error PoolAlreadyRegistered(address pool);
 
+    /// @dev Error indicating that the pool has already been initialized. `initialize` may only be called once.
+    error PoolAlreadyInitialized(address pool);
+
     /**
      * @dev Error indicating that a referenced pool has not been registered.
      */
     error PoolNotRegistered(address pool);
+
+    /**
+     * @dev Error indicating that a referenced pool has not been initialized.
+     */
+    error PoolNotInitialized(address pool);
 
     /**
      * @dev Error indicating an attempt to register an invalid token.
@@ -80,10 +88,18 @@ interface IVaultErrors {
      */
     error SwapLimit(uint256, uint256);
 
+    /// @dev Error indicating the BPT amount involved in the operation is below the absolute minimum.
+    error BptAmountBelowAbsoluteMin();
+
     /**
      * @dev
      */
-    error BtpAmountBelowMin();
+    error BptAmountBelowMin();
+
+    /**
+     * @dev
+     */
+    error BptAmountAboveMax();
 
     /**
      * @dev
@@ -113,15 +129,15 @@ interface IVaultErrors {
     /**
      * @dev
      */
-    error NotStaticCall();
-
-    /**
-     * @dev
-     */
     error QueriesDisabled();
 
     /**
      * @dev
      */
-    error HookCallFailed();
+    error CallbackFailed();
+
+    /**
+     * @dev
+     */
+    error RouterNotTrusted();
 }

@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -57,7 +58,7 @@ contract VaultSwapTest is Test {
         );
 
         PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.hooks.shouldCallAfterSwap = true;
+        config.callbacks.shouldCallAfterSwap = true;
         vault.setConfig(address(pool), config);
 
         USDC.mint(bob, USDC_AMOUNT_IN);
@@ -86,13 +87,13 @@ contract VaultSwapTest is Test {
         vm.label(address(DAI), "DAI");
     }
 
-    function testOnAfterSwapHook() public {
+    function testOnAfterSwapCallback() public {
         vm.prank(alice);
-        router.addLiquidity(
+        router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            DAI_AMOUNT_IN,
+            0,
             bytes("")
         );
 
@@ -112,13 +113,13 @@ contract VaultSwapTest is Test {
         );
     }
 
-    function testOnAfterSwapHookRevert() public {
+    function testOnAfterSwapCallbackRevert() public {
         vm.prank(alice);
-        router.addLiquidity(
+        router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            DAI_AMOUNT_IN,
+            0,
             bytes("")
         );
 
@@ -127,7 +128,7 @@ contract VaultSwapTest is Test {
         pool.setFailOnAfterSwap(true);
         vm.prank(bob);
         // should not fail
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.HookCallFailed.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.CallbackFailed.selector));
         router.swap(
             IVault.SwapKind.GIVEN_IN,
             address(pool),
