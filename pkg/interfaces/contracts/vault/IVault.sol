@@ -86,6 +86,12 @@ interface IVault {
      */
     function getPoolConfig(address pool) external view returns (PoolConfig memory);
 
+    /**
+     * @notice Get the minimum and maximum pool token counts.
+     * @return (Minimum, Maximum) number of tokens allowed for a pool.
+     */
+    function getTokenCountRange() external pure returns (uint256, uint256);
+
     /// @notice Emitted when a Pool is registered by calling `registerPool`.
     event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
 
