@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -88,11 +89,11 @@ contract VaultSwapTest is Test {
 
     function testOnAfterSwapCallback() public {
         vm.prank(alice);
-        router.addLiquidity(
+        router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            DAI_AMOUNT_IN,
+            0,
             bytes("")
         );
 
@@ -114,11 +115,11 @@ contract VaultSwapTest is Test {
 
     function testOnAfterSwapCallbackRevert() public {
         vm.prank(alice);
-        router.addLiquidity(
+        router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            DAI_AMOUNT_IN,
+            0,
             bytes("")
         );
 

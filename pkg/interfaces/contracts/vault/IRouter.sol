@@ -5,6 +5,7 @@ pragma solidity ^0.8.4;
 import { Asset } from "../solidity-utils/misc/Asset.sol";
 
 import { IVault } from "./IVault.sol";
+import { IBasePool } from "./IBasePool.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -60,26 +61,15 @@ interface IRouter {
         bytes userData;
     }
 
-    /**
-     * @notice Adds liquidity to a pool
-     * @param pool                  Address of the liquidity pool
-     * @param assets                Array of assets to add
-     * @param maxAmountsIn          Maximum amounts of assets to be added
-     * @param minBptAmountOut       Minimum pool tokens to be received
-     * @param userData              Additional data required for adding liquidity
-     * @return amountsIn            Actual amounts of assets added
-     * @return bptAmountOut         Pool tokens received
-     */
-    function addLiquidity(
+    function initialize(
         address pool,
-        Asset[] memory assets,
+        Asset[] memory tokens,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
-    /// Contains parameters required for addLiquidity callback
-    struct AddLiquidityCallbackParams {
+    struct InitializeCallbackParams {
         // Address of the sender
         address sender;
         // Address of the liquidity pool
@@ -95,11 +85,48 @@ interface IRouter {
     }
 
     /**
+     * @notice Adds liquidity to a pool
+     * @param pool                  Address of the liquidity pool
+     * @param assets                Array of assets to add
+     * @param maxAmountsIn          Maximum amounts of assets to be added
+     * @param minBptAmountOut       Minimum pool tokens to be received
+     * @param userData              Additional data required for adding liquidity
+     * @return amountsIn            Actual amounts of assets added
+     * @return bptAmountOut         Pool tokens received
+     */
+    function addLiquidity(
+        address pool,
+        Asset[] memory assets,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        IBasePool.AddLiquidityKind kind,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+
+    /// Contains parameters required for addLiquidity callback
+    struct AddLiquidityCallbackParams {
+        // Address of the sender
+        address sender;
+        // Address of the liquidity pool
+        address pool;
+        // Array of assets to add
+        Asset[] assets;
+        // Maximum amounts of assets to be added
+        uint256[] maxAmountsIn;
+        // Minimum pool tokens to be received
+        uint256 minBptAmountOut;
+        /// Add liquidity kind
+        IBasePool.AddLiquidityKind kind;
+        // Additional data required for adding liquidity
+        bytes userData;
+    }
+
+    /**
      * @notice Removes liquidity from a pool
      * @param pool                  Address of the liquidity pool
      * @param assets                Array of assets to remove
      * @param minAmountsOut         Minimum amounts of assets to be received
-     * @param bptAmountIn           Pool tokens provided
+     * @param maxBptAmountIn        Pool tokens provided
      * @param userData              Additional data required for removing liquidity
      * @return amountsOut           Actual amounts of assets received
      */
@@ -107,9 +134,10 @@ interface IRouter {
         address pool,
         Asset[] memory assets,
         uint256[] memory minAmountsOut,
-        uint256 bptAmountIn,
+        uint256 maxBptAmountIn,
+        IBasePool.RemoveLiquidityKind kind,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut);
+    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
 
     /**
      * @notice Contains parameters required for removeLiquidity callback
@@ -124,7 +152,9 @@ interface IRouter {
         /// @notice Minimum amounts of assets to be received
         uint256[] minAmountsOut;
         /// @notice Pool tokens provided
-        uint256 bptAmountIn;
+        uint256 maxBptAmountIn;
+        /// @notice Remove liquidity kind
+        IBasePool.RemoveLiquidityKind kind;
         /// @notice Additional data required for removing liquidity
         bytes userData;
     }
@@ -163,6 +193,7 @@ interface IRouter {
         Asset[] memory assets,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
+        IBasePool.AddLiquidityKind kind,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
@@ -171,7 +202,7 @@ interface IRouter {
      * @param pool                  Address of the liquidity pool
      * @param assets                Array of assets to remove
      * @param minAmountsOut         Minimum amounts of assets expected
-     * @param bptAmountIn           Pool tokens provided for the query
+     * @param maxBptAmountIn           Pool tokens provided for the query
      * @param userData              Additional data required for the query
      * @return amountsOut           Expected amounts of assets to receive
      */
@@ -179,7 +210,8 @@ interface IRouter {
         address pool,
         Asset[] memory assets,
         uint256[] memory minAmountsOut,
-        uint256 bptAmountIn,
+        uint256 maxBptAmountIn,
+        IBasePool.RemoveLiquidityKind kind,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut);
+    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
 }

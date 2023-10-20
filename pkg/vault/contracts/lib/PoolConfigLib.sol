@@ -35,12 +35,12 @@ library PoolConfigLib {
         return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(true, POOL_REGISTERED_OFFSET));
     }
 
-    function isPoolInitialized(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(POOL_INITIALIZED_OFFSET);
-    }
-
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_REGISTERED_OFFSET);
+    }
+
+    function isPoolInitialized(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(POOL_INITIALIZED_OFFSET);
     }
 
     function shouldCallAfterSwap(PoolConfigBits config) internal pure returns (bool) {
