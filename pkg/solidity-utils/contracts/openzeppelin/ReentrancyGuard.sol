@@ -36,9 +36,7 @@ abstract contract ReentrancyGuard {
 
     uint256 private _status;
 
-    /**
-     * @dev Unauthorized reentrant call.
-     */
+    /// @dev Unauthorized reentrant call.
     error ReentrancyGuardReentrantCall();
 
     constructor() {

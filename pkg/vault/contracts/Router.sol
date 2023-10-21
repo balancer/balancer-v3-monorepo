@@ -66,6 +66,14 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
+    /**
+     * @notice Callback for initialization.
+     * @dev Can only be called by the Vault.
+     *
+     * @param params Initialization parameters
+     * @return amountsIn Actual amounts in required for the initial join
+     * @return bptAmountOut BPT amount minted in exchange for the input tokens
+     */
     function initializeCallback(
         InitializeCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
@@ -138,6 +146,14 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
+    /**
+     * @notice Callback for adding liquidity.
+     * @dev Can only be called by the Vault.
+     *
+     * @param params Add liquiity parameters
+     * @return amountsIn Actual amounts in required for the join
+     * @return bptAmountOut BPT amount minted in exchange for the input tokens
+     */
     function addLiquidityCallback(
         AddLiquidityCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
@@ -210,6 +226,14 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
+    /**
+     * @notice Callback for removing liquidity.
+     * @dev Can only be called by the Vault.
+     *
+     * @param params Remove liquiity parameters
+     * @return amountsOut Actual token amounts transferred in exchange for the BPT
+     * @return bptAmountIn BPT amount burned for the output tokens
+     */
     function removeLiquidityCallback(
         RemoveLiquidityCallbackParams calldata params
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
@@ -283,6 +307,13 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
+    /**
+     * @notice Callback for swaps.
+     * @dev Can only be called by the Vault. Also handles native ETH.
+     *
+     * @param params Swap parameters
+     * @return Token amount calculated by the pool math (e.g., amountOut for a given in swap)
+     */
     function swapCallback(
         SwapCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256) {
@@ -410,6 +441,13 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
+    /**
+     * @notice Callback for swap queries.
+     * @dev Can only be called by the Vault. Also handles native ETH.
+     *
+     * @param params Swap parameters
+     * @return Token amount calculated by the pool math (e.g., amountOut for a given in swap)
+     */
     function querySwapCallback(
         SwapCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256) {
@@ -449,6 +487,14 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
+    /**
+     * @notice Callback for add liquidity queries.
+     * @dev Can only be called by the Vault.
+     *
+     * @param params Add liquiity parameters
+     * @return amountsIn Actual amounts in required for the join
+     * @return bptAmountOut BPT amount minted in exchange for the input tokens
+     */
     function queryAddLiquidityCallback(
         AddLiquidityCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
@@ -496,6 +542,14 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
+    /**
+     * @notice Callback for remove liquidity queries.
+     * @dev Can only be called by the Vault.
+     *
+     * @param params Remove liquiity parameters
+     * @return amountsOut Actual token amounts transferred in exchange for the BPT
+     * @return bptAmountIn BPT amount burned for the output tokens
+     */
     function queryRemoveLiquidityCallback(
         RemoveLiquidityCallbackParams calldata params
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut, uint256 bptAmountIn) {

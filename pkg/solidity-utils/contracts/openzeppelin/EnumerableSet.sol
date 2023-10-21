@@ -40,14 +40,10 @@ library EnumerableSet {
         mapping(address => uint256) _indexes;
     }
 
-    /**
-     * @dev This error is thrown when an index is given beyond the current bounds of the set.
-     */
+    /// @dev An index is beyond the current bounds of the set.
     error IndexOutOfBounds();
 
-    /**
-     * @dev This error is thrown when looking up the index of an element that is not present in the set.
-     */
+    /// @dev An element that is not present in the set.
     error ElementNotFound();
 
     /**
@@ -112,16 +108,12 @@ library EnumerableSet {
         }
     }
 
-    /**
-     * @dev Returns true if the value is in the set. O(1).
-     */
+    /// @dev Returns true if the value is in the set. O(1).
     function contains(AddressSet storage set, address value) internal view returns (bool) {
         return set._indexes[value] != 0;
     }
 
-    /**
-     * @dev Returns the number of values on the set. O(1).
-     */
+    /// @dev Returns the number of values on the set. O(1).
     function length(AddressSet storage set) internal view returns (uint256) {
         return set._values.length;
     }
@@ -156,9 +148,7 @@ library EnumerableSet {
         return set._values[index];
     }
 
-    /**
-     * @dev Return the index of an element in the set, or revert if not found.
-     */
+    /// @dev Return the index of an element in the set, or revert if not found.
     function indexOf(AddressSet storage set, address value) internal view returns (uint256) {
         uint256 rawIndex = set._indexes[value];
 

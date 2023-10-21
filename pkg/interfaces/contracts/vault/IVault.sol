@@ -7,30 +7,38 @@ import { IBasePool } from "./IBasePool.sol";
 import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
 
-/// @notice Represents a pool's callbacks
+// Represents a pool's callbacks
 struct PoolCallbacks {
     bool shouldCallAfterSwap;
     bool shouldCallAfterAddLiquidity;
     bool shouldCallAfterRemoveLiquidity;
 }
 
-/// @notice Represents a pool's configuration
+// Represents a pool's configuration, including callbacks
 struct PoolConfig {
     bool isRegisteredPool;
     bool isInitializedPool;
     PoolCallbacks callbacks;
 }
 
-/// @notice Interface for the Vault
 interface IVault {
     /*******************************************************************************
-                        Pool Registration and initialization
+                        Pool Registration and Initialization
     *******************************************************************************/
+
+    // Emitted when a Pool is registered by calling `registerPool`.
+    event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
+
+    // Emitted when a Pool is initialized by calling `initialize`.
+    event PoolInitialized(address indexed pool);
+
+    // Emitted when Pool balances change (initialization, add/remove liquidity)
+    event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
 
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
-     * @param factory The factory address associated with the pool being registered.
-     * @param tokens An array of token addresses the pool will manage.
+     * @param factory The factory address associated with the pool being registered
+     * @param tokens An array of token addresses the pool will manage
      * @param config Config for the pool
      */
     function registerPool(address factory, IERC20[] memory tokens, PoolCallbacks calldata config) external;
@@ -40,8 +48,9 @@ interface IVault {
      * @dev The initial liquidity should make the pool mint at least `_MINIMUM_BPT` tokens, otherwise the
      * initialization will fail. Besides the BPT minted to the given target address (`to`), `_MINIMUM_BPT` tokens are
      * minted to address(0).
+     *
      * @param pool Address of the pool to initialize
-     * @param to Address that will receive the output BPT.
+     * @param to Address that will receive the output BPT
      * @param tokens tokens involved in the liquidity provision
      * @param maxAmountsIn Maximum amounts of input tokens
      * @param userData Additional (optional) data for the initialization
@@ -57,66 +66,67 @@ interface IVault {
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
     /**
-     * @notice Checks if a pool is registered
-     * @param pool                           Address of the pool to check
-     * @return                               True if the pool is registered, false otherwise
+     * @notice Checks whether a pool is registered.
+     *
+     * @param pool Address of the pool to check
+     * @return True if the pool is registered, false otherwise
      */
     function isRegisteredPool(address pool) external view returns (bool);
 
     /**
-     * @notice Checks if a pool is initialized
+     * @notice Checks whether a pool is initialized.
+     *
      * @dev An initialized pool can be considered registered as well.
-     * @param pool                           Address of the pool to check
-     * @return                               True if the pool is initialized, false otherwise
+     * @param pool Address of the pool to check
+     * @return True if the pool is initialized, false otherwise
      */
     function isInitializedPool(address pool) external view returns (bool);
 
     /**
-     * @notice Gets tokens and their balances of a pool
-     * @param pool                           Address of the pool
-     * @return tokens                        List of tokens in the pool
-     * @return balances                      Corresponding balances of the tokens
+     * @notice Gets tokens and their balances of a pool.
+     *
+     * @param pool Address of the pool
+     * @return tokens List of tokens in the pool
+     * @return balances Corresponding balances of the tokens
      */
     function getPoolTokens(address pool) external view returns (IERC20[] memory tokens, uint256[] memory balances);
 
     /**
-     * @notice Gets config of a pool
-     * @param pool                           Address of the pool
-     * @return                               Config for the pool
+     * @notice Gets the configuration paramters of a pool.
+     *
+     * @param pool Address of the pool
+     * @return Pool configuration
      */
     function getPoolConfig(address pool) external view returns (PoolConfig memory);
-
-    /// @notice Emitted when a Pool is registered by calling `registerPool`.
-    event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
-
-    /// @notice Emitted when a Pool is initialized by calling `initialize`.
-    event PoolInitialized(address indexed pool);
 
     /*******************************************************************************
                                     MultiToken
     *******************************************************************************/
 
     /**
-     * @notice Gets total supply of a given ERC20 token
-     * @param token                          Token's address
-     * @return                               Total supply of the token
+     * @notice Gets total supply of a given ERC20 token.
+     *
+     * @param token Token's address
+     * @return Total supply of the token
      */
     function totalSupply(address token) external view returns (uint256);
 
     /**
-     * @notice Gets balance of an account for a given ERC20 token
-     * @param token                          Token's address
-     * @param account                        Account's address
-     * @return                               Balance of the account for the token
+     * @notice Gets balance of an account for a given ERC20 token.
+     *
+     * @param token Token's address
+     * @param account Account's address
+     * @return Balance of the account for the token
      */
     function balanceOf(address token, address account) external view returns (uint256);
 
     /**
-     * @notice Gets allowance of a spender for a given ERC20 token and owner
-     * @param token                          Token's address
-     * @param owner                          Owner's address
-     * @param spender                        Spender's address
-     * @return                               Amount of tokens the spender is allowed to spend
+     * @notice Gets allowance of a spender for a given ERC20 token and owner.
+     *
+     * @param token Token's address
+     * @param owner Owner's address
+     * @param spender Spender's address
+     * @return Amount of tokens the spender is allowed to spend
      */
     function allowance(address token, address owner, address spender) external view returns (uint256);
 
@@ -124,33 +134,36 @@ interface IVault {
      * @notice Transfers pool token from owner to a recipient.
      * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
      * the pool contract, so msg.sender is used as the token address.
-     * @param owner                          Owner's address
-     * @param to                             Recipient's address
-     * @param amount                         Amount of tokens to transfer
-     * @return                               True if successful, false otherwise
+     *
+     * @param owner Owner's address
+     * @param to Recipient's address
+     * @param amount Amount of tokens to transfer
+     * @return True if successful, false otherwise
      */
     function transfer(address owner, address to, uint256 amount) external returns (bool);
 
     /**
-     * @notice Transfers pool token from a sender to a recipient using an allowance
+     * @notice Transfers pool token from a sender to a recipient using an allowance.
      * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
      * the pool contract, so msg.sender is used as the token address.
-     * @param spender                        Address allowed to perform the transfer
-     * @param from                           Sender's address
-     * @param to                             Recipient's address
-     * @param amount                         Amount of tokens to transfer
-     * @return                               True if successful, false otherwise
+     *
+     * @param spender Address allowed to perform the transfer
+     * @param from Sender's address
+     * @param to Recipient's address
+     * @param amount Amount of tokens to transfer
+     * @return True if successful, false otherwise
      */
     function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
 
     /**
-     * @notice Approves a spender to spend pool tokens on behalf of sender
+     * @notice Approves a spender to spend pool tokens on behalf of sender.
      * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
      * the pool contract, so msg.sender is used as the token address.
-     * @param owner                          Owner's address
-     * @param spender                        Spender's address
-     * @param amount                         Amount of tokens to approve
-     * @return                               True if successful, false otherwise
+     *
+     * @param owner Owner's address
+     * @param spender Spender's address
+     * @param amount Amount of tokens to approve
+     * @return True if successful, false otherwise
      */
     function approve(address owner, address spender, uint256 amount) external returns (bool);
 
@@ -160,50 +173,57 @@ interface IVault {
 
     /**
      * @notice Invokes a callback on msg.sender with arguments provided in `data`.
-     * Callback is `transient`, meaning all balances for the caller have to be settled at the end.
-     * @param data                           Contain function signature and args to be passed to the msg.sender
-     * @return result                        Resulting data from the call
+     * @dev Callback is `transient`, meaning all balances for the caller have to be settled at the end.
+     *
+     * @param data Contain function signature and args to be passed to the msg.sender
+     * @return result Resulting data from the call
      */
     function invoke(bytes calldata data) external payable returns (bytes memory result);
 
     /**
-     * @notice Settles deltas for a token
-     * @param token                          Token's address
-     * @return paid                          Amount paid during settlement
+     * @notice Settles deltas for a token.
+     *
+     * @param token Token's address
+     * @return paid Amount paid during settlement
      */
     function settle(IERC20 token) external returns (uint256 paid);
 
     /**
-     * @notice Sends tokens to a recipient
-     * @param token                          Token's address
-     * @param to                             Recipient's address
-     * @param amount                         Amount of tokens to send
+     * @notice Sends tokens to a recipient.
+     *
+     * @param token Token's address
+     * @param to Recipient's address
+     * @param amount Amount of tokens to send
      */
     function wire(IERC20 token, address to, uint256 amount) external;
 
     /**
-     * @notice Retrieves tokens from a sender
-     * @param token                          Token's address
-     * @param from                           Sender's address
-     * @param amount                         Amount of tokens to retrieve
+     * @notice Retrieves tokens from a sender.
+     *
+     * @param token Token's address
+     * @param from Sender's address
+     * @param amount Amount of tokens to retrieve
      */
     function retrieve(IERC20 token, address from, uint256 amount) external;
 
     /**
-     * @dev Returns the address at the specified index of the _handlers array.
-     * @param index The index of the handler's address to fetch.
-     * @return The address at the given index.
+     * @notice Returns the address at the specified index of the _handlers array.
+     *
+     * @param index The index of the handler's address to fetch
+     * @return The address at the given index
      */
     function getHandler(uint256 index) external view returns (address);
 
     /**
-     * @dev Returns the total number of handlers.
-     * @return The number of handlers.
+     * @notice Returns the total number of handlers.
+     *
+     * @return The number of handlers
      */
     function getHandlersCount() external view returns (uint256);
 
     /**
-     *  @notice Returns the count of non-zero deltas
+     *  @notice Returns the count of non-zero deltas.
+     *
      *  @return The current value of _nonzeroDeltaCount
      */
     function getNonzeroDeltaCount() external view returns (uint256);
@@ -211,47 +231,92 @@ interface IVault {
     /**
      * @notice Retrieves the token delta for a specific user and token.
      * @dev This function allows reading the value from the `_tokenDeltas` mapping.
-     * @param user The address of the user for whom the delta is being fetched.
-     * @param token The token for which the delta is being fetched.
-     * @return The delta of the specified token for the specified user.
+     *
+     * @param user The address of the user for whom the delta is being fetched
+     * @param token The token for which the delta is being fetched
+     * @return The delta of the specified token for the specified user
      */
     function getTokenDelta(address user, IERC20 token) external view returns (int256);
 
     /**
      * @notice Retrieves the reserve of a given token.
-     * @param token The token for which to retrieve the reserve.
-     * @return The amount of reserves for the given token.
+     *
+     * @param token The token for which to retrieve the reserve
+     * @return The amount of reserves for the given token
      */
     function getTokenReserve(IERC20 token) external view returns (uint256);
+
+    /***************************************************************************
+                                   Add Liquidity
+    ***************************************************************************/
+
+    /**
+     * @notice Adds liquidity to a pool.
+     * @dev Caution should be exercised when adding liquidity because the Vault has the capability
+     * to transfer tokens from any user, given that it holds all allowances.
+     *
+     * @param pool Address of the pool
+     * @param to  Address of user to mint to
+     * @param assets Assets involved in the liquidity
+     * @param maxAmountsIn Maximum amounts of input assets
+     * @param minBptAmountOut Minimum output pool token amount
+     * @param kind Add liquidity kind
+     * @param userData Additional user data
+     * @return amountsIn Actual amounts of input assets
+     * @return bptAmountOut Output pool token amount
+     */
+    function addLiquidity(
+        address pool,
+        address to,
+        IERC20[] memory assets,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        IBasePool.AddLiquidityKind kind,
+        bytes memory userData
+    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+
+    /***************************************************************************
+                                 Remove Liquidity
+    ***************************************************************************/
+
+    /**
+     * @notice Removes liquidity from a pool.
+     *
+     * @param pool Address of the pool
+     * @param from Address of user to burn from
+     * @param assets Assets involved in the liquidity removal
+     * @param minAmountsOut Minimum amounts of output assets
+     * @param maxBptAmountIn Input pool token amount
+     * @param kind Remove liquidity kind
+     * @param userData Additional user data
+     * @return amountsOut Actual amounts of output assets
+     * @return bptAmountIn Actual amount of BPT burnt
+     */
+    function removeLiquidity(
+        address pool,
+        address from,
+        IERC20[] memory assets,
+        uint256[] memory minAmountsOut,
+        uint256 maxBptAmountIn,
+        IBasePool.RemoveLiquidityKind kind,
+        bytes memory userData
+    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
+
+    /***************************************************************************
+                                       Swaps
+    ***************************************************************************/
 
     enum SwapKind {
         GIVEN_IN,
         GIVEN_OUT
     }
 
-    /**
-     * @notice Swaps tokens based on provided parameters
-     * @param params                         Parameters for the swap
-     * @return amountCalculated              Calculated swap amount
-     * @return amountIn                      Amount of input tokens for the swap
-     * @return amountOut                     Amount of output tokens from the swap
-     */
-    function swap(
-        SwapParams memory params
-    ) external returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut);
-
     struct SwapParams {
-        /// @notice Type of the swap.
         SwapKind kind;
-        /// @notice Address of the pool.
         address pool;
-        /// @notice Token given in the swap.
         IERC20 tokenIn;
-        /// @notice Token received from the swap.
         IERC20 tokenOut;
-        /// @notice Amount of token given.
         uint256 amountGiven;
-        /// @notice Additional data for the swap.
         bytes userData;
     }
 
@@ -264,78 +329,28 @@ interface IVault {
     );
 
     /**
-     * @notice Adds liquidity to a pool
-     * @param pool                           Address of the pool
-     * @param to                             Address of user to mint to
-     * @param assets                         Assets involved in the liquidity
-     * @param maxAmountsIn                   Maximum amounts of input assets
-     * @param minBptAmountOut                Minimum output pool token amount
-     * @param kind                           Add liquidity kind
-     * @param userData                       Additional user data
-     * @return amountsIn                     Actual amounts of input assets
-     * @return bptAmountOut                  Output pool token amount
-     */
-    function addLiquidity(
-        address pool,
-        address to,
-        IERC20[] memory assets,
-        uint256[] memory maxAmountsIn,
-        uint256 minBptAmountOut,
-        IBasePool.AddLiquidityKind kind,
-        bytes memory userData
-    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
-
-    /**
-     * @notice Removes liquidity from a pool
-     * @param pool                           Address of the pool
-     * @param from                           Address of user to burn from
-     * @param assets                         Assets involved in the liquidity removal
-     * @param minAmountsOut                  Minimum amounts of output assets
-     * @param maxBptAmountIn                 Input pool token amount
-     * @param kind                           Remove liquidity kind
-     * @param userData                       Additional user data
-     * @return amountsOut                    Actual amounts of output assets
-     * @return bptAmountIn                   Actual amount of BPT burnt
-     */
-    function removeLiquidity(
-        address pool,
-        address from,
-        IERC20[] memory assets,
-        uint256[] memory minAmountsOut,
-        uint256 maxBptAmountIn,
-        IBasePool.RemoveLiquidityKind kind,
-        bytes memory userData
-    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
-
-    event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
-
-    /*******************************************************************************
-                                Authentication
-    *******************************************************************************/
-
-    /// @dev Returns the Vault's Authorizer.
-    function getAuthorizer() external view returns (IAuthorizer);
-
-    /**
-     * @dev Sets a new Authorizer for the Vault. The caller must be allowed by the current Authorizer to do this.
+     * @notice Swaps tokens based on provided parameters.
      *
-     * Emits an `AuthorizerChanged` event.
+     * @param params Parameters for the swap
+     * @return amountCalculated Calculated swap amount
+     * @return amountIn Amount of input tokens for the swap
+     * @return amountOut Amount of output tokens from the swap
      */
-    function setAuthorizer(IAuthorizer newAuthorizer) external;
-
-    /// @dev Emitted when a new authorizer is set by `setAuthorizer`.
-    event AuthorizerChanged(IAuthorizer indexed newAuthorizer);
+    function swap(
+        SwapParams memory params
+    ) external returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut);
 
     /*******************************************************************************
                                     Queries
     *******************************************************************************/
 
     /**
-     * @notice Invokes a callback on msg.sender with arguments provided in `data`
-     * to query a set of operations on the Vault.
-     * Only off-chain eth_call are allowed, everything else will revert.
-     * @param data                           Contain function signature and args to be passed to the msg.sender
-     * @return result                        Resulting data from the call
+     * @notice Invokes a callback on msg.sender with arguments provided in `data`.
+     * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
+     * anything else will revert.
+     *
+     * @param data Contain function signature and args to be passed to the msg.sender
+     * @return result Resulting data from the call
      */
     function quote(bytes calldata data) external payable returns (bytes memory result);
 
@@ -344,7 +359,30 @@ interface IVault {
 
     /**
      * @notice Checks if the queries enabled on the Vault.
-     * @return If true, then queries are disabled.
+     *
+     * @return If true, then queries are disabled
      */
     function isQueryDisabled() external view returns (bool);
+
+    /*******************************************************************************
+                                Authentication
+    *******************************************************************************/
+
+    // Emitted when a new authorizer is set by `setAuthorizer`.
+    event AuthorizerChanged(IAuthorizer indexed newAuthorizer);
+
+    /**
+     * @notice Returns the Vault's Authorizer.
+     *
+     * @return Address of the authorizer
+     */
+    function getAuthorizer() external view returns (IAuthorizer);
+
+    /**
+     * @notice Sets a new Authorizer for the Vault.
+     * @dev The caller must be allowed by the current Authorizer to do this.
+     *
+     * Emits an `AuthorizerChanged` event.
+     */
+    function setAuthorizer(IAuthorizer newAuthorizer) external;
 }

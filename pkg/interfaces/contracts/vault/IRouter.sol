@@ -9,22 +9,134 @@ import { IBasePool } from "./IBasePool.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/**
- * @notice Interface for Router operations
- * @dev Description of the Router interface
- */
 interface IRouter {
+    /***************************************************************************
+                               Pool Initialization
+    ***************************************************************************/
+
+    struct InitializeCallbackParams {
+        address sender;
+        address pool;
+        Asset[] assets;
+        uint256[] maxAmountsIn;
+        uint256 minBptAmountOut;
+        bytes userData;
+    }
+
     /**
-     * @notice Executes a swap operation
-     * @param kind                  Type of swap
-     * @param pool                  Address of the liquidity pool
-     * @param assetIn               Asset to be swapped from
-     * @param assetOut              Asset to be swapped to
-     * @param amountGiven           Amount given based on kind of the swap
-     * @param limit                 Maximum or minimum amount based on the kind of swap
-     * @param deadline              Deadline for the swap
-     * @param userData              Additional data required for the swap
-     * @return amountCalculated     Amount calculated based on the kind of swap
+     * @notice Initialize a liquidity pool.
+     *
+     * @param pool Address of the liquidity pool
+     * @param tokens Pool tokens
+     * @param maxAmountsIn Maximum amounts of assets to be added
+     * @param minBptAmountOut Minimum pool tokens to be received
+     * @param userData Additional data required for initialization
+     * @return amountsIn Actual token amounts transferred (e.g., including fees)
+     * @return bptAmountOut Actual BPT amount minted in exchange for initial liquidity
+     */
+    function initialize(
+        address pool,
+        Asset[] memory tokens,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+
+    struct SwapCallbackParams {
+        address sender;
+        IVault.SwapKind kind;
+        address pool;
+        Asset assetIn;
+        Asset assetOut;
+        uint256 amountGiven;
+        uint256 limit;
+        uint256 deadline;
+        bytes userData;
+    }
+
+    /***************************************************************************
+                                   Add Liquidity
+    ***************************************************************************/
+
+    struct AddLiquidityCallbackParams {
+        address sender;
+        address pool;
+        Asset[] assets;
+        uint256[] maxAmountsIn;
+        uint256 minBptAmountOut;
+        IBasePool.AddLiquidityKind kind;
+        bytes userData;
+    }
+
+    /**
+     * @notice Adds liquidity to a pool.
+     *
+     * @param pool Address of the liquidity pool
+     * @param assets Array of assets to add
+     * @param maxAmountsIn Maximum amounts of assets to be added
+     * @param minBptAmountOut Minimum pool tokens to be received
+     * @param userData Additional data required for adding liquidity
+     * @return amountsIn Actual amounts of assets added
+     * @return bptAmountOut Pool tokens received
+     */
+    function addLiquidity(
+        address pool,
+        Asset[] memory assets,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        IBasePool.AddLiquidityKind kind,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+
+    /***************************************************************************
+                                 Remove Liquidity
+    ***************************************************************************/
+
+    struct RemoveLiquidityCallbackParams {
+        address sender;
+        address pool;
+        Asset[] assets;
+        uint256[] minAmountsOut;
+        uint256 maxBptAmountIn;
+        IBasePool.RemoveLiquidityKind kind;
+        bytes userData;
+    }
+
+    /**
+     * @notice Removes liquidity from a pool.
+     *
+     * @param pool Address of the liquidity pool
+     * @param assets Array of assets to remove
+     * @param minAmountsOut Minimum amounts of assets to be received
+     * @param maxBptAmountIn Pool tokens provided
+     * @param userData Additional data required for removing liquidity
+     * @return amountsOut Actual amounts of assets received
+     */
+    function removeLiquidity(
+        address pool,
+        Asset[] memory assets,
+        uint256[] memory minAmountsOut,
+        uint256 maxBptAmountIn,
+        IBasePool.RemoveLiquidityKind kind,
+        bytes memory userData
+    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
+
+    /***************************************************************************
+                                       Swaps
+    ***************************************************************************/
+
+    /**
+     * @notice Executes a swap operation.
+     *
+     * @param kind Type of swap (given in or given out)
+     * @param pool Address of the liquidity pool
+     * @param assetIn Asset to be swapped from
+     * @param assetOut Asset to be swapped to
+     * @param amountGiven Amount given based on kind of the swap (e.g., tokenIn for given in)
+     * @param limit Maximum or minimum amount based on the kind of swap (e.g., maxAmountIn for given out)
+     * @param deadline Deadline for the swap
+     * @param userData Additional data required for the swap
+     * @return amountCalculated Amount calculated based on the kind of swap
      */
     function swap(
         IVault.SwapKind kind,
@@ -37,156 +149,20 @@ interface IRouter {
         bytes calldata userData
     ) external payable returns (uint256 amountCalculated);
 
-    /**
-     * @notice Contains parameters required for swap callback
-     */
-    struct SwapCallbackParams {
-        /// @notice Address of the sender
-        address sender;
-        /// @notice Type of swap
-        IVault.SwapKind kind;
-        /// @notice Address of the liquidity pool
-        address pool;
-        /// @notice Asset to be swapped from
-        Asset assetIn;
-        /// @notice Asset to be swapped to
-        Asset assetOut;
-        /// @notice Amount given based on kind of the swap
-        uint256 amountGiven;
-        /// @notice Maximum or minimum amount based on the kind of swap
-        uint256 limit;
-        /// @notice Deadline for the swap
-        uint256 deadline;
-        /// @notice Additional data required for the swap
-        bytes userData;
-    }
-
-    function initialize(
-        address pool,
-        Asset[] memory tokens,
-        uint256[] memory maxAmountsIn,
-        uint256 minBptAmountOut,
-        bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
-
-    struct InitializeCallbackParams {
-        // Address of the sender
-        address sender;
-        // Address of the liquidity pool
-        address pool;
-        // Array of assets to add
-        Asset[] assets;
-        // Maximum amounts of assets to be added
-        uint256[] maxAmountsIn;
-        // Minimum pool tokens to be received
-        uint256 minBptAmountOut;
-        // Additional data required for adding liquidity
-        bytes userData;
-    }
+    /***************************************************************************
+                                     Queries
+    ***************************************************************************/
 
     /**
-     * @notice Adds liquidity to a pool
-     * @param pool                  Address of the liquidity pool
-     * @param assets                Array of assets to add
-     * @param maxAmountsIn          Maximum amounts of assets to be added
-     * @param minBptAmountOut       Minimum pool tokens to be received
-     * @param userData              Additional data required for adding liquidity
-     * @return amountsIn            Actual amounts of assets added
-     * @return bptAmountOut         Pool tokens received
-     */
-    function addLiquidity(
-        address pool,
-        Asset[] memory assets,
-        uint256[] memory maxAmountsIn,
-        uint256 minBptAmountOut,
-        IBasePool.AddLiquidityKind kind,
-        bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
-
-    /// Contains parameters required for addLiquidity callback
-    struct AddLiquidityCallbackParams {
-        // Address of the sender
-        address sender;
-        // Address of the liquidity pool
-        address pool;
-        // Array of assets to add
-        Asset[] assets;
-        // Maximum amounts of assets to be added
-        uint256[] maxAmountsIn;
-        // Minimum pool tokens to be received
-        uint256 minBptAmountOut;
-        /// Add liquidity kind
-        IBasePool.AddLiquidityKind kind;
-        // Additional data required for adding liquidity
-        bytes userData;
-    }
-
-    /**
-     * @notice Removes liquidity from a pool
-     * @param pool                  Address of the liquidity pool
-     * @param assets                Array of assets to remove
-     * @param minAmountsOut         Minimum amounts of assets to be received
-     * @param maxBptAmountIn        Pool tokens provided
-     * @param userData              Additional data required for removing liquidity
-     * @return amountsOut           Actual amounts of assets received
-     */
-    function removeLiquidity(
-        address pool,
-        Asset[] memory assets,
-        uint256[] memory minAmountsOut,
-        uint256 maxBptAmountIn,
-        IBasePool.RemoveLiquidityKind kind,
-        bytes memory userData
-    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
-
-    /**
-     * @notice Contains parameters required for removeLiquidity callback
-     */
-    struct RemoveLiquidityCallbackParams {
-        /// @notice Address of the sender
-        address sender;
-        /// @notice Address of the liquidity pool
-        address pool;
-        /// @notice Array of assets to remove
-        Asset[] assets;
-        /// @notice Minimum amounts of assets to be received
-        uint256[] minAmountsOut;
-        /// @notice Pool tokens provided
-        uint256 maxBptAmountIn;
-        /// @notice Remove liquidity kind
-        IBasePool.RemoveLiquidityKind kind;
-        /// @notice Additional data required for removing liquidity
-        bytes userData;
-    }
-
-    /**
-     * @notice Queries a swap operation without executing it
-     * @param kind                  Type of swap
-     * @param pool                  Address of the liquidity pool
-     * @param assetIn               Asset to be swapped from
-     * @param assetOut              Asset to be swapped to
-     * @param amountGiven           Amount given based on kind of the swap
-     * @param userData              Additional data required for the query
-     * @return amountCalculated     Amount calculated based on the kind of swap
-     */
-    function querySwap(
-        IVault.SwapKind kind,
-        address pool,
-        Asset assetIn,
-        Asset assetOut,
-        uint256 amountGiven,
-        bytes calldata userData
-    ) external payable returns (uint256 amountCalculated);
-
-    /**
-     * @notice Queries addLiquidity operation without executing it
-     * @param pool                  Address of the liquidity pool
-     * @param assets                Array of assets to add
-     * @param maxAmountsIn          Maximum amounts of assets to be added
-     * @param minBptAmountOut       Minimum pool tokens expected
-     * @param userData              Additional data required for the query
-     * @return amountsIn            Expected amounts of assets to add
-     * @return bptAmountOut         Expected pool tokens to receive
+     * @notice Queries an addLiquidity operation without executing it.
+     *
+     * @param pool Address of the liquidity pool
+     * @param assets Array of assets to add
+     * @param maxAmountsIn Maximum amounts of assets to be added
+     * @param minBptAmountOut Minimum pool tokens expected
+     * @param userData Additional data required for the query
+     * @return amountsIn Expected amounts of assets to add
+     * @return bptAmountOut Expected pool tokens to receive
      */
     function queryAddLiquidity(
         address pool,
@@ -198,13 +174,14 @@ interface IRouter {
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
     /**
-     * @notice Queries removeLiquidity operation without executing it
-     * @param pool                  Address of the liquidity pool
-     * @param assets                Array of assets to remove
-     * @param minAmountsOut         Minimum amounts of assets expected
-     * @param maxBptAmountIn           Pool tokens provided for the query
-     * @param userData              Additional data required for the query
-     * @return amountsOut           Expected amounts of assets to receive
+     * @notice Queries removeLiquidity operation without executing it.
+     *
+     * @param pool Address of the liquidity pool
+     * @param assets Array of assets to remove
+     * @param minAmountsOut Minimum amounts of assets expected
+     * @param maxBptAmountIn Pool tokens provided for the query
+     * @param userData Additional data required for the query
+     * @return amountsOut Expected amounts of assets to receive
      */
     function queryRemoveLiquidity(
         address pool,
@@ -214,4 +191,24 @@ interface IRouter {
         IBasePool.RemoveLiquidityKind kind,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
+
+    /**
+     * @notice Queries a swap operation without executing it.
+     *
+     * @param kind Type of swap
+     * @param pool Address of the liquidity pool
+     * @param assetIn Asset to be swapped from
+     * @param assetOut Asset to be swapped to
+     * @param amountGiven Amount given based on kind of the swap
+     * @param userData Additional data required for the query
+     * @return amountCalculated Amount calculated based on the kind of swap
+     */
+    function querySwap(
+        IVault.SwapKind kind,
+        address pool,
+        Asset assetIn,
+        Asset assetOut,
+        uint256 amountGiven,
+        bytes calldata userData
+    ) external payable returns (uint256 amountCalculated);
 }

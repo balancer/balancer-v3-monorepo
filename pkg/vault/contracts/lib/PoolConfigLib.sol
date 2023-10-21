@@ -13,9 +13,9 @@ using PoolConfigLib for PoolConfigBits global;
 library PoolConfigLib {
     using WordCodec for bytes32;
 
-    /// [  251 bit |    1 bit     |   1 bit   |    1 bit   |    1 bit    |    1 bit   ]
-    /// [ not used | after remove | after add | after swap | initialized | registered ]
-    /// |MSB                                                                       LSB|
+    // [  251 bit |    1 bit     |   1 bit   |    1 bit   |    1 bit    |    1 bit   ]
+    // [ not used | after remove | after add | after swap | initialized | registered ]
+    // |MSB                                                                       LSB|
 
     // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
