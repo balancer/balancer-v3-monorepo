@@ -15,12 +15,12 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { IVault, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
+import { IWeightedPoolErrors } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPoolErrors.sol";
 
 /**
  * @dev Basic Weighted Pool with immutable weights.
  */
-contract WeightedPool is BasePool, IWeightedPool {
+contract WeightedPool is BasePool, IWeightedPoolErrors {
     using FixedPoint for uint256;
     using ScalingHelpers for *;
 
