@@ -4,9 +4,9 @@
 pragma solidity ^0.8.4;
 
 /**
- * @dev Contract module that helps prevent reentrant calls to a function.
+ * @notice Contract module that helps prevent reentrant calls to a function.
  *
- * Inheriting from `ReentrancyGuard` will make the {nonReentrant} modifier
+ * @dev Inheriting from `ReentrancyGuard` will make the {nonReentrant} modifier
  * available, which can be applied to functions to make sure there are no nested
  * (reentrant) calls to them.
  *

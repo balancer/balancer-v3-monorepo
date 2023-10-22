@@ -7,8 +7,6 @@ import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IVault } from "./IVault.sol";
 import { IBasePool } from "./IBasePool.sol";
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 interface IRouter {
     /***************************************************************************
                                Pool Initialization
@@ -41,18 +39,6 @@ interface IRouter {
         uint256 minBptAmountOut,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
-
-    struct SwapCallbackParams {
-        address sender;
-        IVault.SwapKind kind;
-        address pool;
-        Asset assetIn;
-        Asset assetOut;
-        uint256 amountGiven;
-        uint256 limit;
-        uint256 deadline;
-        bytes userData;
-    }
 
     /***************************************************************************
                                    Add Liquidity
@@ -124,6 +110,18 @@ interface IRouter {
     /***************************************************************************
                                        Swaps
     ***************************************************************************/
+
+    struct SwapCallbackParams {
+        address sender;
+        IVault.SwapKind kind;
+        address pool;
+        Asset assetIn;
+        Asset assetOut;
+        uint256 amountGiven;
+        uint256 limit;
+        uint256 deadline;
+        bytes userData;
+    }
 
     /**
      * @notice Executes a swap operation.

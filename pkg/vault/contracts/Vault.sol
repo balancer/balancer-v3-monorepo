@@ -609,7 +609,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     }
 
     /*******************************************************************************
-                                    Pools
+                                Pool Operations
     *******************************************************************************/
 
     /// @dev Rejects routers not approved by governance and users

@@ -33,23 +33,23 @@ interface ITemporarilyPausable {
      */
     event Unpaused(address indexed account);
 
-    /// @dev The user is trying to specify a pause window period longer than the maximum.
+    /// @dev The caller specified a pause window period longer than the maximum.
     error PauseWindowDurationTooLarge();
 
-    /// @dev The user is trying to specify a buffer period longer than the maximum.
+    /// @dev The caller specified a buffer period longer than the maximum.
     error BufferPeriodDurationTooLarge();
 
-    /// @dev The user is trying to pause after the pause window has expired.
+    /// @dev The user called pause after the pause window has expired.
     error PauseWindowExpired();
 
-    /// @dev The user is trying to pause a contract that is already paused.
+    /// @dev The user called pause on a contract that was already paused.
     error AlreadyPaused();
 
-    /// @dev The user is trying to unpause a contract that is already unpaused.
+    /// @dev The user called unpause on a contract that was already unpaused.
     error AlreadyUnpaused();
 
     /**
-     * @notice Returns the pause status of the contract (e.g., Vault or pool).
+     * @notice Returns the pause status of the contract (e.g., Vault or Pool).
      * @dev Once the Buffer Period expires, the gas cost of calling this function is reduced dramatically,
      * as storage is no longer accessed.
      *

@@ -347,7 +347,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             _weth.deposit{ value: amountIn }();
             // send WETH to Vault
             _weth.transfer(address(_vault), amountIn);
-            // update Vault accouting
+            // update Vault accounting
             _vault.settle(_weth);
         } else {
             // Send the assetIn amount to the Vault

@@ -3,7 +3,7 @@
 pragma solidity ^0.8.4;
 
 interface IAuthentication {
-    /// @dev Error indicating that the sender does not have permission to call a function.
+    /// @dev The sender does not have permission to call a function.
     error SenderNotAllowed();
 
     /**

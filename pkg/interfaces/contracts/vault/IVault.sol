@@ -37,6 +37,7 @@ interface IVault {
 
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
+     *
      * @param factory The factory address associated with the pool being registered
      * @param tokens An array of token addresses the pool will manage
      * @param config Config for the pool
