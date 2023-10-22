@@ -2,8 +2,7 @@
 
 pragma solidity ^0.8.4;
 
-/// @notice Interface for a Weighted Pool
-interface IWeightedPool {
+interface IWeightedPoolErrors {
     /// @dev Indicates that one of the pool tokens' weight is below the minimum allowed.
     error MinWeight();
 
