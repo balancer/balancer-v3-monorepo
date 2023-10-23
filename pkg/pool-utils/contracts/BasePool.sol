@@ -128,4 +128,9 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
     function getScalingFactors() external view returns (uint256[] memory) {
         return _scalingFactors();
     }
+
+    /// @inheritdoc IBasePool
+    function getPoolTokens() external view returns (IERC20[] memory tokens, uint256[] memory balances) {
+        return _vault.getPoolTokens(address(this));
+    }
 }

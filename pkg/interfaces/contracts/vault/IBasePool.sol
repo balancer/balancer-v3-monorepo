@@ -159,4 +159,11 @@ interface IBasePool {
         address sender;
         bytes userData;
     }
+
+    /**
+     * @notice Gets pool tokens and their balances
+     * @return tokens                        List of tokens in the pool
+     * @return balances                      Corresponding balances of the tokens
+     */
+    function getPoolTokens() external view returns (IERC20[] memory tokens, uint256[] memory balances);
 }
