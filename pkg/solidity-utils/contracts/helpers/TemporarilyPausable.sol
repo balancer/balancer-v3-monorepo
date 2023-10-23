@@ -20,7 +20,6 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
 
     /**
      * @dev Initializes the contract with the given Pause Window and Buffer Period durations.
-     *
      * @param pauseWindowDuration Duration of the Pause Window in seconds
      * @param bufferPeriodDuration Duration of the Buffer Period in seconds
      */

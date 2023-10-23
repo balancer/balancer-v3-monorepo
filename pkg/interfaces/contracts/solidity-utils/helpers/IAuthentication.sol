@@ -8,7 +8,6 @@ interface IAuthentication {
 
     /**
      * @dev Returns the action identifier associated with the external function described by `selector`.
-     *
      * @param selector The 4-byte selector of the permissioned function
      * @return The computed actionId
      */

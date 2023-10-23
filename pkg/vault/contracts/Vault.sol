@@ -178,9 +178,6 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
     /// @inheritdoc IVault
     function retrieve(IERC20 token, address from, uint256 amount) public nonReentrant withHandler onlyTrustedRouter {
-        // This function can drain users of their tokens because users grant allowance to the Vault.
-        // Only trusted routers should be permitted to invoke it. Untrusted routers should use `settle` instead.
-
         // effects
         _supplyCredit(token, amount, msg.sender);
         _tokenReserves[token] += amount;
@@ -228,7 +225,6 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
     /**
      * @notice Records the `debt` for a given handler and token.
-     *
      * @param token   The ERC20 token for which the `debt` will be accounted.
      * @param debt    The amount of `token` taken from the Vault in favor of the `handler`.
      * @param handler The account responsible for the debt.
@@ -239,7 +235,6 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
     /**
      * @notice Records the `credit` for a given handler and token.
-     *
      * @param token   The ERC20 token for which the 'credit' will be accounted.
      * @param credit  The amount of `token` supplied to the Vault in favor of the `handler`.
      * @param handler The account credited with the amount.
@@ -313,7 +308,6 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
     /// @inheritdoc IVault
     function quote(bytes calldata data) external payable query returns (bytes memory result) {
-        // Allows querying any operation on the Vault that has the `withHandler` modifier.
         // Forward the incoming call to the original sender of this transaction.
         return (msg.sender).functionCallWithValue(data, msg.value);
     }
@@ -811,9 +805,6 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // Store the new pool balances.
         _setPoolBalances(pool, finalBalances);
 
-        // Trusted routers can burn pool tokens belonging to any user and require no prior approval from the user.
-        // Untrusted routers require prior approval from the user. This is the only function allowed to call
-        // _queryModeBalanceIncrease (and only in a query context).
         if (!_isTrustedRouter(msg.sender)) {
             _spendAllowance(address(pool), from, msg.sender, bptAmountIn);
         }

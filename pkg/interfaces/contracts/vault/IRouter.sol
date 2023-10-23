@@ -23,7 +23,6 @@ interface IRouter {
 
     /**
      * @notice Initialize a liquidity pool.
-     *
      * @param pool Address of the liquidity pool
      * @param tokens Pool tokens
      * @param maxAmountsIn Maximum amounts of assets to be added
@@ -56,7 +55,6 @@ interface IRouter {
 
     /**
      * @notice Adds liquidity to a pool.
-     *
      * @param pool Address of the liquidity pool
      * @param assets Array of assets to add
      * @param maxAmountsIn Maximum amounts of assets to be added
@@ -90,7 +88,6 @@ interface IRouter {
 
     /**
      * @notice Removes liquidity from a pool.
-     *
      * @param pool Address of the liquidity pool
      * @param assets Array of assets to remove
      * @param minAmountsOut Minimum amounts of assets to be received
@@ -125,7 +122,6 @@ interface IRouter {
 
     /**
      * @notice Executes a swap operation.
-     *
      * @param kind Type of swap (given in or given out)
      * @param pool Address of the liquidity pool
      * @param assetIn Asset to be swapped from
@@ -153,7 +149,6 @@ interface IRouter {
 
     /**
      * @notice Queries an addLiquidity operation without executing it.
-     *
      * @param pool Address of the liquidity pool
      * @param assets Array of assets to add
      * @param maxAmountsIn Maximum amounts of assets to be added
@@ -173,7 +168,6 @@ interface IRouter {
 
     /**
      * @notice Queries removeLiquidity operation without executing it.
-     *
      * @param pool Address of the liquidity pool
      * @param assets Array of assets to remove
      * @param minAmountsOut Minimum amounts of assets expected
@@ -192,7 +186,6 @@ interface IRouter {
 
     /**
      * @notice Queries a swap operation without executing it.
-     *
      * @param kind Type of swap
      * @param pool Address of the liquidity pool
      * @param assetIn Asset to be swapped from

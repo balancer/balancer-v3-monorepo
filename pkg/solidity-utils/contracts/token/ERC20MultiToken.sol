@@ -18,16 +18,20 @@ abstract contract ERC20MultiToken is IERC20Errors {
     using Address for address;
 
     /**
-     * @dev Emitted when pool tokens are moved from one account (`from`) to
-     * another (`to`).
-     *
-     * Note that `value` may be zero.
+     * @notice Pool tokens are moved from one account (`from`) to another (`to`). Note that `value` may be zero.
+     * @param token The token being transferred
+     * @param from The token source
+     * @param to The token destination
+     * @param value The number of tokens
      */
     event Transfer(address indexed token, address indexed from, address indexed to, uint256 value);
 
     /**
-     * @dev Emitted when the allowance of a `spender` for an `owner` is set by
-     * a call to {approve}. `value` is the new allowance.
+     * @notice The allowance of a `spender` for an `owner` is set by a call to {approve}. `value` is the new allowance.
+     * @param token The token receiving the allowance
+     * @param owner The token holder
+     * @param spender The account being authorized to spend a given amount of the token
+     * @param value The number of tokens spender is authorized to transfer from owner
      */
     event Approval(address indexed token, address indexed owner, address indexed spender, uint256 value);
 

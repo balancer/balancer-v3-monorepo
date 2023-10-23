@@ -69,7 +69,6 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     /**
      * @notice Callback for initialization.
      * @dev Can only be called by the Vault.
-     *
      * @param params Initialization parameters
      * @return amountsIn Actual amounts in required for the initial join
      * @return bptAmountOut BPT amount minted in exchange for the input tokens
@@ -149,7 +148,6 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     /**
      * @notice Callback for adding liquidity.
      * @dev Can only be called by the Vault.
-     *
      * @param params Add liquiity parameters
      * @return amountsIn Actual amounts in required for the join
      * @return bptAmountOut BPT amount minted in exchange for the input tokens
@@ -229,7 +227,6 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     /**
      * @notice Callback for removing liquidity.
      * @dev Can only be called by the Vault.
-     *
      * @param params Remove liquiity parameters
      * @return amountsOut Actual token amounts transferred in exchange for the BPT
      * @return bptAmountIn BPT amount burned for the output tokens
@@ -310,7 +307,6 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     /**
      * @notice Callback for swaps.
      * @dev Can only be called by the Vault. Also handles native ETH.
-     *
      * @param params Swap parameters
      * @return Token amount calculated by the pool math (e.g., amountOut for a given in swap)
      */
@@ -444,7 +440,6 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     /**
      * @notice Callback for swap queries.
      * @dev Can only be called by the Vault. Also handles native ETH.
-     *
      * @param params Swap parameters
      * @return Token amount calculated by the pool math (e.g., amountOut for a given in swap)
      */
@@ -490,7 +485,6 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     /**
      * @notice Callback for add liquidity queries.
      * @dev Can only be called by the Vault.
-     *
      * @param params Add liquiity parameters
      * @return amountsIn Actual amounts in required for the join
      * @return bptAmountOut BPT amount minted in exchange for the input tokens
@@ -545,7 +539,6 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     /**
      * @notice Callback for remove liquidity queries.
      * @dev Can only be called by the Vault.
-     *
      * @param params Remove liquiity parameters
      * @return amountsOut Actual token amounts transferred in exchange for the BPT
      * @return bptAmountIn BPT amount burned for the output tokens

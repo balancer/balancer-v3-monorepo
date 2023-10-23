@@ -27,7 +27,6 @@ interface IBasePool {
     /**
      * @notice Initialize pool with seed funds.
      * @dev The vault enforces that this callback will only be called once.
-     *
      * @param maxAmountsIn Maximum amounts of tokens to be added
      * @param userData Additional (optional) data provided by the user
      * @return amountsIn Actual amounts of tokens added
@@ -50,7 +49,6 @@ interface IBasePool {
 
     /**
      * @notice Add liquidity to the pool.
-     *
      * @param sender Address of the sender
      * @param balances Current balances of the tokens
      * @param maxAmountsIn Maximum amounts of tokens to be added
@@ -71,7 +69,6 @@ interface IBasePool {
 
     /**
      * @notice Callback after adding liquidity to the pool.
-     *
      * @param sender Address of the sender
      * @param currentBalances Current balances of the tokens
      * @param maxAmountsIn Maximum amounts of tokens to be added
@@ -99,7 +96,6 @@ interface IBasePool {
 
     /**
      * @notice Remove liquidity from the pool.
-     *
      * @param sender Address of the sender
      * @param balances Current balances of the tokens
      * @param minAmountsOut Minimum amounts of tokens to be removed
@@ -120,7 +116,6 @@ interface IBasePool {
 
     /**
      * @notice Callback after removing liquidity from the pool.
-     *
      * @param sender Address of the sender
      * @param currentBalances Current balances of the tokens
      * @param minAmountsOut Minimum amounts of tokens to be removed
@@ -166,7 +161,6 @@ interface IBasePool {
 
     /**
      * @notice Execute a swap in the pool.
-     *
      * @param params Swap parameters
      * @return amountCalculated Calculated amount for the swap
      */

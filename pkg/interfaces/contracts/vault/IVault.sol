@@ -7,14 +7,14 @@ import { IBasePool } from "./IBasePool.sol";
 import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
 
-// Represents a pool's callbacks
+/// @dev Represents a pool's callbacks.
 struct PoolCallbacks {
     bool shouldCallAfterSwap;
     bool shouldCallAfterAddLiquidity;
     bool shouldCallAfterRemoveLiquidity;
 }
 
-// Represents a pool's configuration, including callbacks
+/// @dev Represents a pool's configuration, including callbacks.
 struct PoolConfig {
     bool isRegisteredPool;
     bool isInitializedPool;
@@ -26,18 +26,31 @@ interface IVault {
                         Pool Registration and Initialization
     *******************************************************************************/
 
-    // Emitted when a Pool is registered by calling `registerPool`.
+    /**
+     * @notice A Pool was registered by calling `registerPool`.
+     * @param pool The pool being registered
+     * @param factory The factory creating the pool
+     * @param tokens The pool's tokens
+     */
     event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
 
-    // Emitted when a Pool is initialized by calling `initialize`.
+    /**
+     * @notice A Pool was initialized by calling `initialize`.
+     * @param pool The pool being initialized
+     */
     event PoolInitialized(address indexed pool);
 
-    // Emitted when Pool balances change (initialization, add/remove liquidity)
+    /**
+     * @notice Pool balances have changed (e.g., after initialization, add/remove liquidity).
+     * @param pool The pool being registered
+     * @param liquidityProvider The user performing the operation
+     * @param tokens The pool's tokens
+     * @param deltas The amount each token changed
+     */
     event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
 
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
-     *
      * @param factory The factory address associated with the pool being registered
      * @param tokens An array of token addresses the pool will manage
      * @param config Config for the pool
@@ -68,7 +81,6 @@ interface IVault {
 
     /**
      * @notice Checks whether a pool is registered.
-     *
      * @param pool Address of the pool to check
      * @return True if the pool is registered, false otherwise
      */
@@ -76,7 +88,6 @@ interface IVault {
 
     /**
      * @notice Checks whether a pool is initialized.
-     *
      * @dev An initialized pool can be considered registered as well.
      * @param pool Address of the pool to check
      * @return True if the pool is initialized, false otherwise
@@ -85,7 +96,6 @@ interface IVault {
 
     /**
      * @notice Gets tokens and their balances of a pool.
-     *
      * @param pool Address of the pool
      * @return tokens List of tokens in the pool
      * @return balances Corresponding balances of the tokens
@@ -94,7 +104,6 @@ interface IVault {
 
     /**
      * @notice Gets the configuration paramters of a pool.
-     *
      * @param pool Address of the pool
      * @return Pool configuration
      */
@@ -103,14 +112,12 @@ interface IVault {
     /**
      * @notice Get the minimum number of tokens in a pool.
      * @dev We expect the vast majority of pools to be 2-token.
-     *
      * @return The token count of a minimal pool
      */
     function getMinimumPoolTokens() external pure returns (uint256);
 
     /**
      * @notice Get the maximum number of tokens in a pool.
-     *
      * @return The token count of a minimal pool
      */
     function getMaximumPoolTokens() external pure returns (uint256);
@@ -121,7 +128,6 @@ interface IVault {
 
     /**
      * @notice Gets total supply of a given ERC20 token.
-     *
      * @param token Token's address
      * @return Total supply of the token
      */
@@ -129,7 +135,6 @@ interface IVault {
 
     /**
      * @notice Gets balance of an account for a given ERC20 token.
-     *
      * @param token Token's address
      * @param account Account's address
      * @return Balance of the account for the token
@@ -138,7 +143,6 @@ interface IVault {
 
     /**
      * @notice Gets allowance of a spender for a given ERC20 token and owner.
-     *
      * @param token Token's address
      * @param owner Owner's address
      * @param spender Spender's address
@@ -190,15 +194,13 @@ interface IVault {
     /**
      * @notice Invokes a callback on msg.sender with arguments provided in `data`.
      * @dev Callback is `transient`, meaning all balances for the caller have to be settled at the end.
-     *
-     * @param data Contain function signature and args to be passed to the msg.sender
+     * @param data Contains function signature and args to be passed to the msg.sender
      * @return result Resulting data from the call
      */
     function invoke(bytes calldata data) external payable returns (bytes memory result);
 
     /**
      * @notice Settles deltas for a token.
-     *
      * @param token Token's address
      * @return paid Amount paid during settlement
      */
@@ -206,7 +208,6 @@ interface IVault {
 
     /**
      * @notice Sends tokens to a recipient.
-     *
      * @param token Token's address
      * @param to Recipient's address
      * @param amount Amount of tokens to send
@@ -215,6 +216,8 @@ interface IVault {
 
     /**
      * @notice Retrieves tokens from a sender.
+     * @dev This function can transfer tokens from users using allowances granted to the Vault.
+     * Only trusted routers should be permitted to invoke it. Untrusted routers should use `settle` instead.
      *
      * @param token Token's address
      * @param from Sender's address
@@ -224,7 +227,6 @@ interface IVault {
 
     /**
      * @notice Returns the address at the specified index of the _handlers array.
-     *
      * @param index The index of the handler's address to fetch
      * @return The address at the given index
      */
@@ -232,14 +234,12 @@ interface IVault {
 
     /**
      * @notice Returns the total number of handlers.
-     *
      * @return The number of handlers
      */
     function getHandlersCount() external view returns (uint256);
 
     /**
      *  @notice Returns the count of non-zero deltas.
-     *
      *  @return The current value of _nonzeroDeltaCount
      */
     function getNonzeroDeltaCount() external view returns (uint256);
@@ -247,7 +247,6 @@ interface IVault {
     /**
      * @notice Retrieves the token delta for a specific user and token.
      * @dev This function allows reading the value from the `_tokenDeltas` mapping.
-     *
      * @param user The address of the user for whom the delta is being fetched
      * @param token The token for which the delta is being fetched
      * @return The delta of the specified token for the specified user
@@ -256,7 +255,6 @@ interface IVault {
 
     /**
      * @notice Retrieves the reserve of a given token.
-     *
      * @param token The token for which to retrieve the reserve
      * @return The amount of reserves for the given token
      */
@@ -297,6 +295,9 @@ interface IVault {
 
     /**
      * @notice Removes liquidity from a pool.
+     * @dev Trusted routers can burn pool tokens belonging to any user and require no prior approval from the user.
+     * Untrusted routers require prior approval from the user. This is the only function allowed to call
+     * _queryModeBalanceIncrease (and only in a query context).
      *
      * @param pool Address of the pool
      * @param from Address of user to burn from
@@ -336,6 +337,14 @@ interface IVault {
         bytes userData;
     }
 
+    /**
+     * @notice A swap has occurred.
+     * @param pool The pool with the tokens being swapped
+     * @param tokenIn The token entering the Vault (balance increases)
+     * @param tokenOut The token leaving the Vault (balance decreases)
+     * @param amountIn Number of tokenIn tokens
+     * @param amountOut Number of tokenOut tokens
+     */
     event Swap(
         address indexed pool,
         IERC20 indexed tokenIn,
@@ -346,7 +355,6 @@ interface IVault {
 
     /**
      * @notice Swaps tokens based on provided parameters.
-     *
      * @param params Parameters for the swap
      * @return amountCalculated Calculated swap amount
      * @return amountIn Amount of input tokens for the swap
@@ -365,7 +373,9 @@ interface IVault {
      * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
      * anything else will revert.
      *
-     * @param data Contain function signature and args to be passed to the msg.sender
+     * Allows querying any operation on the Vault that has the `withHandler` modifier.
+     *
+     * @param data Contains function signature and args to be passed to the msg.sender
      * @return result Resulting data from the call
      */
     function quote(bytes calldata data) external payable returns (bytes memory result);
@@ -375,7 +385,6 @@ interface IVault {
 
     /**
      * @notice Checks if the queries enabled on the Vault.
-     *
      * @return If true, then queries are disabled
      */
     function isQueryDisabled() external view returns (bool);
@@ -384,12 +393,14 @@ interface IVault {
                                 Authentication
     *******************************************************************************/
 
-    // Emitted when a new authorizer is set by `setAuthorizer`.
+    /**
+     * @notice A new authorizer is set by `setAuthorizer`.
+     * @param newAuthorizer The address of the new authorizer
+     */
     event AuthorizerChanged(IAuthorizer indexed newAuthorizer);
 
     /**
      * @notice Returns the Vault's Authorizer.
-     *
      * @return Address of the authorizer
      */
     function getAuthorizer() external view returns (IAuthorizer);
@@ -397,7 +408,6 @@ interface IVault {
     /**
      * @notice Sets a new Authorizer for the Vault.
      * @dev The caller must be allowed by the current Authorizer to do this.
-     *
      * Emits an `AuthorizerChanged` event.
      */
     function setAuthorizer(IAuthorizer newAuthorizer) external;
