@@ -39,6 +39,10 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     // Minimum BPT amount minted upon initialization.
     uint256 private constant _MINIMUM_BPT = 1e6;
 
+    // Pools can have two, three, or four tokens.
+    uint256 private constant _MIN_TOKENS = 2;
+    uint256 private constant _MAX_TOKENS = 4;
+
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
 
@@ -205,6 +209,16 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     /// @inheritdoc IVault
     function getTokenReserve(IERC20 token) external view returns (uint256) {
         return _tokenReserves[token];
+    }
+
+    /// @inheritdoc IVault
+    function getMinimumPoolTokens() external pure returns (uint256) {
+        return _MIN_TOKENS;
+    }
+
+    /// @inheritdoc IVault
+    function getMaximumPoolTokens() external pure returns (uint256) {
+        return _MAX_TOKENS;
     }
 
     /**
@@ -528,6 +542,13 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // Ensure the pool isn't already registered
         if (_isRegisteredPool(pool)) {
             revert PoolAlreadyRegistered(pool);
+        }
+
+        if (tokens.length < _MIN_TOKENS) {
+            revert MinTokens();
+        }
+        if (tokens.length > _MAX_TOKENS) {
+            revert MaxTokens();
         }
 
         // Retrieve or create the pool's token balances mapping

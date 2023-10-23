@@ -15,6 +15,7 @@ import { setupEnvironment } from './poolSetup';
 import { impersonate } from '@balancer-labs/v3-helpers/src/signers';
 import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
+import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import '@balancer-labs/v3-common/setupTests';
 
 describe('Vault', function () {
@@ -146,6 +147,20 @@ describe('Vault', function () {
         .to.be.revertedWithCustomError(vault, 'PoolNotRegistered')
         .withArgs(ANY_ADDRESS);
     });
+
+    it('cannot register a pool with too few tokens', async () => {
+      await expect(
+        vault.connect(unregisteredPoolSigner).manualRegisterPool(factory.address, [poolATokens[0]])
+      ).to.be.revertedWithCustomError(vault, 'MinTokens');
+    });
+
+    it('cannot register a pool with too many tokens', async () => {
+      const tokens = await ERC20TokenList.create(5);
+
+      await expect(
+        vault.connect(unregisteredPoolSigner).manualRegisterPool(factory.address, await tokens.addresses)
+      ).to.be.revertedWithCustomError(vault, 'MaxTokens');
+    });
   });
 
   describe('initialization', () => {
@@ -215,6 +230,16 @@ describe('Vault', function () {
 
         expect(await vault.getAuthorizer()).to.equal(oldAuthorizerAddress);
       });
+    });
+  });
+
+  describe('pool tokens', () => {
+    it('returns the min and max pool counts', async () => {
+      const minTokens = await vault.getMinimumPoolTokens();
+      const maxTokens = await vault.getMaximumPoolTokens();
+
+      expect(minTokens).to.eq(2);
+      expect(maxTokens).to.eq(4);
     });
   });
 });
