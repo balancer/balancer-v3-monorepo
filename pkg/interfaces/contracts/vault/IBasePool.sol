@@ -20,13 +20,6 @@ interface IBasePool {
     /// @dev The pool does not implement a callback it was configured with.
     error CallbackNotImplemented();
 
-    // TODO: move this to Vault.
-    /// @dev The number of pool tokens is below the minimum allowed.
-    error MinTokens();
-
-    /// @dev The number of pool tokens is above the maximum allowed.
-    error MaxTokens();
-
     /***************************************************************************
                                   Initialization
     ***************************************************************************/

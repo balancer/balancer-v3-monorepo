@@ -19,9 +19,6 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
 
     IVault internal immutable _vault;
 
-    // TODO: move this to Vault.
-    uint256 private constant _MIN_TOKENS = 2;
-
     uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
     uint256 private constant _SWAP_FEE_PERCENTAGE = 0;
 
@@ -29,22 +26,13 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
         IVault vault,
         string memory name,
         string memory symbol,
-        IERC20[] memory tokens,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
     ) ERC20PoolToken(vault, name, symbol) TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration) {
         _vault = vault;
-        if (tokens.length < _MIN_TOKENS) {
-            revert MinTokens();
-        }
-        if (tokens.length > _getMaxTokens()) {
-            revert MaxTokens();
-        }
     }
 
     function _getTotalTokens() internal view virtual returns (uint256);
-
-    function _getMaxTokens() internal pure virtual returns (uint256);
 
     /**
      * @notice Return the current value of the swap fee percentage.

@@ -23,6 +23,12 @@ interface IVaultErrors {
     /// @dev A token was already registered (i.e., a duplicate).
     error TokenAlreadyRegistered(IERC20 tokenAddress);
 
+    /// @dev Indicates the number of pool tokens is below the minimum allowed.
+    error MinTokens();
+
+    /// @dev Indicates the number of pool tokens is above the maximum allowed.
+    error MaxTokens();
+
     /// @dev The sender is not the Vault (e.g., someone is trying to call a permissioned function).
     error SenderIsNotVault(address sender);
 
