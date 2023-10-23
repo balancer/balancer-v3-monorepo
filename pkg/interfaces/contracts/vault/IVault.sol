@@ -277,7 +277,7 @@ interface IVault {
      * @param maxAmountsIn Maximum amounts of input assets
      * @param minBptAmountOut Minimum output pool token amount
      * @param kind Add liquidity kind
-     * @param userData Additional user data
+     * @param userData Additional (optional) user data
      * @return amountsIn Actual amounts of input assets
      * @return bptAmountOut Output pool token amount
      */
@@ -304,7 +304,7 @@ interface IVault {
      * @param minAmountsOut Minimum amounts of output assets
      * @param maxBptAmountIn Input pool token amount
      * @param kind Remove liquidity kind
-     * @param userData Additional user data
+     * @param userData Additional (optional) user data
      * @return amountsOut Actual amounts of output assets
      * @return bptAmountIn Actual amount of BPT burnt
      */

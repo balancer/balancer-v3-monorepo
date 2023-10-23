@@ -28,7 +28,7 @@ interface IRouter {
      * @param tokens Pool tokens
      * @param maxAmountsIn Maximum amounts of assets to be added
      * @param minBptAmountOut Minimum pool tokens to be received
-     * @param userData Additional data required for initialization
+     * @param userData Additional (optional) data required for initialization
      * @return amountsIn Actual token amounts transferred (e.g., including fees)
      * @return bptAmountOut Actual BPT amount minted in exchange for initial liquidity
      */
@@ -61,7 +61,7 @@ interface IRouter {
      * @param assets Array of assets to add
      * @param maxAmountsIn Maximum amounts of assets to be added
      * @param minBptAmountOut Minimum pool tokens to be received
-     * @param userData Additional data required for adding liquidity
+     * @param userData Additional (optional) data required for adding liquidity
      * @return amountsIn Actual amounts of assets added
      * @return bptAmountOut Pool tokens received
      */
@@ -95,7 +95,7 @@ interface IRouter {
      * @param assets Array of assets to remove
      * @param minAmountsOut Minimum amounts of assets to be received
      * @param maxBptAmountIn Pool tokens provided
-     * @param userData Additional data required for removing liquidity
+     * @param userData Additional (optional) data required for removing liquidity
      * @return amountsOut Actual amounts of assets received
      */
     function removeLiquidity(
@@ -133,7 +133,7 @@ interface IRouter {
      * @param amountGiven Amount given based on kind of the swap (e.g., tokenIn for given in)
      * @param limit Maximum or minimum amount based on the kind of swap (e.g., maxAmountIn for given out)
      * @param deadline Deadline for the swap
-     * @param userData Additional data required for the swap
+     * @param userData Additional (optional) data required for the swap
      * @return amountCalculated Amount calculated based on the kind of swap
      */
     function swap(
@@ -158,7 +158,7 @@ interface IRouter {
      * @param assets Array of assets to add
      * @param maxAmountsIn Maximum amounts of assets to be added
      * @param minBptAmountOut Minimum pool tokens expected
-     * @param userData Additional data required for the query
+     * @param userData Additional (optional) data required for the query
      * @return amountsIn Expected amounts of assets to add
      * @return bptAmountOut Expected pool tokens to receive
      */
@@ -178,7 +178,7 @@ interface IRouter {
      * @param assets Array of assets to remove
      * @param minAmountsOut Minimum amounts of assets expected
      * @param maxBptAmountIn Pool tokens provided for the query
-     * @param userData Additional data required for the query
+     * @param userData Additional (optional) data required for the query
      * @return amountsOut Expected amounts of assets to receive
      */
     function queryRemoveLiquidity(
@@ -198,7 +198,7 @@ interface IRouter {
      * @param assetIn Asset to be swapped from
      * @param assetOut Asset to be swapped to
      * @param amountGiven Amount given based on kind of the swap
-     * @param userData Additional data required for the query
+     * @param userData Additional (optional) data required for the query
      * @return amountCalculated Amount calculated based on the kind of swap
      */
     function querySwap(

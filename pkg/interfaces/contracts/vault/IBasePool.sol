@@ -56,7 +56,7 @@ interface IBasePool {
      * @param maxAmountsIn Maximum amounts of tokens to be added
      * @param minBptAmountOut Minimum amount of BPT to receive
      * @param kind Add liquidity kind
-     * @param userData Additional data provided by the user
+     * @param userData Additional (optional) data provided by the user
      * @return amountsIn Actual amounts of tokens added
      * @return bptAmountOut Amount of BPT tokens minted
      */
@@ -75,7 +75,7 @@ interface IBasePool {
      * @param sender Address of the sender
      * @param currentBalances Current balances of the tokens
      * @param maxAmountsIn Maximum amounts of tokens to be added
-     * @param userData Additional data provided by the user
+     * @param userData Additional (optional) data provided by the user
      * @return success True if the pool wishes to proceed with settlement
      */
     function onAfterAddLiquidity(
@@ -105,7 +105,7 @@ interface IBasePool {
      * @param minAmountsOut Minimum amounts of tokens to be removed
      * @param maxBptAmountIn Maximum amount of BPT tokens burnt
      * @param kind Remove liquidity kind
-     * @param userData Additional data provided by the user
+     * @param userData Additional (optional) data provided by the user
      * @return amountsOut Actual amounts of tokens removed
      * @return bptAmountIn Actual amount of BPT burned
      */
@@ -124,7 +124,7 @@ interface IBasePool {
      * @param sender Address of the sender
      * @param currentBalances Current balances of the tokens
      * @param minAmountsOut Minimum amounts of tokens to be removed
-     * @param userData Additional data provided by the user
+     * @param userData Additional (optional) data provided by the user
      * @return success True if the pool wishes to proceed with settlement
      */
     function onAfterRemoveLiquidity(
