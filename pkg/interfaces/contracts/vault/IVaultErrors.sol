@@ -33,6 +33,12 @@ interface IVaultErrors {
      */
     error TokenAlreadyRegistered(IERC20 tokenAddress);
 
+    /// @dev Indicates the number of pool tokens is below the minimum allowed.
+    error MinTokens();
+
+    /// @dev Indicates the number of pool tokens is above the maximum allowed.
+    error MaxTokens();
+
     /**
      * @dev Error indicating the sender is not the Vault (e.g., someone is trying to call a permissioned function).
      */
