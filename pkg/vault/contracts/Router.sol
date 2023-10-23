@@ -10,11 +10,10 @@ import { ReentrancyGuard } from "@balancer-labs/v3-solidity-utils/contracts/open
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 
-contract Router is IRouter, IVaultErrors, ReentrancyGuard {
+contract Router is IRouter, ReentrancyGuard {
     using AssetHelpers for *;
     using Address for address payable;
 
@@ -25,7 +24,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
 
     modifier onlyVault() {
         if (msg.sender != address(_vault)) {
-            revert SenderIsNotVault(msg.sender);
+            revert IVault.SenderIsNotVault(msg.sender);
         }
         _;
     }
@@ -80,7 +79,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         );
 
         if (bptAmountOut < params.minBptAmountOut) {
-            revert IVaultErrors.BptAmountBelowMin();
+            revert IVault.BptAmountBelowMin();
         }
 
         uint256 ethAmountIn;
@@ -90,7 +89,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             uint256 amountIn = amountsIn[i];
 
             if (amountIn > params.maxAmountsIn[i]) {
-                revert IVaultErrors.JoinAboveMax();
+                revert IVault.JoinAboveMax();
             }
 
             IERC20 token = asset.toIERC20(_weth);
@@ -154,7 +153,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         );
 
         if (bptAmountOut < params.minBptAmountOut) {
-            revert IVaultErrors.BptAmountBelowMin();
+            revert IVault.BptAmountBelowMin();
         }
 
         uint256 ethAmountIn;
@@ -164,7 +163,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             uint256 amountIn = amountsIn[i];
 
             if (amountIn > params.maxAmountsIn[i]) {
-                revert IVaultErrors.JoinAboveMax();
+                revert IVault.JoinAboveMax();
             }
 
             IERC20 token = asset.toIERC20(_weth);
@@ -229,7 +228,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         for (uint256 i = 0; i < params.assets.length; ++i) {
             uint256 amountOut = amountsOut[i];
             if (amountOut < params.minAmountsOut[i]) {
-                revert IVaultErrors.ExitBelowMin();
+                revert IVault.ExitBelowMin();
             }
 
             Asset asset = params.assets[i];
@@ -289,7 +288,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > params.deadline) {
-            revert IVaultErrors.SwapDeadline();
+            revert IVault.SwapDeadline();
         }
 
         IERC20 tokenIn = params.assetIn.toIERC20(_weth);
@@ -307,7 +306,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         );
 
         if (params.kind == IVault.SwapKind.GIVEN_IN ? amountOut < params.limit : amountIn > params.limit) {
-            revert IVaultErrors.SwapLimit(params.kind == IVault.SwapKind.GIVEN_IN ? amountOut : amountIn, params.limit);
+            revert IVault.SwapLimit(params.kind == IVault.SwapKind.GIVEN_IN ? amountOut : amountIn, params.limit);
         }
 
         // If the assetIn is ETH, then wrap `amountIn` into WETH.
@@ -353,7 +352,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > params.deadline) {
-            revert IVaultErrors.SwapDeadline();
+            revert IVault.SwapDeadline();
         }
 
         tokenIn = params.assetIn.toIERC20(_weth);
@@ -371,7 +370,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
         );
 
         if (params.kind == IVault.SwapKind.GIVEN_IN ? amountOut < params.limit : amountIn > params.limit) {
-            revert IVaultErrors.SwapLimit(params.kind == IVault.SwapKind.GIVEN_IN ? amountOut : amountIn, params.limit);
+            revert IVault.SwapLimit(params.kind == IVault.SwapKind.GIVEN_IN ? amountOut : amountIn, params.limit);
         }
     }
 

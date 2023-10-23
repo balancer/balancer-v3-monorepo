@@ -5,6 +5,8 @@ pragma solidity ^0.8.4;
 /**
  * @notice Custom errors for ERC20 tokens.
  * @dev See [EIP-6093](https://eips.ethereum.org/EIPS/eip-6093).
+ * TODO Use OZ version when we go to 5.0
+ * 
  */
 interface IERC20Errors {
     /**

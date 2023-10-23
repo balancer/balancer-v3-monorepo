@@ -21,6 +21,18 @@ pragma solidity ^0.8.4;
  */
 interface ITemporarilyPausable {
     /**
+     * @dev Emitted when the pause is triggered by `account`.
+     * @param account The address that triggered the pause event.
+     */
+    event Paused(address indexed account);
+
+    /**
+     * @dev Emitted when the pause is lifted by `account`.
+     * @param account The address that triggered the unpause event.
+     */
+    event Unpaused(address indexed account);
+
+    /**
      * @dev Error indicating that the maximum pause window duration has been exceeded.
      */
     error PauseWindowDurationTooLarge();
@@ -57,16 +69,4 @@ interface ITemporarilyPausable {
      * @dev Returns the end times of the pause window and buffer period.
      */
     function getPauseEndTimes() external view returns (uint256 pauseWindowEndTime, uint256 bufferPeriodEndTime);
-
-    /**
-     * @dev Emitted when the pause is triggered by `account`.
-     * @param account The address that triggered the pause event.
-     */
-    event Paused(address indexed account);
-
-    /**
-     * @dev Emitted when the pause is lifted by `account`.
-     * @param account The address that triggered the unpause event.
-     */
-    event Unpaused(address indexed account);
 }

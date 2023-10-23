@@ -28,6 +28,37 @@ interface IVault {
     *******************************************************************************/
 
     /**
+     * @dev Error indicating that a pool has already been registered.
+     */
+    error PoolAlreadyRegistered(address pool);
+
+    /// @dev Error indicating that the pool has already been initialized. `initialize` may only be called once.
+    error PoolAlreadyInitialized(address pool);
+
+    /**
+     * @dev Error indicating that a referenced pool has not been registered.
+     */
+    error PoolNotRegistered(address pool);
+
+    /**
+     * @dev Error indicating that a referenced pool has not been initialized.
+     */
+    error PoolNotInitialized(address pool);
+
+    /**
+     * @dev Error indicating an attempt to register an invalid token.
+     */
+    error InvalidToken();
+
+    /**
+     * @dev Error indicating a token was already registered (i.e., a duplicate).
+     */
+    error TokenAlreadyRegistered(IERC20 tokenAddress);
+
+    /// @dev Error indicating the BPT amount involved in the operation is below the absolute minimum.
+    error BptAmountBelowAbsoluteMin();
+
+    /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
      * @param factory The factory address associated with the pool being registered.
      * @param tokens An array of token addresses the pool will manage.
@@ -159,6 +190,35 @@ interface IVault {
     *******************************************************************************/
 
     /**
+     * @dev Error indicating the sender is not the Vault (e.g., someone is trying to call a permissioned function).
+     */
+    error SenderIsNotVault(address sender);
+
+    /// @dev
+    error BptAmountBelowMin();
+
+    /// @dev
+    error BptAmountAboveMax();
+
+    /// @dev
+    error BalanceNotSettled();
+
+    /// @dev
+    error WrongHandler(address, address);
+
+    /// @dev
+    error NoHandler();
+
+    /// @dev
+    error HandlerOutOfBounds(uint256);
+
+    /// @dev
+    error CallbackFailed();
+
+    /// @dev
+    error RouterNotTrusted();
+
+    /**
      * @notice Invokes a callback on msg.sender with arguments provided in `data`.
      * Callback is `transient`, meaning all balances for the caller have to be settled at the end.
      * @param data                           Contain function signature and args to be passed to the msg.sender
@@ -224,10 +284,41 @@ interface IVault {
      */
     function getTokenReserve(IERC20 token) external view returns (uint256);
 
+    /*******************************************************************************
+                              Pool Operations
+    *******************************************************************************/
+
     enum SwapKind {
         GIVEN_IN,
         GIVEN_OUT
     }
+
+    /// @dev
+    error TokensMismatch(address tokenA, address tokenB);
+    
+    /// @dev
+    error PoolHasNoTokens(address pool);
+
+    /// @dev
+    error JoinAboveMax();
+
+    /// @dev
+    error ExitBelowMin();
+
+    /// @dev
+    error SwapDeadline();
+
+    /// @dev
+    error AmountGivenZero();
+
+    /// @dev
+    error CannotSwapSameToken();
+
+    /// @dev
+    error TokenNotRegistered();
+
+    /// @dev
+    error SwapLimit(uint256, uint256);
 
     /**
      * @notice Swaps tokens based on provided parameters
@@ -329,6 +420,9 @@ interface IVault {
     /*******************************************************************************
                                     Queries
     *******************************************************************************/
+
+    /// @dev
+    error QueriesDisabled();
 
     /**
      * @notice Invokes a callback on msg.sender with arguments provided in `data`
