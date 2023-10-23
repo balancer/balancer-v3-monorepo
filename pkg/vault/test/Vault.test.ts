@@ -235,7 +235,8 @@ describe('Vault', function () {
 
   describe('pool tokens', () => {
     it('returns the min and max pool counts', async () => {
-      const [minTokens, maxTokens] = await vault.getTokenCountRange();
+      const minTokens = await vault.getMinimumPoolTokens();
+      const maxTokens = await vault.getMaximumPoolTokens();
 
       expect(minTokens).to.eq(2);
       expect(maxTokens).to.eq(4);

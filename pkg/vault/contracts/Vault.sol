@@ -212,8 +212,13 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     }
 
     /// @inheritdoc IVault
-    function getTokenCountRange() external pure returns (uint256, uint256) {
-        return (_MIN_TOKENS, _MAX_TOKENS);
+    function getMinimumPoolTokens() external pure returns (uint256) {
+        return _MIN_TOKENS;
+    }
+
+    /// @inheritdoc IVault
+    function getMaximumPoolTokens() external pure returns (uint256) {
+        return _MAX_TOKENS;
     }
 
     /**
