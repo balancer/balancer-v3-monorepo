@@ -39,8 +39,8 @@ export default class ERC20Token {
     this.instance = instance;
   }
 
-  get address(): string {
-    return this.instance.address;
+  async address(): Promise<string> {
+    return this.instance.getAddress();
   }
 
   async balanceOf(account: Account): Promise<bigint> {
