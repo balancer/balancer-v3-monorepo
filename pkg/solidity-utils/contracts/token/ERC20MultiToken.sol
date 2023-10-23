@@ -2,11 +2,10 @@
 
 pragma solidity ^0.8.4;
 
+import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/token/IERC20Errors.sol";
 import { EVMCallModeHelpers } from "../helpers/EVMCallModeHelpers.sol";
-
 import { ERC20PoolToken } from "./ERC20PoolToken.sol";
 
 /**
