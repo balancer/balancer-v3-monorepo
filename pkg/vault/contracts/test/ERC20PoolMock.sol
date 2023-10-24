@@ -106,4 +106,8 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
                 ? params.amountGiven.mulDown(_multiplier)
                 : params.amountGiven.divDown(_multiplier);
     }
+
+    function getPoolTokens() external view returns (IERC20[] memory tokens, uint256[] memory balances) {
+        return _vault.getPoolTokens(address(this));
+    }
 }

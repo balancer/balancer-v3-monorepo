@@ -8,24 +8,16 @@ import "./LogExpMath.sol";
 library WeightedMath {
     using FixedPoint for uint256;
 
-    /**
-     * @dev Error thrown when attempting to burn less BPT than allowed for a specific amountOut.
-     */
+    /// @dev User Attempted to burn less BPT than allowed for a specific amountOut.
     error MinBPTInForTokenOut();
 
-    /**
-     * @dev Error thrown when attempting to mint more BPT than allowed for a specific amountIn.
-     */
+    /// @dev User attempted to mint more BPT than allowed for a specific amountIn.
     error MaxOutBptForTokenIn();
 
-    /**
-     * @dev Error thrown when trying to extract a disproportionate amountOut of tokens from the pool.
-     */
+    /// @dev User attempted to extract a disproportionate amountOut of tokens from a pool.
     error MaxOutRatio();
 
-    /**
-     * @dev Error thrown when trying to add a disproportionate amountIn of tokens to the pool.
-     */
+    /// @dev User attempted to add a disproportionate amountIn of tokens to a pool.
     error MaxInRatio();
 
     /**
@@ -238,9 +230,7 @@ library WeightedMath {
         return bptOut;
     }
 
-    /**
-     * @dev Intermediate function to avoid stack-too-deep errors.
-     */
+    /// @dev Intermediate function to avoid stack-too-deep errors.
     function computeJoinExactTokensInInvariantRatio(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
@@ -391,9 +381,7 @@ library WeightedMath {
         return bptTotalSupply.mulUp(invariantRatio.complement());
     }
 
-    /**
-     * @dev Intermediate function to avoid stack-too-deep errors.
-     */
+    /// @dev Intermediate function to avoid stack-too-deep errors.
     function computeExitExactTokensOutInvariantRatio(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
@@ -479,8 +467,9 @@ library WeightedMath {
      * @dev Calculate the amount of BPT which should be minted when adding a new token to the Pool.
      *
      * Note that normalizedWeight is set that it corresponds to the desired weight of this token *after* adding it.
-     * i.e. For a two token 50:50 pool which we want to turn into a 33:33:33 pool, we use a normalized weight of 33%
-     * @param totalSupply - the total supply of the Pool's BPT.
+     * i.e. For a two token 50:50 pool which we want to turn into a 33:33:33 pool, we use a normalized weight of 33%.
+     *
+     * @param totalSupply - the total supply of the Pool's BPT
      * @param normalizedWeight - the normalized weight of the token to be added (normalized relative to final weights)
      */
     function calcBptOutAddToken(uint256 totalSupply, uint256 normalizedWeight) internal pure returns (uint256) {

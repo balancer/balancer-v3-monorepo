@@ -53,14 +53,10 @@ library EnumerableMap {
         mapping(IERC20 => uint256) indexes;
     }
 
-    /**
-     * @dev This error is thrown when an index is given beyond the current bounds of the set.
-     */
+    /// @dev An index is beyond the current bounds of the set.
     error IndexOutOfBounds();
 
-    /**
-     * @dev This error is thrown when attempting to retrieve an entry that is not present in the map.
-     */
+    /// @dev This error is thrown when attempting to retrieve an entry that is not present in the map.
     error KeyNotFound();
 
     /**
@@ -149,16 +145,12 @@ library EnumerableMap {
         }
     }
 
-    /**
-     * @dev Returns true if the key is in the map. O(1).
-     */
+    /// @dev Returns true if the key is in the map. O(1).
     function contains(IERC20ToUint256Map storage map, IERC20 key) internal view returns (bool) {
         return map.indexes[key] != 0;
     }
 
-    /**
-     * @dev Returns the number of key-value pairs in the map. O(1).
-     */
+    /// @dev Returns the number of key-value pairs in the map. O(1).
     function length(IERC20ToUint256Map storage map) internal view returns (uint256) {
         return map.size;
     }
