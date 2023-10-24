@@ -299,8 +299,7 @@ interface IVault {
     function addLiquidityUnbalanced(
         address pool,
         address to,
-        uint256[] memory exactAmountsIn,
-        uint256 minBptAmountOut
+        uint256[] memory exactAmountsIn
     ) external returns (uint256 bptAmountOut);
 
     function addLiquiditySingleAsset(
@@ -348,24 +347,27 @@ interface IVault {
 
     function removeLiquidityProportional(
         address pool,
+        address from,
         uint256[] memory maxAmountsOut,
         uint256 exactBptAmountIn
     ) external returns (uint256[] memory amountsOut);
 
     function removeLiquidityUnbalanced(
         address pool,
-        uint256[] memory exactAmountsOut,
-        uint256 maxBptAmountIn
+        address from,
+        uint256[] memory exactAmountsOut
     ) external returns (uint256 bptAmountIn);
 
     function removeLiquiditySingleAsset(
         address pool,
+        address from,
         IERC20 tokenOut,
         uint256 exactBptAmountIn
     ) external returns (uint256 amountOut);
 
     function removeLiquidityCustom(
         address pool,
+        address from,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn, bytes memory returnData);
 

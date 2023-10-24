@@ -720,15 +720,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
             userData
         );
 
-        _afterAddLiquidity(
-            pool,
-            to,
-            tokens,
-            userData,
-            balances,
-            amountsIn,
-            bptAmountOut
-        );
+        _afterAddLiquidity(pool, to, tokens, userData, balances, amountsIn, bptAmountOut);
     }
 
     function addLiquidityProportional(
@@ -749,22 +741,13 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, _totalSupply(pool), exactBptAmountOut);
 
-        _afterAddLiquidity(
-            pool,
-            to,
-            tokens,
-            '',
-            balances,
-            amountsIn,
-            exactBptAmountOut
-        );
+        _afterAddLiquidity(pool, to, tokens, "", balances, amountsIn, exactBptAmountOut);
     }
 
     function addLiquidityUnbalanced(
         address pool,
         address to,
-        uint256[] memory exactAmountsIn,
-        uint256
+        uint256[] memory exactAmountsIn
     ) external withHandler whenNotPaused withInitializedPool(pool) returns (uint256 bptAmountOut) {
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
 
@@ -772,15 +755,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         bptAmountOut = IBasePool(pool).onAddLiquidityUnbalanced(msg.sender, exactAmountsIn, balances);
 
-        _afterAddLiquidity(
-            pool,
-            to,
-            tokens,
-            '',
-            balances,
-            exactAmountsIn,
-            bptAmountOut
-        );
+        _afterAddLiquidity(pool, to, tokens, "", balances, exactAmountsIn, bptAmountOut);
     }
 
     function addLiquiditySingleAsset(
@@ -795,30 +770,9 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         amountIn = IBasePool(pool).onAddLiquiditySingleAsset(msg.sender, tokenIn, exactBptAmountOut, balances);
 
-        // Build `amountsIn` array for every registered token.
-        uint256[] memory amountsIn = new uint256[](tokens.length);
-        uint256 i;
-        for (i = 0; i < tokens.length; ++i) {
-            if (tokens[i] == tokenIn) {
-                amountsIn[i] = amountIn;
-                break;
-            }
-        }
+        uint256[] memory amountsIn = _singleAssetAmountToArray(tokens, tokenIn, amountIn);
 
-        // If we did not find `tokenIn`, the token is not registered.
-        if (i >= tokens.length) {
-            revert TokenNotRegistered();
-        }
-
-        _afterAddLiquidity(
-            pool,
-            to,
-            tokens,
-            '',
-            balances,
-            amountsIn,
-            exactBptAmountOut
-        );
+        _afterAddLiquidity(pool, to, tokens, "", balances, amountsIn, exactBptAmountOut);
     }
 
     function addLiquidityCustom(
@@ -838,15 +792,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         (amountsIn, bptAmountOut, returnData) = IBasePool(pool).onAddLiquidityCustom(msg.sender, userData, balances);
 
-        _afterAddLiquidity(
-            pool,
-            to,
-            tokens,
-            '',
-            balances,
-            amountsIn,
-            bptAmountOut
-        );
+        _afterAddLiquidity(pool, to, tokens, "", balances, amountsIn, bptAmountOut);
     }
 
     function _afterAddLiquidity(
@@ -876,15 +822,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         _mint(address(pool), to, bptAmountOut);
 
         if (_poolConfig[pool].shouldCallAfterAddLiquidity()) {
-            if (
-                IBasePool(pool).onAfterAddLiquidity(
-                    msg.sender,
-                    balances,
-                    userData,
-                    amountsIn,
-                    bptAmountOut
-                ) == false
-            ) {
+            if (IBasePool(pool).onAfterAddLiquidity(msg.sender, balances, userData, amountsIn, bptAmountOut) == false) {
                 revert CallbackFailed();
             }
         }
@@ -925,6 +863,95 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
             userData
         );
 
+        _afterRemoveLiquidity(pool, from, tokens, userData, balances, amountsOut, bptAmountIn);
+    }
+
+    /// @inheritdoc IVault
+    function removeLiquidityProportional(
+        address pool,
+        address from,
+        uint256[] memory maxAmountsOut,
+        uint256 exactBptAmountIn
+    ) external whenNotPaused nonReentrant withInitializedPool(pool) returns (uint256[] memory amountsOut) {
+        // TODO: recovery mode? Should this be mandatory instead? (should skip onBeforeRemove call)
+        if (!IBasePool(pool).supportsRemoveLiquidityProportional()) {
+            revert DoesNotSupportRemoveLiquidityProportional(pool);
+        }
+
+        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
+
+        InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsOut.length);
+
+        IBasePool(pool).onBeforeRemove(balances);
+
+        amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, _totalSupply(pool), exactBptAmountIn);
+
+        _afterRemoveLiquidity(pool, from, tokens, "", balances, amountsOut, exactBptAmountIn);
+    }
+
+    /// @inheritdoc IVault
+    function removeLiquidityUnbalanced(
+        address pool,
+        address from,
+        uint256[] memory exactAmountsOut
+    ) external whenNotPaused nonReentrant withInitializedPool(pool) returns (uint256 bptAmountIn) {
+        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
+
+        IBasePool(pool).onBeforeRemove(balances);
+
+        bptAmountIn = IBasePool(pool).onRemoveLiquidityUnbalanced(msg.sender, exactAmountsOut, balances);
+
+        _afterRemoveLiquidity(pool, from, tokens, "", balances, exactAmountsOut, bptAmountIn);
+    }
+
+    /// @inheritdoc IVault
+    function removeLiquiditySingleAsset(
+        address pool,
+        address from,
+        IERC20 tokenOut,
+        uint256 exactBptAmountIn
+    ) external whenNotPaused nonReentrant withInitializedPool(pool) returns (uint256 amountOut) {
+        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
+
+        IBasePool(pool).onBeforeRemove(balances);
+
+        amountOut = IBasePool(pool).onRemoveLiquiditySingleAsset(msg.sender, tokenOut, exactBptAmountIn, balances);
+
+        uint256[] memory amountsOut = _singleAssetAmountToArray(tokens, tokenOut, amountOut);
+
+        _afterRemoveLiquidity(pool, from, tokens, "", balances, amountsOut, exactBptAmountIn);
+    }
+
+    /// @inheritdoc IVault
+    function removeLiquidityCustom(
+        address pool,
+        address from,
+        bytes memory userData
+    )
+        external
+        whenNotPaused
+        nonReentrant
+        withInitializedPool(pool)
+        returns (uint256[] memory amountsOut, uint256 bptAmountIn, bytes memory returnData)
+    {
+        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
+
+        IBasePool(pool).onBeforeRemove(balances);
+
+        (amountsOut, bptAmountIn, returnData) = IBasePool(pool).onRemoveLiquidityCustom(msg.sender, userData, balances);
+
+        _afterRemoveLiquidity(pool, from, tokens, "", balances, amountsOut, bptAmountIn);
+    }
+
+    function _afterRemoveLiquidity(
+        address pool,
+        address from,
+        IERC20[] memory tokens,
+        bytes memory userData,
+        uint256[] memory balances,
+        uint256[] memory amountsOut,
+        uint256 bptAmountIn
+    ) internal {
         uint256[] memory finalBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountOut = amountsOut[i];
@@ -939,6 +966,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // Store the new pool balances.
         _setPoolBalances(pool, finalBalances);
 
+        // Trusted routers use Vault's allowances, which are infinite anyways for pool tokens.
         if (!_isTrustedRouter(msg.sender)) {
             _spendAllowance(address(pool), from, msg.sender, bptAmountIn);
         }
@@ -1005,6 +1033,33 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         }
 
         return balances;
+    }
+
+    /**
+     * @dev Validate that `poolTokens` includes `token` and return an array with the same length as `poolTokens` that
+     * contains 0 at every element except for the position belonging to `token`.
+     */
+    function _singleAssetAmountToArray(
+        IERC20[] memory poolTokens,
+        IERC20 token,
+        uint256 amount
+    ) internal pure returns (uint256[] memory) {
+        // Build `amounts` array for every registered token.
+        uint256[] memory amounts = new uint256[](poolTokens.length);
+        uint256 i;
+        for (i = 0; i < poolTokens.length; ++i) {
+            if (poolTokens[i] == token) {
+                amounts[i] = amount;
+                break;
+            }
+        }
+
+        // If we did not find `token`, it means it is not registered.
+        if (i >= poolTokens.length) {
+            revert TokenNotRegistered();
+        }
+
+        return amounts;
     }
 
     function _onlyTrustedRouter(address sender) internal pure {

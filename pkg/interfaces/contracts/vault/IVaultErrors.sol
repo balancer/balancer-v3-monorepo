@@ -83,6 +83,9 @@ interface IVaultErrors {
     /// @dev Pool does not support adding liquidity proportionally.
     error DoesNotSupportAddLiquidityProportional(address pool);
 
+    /// @dev Pool does not support removing liquidity proportionally.
+    error DoesNotSupportRemoveLiquidityProportional(address pool);
+
     /// @dev A user tried to execute a query operation when they were disabled.
     error QueriesDisabled();
 
