@@ -71,14 +71,12 @@ interface IBasePool {
      * @notice Callback after adding liquidity to the pool.
      * @param sender Address of the sender
      * @param currentBalances Current balances of the tokens
-     * @param maxAmountsIn Maximum amounts of tokens to be added
      * @param userData Additional (optional) data provided by the user
      * @return success True if the pool wishes to proceed with settlement
      */
     function onAfterAddLiquidity(
         address sender,
         uint256[] memory currentBalances,
-        uint256[] memory maxAmountsIn,
         bytes memory userData,
         uint256[] memory amountsIn,
         uint256 bptAmountOut
@@ -118,14 +116,12 @@ interface IBasePool {
      * @notice Callback after removing liquidity from the pool.
      * @param sender Address of the sender
      * @param currentBalances Current balances of the tokens
-     * @param minAmountsOut Minimum amounts of tokens to be removed
      * @param userData Additional (optional) data provided by the user
      * @return success True if the pool wishes to proceed with settlement
      */
     function onAfterRemoveLiquidity(
         address sender,
         uint256[] memory currentBalances,
-        uint256[] memory minAmountsOut,
         uint256 bptAmountIn,
         bytes memory userData,
         uint256[] memory amountsOut
