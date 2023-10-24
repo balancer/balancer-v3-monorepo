@@ -313,29 +313,13 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
     function swapCallback(
         SwapCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256) {
-        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
-        // solhint-disable-next-line not-rely-on-time
-        if (block.timestamp > params.deadline) {
-            revert IVaultErrors.SwapDeadline();
-        }
-
-        IERC20 tokenIn = params.assetIn.toIERC20(_weth);
-        IERC20 tokenOut = params.assetOut.toIERC20(_weth);
-
-        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _vault.swap(
-            IVault.SwapParams({
-                kind: params.kind,
-                pool: params.pool,
-                tokenIn: tokenIn,
-                tokenOut: tokenOut,
-                amountGiven: params.amountGiven,
-                userData: params.userData
-            })
-        );
-
-        if (params.kind == IVault.SwapKind.GIVEN_IN ? amountOut < params.limit : amountIn > params.limit) {
-            revert IVaultErrors.SwapLimit(params.kind == IVault.SwapKind.GIVEN_IN ? amountOut : amountIn, params.limit);
-        }
+        (
+            uint256 amountCalculated,
+            uint256 amountIn,
+            uint256 amountOut,
+            IERC20 tokenIn,
+            IERC20 tokenOut
+        ) = _swapCallback(params);
 
         // If the assetIn is ETH, then wrap `amountIn` into WETH.
         if (params.assetIn.isETH()) {
