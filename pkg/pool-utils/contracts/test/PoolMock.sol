@@ -57,7 +57,6 @@ contract PoolMock is BasePool {
     function onAfterAddLiquidity(
         address,
         uint256[] calldata,
-        uint256[] calldata,
         bytes memory,
         uint256[] calldata,
         uint256
@@ -78,7 +77,6 @@ contract PoolMock is BasePool {
 
     function onAfterRemoveLiquidity(
         address,
-        uint256[] calldata,
         uint256[] calldata,
         uint256,
         bytes memory,

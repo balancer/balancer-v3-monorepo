@@ -752,16 +752,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         _mint(address(pool), to, bptAmountOut);
 
         if (_poolConfig[pool].shouldCallAfterAddLiquidity()) {
-            if (
-                IBasePool(pool).onAfterAddLiquidity(
-                    msg.sender,
-                    balances,
-                    maxAmountsIn,
-                    userData,
-                    amountsIn,
-                    bptAmountOut
-                ) == false
-            ) {
+            if (IBasePool(pool).onAfterAddLiquidity(msg.sender, balances, userData, amountsIn, bptAmountOut) == false) {
                 revert CallbackFailed();
             }
         }
@@ -836,14 +827,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         if (_poolConfig[pool].shouldCallAfterRemoveLiquidity()) {
             if (
-                IBasePool(pool).onAfterRemoveLiquidity(
-                    msg.sender,
-                    balances,
-                    minAmountsOut,
-                    bptAmountIn,
-                    userData,
-                    amountsOut
-                ) == false
+                IBasePool(pool).onAfterRemoveLiquidity(msg.sender, balances, bptAmountIn, userData, amountsOut) == false
             ) {
                 revert CallbackFailed();
             }
