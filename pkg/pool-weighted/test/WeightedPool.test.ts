@@ -59,6 +59,9 @@ describe('WeightedPool', function () {
   });
 
   describe('initialization', () => {
+    const TOKEN_AMOUNT = fp(100);
+    const INITIAL_BALANCES = [TOKEN_AMOUNT, TOKEN_AMOUNT, FP_ZERO];
+
     context('uninitialized', () => {
       it('is registered, but not initialized on deployment', async () => {
         const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(poolAddress);
@@ -69,9 +72,6 @@ describe('WeightedPool', function () {
     });
 
     context('initialized', () => {
-      const TOKEN_AMOUNT = fp(100);
-      const maxAmountsIn = [TOKEN_AMOUNT, TOKEN_AMOUNT, FP_ZERO];
-
       sharedBeforeEach('initialize pool', async () => {
         tokenA.mint(alice, TOKEN_AMOUNT);
         tokenB.mint(alice, TOKEN_AMOUNT);
@@ -79,7 +79,7 @@ describe('WeightedPool', function () {
         tokenA.connect(alice).approve(await vault.getAddress(), MAX_UINT256);
         tokenB.connect(alice).approve(await vault.getAddress(), MAX_UINT256);
 
-        expect(await router.connect(alice).initialize(poolAddress, poolTokens, maxAmountsIn, FP_ZERO, '0x'))
+        expect(await router.connect(alice).initialize(poolAddress, poolTokens, INITIAL_BALANCES, FP_ZERO, '0x'))
           .to.emit(vault, 'PoolInitialized')
           .withArgs(poolAddress);
       });
@@ -91,8 +91,18 @@ describe('WeightedPool', function () {
         expect(poolConfig.isInitializedPool).to.be.true;
       });
 
+      it('has the correct pool tokens and balances', async () => {
+        const { tokens: tokensFromPool, balances: balancesFromPool } = await pool.getPoolTokens();
+        expect(tokensFromPool).to.deep.equal(poolTokens);
+        expect(balancesFromPool).to.deep.equal(INITIAL_BALANCES);
+
+        const { tokens: tokensFromVault, balances: balancesFromVault } = await vault.getPoolTokens(poolAddress);
+        expect(tokensFromVault).to.deep.equal(tokensFromPool);
+        expect(balancesFromVault).to.deep.equal(balancesFromPool);
+      });
+
       it('cannot be initialized twice', async () => {
-        await expect(router.connect(alice).initialize(poolAddress, poolTokens, maxAmountsIn, FP_ZERO, '0x'))
+        await expect(router.connect(alice).initialize(poolAddress, poolTokens, INITIAL_BALANCES, FP_ZERO, '0x'))
           .to.be.revertedWithCustomError(vault, 'PoolAlreadyInitialized')
           .withArgs(poolAddress);
       });

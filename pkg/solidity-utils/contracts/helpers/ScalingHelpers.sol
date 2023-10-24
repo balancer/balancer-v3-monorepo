@@ -8,13 +8,16 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { FixedPoint } from "../math/FixedPoint.sol";
 import { InputHelpers } from "./InputHelpers.sol";
 
+/**
+ * @dev To simplify Pool logic, all token balances and amounts are normalized to behave as if the token had
+ * 18 decimals. When comparing DAI (18 decimals) and USDC (6 decimals), 1 USDC and 1 DAI would both be
+ * represented as 1e18. This allows us to not consider differences in token decimals in the internal Pool
+ * math, simplifying it greatly.
+ */
 library ScalingHelpers {
-    /// To simplify Pool logic, all token balances and amounts are normalized to behave as if the token had 18 decimals.
-    /// e.g. When comparing DAI (18 decimals) and USDC (6 decimals), 1 USDC and 1 DAI would both be represented as 1e18,
-    /// whereas without scaling 1 USDC would be represented as 1e6.
-    /// This allows us to not consider differences in token decimals in the internal Pool maths, simplifying it greatly.
-
-    /// Single Value
+    /***************************************************************************
+                                Single Value Functions
+    ***************************************************************************/
 
     /**
      * @dev Applies `scalingFactor` to `amount`, resulting in a larger or equal value depending on whether it needed
@@ -43,7 +46,9 @@ library ScalingHelpers {
         return FixedPoint.divUp(amount, scalingFactor);
     }
 
-    /// Array
+    /***************************************************************************
+                                    Array Functions
+    ***************************************************************************/
 
     /**
      * @dev Same as `_upscale`, but for an entire array. This function does not return anything, but instead *mutates*

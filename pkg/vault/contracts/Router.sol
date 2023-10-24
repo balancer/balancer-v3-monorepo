@@ -66,6 +66,13 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
+    /**
+     * @notice Callback for initialization.
+     * @dev Can only be called by the Vault.
+     * @param params Initialization parameters (see IRouter for struct definition)
+     * @return amountsIn Actual amounts in required for the initial join
+     * @return bptAmountOut BPT amount minted in exchange for the input tokens
+     */
     function initializeCallback(
         InitializeCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
@@ -138,6 +145,13 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
+    /**
+     * @notice Callback for adding liquidity.
+     * @dev Can only be called by the Vault.
+     * @param params Add liquiity parameters (see IRouter for struct definition)
+     * @return amountsIn Actual amounts in required for the join
+     * @return bptAmountOut BPT amount minted in exchange for the input tokens
+     */
     function addLiquidityCallback(
         AddLiquidityCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
@@ -210,6 +224,13 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
+    /**
+     * @notice Callback for removing liquidity.
+     * @dev Can only be called by the Vault.
+     * @param params Remove liquiity parameters (see IRouter for struct definition)
+     * @return amountsOut Actual token amounts transferred in exchange for the BPT
+     * @return bptAmountIn BPT amount burned for the output tokens
+     */
     function removeLiquidityCallback(
         RemoveLiquidityCallbackParams calldata params
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
@@ -283,32 +304,22 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
+    /**
+     * @notice Callback for swaps.
+     * @dev Can only be called by the Vault. Also handles native ETH.
+     * @param params Swap parameters (see IRouter for struct definition)
+     * @return Token amount calculated by the pool math (e.g., amountOut for a given in swap)
+     */
     function swapCallback(
         SwapCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256) {
-        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
-        // solhint-disable-next-line not-rely-on-time
-        if (block.timestamp > params.deadline) {
-            revert IVaultErrors.SwapDeadline();
-        }
-
-        IERC20 tokenIn = params.assetIn.toIERC20(_weth);
-        IERC20 tokenOut = params.assetOut.toIERC20(_weth);
-
-        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _vault.swap(
-            IVault.SwapParams({
-                kind: params.kind,
-                pool: params.pool,
-                tokenIn: tokenIn,
-                tokenOut: tokenOut,
-                amountGiven: params.amountGiven,
-                userData: params.userData
-            })
-        );
-
-        if (params.kind == IVault.SwapKind.GIVEN_IN ? amountOut < params.limit : amountIn > params.limit) {
-            revert IVaultErrors.SwapLimit(params.kind == IVault.SwapKind.GIVEN_IN ? amountOut : amountIn, params.limit);
-        }
+        (
+            uint256 amountCalculated,
+            uint256 amountIn,
+            uint256 amountOut,
+            IERC20 tokenIn,
+            IERC20 tokenOut
+        ) = _swapCallback(params);
 
         // If the assetIn is ETH, then wrap `amountIn` into WETH.
         if (params.assetIn.isETH()) {
@@ -316,7 +327,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             _weth.deposit{ value: amountIn }();
             // send WETH to Vault
             _weth.transfer(address(_vault), amountIn);
-            // update Vault accouting
+            // update Vault accounting
             _vault.settle(_weth);
         } else {
             // Send the assetIn amount to the Vault
@@ -410,6 +421,12 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
+    /**
+     * @notice Callback for swap queries.
+     * @dev Can only be called by the Vault. Also handles native ETH.
+     * @param params Swap parameters (see IRouter for struct definition)
+     * @return Token amount calculated by the pool math (e.g., amountOut for a given in swap)
+     */
     function querySwapCallback(
         SwapCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256) {
@@ -449,6 +466,13 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
+    /**
+     * @notice Callback for add liquidity queries.
+     * @dev Can only be called by the Vault.
+     * @param params Add liquiity parameters (see IRouter for struct definition)
+     * @return amountsIn Actual amounts in required for the join
+     * @return bptAmountOut BPT amount minted in exchange for the input tokens
+     */
     function queryAddLiquidityCallback(
         AddLiquidityCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
@@ -496,6 +520,13 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             );
     }
 
+    /**
+     * @notice Callback for remove liquidity queries.
+     * @dev Can only be called by the Vault.
+     * @param params Remove liquiity parameters (see IRouter for struct definition)
+     * @return amountsOut Actual token amounts transferred in exchange for the BPT
+     * @return bptAmountIn BPT amount burned for the output tokens
+     */
     function queryRemoveLiquidityCallback(
         RemoveLiquidityCallbackParams calldata params
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
