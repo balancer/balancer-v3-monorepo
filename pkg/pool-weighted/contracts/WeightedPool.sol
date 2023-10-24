@@ -57,7 +57,7 @@ contract WeightedPool is BasePool, IWeightedPool {
         IVault vault,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) BasePool(vault, params.name, params.symbol, params.tokens, pauseWindowDuration, bufferPeriodDuration) {
+    ) BasePool(vault, params.name, params.symbol, pauseWindowDuration, bufferPeriodDuration) {
         uint256 numTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
 
@@ -121,16 +121,13 @@ contract WeightedPool is BasePool, IWeightedPool {
         uint256 totalTokens = _getTotalTokens();
         uint256[] memory normalizedWeights = new uint256[](totalTokens);
 
+        // prettier-ignore
         normalizedWeights[0] = _normalizedWeight0;
         normalizedWeights[1] = _normalizedWeight1;
         if (totalTokens > 2) { normalizedWeights[2] = _normalizedWeight2; } else { return normalizedWeights; }
         if (totalTokens > 3) { normalizedWeights[3] = _normalizedWeight3; } else { return normalizedWeights; }
 
         return normalizedWeights;
-    }
-
-    function _getMaxTokens() internal pure virtual override returns (uint256) {
-        return 2;
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
@@ -333,7 +330,6 @@ contract WeightedPool is BasePool, IWeightedPool {
             // The token in cannot be specified with these arguments without relying on `userData`.
             // This shall be implemented in the future with explicit arguments.
             revert UnhandledExitKind();
-
         } else if (kind == RemoveLiquidityKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, totalSupply(), maxBptAmountIn);
             bptAmountIn = maxBptAmountIn;

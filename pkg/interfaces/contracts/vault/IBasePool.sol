@@ -20,13 +20,6 @@ interface IBasePool {
     /// @dev Indicates that the pool does not implement a callback that it was configured for.
     error CallbackNotImplemented();
 
-    // TODO: move this to Vault.
-    /// @dev Indicates the number of pool tokens is below the minimum allowed.
-    error MinTokens();
-
-    /// @dev Indicates the number of pool tokens is above the maximum allowed.
-    error MaxTokens();
-
     enum AddLiquidityKind {
         EXACT_TOKENS_IN_FOR_BPT_OUT,
         TOKEN_IN_FOR_EXACT_BPT_OUT,
