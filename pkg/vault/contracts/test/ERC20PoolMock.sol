@@ -54,7 +54,6 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
     function onAfterAddLiquidity(
         address,
         uint256[] calldata,
-        uint256[] calldata,
         bytes memory,
         uint256[] calldata,
         uint256
@@ -75,7 +74,6 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
 
     function onAfterRemoveLiquidity(
         address,
-        uint256[] calldata,
         uint256[] calldata,
         uint256,
         bytes memory,
