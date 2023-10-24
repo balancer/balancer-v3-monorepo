@@ -177,6 +177,7 @@ contract Router is IRouter, IVaultErrors, ReentrancyGuard {
             Asset asset = params.assets[i];
             uint256 amountIn = amountsIn[i];
 
+            // TODO: check amounts in for every type.
             if (amountIn > params.maxAmountsIn[i]) {
                 revert IVaultErrors.JoinAboveMax();
             }

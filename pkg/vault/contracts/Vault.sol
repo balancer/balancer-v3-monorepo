@@ -720,6 +720,144 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
             userData
         );
 
+        _afterAddLiquidity(
+            pool,
+            to,
+            tokens,
+            userData,
+            balances,
+            amountsIn,
+            bptAmountOut
+        );
+    }
+
+    function addLiquidityProportional(
+        address pool,
+        address to,
+        uint256[] memory maxAmountsIn,
+        uint256 exactBptAmountOut
+    ) external withHandler whenNotPaused withInitializedPool(pool) returns (uint256[] memory amountsIn) {
+        if (!IBasePool(pool).supportsAddLiquidityProportional()) {
+            revert DoesNotSupportAddLiquidityProportional(pool);
+        }
+
+        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
+
+        InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
+
+        IBasePool(pool).onBeforeAdd(balances);
+
+        amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, _totalSupply(pool), exactBptAmountOut);
+
+        _afterAddLiquidity(
+            pool,
+            to,
+            tokens,
+            '',
+            balances,
+            amountsIn,
+            exactBptAmountOut
+        );
+    }
+
+    function addLiquidityUnbalanced(
+        address pool,
+        address to,
+        uint256[] memory exactAmountsIn,
+        uint256
+    ) external withHandler whenNotPaused withInitializedPool(pool) returns (uint256 bptAmountOut) {
+        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
+
+        IBasePool(pool).onBeforeAdd(balances);
+
+        bptAmountOut = IBasePool(pool).onAddLiquidityUnbalanced(msg.sender, exactAmountsIn, balances);
+
+        _afterAddLiquidity(
+            pool,
+            to,
+            tokens,
+            '',
+            balances,
+            exactAmountsIn,
+            bptAmountOut
+        );
+    }
+
+    function addLiquiditySingleAsset(
+        address pool,
+        address to,
+        IERC20 tokenIn,
+        uint256 exactBptAmountOut
+    ) external withHandler whenNotPaused withInitializedPool(pool) returns (uint256 amountIn) {
+        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
+
+        IBasePool(pool).onBeforeAdd(balances);
+
+        amountIn = IBasePool(pool).onAddLiquiditySingleAsset(msg.sender, tokenIn, exactBptAmountOut, balances);
+
+        // Build `amountsIn` array for every registered token.
+        uint256[] memory amountsIn = new uint256[](tokens.length);
+        uint256 i;
+        for (i = 0; i < tokens.length; ++i) {
+            if (tokens[i] == tokenIn) {
+                amountsIn[i] = amountIn;
+                break;
+            }
+        }
+
+        // If we did not find `tokenIn`, the token is not registered.
+        if (i >= tokens.length) {
+            revert TokenNotRegistered();
+        }
+
+        _afterAddLiquidity(
+            pool,
+            to,
+            tokens,
+            '',
+            balances,
+            amountsIn,
+            exactBptAmountOut
+        );
+    }
+
+    function addLiquidityCustom(
+        address pool,
+        address to,
+        bytes memory userData
+    )
+        external
+        withHandler
+        whenNotPaused
+        withInitializedPool(pool)
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
+    {
+        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
+
+        IBasePool(pool).onBeforeAdd(balances);
+
+        (amountsIn, bptAmountOut, returnData) = IBasePool(pool).onAddLiquidityCustom(msg.sender, userData, balances);
+
+        _afterAddLiquidity(
+            pool,
+            to,
+            tokens,
+            '',
+            balances,
+            amountsIn,
+            bptAmountOut
+        );
+    }
+
+    function _afterAddLiquidity(
+        address pool,
+        address to,
+        IERC20[] memory tokens,
+        bytes memory userData,
+        uint256[] memory balances,
+        uint256[] memory amountsIn,
+        uint256 bptAmountOut
+    ) internal {
         uint256[] memory finalBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountIn = amountsIn[i];
@@ -738,89 +876,20 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         _mint(address(pool), to, bptAmountOut);
 
         if (_poolConfig[pool].shouldCallAfterAddLiquidity()) {
-            if (IBasePool(pool).onAfterAddLiquidity(msg.sender, balances, userData, amountsIn, bptAmountOut) == false) {
+            if (
+                IBasePool(pool).onAfterAddLiquidity(
+                    msg.sender,
+                    balances,
+                    userData,
+                    amountsIn,
+                    bptAmountOut
+                ) == false
+            ) {
                 revert CallbackFailed();
             }
         }
 
         emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
-    }
-
-    function addLiquidityProportional(
-        address pool,
-        uint256[] memory maxAmountsIn,
-        uint256 exactBptAmountOut
-    ) external withHandler whenNotPaused withInitializedPool(pool) returns (uint256[] memory amountsIn) {
-        if (!IBasePool(pool).supportsAddLiquidityProportional()) {
-            revert DoesNotSupportAddLiquidityProportional(pool);
-        }
-
-        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
-
-        InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
-
-        IBasePool(pool).onBeforeAdd(balances);
-
-        amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, _totalSupply(pool), exactBptAmountOut);
-
-        // check amountsIn < maxAmountsIn
-        // _accountDeltas
-        // _setPoolBalances
-        // emit PoolBalanceChanged
-    }
-
-    function addLiquidityUnbalanced(
-        address pool,
-        uint256[] memory exactAmountsIn,
-        uint256
-    ) external withHandler whenNotPaused withInitializedPool(pool) returns (uint256 bptAmountOut) {
-        (, uint256[] memory balances) = _getPoolTokens(pool);
-
-        IBasePool(pool).onBeforeAdd(balances);
-
-        bptAmountOut = IBasePool(pool).onAddLiquidityUnbalanced(msg.sender, exactAmountsIn, balances);
-
-        // check bptAmountOut >= minBptAmountOut
-        // _accountDeltas
-        // _setPoolBalances
-        // emit PoolBalanceChanged
-    }
-
-    function addLiquiditySingleAsset(
-        address pool,
-        IERC20 tokenIn,
-        uint256 exactBptAmountOut
-    ) external withHandler whenNotPaused withInitializedPool(pool) returns (uint256 amountIn) {
-        (, uint256[] memory balances) = _getPoolTokens(pool);
-
-        IBasePool(pool).onBeforeAdd(balances);
-
-        amountIn = IBasePool(pool).onAddLiquiditySingleAsset(msg.sender, tokenIn, exactBptAmountOut, balances);
-
-        // _accountDeltas
-        // _setPoolBalances
-        // emit PoolBalanceChanged
-    }
-
-    function addLiquidityCustom(
-        address pool,
-        bytes memory userData
-    )
-        external
-        withHandler
-        whenNotPaused
-        withInitializedPool(pool)
-        returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
-    {
-        (, uint256[] memory balances) = _getPoolTokens(pool);
-
-        IBasePool(pool).onBeforeAdd(balances);
-
-        (amountsIn, bptAmountOut, returnData) = IBasePool(pool).onAddLiquidityCustom(msg.sender, userData, balances);
-
-        // _accountDeltas
-        // _setPoolBalances
-        // emit PoolBalanceChanged
     }
 
     /// @inheritdoc IVault
