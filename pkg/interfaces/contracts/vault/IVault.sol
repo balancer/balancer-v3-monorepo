@@ -235,31 +235,40 @@ interface IVault {
 
     /**
      * @dev Error indicating the sender is not the Vault (e.g., someone is trying to call a permissioned function).
+     * @param sender The account attempting to call a permissioned function
      */
     error SenderIsNotVault(address sender);
 
-    /// @dev
+    /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
     error BptAmountBelowMin();
 
-    /// @dev
+    /// @dev The BPT amount requested from removing liquidity is above the maximum specified for the operation.
     error BptAmountAboveMax();
 
-    /// @dev
+    /// @dev A transient accounting operation completed with outstanding token deltas.
     error BalanceNotSettled();
 
-    /// @dev
-    error WrongHandler(address, address);
+    /**
+     * @dev In transient accounting, a handler is attempting to execute an operation out of order.
+     * The caller address should equal the handler.
+     * @param handler Address of the current handler being processed
+     * @param caller Address of the caller (msg.sender)
+     */
+    error WrongHandler(address handler, address caller);
 
-    /// @dev
+    /// @dev A user called a Vault function (swap, add/remove liquidity) outside the invoke context.
     error NoHandler();
 
-    /// @dev
-    error HandlerOutOfBounds(uint256);
+    /**
+     * @dev The caller attempted to access a handler at an invalid index.
+     * @param index The invalid index
+     */
+    error HandlerOutOfBounds(uint256 index);
 
-    /// @dev
+    /// @dev The pool has returned false to a callback, indicating the transaction should revert.
     error CallbackFailed();
 
-    /// @dev
+    /// @dev An unauthorized Router tried to call a permissioned function (i.e., using the Vault's token allowance).
     error RouterNotTrusted();
 
     /**
@@ -335,32 +344,34 @@ interface IVault {
                                    Add Liquidity
     ***************************************************************************/
 
-    /// @dev
-    error TokensMismatch(address tokenA, address tokenB);
-    
-    /// @dev
-    error PoolHasNoTokens(address pool);
+    /**
+     * @dev The token list passed into an operation does not match the pool tokens in the pool.
+     * @param pool Address of the pool
+     * @param expectedToken The correct token at a given index in the pool
+     * @param actualToken The actual token found at that index
+     */
+    error TokensMismatch(address pool, address expectedToken, address actualToken);
 
-    /// @dev
+    /// @dev A required amountIn exceeds the maximum limit specified in the join.
     error JoinAboveMax();
 
-    /// @dev
+    /// @dev The actual bptAmountOut is below the minimum limit specified in the exit.
     error ExitBelowMin();
 
-    /// @dev
+    /// @dev The swap transaction was not mined before the specified deadline timestamp.
     error SwapDeadline();
 
-    /// @dev
+    /// @dev The user tried to swap zero tokens.
     error AmountGivenZero();
 
-    /// @dev
+    /// @dev The user attempted to swap a token for itself.
     error CannotSwapSameToken();
 
-    /// @dev
+    /// @dev The user attempted to swap a token not in the pool.
     error TokenNotRegistered();
 
-    /// @dev
-    error SwapLimit(uint256, uint256);
+    /// @dev An amount in or out has exceeded the limit specified in the swap request.
+    error SwapLimit(uint256 amount, uint256 limit);
 
     /**
      * @notice Adds liquidity to a pool.
@@ -475,7 +486,7 @@ interface IVault {
                                     Queries
     *******************************************************************************/
 
-    /// @dev
+    /// @dev A user tried to execute a query operation when they were disabled.
     error QueriesDisabled();
 
     /**
