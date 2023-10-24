@@ -71,7 +71,6 @@ interface IBasePool {
      * @notice Callback after adding liquidity to the pool.
      * @param sender Address of the sender
      * @param currentBalances Current balances of the tokens
-     * @param maxAmountsIn Maximum amounts of tokens to be added
      * @param userData Additional (optional) data provided by the user
      * @return success True if the pool wishes to proceed with settlement
      */
@@ -117,7 +116,6 @@ interface IBasePool {
      * @notice Callback after removing liquidity from the pool.
      * @param sender Address of the sender
      * @param currentBalances Current balances of the tokens
-     * @param minAmountsOut Minimum amounts of tokens to be removed
      * @param userData Additional (optional) data provided by the user
      * @return success True if the pool wishes to proceed with settlement
      */
