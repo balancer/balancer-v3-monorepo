@@ -180,7 +180,6 @@ contract WeightedPool is BasePool, IWeightedPool {
 
     /**
      * @dev Get the current invariant.
-     *
      * @return The current value of the invariant
      */
     function getInvariant() public view returns (uint256) {
@@ -196,7 +195,6 @@ contract WeightedPool is BasePool, IWeightedPool {
 
     /**
      * @dev Get the normalized weights.
-     *
      * @return An array of normalized weights, corresponding to the pool tokens
      */
     function getNormalizedWeights() external view returns (uint256[] memory) {

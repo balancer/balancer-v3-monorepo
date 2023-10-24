@@ -126,10 +126,6 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
     /// @inheritdoc IVault
     function invoke(bytes calldata data) external payable transient returns (bytes memory result) {
-        // Allows the external calling of a function via the Vault contract to
-        // access Vault's functions guarded by `withHandler`.
-        // `transient` modifier ensuring balances changes within the Vault are settled.
-        //
         // Executes the function call with value to the msg.sender.
         return (msg.sender).functionCallWithValue(data, msg.value);
     }

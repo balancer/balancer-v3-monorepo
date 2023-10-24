@@ -384,6 +384,10 @@ interface IVault {
      *
      * Allows querying any operation on the Vault that has the `withHandler` modifier.
      *
+     * Allows the external calling of a function via the Vault contract to
+     * access Vault's functions guarded by `withHandler`.
+     * `transient` modifier ensuring balances changes within the Vault are settled.
+     *
      * @param data Contains function signature and args to be passed to the msg.sender
      * @return result Resulting data from the call
      */

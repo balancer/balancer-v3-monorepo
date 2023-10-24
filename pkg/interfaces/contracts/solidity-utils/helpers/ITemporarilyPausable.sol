@@ -51,15 +51,15 @@ interface ITemporarilyPausable {
      * @dev Once the Buffer Period expires, the gas cost of calling this function is reduced dramatically,
      * as storage is no longer accessed.
      *
-     * @return true if paused.
+     * @return true if paused
      */
     function paused() external view returns (bool);
 
     /**
      * @notice Returns the end times of the pause window and buffer period.
      *
-     * @return pauseWindowEndTime The timestamp of the end of the pause window.
-     * @return bufferPeriodEndTime The timestamp of the end of the buffer period.
+     * @return pauseWindowEndTime The timestamp of the end of the pause window
+     * @return bufferPeriodEndTime The timestamp of the end of the buffer period
      */
     function getPauseEndTimes() external view returns (uint256 pauseWindowEndTime, uint256 bufferPeriodEndTime);
 }
