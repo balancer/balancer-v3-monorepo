@@ -139,12 +139,6 @@ interface IBasePool {
         bytes memory userData
     ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
 
-    function onRemoveLiquidityUnbalanced(
-        address sender,
-        uint256[] memory exactAmountsOut,
-        uint256[] memory currentBalances
-    ) external returns (uint256 bptAmountIn);
-
     function onRemoveLiquiditySingleAsset(
         address sender,
         IERC20 tokenOut,

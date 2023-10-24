@@ -890,21 +890,6 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     }
 
     /// @inheritdoc IVault
-    function removeLiquidityUnbalanced(
-        address pool,
-        address from,
-        uint256[] memory exactAmountsOut
-    ) external whenNotPaused nonReentrant withInitializedPool(pool) returns (uint256 bptAmountIn) {
-        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
-
-        IBasePool(pool).onBeforeRemove(balances);
-
-        bptAmountIn = IBasePool(pool).onRemoveLiquidityUnbalanced(msg.sender, exactAmountsOut, balances);
-
-        _afterRemoveLiquidity(pool, from, tokens, "", balances, exactAmountsOut, bptAmountIn);
-    }
-
-    /// @inheritdoc IVault
     function removeLiquiditySingleAsset(
         address pool,
         address from,

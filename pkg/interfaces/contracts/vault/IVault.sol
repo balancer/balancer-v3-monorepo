@@ -352,12 +352,6 @@ interface IVault {
         uint256 exactBptAmountIn
     ) external returns (uint256[] memory amountsOut);
 
-    function removeLiquidityUnbalanced(
-        address pool,
-        address from,
-        uint256[] memory exactAmountsOut
-    ) external returns (uint256 bptAmountIn);
-
     function removeLiquiditySingleAsset(
         address pool,
         address from,
