@@ -846,13 +846,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     ) private view returns (uint256[] memory) {
         (IERC20[] memory actualTokens, uint256[] memory balances) = _getPoolTokens(pool);
         InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
-        if (actualTokens.length == 0) {
-            revert PoolHasNoTokens(pool);
-        }
 
         for (uint256 i = 0; i < actualTokens.length; ++i) {
             if (actualTokens[i] != expectedTokens[i]) {
-                revert TokensMismatch(address(actualTokens[i]), address(expectedTokens[i]));
+                revert TokensMismatch(pool, address(expectedTokens[i]), address(actualTokens[i]));
             }
         }
 
