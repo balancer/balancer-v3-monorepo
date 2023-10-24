@@ -15,7 +15,11 @@ import { BasePool } from "../BasePool.sol";
 contract PoolMock is BasePool {
     using FixedPoint for uint256;
 
-    bool public failOnHook;
+    uint256 public constant MIN_INIT_BPT = 1e10;
+
+    bool public failOnCallback;
+
+    uint256 private immutable _numTokens;
 
     constructor(
         IVault vault,
@@ -24,17 +28,19 @@ contract PoolMock is BasePool {
         address factory,
         IERC20[] memory tokens,
         bool registerPool
-    ) BasePool(vault, name, symbol, tokens, 30 days, 90 days) {
+    ) BasePool(vault, name, symbol, 30 days, 90 days) {
         if (registerPool) {
-            vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig().hooks);
+            vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
         }
+
+        _numTokens = tokens.length;
     }
 
     function onInitialize(
         uint256[] memory amountsIn,
         bytes memory
     ) external view onlyVault returns (uint256[] memory, uint256) {
-        return (amountsIn, amountsIn[0]);
+        return (amountsIn, MIN_INIT_BPT > amountsIn[0] ? MIN_INIT_BPT : amountsIn[0]);
     }
 
     function onAddLiquidity(
@@ -56,7 +62,7 @@ contract PoolMock is BasePool {
         uint256[] calldata,
         uint256
     ) external view override returns (bool) {
-        return !failOnHook;
+        return !failOnCallback;
     }
 
     function onRemoveLiquidity(
@@ -78,14 +84,14 @@ contract PoolMock is BasePool {
         bytes memory,
         uint256[] calldata
     ) external view override returns (bool) {
-        return !failOnHook;
+        return !failOnCallback;
     }
 
     // Amounts in are multiplied by the multiplier, amounts out are divided by it
     uint256 private _multiplier = FixedPoint.ONE;
 
     function setFailOnAfterSwap(bool fail) external {
-        failOnHook = fail;
+        failOnCallback = fail;
     }
 
     function setMultiplier(uint256 newMultiplier) external {
@@ -93,10 +99,10 @@ contract PoolMock is BasePool {
     }
 
     function onAfterSwap(
-        IBasePool.AfterSwapParams calldata params,
+        IBasePool.AfterSwapParams calldata,
         uint256 amountCalculated
     ) external view override returns (bool success) {
-        return params.tokenIn != params.tokenOut && amountCalculated > 0 && !failOnHook;
+        return amountCalculated > 0 && !failOnCallback;
     }
 
     function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
@@ -106,12 +112,8 @@ contract PoolMock is BasePool {
                 : params.amountGiven.divDown(_multiplier);
     }
 
-    function _getMaxTokens() internal pure virtual override returns (uint256) {
-        return 8;
-    }
-
     function _getTotalTokens() internal view virtual override returns (uint256) {
-        return 2;
+        return _numTokens;
     }
 
     function _scalingFactor(IERC20) internal view virtual override returns (uint256) {
@@ -119,10 +121,13 @@ contract PoolMock is BasePool {
     }
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {
-        uint256[] memory scalingFactors = new uint256[](2);
+        uint256 numTokens = _getTotalTokens();
 
-        scalingFactors[0] = 1;
-        scalingFactors[1] = 1;
+        uint256[] memory scalingFactors = new uint256[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; i++) {
+            scalingFactors[i] = 1;
+        }
 
         return scalingFactors;
     }

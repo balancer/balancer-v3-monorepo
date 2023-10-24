@@ -19,43 +19,33 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
 
     IVault internal immutable _vault;
 
-    uint256 private constant _MIN_TOKENS = 2;
-
     uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
+    uint256 private constant _SWAP_FEE_PERCENTAGE = 0;
 
     constructor(
         IVault vault,
         string memory name,
         string memory symbol,
-        IERC20[] memory tokens,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
     ) ERC20PoolToken(vault, name, symbol) TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration) {
         _vault = vault;
-        if (tokens.length < _MIN_TOKENS) {
-            revert MinTokens();
-        }
-        if (tokens.length > _getMaxTokens()) {
-            revert MaxTokens();
-        }
     }
 
     function _getTotalTokens() internal view virtual returns (uint256);
 
-    function _getMaxTokens() internal pure virtual returns (uint256);
-
     /**
-     * @dev Returns the minimum BPT supply. This amount is minted to the zero address during initialization, effectively
-     * locking it.
+     * @notice Return the current value of the swap fee percentage.
      *
-     * This is useful to make sure Pool initialization happens only once, but derived Pools can change this value (even
-     * to zero) by overriding this function.
+     * @return The swap fee percentage
      */
-    function _getMinimumBpt() internal pure virtual returns (uint256) {
-        return _DEFAULT_MINIMUM_BPT;
+    function getSwapFeePercentage() public pure virtual returns (uint256) {
+        return _SWAP_FEE_PERCENTAGE;
     }
 
-    /// TemporarilyPausable
+    /*******************************************************************************
+                              Temporarily Pausable
+    *******************************************************************************/
 
     /**
      * @notice Pause the pool: an emergency action which disables all pool functions.
@@ -76,12 +66,16 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
         _unpause();
     }
 
-    /// Hooks
+    /*******************************************************************************
+                                     Callbacks
+    *******************************************************************************/
 
+    /// @notice Callback performed after a swap. Reverts here if configured but unimplemented.
     function onAfterSwap(SwapParams calldata, uint256) external view virtual returns (bool) {
-        revert HookNotImplemented();
+        revert CallbackNotImplemented();
     }
 
+    /// @notice Callback performed after adding liquidity. Reverts here if configured but unimplemented.
     function onAfterAddLiquidity(
         address,
         uint256[] memory,
@@ -90,9 +84,10 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
         uint256[] memory,
         uint256
     ) external view virtual returns (bool) {
-        revert HookNotImplemented();
+        revert CallbackNotImplemented();
     }
 
+    /// @notice Callback performed after removing liquidity. Reverts here if configured but unimplemented.
     function onAfterRemoveLiquidity(
         address,
         uint256[] memory,
@@ -101,10 +96,12 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
         bytes memory,
         uint256[] memory
     ) external view virtual returns (bool) {
-        revert HookNotImplemented();
+        revert CallbackNotImplemented();
     }
 
-    /// Scaling
+    /*******************************************************************************
+                                      Scaling
+    *******************************************************************************/
 
     /**
      * @dev Returns the scaling factor for one of the Pool's tokens. Reverts if `token` is not a token registered by the
@@ -123,11 +120,21 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
 
     /**
      * @dev Same as `_scalingFactor()`, except for all registered tokens (in the same order as registered). The Vault
-     * will always pass balances in this order when calling any of the Pool hooks.
+     * will always pass balances in this order when calling any of the Pool callbacks.
      */
     function _scalingFactors() internal view virtual returns (uint256[] memory);
 
+    /**
+     * @notice Return the scaling factors of all tokens.
+     *
+     * @return An array of the scaling factors
+     */
     function getScalingFactors() external view returns (uint256[] memory) {
         return _scalingFactors();
+    }
+
+    /// @inheritdoc IBasePool
+    function getPoolTokens() external view returns (IERC20[] memory tokens, uint256[] memory balances) {
+        return _vault.getPoolTokens(address(this));
     }
 }

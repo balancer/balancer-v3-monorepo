@@ -10,6 +10,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/token/IERC20Errors.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
@@ -33,6 +34,7 @@ contract VaultLiquidityTest is Test {
     ERC20TestToken USDC;
     ERC20TestToken DAI;
     address alice = vm.addr(1);
+    address bob = vm.addr(2);
 
     uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
@@ -63,11 +65,15 @@ contract VaultLiquidityTest is Test {
         vm.stopPrank();
 
         vm.label(alice, "alice");
+        vm.label(bob, "bob");
         vm.label(address(USDC), "USDC");
         vm.label(address(DAI), "DAI");
     }
 
     function testAddLiquidity() public {
+        // Use a different account to initialize so that the main LP is clean at the start of the test.
+        _mockInitialize(bob);
+
         vm.startPrank(alice);
         (uint256[] memory amountsIn, uint256 bptAmountOut) = router.addLiquidity(
             address(pool),
@@ -101,8 +107,10 @@ contract VaultLiquidityTest is Test {
         assertEq(bptAmountOut, DAI_AMOUNT_IN);
     }
 
-    function testRemoveLiquidity() public {
+    function testAddLiquidityNotInitialized() public {
         vm.startPrank(alice);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, address(pool)));
         router.addLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
@@ -111,8 +119,22 @@ contract VaultLiquidityTest is Test {
             IBasePool.AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
             bytes("")
         );
+    }
 
-        pool.approve(address(vault), type(uint256).max);
+    function testRemoveLiquidity() public {
+        // Use a different account to initialize so that the main LP is clean at the start of the test.
+        _mockInitialize(bob);
+
+        vm.startPrank(alice);
+
+        router.addLiquidity(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
+            DAI_AMOUNT_IN,
+            IBasePool.AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+            bytes("")
+        );
 
         (uint256[] memory amountsOut, ) = router.removeLiquidity(
             address(pool),
@@ -141,5 +163,36 @@ contract VaultLiquidityTest is Test {
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN);
         assertEq(amountsOut[1], USDC_AMOUNT_IN);
+
+        // should burn correct amount of BPT tokens
+        assertEq(pool.balanceOf(alice), 0);
+    }
+
+    function testRemoveLiquidityNotInitialized() public {
+        vm.startPrank(alice);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, address(pool)));
+        router.removeLiquidity(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
+            DAI_AMOUNT_IN,
+            IBasePool.RemoveLiquidityKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+            bytes("")
+        );
+    }
+
+    function _mockInitialize(address initializer) internal {
+        vm.startPrank(initializer);
+
+        // The mock pool can be initialized with no liquidity; it mints some BPT to the initializer
+        // to comply with the vault's required minimum.
+        router.initialize(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [uint256(0), uint256(0)].toMemoryArray(),
+            0,
+            bytes("")
+        );
     }
 }

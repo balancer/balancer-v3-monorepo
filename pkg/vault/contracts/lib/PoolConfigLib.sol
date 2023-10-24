@@ -4,7 +4,7 @@ pragma solidity ^0.8.4;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import { PoolConfig, PoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { PoolConfig, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 
 // @notice Config type to store entire configuration of the pool
@@ -16,13 +16,13 @@ library PoolConfigLib {
     using SafeCast for *;
     using WordCodec for bytes32;
 
+    uint24 public constant SWAP_FEE_PRECISION = 1e6;
+
+    // Bit offsets for pool config
     /// [  236 bit |    1 bit     |    1 bit  |   1 bit    |    24 bit  |    1 bit    |    1 bit    |    1 bit   ]
     /// [ not used | after remove | after add | after swap | static fee | dynamic fee | initialized | registered ]
     /// |MSB                                                                                                  LSB|
 
-    uint24 public constant SWAP_FEE_PRECISION = 1e6;
-
-    // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
     uint8 public constant POOL_INITIALIZED_OFFSET = 1;
     uint8 public constant DYNAMIC_SWAP_FEE_OFFSET = 2;
@@ -80,9 +80,9 @@ library PoolConfigLib {
         val = val.insertBool(config.isInitializedPool, POOL_INITIALIZED_OFFSET);
         val = val.insertBool(config.hasDynamicSwapFee, DYNAMIC_SWAP_FEE_OFFSET);
         val = val.insertUint(config.staticSwapFee, STATIC_SWAP_FEE_OFFSET, STATIC_SWAP_FEE_SIZE);
-        val = val.insertBool(config.hooks.shouldCallAfterSwap, AFTER_SWAP_OFFSET);
-        val = val.insertBool(config.hooks.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET);
-        val = val.insertBool(config.hooks.shouldCallAfterRemoveLiquidity, AFTER_REMOVE_LIQUIDITY_OFFSET);
+        val = val.insertBool(config.callbacks.shouldCallAfterSwap, AFTER_SWAP_OFFSET);
+        val = val.insertBool(config.callbacks.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET);
+        val = val.insertBool(config.callbacks.shouldCallAfterRemoveLiquidity, AFTER_REMOVE_LIQUIDITY_OFFSET);
 
         return PoolConfigBits.wrap(val);
     }
@@ -94,7 +94,7 @@ library PoolConfigLib {
                 isInitializedPool: config.isPoolInitialized(),
                 hasDynamicSwapFee: config.hasDynamicSwapFee(),
                 staticSwapFee: config.getStaticSwapFee(),
-                hooks: PoolHooks({
+                callbacks: PoolCallbacks({
                     shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),
                     shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity(),
                     shouldCallAfterSwap: config.shouldCallAfterSwap()

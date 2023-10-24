@@ -2,8 +2,7 @@
 
 # Balancer V3 Pool Utilities
 
-This package contains Solidity utilities for developing Balancer V3 Pools, implementing common patterns such as token decimal scaling, caller checks on hooks, etc.
-
+This package contains Solidity utilities for developing Balancer V3 Pools, implementing common patterns.
 
 ## Overview
 

@@ -2,20 +2,43 @@
 
 pragma solidity ^0.8.4;
 
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/token/IERC20Errors.sol";
+import { EVMCallModeHelpers } from "../helpers/EVMCallModeHelpers.sol";
 
 import { ERC20PoolToken } from "./ERC20PoolToken.sol";
 
 /**
- * @notice Store Token data and handle accounting for all tokens in the Vault.
+ * @notice Store Token data and handle accounting for pool tokens in the Vault.
  * @dev The ERC20MultiToken is an ERC20-focused multi-token implementation that is fully compatible
  * with the ERC20 API on the token side. It also allows for the minting and burning of tokens on the multi-token side.
  */
 abstract contract ERC20MultiToken is IERC20Errors {
-    // token -> (owner -> balance): Users' balances
+    using Address for address;
+
+    /**
+     * @notice Pool tokens are moved from one account (`from`) to another (`to`). Note that `value` may be zero.
+     * @param token The token being transferred
+     * @param from The token source
+     * @param to The token destination
+     * @param value The number of tokens
+     */
+    event Transfer(address indexed token, address indexed from, address indexed to, uint256 value);
+
+    /**
+     * @notice The allowance of a `spender` for an `owner` is set by a call to {approve}. `value` is the new allowance.
+     * @param token The token receiving the allowance
+     * @param owner The token holder
+     * @param spender The account being authorized to spend a given amount of the token
+     * @param value The number of tokens spender is authorized to transfer from owner
+     */
+    event Approval(address indexed token, address indexed owner, address indexed spender, uint256 value);
+
+    // token -> (owner -> balance): Users' pool tokens balances
     mapping(address => mapping(address => uint256)) private _balances;
 
-    // token -> (owner -> (spender -> allowance))
+    // token -> (owner -> (spender -> allowance)): Users' allowances
     mapping(address => mapping(address => mapping(address => uint256))) private _allowances;
 
     // token -> total supply
@@ -30,7 +53,27 @@ abstract contract ERC20MultiToken is IERC20Errors {
     }
 
     function _allowance(address token, address owner, address spender) internal view returns (uint256) {
-        return _allowances[token][owner][spender];
+        // The Vault grants infinite allowance to all pool tokens (BPT)
+        if (spender == address(this)) {
+            return type(uint256).max;
+        } else {
+            return _allowances[token][owner][spender];
+        }
+    }
+
+    /**
+     * @dev DO NOT CALL THIS METHOD!
+     * Only `removeLiquidity` in the Vault may call this - in a query context - to allow burning tokens the caller
+     * does not have.
+     */
+    function _queryModeBalanceIncrease(address token, address to, uint256 amount) internal {
+        // Enforce that this can only be called in a read-only, query context.
+        if (!EVMCallModeHelpers.isStaticCall()) {
+            revert EVMCallModeHelpers.NotStaticCall();
+        }
+
+        // Increase `to` balance to ensure the burn function succeeds during query.
+        _balances[address(token)][to] += amount;
     }
 
     function _mint(address token, address to, uint256 amount) internal {
@@ -44,7 +87,23 @@ abstract contract ERC20MultiToken is IERC20Errors {
             _balances[token][to] += amount;
         }
 
+        emit Transfer(token, address(0), to, amount);
+
+        // We also invoke the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
         ERC20PoolToken(token).emitTransfer(address(0), to, amount);
+    }
+
+    function _mintToAddressZero(address token, uint256 amount) internal {
+        _totalSupplyOf[token] += amount;
+        unchecked {
+            // Overflow not possible: balance + amount is at most totalSupply + amount, which is checked above.
+            _balances[token][address(0)] += amount;
+        }
+
+        emit Transfer(token, address(0), address(0), amount);
+
+        // We also invoke the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
+        ERC20PoolToken(token).emitTransfer(address(0), address(0), amount);
     }
 
     function _burn(address token, address from, uint256 amount) internal {
@@ -63,6 +122,9 @@ abstract contract ERC20MultiToken is IERC20Errors {
             _totalSupplyOf[token] -= amount;
         }
 
+        emit Transfer(token, from, address(0), amount);
+
+        // We also invoke the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
         ERC20PoolToken(token).emitTransfer(from, address(0), amount);
     }
 
@@ -87,6 +149,9 @@ abstract contract ERC20MultiToken is IERC20Errors {
             _balances[token][to] += amount;
         }
 
+        emit Transfer(token, from, to, amount);
+
+        // We also invoke the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
         ERC20PoolToken(token).emitTransfer(from, to, amount);
     }
 
@@ -100,11 +165,14 @@ abstract contract ERC20MultiToken is IERC20Errors {
         }
 
         _allowances[token][owner][spender] = amount;
+
+        emit Approval(token, owner, spender, amount);
+        // We also invoke the "approve" event on the pool token to ensure full compliance with ERC20 standards.
         ERC20PoolToken(token).emitApprove(owner, spender, amount);
     }
 
     function _spendAllowance(address token, address owner, address spender, uint256 amount) internal {
-        uint256 currentAllowance = _allowances[token][owner][spender];
+        uint256 currentAllowance = _allowance(token, owner, spender);
         if (currentAllowance != type(uint256).max) {
             if (amount > currentAllowance) {
                 revert ERC20InsufficientAllowance(spender, currentAllowance, amount);

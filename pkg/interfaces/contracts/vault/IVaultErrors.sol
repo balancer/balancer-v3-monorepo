@@ -5,136 +5,93 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IVaultErrors {
-    /**
-     * @dev Error indicating that a pool has already been registered.
-     */
+    /// @dev A pool has already been registered.
     error PoolAlreadyRegistered(address pool);
 
-    /// @dev Error indicating that the pool has already been initialized. `initialize` may only be called once.
+    /// @dev The pool has already been initialized. `initialize` may only be called once.
     error PoolAlreadyInitialized(address pool);
 
-    /**
-     * @dev Error indicating that a referenced pool has not been registered.
-     */
+    /// @dev A referenced pool has not been registered.
     error PoolNotRegistered(address pool);
 
-    /**
-     * @dev Error indicating an attempt to register an invalid token.
-     */
+    /// @dev A referenced pool has not been initialized.
+    error PoolNotInitialized(address pool);
+
+    /// @dev An attempt to register an invalid token.
     error InvalidToken();
 
-    /**
-     * @dev Error indicating a token was already registered (i.e., a duplicate).
-     */
+    /// @dev A token was already registered (i.e., a duplicate).
     error TokenAlreadyRegistered(IERC20 tokenAddress);
 
-    /**
-     * @dev Error indicating the sender is not the Vault (e.g., someone is trying to call a permissioned function).
-     */
+    /// @dev Indicates the number of pool tokens is below the minimum allowed.
+    error MinTokens();
+
+    /// @dev Indicates the number of pool tokens is above the maximum allowed.
+    error MaxTokens();
+
+    /// @dev The sender is not the Vault (e.g., someone is trying to call a permissioned function).
     error SenderIsNotVault(address sender);
 
-    /**
-     * @dev
-     */
+    /// @dev The token list passed into an operation does not match the pool tokens in the pool.
     error TokensMismatch(address tokenA, address tokenB);
 
-    /**
-     * @dev
-     */
+    /// @dev The pool has not been initialized.
     error PoolHasNoTokens(address pool);
 
-    /**
-     * @dev
-     */
+    /// @dev A required amountIn exceeds the maximum limit specified in the join.
     error JoinAboveMax();
 
-    /**
-     * @dev
-     */
-    error InvalidEthInternalBalance();
-
-    /**
-     * @dev
-     */
+    /// @dev The actual bptAmountOut is below the minimum limit specified in the exit.
     error ExitBelowMin();
 
-    /**
-     * @dev
-     */
+    /// @dev The swap transaction was not mined before the specified deadline timestamp.
     error SwapDeadline();
 
-    /**
-     * @dev
-     */
+    /// @dev The user tried to swap zero tokens.
     error AmountGivenZero();
 
-    /**
-     * @dev
-     */
+    /// @dev The user attempted to swap a token for itself.
     error CannotSwapSameToken();
 
-    /**
-     * @dev
-     */
+    /// @dev A token involved in a swap is invalid (e.g., the zero address).
     error TokenNotRegistered();
 
-    /**
-     * @dev
-     */
+    /// @dev An amount in or out has exceeded the limit specified in the swap request.
     error SwapLimit(uint256, uint256);
 
-    /**
-     * @dev
-     */
+    /// @dev The BPT amount involved in the operation is below the absolute minimum.
+    error BptAmountBelowAbsoluteMin();
+
+    /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
     error BptAmountBelowMin();
 
-    /**
-     * @dev
-     */
+    /// @dev The BPT amount requested from removing liquidity is above the maximum specified for the operation.
     error BptAmountAboveMax();
 
-    /**
-     * @dev
-     */
+    /// @dev A transient accounting operation completed with outstanding token deltas.
     error BalanceNotSettled();
 
-    /**
-     * @dev
-     */
+    /// @dev In transient accounting, a handler is attempting to execute an operation out of order.
     error WrongHandler(address, address);
 
-    /**
-     * @dev
-     */
+    /// @dev A user called a Vault function (swap, add/remove liquidity) outside the invoke context.
     error NoHandler();
 
-    /**
-     * @dev
-     */
+    /// @dev The caller attempted to access a handler at an invalid index.
     error HandlerOutOfBounds(uint256);
 
-    /**
-     * @dev
-     */
-    error NotStaticCall();
-
-    /**
-     * @dev
-     */
+    /// @dev A user tried to execute a query operation when they were disabled.
     error QueriesDisabled();
 
-    /**
-     * @dev
-     */
-    error HookCallFailed();
+    /// @dev The pool has returned false to a callback, indicating the transaction should revert.
+    error CallbackFailed();
 
-    /**
-     * @dev
-     */
+    /// @dev An unauthorized Router tried to call a permissioned function (i.e., using the Vault's token allowance).
+    error RouterNotTrusted();
+
+    /// @dev Maximum protocol swap fee percentage exceeded.
     error ProtocolSwapFeePercentageTooHigh();
 
-    /**
-     * @dev
-     */
+    /// @dev Maximum swap fee percentage exceeded.
     error MaxSwapFeePercentage();
 }

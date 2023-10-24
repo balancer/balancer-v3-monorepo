@@ -254,12 +254,6 @@ describe('ERC20PoolToken', function () {
       itSetsApprovalsCorrectly();
     });
 
-    it('cannot approve from zero address', async () => {
-      await expect(vault.connect(registeredPoolSigner).approve(ZERO_ADDRESS, other.address, bptAmount))
-        .to.be.revertedWithCustomError(vault, 'ERC20InvalidApprover')
-        .withArgs(ZERO_ADDRESS);
-    });
-
     it('cannot approve to zero address', async () => {
       await expect(vault.connect(registeredPoolSigner).approve(user, ZERO_ADDRESS, bptAmount))
         .to.be.revertedWithCustomError(vault, 'ERC20InvalidSpender')

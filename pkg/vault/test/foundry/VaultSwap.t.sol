@@ -79,6 +79,15 @@ contract VaultSwapTest is Test {
         vm.label(bob, "bob");
         vm.label(address(USDC), "USDC");
         vm.label(address(DAI), "DAI");
+
+        vm.prank(alice);
+        router.initialize(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [uint256(0), uint256(0)].toMemoryArray(),
+            0,
+            bytes("")
+        );
     }
 
     function testSwap() public {
