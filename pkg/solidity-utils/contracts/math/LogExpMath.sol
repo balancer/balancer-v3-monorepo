@@ -17,29 +17,19 @@ pragma solidity ^0.8.4;
  * @author Daniel Fernandez    - @dmf7z
  */
 library LogExpMath {
-    /**
-     * @dev This error is thrown when a base is not within an acceptable range.
-     */
+    /// @dev This error is thrown when a base is not within an acceptable range.
     error BaseOutOfBounds();
 
-    /**
-     * @dev This error is thrown when a exponent is not within an acceptable range.
-     */
+    /// @dev This error is thrown when a exponent is not within an acceptable range.
     error ExponentOutOfBounds();
 
-    /**
-     * @dev This error is thrown when the exponent * ln(base) is not within an acceptable range.
-     */
+    /// @dev This error is thrown when the exponent * ln(base) is not within an acceptable range.
     error ProductOutOfBounds();
 
-    /**
-     * @dev This error is thrown when an exponent used in the exp function is not within an acceptable range.
-     */
+    /// @dev This error is thrown when an exponent used in the exp function is not within an acceptable range.
     error InvalidExponent();
 
-    /**
-     * @dev This error is thrown when a variable or result is not within the acceptable bounds defined in the function.
-     */
+    /// @dev This error is thrown when a variable or result is not within the acceptable bounds defined in the function.
     error OutOfBounds();
 
     // All fixed point multiplications and divisions are inlined. This means we need to divide by ONE when multiplying
@@ -315,9 +305,7 @@ library LogExpMath {
         }
     }
 
-    /**
-     * @dev Logarithm (log(arg, base), with signed 18 decimal fixed point base and argument.
-     */
+    /// @dev Logarithm (log(arg, base), with signed 18 decimal fixed point base and argument.
     function log(int256 arg, int256 base) internal pure returns (int256) {
         // This performs a simple base change: log(arg, base) = ln(arg) / ln(base).
 
@@ -346,9 +334,7 @@ library LogExpMath {
         }
     }
 
-    /**
-     * @dev Natural logarithm (ln(a)) with signed 18 decimal fixed point argument.
-     */
+    /// @dev Natural logarithm (ln(a)) with signed 18 decimal fixed point argument.
     function ln(int256 a) internal pure returns (int256) {
         // The real natural logarithm is not defined for negative numbers or zero.
         if (a <= 0) {
@@ -363,9 +349,7 @@ library LogExpMath {
         }
     }
 
-    /**
-     * @dev Internal natural logarithm (ln(a)) with signed 18 decimal fixed point argument.
-     */
+    /// @dev Internal natural logarithm (ln(a)) with signed 18 decimal fixed point argument.
     function _ln(int256 a) private pure returns (int256) {
         // We avoid using recursion here because zkSync doesn't support it.
         bool negativeExponent = false;
