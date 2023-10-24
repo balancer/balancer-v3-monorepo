@@ -19,6 +19,8 @@ contract PoolMock is BasePool {
 
     bool public failOnCallback;
 
+    uint256 private immutable _numTokens;
+
     constructor(
         IVault vault,
         string memory name,
@@ -26,10 +28,12 @@ contract PoolMock is BasePool {
         address factory,
         IERC20[] memory tokens,
         bool registerPool
-    ) BasePool(vault, name, symbol, tokens, 30 days, 90 days) {
+    ) BasePool(vault, name, symbol, 30 days, 90 days) {
         if (registerPool) {
             vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
         }
+
+        _numTokens = tokens.length;
     }
 
     function onInitialize(
@@ -53,7 +57,6 @@ contract PoolMock is BasePool {
     function onAfterAddLiquidity(
         address,
         uint256[] calldata,
-        uint256[] calldata,
         bytes memory,
         uint256[] calldata,
         uint256
@@ -74,7 +77,6 @@ contract PoolMock is BasePool {
 
     function onAfterRemoveLiquidity(
         address,
-        uint256[] calldata,
         uint256[] calldata,
         uint256,
         bytes memory,
@@ -108,12 +110,8 @@ contract PoolMock is BasePool {
                 : params.amountGiven.divDown(_multiplier);
     }
 
-    function _getMaxTokens() internal pure virtual override returns (uint256) {
-        return 4;
-    }
-
     function _getTotalTokens() internal view virtual override returns (uint256) {
-        return 2;
+        return _numTokens;
     }
 
     function _scalingFactor(IERC20) internal view virtual override returns (uint256) {
@@ -121,10 +119,13 @@ contract PoolMock is BasePool {
     }
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {
-        uint256[] memory scalingFactors = new uint256[](2);
+        uint256 numTokens = _getTotalTokens();
 
-        scalingFactors[0] = 1;
-        scalingFactors[1] = 1;
+        uint256[] memory scalingFactors = new uint256[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; i++) {
+            scalingFactors[i] = 1;
+        }
 
         return scalingFactors;
     }

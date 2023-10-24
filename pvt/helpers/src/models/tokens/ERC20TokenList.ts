@@ -31,7 +31,7 @@ export default class ERC20TokenList {
   }
 
   get addresses(): string[] {
-    return this.tokens.map((token) => token.address);
+    return Promise.all(this.tokens.map((token) => token.address()));
   }
 
   get first(): ERC20Token {

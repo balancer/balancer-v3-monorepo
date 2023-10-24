@@ -14,9 +14,10 @@ import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/We
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
-/**
- * @dev Basic Weighted Pool with immutable weights.
- */
+import { IVault, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+
+/// @notice Basic Weighted Pool with immutable weights.
 contract WeightedPool is BasePool {
     using FixedPoint for uint256;
     using ScalingHelpers for *;
@@ -60,7 +61,7 @@ contract WeightedPool is BasePool {
         IVault vault,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) BasePool(vault, params.name, params.symbol, params.tokens, pauseWindowDuration, bufferPeriodDuration) {
+    ) BasePool(vault, params.name, params.symbol, pauseWindowDuration, bufferPeriodDuration) {
         uint256 numTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
 
@@ -124,16 +125,13 @@ contract WeightedPool is BasePool {
         uint256 totalTokens = _getTotalTokens();
         uint256[] memory normalizedWeights = new uint256[](totalTokens);
 
+        // prettier-ignore
         normalizedWeights[0] = _normalizedWeight0;
         normalizedWeights[1] = _normalizedWeight1;
         if (totalTokens > 2) { normalizedWeights[2] = _normalizedWeight2; } else { return normalizedWeights; }
         if (totalTokens > 3) { normalizedWeights[3] = _normalizedWeight3; } else { return normalizedWeights; }
 
         return normalizedWeights;
-    }
-
-    function _getMaxTokens() internal pure virtual override returns (uint256) {
-        return 2;
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
@@ -186,7 +184,10 @@ contract WeightedPool is BasePool {
         return _scalingFactor3;
     }
 
-    /// @dev Returns the current value of the invariant.
+    /**
+     * @dev Get the current invariant.
+     * @return The current value of the invariant
+     */
     function getInvariant() public view returns (uint256) {
         (, uint256[] memory balances) = _vault.getPoolTokens(address(this));
 
@@ -198,11 +199,135 @@ contract WeightedPool is BasePool {
         return WeightedMath.calculateInvariant(normalizedWeights, balances);
     }
 
+    /**
+     * @dev Get the normalized weights.
+     * @return An array of normalized weights, corresponding to the pool tokens
+     */
     function getNormalizedWeights() external view returns (uint256[] memory) {
         return _getNormalizedWeights();
     }
 
-    /// Swap
+    /***************************************************************************
+                               Pool Initialization
+    ***************************************************************************/
+
+    /// @inheritdoc IBasePool
+    function onInitialize(
+        uint256[] memory amountsIn,
+        bytes memory
+    ) external view onlyVault returns (uint256[] memory, uint256) {
+        uint256[] memory scalingFactors = _scalingFactors();
+        amountsIn.upscaleArray(scalingFactors);
+
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        uint256 invariantAfterJoin = WeightedMath.calculateInvariant(normalizedWeights, amountsIn);
+
+        // Set the initial pool tokens amount to the value of the invariant times the number of tokens.
+        // This makes pool token supply more consistent in Pools with similar compositions
+        // but different number of tokens.
+        uint256 bptAmountOut = invariantAfterJoin * amountsIn.length;
+
+        // amountsIn are amounts entering the Pool, so we round up.
+        amountsIn.downscaleUpArray(scalingFactors);
+
+        return (amountsIn, bptAmountOut);
+    }
+
+    /***************************************************************************
+                                   Add Liquidity
+    ***************************************************************************/
+
+    /// @inheritdoc IBasePool
+    function onAddLiquidity(
+        address,
+        uint256[] memory balances,
+        uint256[] memory amountsIn,
+        uint256 minBptAmountOut,
+        AddLiquidityKind kind,
+        bytes memory
+    ) external view onlyVault returns (uint256[] memory, uint256 bptAmountOut) {
+        uint256[] memory scalingFactors = _scalingFactors();
+        balances.upscaleArray(scalingFactors);
+        amountsIn.upscaleArray(scalingFactors);
+
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+
+        if (kind == AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+            InputHelpers.ensureInputLengthMatch(balances.length, amountsIn.length);
+
+            bptAmountOut = WeightedMath.calcBptOutGivenExactTokensIn(
+                balances,
+                normalizedWeights,
+                amountsIn,
+                totalSupply(),
+                getSwapFeePercentage()
+            );
+        } else if (kind == AddLiquidityKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+            // The token in cannot be specified with these arguments without relying on `userData`.
+            // This shall be implemented in the future with explicit arguments.
+            revert UnhandledJoinKind();
+        } else if (kind == AddLiquidityKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
+            amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, totalSupply(), minBptAmountOut);
+            bptAmountOut = minBptAmountOut;
+        } else {
+            revert UnhandledJoinKind();
+        }
+
+        // amountsIn are amounts entering the Pool, so we round up.
+        amountsIn.downscaleUpArray(scalingFactors);
+
+        return (amountsIn, bptAmountOut);
+    }
+
+    /***************************************************************************
+                                 Remove Liquidity
+    ***************************************************************************/
+
+    /// @inheritdoc IBasePool
+    function onRemoveLiquidity(
+        address,
+        uint256[] memory balances,
+        uint256[] memory minAmountsOut,
+        uint256 maxBptAmountIn,
+        RemoveLiquidityKind kind,
+        bytes memory
+    ) external view onlyVault returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
+        uint256[] memory scalingFactors = _scalingFactors();
+        balances.upscaleArray(scalingFactors);
+        minAmountsOut.upscaleArray(scalingFactors);
+
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+
+        if (kind == RemoveLiquidityKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+            // The token in cannot be specified with these arguments without relying on `userData`.
+            // This shall be implemented in the future with explicit arguments.
+            revert UnhandledExitKind();
+        } else if (kind == RemoveLiquidityKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+            amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, totalSupply(), maxBptAmountIn);
+            bptAmountIn = maxBptAmountIn;
+        } else if (kind == RemoveLiquidityKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
+            InputHelpers.ensureInputLengthMatch(minAmountsOut.length, balances.length);
+
+            // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
+            bptAmountIn = WeightedMath.calcBptInGivenExactTokensOut(
+                balances,
+                normalizedWeights,
+                minAmountsOut,
+                totalSupply(),
+                getSwapFeePercentage()
+            );
+        } else {
+            revert UnhandledExitKind();
+        }
+        // amountsOut are amounts exiting the Pool, so we round down.
+        amountsOut.downscaleDownArray(scalingFactors);
+
+        return (amountsOut, bptAmountIn);
+    }
+
+    /***************************************************************************
+                                       Swaps
+    ***************************************************************************/
 
     /// @inheritdoc IBasePool
     function onSwap(IBasePool.SwapParams memory request) public view onlyVault returns (uint256) {
@@ -249,114 +374,5 @@ contract WeightedPool is BasePool {
         uint256 amountCalculated
     ) external pure override returns (bool success) {
         return params.tokenIn != params.tokenOut && amountCalculated > 0;
-    }
-
-    /// Initialize
-
-    /// @inheritdoc IBasePool
-    function onInitialize(
-        uint256[] memory amountsIn,
-        bytes memory
-    ) external view onlyVault returns (uint256[] memory, uint256) {
-        uint256[] memory scalingFactors = _scalingFactors();
-        amountsIn.upscaleArray(scalingFactors);
-
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-        uint256 invariantAfterJoin = WeightedMath.calculateInvariant(normalizedWeights, amountsIn);
-
-        // Set the initial pool tokens amount to the value of the invariant times the number of tokens.
-        // This makes pool token supply more consistent in Pools with similar compositions
-        // but different number of tokens.
-        uint256 bptAmountOut = invariantAfterJoin * amountsIn.length;
-
-        // amountsIn are amounts entering the Pool, so we round up.
-        amountsIn.downscaleUpArray(scalingFactors);
-
-        return (amountsIn, bptAmountOut);
-    }
-
-    /// @inheritdoc IBasePool
-    function onAddLiquidity(
-        address,
-        uint256[] memory balances,
-        uint256[] memory amountsIn,
-        uint256 minBptAmountOut,
-        AddLiquidityKind kind,
-        bytes memory
-    ) external view onlyVault returns (uint256[] memory, uint256 bptAmountOut) {
-        uint256[] memory scalingFactors = _scalingFactors();
-        balances.upscaleArray(scalingFactors);
-        amountsIn.upscaleArray(scalingFactors);
-
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-
-        if (kind == AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
-            InputHelpers.ensureInputLengthMatch(balances.length, amountsIn.length);
-
-            bptAmountOut = WeightedMath.calcBptOutGivenExactTokensIn(
-                balances,
-                normalizedWeights,
-                amountsIn,
-                totalSupply(),
-                getSwapFeePercentage()
-            );
-        } else if (kind == AddLiquidityKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            // The token in cannot be specified with these arguments without relying on `userData`.
-            // This shall be implemented in the future with explicit arguments.
-            revert UnhandledJoinKind();
-        } else if (kind == AddLiquidityKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
-            amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, totalSupply(), minBptAmountOut);
-            bptAmountOut = minBptAmountOut;
-        } else {
-            revert UnhandledJoinKind();
-        }
-
-        // amountsIn are amounts entering the Pool, so we round up.
-        amountsIn.downscaleUpArray(scalingFactors);
-
-        return (amountsIn, bptAmountOut);
-    }
-
-    /// @inheritdoc IBasePool
-    function onRemoveLiquidity(
-        address,
-        uint256[] memory balances,
-        uint256[] memory minAmountsOut,
-        uint256 maxBptAmountIn,
-        RemoveLiquidityKind kind,
-        bytes memory
-    ) external view onlyVault returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
-        uint256[] memory scalingFactors = _scalingFactors();
-        balances.upscaleArray(scalingFactors);
-        minAmountsOut.upscaleArray(scalingFactors);
-
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-
-        if (kind == RemoveLiquidityKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            // The token in cannot be specified with these arguments without relying on `userData`.
-            // This shall be implemented in the future with explicit arguments.
-            revert UnhandledExitKind();
-
-        } else if (kind == RemoveLiquidityKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
-            amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, totalSupply(), maxBptAmountIn);
-            bptAmountIn = maxBptAmountIn;
-        } else if (kind == RemoveLiquidityKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
-            InputHelpers.ensureInputLengthMatch(minAmountsOut.length, balances.length);
-
-            // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
-            bptAmountIn = WeightedMath.calcBptInGivenExactTokensOut(
-                balances,
-                normalizedWeights,
-                minAmountsOut,
-                totalSupply(),
-                getSwapFeePercentage()
-            );
-        } else {
-            revert UnhandledExitKind();
-        }
-        // amountsOut are amounts exiting the Pool, so we round down.
-        amountsOut.downscaleDownArray(scalingFactors);
-
-        return (amountsOut, bptAmountIn);
     }
 }

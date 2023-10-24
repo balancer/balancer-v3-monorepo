@@ -54,7 +54,6 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
     function onAfterAddLiquidity(
         address,
         uint256[] calldata,
-        uint256[] calldata,
         bytes memory,
         uint256[] calldata,
         uint256
@@ -75,7 +74,6 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
 
     function onAfterRemoveLiquidity(
         address,
-        uint256[] calldata,
         uint256[] calldata,
         uint256,
         bytes memory,
@@ -107,5 +105,9 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
             params.kind == IVault.SwapKind.GIVEN_IN
                 ? params.amountGiven.mulDown(_multiplier)
                 : params.amountGiven.divDown(_multiplier);
+    }
+
+    function getPoolTokens() external view returns (IERC20[] memory tokens, uint256[] memory balances) {
+        return _vault.getPoolTokens(address(this));
     }
 }

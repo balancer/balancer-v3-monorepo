@@ -38,6 +38,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     // Minimum BPT amount minted upon initialization.
     uint256 private constant _MINIMUM_BPT = 1e6;
 
+    // Pools can have two, three, or four tokens.
+    uint256 private constant _MIN_TOKENS = 2;
+    uint256 private constant _MAX_TOKENS = 4;
+
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
 
@@ -46,15 +50,23 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
     /// @notice List of handlers. It is non-empty only during `invoke` calls.
     address[] private _handlers;
-    /// @notice The total number of nonzero deltas over all active + completed lockers.
-    /// @dev It is non-zero only during `invoke` calls.
+
+    /**
+     * @notice The total number of nonzero deltas over all active + completed lockers.
+     * @dev It is non-zero only during `invoke` calls.
+     */
     uint256 private _nonzeroDeltaCount;
-    /// @notice Represents the asset due/owed to each handler.
-    /// @dev Must all net to zero when the last handler is released.
+
+    /**
+     * @notice Represents the asset due/owed to each handler.
+     * @dev Must all net to zero when the last handler is released.
+     */
     mapping(address => mapping(IERC20 => int256)) private _tokenDeltas;
-    /// @notice Represents the total reserve of each ERC20 token.
-    /// @dev It should be always equal to `token.balanceOf(vault)`, with only
-    /// exception being during the `invoke` call.
+
+    /**
+     * @notice Represents the total reserve of each ERC20 token.
+     * @dev It should be always equal to `token.balanceOf(vault)`, except during `invoke`.
+     */
     mapping(IERC20 => uint256) private _tokenReserves;
 
     // Upgradeable contract in charge of setting permissions.
@@ -111,12 +123,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         }
     }
 
-    /**
-     * @inheritdoc IVault
-     * @dev Allows the external calling of a function via the Vault contract to
-     * access Vault's functions guarded by `withHandler`.
-     * `transient` modifier ensuring balances changes within the Vault are settled.
-     */
+    /// @inheritdoc IVault
     function invoke(bytes calldata data) external payable transient returns (bytes memory result) {
         // Executes the function call with value to the msg.sender.
         return (msg.sender).functionCallWithValue(data, msg.value);
@@ -164,12 +171,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         token.safeTransfer(to, amount);
     }
 
-    /**
-     * @inheritdoc IVault
-     * @dev This function can drain users of their tokens because users grant allowance to the Vault.
-     *      Only trusted routers should be permitted to invoke it.
-     *      Untrusted routers should use `settle` instead.
-     */
+    /// @inheritdoc IVault
     function retrieve(IERC20 token, address from, uint256 amount) public nonReentrant withHandler onlyTrustedRouter {
         // effects
         _supplyCredit(token, amount, msg.sender);
@@ -206,9 +208,18 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         return _tokenReserves[token];
     }
 
+    /// @inheritdoc IVault
+    function getMinimumPoolTokens() external pure returns (uint256) {
+        return _MIN_TOKENS;
+    }
+
+    /// @inheritdoc IVault
+    function getMaximumPoolTokens() external pure returns (uint256) {
+        return _MAX_TOKENS;
+    }
+
     /**
      * @notice Records the `debt` for a given handler and token.
-     *
      * @param token   The ERC20 token for which the `debt` will be accounted.
      * @param debt    The amount of `token` taken from the Vault in favor of the `handler`.
      * @param handler The account responsible for the debt.
@@ -219,7 +230,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
     /**
      * @notice Records the `credit` for a given handler and token.
-     *
      * @param token   The ERC20 token for which the 'credit' will be accounted.
      * @param credit  The amount of `token` supplied to the Vault in favor of the `handler`.
      * @param handler The account credited with the amount.
@@ -291,25 +301,18 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         _;
     }
 
-    /**
-     * @inheritdoc IVault
-     * @dev Allows querying any operation on the Vault that has the `withHandler` modifier.
-     */
+    /// @inheritdoc IVault
     function quote(bytes calldata data) external payable query returns (bytes memory result) {
         // Forward the incoming call to the original sender of this transaction.
         return (msg.sender).functionCallWithValue(data, msg.value);
     }
 
-    /**
-     * @inheritdoc IVault
-     */
+    /// @inheritdoc IVault
     function disableQuery() external authenticate {
         _isQueryDisabled = true;
     }
 
-    /**
-     * @inheritdoc IVault
-     */
+    /// @inheritdoc IVault
     function isQueryDisabled() external view returns (bool) {
         return _isQueryDisabled;
     }
@@ -470,13 +473,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
                             Pool Registration and Initialization
     *******************************************************************************/
 
-    /**
-     * @dev The function will register the pool, setting its tokens with an initial balance of zero.
-     *      The function also checks for valid token addresses
-     *      and ensures that the pool and tokens aren't already registered.
-     *      Emits a `PoolRegistered` event upon successful registration.
-     * @inheritdoc IVault
-     */
+    /// @inheritdoc IVault
     function registerPool(
         address factory,
         IERC20[] memory tokens,
@@ -520,13 +517,26 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         }
     }
 
-    /// @dev See `registerPool`
+    /**
+     * @dev The function will register the pool, setting its tokens with an initial balance of zero.
+     * The function also checks for valid token addresses and ensures that the pool and tokens aren't
+     * already registered.
+     *
+     * Emits a `PoolRegistered` event upon successful registration.
+     */
     function _registerPool(address factory, IERC20[] memory tokens, PoolCallbacks memory callbackConfig) internal {
         address pool = msg.sender;
 
         // Ensure the pool isn't already registered
         if (_isRegisteredPool(pool)) {
             revert PoolAlreadyRegistered(pool);
+        }
+
+        if (tokens.length < _MIN_TOKENS) {
+            revert MinTokens();
+        }
+        if (tokens.length > _MAX_TOKENS) {
+            revert MaxTokens();
         }
 
         // Retrieve or create the pool's token balances mapping
@@ -609,7 +619,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     }
 
     /*******************************************************************************
-                                    Pools
+                                Pool Operations
     *******************************************************************************/
 
     /// @dev Rejects routers not approved by governance and users
@@ -675,11 +685,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }
 
-    /**
-     * @inheritdoc IVault
-     * @dev Caution should be exercised when adding liquidity because the Vault has the capability
-     *      to transfer tokens from any user, given that it holds all allowances.
-     */
+    /// @inheritdoc IVault
     function addLiquidity(
         address pool,
         address to,
@@ -730,16 +736,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         _mint(address(pool), to, bptAmountOut);
 
         if (_poolConfig[pool].shouldCallAfterAddLiquidity()) {
-            if (
-                IBasePool(pool).onAfterAddLiquidity(
-                    msg.sender,
-                    balances,
-                    maxAmountsIn,
-                    userData,
-                    amountsIn,
-                    bptAmountOut
-                ) == false
-            ) {
+            if (IBasePool(pool).onAfterAddLiquidity(msg.sender, balances, userData, amountsIn, bptAmountOut) == false) {
                 revert CallbackFailed();
             }
         }
@@ -747,12 +744,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }
 
-    /**
-     * @inheritdoc IVault
-     * @dev Trusted routers can burn pool tokens belonging to any user and require no prior approval from the user.
-     * Untrusted routers require prior approval from the user. This is the only function allowed to call
-     * _queryModeBalanceIncrease (and only in a query context).
-     */
+    /// @inheritdoc IVault
     function removeLiquidity(
         address pool,
         address from,
@@ -799,8 +791,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         // Store the new pool balances.
         _setPoolBalances(pool, finalBalances);
 
-        // The Vault has infinite allowance for every pool token, allowing it to burn tokens without prior approval.
-        // However, untrusted routers must receive preapproval to burn pool tokens.
         if (!_isTrustedRouter(msg.sender)) {
             _spendAllowance(address(pool), from, msg.sender, bptAmountIn);
         }
@@ -814,14 +804,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         if (_poolConfig[pool].shouldCallAfterRemoveLiquidity()) {
             if (
-                IBasePool(pool).onAfterRemoveLiquidity(
-                    msg.sender,
-                    balances,
-                    minAmountsOut,
-                    bptAmountIn,
-                    userData,
-                    amountsOut
-                ) == false
+                IBasePool(pool).onAfterRemoveLiquidity(msg.sender, balances, bptAmountIn, userData, amountsOut) == false
             ) {
                 revert CallbackFailed();
             }

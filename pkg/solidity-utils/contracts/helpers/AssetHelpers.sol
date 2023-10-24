@@ -14,9 +14,7 @@ library AssetHelpers {
     using AssetHelpers for *;
     using SafeERC20 for IERC20;
 
-    /**
-     * @dev
-     */
+    /// @dev User did not send enough ETH for a transaction requiring it.
     error InsufficientEth();
 
     // Sentinel value used to indicate WETH with wrapping/unwrapping semantics. The zero address is a good choice for
