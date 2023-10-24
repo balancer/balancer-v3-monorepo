@@ -199,4 +199,11 @@ interface IBasePool {
      * @return success True if the pool wishes to proceed with settlement
      */
     function onAfterSwap(AfterSwapParams calldata params, uint256 amountCalculated) external returns (bool success);
+    
+    /**
+     * @notice Gets pool tokens and their balances.
+     * @return tokens List of tokens in the pool
+     * @return balances Corresponding balances of the tokens
+     */
+    function getPoolTokens() external view returns (IERC20[] memory tokens, uint256[] memory balances);
 }
