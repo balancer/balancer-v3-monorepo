@@ -135,6 +135,18 @@ interface IBasePool {
                                        Swaps
     ***************************************************************************/
 
+    /**
+     * @dev Data for a swap operation.
+     * @param kind Type of swap (given in or given out)
+     * @param pool Address of the liquidity pool
+     * @param tokenIn Token to be swapped from (entering the Vault)
+     * @param tokenOut Token to be swapped to (leaving the Vault)
+     * @param amountGiven Amount given based on kind of the swap (e.g., tokenIn for given in)
+     * @param balances Current pool balances
+     * @param indexIn Index of tokenIn
+     * @param indexOut Index of tokenOut
+     * @param userData Additional (optional) data required for the swap
+     */
     struct SwapParams {
         IVault.SwapKind kind;
         IERC20 tokenIn;
@@ -147,6 +159,18 @@ interface IBasePool {
         bytes userData;
     }
 
+    /**
+     * @dev Data for the callback after a swap operation.
+     * @param kind Type of swap (given in or given out)
+     * @param tokenIn Token to be swapped from
+     * @param tokenOut Token to be swapped to
+     * @param amountIn Amount of tokenIn (entering the Vault)
+     * @param amountOut Amount of tokenOut (leaving the Vault)
+     * @param tokenInBalance Updated (after swap) balance of tokenIn
+     * @param tokenOutBalance Updated (after swap) balance of tokenOut
+     * @param sender Account originating the swap operation
+     * @param userData Additional (optional) data required for the swap
+     */
     struct AfterSwapParams {
         IVault.SwapKind kind;
         IERC20 tokenIn;
@@ -161,7 +185,7 @@ interface IBasePool {
 
     /**
      * @notice Execute a swap in the pool.
-     * @param params Swap parameters
+     * @param params Swap parameters (see above for struct definition)
      * @return amountCalculated Calculated amount for the swap
      */
     function onSwap(SwapParams calldata params) external returns (uint256 amountCalculated);
@@ -170,7 +194,7 @@ interface IBasePool {
      * @notice Called after a swap to give the Pool an opportunity to perform actions.
      * once the balances have been updated by the swap.
      *
-     * @param params Swap parameters
+     * @param params Swap parameters (see above for struct definition)
      * @param amountCalculated Token amount calculated by the swap
      * @return success True if the pool wishes to proceed with settlement
      */

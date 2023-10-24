@@ -328,6 +328,15 @@ interface IVault {
         GIVEN_OUT
     }
 
+    /**
+     * @dev Data for a swap operation.
+     * @param kind Type of swap (Given In or Given Out)
+     * @param pool The pool with the tokens being swapped
+     * @param tokenIn The token entering the Vault (balance increases)
+     * @param tokenOut The token leaving the Vault (balance decreases)
+     * @param amountGiven Amount specified for tokenIn or tokenOut (depending on the type of swap)
+     * @param userData Additional (optional) user data
+     */
     struct SwapParams {
         SwapKind kind;
         address pool;
@@ -355,7 +364,7 @@ interface IVault {
 
     /**
      * @notice Swaps tokens based on provided parameters.
-     * @param params Parameters for the swap
+     * @param params Parameters for the swap (see above for struct definition)
      * @return amountCalculated Calculated swap amount
      * @return amountIn Amount of input tokens for the swap
      * @return amountOut Amount of output tokens from the swap

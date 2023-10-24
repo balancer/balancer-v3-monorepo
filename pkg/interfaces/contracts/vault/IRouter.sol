@@ -12,6 +12,15 @@ interface IRouter {
                                Pool Initialization
     ***************************************************************************/
 
+    /**
+     * @dev Data for the pool initialization callback
+     * @param sender Account originating the pool initialization operation
+     * @param pool Address of the liquidity pool
+     * @param assets Pool tokens
+     * @param maxAmountsIn Maximum amounts of assets to be added
+     * @param minBptAmountOut Minimum pool tokens to be received
+     * @param userData Additional (optional) data required for initialization
+     */
     struct InitializeCallbackParams {
         address sender;
         address pool;
@@ -43,6 +52,16 @@ interface IRouter {
                                    Add Liquidity
     ***************************************************************************/
 
+    /**
+     * @dev Data for the add liquidity callback.
+     * @param sender Account originating the add liquidity operation
+     * @param pool Address of the liquidity pool
+     * @param assets Array of assets to add
+     * @param maxAmountsIn Maximum amounts of assets to be added
+     * @param minBptAmountOut Minimum pool tokens to be received
+     * @param kind Type of join (e.g., single or multi-token)
+     * @param userData Additional (optional) data required for adding liquidity
+     */
     struct AddLiquidityCallbackParams {
         address sender;
         address pool;
@@ -76,6 +95,16 @@ interface IRouter {
                                  Remove Liquidity
     ***************************************************************************/
 
+    /**
+     * @dev Data for the remove liquidity callback.
+     * @param sender Account originating the remove liquidity operation
+     * @param pool Address of the liquidity pool
+     * @param assets Array of assets to remove
+     * @param minAmountsOut Minimum amounts of assets to be received
+     * @param maxBptAmountIn Pool tokens provided
+     * @param kind Type of exit (e.g., single or multi-token)
+     * @param userData Additional (optional) data required for removing liquidity
+     */
     struct RemoveLiquidityCallbackParams {
         address sender;
         address pool;
@@ -108,6 +137,18 @@ interface IRouter {
                                        Swaps
     ***************************************************************************/
 
+    /**
+     * @dev Data for the swap callback.
+     * @param sender Account initiating the swap operation
+     * @param kind Type of swap (given in or given out)
+     * @param pool Address of the liquidity pool
+     * @param assetIn Asset to be swapped from
+     * @param assetOut Asset to be swapped to
+     * @param amountGiven Amount given based on kind of the swap (e.g., tokenIn for given in)
+     * @param limit Maximum or minimum amount based on the kind of swap (e.g., maxAmountIn for given out)
+     * @param deadline Deadline for the swap
+     * @param userData Additional (optional) data required for the swap
+     */
     struct SwapCallbackParams {
         address sender;
         IVault.SwapKind kind;
