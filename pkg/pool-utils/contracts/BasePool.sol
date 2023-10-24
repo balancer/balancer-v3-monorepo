@@ -36,12 +36,16 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
 
     /**
      * @notice Return the current value of the swap fee percentage.
+     *
+     * @return The swap fee percentage
      */
     function getSwapFeePercentage() public pure virtual returns (uint256) {
         return _SWAP_FEE_PERCENTAGE;
     }
 
-    /// TemporarilyPausable
+    /*******************************************************************************
+                              Temporarily Pausable
+    *******************************************************************************/
 
     /**
      * @notice Pause the pool: an emergency action which disables all pool functions.
@@ -62,15 +66,18 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
         _unpause();
     }
 
-    /// Callbacks
+    /*******************************************************************************
+                                     Callbacks
+    *******************************************************************************/
 
+    /// @notice Callback performed after a swap. Reverts here if configured but unimplemented.
     function onAfterSwap(SwapParams calldata, uint256) external view virtual returns (bool) {
         revert CallbackNotImplemented();
     }
 
+    /// @notice Callback performed after adding liquidity. Reverts here if configured but unimplemented.
     function onAfterAddLiquidity(
         address,
-        uint256[] memory,
         uint256[] memory,
         bytes memory,
         uint256[] memory,
@@ -79,9 +86,9 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
         revert CallbackNotImplemented();
     }
 
+    /// @notice Callback performed after removing liquidity. Reverts here if configured but unimplemented.
     function onAfterRemoveLiquidity(
         address,
-        uint256[] memory,
         uint256[] memory,
         uint256,
         bytes memory,
@@ -90,7 +97,9 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
         revert CallbackNotImplemented();
     }
 
-    /// Scaling
+    /*******************************************************************************
+                                      Scaling
+    *******************************************************************************/
 
     /**
      * @dev Returns the scaling factor for one of the Pool's tokens. Reverts if `token` is not a token registered by the
@@ -113,7 +122,17 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
      */
     function _scalingFactors() internal view virtual returns (uint256[] memory);
 
+    /**
+     * @notice Return the scaling factors of all tokens.
+     *
+     * @return An array of the scaling factors
+     */
     function getScalingFactors() external view returns (uint256[] memory) {
         return _scalingFactors();
+    }
+
+    /// @inheritdoc IBasePool
+    function getPoolTokens() external view returns (IERC20[] memory tokens, uint256[] memory balances) {
+        return _vault.getPoolTokens(address(this));
     }
 }

@@ -7,9 +7,7 @@ import "./LogExpMath.sol";
 /* solhint-disable private-vars-leading-underscore */
 
 library FixedPoint {
-    /**
-     * @dev This error is thrown upon division by zero.
-     */
+    /// @dev Attempted division by zero.
     error ZeroDivision();
 
     // solhint-disable no-inline-assembly
