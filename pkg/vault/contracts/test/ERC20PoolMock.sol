@@ -115,12 +115,12 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         return true;
     }
 
-    function onBeforeAdd(uint256[] memory currentBalances) external override {
-        // solhint-disable-previous-line no-empty-blocks
+    function onBeforeAddLiquidity(uint256[] memory) external pure override returns (bool) {
+        return true;
     }
 
-    function onBeforeRemove(uint256[] memory currentBalances) external override {
-        // solhint-disable-previous-line no-empty-blocks
+    function onBeforeRemoveLiquidity(uint256[] memory) external pure override returns (bool) {
+        return true;
     }
 
     function onAddLiquidityUnbalanced(

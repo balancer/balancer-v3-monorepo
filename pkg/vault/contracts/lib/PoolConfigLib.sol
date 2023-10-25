@@ -13,22 +13,26 @@ using PoolConfigLib for PoolConfigBits global;
 library PoolConfigLib {
     using WordCodec for bytes32;
 
-    // [  251 bit |    1 bit     |   1 bit   |    1 bit   |    1 bit    |    1 bit   ]
-    // [ not used | after remove | after add | after swap | initialized | registered ]
-    // |MSB                                                                       LSB|
+    // [  249 bit |    1 bit     |     1 bit     |   1 bit   |   1 bit    |    1 bit   |    1 bit    |    1 bit   ]
+    // [ not used | after remove | before remove | after add | before add | after swap | initialized | registered ]
+    // |MSB                                                                                                    LSB|
 
     // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
     uint8 public constant POOL_INITIALIZED_OFFSET = 1;
     uint8 public constant AFTER_SWAP_OFFSET = 2;
-    uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = 3;
-    uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = 4;
+    uint8 public constant BEFORE_ADD_LIQUIDITY_OFFSET = 3;
+    uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = 4;
+    uint8 public constant BEFORE_REMOVE_LIQUIDITY_OFFSET = 5;
+    uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = 6;
 
     // Bitwise flags for pool's config
     uint256 public constant POOL_REGISTERED_FLAG = 1 << POOL_REGISTERED_OFFSET;
     uint256 public constant POOL_INITIALIZED_FLAG = 1 << POOL_INITIALIZED_OFFSET;
     uint256 public constant AFTER_SWAP_FLAG = 1 << AFTER_SWAP_OFFSET;
+    uint256 public constant BEFORE_ADD_LIQUIDITY_FLAG = 1 << BEFORE_ADD_LIQUIDITY_OFFSET;
     uint256 public constant AFTER_ADD_LIQUIDITY_FLAG = 1 << AFTER_ADD_LIQUIDITY_OFFSET;
+    uint256 public constant BEFORE_REMOVE_LIQUIDITY_FLAG = 1 << BEFORE_REMOVE_LIQUIDITY_OFFSET;
     uint256 public constant AFTER_REMOVE_LIQUIDITY_FLAG = 1 << AFTER_REMOVE_LIQUIDITY_OFFSET;
 
     function addRegistration(PoolConfigBits config) internal pure returns (PoolConfigBits) {
@@ -47,8 +51,16 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(AFTER_SWAP_OFFSET);
     }
 
+    function shouldCallBeforeAddLiquidity(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(BEFORE_ADD_LIQUIDITY_FLAG);
+    }
+
     function shouldCallAfterAddLiquidity(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(AFTER_ADD_LIQUIDITY_FLAG);
+    }
+
+    function shouldCallBeforeRemoveLiquidity(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(BEFORE_REMOVE_LIQUIDITY_FLAG);
     }
 
     function shouldCallAfterRemoveLiquidity(PoolConfigBits config) internal pure returns (bool) {
@@ -56,13 +68,21 @@ library PoolConfigLib {
     }
 
     function fromPoolConfig(PoolConfig memory config) internal pure returns (PoolConfigBits) {
+        bytes32 configBits = bytes32(0);
+
+        // Stack too deep.
+        {
+            configBits = configBits.insertBool(config.isRegisteredPool, POOL_REGISTERED_OFFSET);
+            configBits = configBits.insertBool(config.isInitializedPool, POOL_INITIALIZED_OFFSET);
+        }
+
         return
             PoolConfigBits.wrap(
-                bytes32(0)
-                    .insertBool(config.isRegisteredPool, POOL_REGISTERED_OFFSET)
-                    .insertBool(config.isInitializedPool, POOL_INITIALIZED_OFFSET)
+                configBits
                     .insertBool(config.callbacks.shouldCallAfterSwap, AFTER_SWAP_OFFSET)
+                    .insertBool(config.callbacks.shouldCallBeforeAddLiquidity, BEFORE_ADD_LIQUIDITY_OFFSET)
                     .insertBool(config.callbacks.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET)
+                    .insertBool(config.callbacks.shouldCallBeforeRemoveLiquidity, BEFORE_REMOVE_LIQUIDITY_OFFSET)
                     .insertBool(config.callbacks.shouldCallAfterRemoveLiquidity, AFTER_REMOVE_LIQUIDITY_OFFSET)
             );
     }
@@ -73,7 +93,9 @@ library PoolConfigLib {
                 isRegisteredPool: config.isPoolRegistered(),
                 isInitializedPool: config.isPoolInitialized(),
                 callbacks: PoolCallbacks({
+                    shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),
                     shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),
+                    shouldCallBeforeRemoveLiquidity: config.shouldCallBeforeRemoveLiquidity(),
                     shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity(),
                     shouldCallAfterSwap: config.shouldCallAfterSwap()
                 })

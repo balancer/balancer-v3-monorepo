@@ -10,7 +10,9 @@ import { IAuthorizer } from "./IAuthorizer.sol";
 /// @dev Represents a pool's callbacks.
 struct PoolCallbacks {
     bool shouldCallAfterSwap;
+    bool shouldCallBeforeAddLiquidity;
     bool shouldCallAfterAddLiquidity;
+    bool shouldCallBeforeRemoveLiquidity;
     bool shouldCallAfterRemoveLiquidity;
 }
 

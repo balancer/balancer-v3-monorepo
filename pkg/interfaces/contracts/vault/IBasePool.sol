@@ -51,7 +51,7 @@ interface IBasePool {
         ALL_TOKENS_IN_FOR_EXACT_BPT_OUT
     }
 
-    function onBeforeAdd(uint256[] memory currentBalances) external;
+    function onBeforeAddLiquidity(uint256[] memory currentBalances) external returns (bool);
 
     /**
      * @notice Add liquidity to the pool.
@@ -117,7 +117,7 @@ interface IBasePool {
         BPT_IN_FOR_EXACT_TOKENS_OUT
     }
 
-    function onBeforeRemove(uint256[] memory currentBalances) external;
+    function onBeforeRemoveLiquidity(uint256[] memory currentBalances) external returns (bool);
 
     /**
      * @notice Remove liquidity from the pool.
