@@ -86,7 +86,7 @@ contract Router is IRouter, ReentrancyGuard {
         );
 
         if (bptAmountOut < params.minBptAmountOut) {
-            revert IVault.BptAmountBelowMin();
+            revert BptAmountBelowMin();
         }
 
         uint256 ethAmountIn;
@@ -96,7 +96,7 @@ contract Router is IRouter, ReentrancyGuard {
             uint256 amountIn = amountsIn[i];
 
             if (amountIn > params.maxAmountsIn[i]) {
-                revert IVault.JoinAboveMax();
+                revert JoinAboveMax();
             }
 
             IERC20 token = asset.toIERC20(_weth);
@@ -167,7 +167,7 @@ contract Router is IRouter, ReentrancyGuard {
         );
 
         if (bptAmountOut < params.minBptAmountOut) {
-            revert IVault.BptAmountBelowMin();
+            revert BptAmountBelowMin();
         }
 
         uint256 ethAmountIn;
@@ -177,7 +177,7 @@ contract Router is IRouter, ReentrancyGuard {
             uint256 amountIn = amountsIn[i];
 
             if (amountIn > params.maxAmountsIn[i]) {
-                revert IVault.JoinAboveMax();
+                revert JoinAboveMax();
             }
 
             IERC20 token = asset.toIERC20(_weth);
@@ -249,7 +249,7 @@ contract Router is IRouter, ReentrancyGuard {
         for (uint256 i = 0; i < params.assets.length; ++i) {
             uint256 amountOut = amountsOut[i];
             if (amountOut < params.minAmountsOut[i]) {
-                revert IVault.ExitBelowMin();
+                revert ExitBelowMin();
             }
 
             Asset asset = params.assets[i];
@@ -363,7 +363,7 @@ contract Router is IRouter, ReentrancyGuard {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > params.deadline) {
-            revert IVault.SwapDeadline();
+            revert SwapDeadline();
         }
 
         tokenIn = params.assetIn.toIERC20(_weth);
@@ -381,7 +381,7 @@ contract Router is IRouter, ReentrancyGuard {
         );
 
         if (params.kind == IVault.SwapKind.GIVEN_IN ? amountOut < params.limit : amountIn > params.limit) {
-            revert IVault.SwapLimit(params.kind == IVault.SwapKind.GIVEN_IN ? amountOut : amountIn, params.limit);
+            revert SwapLimit(params.kind == IVault.SwapKind.GIVEN_IN ? amountOut : amountIn, params.limit);
         }
     }
 

@@ -239,9 +239,6 @@ interface IVault {
      */
     error SenderIsNotVault(address sender);
 
-    /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
-    error BptAmountBelowMin();
-
     /// @dev The BPT amount requested from removing liquidity is above the maximum specified for the operation.
     error BptAmountAboveMax();
 
@@ -352,15 +349,6 @@ interface IVault {
      */
     error TokensMismatch(address pool, address expectedToken, address actualToken);
 
-    /// @dev A required amountIn exceeds the maximum limit specified in the join.
-    error JoinAboveMax();
-
-    /// @dev The actual bptAmountOut is below the minimum limit specified in the exit.
-    error ExitBelowMin();
-
-    /// @dev The swap transaction was not mined before the specified deadline timestamp.
-    error SwapDeadline();
-
     /// @dev The user tried to swap zero tokens.
     error AmountGivenZero();
 
@@ -369,9 +357,6 @@ interface IVault {
 
     /// @dev The user attempted to swap a token not in the pool.
     error TokenNotRegistered();
-
-    /// @dev An amount in or out has exceeded the limit specified in the swap request.
-    error SwapLimit(uint256 amount, uint256 limit);
 
     /**
      * @notice Adds liquidity to a pool.
