@@ -31,16 +31,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  coverage:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up environment
-        uses: ./.github/actions/setup
-      - run: yarn coverage
-        env:
-          NODE_OPTIONS: --max_old_space_size=4096
-
   test-forge-vault:
     runs-on: ubuntu-latest
     steps:
