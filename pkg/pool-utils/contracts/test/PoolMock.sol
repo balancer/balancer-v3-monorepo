@@ -129,4 +129,62 @@ contract PoolMock is BasePool {
 
         return scalingFactors;
     }
+
+    function supportsAddLiquidityProportional() external pure override returns (bool) {
+        return true;
+    }
+
+    function supportsRemoveLiquidityProportional() external pure override returns (bool) {
+        return true;
+    }
+
+    function onBeforeAddLiquidity(uint256[] memory) external pure override returns (bool) {
+        return true;
+    }
+
+    function onAddLiquidityUnbalanced(
+        address,
+        uint256[] memory,
+        uint256[] memory
+    ) external pure override returns (uint256) {
+        revert CallbackNotImplemented();
+    }
+
+    function onAddLiquiditySingleAsset(
+        address,
+        IERC20,
+        uint256,
+        uint256[] memory
+    ) external pure override returns (uint256) {
+        revert CallbackNotImplemented();
+    }
+
+    function onAddLiquidityCustom(
+        address,
+        bytes memory,
+        uint256[] memory
+    ) external override pure returns (uint256[] memory, uint256, bytes memory) {
+        revert CallbackNotImplemented();
+    }
+
+    function onBeforeRemoveLiquidity(uint256[] memory) external pure override returns (bool) {
+        return true;
+    }
+
+    function onRemoveLiquiditySingleAsset(
+        address,
+        IERC20,
+        uint256,
+        uint256[] memory
+    ) external pure override returns (uint256) {
+        revert CallbackNotImplemented();
+    }
+
+    function onRemoveLiquidityCustom(
+        address,
+        bytes memory,
+        uint256[] memory
+    ) external pure override returns (uint256[] memory, uint256, bytes memory) {
+        revert CallbackNotImplemented();
+    }
 }
