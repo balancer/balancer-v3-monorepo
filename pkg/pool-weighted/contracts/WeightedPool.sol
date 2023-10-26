@@ -4,21 +4,21 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IVault, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+
 import { BasePoolMath } from "@balancer-labs/v3-pool-utils/contracts/lib/BasePoolMath.sol";
 import { BasePool } from "@balancer-labs/v3-pool-utils/contracts/BasePool.sol";
-
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { IVault, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 
 /// @notice Basic Weighted Pool with immutable weights.
-contract WeightedPool is BasePool, IWeightedPool {
+contract WeightedPool is BasePool {
     using FixedPoint for uint256;
     using ScalingHelpers for *;
 
@@ -49,6 +49,12 @@ contract WeightedPool is BasePool, IWeightedPool {
         IERC20[] tokens;
         uint256[] normalizedWeights;
     }
+
+    /// @dev Indicates that one of the pool tokens' weight is below the minimum allowed.
+    error MinWeight();
+
+    /// @dev Indicates that the sum of the pool tokens' weights is not FP 1.
+    error NormalizedWeightInvariant();
 
     constructor(
         NewPoolParams memory params,
@@ -112,7 +118,7 @@ contract WeightedPool is BasePool, IWeightedPool {
         else if (token == _token2) { return _normalizedWeight2; }
         else if (token == _token3) { return _normalizedWeight3; }
         else {
-            revert IVaultErrors.InvalidToken();
+            revert IVault.InvalidToken();
         }
     }
 
@@ -145,7 +151,7 @@ contract WeightedPool is BasePool, IWeightedPool {
         else if (token == _token2) { return _getScalingFactor2(); }
         else if (token == _token3) { return _getScalingFactor3(); }
         else {
-            revert IVaultErrors.InvalidToken();
+            revert IVault.InvalidToken();
         }
     }
 

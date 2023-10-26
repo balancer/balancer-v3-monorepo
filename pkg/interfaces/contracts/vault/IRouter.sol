@@ -72,6 +72,12 @@ interface IRouter {
         bytes userData;
     }
 
+    /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
+    error BptAmountBelowMin();
+
+    /// @dev A required amountIn exceeds the maximum limit specified in the join.
+    error JoinAboveMax();
+
     /**
      * @notice Adds liquidity to a pool.
      * @param pool Address of the liquidity pool
@@ -114,6 +120,9 @@ interface IRouter {
         IBasePool.RemoveLiquidityKind kind;
         bytes userData;
     }
+
+    /// @dev The actual bptAmountOut is below the minimum limit specified in the exit.
+    error ExitBelowMin();
 
     /**
      * @notice Removes liquidity from a pool.
@@ -160,6 +169,12 @@ interface IRouter {
         uint256 deadline;
         bytes userData;
     }
+
+    /// @dev The swap transaction was not mined before the specified deadline timestamp.
+    error SwapDeadline();
+
+    /// @dev An amount in or out has exceeded the limit specified in the swap request.
+    error SwapLimit(uint256 amount, uint256 limit);
 
     /**
      * @notice Executes a swap operation.
