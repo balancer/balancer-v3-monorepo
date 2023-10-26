@@ -391,7 +391,6 @@ interface IVault {
     function addLiquidityProportional(
         address pool,
         address to,
-        uint256[] memory maxAmountsIn,
         uint256 exactBptAmountOut
     ) external returns (uint256[] memory amountsIn);
 
@@ -450,7 +449,6 @@ interface IVault {
     function removeLiquidityProportional(
         address pool,
         address from,
-        uint256[] memory maxAmountsOut,
         uint256 exactBptAmountIn
     ) external returns (uint256[] memory amountsOut);
 

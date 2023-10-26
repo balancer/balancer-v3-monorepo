@@ -725,7 +725,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     function addLiquidityProportional(
         address pool,
         address to,
-        uint256[] memory maxAmountsIn,
         uint256 exactBptAmountOut
     ) external withHandler whenNotPaused withInitializedPool(pool) returns (uint256[] memory amountsIn) {
         if (!IBasePool(pool).supportsAddLiquidityProportional()) {
@@ -733,7 +732,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         }
 
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
-        InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
 
         _beforeAddLiquidity(pool, balances);
 
@@ -877,7 +875,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     function removeLiquidityProportional(
         address pool,
         address from,
-        uint256[] memory maxAmountsOut,
         uint256 exactBptAmountIn
     ) external whenNotPaused nonReentrant withInitializedPool(pool) returns (uint256[] memory amountsOut) {
         // TODO: recovery mode? Should this be mandatory instead? (should skip onBeforeRemove call)
@@ -886,8 +883,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         }
 
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
-
-        InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsOut.length);
 
         _beforeRemoveLiquidity(pool, balances);
 
