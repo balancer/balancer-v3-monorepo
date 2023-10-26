@@ -11,8 +11,6 @@ import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.so
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
@@ -118,7 +116,7 @@ contract VaultSwapTest is Test {
     }
 
     function testSwapNotInitialized() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, address(pool)));
+        vm.expectRevert(abi.encodeWithSelector(IVault.PoolNotInitialized.selector, address(pool)));
         router.swap(
             IVault.SwapKind.GIVEN_IN,
             address(pool),
