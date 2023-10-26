@@ -734,7 +734,6 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         }
 
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
-
         InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
 
         _beforeAddLiquidity(pool, balances);
@@ -750,6 +749,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         uint256[] memory exactAmountsIn
     ) external withHandler whenNotPaused withInitializedPool(pool) returns (uint256 bptAmountOut) {
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
+        InputHelpers.ensureInputLengthMatch(balances.length, exactAmountsIn.length);
 
         _beforeAddLiquidity(pool, balances);
 
@@ -768,9 +768,9 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         _beforeAddLiquidity(pool, balances);
 
-        amountIn = IBasePool(pool).onAddLiquiditySingleAsset(msg.sender, tokenIn, exactBptAmountOut, balances);
+        (uint256[] memory amountsIn, uint256 tokenIndex) = _singleAssetAmountToArray(tokens, tokenIn, amountIn);
 
-        uint256[] memory amountsIn = _singleAssetAmountToArray(tokens, tokenIn, amountIn);
+        amountIn = IBasePool(pool).onAddLiquiditySingleAsset(msg.sender, tokenIndex, exactBptAmountOut, balances);
 
         _afterAddLiquidity(pool, to, tokens, "", balances, amountsIn, exactBptAmountOut);
     }
@@ -908,9 +908,9 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         _beforeRemoveLiquidity(pool, balances);
 
-        amountOut = IBasePool(pool).onRemoveLiquiditySingleAsset(msg.sender, tokenOut, exactBptAmountIn, balances);
+        (uint256[] memory amountsOut, uint256 tokenIndex) = _singleAssetAmountToArray(tokens, tokenOut, amountOut);
 
-        uint256[] memory amountsOut = _singleAssetAmountToArray(tokens, tokenOut, amountOut);
+        amountOut = IBasePool(pool).onRemoveLiquiditySingleAsset(msg.sender, tokenIndex, exactBptAmountIn, balances);
 
         _afterRemoveLiquidity(pool, from, tokens, "", balances, amountsOut, exactBptAmountIn);
     }
@@ -1038,13 +1038,13 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
     /**
      * @dev Validate that `poolTokens` includes `token` and return an array with the same length as `poolTokens` that
-     * contains 0 at every element except for the position belonging to `token`.
+     * contains 0 at every element except for the position belonging to `token`, as well as the token index.
      */
     function _singleAssetAmountToArray(
         IERC20[] memory poolTokens,
         IERC20 token,
         uint256 amount
-    ) internal pure returns (uint256[] memory) {
+    ) internal pure returns (uint256[] memory, uint256 tokenIndex) {
         // Build `amounts` array for every registered token.
         uint256[] memory amounts = new uint256[](poolTokens.length);
         uint256 i;
@@ -1060,7 +1060,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
             revert TokenNotRegistered();
         }
 
-        return amounts;
+        return (amounts, i);
     }
 
     function _onlyTrustedRouter(address sender) internal pure {

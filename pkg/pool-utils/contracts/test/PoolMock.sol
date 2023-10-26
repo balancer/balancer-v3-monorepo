@@ -152,7 +152,7 @@ contract PoolMock is BasePool {
 
     function onAddLiquiditySingleAsset(
         address,
-        IERC20,
+        uint256,
         uint256,
         uint256[] memory
     ) external pure override returns (uint256) {
@@ -173,7 +173,7 @@ contract PoolMock is BasePool {
 
     function onRemoveLiquiditySingleAsset(
         address,
-        IERC20,
+        uint256,
         uint256,
         uint256[] memory
     ) external pure override returns (uint256) {

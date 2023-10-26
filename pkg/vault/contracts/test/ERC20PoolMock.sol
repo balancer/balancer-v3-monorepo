@@ -133,7 +133,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
 
     function onAddLiquiditySingleAsset(
         address,
-        IERC20,
+        uint256,
         uint256 exactBptAmountOut,
         uint256[] memory
     ) external pure override returns (uint256 amountIn) {
@@ -152,7 +152,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
 
     function onRemoveLiquiditySingleAsset(
         address sender,
-        IERC20 tokenOut,
+        uint256 tokenIndex,
         uint256 exactBptAmountIn,
         uint256[] memory currentBalances
     ) external returns (uint256 amountOut) {

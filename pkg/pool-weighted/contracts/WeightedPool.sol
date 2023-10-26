@@ -96,7 +96,9 @@ contract WeightedPool is BasePool, IWeightedPool {
             msg.sender,
             params.tokens,
             PoolCallbacks({
+                shouldCallBeforeAddLiquidity: false,
                 shouldCallAfterAddLiquidity: false,
+                shouldCallBeforeRemoveLiquidity: false,
                 shouldCallAfterRemoveLiquidity: false,
                 shouldCallAfterSwap: false
             })
@@ -367,6 +369,112 @@ contract WeightedPool is BasePool, IWeightedPool {
         IBasePool.AfterSwapParams calldata params,
         uint256 amountCalculated
     ) external pure override returns (bool success) {
+        // TODO: review the need of this.
         return params.tokenIn != params.tokenOut && amountCalculated > 0;
+    }
+
+    function supportsAddLiquidityProportional() external pure override returns (bool) {
+        return true;
+    }
+
+    function supportsRemoveLiquidityProportional() external pure override returns (bool) {
+        return true;
+    }
+
+    function onBeforeAddLiquidity(uint256[] memory) external override returns (bool) {}
+
+    function onAddLiquidityUnbalanced(
+        address,
+        uint256[] memory exactAmountsIn,
+        uint256[] memory currentBalances
+    ) external view override returns (uint256 bptAmountOut) {
+        uint256[] memory scalingFactors = _scalingFactors();
+        currentBalances.upscaleArray(scalingFactors);
+        exactAmountsIn.upscaleArray(scalingFactors);
+
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+
+        bptAmountOut = WeightedMath.calcBptOutGivenExactTokensIn(
+            currentBalances,
+            normalizedWeights,
+            exactAmountsIn,
+            totalSupply(),
+            getSwapFeePercentage()
+        );
+
+        // amountsIn are amounts entering the Pool, so we round up.
+        exactAmountsIn.downscaleUpArray(scalingFactors);
+
+        return bptAmountOut;
+    }
+
+    function onAddLiquiditySingleAsset(
+        address,
+        uint256 tokenInIndex,
+        uint256 exactBptAmountOut,
+        uint256[] memory currentBalances
+    ) external view override returns (uint256 amountIn) {
+        uint256[] memory scalingFactors = _scalingFactors();
+        currentBalances.upscaleArray(scalingFactors);
+
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+
+        amountIn = WeightedMath.calcTokenInGivenExactBptOut(
+            currentBalances[tokenInIndex],
+            normalizedWeights[tokenInIndex],
+            exactBptAmountOut,
+            totalSupply(),
+            getSwapFeePercentage()
+        );
+
+        // amountsIn are amounts entering the Pool, so we round up.
+        amountIn = amountIn.downscaleUp(scalingFactors[tokenInIndex]);
+
+        return amountIn;
+    }
+
+    function onAddLiquidityCustom(
+        address,
+        bytes memory,
+        uint256[] memory
+    ) external pure override returns (uint256[] memory, uint256, bytes memory) {
+        revert CallbackNotImplemented();
+    }
+
+    function onBeforeRemoveLiquidity(uint256[] memory) external pure override returns (bool) {
+        return true;
+    }
+
+    function onRemoveLiquiditySingleAsset(
+        address,
+        uint256 tokenOutIndex,
+        uint256 exactBptAmountIn,
+        uint256[] memory currentBalances
+    ) external view override returns (uint256 amountOut) {
+        uint256[] memory scalingFactors = _scalingFactors();
+        currentBalances.upscaleArray(scalingFactors);
+
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+
+        amountOut = WeightedMath.calcTokenOutGivenExactBptIn(
+            currentBalances[tokenOutIndex],
+            normalizedWeights[tokenOutIndex],
+            exactBptAmountIn,
+            totalSupply(),
+            getSwapFeePercentage()
+        );
+
+        // amountsOut are amounts exiting the Pool, so we round down.
+        amountOut.downscaleDown(scalingFactors[tokenOutIndex]);
+
+        return amountOut;
+    }
+
+    function onRemoveLiquidityCustom(
+        address,
+        bytes memory,
+        uint256[] memory
+    ) external pure override returns (uint256[] memory, uint256, bytes memory) {
+        revert CallbackNotImplemented();
     }
 }

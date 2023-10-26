@@ -81,7 +81,7 @@ interface IBasePool {
 
     function onAddLiquiditySingleAsset(
         address sender,
-        IERC20 tokenIn,
+        uint256 tokenInIndex,
         uint256 exactBptAmountOut,
         uint256[] memory currentBalances
     ) external returns (uint256 amountIn);
@@ -141,7 +141,7 @@ interface IBasePool {
 
     function onRemoveLiquiditySingleAsset(
         address sender,
-        IERC20 tokenOut,
+        uint256 tokenOutIndex,
         uint256 exactBptAmountIn,
         uint256[] memory currentBalances
     ) external returns (uint256 amountOut);
