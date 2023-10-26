@@ -27,6 +27,48 @@ interface IVault {
     *******************************************************************************/
 
     /**
+     * @dev A pool has already been registered. `registerPool` may only be called once.
+     * @param pool The already registered pool
+     */
+    error PoolAlreadyRegistered(address pool);
+
+    /**
+     * @dev A pool has already been initialized. `initialize` may only be called once.
+     * @param pool The already initialized pool
+     */
+    error PoolAlreadyInitialized(address pool);
+
+    /**
+     * @dev A pool has not been registered.
+     * @param pool The unregistered pool
+     */
+    error PoolNotRegistered(address pool);
+
+    /**
+     * @dev A referenced pool has not been initialized.
+     * @param pool The uninitialized pool
+     */
+    error PoolNotInitialized(address pool);
+
+    /// @dev Invalid tokens (e.g., zero) cannot be registered.
+    error InvalidToken();
+
+    /**
+     * @dev A token was already registered (i.e., it is a duplicate in the pool).
+     * @param token The duplicate token
+     */
+    error TokenAlreadyRegistered(IERC20 token);
+
+    /// @dev The BPT amount involved in the operation is below the absolute minimum.
+    error BptAmountBelowAbsoluteMin();
+
+    /// @dev The token count is below the minimum allowed.
+    error MinTokens();
+
+    /// @dev The token count is above the maximum allowed.
+    error MaxTokens();
+
+    /**
      * @notice A Pool was registered by calling `registerPool`.
      * @param pool The pool being registered
      * @param factory The factory creating the pool
@@ -192,6 +234,41 @@ interface IVault {
     *******************************************************************************/
 
     /**
+     * @dev Error indicating the sender is not the Vault (e.g., someone is trying to call a permissioned function).
+     * @param sender The account attempting to call a permissioned function
+     */
+    error SenderIsNotVault(address sender);
+
+    /// @dev The BPT amount requested from removing liquidity is above the maximum specified for the operation.
+    error BptAmountAboveMax();
+
+    /// @dev A transient accounting operation completed with outstanding token deltas.
+    error BalanceNotSettled();
+
+    /**
+     * @dev In transient accounting, a handler is attempting to execute an operation out of order.
+     * The caller address should equal the handler.
+     * @param handler Address of the current handler being processed
+     * @param caller Address of the caller (msg.sender)
+     */
+    error WrongHandler(address handler, address caller);
+
+    /// @dev A user called a Vault function (swap, add/remove liquidity) outside the invoke context.
+    error NoHandler();
+
+    /**
+     * @dev The caller attempted to access a handler at an invalid index.
+     * @param index The invalid index
+     */
+    error HandlerOutOfBounds(uint256 index);
+
+    /// @dev The pool has returned false to a callback, indicating the transaction should revert.
+    error CallbackFailed();
+
+    /// @dev An unauthorized Router tried to call a permissioned function (i.e., using the Vault's token allowance).
+    error RouterNotTrusted();
+
+    /**
      * @notice Invokes a callback on msg.sender with arguments provided in `data`.
      * @dev Callback is `transient`, meaning all balances for the caller have to be settled at the end.
      * @param data Contains function signature and args to be passed to the msg.sender
@@ -263,6 +340,23 @@ interface IVault {
     /***************************************************************************
                                    Add Liquidity
     ***************************************************************************/
+
+    /**
+     * @dev The token list passed into an operation does not match the pool tokens in the pool.
+     * @param pool Address of the pool
+     * @param expectedToken The correct token at a given index in the pool
+     * @param actualToken The actual token found at that index
+     */
+    error TokensMismatch(address pool, address expectedToken, address actualToken);
+
+    /// @dev The user tried to swap zero tokens.
+    error AmountGivenZero();
+
+    /// @dev The user attempted to swap a token for itself.
+    error CannotSwapSameToken();
+
+    /// @dev The user attempted to swap a token not in the pool.
+    error TokenNotRegistered();
 
     /**
      * @notice Adds liquidity to a pool.
@@ -376,6 +470,9 @@ interface IVault {
     /*******************************************************************************
                                     Queries
     *******************************************************************************/
+
+    /// @dev A user tried to execute a query operation when they were disabled.
+    error QueriesDisabled();
 
     /**
      * @notice Invokes a callback on msg.sender with arguments provided in `data`.
