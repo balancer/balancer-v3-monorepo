@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
@@ -16,12 +17,13 @@ import { ReentrancyGuard } from "@balancer-labs/v3-solidity-utils/contracts/open
 import { TemporarilyPausable } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
-
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { ERC20MultiToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20MultiToken.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 
@@ -35,12 +37,14 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
     using PoolConfigLib for PoolCallbacks;
+    using ScalingHelpers for *;
 
     // Minimum BPT amount minted upon initialization.
     uint256 private constant _MINIMUM_BPT = 1e6;
 
     // Pools can have two, three, or four tokens.
     uint256 private constant _MIN_TOKENS = 2;
+    // This maximum token count is also hard-coded in `PoolConfigLib`.
     uint256 private constant _MAX_TOKENS = 4;
 
     // Registry of pool configs.
@@ -533,17 +537,21 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
             revert PoolAlreadyRegistered(pool);
         }
 
-        if (tokens.length < _MIN_TOKENS) {
+        uint256 numTokens = tokens.length;
+
+        if (numTokens < _MIN_TOKENS) {
             revert MinTokens();
         }
-        if (tokens.length > _MAX_TOKENS) {
+        if (numTokens > _MAX_TOKENS) {
             revert MaxTokens();
         }
 
         // Retrieve or create the pool's token balances mapping
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
 
-        for (uint256 i = 0; i < tokens.length; ++i) {
+        uint256[] memory tokenDecimalDiffs = new uint256[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; ++i) {
             IERC20 token = tokens[i];
 
             // Ensure that the token address is valid
@@ -553,18 +561,21 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
             // Register the token with an initial balance of zero.
             // Note: EnumerableMaps require an explicit initial value when creating a key-value pair.
-            bool added = poolTokenBalances.set(tokens[i], 0);
+            bool added = poolTokenBalances.set(token, 0);
 
             // Ensure the token isn't already registered for the pool
             if (!added) {
-                revert TokenAlreadyRegistered(tokens[i]);
+                revert TokenAlreadyRegistered(token);
             }
+
+            tokenDecimalDiffs[i] = uint256(18) - IERC20Metadata(address(token)).decimals();
         }
 
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
         config.isRegisteredPool = true;
         config.callbacks = callbackConfig;
+        config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         _poolConfig[pool] = config.fromPoolConfig();
 
         // Emit an event to log the pool registration
@@ -653,11 +664,18 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         _validateTokensAndGetBalances(pool, tokens);
 
+        // TODO Scaling here
+        // uint256[] memory scalingFactors = PoolConfigLib.getScalingFactors(config, tokens.length);
+        // maxAmountsIn.upscaleArray(scalingFactors);
+
         (amountsIn, bptAmountOut) = IBasePool(pool).onInitialize(maxAmountsIn, userData);
 
         if (bptAmountOut < _MINIMUM_BPT) {
             revert BptAmountBelowAbsoluteMin();
         }
+
+        // amountsIn are amounts entering the Pool, so we round up.
+        // amountsIn.downscaleUpArray(scalingFactors);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountIn = amountsIn[i];
@@ -708,6 +726,11 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // and retrieve the current balance for each.
         uint256[] memory balances = _validateTokensAndGetBalances(pool, tokens);
 
+        // TODO Scaling here
+        // uint256[] memory scalingFactors = PoolConfigLib.getScalingFactors(config, tokens.length);
+        // balances.upscaleArray(scalingFactors);
+        // maxAmountsIn.upscaleArray(scalingFactors);
+
         // The bulk of the work is done here: the corresponding Pool callback is invoked
         // its final balances are computed
         (amountsIn, bptAmountOut) = IBasePool(pool).onAddLiquidity(
@@ -718,6 +741,9 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
             kind,
             userData
         );
+
+        // amountsIn are amounts entering the Pool, so we round up.
+        // amountsIn.downscaleUpArray(scalingFactors);
 
         uint256[] memory finalBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
@@ -767,6 +793,11 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
         // current balance for each.
         uint256[] memory balances = _validateTokensAndGetBalances(pool, tokens);
 
+        // TODO Scaling here
+        // uint256[] memory scalingFactors = PoolConfigLib.getScalingFactors(config, tokens.length);
+        // balances.upscaleArray(scalingFactors);
+        // minAmountsOut.upscaleArray(scalingFactors);
+
         // The bulk of the work is done here: the corresponding Pool callback is invoked,
         // and its final balances are computed
         (amountsOut, bptAmountIn) = IBasePool(pool).onRemoveLiquidity(
@@ -777,6 +808,9 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
             kind,
             userData
         );
+
+        // amountsOut are amounts exiting the Pool, so we round down.
+        // amountsOut.downscaleDownArray(scalingFactors);
 
         uint256[] memory finalBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
