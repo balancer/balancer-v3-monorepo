@@ -34,11 +34,11 @@ contract WeightedPoolTest is Test {
     address alice = vm.addr(1);
     address bob = vm.addr(2);
 
-    uint256 constant USDC_AMOUNT = 1e3 * 1e6;
-    uint256 constant DAI_AMOUNT = 1e3 * 1e18;
+    uint256 constant USDC_AMOUNT = 1000e18;
+    uint256 constant DAI_AMOUNT = 1000e18;
 
-    uint256 constant DAI_AMOUNT_IN = 1 * 1e18;
-    uint256 constant USDC_AMOUNT_OUT = 1 * 1e6;
+    uint256 constant DAI_AMOUNT_IN = 1e18;
+    uint256 constant USDC_AMOUNT_OUT = 1e18;
 
     uint256 constant DELTA = 1e9;
 
