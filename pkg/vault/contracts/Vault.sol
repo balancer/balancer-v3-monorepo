@@ -836,9 +836,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
     /**
      * @dev Returns the total balances for `pool`'s `expectedTokens`.
-     *
      * `expectedTokens` must exactly equal the token array returned by `getPoolTokens`: both arrays must have the same
-     * length, elements and order. Additionally, the Pool must have at least one registered token.
+     * length, elements and order. This is only called after pool registration, which has guarantees the number of
+     * tokens is valid (i.e., between the minimum and maximum token count).
      */
     function _validateTokensAndGetBalances(
         address pool,
