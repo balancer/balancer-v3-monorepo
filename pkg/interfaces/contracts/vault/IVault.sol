@@ -483,7 +483,7 @@ interface IVault {
      * @notice Sets new swap fee percentage for the protocol.
      * @param newSwapFeePercentage  New swap fee percentage
      */
-    function setProtocolSwapFeePercentage(uint256 newSwapFeePercentage) external;
+    function setProtocolSwapFeePercentage(uint24 newSwapFeePercentage) external;
 
     /**
      * @notice The Protocol swap fee percentage has changed.
@@ -495,7 +495,7 @@ interface IVault {
      * @notice Returns current swap fee percentage for the protocol
      * @return Current swap fee percentage for the protocol
      */
-    function getProtocolSwapFeePercentage() external view returns (uint256);
+    function getProtocolSwapFeePercentage() external view returns (uint24);
 
     /**
      * @notice Sets new swap fee percentage for the pool.
@@ -516,6 +516,9 @@ interface IVault {
      * @return Current swap fee percentage
      */
     function getSwapFeePercentage(address pool) external view returns (uint24);
+
+
+    event ProtocolSwapFee(address pool, IERC20 tokenIn, uint256 protocolSwapFee);
 
     /*******************************************************************************
                                     Queries

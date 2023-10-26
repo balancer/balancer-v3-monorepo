@@ -44,12 +44,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     uint256 private constant _MIN_TOKENS = 2;
     uint256 private constant _MAX_TOKENS = 4;
 
-    // Absolute maximum fee percentages (1e18 = 100%, 1e16 = 1%).
-    uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
-
-    // We allow 0% swap fee.
     // 1e6 corresponds to a 100% fee.
-    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e5; // 10% - this fits in 20 bits
+    uint24 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e4; // 50%
+
+    // 1e6 corresponds to a 100% fee.
+    uint24 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e5; // 10% - this fits in 24 bits
 
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
@@ -78,9 +77,14 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
      */
     mapping(IERC20 => uint256) private _tokenReserves;
 
+    // We allow 0% swap fee.
     // The protocol swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
     // TODO: Consider packing it with some other variable; 24 bits should be enough for this one
-    uint256 private _protocolSwapFeePercentage;
+    uint24 private _protocolSwapFeePercentage;
+
+    // Token -> fee: Protocol's swap fees accumulated in the Vault for harvest.
+    mapping(IERC20 => uint256) _protocolSwapFees;
+
 
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer private _authorizer;
@@ -455,6 +459,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
                 kind: params.kind,
                 tokenIn: params.tokenIn,
                 tokenOut: params.tokenOut,
+                // swapFee would be zero here for GIVEN_OUT
                 amountGiven: params.amountGiven - vars.swapFee,
                 balances: currentBalances,
                 indexIn: vars.indexIn,
@@ -473,6 +478,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
                     PoolConfigLib.SWAP_FEE_PRECISION
                 ) - amountCalculated
                 : 0;
+            // Should add fee to the amountCalculated beause we have to charge more for GIVEN_OUT swap
             amountCalculated += vars.swapFee;
         }
 
@@ -480,8 +486,16 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             ? (params.amountGiven, amountCalculated)
             : (amountCalculated, params.amountGiven);
 
+
+        // Charge protocolSwapFee
+        if(_protocolSwapFeePercentage > 0 && vars.swapFee > 0) {
+            uint256 protocolSwapFee = vars.swapFee.mulUp(_protocolSwapFeePercentage, PoolConfigLib.SWAP_FEE_PRECISION);
+            _protocolSwapFees[params.tokenIn] = protocolSwapFee;
+            emit ProtocolSwapFee(params.pool, params.tokenIn, protocolSwapFee);
+        }
+
         // We charge swap fee on amountIn
-        tokenInBalance = tokenInBalance + amountIn - vars.swapFee;
+        tokenInBalance = tokenInBalance + amountIn;
         tokenOutBalance = tokenOutBalance - amountOut;
 
         // Because no tokens were registered or deregistered between now or when we retrieved the indexes for
@@ -932,7 +946,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     *******************************************************************************/
 
     /// @inheritdoc IVault
-    function setProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external whenNotPaused authenticate {
+    function setProtocolSwapFeePercentage(uint24 newProtocolSwapFeePercentage) external whenNotPaused authenticate {
         if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
             revert ProtocolSwapFeePercentageTooHigh();
         }
@@ -940,7 +954,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
     }
 
-    function getProtocolSwapFeePercentage() external view returns (uint256) {
+    function getProtocolSwapFeePercentage() external view returns (uint24) {
         return _protocolSwapFeePercentage;
     }
 
