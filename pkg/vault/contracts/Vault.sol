@@ -83,8 +83,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     uint24 private _protocolSwapFeePercentage;
 
     // Token -> fee: Protocol's swap fees accumulated in the Vault for harvest.
-    mapping(IERC20 => uint256) _protocolSwapFees;
-
+    mapping(IERC20 => uint256) private _protocolSwapFees;
 
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer private _authorizer;
@@ -486,9 +485,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             ? (params.amountGiven, amountCalculated)
             : (amountCalculated, params.amountGiven);
 
-
         // Charge protocolSwapFee
-        if(_protocolSwapFeePercentage > 0 && vars.swapFee > 0) {
+        if (_protocolSwapFeePercentage > 0 && vars.swapFee > 0) {
             uint256 protocolSwapFee = vars.swapFee.mulUp(_protocolSwapFeePercentage, PoolConfigLib.SWAP_FEE_PRECISION);
             _protocolSwapFees[params.tokenIn] = protocolSwapFee;
             emit ProtocolSwapFee(params.pool, params.tokenIn, protocolSwapFee);
