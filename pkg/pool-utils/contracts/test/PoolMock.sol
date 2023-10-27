@@ -135,14 +135,6 @@ contract PoolMock is BasePool {
         return scalingFactors;
     }
 
-    function supportsAddLiquidityProportional() external pure override returns (bool) {
-        return true;
-    }
-
-    function supportsRemoveLiquidityProportional() external pure override returns (bool) {
-        return true;
-    }
-
     function onBeforeAddLiquidity(uint256[] memory) external pure override returns (bool) {
         return true;
     }

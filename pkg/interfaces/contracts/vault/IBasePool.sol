@@ -24,10 +24,6 @@ interface IBasePool {
                                   Initialization
     ***************************************************************************/
 
-    function supportsAddLiquidityProportional() external view returns (bool);
-
-    function supportsRemoveLiquidityProportional() external view returns (bool);
-
     /**
      * @notice Initialize pool with seed funds.
      * @dev The vault enforces that this callback will only be called once.

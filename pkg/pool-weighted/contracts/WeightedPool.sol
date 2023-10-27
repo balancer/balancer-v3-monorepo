@@ -387,14 +387,6 @@ contract WeightedPool is BasePool {
         return params.tokenIn != params.tokenOut && amountCalculated > 0;
     }
 
-    function supportsAddLiquidityProportional() external pure override returns (bool) {
-        return true;
-    }
-
-    function supportsRemoveLiquidityProportional() external pure override returns (bool) {
-        return true;
-    }
-
     function onBeforeAddLiquidity(uint256[] memory) external override returns (bool) {}
 
     function onAddLiquidityUnbalanced(
