@@ -29,7 +29,12 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         _vault = vault;
 
         if (registerPool) {
-            vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
+            vault.registerPool(
+                factory,
+                tokens,
+                PoolConfigBits.wrap(0).toPoolConfig().callbacks,
+                PoolConfigBits.wrap(bytes32(type(uint256).max)).toPoolConfig().liquidityManagement
+            );
         }
     }
 
@@ -155,17 +160,13 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         uint256 tokenIndex,
         uint256 exactBptAmountIn,
         uint256[] memory currentBalances
-    ) external returns (uint256 amountOut) {
-
-    }
+    ) external returns (uint256 amountOut) {}
 
     function onRemoveLiquidityCustom(
         address sender,
         bytes memory userData,
         uint256[] memory currentBalances
-    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn, bytes memory returnData) {
-
-    }
+    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn, bytes memory returnData) {}
 
     function getPoolTokens() external view returns (IERC20[] memory tokens, uint256[] memory balances) {
         return _vault.getPoolTokens(address(this));

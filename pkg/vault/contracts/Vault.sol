@@ -7,7 +7,8 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import { IVault, PoolConfig, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+// solhint-disable-next-line max-line-length
+import { IVault, PoolConfig, PoolCallbacks, LiquidityManagement, LiquidityManagementDefaults } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 
@@ -478,9 +479,30 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     function registerPool(
         address factory,
         IERC20[] memory tokens,
-        PoolCallbacks calldata poolCallbacks
+        PoolCallbacks calldata poolCallbacks,
+        LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenNotPaused {
-        _registerPool(factory, tokens, poolCallbacks);
+        _registerPool(
+            factory,
+            tokens,
+            poolCallbacks,
+            liquidityManagement,
+            LiquidityManagementDefaults({
+                supportsAddLiquidityProportional: true,
+                supportsRemoveLiquidityProportional: true
+            })
+        );
+    }
+
+    /// @inheritdoc IVault
+    function registerPool(
+        address factory,
+        IERC20[] memory tokens,
+        PoolCallbacks calldata poolCallbacks,
+        LiquidityManagement calldata liquidityManagement,
+        LiquidityManagementDefaults calldata liquidityManagementDefaults
+    ) external nonReentrant whenNotPaused {
+        _registerPool(factory, tokens, poolCallbacks, liquidityManagement, liquidityManagementDefaults);
     }
 
     /// @inheritdoc IVault
@@ -525,7 +547,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
      *
      * Emits a `PoolRegistered` event upon successful registration.
      */
-    function _registerPool(address factory, IERC20[] memory tokens, PoolCallbacks memory callbackConfig) internal {
+    function _registerPool(
+        address factory,
+        IERC20[] memory tokens,
+        PoolCallbacks memory callbackConfig,
+        LiquidityManagement memory liquidityManagement,
+        LiquidityManagementDefaults memory liquidityManagementDefaults
+    ) internal {
         address pool = msg.sender;
 
         // Ensure the pool isn't already registered
@@ -565,6 +593,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
         config.isRegisteredPool = true;
         config.callbacks = callbackConfig;
+        config.liquidityManagement = liquidityManagement;
+        config.liquidityManagementDefaults = liquidityManagementDefaults;
         _poolConfig[pool] = config.fromPoolConfig();
 
         // Emit an event to log the pool registration
@@ -727,7 +757,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         address to,
         uint256 exactBptAmountOut
     ) external withHandler whenNotPaused withInitializedPool(pool) returns (uint256[] memory amountsIn) {
-        if (!IBasePool(pool).supportsAddLiquidityProportional()) {
+        if (_poolConfig[pool].supportsAddLiquidityProportional()) {
             revert DoesNotSupportAddLiquidityProportional(pool);
         }
 
@@ -745,6 +775,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         address to,
         uint256[] memory exactAmountsIn
     ) external withHandler whenNotPaused withInitializedPool(pool) returns (uint256 bptAmountOut) {
+        if (_poolConfig[pool].supportsAddLiquidityUnbalanced()) {
+            revert DoesNotSupportAddLiquidityUnbalanced(pool);
+        }
+
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
         InputHelpers.ensureInputLengthMatch(balances.length, exactAmountsIn.length);
 
@@ -755,12 +789,16 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         _afterAddLiquidity(pool, to, tokens, "", balances, exactAmountsIn, bptAmountOut);
     }
 
-    function addLiquiditySingleAsset(
+    function addLiquiditySingleTokenExactOut(
         address pool,
         address to,
         IERC20 tokenIn,
         uint256 exactBptAmountOut
     ) external withHandler whenNotPaused withInitializedPool(pool) returns (uint256 amountIn) {
+        if (_poolConfig[pool].supportsAddLiquiditySingleTokenExactOut()) {
+            revert DoesNotSupportAddLiquiditySingleTokenExactOut(pool);
+        }
+
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
 
         _beforeAddLiquidity(pool, balances);
@@ -783,6 +821,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         withInitializedPool(pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
+        if (_poolConfig[pool].supportsAddLiquidityCustom()) {
+            revert DoesNotSupportAddLiquidityCustom(pool);
+        }
+
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
 
         _beforeAddLiquidity(pool, balances);
@@ -878,7 +920,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         uint256 exactBptAmountIn
     ) external whenNotPaused nonReentrant withInitializedPool(pool) returns (uint256[] memory amountsOut) {
         // TODO: recovery mode? Should this be mandatory instead? (should skip onBeforeRemove call)
-        if (!IBasePool(pool).supportsRemoveLiquidityProportional()) {
+        if (_poolConfig[pool].supportsRemoveLiquidityProportional()) {
             revert DoesNotSupportRemoveLiquidityProportional(pool);
         }
 
@@ -892,12 +934,16 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     }
 
     /// @inheritdoc IVault
-    function removeLiquiditySingleAsset(
+    function removeLiquiditySingleTokenExactIn(
         address pool,
         address from,
         IERC20 tokenOut,
         uint256 exactBptAmountIn
     ) external whenNotPaused nonReentrant withInitializedPool(pool) returns (uint256 amountOut) {
+        if (_poolConfig[pool].supportsRemoveLiquiditySingleTokenExactIn()) {
+            revert DoesNotSupportRemoveLiquiditySingleTokenExactIn(pool);
+        }
+
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
 
         _beforeRemoveLiquidity(pool, balances);
@@ -921,6 +967,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         withInitializedPool(pool)
         returns (uint256[] memory amountsOut, uint256 bptAmountIn, bytes memory returnData)
     {
+        if (_poolConfig[pool].supportsRemoveLiquidityCustom()) {
+            revert DoesNotSupportRemoveLiquidityCustom(pool);
+        }
+
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
 
         _beforeRemoveLiquidity(pool, balances);

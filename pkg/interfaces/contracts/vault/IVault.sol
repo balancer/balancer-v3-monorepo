@@ -16,11 +16,27 @@ struct PoolCallbacks {
     bool shouldCallAfterRemoveLiquidity;
 }
 
+struct LiquidityManagement {
+    bool supportsAddLiquiditySingleTokenExactOut;
+    bool supportsAddLiquidityUnbalanced;
+    bool supportsAddLiquidityCustom;
+    bool supportsRemoveLiquiditySingleTokenExactIn;
+    bool supportsRemoveLiquidityUnbalanced;
+    bool supportsRemoveLiquidityCustom;
+}
+
+struct LiquidityManagementDefaults {
+    bool supportsAddLiquidityProportional;
+    bool supportsRemoveLiquidityProportional;
+}
+
 /// @dev Represents a pool's configuration, including callbacks.
 struct PoolConfig {
     bool isRegisteredPool;
     bool isInitializedPool;
     PoolCallbacks callbacks;
+    LiquidityManagement liquidityManagement;
+    LiquidityManagementDefaults liquidityManagementDefaults;
 }
 
 interface IVault {
@@ -95,11 +111,34 @@ interface IVault {
 
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
+     * @dev This function assumes the default proportional liquidity methods are supported.
      * @param factory The factory address associated with the pool being registered
      * @param tokens An array of token addresses the pool will manage
      * @param config Config for the pool
+     * @param liquidityManagement Liquidity management flags with implemented methods
      */
-    function registerPool(address factory, IERC20[] memory tokens, PoolCallbacks calldata config) external;
+    function registerPool(
+        address factory,
+        IERC20[] memory tokens,
+        PoolCallbacks calldata config,
+        LiquidityManagement calldata liquidityManagement
+    ) external;
+
+    /**
+     * @notice Registers a pool, associating it with its factory and the tokens it manages.
+     * @param factory The factory address associated with the pool being registered
+     * @param tokens An array of token addresses the pool will manage
+     * @param config Config for the pool
+     * @param liquidityManagement Liquidity management flags with implemented methods
+     * @param liquidityManagementDefaults Liquidity management flags for default, proportional methods
+     */
+    function registerPool(
+        address factory,
+        IERC20[] memory tokens,
+        PoolCallbacks calldata config,
+        LiquidityManagement calldata liquidityManagement,
+        LiquidityManagementDefaults calldata liquidityManagementDefaults
+    ) external;
 
     /**
      * @notice Initializes a registered pool by adding liquidity; mints BPT tokens for the first time in exchange.
@@ -363,6 +402,15 @@ interface IVault {
     /// @dev Pool does not support adding liquidity proportionally.
     error DoesNotSupportAddLiquidityProportional(address pool);
 
+    /// @dev Pool does not support adding liquidity with unbalanced tokens in.
+    error DoesNotSupportAddLiquidityUnbalanced(address pool);
+
+    /// @dev Pool does not support adding liquidity with a single asset, specifying exact pool tokens out.
+    error DoesNotSupportAddLiquiditySingleTokenExactOut(address pool);
+
+    /// @dev Pool does not support adding liquidity with a customized input.
+    error DoesNotSupportAddLiquidityCustom(address pool);
+
     /**
      * @notice Adds liquidity to a pool.
      * @dev Caution should be exercised when adding liquidity because the Vault has the capability
@@ -400,7 +448,7 @@ interface IVault {
         uint256[] memory exactAmountsIn
     ) external returns (uint256 bptAmountOut);
 
-    function addLiquiditySingleAsset(
+    function addLiquiditySingleTokenExactOut(
         address pool,
         address to,
         IERC20 tokenIn,
@@ -419,6 +467,15 @@ interface IVault {
 
     /// @dev Pool does not support removing liquidity proportionally.
     error DoesNotSupportRemoveLiquidityProportional(address pool);
+
+    /// @dev Pool does not support removing liquidity with unbalanced tokens out.
+    error DoesNotSupportRemoveLiquidityUnbalanced(address pool);
+
+    /// @dev Pool does not support removing liquidity with a single asset, specifying exact pool tokens in.
+    error DoesNotSupportRemoveLiquiditySingleTokenExactIn(address pool);
+
+    /// @dev Pool does not support removing liquidity with a customized input.
+    error DoesNotSupportRemoveLiquidityCustom(address pool);
 
     /**
      * @notice Removes liquidity from a pool.
@@ -452,7 +509,7 @@ interface IVault {
         uint256 exactBptAmountIn
     ) external returns (uint256[] memory amountsOut);
 
-    function removeLiquiditySingleAsset(
+    function removeLiquiditySingleTokenExactIn(
         address pool,
         address from,
         IERC20 tokenOut,

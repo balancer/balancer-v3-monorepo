@@ -30,7 +30,12 @@ contract PoolMock is BasePool {
         bool registerPool
     ) BasePool(vault, name, symbol, 30 days, 90 days) {
         if (registerPool) {
-            vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
+            vault.registerPool(
+                factory,
+                tokens,
+                PoolConfigBits.wrap(0).toPoolConfig().callbacks,
+                PoolConfigBits.wrap(bytes32(type(uint256).max)).toPoolConfig().liquidityManagement
+            );
         }
 
         _numTokens = tokens.length;
@@ -163,7 +168,7 @@ contract PoolMock is BasePool {
         address,
         bytes memory,
         uint256[] memory
-    ) external override pure returns (uint256[] memory, uint256, bytes memory) {
+    ) external pure override returns (uint256[] memory, uint256, bytes memory) {
         revert CallbackNotImplemented();
     }
 

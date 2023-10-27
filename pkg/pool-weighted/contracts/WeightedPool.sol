@@ -4,7 +4,7 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BasePoolMath } from "@balancer-labs/v3-pool-utils/contracts/lib/BasePoolMath.sol";
@@ -107,6 +107,14 @@ contract WeightedPool is BasePool {
                 shouldCallBeforeRemoveLiquidity: false,
                 shouldCallAfterRemoveLiquidity: false,
                 shouldCallAfterSwap: false
+            }),
+            LiquidityManagement({
+                supportsAddLiquiditySingleTokenExactOut: true,
+                supportsAddLiquidityUnbalanced: true,
+                supportsAddLiquidityCustom: false,
+                supportsRemoveLiquiditySingleTokenExactIn: true,
+                supportsRemoveLiquidityUnbalanced: true,
+                supportsRemoveLiquidityCustom: false
             })
         );
     }
