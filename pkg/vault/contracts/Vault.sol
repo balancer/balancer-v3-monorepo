@@ -856,7 +856,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             // Credit token[i] for amountIn
             _supplyCredit(tokens[i], amountOut, msg.sender);
 
-            // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
+            // Compute the new Pool balances. A pool's token balance always decreases after an exit (potentially by 0).
             finalBalances[i] = balances[i] - amountOut;
         }
 

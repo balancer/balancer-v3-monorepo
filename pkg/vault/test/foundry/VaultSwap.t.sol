@@ -88,21 +88,11 @@ contract VaultSwapTest is Test {
 
     function initPool() public {
         vm.prank(alice);
-        
         router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(0), uint256(0)].toMemoryArray(),
-            0,
-            bytes("")
-        );
-
-        router.addLiquidity(
-            address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            DAI_AMOUNT_IN,
-            IBasePool.AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+            USDC_AMOUNT_IN,
             bytes("")
         );
 
