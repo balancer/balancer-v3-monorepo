@@ -91,8 +91,16 @@ interface IVault {
      * @param pool The pool being registered
      * @param factory The factory creating the pool
      * @param tokens The pool's tokens
+     * @param liquidityManagement Supported liquidity management callback flags
+     * @param liquidityManagementDefaults Supported default liquidity management callback flags
      */
-    event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
+    event PoolRegistered(
+        address indexed pool,
+        address indexed factory,
+        IERC20[] tokens,
+        LiquidityManagement liquidityManagement,
+        LiquidityManagementDefaults liquidityManagementDefaults
+    );
 
     /**
      * @notice A Pool was initialized by calling `initialize`.
