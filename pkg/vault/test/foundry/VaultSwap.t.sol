@@ -105,7 +105,7 @@ contract VaultSwapTest is Test {
             bytes("")
         );
 
-        // asssets are transferred to/from Bob
+        // assets are transferred to/from Bob
         assertEq(USDC.balanceOf(bob), 0);
         assertEq(DAI.balanceOf(bob), 2 * DAI_AMOUNT_IN);
 

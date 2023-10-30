@@ -98,7 +98,7 @@ contract WeightedPoolTest is Test {
             bytes("")
         );
 
-        // asssets are transferred from Alice
+        // assets are transferred from Alice
         assertEq(USDC.balanceOf(alice), 0);
         assertEq(DAI.balanceOf(alice), 0);
 
@@ -144,7 +144,7 @@ contract WeightedPoolTest is Test {
             bytes("")
         );
 
-        // asssets are transferred from Bob
+        // assets are transferred from Bob
         assertEq(USDC.balanceOf(bob), 0);
         assertEq(DAI.balanceOf(bob), 0);
 
@@ -204,7 +204,7 @@ contract WeightedPoolTest is Test {
 
         vm.stopPrank();
 
-        // asssets are transferred to Bob
+        // assets are transferred to Bob
         assertApproxEqAbs(USDC.balanceOf(bob), USDC_AMOUNT, DELTA);
         assertApproxEqAbs(DAI.balanceOf(bob), DAI_AMOUNT, DELTA);
 
@@ -250,7 +250,7 @@ contract WeightedPoolTest is Test {
             bytes("")
         );
 
-        // asssets are transferred from Bob
+        // assets are transferred from Bob
         assertEq(USDC.balanceOf(bob), USDC_AMOUNT + amountCalculated);
         assertEq(DAI.balanceOf(bob), DAI_AMOUNT - DAI_AMOUNT_IN);
 
