@@ -758,7 +758,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         address to,
         uint256 exactBptAmountOut
     ) external withHandler whenNotPaused withInitializedPool(pool) returns (uint256[] memory amountsIn) {
-        if (_poolConfig[pool].supportsAddLiquidityProportional()) {
+        if (_poolConfig[pool].supportsAddLiquidityProportional() == false) {
             revert DoesNotSupportAddLiquidityProportional(pool);
         }
 
@@ -776,7 +776,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         address to,
         uint256[] memory exactAmountsIn
     ) external withHandler whenNotPaused withInitializedPool(pool) returns (uint256 bptAmountOut) {
-        if (_poolConfig[pool].supportsAddLiquidityUnbalanced()) {
+        if (_poolConfig[pool].supportsAddLiquidityUnbalanced() == false) {
             revert DoesNotSupportAddLiquidityUnbalanced(pool);
         }
 
@@ -796,7 +796,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         IERC20 tokenIn,
         uint256 exactBptAmountOut
     ) external withHandler whenNotPaused withInitializedPool(pool) returns (uint256 amountIn) {
-        if (_poolConfig[pool].supportsAddLiquiditySingleTokenExactOut()) {
+        if (_poolConfig[pool].supportsAddLiquiditySingleTokenExactOut() == false) {
             revert DoesNotSupportAddLiquiditySingleTokenExactOut(pool);
         }
 
@@ -822,7 +822,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         withInitializedPool(pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
-        if (_poolConfig[pool].supportsAddLiquidityCustom()) {
+        if (_poolConfig[pool].supportsAddLiquidityCustom() == false) {
             revert DoesNotSupportAddLiquidityCustom(pool);
         }
 
@@ -921,7 +921,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         uint256 exactBptAmountIn
     ) external whenNotPaused nonReentrant withInitializedPool(pool) returns (uint256[] memory amountsOut) {
         // TODO: recovery mode? Should this be mandatory instead? (should skip onBeforeRemove call)
-        if (_poolConfig[pool].supportsRemoveLiquidityProportional()) {
+        if (_poolConfig[pool].supportsRemoveLiquidityProportional() == false) {
             revert DoesNotSupportRemoveLiquidityProportional(pool);
         }
 
@@ -941,7 +941,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         IERC20 tokenOut,
         uint256 exactBptAmountIn
     ) external whenNotPaused nonReentrant withInitializedPool(pool) returns (uint256 amountOut) {
-        if (_poolConfig[pool].supportsRemoveLiquiditySingleTokenExactIn()) {
+        if (_poolConfig[pool].supportsRemoveLiquiditySingleTokenExactIn() == false) {
             revert DoesNotSupportRemoveLiquiditySingleTokenExactIn(pool);
         }
 
@@ -968,7 +968,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         withInitializedPool(pool)
         returns (uint256[] memory amountsOut, uint256 bptAmountIn, bytes memory returnData)
     {
-        if (_poolConfig[pool].supportsRemoveLiquidityCustom()) {
+        if (_poolConfig[pool].supportsRemoveLiquidityCustom() == false) {
             revert DoesNotSupportRemoveLiquidityCustom(pool);
         }
 
