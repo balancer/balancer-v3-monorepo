@@ -122,7 +122,7 @@ interface IVault {
      * @dev This function assumes the default proportional liquidity methods are supported.
      * @param factory The factory address associated with the pool being registered
      * @param tokens An array of token addresses the pool will manage
-     * @param callbacks Flags indicating which callbacks the pool supports
+     * @param config Flags indicating which callbacks the pool supports
      * @param liquidityManagement Liquidity management flags with implemented methods
      */
     function registerPool(
