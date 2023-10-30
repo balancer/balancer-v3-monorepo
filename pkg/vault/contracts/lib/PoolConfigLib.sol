@@ -30,13 +30,6 @@ library PoolConfigLib {
     uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = 4;
     uint8 public constant DECIMAL_SCALING_FACTORS_OFFSET = 8;
 
-    // Bitwise flags for pool's config
-    uint256 public constant POOL_REGISTERED_FLAG = 1 << POOL_REGISTERED_OFFSET;
-    uint256 public constant POOL_INITIALIZED_FLAG = 1 << POOL_INITIALIZED_OFFSET;
-    uint256 public constant AFTER_SWAP_FLAG = 1 << AFTER_SWAP_OFFSET;
-    uint256 public constant AFTER_ADD_LIQUIDITY_FLAG = 1 << AFTER_ADD_LIQUIDITY_OFFSET;
-    uint256 public constant AFTER_REMOVE_LIQUIDITY_FLAG = 1 << AFTER_REMOVE_LIQUIDITY_OFFSET;
-
     uint256 private constant _DECIMAL_DIFF_BITLENGTH = 5;
     // Uses a uint24 (3 bytes): least significant 20 bits to store the values, and a 4-bit pad.
     // This maximum token count is also hard-coded in the Vault.
