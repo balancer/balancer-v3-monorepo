@@ -9,7 +9,6 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IVault, PoolConfig, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 
@@ -27,7 +26,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 
-contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
+contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
     using AssetHelpers for *;
@@ -573,6 +572,7 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+
         config.isRegisteredPool = true;
         config.callbacks = callbackConfig;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
@@ -871,9 +871,9 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
 
     /**
      * @dev Returns the total balances for `pool`'s `expectedTokens`.
-     *
      * `expectedTokens` must exactly equal the token array returned by `getPoolTokens`: both arrays must have the same
-     * length, elements and order. Additionally, the Pool must have at least one registered token.
+     * length, elements and order. This is only called after pool registration, which has guarantees the number of
+     * tokens is valid (i.e., between the minimum and maximum token count).
      */
     function _validateTokensAndGetBalances(
         address pool,
@@ -881,13 +881,10 @@ contract Vault is IVault, IVaultErrors, Authentication, ERC20MultiToken, Reentra
     ) private view returns (uint256[] memory) {
         (IERC20[] memory actualTokens, uint256[] memory balances) = _getPoolTokens(pool);
         InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
-        if (actualTokens.length == 0) {
-            revert PoolHasNoTokens(pool);
-        }
 
         for (uint256 i = 0; i < actualTokens.length; ++i) {
             if (actualTokens[i] != expectedTokens[i]) {
-                revert TokensMismatch(address(actualTokens[i]), address(expectedTokens[i]));
+                revert TokensMismatch(pool, address(expectedTokens[i]), address(actualTokens[i]));
             }
         }
 

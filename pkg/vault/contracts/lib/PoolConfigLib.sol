@@ -63,11 +63,11 @@ library PoolConfigLib {
     }
 
     function shouldCallAfterAddLiquidity(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(AFTER_ADD_LIQUIDITY_FLAG);
+        return PoolConfigBits.unwrap(config).decodeBool(AFTER_ADD_LIQUIDITY_OFFSET);
     }
 
     function shouldCallAfterRemoveLiquidity(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(AFTER_REMOVE_LIQUIDITY_FLAG);
+        return PoolConfigBits.unwrap(config).decodeBool(AFTER_REMOVE_LIQUIDITY_OFFSET);
     }
 
     // Convert from an array of decimal differences, to the encoded 24 bit value (only uses bottom 20 bits).
@@ -117,9 +117,9 @@ library PoolConfigLib {
                 isInitializedPool: config.isPoolInitialized(),
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 callbacks: PoolCallbacks({
+                    shouldCallAfterSwap: config.shouldCallAfterSwap(),
                     shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),
-                    shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity(),
-                    shouldCallAfterSwap: config.shouldCallAfterSwap()
+                    shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity()
                 })
             });
     }
