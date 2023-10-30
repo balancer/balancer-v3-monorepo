@@ -135,7 +135,7 @@ contract PoolMock is BasePool {
         return scalingFactors;
     }
 
-    function onBeforeAddLiquidity(uint256[] memory) external pure override returns (bool) {
+    function onBeforeAddLiquidity(uint256[] memory, bytes memory) external pure override returns (bool) {
         return true;
     }
 
@@ -164,7 +164,7 @@ contract PoolMock is BasePool {
         revert CallbackNotImplemented();
     }
 
-    function onBeforeRemoveLiquidity(uint256[] memory) external pure override returns (bool) {
+    function onBeforeRemoveLiquidity(uint256[] memory, bytes memory) external pure override returns (bool) {
         return true;
     }
 

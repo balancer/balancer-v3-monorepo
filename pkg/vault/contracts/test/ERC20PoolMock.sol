@@ -112,11 +112,11 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
                 : params.amountGiven.divDown(_multiplier);
     }
 
-    function onBeforeAddLiquidity(uint256[] memory) external pure override returns (bool) {
+    function onBeforeAddLiquidity(uint256[] memory, bytes memory) external pure override returns (bool) {
         return true;
     }
 
-    function onBeforeRemoveLiquidity(uint256[] memory) external pure override returns (bool) {
+    function onBeforeRemoveLiquidity(uint256[] memory, bytes memory) external pure override returns (bool) {
         return true;
     }
 

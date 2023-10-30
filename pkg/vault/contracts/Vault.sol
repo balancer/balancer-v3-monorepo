@@ -764,7 +764,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
 
-        _beforeAddLiquidity(pool, balances);
+        _beforeAddLiquidity(pool, balances, "");
 
         amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, _totalSupply(pool), exactBptAmountOut);
 
@@ -783,7 +783,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
         InputHelpers.ensureInputLengthMatch(balances.length, exactAmountsIn.length);
 
-        _beforeAddLiquidity(pool, balances);
+        _beforeAddLiquidity(pool, balances, "");
 
         bptAmountOut = IBasePool(pool).onAddLiquidityUnbalanced(msg.sender, exactAmountsIn, balances);
 
@@ -802,7 +802,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
 
-        _beforeAddLiquidity(pool, balances);
+        _beforeAddLiquidity(pool, balances, "");
 
         (uint256[] memory amountsIn, uint256 tokenIndex) = _singleAssetAmountToArray(tokens, tokenIn, amountIn);
 
@@ -828,16 +828,16 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
 
-        _beforeAddLiquidity(pool, balances);
+        _beforeAddLiquidity(pool, balances, userData);
 
         (amountsIn, bptAmountOut, returnData) = IBasePool(pool).onAddLiquidityCustom(msg.sender, userData, balances);
 
-        _afterAddLiquidity(pool, to, tokens, "", balances, amountsIn, bptAmountOut);
+        _afterAddLiquidity(pool, to, tokens, userData, balances, amountsIn, bptAmountOut);
     }
 
-    function _beforeAddLiquidity(address pool, uint256[] memory balances) internal {
+    function _beforeAddLiquidity(address pool, uint256[] memory balances, bytes memory userData) internal {
         if (_poolConfig[pool].shouldCallBeforeAddLiquidity()) {
-            if (IBasePool(pool).onBeforeAddLiquidity(balances) == false) {
+            if (IBasePool(pool).onBeforeAddLiquidity(balances, userData) == false) {
                 revert CallbackFailed();
             }
         }
@@ -927,7 +927,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
 
-        _beforeRemoveLiquidity(pool, balances);
+        _beforeRemoveLiquidity(pool, balances, "");
 
         amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, _totalSupply(pool), exactBptAmountIn);
 
@@ -947,7 +947,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
 
-        _beforeRemoveLiquidity(pool, balances);
+        _beforeRemoveLiquidity(pool, balances, "");
 
         (uint256[] memory amountsOut, uint256 tokenIndex) = _singleAssetAmountToArray(tokens, tokenOut, amountOut);
 
@@ -974,16 +974,16 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
 
-        _beforeRemoveLiquidity(pool, balances);
+        _beforeRemoveLiquidity(pool, balances, userData);
 
         (amountsOut, bptAmountIn, returnData) = IBasePool(pool).onRemoveLiquidityCustom(msg.sender, userData, balances);
 
-        _afterRemoveLiquidity(pool, from, tokens, "", balances, amountsOut, bptAmountIn);
+        _afterRemoveLiquidity(pool, from, tokens, userData, balances, amountsOut, bptAmountIn);
     }
 
-    function _beforeRemoveLiquidity(address pool, uint256[] memory balances) internal {
+    function _beforeRemoveLiquidity(address pool, uint256[] memory balances, bytes memory userData) internal {
         if (_poolConfig[pool].shouldCallBeforeRemoveLiquidity()) {
-            if (IBasePool(pool).onBeforeRemoveLiquidity(balances) == false) {
+            if (IBasePool(pool).onBeforeRemoveLiquidity(balances, userData) == false) {
                 revert CallbackFailed();
             }
         }
