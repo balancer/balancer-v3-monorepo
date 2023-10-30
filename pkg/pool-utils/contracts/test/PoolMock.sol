@@ -2,13 +2,14 @@
 
 pragma solidity ^0.8.4;
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 
 import { BasePool } from "../BasePool.sol";
 
@@ -108,6 +109,15 @@ contract PoolMock is BasePool {
             params.kind == IVault.SwapKind.GIVEN_IN
                 ? params.amountGiven.mulDown(_multiplier)
                 : params.amountGiven.divDown(_multiplier);
+    }
+
+    function getScalingFactors() external view returns (uint256[] memory scalingFactors) {
+        (IERC20[] memory tokens, ) = _vault.getPoolTokens(address(this));
+        scalingFactors = new uint256[](tokens.length);
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            scalingFactors[i] = ScalingHelpers.computeScalingFactor(tokens[i]);
+        }
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
