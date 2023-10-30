@@ -806,7 +806,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         (uint256[] memory amountsIn, uint256 tokenIndex) = _singleAssetAmountToArray(tokens, tokenIn, amountIn);
 
-        amountIn = IBasePool(pool).onAddLiquiditySingleAsset(msg.sender, tokenIndex, exactBptAmountOut, balances);
+        amountIn = IBasePool(pool).onAddLiquiditySingleTokenExactOut(
+            msg.sender,
+            tokenIndex,
+            exactBptAmountOut,
+            balances
+        );
 
         _afterAddLiquidity(pool, to, tokens, "", balances, amountsIn, exactBptAmountOut);
     }
@@ -951,7 +956,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         (uint256[] memory amountsOut, uint256 tokenIndex) = _singleAssetAmountToArray(tokens, tokenOut, amountOut);
 
-        amountOut = IBasePool(pool).onRemoveLiquiditySingleAsset(msg.sender, tokenIndex, exactBptAmountIn, balances);
+        amountOut = IBasePool(pool).onRemoveLiquiditySingleTokenExactIn(
+            msg.sender,
+            tokenIndex,
+            exactBptAmountIn,
+            balances
+        );
 
         _afterRemoveLiquidity(pool, from, tokens, "", balances, amountsOut, exactBptAmountIn);
     }

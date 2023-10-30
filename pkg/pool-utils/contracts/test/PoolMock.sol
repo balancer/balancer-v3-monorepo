@@ -147,7 +147,7 @@ contract PoolMock is BasePool {
         revert CallbackNotImplemented();
     }
 
-    function onAddLiquiditySingleAsset(
+    function onAddLiquiditySingleTokenExactOut(
         address,
         uint256,
         uint256,
@@ -168,7 +168,7 @@ contract PoolMock is BasePool {
         return true;
     }
 
-    function onRemoveLiquiditySingleAsset(
+    function onRemoveLiquiditySingleTokenExactIn(
         address,
         uint256,
         uint256,

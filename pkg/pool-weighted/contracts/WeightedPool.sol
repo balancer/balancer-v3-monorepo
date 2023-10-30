@@ -414,7 +414,7 @@ contract WeightedPool is BasePool {
         return bptAmountOut;
     }
 
-    function onAddLiquiditySingleAsset(
+    function onAddLiquiditySingleTokenExactOut(
         address,
         uint256 tokenInIndex,
         uint256 exactBptAmountOut,
@@ -451,7 +451,7 @@ contract WeightedPool is BasePool {
         return true;
     }
 
-    function onRemoveLiquiditySingleAsset(
+    function onRemoveLiquiditySingleTokenExactIn(
         address,
         uint256 tokenOutIndex,
         uint256 exactBptAmountIn,

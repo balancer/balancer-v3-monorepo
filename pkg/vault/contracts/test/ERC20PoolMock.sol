@@ -128,7 +128,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         bptAmountOut = exactAmountsIn[0];
     }
 
-    function onAddLiquiditySingleAsset(
+    function onAddLiquiditySingleTokenExactOut(
         address,
         uint256,
         uint256 exactBptAmountOut,
@@ -147,7 +147,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         returnData = userData;
     }
 
-    function onRemoveLiquiditySingleAsset(
+    function onRemoveLiquiditySingleTokenExactIn(
         address sender,
         uint256 tokenIndex,
         uint256 exactBptAmountIn,

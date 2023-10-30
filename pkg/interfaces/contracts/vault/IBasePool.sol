@@ -75,7 +75,7 @@ interface IBasePool {
         uint256[] memory currentBalances
     ) external returns (uint256 bptAmountOut);
 
-    function onAddLiquiditySingleAsset(
+    function onAddLiquiditySingleTokenExactOut(
         address sender,
         uint256 tokenInIndex,
         uint256 exactBptAmountOut,
@@ -135,7 +135,7 @@ interface IBasePool {
         bytes memory userData
     ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
 
-    function onRemoveLiquiditySingleAsset(
+    function onRemoveLiquiditySingleTokenExactIn(
         address sender,
         uint256 tokenOutIndex,
         uint256 exactBptAmountIn,
