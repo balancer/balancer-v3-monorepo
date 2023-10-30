@@ -12,6 +12,8 @@ import { IVault, PoolConfig, PoolCallbacks, LiquidityManagement, LiquidityManage
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 
+import { BasePoolMath } from "@balancer-labs/v3-pool-utils/contracts/lib/BasePoolMath.sol";
+
 import { ReentrancyGuard } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import { TemporarilyPausable } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
@@ -24,7 +26,6 @@ import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { ERC20MultiToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20MultiToken.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
-import { BasePoolMath } from "./libraries/BasePoolMath.sol";
 
 contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
