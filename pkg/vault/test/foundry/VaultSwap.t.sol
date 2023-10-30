@@ -176,6 +176,7 @@ contract VaultSwapTest is Test {
 
     function testProtocolSwapFeeGivenIn() public {
         uint256 USDC_SWAP_FEE = getSwapFee(USDC_AMOUNT_IN, 1);
+        uint256 USDC_PROTOCOL_SWAP_FEE = USDC_SWAP_FEE / 2 + 1;
 
         USDC.mint(bob, USDC_AMOUNT_IN);
 
@@ -212,6 +213,10 @@ contract VaultSwapTest is Test {
         (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
         assertEq(balances[0], 0);
         assertEq(balances[1], 2 * USDC_AMOUNT_IN + USDC_SWAP_FEE);
+
+        // protocol fees are accrued
+        assertEq(USDC_PROTOCOL_SWAP_FEE, vault.getProtocolSwapFee(address(USDC)));
+
     }
 
     function testSwapFeeGivenOut() public {

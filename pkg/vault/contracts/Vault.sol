@@ -488,7 +488,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         // Charge protocolSwapFee
         if (_protocolSwapFeePercentage > 0 && vars.swapFee > 0) {
             uint256 protocolSwapFee = vars.swapFee.mulUp(_protocolSwapFeePercentage, PoolConfigLib.SWAP_FEE_PRECISION);
-            _protocolSwapFees[params.tokenIn] = protocolSwapFee;
+            _protocolSwapFees[params.tokenIn] += protocolSwapFee;
             emit ProtocolSwapFee(params.pool, params.tokenIn, protocolSwapFee);
         }
 
@@ -978,6 +978,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
     function getSwapFeePercentage(address pool) external view returns (uint24) {
         return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFee;
+    }
+
+
+    function getProtocolSwapFee(address token) external view returns(uint256) {
+        return _protocolSwapFees[IERC20(token)];
     }
 
     /*******************************************************************************
