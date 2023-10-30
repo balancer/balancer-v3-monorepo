@@ -486,14 +486,16 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             : (amountCalculated, params.amountGiven);
 
         // Charge protocolSwapFee
+        uint256 protocolSwapFee;
         if (_protocolSwapFeePercentage > 0 && vars.swapFee > 0) {
-            uint256 protocolSwapFee = vars.swapFee.mulUp(_protocolSwapFeePercentage, PoolConfigLib.SWAP_FEE_PRECISION);
+            protocolSwapFee = vars.swapFee.mulUp(_protocolSwapFeePercentage, PoolConfigLib.SWAP_FEE_PRECISION);
             _protocolSwapFees[params.tokenIn] += protocolSwapFee;
             emit ProtocolSwapFee(params.pool, params.tokenIn, protocolSwapFee);
         }
 
         // We charge swap fee on amountIn
-        tokenInBalance = tokenInBalance + amountIn;
+        // Substruct protocol swap fee from the pool balance
+        tokenInBalance = tokenInBalance + amountIn - protocolSwapFee;
         tokenOutBalance = tokenOutBalance - amountOut;
 
         // Because no tokens were registered or deregistered between now or when we retrieved the indexes for
