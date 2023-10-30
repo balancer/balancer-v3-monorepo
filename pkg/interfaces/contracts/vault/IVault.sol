@@ -98,6 +98,7 @@ interface IVault {
         address indexed pool,
         address indexed factory,
         IERC20[] tokens,
+        PoolCallbacks callbacks,
         LiquidityManagement liquidityManagement,
         LiquidityManagementDefaults liquidityManagementDefaults
     );
