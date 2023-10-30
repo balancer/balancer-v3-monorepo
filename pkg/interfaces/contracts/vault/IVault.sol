@@ -531,6 +531,12 @@ interface IVault {
         bytes memory userData
     ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn, bytes memory returnData);
 
+    function removeLiquidityRecovery(
+        address pool,
+        address from,
+        uint256 exactBptAmountIn
+    ) external returns (uint256[] memory amountsOut);
+
     /***************************************************************************
                                        Swaps
     ***************************************************************************/
