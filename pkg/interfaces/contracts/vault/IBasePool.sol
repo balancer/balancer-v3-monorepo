@@ -30,7 +30,7 @@ interface IBasePool {
      * @param maxAmountsIn Maximum amounts of tokens to be added
      * @param userData Additional (optional) data provided by the user
      * @return amountsIn Actual amounts of tokens added
-     * @return bptAmountOut Amount of BPT tokens minted
+     * @return bptAmountOut Amount of pool tokens minted
      */
     function onInitialize(
         uint256[] memory maxAmountsIn,
@@ -79,7 +79,7 @@ interface IBasePool {
      * @param sender Address of the sender
      * @param exactAmountsIn Exact amounts of tokens to be added, in the same order as the registered pool tokens
      * @param currentBalances Current pool balances, in the same order as the registered pool tokens
-     * @return bptAmountOut Amount of BPT tokens minted in exchange for the added liquidity
+     * @return bptAmountOut Amount of pool tokens minted in exchange for the added liquidity
      */
     function onAddLiquidityUnbalanced(
         address sender,
@@ -88,11 +88,11 @@ interface IBasePool {
     ) external returns (uint256 bptAmountOut);
 
     /**
-     * @notice Add liquidity to the pool with a single token, specifying exact BPT amount out.
+     * @notice Add liquidity to the pool with a single token, specifying exact pool token amount out.
      * @param sender Address of the sender
      * @param tokenInIndex Index of the token used to add liquidity, corresponding to the token address in the pool's
      * registered token array
-     * @param exactBptAmountOut Exact amounts of BPT to receive
+     * @param exactBptAmountOut Exact amount of pool tokens to receive
      * @param currentBalances Current pool balances, in the same order as the registered pool tokens
      * @return amountIn Amount of tokens required as input
      */
@@ -109,7 +109,7 @@ interface IBasePool {
      * @param userData Arbitrary data with the encoded request
      * @param currentBalances Current pool balances, in the same order as the registered pool tokens
      * @return amountsIn Amount of tokens required as input, in the same order as the registered pool tokens
-     * @return bptAmountOut Calculated BPT amount to receive
+     * @return bptAmountOut Calculated pool token amount to receive
      * @return returnData Arbitrary data with encoded response from the pool
      */
     function onAddLiquidityCustom(
@@ -171,11 +171,11 @@ interface IBasePool {
     ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
 
     /**
-     * @notice Remove liquidity from the pool, specifying exact BPT amount out in exchange for a single token.
+     * @notice Remove liquidity from the pool, specifying exact pool token amount out in exchange for a single token.
      * @param sender Address of the sender
-     * @param tokenOutIndex Index of the token to receive in exchange for BPT, corresponding to the token address in
-     * the pool's registered token array
-     * @param exactBptAmountIn Exact amounts of BPT to burn
+     * @param tokenOutIndex Index of the token to receive in exchange for pool tokens, corresponding to the token
+     * address in the pool's registered token array
+     * @param exactBptAmountIn Exact amount of pool tokens to burn
      * @param currentBalances Current pool balances, in the same order as the registered pool tokens
      * @return amountOut Amount of tokens out
      */
@@ -192,7 +192,7 @@ interface IBasePool {
      * @param userData Arbitrary data with the encoded request
      * @param currentBalances Current pool balances, in the same order as the registered pool tokens
      * @return amountsOut Amount of tokens to receive, in the same order as the registered pool tokens
-     * @return bptAmountIn Calculated BPT amount to burn
+     * @return bptAmountIn Calculated pool token amount to burn
      * @return returnData Arbitrary data with encoded response from the pool
      */
     function onRemoveLiquidityCustom(

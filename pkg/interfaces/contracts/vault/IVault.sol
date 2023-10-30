@@ -445,18 +445,49 @@ interface IVault {
         bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
+    /**
+     * @notice Adds liquidity to a pool with proportional token amounts in.
+     * @dev Caution should be exercised when adding liquidity because the Vault has the capability
+     * to transfer tokens from any user, given that it holds all allowances.
+     *
+     * @param pool Address of the pool
+     * @param to Address of user to mint pool tokens to
+     * @param exactBptAmountOut Output pool token amount
+     * @return amountsIn Actual calculated amounts of input tokens
+     */
     function addLiquidityProportional(
         address pool,
         address to,
         uint256 exactBptAmountOut
     ) external returns (uint256[] memory amountsIn);
 
+    /**
+     * @notice Add liquidity to the pool specifying exact token amounts in.
+     * @dev Caution should be exercised when adding liquidity because the Vault has the capability
+     * to transfer tokens from any user, given that it holds all allowances.
+     *
+     * @param pool Address of the pool
+     * @param to Address of user to mint pool tokens to
+     * @param exactAmountsIn Exact amounts of tokens to be added, in the same order as the registered pool tokens
+     * @return bptAmountOut Amount of pool tokens minted in exchange for the added liquidity
+     */
     function addLiquidityUnbalanced(
         address pool,
         address to,
         uint256[] memory exactAmountsIn
     ) external returns (uint256 bptAmountOut);
 
+    /**
+     * @notice Add liquidity to the pool with a single token, specifying exact pool token amount out.
+     * @dev Caution should be exercised when adding liquidity because the Vault has the capability
+     * to transfer tokens from any user, given that it holds all allowances.
+     *
+     * @param pool Address of the pool
+     * @param to Address of user to mint pool tokens to
+     * @param tokenIn Token used to add liquidity, which must be registered for the pool
+     * @param exactBptAmountOut Exact amount of pool tokens to receive
+     * @return amountIn Amount of tokens required as input
+     */
     function addLiquiditySingleTokenExactOut(
         address pool,
         address to,
@@ -464,6 +495,15 @@ interface IVault {
         uint256 exactBptAmountOut
     ) external returns (uint256 amountIn);
 
+    /**
+     * @notice Add liquidity to the pool with a custom handler.
+     * @param pool Address of the pool
+     * @param to Address of user to mint pool tokens to
+     * @param userData Arbitrary data with the encoded request
+     * @return amountsIn Amount of tokens required as input, in the same order as the registered pool tokens
+     * @return bptAmountOut Calculated pool token amount to receive
+     * @return returnData Arbitrary data with encoded response from the pool
+     */
     function addLiquidityCustom(
         address pool,
         address to,
@@ -512,12 +552,35 @@ interface IVault {
         bytes memory userData
     ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
 
+    /**
+     * @notice Remove liquidity from a pool specifying exact pool tokens in, with proportional token amounts out.
+     * @dev Trusted routers can burn pool tokens belonging to any user and require no prior approval from the user.
+     * Untrusted routers require prior approval from the user. This is the only function allowed to call
+     * _queryModeBalanceIncrease (and only in a query context).
+     *
+     * @param pool Address of the pool
+     * @param from Address of user to burn pool tokens from
+     * @param exactBptAmountIn Input pool token amount
+     * @return amountsOut Actual calculated amounts of output tokens
+     */
     function removeLiquidityProportional(
         address pool,
         address from,
         uint256 exactBptAmountIn
     ) external returns (uint256[] memory amountsOut);
 
+    /**
+     * @notice Remove liquidity from a pool specifying exact pool tokens in, a single token out.
+     * @dev Trusted routers can burn pool tokens belonging to any user and require no prior approval from the user.
+     * Untrusted routers require prior approval from the user. This is the only function allowed to call
+     * _queryModeBalanceIncrease (and only in a query context).
+     *
+     * @param pool Address of the pool
+     * @param from Address of user to burn pool tokens from
+     * @param tokenOut Token to receive, which must be registered for the pool
+     * @param exactBptAmountIn Exact amount of pool tokens to burn
+     * @return amountOut Amount of tokens out
+     */
     function removeLiquiditySingleTokenExactIn(
         address pool,
         address from,
@@ -525,12 +588,37 @@ interface IVault {
         uint256 exactBptAmountIn
     ) external returns (uint256 amountOut);
 
+    /**
+     * @notice Remove liquidity from the pool with a custom request.
+     * @dev Trusted routers can burn pool tokens belonging to any user and require no prior approval from the user.
+     * Untrusted routers require prior approval from the user. This is the only function allowed to call
+     * _queryModeBalanceIncrease (and only in a query context).
+     *
+     * @param pool Address of the pool
+     * @param from Address of user to burn pool tokens from
+     * @param userData Arbitrary data with the encoded request
+     * @return amountsOut Amount of tokens to receive, in the same order as the registered pool tokens
+     * @return bptAmountIn Calculated pool token amount to burn
+     * @return returnData Arbitrary data with encoded response from the pool
+     */
     function removeLiquidityCustom(
         address pool,
         address from,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn, bytes memory returnData);
 
+    /**
+     * @notice Remove liquidity from a pool specifying exact pool tokens in, with proportional token amounts out.
+     * The request is solved at the Vault without any interaction with the pool, ensuring it always succeeds.
+     * @dev Trusted routers can burn pool tokens belonging to any user and require no prior approval from the user.
+     * Untrusted routers require prior approval from the user. This is the only function allowed to call
+     * _queryModeBalanceIncrease (and only in a query context).
+     *
+     * @param pool Address of the pool
+     * @param from Address of user to burn pool tokens from
+     * @param exactBptAmountIn Input pool token amount
+     * @return amountsOut Actual calculated amounts of output tokens
+     */
     function removeLiquidityRecovery(
         address pool,
         address from,
