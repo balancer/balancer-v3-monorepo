@@ -34,11 +34,11 @@ contract WeightedPoolTest is Test {
     address alice = vm.addr(1);
     address bob = vm.addr(2);
 
-    uint256 constant USDC_AMOUNT = 1000e18;
+    uint256 constant USDC_AMOUNT = 1000e6;
     uint256 constant DAI_AMOUNT = 1000e18;
 
     uint256 constant DAI_AMOUNT_IN = 1e18;
-    uint256 constant USDC_AMOUNT_OUT = 1e18;
+    uint256 constant USDC_AMOUNT_OUT = 1e6;
 
     uint256 constant DELTA = 1e9;
 
@@ -88,6 +88,7 @@ contract WeightedPoolTest is Test {
 
     function testInitialize() public {
         vm.prank(alice);
+
         (uint256[] memory amountsIn, uint256 bptAmountOut) = router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
@@ -123,8 +124,12 @@ contract WeightedPoolTest is Test {
 
     function testAddLiquidity() public {
         vm.prank(alice);
+
+        uint256[] memory amountsIn;
+        uint256 bptAmountOut;
+
         // init
-        router.initialize(
+        (amountsIn, bptAmountOut) = router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
@@ -135,7 +140,7 @@ contract WeightedPoolTest is Test {
         );
 
         vm.prank(bob);
-        (uint256[] memory amountsIn, uint256 bptAmountOut) = router.addLiquidity(
+        (amountsIn, bptAmountOut) = router.addLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
