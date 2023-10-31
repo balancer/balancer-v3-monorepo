@@ -21,7 +21,7 @@ struct LiquidityManagement {
     bool supportsAddLiquidityUnbalanced;
     bool supportsAddLiquidityCustom;
     bool supportsRemoveLiquiditySingleTokenExactIn;
-    bool supportsRemoveLiquidityUnbalanced;
+    bool supportsRemoveLiquiditySingleTokenExactOut;
     bool supportsRemoveLiquidityCustom;
 }
 

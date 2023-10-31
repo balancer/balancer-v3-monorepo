@@ -113,7 +113,7 @@ contract WeightedPool is BasePool {
                 supportsAddLiquidityUnbalanced: true,
                 supportsAddLiquidityCustom: false,
                 supportsRemoveLiquiditySingleTokenExactIn: true,
-                supportsRemoveLiquidityUnbalanced: true,
+                supportsRemoveLiquiditySingleTokenExactOut: true,
                 supportsRemoveLiquidityCustom: false
             })
         );
@@ -408,6 +408,31 @@ contract WeightedPool is BasePool {
         amountOut.downscaleDown(scalingFactors[tokenOutIndex]);
 
         return amountOut;
+    }
+
+    function onRemoveLiquiditySingleTokenExactOut(
+        address,
+        uint256 tokenOutIndex,
+        uint256 exactAmountOut,
+        uint256[] memory currentBalances
+    ) external view override returns (uint256 bptAmountIn) {
+        uint256[] memory scalingFactors = _scalingFactors();
+        currentBalances.upscaleArray(scalingFactors);
+
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+
+        bptAmountIn = WeightedMath.calcBptInGivenExactTokenOut(
+            currentBalances[tokenOutIndex],
+            normalizedWeights[tokenOutIndex],
+            exactAmountOut,
+            totalSupply(),
+            getSwapFeePercentage()
+        );
+
+        // bptAmountIn is entering the Pool, so we round up.
+        bptAmountIn.downscaleUp(scalingFactors[tokenOutIndex]);
+
+        return bptAmountIn;
     }
 
     function onRemoveLiquidityCustom(

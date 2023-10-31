@@ -866,8 +866,17 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             amountsOut = minAmountsOut;
             amountsOut[tokenIndex] = amountOut;
         } else if (kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
-            // solhint-disable-previous-line no-empty-blocks
-            /// TODO
+            _poolConfig[pool].requireRemoveLiquiditySingleTokenExactOut();
+
+            uint256 tokenIndex = InputHelpers.getSingleInputIndex(minAmountsOut);
+            amountsOut = minAmountsOut;
+
+            bptAmountIn = IBasePool(pool).onRemoveLiquiditySingleTokenExactOut(
+                msg.sender,
+                tokenIndex,
+                amountsOut[tokenIndex],
+                balances
+            );
         } else if (kind == RemoveLiquidityKind.CUSTOM) {
             _poolConfig[pool].requireRemoveLiquidityCustom();
 

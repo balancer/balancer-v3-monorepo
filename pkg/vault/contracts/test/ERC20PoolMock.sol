@@ -142,6 +142,13 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         uint256[] memory currentBalances
     ) external returns (uint256 amountOut) {}
 
+    function onRemoveLiquiditySingleTokenExactOut(
+        address sender,
+        uint256 tokenOutIndex,
+        uint256 exactAmountOut,
+        uint256[] memory currentBalances
+    ) external returns (uint256 bptAmountIn) {}
+
     function onRemoveLiquidityCustom(
         address sender,
         bytes memory userData,

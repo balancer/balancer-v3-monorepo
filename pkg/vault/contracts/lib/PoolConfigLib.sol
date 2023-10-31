@@ -33,6 +33,9 @@ library PoolConfigLib {
     /// @dev Pool does not support removing liquidity with a single asset, specifying exact pool tokens in.
     error DoesNotSupportRemoveLiquiditySingleTokenExactIn();
 
+    /// @dev
+    error DoesNotSupportRemoveLiquiditySingleTokenExactOut();
+
     /// @dev Pool does not support removing liquidity with a customized input.
     error DoesNotSupportRemoveLiquidityCustom();
 
@@ -58,7 +61,7 @@ library PoolConfigLib {
     uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = 10;
     uint8 public constant REMOVE_LIQUIDITY_PROPORTIONAL_OFFSET = 11;
     uint8 public constant REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET = 12;
-    uint8 public constant REMOVE_LIQUIDITY_UNBALANCED_OFFSET = 13;
+    uint8 public constant REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET = 13;
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = 14;
 
     // Bitwise flags for pool's config
@@ -79,7 +82,8 @@ library PoolConfigLib {
     uint256 public constant REMOVE_LIQUIDITY_PROPORTIONAL_FLAG = 1 << REMOVE_LIQUIDITY_PROPORTIONAL_OFFSET;
     uint256 public constant REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_FLAG =
         1 << REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET;
-    uint256 public constant REMOVE_LIQUIDITY_UNBALANCED_FLAG = 1 << REMOVE_LIQUIDITY_UNBALANCED_OFFSET;
+    uint256 public constant REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_FLAG =
+        1 << REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET;
     uint256 public constant REMOVE_LIQUIDITY_CUSTOM_FLAG = 1 << REMOVE_LIQUIDITY_CUSTOM_OFFSET;
 
     function addRegistration(PoolConfigBits config) internal pure returns (PoolConfigBits) {
@@ -128,7 +132,6 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(ADD_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET);
     }
 
-
     function requireAddLiquiditySingleTokenExactOut(PoolConfigBits config) internal pure {
         if (config.supportsAddLiquiditySingleTokenExactOut() == false) {
             revert DoesNotSupportAddLiquiditySingleTokenExactOut();
@@ -175,8 +178,14 @@ library PoolConfigLib {
         }
     }
 
-    function supportsRemoveLiquidityUnbalanced(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(REMOVE_LIQUIDITY_UNBALANCED_OFFSET);
+    function supportsRemoveLiquiditySingleTokenExactOut(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET);
+    }
+
+    function requireRemoveLiquiditySingleTokenExactOut(PoolConfigBits config) internal pure {
+        if (config.supportsRemoveLiquiditySingleTokenExactOut() == false) {
+            revert DoesNotSupportRemoveLiquiditySingleTokenExactOut();
+        }
     }
 
     function supportsRemoveLiquidityCustom(PoolConfigBits config) internal pure returns (bool) {
@@ -224,8 +233,8 @@ library PoolConfigLib {
                     REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET
                 )
                 .insertBool(
-                    config.liquidityManagement.supportsRemoveLiquidityUnbalanced,
-                    REMOVE_LIQUIDITY_UNBALANCED_OFFSET
+                    config.liquidityManagement.supportsRemoveLiquiditySingleTokenExactOut,
+                    REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET
                 )
                 .insertBool(config.liquidityManagement.supportsRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET);
         }
@@ -261,7 +270,7 @@ library PoolConfigLib {
                     supportsAddLiquidityUnbalanced: config.supportsAddLiquidityUnbalanced(),
                     supportsAddLiquidityCustom: config.supportsAddLiquidityCustom(),
                     supportsRemoveLiquiditySingleTokenExactIn: config.supportsRemoveLiquiditySingleTokenExactIn(),
-                    supportsRemoveLiquidityUnbalanced: config.supportsRemoveLiquidityUnbalanced(),
+                    supportsRemoveLiquiditySingleTokenExactOut: config.supportsRemoveLiquiditySingleTokenExactOut(),
                     supportsRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom()
                 }),
                 liquidityManagementDefaults: LiquidityManagementDefaults({

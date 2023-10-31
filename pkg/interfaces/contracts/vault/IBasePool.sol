@@ -144,6 +144,13 @@ interface IBasePool {
         uint256[] memory currentBalances
     ) external returns (uint256 amountOut);
 
+    function onRemoveLiquiditySingleTokenExactOut(
+        address sender,
+        uint256 tokenOutIndex,
+        uint256 exactAmountOut,
+        uint256[] memory currentBalances
+    ) external returns (uint256 bptAmountIn);
+
     /**
      * @notice Remove liquidity from the pool with a custom handler.
      * @param sender Address of the sender
