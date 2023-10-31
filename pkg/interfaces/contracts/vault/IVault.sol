@@ -391,6 +391,15 @@ interface IVault {
                                    Add Liquidity
     ***************************************************************************/
 
+    enum AddLiquidityKind {
+        PROPORTIONAL,
+        UNBALANCED,
+        SINGLE_TOKEN_IN_EXACT_OUT,
+        CUSTOM
+    }
+
+    error InvalidAddLiquidityKind();
+
     /**
      * @dev The token list passed into an operation does not match the pool tokens in the pool.
      * @param pool Address of the pool
@@ -427,7 +436,6 @@ interface IVault {
      *
      * @param pool Address of the pool
      * @param to  Address of user to mint to
-     * @param assets Assets involved in the liquidity
      * @param maxAmountsIn Maximum amounts of input assets
      * @param minBptAmountOut Minimum output pool token amount
      * @param kind Add liquidity kind
@@ -438,81 +446,25 @@ interface IVault {
     function addLiquidity(
         address pool,
         address to,
-        IERC20[] memory assets,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
-        IBasePool.AddLiquidityKind kind,
-        bytes memory userData
-    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
-
-    /**
-     * @notice Adds liquidity to a pool with proportional token amounts in.
-     * @dev Caution should be exercised when adding liquidity because the Vault has the capability
-     * to transfer tokens from any user, given that it holds all allowances.
-     *
-     * @param pool Address of the pool
-     * @param to Address of user to mint pool tokens to
-     * @param exactBptAmountOut Output pool token amount
-     * @return amountsIn Actual calculated amounts of input tokens
-     */
-    function addLiquidityProportional(
-        address pool,
-        address to,
-        uint256 exactBptAmountOut
-    ) external returns (uint256[] memory amountsIn);
-
-    /**
-     * @notice Add liquidity to the pool specifying exact token amounts in.
-     * @dev Caution should be exercised when adding liquidity because the Vault has the capability
-     * to transfer tokens from any user, given that it holds all allowances.
-     *
-     * @param pool Address of the pool
-     * @param to Address of user to mint pool tokens to
-     * @param exactAmountsIn Exact amounts of tokens to be added, in the same order as the registered pool tokens
-     * @return bptAmountOut Amount of pool tokens minted in exchange for the added liquidity
-     */
-    function addLiquidityUnbalanced(
-        address pool,
-        address to,
-        uint256[] memory exactAmountsIn
-    ) external returns (uint256 bptAmountOut);
-
-    /**
-     * @notice Add liquidity to the pool with a single token, specifying exact pool token amount out.
-     * @dev Caution should be exercised when adding liquidity because the Vault has the capability
-     * to transfer tokens from any user, given that it holds all allowances.
-     *
-     * @param pool Address of the pool
-     * @param to Address of user to mint pool tokens to
-     * @param tokenIn Token used to add liquidity, which must be registered for the pool
-     * @param exactBptAmountOut Exact amount of pool tokens to receive
-     * @return amountIn Amount of tokens required as input
-     */
-    function addLiquiditySingleTokenExactOut(
-        address pool,
-        address to,
-        IERC20 tokenIn,
-        uint256 exactBptAmountOut
-    ) external returns (uint256 amountIn);
-
-    /**
-     * @notice Add liquidity to the pool with a custom handler.
-     * @param pool Address of the pool
-     * @param to Address of user to mint pool tokens to
-     * @param userData Arbitrary data with the encoded request
-     * @return amountsIn Amount of tokens required as input, in the same order as the registered pool tokens
-     * @return bptAmountOut Calculated pool token amount to receive
-     * @return returnData Arbitrary data with encoded response from the pool
-     */
-    function addLiquidityCustom(
-        address pool,
-        address to,
+        AddLiquidityKind kind,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
     /***************************************************************************
                                  Remove Liquidity
     ***************************************************************************/
+
+    enum RemoveLiquidityKind {
+        PROPORTIONAL,
+        SINGLE_TOKEN_OUT_EXACT_IN,
+        SINGLE_TOKEN_EXACT_OUT,
+        CUSTOM
+    }
+
+    /// @dev
+    error InvalidRemoveLiquidityKind();
 
     /// @dev Pool does not support removing liquidity proportionally.
     error DoesNotSupportRemoveLiquidityProportional(address pool);
@@ -534,7 +486,6 @@ interface IVault {
      *
      * @param pool Address of the pool
      * @param from Address of user to burn from
-     * @param assets Assets involved in the liquidity removal
      * @param minAmountsOut Minimum amounts of output assets
      * @param maxBptAmountIn Input pool token amount
      * @param kind Remove liquidity kind
@@ -545,65 +496,9 @@ interface IVault {
     function removeLiquidity(
         address pool,
         address from,
-        IERC20[] memory assets,
         uint256[] memory minAmountsOut,
         uint256 maxBptAmountIn,
-        IBasePool.RemoveLiquidityKind kind,
-        bytes memory userData
-    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
-
-    /**
-     * @notice Remove liquidity from a pool specifying exact pool tokens in, with proportional token amounts out.
-     * @dev Trusted routers can burn pool tokens belonging to any user and require no prior approval from the user.
-     * Untrusted routers require prior approval from the user. This is the only function allowed to call
-     * _queryModeBalanceIncrease (and only in a query context).
-     *
-     * @param pool Address of the pool
-     * @param from Address of user to burn pool tokens from
-     * @param exactBptAmountIn Input pool token amount
-     * @return amountsOut Actual calculated amounts of output tokens
-     */
-    function removeLiquidityProportional(
-        address pool,
-        address from,
-        uint256 exactBptAmountIn
-    ) external returns (uint256[] memory amountsOut);
-
-    /**
-     * @notice Remove liquidity from a pool specifying exact pool tokens in, a single token out.
-     * @dev Trusted routers can burn pool tokens belonging to any user and require no prior approval from the user.
-     * Untrusted routers require prior approval from the user. This is the only function allowed to call
-     * _queryModeBalanceIncrease (and only in a query context).
-     *
-     * @param pool Address of the pool
-     * @param from Address of user to burn pool tokens from
-     * @param tokenOut Token to receive, which must be registered for the pool
-     * @param exactBptAmountIn Exact amount of pool tokens to burn
-     * @return amountOut Amount of tokens out
-     */
-    function removeLiquiditySingleTokenExactIn(
-        address pool,
-        address from,
-        IERC20 tokenOut,
-        uint256 exactBptAmountIn
-    ) external returns (uint256 amountOut);
-
-    /**
-     * @notice Remove liquidity from the pool with a custom request.
-     * @dev Trusted routers can burn pool tokens belonging to any user and require no prior approval from the user.
-     * Untrusted routers require prior approval from the user. This is the only function allowed to call
-     * _queryModeBalanceIncrease (and only in a query context).
-     *
-     * @param pool Address of the pool
-     * @param from Address of user to burn pool tokens from
-     * @param userData Arbitrary data with the encoded request
-     * @return amountsOut Amount of tokens to receive, in the same order as the registered pool tokens
-     * @return bptAmountIn Calculated pool token amount to burn
-     * @return returnData Arbitrary data with encoded response from the pool
-     */
-    function removeLiquidityCustom(
-        address pool,
-        address from,
+        RemoveLiquidityKind kind,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn, bytes memory returnData);
 

@@ -41,38 +41,17 @@ interface IBasePool {
                                    Add Liquidity
     ***************************************************************************/
 
-    enum AddLiquidityKind {
-        EXACT_TOKENS_IN_FOR_BPT_OUT,
-        TOKEN_IN_FOR_EXACT_BPT_OUT,
-        ALL_TOKENS_IN_FOR_EXACT_BPT_OUT
-    }
-
     /**
      * @notice Optional callback to be executed before `onAddLiquidity...` callbacks are executed.
      * @param currentBalances Current pool balances, in the same order as the registered pool tokens
      * @param userData Optional, arbitrary data with the encoded request
      */
-    function onBeforeAddLiquidity(uint256[] memory currentBalances, bytes memory userData) external returns (bool);
-
-    /**
-     * @notice Add liquidity to the pool.
-     * @param sender Address of the sender
-     * @param balances Current balances of the tokens
-     * @param maxAmountsIn Maximum amounts of tokens to be added
-     * @param minBptAmountOut Minimum amount of BPT to receive
-     * @param kind Add liquidity kind
-     * @param userData Additional (optional) data provided by the user
-     * @return amountsIn Actual amounts of tokens added
-     * @return bptAmountOut Amount of BPT tokens minted
-     */
-    function onAddLiquidity(
-        address sender,
-        uint256[] memory balances,
+    function onBeforeAddLiquidity(
+        uint256[] memory currentBalances,
         uint256[] memory maxAmountsIn,
-        uint256 minBptAmountOut,
-        AddLiquidityKind kind,
+        uint256 minBptOut,
         bytes memory userData
-    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+    ) external returns (bool);
 
     /**
      * @notice Add liquidity to the pool specifying exact token amounts in.
@@ -137,38 +116,17 @@ interface IBasePool {
                                  Remove Liquidity
     ***************************************************************************/
 
-    enum RemoveLiquidityKind {
-        EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
-        EXACT_BPT_IN_FOR_TOKENS_OUT,
-        BPT_IN_FOR_EXACT_TOKENS_OUT
-    }
-
     /**
      * @notice Optional callback to be executed before `onRemoveLiquidity...` callbacks are executed.
      * @param currentBalances Current pool balances, in the same order as the registered pool tokens
      * @param userData Optional, arbitrary data with the encoded request
      */
-    function onBeforeRemoveLiquidity(uint256[] memory currentBalances, bytes memory userData) external returns (bool);
-
-    /**
-     * @notice Remove liquidity from the pool.
-     * @param sender Address of the sender
-     * @param balances Current balances of the tokens
-     * @param minAmountsOut Minimum amounts of tokens to be removed
-     * @param maxBptAmountIn Maximum amount of BPT tokens burnt
-     * @param kind Remove liquidity kind
-     * @param userData Additional (optional) data provided by the user
-     * @return amountsOut Actual amounts of tokens removed
-     * @return bptAmountIn Actual amount of BPT burned
-     */
-    function onRemoveLiquidity(
-        address sender,
-        uint256[] memory balances,
+    function onBeforeRemoveLiquidity(
+        uint256[] memory currentBalances,
         uint256[] memory minAmountsOut,
         uint256 maxBptAmountIn,
-        RemoveLiquidityKind kind,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
+    ) external returns (bool);
 
     /**
      * @notice Remove liquidity from the pool, specifying exact pool token amount out in exchange for a single token.

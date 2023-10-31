@@ -138,8 +138,16 @@ contract WeightedPool is BasePool {
         // prettier-ignore
         normalizedWeights[0] = _normalizedWeight0;
         normalizedWeights[1] = _normalizedWeight1;
-        if (totalTokens > 2) { normalizedWeights[2] = _normalizedWeight2; } else { return normalizedWeights; }
-        if (totalTokens > 3) { normalizedWeights[3] = _normalizedWeight3; } else { return normalizedWeights; }
+        if (totalTokens > 2) {
+            normalizedWeights[2] = _normalizedWeight2;
+        } else {
+            return normalizedWeights;
+        }
+        if (totalTokens > 3) {
+            normalizedWeights[3] = _normalizedWeight3;
+        } else {
+            return normalizedWeights;
+        }
 
         return normalizedWeights;
     }
@@ -244,98 +252,6 @@ contract WeightedPool is BasePool {
     }
 
     /***************************************************************************
-                                   Add Liquidity
-    ***************************************************************************/
-
-    /// @inheritdoc IBasePool
-    function onAddLiquidity(
-        address,
-        uint256[] memory balances,
-        uint256[] memory amountsIn,
-        uint256 minBptAmountOut,
-        AddLiquidityKind kind,
-        bytes memory
-    ) external view onlyVault returns (uint256[] memory, uint256 bptAmountOut) {
-        uint256[] memory scalingFactors = _scalingFactors();
-        balances.upscaleArray(scalingFactors);
-        amountsIn.upscaleArray(scalingFactors);
-
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-
-        if (kind == AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
-            InputHelpers.ensureInputLengthMatch(balances.length, amountsIn.length);
-
-            bptAmountOut = WeightedMath.calcBptOutGivenExactTokensIn(
-                balances,
-                normalizedWeights,
-                amountsIn,
-                totalSupply(),
-                getSwapFeePercentage()
-            );
-        } else if (kind == AddLiquidityKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            // The token in cannot be specified with these arguments without relying on `userData`.
-            // This shall be implemented in the future with explicit arguments.
-            revert UnhandledJoinKind();
-        } else if (kind == AddLiquidityKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
-            amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, totalSupply(), minBptAmountOut);
-            bptAmountOut = minBptAmountOut;
-        } else {
-            revert UnhandledJoinKind();
-        }
-
-        // amountsIn are amounts entering the Pool, so we round up.
-        amountsIn.downscaleUpArray(scalingFactors);
-
-        return (amountsIn, bptAmountOut);
-    }
-
-    /***************************************************************************
-                                 Remove Liquidity
-    ***************************************************************************/
-
-    /// @inheritdoc IBasePool
-    function onRemoveLiquidity(
-        address,
-        uint256[] memory balances,
-        uint256[] memory minAmountsOut,
-        uint256 maxBptAmountIn,
-        RemoveLiquidityKind kind,
-        bytes memory
-    ) external view onlyVault returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
-        uint256[] memory scalingFactors = _scalingFactors();
-        balances.upscaleArray(scalingFactors);
-        minAmountsOut.upscaleArray(scalingFactors);
-
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-
-        if (kind == RemoveLiquidityKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            // The token in cannot be specified with these arguments without relying on `userData`.
-            // This shall be implemented in the future with explicit arguments.
-            revert UnhandledExitKind();
-        } else if (kind == RemoveLiquidityKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
-            amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, totalSupply(), maxBptAmountIn);
-            bptAmountIn = maxBptAmountIn;
-        } else if (kind == RemoveLiquidityKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
-            InputHelpers.ensureInputLengthMatch(minAmountsOut.length, balances.length);
-
-            // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
-            bptAmountIn = WeightedMath.calcBptInGivenExactTokensOut(
-                balances,
-                normalizedWeights,
-                minAmountsOut,
-                totalSupply(),
-                getSwapFeePercentage()
-            );
-        } else {
-            revert UnhandledExitKind();
-        }
-        // amountsOut are amounts exiting the Pool, so we round down.
-        amountsOut.downscaleDownArray(scalingFactors);
-
-        return (amountsOut, bptAmountIn);
-    }
-
-    /***************************************************************************
                                        Swaps
     ***************************************************************************/
 
@@ -387,7 +303,16 @@ contract WeightedPool is BasePool {
         return params.tokenIn != params.tokenOut && amountCalculated > 0;
     }
 
-    function onBeforeAddLiquidity(uint256[] memory, bytes memory) external override returns (bool) {}
+    /***************************************************************************
+                                   Add Liquidity
+    ***************************************************************************/
+
+    function onBeforeAddLiquidity(
+        uint256[] memory,
+        uint256[] memory,
+        uint256,
+        bytes memory
+    ) external override returns (bool) {}
 
     function onAddLiquidityUnbalanced(
         address,
@@ -447,7 +372,16 @@ contract WeightedPool is BasePool {
         revert CallbackNotImplemented();
     }
 
-    function onBeforeRemoveLiquidity(uint256[] memory, bytes memory) external pure override returns (bool) {
+    /***************************************************************************
+                                 Remove Liquidity
+    ***************************************************************************/
+
+    function onBeforeRemoveLiquidity(
+        uint256[] memory,
+        uint256[] memory,
+        uint256,
+        bytes memory
+    ) external pure override returns (bool) {
         return true;
     }
 

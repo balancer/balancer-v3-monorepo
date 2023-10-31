@@ -68,7 +68,7 @@ interface IRouter {
         Asset[] assets;
         uint256[] maxAmountsIn;
         uint256 minBptAmountOut;
-        IBasePool.AddLiquidityKind kind;
+        IVault.AddLiquidityKind kind;
         bytes userData;
     }
 
@@ -93,7 +93,7 @@ interface IRouter {
         Asset[] memory assets,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
-        IBasePool.AddLiquidityKind kind,
+        IVault.AddLiquidityKind kind,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
@@ -117,7 +117,7 @@ interface IRouter {
         Asset[] assets;
         uint256[] minAmountsOut;
         uint256 maxBptAmountIn;
-        IBasePool.RemoveLiquidityKind kind;
+        IVault.RemoveLiquidityKind kind;
         bytes userData;
     }
 
@@ -138,7 +138,7 @@ interface IRouter {
         Asset[] memory assets,
         uint256[] memory minAmountsOut,
         uint256 maxBptAmountIn,
-        IBasePool.RemoveLiquidityKind kind,
+        IVault.RemoveLiquidityKind kind,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
 
@@ -218,7 +218,7 @@ interface IRouter {
         Asset[] memory assets,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
-        IBasePool.AddLiquidityKind kind,
+        IVault.AddLiquidityKind kind,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
 
@@ -236,7 +236,7 @@ interface IRouter {
         Asset[] memory assets,
         uint256[] memory minAmountsOut,
         uint256 maxBptAmountIn,
-        IBasePool.RemoveLiquidityKind kind,
+        IVault.RemoveLiquidityKind kind,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
 

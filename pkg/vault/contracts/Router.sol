@@ -121,7 +121,7 @@ contract Router is IRouter, ReentrancyGuard {
         Asset[] memory assets,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
-        IBasePool.AddLiquidityKind kind,
+        IVault.AddLiquidityKind kind,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         return
@@ -153,13 +153,16 @@ contract Router is IRouter, ReentrancyGuard {
      */
     function addLiquidityCallback(
         AddLiquidityCallbackParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
-        IERC20[] memory tokens = params.assets.toIERC20(_weth);
-
-        (amountsIn, bptAmountOut) = _vault.addLiquidity(
+    )
+        external
+        payable
+        nonReentrant
+        onlyVault
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
+    {
+        (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
             params.pool,
             params.sender,
-            tokens,
             params.maxAmountsIn,
             params.minBptAmountOut,
             params.kind,
@@ -201,7 +204,7 @@ contract Router is IRouter, ReentrancyGuard {
         Asset[] memory assets,
         uint256[] memory minAmountsOut,
         uint256 maxBptAmountIn,
-        IBasePool.RemoveLiquidityKind kind,
+        IVault.RemoveLiquidityKind kind,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
         return
@@ -233,13 +236,15 @@ contract Router is IRouter, ReentrancyGuard {
      */
     function removeLiquidityCallback(
         RemoveLiquidityCallbackParams calldata params
-    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
-        IERC20[] memory tokens = params.assets.toIERC20(_weth);
-
-        (amountsOut, bptAmountIn) = _vault.removeLiquidity(
+    )
+        external
+        nonReentrant
+        onlyVault
+        returns (uint256[] memory amountsOut, uint256 bptAmountIn, bytes memory returnData)
+    {
+        (amountsOut, bptAmountIn, returnData) = _vault.removeLiquidity(
             params.pool,
             params.sender,
-            tokens,
             params.minAmountsOut,
             params.maxBptAmountIn,
             params.kind,
@@ -441,7 +446,7 @@ contract Router is IRouter, ReentrancyGuard {
         Asset[] memory assets,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
-        IBasePool.AddLiquidityKind kind,
+        IVault.AddLiquidityKind kind,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         return
@@ -475,13 +480,16 @@ contract Router is IRouter, ReentrancyGuard {
      */
     function queryAddLiquidityCallback(
         AddLiquidityCallbackParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
-        IERC20[] memory tokens = params.assets.toIERC20(_weth);
-
-        (amountsIn, bptAmountOut) = _vault.addLiquidity(
+    )
+        external
+        payable
+        nonReentrant
+        onlyVault
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
+    {
+        (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
             params.pool,
             params.sender,
-            tokens,
             params.maxAmountsIn,
             params.minBptAmountOut,
             params.kind,
@@ -495,7 +503,7 @@ contract Router is IRouter, ReentrancyGuard {
         Asset[] memory assets,
         uint256[] memory minAmountsOut,
         uint256 maxBptAmountIn,
-        IBasePool.RemoveLiquidityKind kind,
+        IVault.RemoveLiquidityKind kind,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
         return
@@ -529,12 +537,16 @@ contract Router is IRouter, ReentrancyGuard {
      */
     function queryRemoveLiquidityCallback(
         RemoveLiquidityCallbackParams calldata params
-    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
+    )
+        external
+        nonReentrant
+        onlyVault
+        returns (uint256[] memory amountsOut, uint256 bptAmountIn, bytes memory returnData)
+    {
         return
             _vault.removeLiquidity(
                 params.pool,
                 params.sender,
-                params.assets.toIERC20(_weth),
                 params.minAmountsOut,
                 params.maxBptAmountIn,
                 params.kind,

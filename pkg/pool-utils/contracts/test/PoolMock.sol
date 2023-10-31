@@ -48,17 +48,6 @@ contract PoolMock is BasePool {
         return (amountsIn, MIN_INIT_BPT > amountsIn[0] ? MIN_INIT_BPT : amountsIn[0]);
     }
 
-    function onAddLiquidity(
-        address,
-        uint256[] memory,
-        uint256[] memory maxAmountsIn,
-        uint256 minBptAmountOut,
-        AddLiquidityKind,
-        bytes memory
-    ) external pure returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
-        return (maxAmountsIn, minBptAmountOut);
-    }
-
     function onAfterAddLiquidity(
         address,
         uint256[] calldata,
@@ -67,17 +56,6 @@ contract PoolMock is BasePool {
         uint256
     ) external view override returns (bool) {
         return !failOnCallback;
-    }
-
-    function onRemoveLiquidity(
-        address,
-        uint256[] memory,
-        uint256[] memory minAmountsOut,
-        uint256 maxBptAmountIn,
-        RemoveLiquidityKind,
-        bytes memory
-    ) external pure override returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
-        return (minAmountsOut, maxBptAmountIn);
     }
 
     function onAfterRemoveLiquidity(
@@ -135,7 +113,12 @@ contract PoolMock is BasePool {
         return scalingFactors;
     }
 
-    function onBeforeAddLiquidity(uint256[] memory, bytes memory) external pure override returns (bool) {
+    function onBeforeAddLiquidity(
+        uint256[] memory,
+        uint256[] memory,
+        uint256,
+        bytes memory
+    ) external pure override returns (bool) {
         return true;
     }
 
@@ -164,7 +147,12 @@ contract PoolMock is BasePool {
         revert CallbackNotImplemented();
     }
 
-    function onBeforeRemoveLiquidity(uint256[] memory, bytes memory) external pure override returns (bool) {
+    function onBeforeRemoveLiquidity(
+        uint256[] memory,
+        uint256[] memory,
+        uint256,
+        bytes memory
+    ) external pure override returns (bool) {
         return true;
     }
 

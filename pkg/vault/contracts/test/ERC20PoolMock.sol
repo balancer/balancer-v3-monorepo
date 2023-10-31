@@ -45,17 +45,6 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         return (amountsIn, amountsIn[0]);
     }
 
-    function onAddLiquidity(
-        address,
-        uint256[] memory,
-        uint256[] memory maxAmountsIn,
-        uint256,
-        AddLiquidityKind,
-        bytes memory
-    ) external pure override returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
-        return (maxAmountsIn, maxAmountsIn[0]);
-    }
-
     function onAfterAddLiquidity(
         address,
         uint256[] calldata,
@@ -64,17 +53,6 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         uint256
     ) external view returns (bool) {
         return !failOnCallback;
-    }
-
-    function onRemoveLiquidity(
-        address,
-        uint256[] memory,
-        uint256[] memory minAmountsOut,
-        uint256 maxBptAmountIn,
-        RemoveLiquidityKind,
-        bytes memory
-    ) external pure override returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
-        return (minAmountsOut, maxBptAmountIn);
     }
 
     function onAfterRemoveLiquidity(
@@ -112,11 +90,21 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
                 : params.amountGiven.divDown(_multiplier);
     }
 
-    function onBeforeAddLiquidity(uint256[] memory, bytes memory) external pure override returns (bool) {
+    function onBeforeAddLiquidity(
+        uint256[] memory,
+        uint256[] memory,
+        uint256,
+        bytes memory
+    ) external pure override returns (bool) {
         return true;
     }
 
-    function onBeforeRemoveLiquidity(uint256[] memory, bytes memory) external pure override returns (bool) {
+    function onBeforeRemoveLiquidity(
+        uint256[] memory,
+        uint256[] memory,
+        uint256,
+        bytes memory
+    ) external pure override returns (bool) {
         return true;
     }
 
