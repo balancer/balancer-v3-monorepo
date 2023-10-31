@@ -747,7 +747,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
             amountsIn = maxAmountsIn;
             bptAmountOut = IBasePool(pool).onAddLiquidityUnbalanced(msg.sender, amountsIn, balances);
-        } else if (kind == AddLiquidityKind.SINGLE_TOKEN_IN_EXACT_OUT) {
+        } else if (kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             _poolConfig[pool].requireAddLiquiditySingleTokenExactOut();
 
             uint256 tokenIndex = InputHelpers.getSingleInputIndex(maxAmountsIn);
@@ -850,7 +850,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
             bptAmountIn = maxBptAmountIn;
             amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, _totalSupply(pool), bptAmountIn);
-        } else if (kind == RemoveLiquidityKind.SINGLE_TOKEN_OUT_EXACT_IN) {
+        } else if (kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN) {
             _poolConfig[pool].requireRemoveLiquiditySingleTokenExactIn();
 
             uint256 tokenIndex = InputHelpers.getSingleInputIndex(minAmountsOut);

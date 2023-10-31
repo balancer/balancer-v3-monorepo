@@ -394,7 +394,7 @@ interface IVault {
     enum AddLiquidityKind {
         PROPORTIONAL,
         UNBALANCED,
-        SINGLE_TOKEN_IN_EXACT_OUT,
+        SINGLE_TOKEN_EXACT_OUT,
         CUSTOM
     }
 
@@ -446,7 +446,7 @@ interface IVault {
 
     enum RemoveLiquidityKind {
         PROPORTIONAL,
-        SINGLE_TOKEN_OUT_EXACT_IN,
+        SINGLE_TOKEN_EXACT_IN,
         SINGLE_TOKEN_EXACT_OUT,
         CUSTOM
     }
