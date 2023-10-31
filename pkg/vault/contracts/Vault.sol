@@ -716,17 +716,17 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     }
 
     // Needed to avoid "stack too deep"
-    struct AddLiquidityLocals {
+    struct SharedLocals {
+        PoolConfig config;
         uint256[] balances;
         uint256[] scalingFactors;
         uint256[] upscaledBalances;
-        PoolConfig config;
     }
 
-    function _populateAddLiquidityVars(
+    function _populateSharedLocals(
         address pool,
         IERC20[] memory tokens
-    ) private view returns (AddLiquidityLocals memory vars) {
+    ) private view returns (SharedLocals memory vars) {
         vars.balances = _validateTokensAndGetBalances(pool, tokens);
         vars.config = _poolConfig[pool].toPoolConfig();
         vars.scalingFactors = PoolConfigLib.getScalingFactors(vars.config, tokens.length);
@@ -756,7 +756,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         InputHelpers.ensureInputLengthMatch(numTokens, maxAmountsIn.length);
 
-        AddLiquidityLocals memory vars = _populateAddLiquidityVars(pool, tokens);
+        SharedLocals memory vars = _populateSharedLocals(pool, tokens);
 
         maxAmountsIn.upscaleArray(vars.scalingFactors);
 
@@ -827,40 +827,37 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         withInitializedPool(pool)
         returns (uint256[] memory amountsOut, uint256 bptAmountIn)
     {
-        InputHelpers.ensureInputLengthMatch(tokens.length, minAmountsOut.length);
+        uint256 numTokens = tokens.length;
 
-        // We first check that the caller passed the Pool's registered tokens in the correct order, and retrieve the
-        // current balance for each.
-        uint256[] memory balances = _validateTokensAndGetBalances(pool, tokens);
+        InputHelpers.ensureInputLengthMatch(numTokens, minAmountsOut.length);
 
-        // TODO Scaling here
-        // uint256[] memory scalingFactors = PoolConfigLib.getScalingFactors(config, tokens.length);
-        // balances.upscaleArray(scalingFactors);
-        // minAmountsOut.upscaleArray(scalingFactors);
+        SharedLocals memory vars = _populateSharedLocals(pool, tokens);
+
+        minAmountsOut.upscaleArray(vars.scalingFactors);
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked,
         // and its final balances are computed
         (amountsOut, bptAmountIn) = IBasePool(pool).onRemoveLiquidity(
             msg.sender,
-            balances,
+            vars.upscaledBalances,
             minAmountsOut,
             maxBptAmountIn,
             kind,
             userData
         );
 
-        // amountsOut are amounts exiting the Pool, so we round down.
-        // amountsOut.downscaleDownArray(scalingFactors);
-
-        uint256[] memory finalBalances = new uint256[](balances.length);
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            uint256 amountOut = amountsOut[i];
+        uint256[] memory finalBalances = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; ++i) {
+            // amountsOut are amounts exiting the Pool, so we round down.
+            // Need amountsOut scaled for the `onAfterRemoveLiquidity` callback,
+            // so downscale each amount individually here to compute unscaled `finalBalances`.
+            uint256 amountOut = amountsOut[i].downscaleDown(vars.scalingFactors[i]);
 
             // Credit token[i] for amountIn
             _supplyCredit(tokens[i], amountOut, msg.sender);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
-            finalBalances[i] = balances[i] - amountOut;
+            finalBalances[i] = vars.balances[i] - amountOut;
         }
 
         // Store the new pool balances.
@@ -877,13 +874,22 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         // as the pool's math relies on totalSupply.
         _burn(address(pool), from, bptAmountIn);
 
-        if (_poolConfig[pool].shouldCallAfterRemoveLiquidity()) {
+        if (vars.config.callbacks.shouldCallAfterRemoveLiquidity) {
             if (
-                IBasePool(pool).onAfterRemoveLiquidity(msg.sender, balances, bptAmountIn, userData, amountsOut) == false
+                IBasePool(pool).onAfterRemoveLiquidity(
+                    msg.sender,
+                    vars.upscaledBalances,
+                    bptAmountIn,
+                    userData,
+                    amountsOut
+                ) == false
             ) {
                 revert CallbackFailed();
             }
         }
+
+        // After the callback, we can downscale `amountsOut` for the event.
+        amountsOut.downscaleDownArray(vars.scalingFactors);
 
         emit PoolBalanceChanged(
             pool,
