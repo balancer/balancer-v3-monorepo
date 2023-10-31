@@ -417,18 +417,6 @@ interface IVault {
     /// @dev The user attempted to swap a token not in the pool.
     error TokenNotRegistered();
 
-    /// @dev Pool does not support adding liquidity proportionally.
-    error DoesNotSupportAddLiquidityProportional(address pool);
-
-    /// @dev Pool does not support adding liquidity with unbalanced tokens in.
-    error DoesNotSupportAddLiquidityUnbalanced(address pool);
-
-    /// @dev Pool does not support adding liquidity with a single asset, specifying exact pool tokens out.
-    error DoesNotSupportAddLiquiditySingleTokenExactOut(address pool);
-
-    /// @dev Pool does not support adding liquidity with a customized input.
-    error DoesNotSupportAddLiquidityCustom(address pool);
-
     /**
      * @notice Adds liquidity to a pool.
      * @dev Caution should be exercised when adding liquidity because the Vault has the capability
@@ -465,18 +453,6 @@ interface IVault {
 
     /// @dev
     error InvalidRemoveLiquidityKind();
-
-    /// @dev Pool does not support removing liquidity proportionally.
-    error DoesNotSupportRemoveLiquidityProportional(address pool);
-
-    /// @dev Pool does not support removing liquidity with unbalanced tokens out.
-    error DoesNotSupportRemoveLiquidityUnbalanced(address pool);
-
-    /// @dev Pool does not support removing liquidity with a single asset, specifying exact pool tokens in.
-    error DoesNotSupportRemoveLiquiditySingleTokenExactIn(address pool);
-
-    /// @dev Pool does not support removing liquidity with a customized input.
-    error DoesNotSupportRemoveLiquidityCustom(address pool);
 
     /**
      * @notice Removes liquidity from a pool.
