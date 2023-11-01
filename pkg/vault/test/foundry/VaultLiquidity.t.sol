@@ -38,6 +38,10 @@ contract VaultLiquidityTest is Test {
     uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
 
+    // Tolerances: 0.1 cents.
+    uint256 constant USDC_TOLERANCE = 1e6 / 1000;
+    uint256 constant DAI_TOLERANCE = 1e18 / 1000;
+
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
@@ -74,12 +78,12 @@ contract VaultLiquidityTest is Test {
         _mockInitialize(bob);
 
         vm.startPrank(alice);
-        (uint256[] memory amountsIn, uint256 bptAmountOut) = router.addLiquidity(
+        (uint256[] memory amountsIn, uint256 bptAmountOut, ) = router.addLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             DAI_AMOUNT_IN,
-            IBasePool.AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+            IVault.AddLiquidityKind.UNBALANCED,
             bytes("")
         );
         vm.stopPrank();
@@ -115,7 +119,7 @@ contract VaultLiquidityTest is Test {
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             DAI_AMOUNT_IN,
-            IBasePool.AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+            IVault.AddLiquidityKind.UNBALANCED,
             bytes("")
         );
     }
@@ -131,39 +135,39 @@ contract VaultLiquidityTest is Test {
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             DAI_AMOUNT_IN,
-            IBasePool.AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+            IVault.AddLiquidityKind.UNBALANCED,
             bytes("")
         );
 
-        (uint256[] memory amountsOut, ) = router.removeLiquidity(
+        (, uint256[] memory amountsOut, ) = router.removeLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             DAI_AMOUNT_IN,
-            IBasePool.RemoveLiquidityKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+            [uint256(DAI_AMOUNT_IN) - 1e18 / 100, uint256(USDC_AMOUNT_IN) - 1e6 / 100].toMemoryArray(),
+            IVault.RemoveLiquidityKind.PROPORTIONAL,
             bytes("")
         );
 
         vm.stopPrank();
 
-        // asssets are transferred from Alice
-        assertEq(USDC.balanceOf(alice), USDC_AMOUNT_IN);
-        assertEq(DAI.balanceOf(alice), DAI_AMOUNT_IN);
+        // assets are transferred back to Alice
+        assertApproxEqAbs(USDC.balanceOf(alice), USDC_AMOUNT_IN, USDC_TOLERANCE);
+        assertApproxEqAbs(DAI.balanceOf(alice), DAI_AMOUNT_IN, DAI_TOLERANCE);
 
-        // assets are stored in the Vault
-        assertEq(USDC.balanceOf(address(vault)), 0);
-        assertEq(DAI.balanceOf(address(vault)), 0);
+        // assets are no longer in the vault
+        assertApproxEqAbs(USDC.balanceOf(address(vault)), 0, USDC_TOLERANCE);
+        assertApproxEqAbs(DAI.balanceOf(address(vault)), 0, DAI_TOLERANCE);
 
-        // assets are deposited to the pool
+        // assets are not in the pool
         (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
-        assertEq(balances[0], 0);
-        assertEq(balances[1], 0);
+        assertApproxEqAbs(balances[0], 0, DAI_TOLERANCE);
+        assertApproxEqAbs(balances[1], 0, USDC_TOLERANCE);
 
         // amountsOut are correct
-        assertEq(amountsOut[0], DAI_AMOUNT_IN);
-        assertEq(amountsOut[1], USDC_AMOUNT_IN);
+        assertApproxEqAbs(amountsOut[0], DAI_AMOUNT_IN, DAI_TOLERANCE);
+        assertApproxEqAbs(amountsOut[1], USDC_AMOUNT_IN, USDC_TOLERANCE);
 
-        // should burn correct amount of BPT tokens
+        // Alice has burnt the correct amount of BPT
         assertEq(pool.balanceOf(alice), 0);
     }
 
@@ -174,9 +178,9 @@ contract VaultLiquidityTest is Test {
         router.removeLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             DAI_AMOUNT_IN,
-            IBasePool.RemoveLiquidityKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
+            IVault.RemoveLiquidityKind.PROPORTIONAL,
             bytes("")
         );
     }

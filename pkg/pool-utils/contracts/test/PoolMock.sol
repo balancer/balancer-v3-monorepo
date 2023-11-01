@@ -124,10 +124,10 @@ contract PoolMock is BasePool {
 
     function onAddLiquidityUnbalanced(
         address,
-        uint256[] memory,
+        uint256[] memory exactAmountsIn,
         uint256[] memory
     ) external pure override returns (uint256) {
-        revert CallbackNotImplemented();
+        return exactAmountsIn[0];
     }
 
     function onAddLiquiditySingleTokenExactOut(
