@@ -359,6 +359,82 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         return true;
     }
 
+    // Needed to avoid "stack too deep"
+    struct SharedLocals {
+        PoolConfig config;
+        uint256[] balances;
+        uint256[] scalingFactors;
+        uint256[] upscaledBalances;
+    }
+
+    // For add/remove liquidity
+    function _populateSharedLocals(
+        address pool,
+        IERC20[] memory tokens
+    ) private view returns (SharedLocals memory vars) {
+        vars.balances = _validateTokensAndGetBalances(pool, tokens);
+        vars.config = _poolConfig[pool].toPoolConfig();
+        vars.scalingFactors = PoolConfigLib.getScalingFactors(vars.config, tokens.length);
+        vars.upscaledBalances = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            vars.upscaledBalances[i] = vars.balances[i].upscale(vars.scalingFactors[i]);
+        }
+    }
+
+    // Needed to avoid "stack too deep"
+    struct SwapSharedLocals {
+        SharedLocals common;
+        uint256 numTokens;
+        uint256 indexIn;
+        uint256 indexOut;
+        uint256 tokenInBalance;
+        uint256 tokenOutBalance;
+    }
+
+    function _populateSharedSwapLocals(
+        SwapParams memory params
+    ) private view returns (SwapSharedLocals memory vars, EnumerableMap.IERC20ToUint256Map storage poolBalances) {
+        poolBalances = _poolTokenBalances[params.pool];
+        vars.numTokens = poolBalances.length();
+        vars.common.config = _poolConfig[params.pool].toPoolConfig();
+        vars.common.scalingFactors = PoolConfigLib.getScalingFactors(vars.common.config, vars.numTokens);
+        vars.common.balances = new uint256[](vars.numTokens);
+        vars.common.upscaledBalances = new uint256[](vars.numTokens);
+        for (uint256 i = 0; i < vars.numTokens; i++) {
+            vars.common.balances[i] = poolBalances.unchecked_valueAt(i);
+            vars.common.upscaledBalances[i] = poolBalances.unchecked_valueAt(i).upscale(vars.common.scalingFactors[i]);
+        }
+
+        // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value for non-existence.
+        vars.indexIn = poolBalances.unchecked_indexOf(params.tokenIn);
+        vars.indexOut = poolBalances.unchecked_indexOf(params.tokenOut);
+
+        // If either are zero, revert because the token wasn't registered to this pool.
+        if (vars.indexIn == 0 || vars.indexOut == 0) {
+            // We require the pool to be initialized, which means it's also registered.
+            // This can only happen if the tokens are not registered.
+            revert TokenNotRegistered();
+        }
+
+        // Convert to regular 0-based indices now, since we've established the tokens are valid.
+        unchecked {
+            vars.indexIn -= 1;
+            vars.indexOut -= 1;
+        }
+
+        for (uint256 i = 0; i < vars.numTokens; i++) {
+            // We know from the above checks that `i` is a valid token index and can use `unchecked_valueAt`
+            // to save storage reads.
+            uint256 balance = poolBalances.unchecked_valueAt(i);
+
+            if (i == vars.indexIn) {
+                vars.tokenInBalance = balance;
+            } else if (i == vars.indexOut) {
+                vars.tokenOutBalance = balance;
+            }
+        }
+    }
+
     /*******************************************************************************
                                           Swaps
     *******************************************************************************/
@@ -381,47 +457,14 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             revert CannotSwapSameToken();
         }
 
-        // We access both token indexes without checking existence, because we will do it manually immediately after.
-        EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolTokenBalances[params.pool];
-        uint256 indexIn = poolBalances.unchecked_indexOf(params.tokenIn);
-        uint256 indexOut = poolBalances.unchecked_indexOf(params.tokenOut);
+        (
+            SwapSharedLocals memory vars,
+            EnumerableMap.IERC20ToUint256Map storage poolBalances
+        ) = _populateSharedSwapLocals(params);
 
-        if (indexIn == 0 || indexOut == 0) {
-            // We require the pool to be initialized, which means it's also registered.
-            // This can only happen if the tokens are not registered.
-            revert TokenNotRegistered();
-        }
-
-        // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value - because these are valid,
-        // we can undo this.
-        indexIn -= 1;
-        indexOut -= 1;
-
-        uint256 tokenInBalance;
-        uint256 tokenOutBalance;
-
-        uint256[] memory currentBalances = new uint256[](poolBalances.length());
-
-        //TODO scaling here
-        //PoolConfig memory config = _poolConfig[params.pool].toPoolConfig();
-        //uint256[] memory scalingFactors = PoolConfigLib.getScalingFactors(config, poolBalances.length());
-
-        for (uint256 i = 0; i < poolBalances.length(); i++) {
-            // Because the iteration is bounded by `tokenAmount`, and no tokens are registered or deregistered here, we
-            // know `i` is a valid token index and can use `unchecked_valueAt` to save storage reads.
-            uint256 balance = poolBalances.unchecked_valueAt(i);
-
-            currentBalances[i] = balance;
-
-            if (i == indexIn) {
-                tokenInBalance = balance;
-            } else if (i == indexOut) {
-                tokenOutBalance = balance;
-            }
-        }
-
-        // upscale token balances
-        //TODO currentBalances.upscaleArray(scalingFactors);
+        uint256 upscaledAmountGiven = params.amountGiven.upscale(
+            vars.common.scalingFactors[params.kind == SwapKind.GIVEN_IN ? vars.indexIn : vars.indexOut]
+        );
 
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
         amountCalculated = IBasePool(params.pool).onSwap(
@@ -429,38 +472,38 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
                 kind: params.kind,
                 tokenIn: params.tokenIn,
                 tokenOut: params.tokenOut,
-                amountGiven: params.amountGiven,
-                //TODO amountGiven.upscale(scalingFactors[params.kind == SwapKind.GIVEN_IN ? indexIn : indexOut]),
-                balances: currentBalances,
-                indexIn: indexIn,
-                indexOut: indexOut,
+                amountGiven: upscaledAmountGiven,
+                balances: vars.common.upscaledBalances,
+                indexIn: vars.indexIn,
+                indexOut: vars.indexOut,
                 sender: msg.sender,
                 userData: params.userData
             })
         );
 
-        // Downscale amount out
-        //TODO amountCalculated = params.kind == SwapKind.GIVEN_IN ?
-        // amountCalculated.downscaleDown(indexOut) : amountCalculated.downscaleUp(indexIn);
+        uint256 downscaledAmountCalculated = params.kind == SwapKind.GIVEN_IN
+            ? amountCalculated.downscaleDown(vars.common.scalingFactors[vars.indexOut])
+            : amountCalculated.downscaleUp(vars.common.scalingFactors[vars.indexIn]);
 
         (amountIn, amountOut) = params.kind == SwapKind.GIVEN_IN
-            ? (params.amountGiven, amountCalculated)
-            : (amountCalculated, params.amountGiven);
+            ? (params.amountGiven, downscaledAmountCalculated)
+            : (downscaledAmountCalculated, params.amountGiven);
 
-        tokenInBalance = tokenInBalance + amountIn;
-        tokenOutBalance = tokenOutBalance - amountOut;
-
-        // Because no tokens were registered or deregistered between now or when we retrieved the indexes for
-        // 'token in' and 'token out', we can use `unchecked_setAt` to save storage reads.
-        poolBalances.unchecked_setAt(indexIn, tokenInBalance);
-        poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
+        // Use `unchecked_setAt` to save storage reads.
+        poolBalances.unchecked_setAt(vars.indexIn, vars.tokenInBalance + amountIn);
+        poolBalances.unchecked_setAt(vars.indexOut, vars.tokenOutBalance - amountOut);
 
         // Account amountIn of tokenIn
         _takeDebt(params.tokenIn, amountIn, msg.sender);
         // Account amountOut of tokenOut
         _supplyCredit(params.tokenOut, amountOut, msg.sender);
 
-        if (_poolConfig[params.pool].shouldCallAfterSwap()) {
+        if (vars.common.config.callbacks.shouldCallAfterSwap) {
+            // Set to upscaled values for the callback. (We need unscaled amountIn/Out for the event.)
+            (uint256 upscaledAmountIn, uint256 upscaledAmountOut) = params.kind == SwapKind.GIVEN_IN
+                ? (upscaledAmountGiven, amountCalculated)
+                : (amountCalculated, upscaledAmountGiven);
+
             // if callback is enabled, then update balances
             if (
                 IBasePool(params.pool).onAfterSwap(
@@ -468,10 +511,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
                         kind: params.kind,
                         tokenIn: params.tokenIn,
                         tokenOut: params.tokenOut,
-                        amountIn: amountIn,
-                        amountOut: amountOut,
-                        tokenInBalance: tokenInBalance,
-                        tokenOutBalance: tokenOutBalance,
+                        amountIn: upscaledAmountIn,
+                        amountOut: upscaledAmountOut,
+                        tokenInBalance: vars.common.upscaledBalances[vars.indexIn] + upscaledAmountIn,
+                        tokenOutBalance: vars.common.upscaledBalances[vars.indexOut] - upscaledAmountOut,
                         sender: msg.sender,
                         userData: params.userData
                     }),
@@ -713,27 +756,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         emit PoolInitialized(pool);
 
         emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
-    }
-
-    // Needed to avoid "stack too deep"
-    struct SharedLocals {
-        PoolConfig config;
-        uint256[] balances;
-        uint256[] scalingFactors;
-        uint256[] upscaledBalances;
-    }
-
-    function _populateSharedLocals(
-        address pool,
-        IERC20[] memory tokens
-    ) private view returns (SharedLocals memory vars) {
-        vars.balances = _validateTokensAndGetBalances(pool, tokens);
-        vars.config = _poolConfig[pool].toPoolConfig();
-        vars.scalingFactors = PoolConfigLib.getScalingFactors(vars.config, tokens.length);
-        vars.upscaledBalances = new uint256[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
-            vars.upscaledBalances[i] = vars.balances[i].upscale(vars.scalingFactors[i]);
-        }
     }
 
     /// @inheritdoc IVault

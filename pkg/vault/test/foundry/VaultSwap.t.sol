@@ -91,8 +91,6 @@ contract VaultSwapTest is Test {
             bytes("")
         );
 
-        pool.setMultiplier(1e30);
-
         vm.prank(bob);
         router.swap(
             IVault.SwapKind.GIVEN_IN,
