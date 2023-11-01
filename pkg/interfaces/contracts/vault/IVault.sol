@@ -424,8 +424,8 @@ interface IVault {
      *
      * @param pool Address of the pool
      * @param to  Address of user to mint to
-     * @param maxAmountsIn Maximum amounts of input assets
-     * @param minBptAmountOut Minimum output pool token amount
+     * @param maxAmountsIn Maximum amounts of input tokens
+     * @param minBptAmountOut Minimum amount of output pool tokens
      * @param kind Add liquidity kind
      * @param userData Additional (optional) user data
      * @return amountsIn Actual amounts of input assets
@@ -462,8 +462,8 @@ interface IVault {
      *
      * @param pool Address of the pool
      * @param from Address of user to burn from
-     * @param minAmountsOut Minimum amounts of output assets
-     * @param maxBptAmountIn Input pool token amount
+     * @param minAmountsOut Minimum amounts of output tokens
+     * @param maxBptAmountIn Maximum amount of input pool tokens
      * @param kind Remove liquidity kind
      * @param userData Additional (optional) user data
      * @return amountsOut Actual amounts of output assets

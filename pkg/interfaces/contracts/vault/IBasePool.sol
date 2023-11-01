@@ -85,6 +85,8 @@ interface IBasePool {
     /**
      * @notice Add liquidity to the pool with a custom handler.
      * @param sender Address of the sender
+     * @param maxAmountsIn Maximum amounts of input tokens
+     * @param minBptAmountOut Minimum amount of output pool tokens
      * @param userData Arbitrary data with the encoded request
      * @param currentBalances Current pool balances, in the same order as the registered pool tokens
      * @return amountsIn Amount of tokens required as input, in the same order as the registered pool tokens
@@ -93,6 +95,8 @@ interface IBasePool {
      */
     function onAddLiquidityCustom(
         address sender,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
         bytes memory userData,
         uint256[] memory currentBalances
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
@@ -154,6 +158,8 @@ interface IBasePool {
     /**
      * @notice Remove liquidity from the pool with a custom handler.
      * @param sender Address of the sender
+     * @param minAmountsOut Minimum amounts of output tokens
+     * @param maxBptAmountIn Maximum amount of input pool tokens
      * @param userData Arbitrary data with the encoded request
      * @param currentBalances Current pool balances, in the same order as the registered pool tokens
      * @return amountsOut Amount of tokens to receive, in the same order as the registered pool tokens
@@ -162,6 +168,8 @@ interface IBasePool {
      */
     function onRemoveLiquidityCustom(
         address sender,
+        uint256[] memory minAmountsOut,
+        uint256 maxBptAmountIn,
         bytes memory userData,
         uint256[] memory currentBalances
     ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn, bytes memory returnData);

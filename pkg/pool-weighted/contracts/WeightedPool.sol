@@ -366,6 +366,8 @@ contract WeightedPool is BasePool {
 
     function onAddLiquidityCustom(
         address,
+        uint256[] memory,
+        uint256,
         bytes memory,
         uint256[] memory
     ) external pure override returns (uint256[] memory, uint256, bytes memory) {
@@ -437,6 +439,8 @@ contract WeightedPool is BasePool {
 
     function onRemoveLiquidityCustom(
         address,
+        uint256[] memory,
+        uint256,
         bytes memory,
         uint256[] memory
     ) external pure override returns (uint256[] memory, uint256, bytes memory) {

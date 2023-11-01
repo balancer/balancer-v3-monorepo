@@ -770,6 +770,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
             (amountsIn, bptAmountOut, returnData) = IBasePool(pool).onAddLiquidityCustom(
                 msg.sender,
+                maxAmountsIn,
+                minBptAmountOut,
                 userData,
                 balances
             );
@@ -896,6 +898,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
             (amountsOut, bptAmountIn, returnData) = IBasePool(pool).onRemoveLiquidityCustom(
                 msg.sender,
+                minAmountsOut,
+                maxBptAmountIn,
                 userData,
                 balances
             );
