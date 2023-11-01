@@ -739,17 +739,17 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         balances = _beforeAddLiquidity(pool, balances, maxAmountsIn, minBptAmountOut, userData);
 
         if (kind == AddLiquidityKind.PROPORTIONAL) {
-            _poolConfig[pool].requireAddLiquidityProportional();
+            _poolConfig[pool].requireSupportsAddLiquidityProportional();
 
             bptAmountOut = minBptAmountOut;
             amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, _totalSupply(pool), bptAmountOut);
         } else if (kind == AddLiquidityKind.UNBALANCED) {
-            _poolConfig[pool].requireAddLiquidityUnbalanced();
+            _poolConfig[pool].requireSupportsAddLiquidityUnbalanced();
 
             amountsIn = maxAmountsIn;
             bptAmountOut = IBasePool(pool).onAddLiquidityUnbalanced(msg.sender, amountsIn, balances);
         } else if (kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
-            _poolConfig[pool].requireAddLiquiditySingleTokenExactOut();
+            _poolConfig[pool].requireSupportsAddLiquiditySingleTokenExactOut();
 
             uint256 tokenIndex = InputHelpers.getSingleInputIndex(maxAmountsIn);
             bptAmountOut = minBptAmountOut;
@@ -763,7 +763,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             amountsIn = maxAmountsIn;
             amountsIn[tokenIndex] = amountIn;
         } else if (kind == AddLiquidityKind.CUSTOM) {
-            _poolConfig[pool].requireAddLiquidityCustom();
+            _poolConfig[pool].requireSupportsAddLiquidityCustom();
 
             (amountsIn, bptAmountOut, returnData) = IBasePool(pool).onAddLiquidityCustom(
                 msg.sender,
@@ -854,12 +854,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         balances = _beforeRemoveLiquidity(pool, balances, minAmountsOut, maxBptAmountIn, userData);
 
         if (kind == RemoveLiquidityKind.PROPORTIONAL) {
-            _poolConfig[pool].requireRemoveLiquidityProportional();
+            _poolConfig[pool].requireSupportsRemoveLiquidityProportional();
 
             bptAmountIn = maxBptAmountIn;
             amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, _totalSupply(pool), bptAmountIn);
         } else if (kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN) {
-            _poolConfig[pool].requireRemoveLiquiditySingleTokenExactIn();
+            _poolConfig[pool].requireSupportsRemoveLiquiditySingleTokenExactIn();
 
             uint256 tokenIndex = InputHelpers.getSingleInputIndex(minAmountsOut);
             bptAmountIn = maxBptAmountIn;
@@ -874,7 +874,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             amountsOut = minAmountsOut;
             amountsOut[tokenIndex] = amountOut;
         } else if (kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
-            _poolConfig[pool].requireRemoveLiquiditySingleTokenExactOut();
+            _poolConfig[pool].requireSupportsRemoveLiquiditySingleTokenExactOut();
 
             uint256 tokenIndex = InputHelpers.getSingleInputIndex(minAmountsOut);
             amountsOut = minAmountsOut;
@@ -886,7 +886,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
                 balances
             );
         } else if (kind == RemoveLiquidityKind.CUSTOM) {
-            _poolConfig[pool].requireRemoveLiquidityCustom();
+            _poolConfig[pool].requireSupportsRemoveLiquidityCustom();
 
             (amountsOut, bptAmountIn, returnData) = IBasePool(pool).onRemoveLiquidityCustom(
                 msg.sender,

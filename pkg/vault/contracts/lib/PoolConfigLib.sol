@@ -122,7 +122,7 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(ADD_LIQUIDITY_PROPORTIONAL_OFFSET);
     }
 
-    function requireAddLiquidityProportional(PoolConfigBits config) internal pure {
+    function requireSupportsAddLiquidityProportional(PoolConfigBits config) internal pure {
         if (config.supportsAddLiquidityProportional() == false) {
             revert DoesNotSupportAddLiquidityProportional();
         }
@@ -132,7 +132,7 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(ADD_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET);
     }
 
-    function requireAddLiquiditySingleTokenExactOut(PoolConfigBits config) internal pure {
+    function requireSupportsAddLiquiditySingleTokenExactOut(PoolConfigBits config) internal pure {
         if (config.supportsAddLiquiditySingleTokenExactOut() == false) {
             revert DoesNotSupportAddLiquiditySingleTokenExactOut();
         }
@@ -142,7 +142,7 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(ADD_LIQUIDITY_UNBALANCED_OFFSET);
     }
 
-    function requireAddLiquidityUnbalanced(PoolConfigBits config) internal pure {
+    function requireSupportsAddLiquidityUnbalanced(PoolConfigBits config) internal pure {
         if (config.supportsAddLiquidityUnbalanced() == false) {
             revert DoesNotSupportAddLiquidityUnbalanced();
         }
@@ -152,7 +152,7 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(ADD_LIQUIDITY_CUSTOM_OFFSET);
     }
 
-    function requireAddLiquidityCustom(PoolConfigBits config) internal pure {
+    function requireSupportsAddLiquidityCustom(PoolConfigBits config) internal pure {
         if (config.supportsAddLiquidityCustom() == false) {
             revert DoesNotSupportAddLiquidityCustom();
         }
@@ -162,7 +162,7 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(REMOVE_LIQUIDITY_PROPORTIONAL_OFFSET);
     }
 
-    function requireRemoveLiquidityProportional(PoolConfigBits config) internal pure {
+    function requireSupportsRemoveLiquidityProportional(PoolConfigBits config) internal pure {
         if (config.supportsRemoveLiquidityProportional() == false) {
             revert DoesNotSupportRemoveLiquidityProportional();
         }
@@ -172,7 +172,7 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET);
     }
 
-    function requireRemoveLiquiditySingleTokenExactIn(PoolConfigBits config) internal pure {
+    function requireSupportsRemoveLiquiditySingleTokenExactIn(PoolConfigBits config) internal pure {
         if (config.supportsRemoveLiquiditySingleTokenExactIn() == false) {
             revert DoesNotSupportRemoveLiquiditySingleTokenExactIn();
         }
@@ -182,7 +182,7 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET);
     }
 
-    function requireRemoveLiquiditySingleTokenExactOut(PoolConfigBits config) internal pure {
+    function requireSupportsRemoveLiquiditySingleTokenExactOut(PoolConfigBits config) internal pure {
         if (config.supportsRemoveLiquiditySingleTokenExactOut() == false) {
             revert DoesNotSupportRemoveLiquiditySingleTokenExactOut();
         }
@@ -192,7 +192,7 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(REMOVE_LIQUIDITY_CUSTOM_OFFSET);
     }
 
-    function requireRemoveLiquidityCustom(PoolConfigBits config) internal pure {
+    function requireSupportsRemoveLiquidityCustom(PoolConfigBits config) internal pure {
         if (config.supportsRemoveLiquidityCustom() == false) {
             revert DoesNotSupportRemoveLiquidityCustom();
         }
