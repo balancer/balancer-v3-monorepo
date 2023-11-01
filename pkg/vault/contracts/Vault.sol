@@ -490,7 +490,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         if (_protocolSwapFeePercentage > 0 && vars.swapFee > 0) {
             protocolSwapFee = vars.swapFee.mulUp(_protocolSwapFeePercentage, PoolConfigLib.SWAP_FEE_PRECISION);
             _protocolSwapFees[params.tokenIn] += protocolSwapFee;
-            emit ProtocolSwapFee(params.pool, params.tokenIn, protocolSwapFee);
         }
 
         // We charge swap fee on amountIn
@@ -954,8 +953,32 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
     }
 
+    /// @inheritdoc IVault
     function getProtocolSwapFeePercentage() external view returns (uint24) {
         return _protocolSwapFeePercentage;
+    }
+
+    /// @inheritdoc IVault
+    function getProtocolSwapFee(address token) external view returns(uint256) {
+        return _protocolSwapFees[IERC20(token)];
+    }
+
+    /// @inheritdoc IVault
+    function collectProtocolFees(IERC20[] calldata tokens) external authenticate {
+        for (uint256 index = 0; index < tokens.length; index++) {
+            IERC20 token = tokens[index];
+            uint256 amount = _protocolSwapFees[token];
+            // checks
+            if(amount > 0) {
+                // effects
+                // set fees to zero for the token
+                _protocolSwapFees[token] = 0;
+                // interactions
+                token.safeTransfer(msg.sender, amount);
+                // emit an event
+                emit ProtocolFeeCollected(token, amount);
+            }
+        }
     }
 
     /**
@@ -978,13 +1001,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
+    /// @inheritdoc IVault
     function getSwapFeePercentage(address pool) external view returns (uint24) {
         return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFee;
-    }
-
-
-    function getProtocolSwapFee(address token) external view returns(uint256) {
-        return _protocolSwapFees[IERC20(token)];
     }
 
     /*******************************************************************************

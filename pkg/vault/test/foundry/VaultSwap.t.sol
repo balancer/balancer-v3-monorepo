@@ -22,11 +22,8 @@ import { Router } from "../../contracts/Router.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
 contract VaultSwapTest is Test {
-    using AssetHelpers for address;
-    using AssetHelpers for address[];
-    using AssetHelpers for address[];
-    using ArrayHelpers for address[2];
-    using ArrayHelpers for uint256[2];
+    using AssetHelpers for *;
+    using ArrayHelpers for *;
 
     VaultMock vault;
     Router router;
@@ -299,5 +296,47 @@ contract VaultSwapTest is Test {
 
         // protocol fees are accrued
         assertEq(USDC_PROTOCOL_SWAP_FEE, vault.getProtocolSwapFee(address(USDC)));
+    }
+
+
+    function testCollectProtocolFees() public {
+        uint256 USDC_SWAP_FEE = getSwapFee(USDC_AMOUNT_IN, 1);
+        uint256 USDC_PROTOCOL_SWAP_FEE = USDC_SWAP_FEE / 2 + 1;
+
+        USDC.mint(bob, USDC_AMOUNT_IN);
+
+        initPool();
+
+        authorizer.grantRole(vault.getActionId(IVault.setSwapFeePercentage.selector), alice);
+        vm.prank(alice);
+        vault.setSwapFeePercentage(address(pool), 1e4); // %1
+
+        authorizer.grantRole(vault.getActionId(IVault.setProtocolSwapFeePercentage.selector), alice);
+        vm.prank(alice);
+        vault.setProtocolSwapFeePercentage(50e4); // %50
+
+        vm.prank(bob);
+        router.swap(
+            IVault.SwapKind.GIVEN_IN,
+            address(pool),
+            address(USDC).asAsset(),
+            address(DAI).asAsset(),
+            USDC_AMOUNT_IN + USDC_SWAP_FEE,
+            DAI_AMOUNT_IN,
+            type(uint256).max,
+            bytes("")
+        );
+
+        uint256 aliceBalanceBefore = USDC.balanceOf(alice);
+
+        authorizer.grantRole(vault.getActionId(IVault.collectProtocolFees.selector), alice);
+        vm.prank(alice);
+        vault.collectProtocolFees([address(USDC)].toMemoryArray().asIERC20());
+
+        // protocol fees are zero
+        assertEq(0, vault.getProtocolSwapFee(address(USDC)));
+
+        // alice received protocol fees
+        assertEq(USDC.balanceOf(alice), aliceBalanceBefore + (USDC_PROTOCOL_SWAP_FEE));
     }
 }

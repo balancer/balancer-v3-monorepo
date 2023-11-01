@@ -489,13 +489,33 @@ interface IVault {
      * @notice The Protocol swap fee percentage has changed.
      * @param swapFeePercentage The new percentage
      */
-    event ProtocolSwapFeePercentageChanged(uint256 swapFeePercentage);
+    event ProtocolSwapFeePercentageChanged(uint256 indexed swapFeePercentage);
 
     /**
      * @notice Returns current swap fee percentage for the protocol
      * @return Current swap fee percentage for the protocol
      */
     function getProtocolSwapFeePercentage() external view returns (uint24);
+
+    /**
+     * @notice Returns the amount of `token` accumulated in protocol swap fees.
+     * @param token Token address for which fees are accumulated.
+     * @return The amount accumulated.
+     */
+    function getProtocolSwapFee(address token) external view returns(uint256);
+
+    /**
+     * @notice Collects protocol fees for a given array of tokens.
+     * @param tokens Token for which to collect fees.
+     */
+    function collectProtocolFees(IERC20[] calldata tokens) external;
+
+    /**
+     * @notice Logs the amount and token of the collected fee.
+     * @param token Fee token
+     * @param amount Amount collected in the token
+     */
+    event ProtocolFeeCollected(IERC20 indexed token, uint256 indexed amount);
 
     /**
      * @notice Sets new swap fee percentage for the pool.
@@ -508,7 +528,7 @@ interface IVault {
      * @notice The Pool swap fee percentage has changed.
      * @param swapFeePercentage The new percentage
      */
-    event SwapFeePercentageChanged(uint24 swapFeePercentage);
+    event SwapFeePercentageChanged(uint24 indexed swapFeePercentage);
 
     /**
      * @notice Returns current swap fee percentage for the pool.
@@ -517,7 +537,6 @@ interface IVault {
      */
     function getSwapFeePercentage(address pool) external view returns (uint24);
 
-    event ProtocolSwapFee(address pool, IERC20 tokenIn, uint256 protocolSwapFee);
 
     /*******************************************************************************
                                     Queries
