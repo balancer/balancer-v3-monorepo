@@ -25,6 +25,9 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 
+
+import 'forge-std/console2.sol';
+
 contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
@@ -444,13 +447,17 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             }
         }
 
-        if (params.kind == IVault.SwapKind.GIVEN_IN) {
-            // Fees are subtracted before scaling. Round up.
+        if (params.kind == IVault.SwapKind.GIVEN_OUT) {
             uint256 swapFeePercentage = _getSwapFeePercentage(vars.config);
+            // Fees are added after scaling happens. Round up.
             vars.swapFee = swapFeePercentage != 0
-                ? params.amountGiven.mulUp(swapFeePercentage, PoolConfigLib.SWAP_FEE_PRECISION)
+                ? params.amountGiven.divUp(
+                    swapFeePercentage.complement(PoolConfigLib.SWAP_FEE_PRECISION),
+                    PoolConfigLib.SWAP_FEE_PRECISION
+                ) - params.amountGiven 
                 : 0;
         }
+
 
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
         amountCalculated = IBasePool(params.pool).onSwap(
@@ -458,8 +465,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
                 kind: params.kind,
                 tokenIn: params.tokenIn,
                 tokenOut: params.tokenOut,
-                // swapFee would be zero here for GIVEN_OUT
-                amountGiven: params.amountGiven - vars.swapFee,
+                // Add swap fee to the amountGiven to account for the fee taken in GIVEN_OUT swap on tokenOut
+                amountGiven: params.amountGiven + vars.swapFee,
                 balances: currentBalances,
                 indexIn: vars.indexIn,
                 indexOut: vars.indexOut,
@@ -468,18 +475,19 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             })
         );
 
-        if (params.kind == IVault.SwapKind.GIVEN_OUT) {
+        if (params.kind == IVault.SwapKind.GIVEN_IN) {
             uint256 swapFeePercentage = _getSwapFeePercentage(vars.config);
+            // Swap fee is a percentage of the amountCalculated for the GIVEN_IN swap
             // Fees are added after scaling happens. Round up.
             vars.swapFee = swapFeePercentage != 0
-                ? amountCalculated.divUp(
-                    swapFeePercentage.complement(PoolConfigLib.SWAP_FEE_PRECISION),
-                    PoolConfigLib.SWAP_FEE_PRECISION
-                ) - amountCalculated
+                ? amountCalculated.mulUp(swapFeePercentage, PoolConfigLib.SWAP_FEE_PRECISION)
                 : 0;
-            // Should add fee to the amountCalculated beause we have to charge more for GIVEN_OUT swap
-            amountCalculated += vars.swapFee;
+            // Should substract the fee from the amountCalculated for GIVEN_OUT swap
+            console2.log('vars.swapFee:', vars.swapFee);
+            amountCalculated -= vars.swapFee;
+            console2.log('amountCalculated:', amountCalculated);
         }
+
 
         (amountIn, amountOut) = params.kind == SwapKind.GIVEN_IN
             ? (params.amountGiven, amountCalculated)
@@ -489,13 +497,16 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         uint256 protocolSwapFee;
         if (_protocolSwapFeePercentage > 0 && vars.swapFee > 0) {
             protocolSwapFee = vars.swapFee.mulUp(_protocolSwapFeePercentage, PoolConfigLib.SWAP_FEE_PRECISION);
-            _protocolSwapFees[params.tokenIn] += protocolSwapFee;
+            // Always charge fees on tokenOut
+            _protocolSwapFees[params.tokenOut] += protocolSwapFee;
         }
 
-        // We charge swap fee on amountIn
+        console2.log('tokenOutBalance:', tokenOutBalance);
+        console2.log('amountOut:', amountOut);
+        tokenInBalance = tokenInBalance + amountIn;
         // Substruct protocol swap fee from the pool balance
-        tokenInBalance = tokenInBalance + amountIn - protocolSwapFee;
-        tokenOutBalance = tokenOutBalance - amountOut;
+        console2.log('protocolSwapFee:', protocolSwapFee);
+        tokenOutBalance = tokenOutBalance - amountOut - protocolSwapFee;
 
         // Because no tokens were registered or deregistered between now or when we retrieved the indexes for
         // 'token in' and 'token out', we can use `unchecked_setAt` to save storage reads.
@@ -507,6 +518,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         // Account amountOut of tokenOut
         _supplyCredit(params.tokenOut, amountOut, msg.sender);
 
+        console2.log('here');
         if (_poolConfig[params.pool].shouldCallAfterSwap()) {
             // if callback is enabled, then update balances
             if (
