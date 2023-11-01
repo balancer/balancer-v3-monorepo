@@ -735,6 +735,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     {
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
         InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
+        if (kind != AddLiquidityKind.CUSTOM && userData.length > 0) {
+            revert UserDataNotSupported();
+        }
 
         balances = _beforeAddLiquidity(pool, balances, maxAmountsIn, minBptAmountOut, userData);
 
@@ -850,6 +853,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     {
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
         InputHelpers.ensureInputLengthMatch(tokens.length, minAmountsOut.length);
+        if (kind != RemoveLiquidityKind.CUSTOM && userData.length > 0) {
+            revert UserDataNotSupported();
+        }
 
         balances = _beforeRemoveLiquidity(pool, balances, minAmountsOut, maxBptAmountIn, userData);
 

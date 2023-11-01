@@ -604,4 +604,11 @@ interface IVault {
      * Emits an `AuthorizerChanged` event.
      */
     function setAuthorizer(IAuthorizer newAuthorizer) external;
+
+    /*******************************************************************************
+                                Miscellaneous
+    *******************************************************************************/
+
+    /// @dev Optional User Data should be empty in the current add / remove liquidity kind.
+    error UserDataNotSupported();
 }
