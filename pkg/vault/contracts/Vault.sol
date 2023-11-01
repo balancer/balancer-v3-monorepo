@@ -467,7 +467,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         );
 
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
-        amountCalculated = IBasePool(params.pool).onSwap(
+        uint256 upscaledAmountCalculated = IBasePool(params.pool).onSwap(
             IBasePool.SwapParams({
                 kind: params.kind,
                 tokenIn: params.tokenIn,
@@ -481,13 +481,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             })
         );
 
-        uint256 downscaledAmountCalculated = params.kind == SwapKind.GIVEN_IN
-            ? amountCalculated.downscaleDown(vars.common.scalingFactors[vars.indexOut])
-            : amountCalculated.downscaleUp(vars.common.scalingFactors[vars.indexIn]);
+        amountCalculated = params.kind == SwapKind.GIVEN_IN
+            ? upscaledAmountCalculated.downscaleDown(vars.common.scalingFactors[vars.indexOut])
+            : upscaledAmountCalculated.downscaleUp(vars.common.scalingFactors[vars.indexIn]);
 
         (amountIn, amountOut) = params.kind == SwapKind.GIVEN_IN
-            ? (params.amountGiven, downscaledAmountCalculated)
-            : (downscaledAmountCalculated, params.amountGiven);
+            ? (params.amountGiven, amountCalculated)
+            : (amountCalculated, params.amountGiven);
 
         // Use `unchecked_setAt` to save storage reads.
         poolBalances.unchecked_setAt(vars.indexIn, vars.tokenInBalance + amountIn);
@@ -499,10 +499,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         _supplyCredit(params.tokenOut, amountOut, msg.sender);
 
         if (vars.common.config.callbacks.shouldCallAfterSwap) {
-            // Set to upscaled values for the callback. (We need unscaled amountIn/Out for the event.)
+            // Set to upscaled values for the callback.
             (uint256 upscaledAmountIn, uint256 upscaledAmountOut) = params.kind == SwapKind.GIVEN_IN
-                ? (upscaledAmountGiven, amountCalculated)
-                : (amountCalculated, upscaledAmountGiven);
+                ? (upscaledAmountGiven, upscaledAmountCalculated)
+                : (upscaledAmountCalculated, upscaledAmountGiven);
 
             // if callback is enabled, then update balances
             if (
