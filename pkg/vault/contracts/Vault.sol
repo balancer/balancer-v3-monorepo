@@ -959,7 +959,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     }
 
     /// @inheritdoc IVault
-    function getProtocolSwapFee(address token) external view returns(uint256) {
+    function getProtocolSwapFee(address token) external view returns (uint256) {
         return _protocolSwapFees[IERC20(token)];
     }
 
@@ -969,7 +969,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             IERC20 token = tokens[index];
             uint256 amount = _protocolSwapFees[token];
             // checks
-            if(amount > 0) {
+            if (amount > 0) {
                 // effects
                 // set fees to zero for the token
                 _protocolSwapFees[token] = 0;

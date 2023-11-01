@@ -298,7 +298,6 @@ contract VaultSwapTest is Test {
         assertEq(USDC_PROTOCOL_SWAP_FEE, vault.getProtocolSwapFee(address(USDC)));
     }
 
-
     function testCollectProtocolFees() public {
         uint256 USDC_SWAP_FEE = getSwapFee(USDC_AMOUNT_IN, 1);
         uint256 USDC_PROTOCOL_SWAP_FEE = USDC_SWAP_FEE / 2 + 1;
