@@ -8,6 +8,7 @@ import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 
 import { BasePool } from "../BasePool.sol";
@@ -112,5 +113,15 @@ contract PoolMock is BasePool {
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
         return _numTokens;
+    }
+
+    /// @dev Even though pools do not handle scaling, we still need this for the tests.
+    function getScalingFactors() external view returns (uint256[] memory scalingFactors) {
+        (IERC20[] memory tokens, ) = _vault.getPoolTokens(address(this));
+        scalingFactors = new uint256[](tokens.length);
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            scalingFactors[i] = ScalingHelpers.computeScalingFactor(tokens[i]);
+        }
     }
 }
