@@ -50,20 +50,20 @@ contract PoolMock is BasePool {
 
     function onAfterAddLiquidity(
         address,
-        uint256[] calldata,
-        bytes memory,
-        uint256[] calldata,
-        uint256
+        uint256[] memory,
+        uint256,
+        uint256[] memory,
+        bytes memory
     ) external view override returns (bool) {
         return !failOnCallback;
     }
 
     function onAfterRemoveLiquidity(
         address,
-        uint256[] calldata,
         uint256,
-        bytes memory,
-        uint256[] calldata
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
     ) external view override returns (bool) {
         return !failOnCallback;
     }
@@ -115,8 +115,8 @@ contract PoolMock is BasePool {
 
     function onBeforeAddLiquidity(
         uint256[] memory,
-        uint256[] memory,
         uint256,
+        uint256[] memory,
         bytes memory
     ) external pure override returns (bool) {
         return true;
@@ -143,16 +143,16 @@ contract PoolMock is BasePool {
         address,
         uint256[] memory,
         uint256,
-        bytes memory,
-        uint256[] memory
+        uint256[] memory,
+        bytes memory
     ) external pure override returns (uint256[] memory, uint256, bytes memory) {
         revert CallbackNotImplemented();
     }
 
     function onBeforeRemoveLiquidity(
-        uint256[] memory,
-        uint256[] memory,
         uint256,
+        uint256[] memory,
+        uint256[] memory,
         bytes memory
     ) external pure override returns (bool) {
         return true;
@@ -178,11 +178,11 @@ contract PoolMock is BasePool {
 
     function onRemoveLiquidityCustom(
         address,
-        uint256[] memory,
         uint256,
-        bytes memory,
-        uint256[] memory
-    ) external pure override returns (uint256[] memory, uint256, bytes memory) {
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
+    ) external pure override returns (uint256, uint256[] memory, bytes memory) {
         revert CallbackNotImplemented();
     }
 }

@@ -29,7 +29,7 @@ interface IBasePool {
      * @dev The vault enforces that this callback will only be called once.
      * @param maxAmountsIn Maximum amounts of tokens to be added
      * @param userData Additional (optional) data provided by the user
-     * @return amountsIn Actual amounts of tokens added
+     * @return amountsIn Actual amounts of tokens added, in the same order as the tokens registered in the pool
      * @return bptAmountOut Amount of pool tokens minted
      */
     function onInitialize(
@@ -43,21 +43,23 @@ interface IBasePool {
 
     /**
      * @notice Optional callback to be executed before `onAddLiquidity...` callbacks are executed.
-     * @param currentBalances Current pool balances, in the same order as the registered pool tokens
+     * @param maxAmountsIn Maximum amounts of input tokens
+     * @param minBptAmountOut Minimum amount of output pool tokens
+     * @param currentBalances Current pool balances, in the same order as the tokens registered in the pool
      * @param userData Optional, arbitrary data with the encoded request
      */
     function onBeforeAddLiquidity(
-        uint256[] memory currentBalances,
         uint256[] memory maxAmountsIn,
-        uint256 minBptOut,
+        uint256 minBptAmountOut,
+        uint256[] memory currentBalances,
         bytes memory userData
     ) external returns (bool);
 
     /**
      * @notice Add liquidity to the pool specifying exact token amounts in.
      * @param sender Address of the sender
-     * @param exactAmountsIn Exact amounts of tokens to be added, in the same order as the registered pool tokens
-     * @param currentBalances Current pool balances, in the same order as the registered pool tokens
+     * @param exactAmountsIn Exact amounts of tokens to be added, in the same order as the tokens registered in the pool
+     * @param currentBalances Current pool balances, in the same order as the tokens registered in the pool
      * @return bptAmountOut Amount of pool tokens minted in exchange for the added liquidity
      */
     function onAddLiquidityUnbalanced(
@@ -72,7 +74,7 @@ interface IBasePool {
      * @param tokenInIndex Index of the token used to add liquidity, corresponding to the token address in the pool's
      * registered token array
      * @param exactBptAmountOut Exact amount of pool tokens to receive
-     * @param currentBalances Current pool balances, in the same order as the registered pool tokens
+     * @param currentBalances Current pool balances, in the same order as the tokens registered in the pool
      * @return amountIn Amount of tokens required as input
      */
     function onAddLiquiditySingleTokenExactOut(
@@ -85,11 +87,11 @@ interface IBasePool {
     /**
      * @notice Add liquidity to the pool with a custom handler.
      * @param sender Address of the sender
-     * @param maxAmountsIn Maximum amounts of input tokens
+     * @param maxAmountsIn Maximum amounts of input tokens, in the same order as the tokens registered in the pool
      * @param minBptAmountOut Minimum amount of output pool tokens
+     * @param currentBalances Current pool balances, in the same order as the tokens registered in the pool
      * @param userData Arbitrary data with the encoded request
-     * @param currentBalances Current pool balances, in the same order as the registered pool tokens
-     * @return amountsIn Amount of tokens required as input, in the same order as the registered pool tokens
+     * @return amountsIn Amount of tokens required as input, in the same order as the tokens registered in the pool
      * @return bptAmountOut Calculated pool token amount to receive
      * @return returnData Arbitrary data with encoded response from the pool
      */
@@ -97,23 +99,25 @@ interface IBasePool {
         address sender,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
-        bytes memory userData,
-        uint256[] memory currentBalances
+        uint256[] memory currentBalances,
+        bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
     /**
      * @notice Callback after adding liquidity to the pool.
      * @param sender Address of the sender
-     * @param currentBalances Current balances of the tokens
+     * @param amountsIn Actual amounts of tokens added, in the same order as the tokens registered in the pool
+     * @param bptAmountOut Amount of pool tokens minted
+     * @param currentBalances Current pool balances, in the same order as the tokens registered in the pool
      * @param userData Additional (optional) data provided by the user
      * @return success True if the pool wishes to proceed with settlement
      */
     function onAfterAddLiquidity(
         address sender,
-        uint256[] memory currentBalances,
-        bytes memory userData,
         uint256[] memory amountsIn,
-        uint256 bptAmountOut
+        uint256 bptAmountOut,
+        uint256[] memory currentBalances,
+        bytes memory userData
     ) external returns (bool success);
 
     /***************************************************************************
@@ -122,23 +126,25 @@ interface IBasePool {
 
     /**
      * @notice Optional callback to be executed before `onRemoveLiquidity...` callbacks are executed.
-     * @param currentBalances Current pool balances, in the same order as the registered pool tokens
+     * @param maxBptAmountIn Maximum amount of input pool tokens
+     * @param minAmountsOut Minimum amounts of output tokens, in the same order as the tokens registered in the pool
+     * @param currentBalances Current pool balances, in the same order as the tokens registered in the pool
      * @param userData Optional, arbitrary data with the encoded request
      */
     function onBeforeRemoveLiquidity(
-        uint256[] memory currentBalances,
-        uint256[] memory minAmountsOut,
         uint256 maxBptAmountIn,
+        uint256[] memory minAmountsOut,
+        uint256[] memory currentBalances,
         bytes memory userData
     ) external returns (bool);
 
     /**
-     * @notice Remove liquidity from the pool, specifying exact pool token amount out in exchange for a single token.
+     * @notice Remove liquidity from the pool, specifying exact input pool token amount in exchange for a single token.
      * @param sender Address of the sender
      * @param tokenOutIndex Index of the token to receive in exchange for pool tokens, corresponding to the token
      * address in the pool's registered token array
      * @param exactBptAmountIn Exact amount of pool tokens to burn
-     * @param currentBalances Current pool balances, in the same order as the registered pool tokens
+     * @param currentBalances Current pool balances, in the same order as the tokens registered in the pool
      * @return amountOut Amount of tokens out
      */
     function onRemoveLiquiditySingleTokenExactIn(
@@ -148,6 +154,15 @@ interface IBasePool {
         uint256[] memory currentBalances
     ) external returns (uint256 amountOut);
 
+    /**
+     * @notice Remove liquidity from the pool, specifying exact amount out for a single token.
+     * @param sender Address of the sender
+     * @param tokenOutIndex Index of the token to receive in exchange for pool tokens, corresponding to the token
+     * address in the pool's registered token array
+     * @param exactAmountOut Exact amount of tokens to receive
+     * @param currentBalances Current pool balances, in the same order as the tokens registered in the pool
+     * @return bptAmountIn Amount of pool tokens to burn
+     */
     function onRemoveLiquiditySingleTokenExactOut(
         address sender,
         uint256 tokenOutIndex,
@@ -158,35 +173,37 @@ interface IBasePool {
     /**
      * @notice Remove liquidity from the pool with a custom handler.
      * @param sender Address of the sender
-     * @param minAmountsOut Minimum amounts of output tokens
      * @param maxBptAmountIn Maximum amount of input pool tokens
+     * @param minAmountsOut Minimum amounts of output tokens, in the same order as the tokens registered in the pool
+     * @param currentBalances Current pool balances, in the same order as the tokens registered in the pool
      * @param userData Arbitrary data with the encoded request
-     * @param currentBalances Current pool balances, in the same order as the registered pool tokens
-     * @return amountsOut Amount of tokens to receive, in the same order as the registered pool tokens
      * @return bptAmountIn Calculated pool token amount to burn
+     * @return amountsOut Amount of tokens to receive, in the same order as the tokens registered in the pool
      * @return returnData Arbitrary data with encoded response from the pool
      */
     function onRemoveLiquidityCustom(
         address sender,
-        uint256[] memory minAmountsOut,
         uint256 maxBptAmountIn,
-        bytes memory userData,
-        uint256[] memory currentBalances
-    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn, bytes memory returnData);
+        uint256[] memory minAmountsOut,
+        uint256[] memory currentBalances,
+        bytes memory userData
+    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 
     /**
      * @notice Callback after removing liquidity from the pool.
      * @param sender Address of the sender
-     * @param currentBalances Current balances of the tokens
+     * @param bptAmountIn Amount of pool tokens to burn
+     * @param amountsOut Amount of tokens to receive, in the same order as the tokens registered in the pool
+     * @param currentBalances Current pool balances, in the same order as the tokens registered in the pool
      * @param userData Additional (optional) data provided by the user
      * @return success True if the pool wishes to proceed with settlement
      */
     function onAfterRemoveLiquidity(
         address sender,
-        uint256[] memory currentBalances,
         uint256 bptAmountIn,
-        bytes memory userData,
-        uint256[] memory amountsOut
+        uint256[] memory amountsOut,
+        uint256[] memory currentBalances,
+        bytes memory userData
     ) external returns (bool success);
 
     /***************************************************************************

@@ -398,6 +398,7 @@ interface IVault {
         CUSTOM
     }
 
+    /// @dev Add liquidity kind not supported.
     error InvalidAddLiquidityKind();
 
     /**
@@ -430,6 +431,7 @@ interface IVault {
      * @param userData Additional (optional) user data
      * @return amountsIn Actual amounts of input assets
      * @return bptAmountOut Output pool token amount
+     * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function addLiquidity(
         address pool,
@@ -451,7 +453,7 @@ interface IVault {
         CUSTOM
     }
 
-    /// @dev
+    /// @dev Remove liquidity kind not supported.
     error InvalidRemoveLiquidityKind();
 
     /**
@@ -462,21 +464,22 @@ interface IVault {
      *
      * @param pool Address of the pool
      * @param from Address of user to burn from
-     * @param minAmountsOut Minimum amounts of output tokens
      * @param maxBptAmountIn Maximum amount of input pool tokens
+     * @param minAmountsOut Minimum amounts of output tokens
      * @param kind Remove liquidity kind
      * @param userData Additional (optional) user data
-     * @return amountsOut Actual amounts of output assets
      * @return bptAmountIn Actual amount of BPT burnt
+     * @return amountsOut Actual amounts of output assets
+     * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function removeLiquidity(
         address pool,
         address from,
-        uint256[] memory minAmountsOut,
         uint256 maxBptAmountIn,
+        uint256[] memory minAmountsOut,
         RemoveLiquidityKind kind,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn, bytes memory returnData);
+    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 
     /**
      * @notice Remove liquidity from a pool specifying exact pool tokens in, with proportional token amounts out.

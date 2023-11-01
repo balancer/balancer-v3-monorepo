@@ -309,8 +309,8 @@ contract WeightedPool is BasePool {
 
     function onBeforeAddLiquidity(
         uint256[] memory,
-        uint256[] memory,
         uint256,
+        uint256[] memory,
         bytes memory
     ) external override returns (bool) {}
 
@@ -368,8 +368,8 @@ contract WeightedPool is BasePool {
         address,
         uint256[] memory,
         uint256,
-        bytes memory,
-        uint256[] memory
+        uint256[] memory,
+        bytes memory
     ) external pure override returns (uint256[] memory, uint256, bytes memory) {
         revert CallbackNotImplemented();
     }
@@ -379,9 +379,9 @@ contract WeightedPool is BasePool {
     ***************************************************************************/
 
     function onBeforeRemoveLiquidity(
-        uint256[] memory,
-        uint256[] memory,
         uint256,
+        uint256[] memory,
+        uint256[] memory,
         bytes memory
     ) external pure override returns (bool) {
         return true;
@@ -439,11 +439,11 @@ contract WeightedPool is BasePool {
 
     function onRemoveLiquidityCustom(
         address,
-        uint256[] memory,
         uint256,
-        bytes memory,
-        uint256[] memory
-    ) external pure override returns (uint256[] memory, uint256, bytes memory) {
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
+    ) external pure override returns (uint256, uint256[] memory, bytes memory) {
         revert CallbackNotImplemented();
     }
 }

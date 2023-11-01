@@ -38,7 +38,7 @@ interface IRouter {
      * @param minBptAmountOut Minimum pool tokens to be received
      * @param userData Additional (optional) data required for initialization
      * @return amountsIn Actual token amounts transferred (e.g., including fees)
-     * @return bptAmountOut Actual BPT amount minted in exchange for initial liquidity
+     * @return bptAmountOut Actual pool tokens minted in exchange for initial liquidity
      */
     function initialize(
         address pool,
@@ -84,9 +84,11 @@ interface IRouter {
      * @param assets Array of assets to add
      * @param maxAmountsIn Maximum amounts of assets to be added
      * @param minBptAmountOut Minimum pool tokens to be received
+     * @param kind Add liquidity kind
      * @param userData Additional (optional) data required for adding liquidity
      * @return amountsIn Actual amounts of assets added
      * @return bptAmountOut Pool tokens received
+     * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function addLiquidity(
         address pool,
@@ -95,7 +97,7 @@ interface IRouter {
         uint256 minBptAmountOut,
         IVault.AddLiquidityKind kind,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
     /***************************************************************************
                                  Remove Liquidity
@@ -128,19 +130,22 @@ interface IRouter {
      * @notice Removes liquidity from a pool.
      * @param pool Address of the liquidity pool
      * @param assets Array of assets to remove
-     * @param minAmountsOut Minimum amounts of assets to be received
      * @param maxBptAmountIn Pool tokens provided
+     * @param minAmountsOut Minimum amounts of assets to be received
+     * @param kind Remove liquidity kind
      * @param userData Additional (optional) data required for removing liquidity
+     * @return bptAmountIn Actual amount of pool tokens burnt
      * @return amountsOut Actual amounts of assets received
+     * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function removeLiquidity(
         address pool,
         Asset[] memory assets,
-        uint256[] memory minAmountsOut,
         uint256 maxBptAmountIn,
+        uint256[] memory minAmountsOut,
         IVault.RemoveLiquidityKind kind,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
+    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 
     /***************************************************************************
                                        Swaps
@@ -209,9 +214,11 @@ interface IRouter {
      * @param assets Array of assets to add
      * @param maxAmountsIn Maximum amounts of assets to be added
      * @param minBptAmountOut Minimum pool tokens expected
+     * @param kind Add liquidity kind
      * @param userData Additional (optional) data required for the query
      * @return amountsIn Expected amounts of assets to add
      * @return bptAmountOut Expected pool tokens to receive
+     * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function queryAddLiquidity(
         address pool,
@@ -220,25 +227,28 @@ interface IRouter {
         uint256 minBptAmountOut,
         IVault.AddLiquidityKind kind,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
     /**
      * @notice Queries removeLiquidity operation without executing it.
      * @param pool Address of the liquidity pool
      * @param assets Array of assets to remove
-     * @param minAmountsOut Minimum amounts of assets expected
      * @param maxBptAmountIn Pool tokens provided for the query
+     * @param minAmountsOut Minimum amounts of assets expected
+     * @param kind Remove liquidity kind
      * @param userData Additional (optional) data required for the query
+     * @return bptAmountIn Expected amount of pool tokens to burn
      * @return amountsOut Expected amounts of assets to receive
+     * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function queryRemoveLiquidity(
         address pool,
         Asset[] memory assets,
-        uint256[] memory minAmountsOut,
         uint256 maxBptAmountIn,
+        uint256[] memory minAmountsOut,
         IVault.RemoveLiquidityKind kind,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
+    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 
     /**
      * @notice Queries a swap operation without executing it.

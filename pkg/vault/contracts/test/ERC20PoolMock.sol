@@ -47,20 +47,20 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
 
     function onAfterAddLiquidity(
         address,
-        uint256[] calldata,
-        bytes memory,
-        uint256[] calldata,
-        uint256
+        uint256[] memory,
+        uint256,
+        uint256[] memory,
+        bytes memory
     ) external view returns (bool) {
         return !failOnCallback;
     }
 
     function onAfterRemoveLiquidity(
         address,
-        uint256[] calldata,
         uint256,
-        bytes memory,
-        uint256[] calldata
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
     ) external view returns (bool) {
         return !failOnCallback;
     }
@@ -92,17 +92,17 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
 
     function onBeforeAddLiquidity(
         uint256[] memory,
-        uint256[] memory,
         uint256,
+        uint256[] memory,
         bytes memory
     ) external pure override returns (bool) {
         return true;
     }
 
     function onBeforeRemoveLiquidity(
-        uint256[] memory,
-        uint256[] memory,
         uint256,
+        uint256[] memory,
+        uint256[] memory,
         bytes memory
     ) external pure override returns (bool) {
         return true;
@@ -129,8 +129,8 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         address,
         uint256[] memory,
         uint256,
-        bytes memory userData,
-        uint256[] memory currentBalances
+        uint256[] memory currentBalances,
+        bytes memory userData
     ) external pure override returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         amountsIn = currentBalances;
         bptAmountOut = currentBalances[0];
@@ -152,12 +152,12 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
     ) external returns (uint256 bptAmountIn) {}
 
     function onRemoveLiquidityCustom(
-        address sender,
-        uint256[] memory,
+        address,
         uint256,
-        bytes memory userData,
-        uint256[] memory currentBalances
-    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn, bytes memory returnData) {}
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
+    ) external override returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {}
 
     function getPoolTokens() external view returns (IERC20[] memory tokens, uint256[] memory balances) {
         return _vault.getPoolTokens(address(this));

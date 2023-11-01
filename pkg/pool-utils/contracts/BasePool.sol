@@ -78,9 +78,9 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
     function onAfterAddLiquidity(
         address,
         uint256[] memory,
-        bytes memory,
+        uint256,
         uint256[] memory,
-        uint256
+        bytes memory
     ) external view virtual returns (bool) {
         revert CallbackNotImplemented();
     }
@@ -88,10 +88,10 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
     /// @notice Callback performed after removing liquidity. Reverts here if configured but unimplemented.
     function onAfterRemoveLiquidity(
         address,
-        uint256[] memory,
         uint256,
-        bytes memory,
-        uint256[] memory
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
     ) external view virtual returns (bool) {
         revert CallbackNotImplemented();
     }
