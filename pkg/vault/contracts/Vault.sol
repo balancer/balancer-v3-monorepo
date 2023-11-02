@@ -446,7 +446,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         if (params.kind == IVault.SwapKind.GIVEN_OUT) {
             uint256 swapFeePercentage = _getSwapFeePercentage(vars.config);
-            // Fees are added after scaling happens. Round up.
+            // Round up to avoid losses during precision loss.
             vars.swapFee = swapFeePercentage != 0
                 ? params.amountGiven.divUp(
                     swapFeePercentage.complement(PoolConfigLib.SWAP_FEE_PRECISION),
@@ -474,11 +474,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         if (params.kind == IVault.SwapKind.GIVEN_IN) {
             uint256 swapFeePercentage = _getSwapFeePercentage(vars.config);
             // Swap fee is a percentage of the amountCalculated for the GIVEN_IN swap
-            // Fees are added after scaling happens. Round up.
+            // Round up to avoid losses during precision loss.
             vars.swapFee = swapFeePercentage != 0
                 ? amountCalculated.mulUp(swapFeePercentage, PoolConfigLib.SWAP_FEE_PRECISION)
                 : 0;
-            // Should substract the fee from the amountCalculated for GIVEN_OUT swap
+            // Should substract the fee from the amountCalculated for GIVEN_IN swap
             amountCalculated -= vars.swapFee;
         }
 

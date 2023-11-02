@@ -299,6 +299,53 @@ contract VaultSwapTest is Test {
         assertEq(PROTOCOL_SWAP_FEE, vault.getProtocolSwapFee(address(DAI)));
     }
 
+    function testProtocolSwapFeeAccumulation() public {
+        USDC.mint(bob, AMOUNT);
+
+        initPool();
+        setSwapFeePercentage();
+        setProtocolSwapFeePercentage();
+
+        uint256 bobUsdcBeforeSwap = USDC.balanceOf(bob);
+        uint256 bobDaiBeforeSwap = DAI.balanceOf(bob);
+
+        vm.prank(bob);
+        router.swap(
+            IVault.SwapKind.GIVEN_IN,
+            address(pool),
+            address(USDC).asAsset(),
+            address(DAI).asAsset(),
+            AMOUNT / 2,
+            AMOUNT / 2 - SWAP_FEE / 2,
+            type(uint256).max,
+            bytes("")
+        );
+
+        vm.prank(bob);
+        router.swap(
+            IVault.SwapKind.GIVEN_IN,
+            address(pool),
+            address(USDC).asAsset(),
+            address(DAI).asAsset(),
+            AMOUNT / 2,
+            AMOUNT / 2 - SWAP_FEE / 2,
+            type(uint256).max,
+            bytes("")
+        );
+
+        // asssets are transferred to/from Bob
+        assertEq(USDC.balanceOf(bob), bobUsdcBeforeSwap - AMOUNT);
+        assertEq(DAI.balanceOf(bob), bobDaiBeforeSwap + AMOUNT - SWAP_FEE);
+
+        // assets are adjusted in the pool
+        (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
+        assertEq(balances[0], SWAP_FEE - PROTOCOL_SWAP_FEE);
+        assertEq(balances[1], 2 * AMOUNT);
+
+        // protocol fees are accrued
+        assertEq(PROTOCOL_SWAP_FEE, vault.getProtocolSwapFee(address(DAI)));
+    }
+
     function testCollectProtocolFees() public {
         USDC.mint(bob, AMOUNT);
 
