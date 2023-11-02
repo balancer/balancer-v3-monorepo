@@ -918,10 +918,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                                         Pausing
     *******************************************************************************/
 
-    /**
-     * @notice Indicate whether the Vault is paused.
-     * @return True if the Vault is paused
-     */
+    /// @inheritdoc IVault
     function vaultPaused() external view returns (bool) {
         return _isVaultPaused();
     }
@@ -939,20 +936,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         return (_isVaultPaused(), _vaultPauseWindowEndTime, _vaultBufferPeriodEndTime);
     }
 
-    /**
-     * @notice Pause the Vault: an emergency action which disables all operational state-changing functions.
-     * @dev This is a permissioned function that will only work during the Pause Window set during deployment.
-     */
+    /// @inheritdoc IVault
     function pauseVault() external authenticate {
         _ensureVaultNotPaused();
         _setVaultPaused(true);
     }
 
-    /**
-     * @notice Reverse a `pause` operation, and restore the Vault to normal functionality.
-     * @dev This is a permissioned function that will only work on a paused Vault within the Buffer Period set during
-     * deployment. Note that the Vault will automatically unpause after the Buffer Period expires.
-     */
+    /// @inheritdoc IVault
     function unpauseVault() external authenticate {
         _ensureVaultPaused();
         _setVaultPaused(false);
