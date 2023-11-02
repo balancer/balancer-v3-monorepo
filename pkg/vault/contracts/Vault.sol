@@ -15,6 +15,7 @@ import { ITemporarilyPausable } from "@balancer-labs/v3-interfaces/contracts/vau
 import { ReentrancyGuard } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
+import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -34,6 +35,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
     using PoolConfigLib for PoolCallbacks;
+    using WordCodec for bytes32;
 
     // Minimum BPT amount minted upon initialization.
     uint256 private constant _MINIMUM_BPT = 1e6;
@@ -44,6 +46,19 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
+
+    // Store pool pause periods.
+    mapping(address => bytes32) internal _poolPauseEndTimes;
+
+    // Each value in `_poolPauseEndTimes` containts two timestamps.
+    // [ 192 bits |    32 bits   |    32 bits    ]
+    // [  unused  | pause window | buffer period ]
+    // [ MSB                                 LSB ]
+
+    uint256 private constant _TIMESTAMP_BITLENGTH = 32;
+
+    uint256 private constant _BUFFER_PERIOD_OFFSET = 0;
+    uint256 private constant _PAUSE_WINDOW_OFFSET = _BUFFER_PERIOD_OFFSET + _TIMESTAMP_BITLENGTH;
 
     // Pool -> (token -> balance): Pool's ERC20 tokens balances stored at the Vault.
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolTokenBalances;
@@ -89,6 +104,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     /// @dev Modifier to make a function callable only when the Vault is not paused.
     modifier whenVaultNotPaused() {
         _ensureVaultNotPaused();
+        _;
+    }
+
+    /// @dev Modifier to make a function callable only when the Vault and Pool are not paused.
+    modifier whenNotPaused(address pool) {
+        _ensureVaultNotPaused();
+        _ensurePoolNotPaused(pool);
         _;
     }
 
@@ -391,9 +413,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     )
         public
         withHandler
-        whenVaultNotPaused
         withInitializedPool(params.pool)
-        returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
+        returns (
+            //whenNotPaused(params.pool)
+            uint256 amountCalculated,
+            uint256 amountIn,
+            uint256 amountOut
+        )
     {
         if (params.amountGiven == 0) {
             revert AmountGivenZero();
@@ -516,6 +542,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     /// @inheritdoc IVault
     function isInitializedPool(address pool) external view returns (bool) {
         return _isInitializedPool(pool);
+    }
+
+    /// @dev See `isPoolPaused`
+    function _isPausedPool(address pool) internal view returns (bool) {
+        return _poolConfig[pool].isPoolPaused();
     }
 
     /// @inheritdoc IVault
@@ -664,8 +695,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     )
         external
         withHandler
-        whenVaultNotPaused
         withRegisteredPool(pool)
+        whenNotPaused(pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut)
     {
         PoolConfig memory config = _poolConfig[pool].toPoolConfig();
@@ -723,9 +754,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     )
         external
         withHandler
-        whenVaultNotPaused
         withInitializedPool(pool)
-        returns (uint256[] memory amountsIn, uint256 bptAmountOut)
+        returns (
+            //whenNotPaused(pool)
+            uint256[] memory amountsIn,
+            uint256 bptAmountOut
+        )
     {
         InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
 
@@ -782,8 +816,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     )
         external
         nonReentrant
-        whenVaultNotPaused
         withInitializedPool(pool)
+        whenNotPaused(pool)
         returns (uint256[] memory amountsOut, uint256 bptAmountIn)
     {
         InputHelpers.ensureInputLengthMatch(tokens.length, minAmountsOut.length);
@@ -915,7 +949,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     }
 
     /*******************************************************************************
-                                        Pausing
+                                    Vault Pausing
     *******************************************************************************/
 
     /**
@@ -985,6 +1019,92 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     function _ensureVaultPaused() internal view {
         if (!_isVaultPaused()) {
             revert VaultNotPaused();
+        }
+    }
+
+    /*******************************************************************************
+                                     Pool Pausing
+    *******************************************************************************/
+
+    /**
+     * @notice Indicates whether a pool is paused.
+     * @param pool The pool to be checked
+     * @return True if the pool is paused
+     */
+    function poolPaused(address pool) external view withRegisteredPool(pool) returns (bool) {
+        return _isPausedPool(pool);
+    }
+
+    /// @inheritdoc IVault
+    function getPoolPausedState(address pool) public view withRegisteredPool(pool) returns (bool, uint256, uint256) {
+        bytes32 poolPauseData = _poolPauseEndTimes[pool];
+
+        return (
+            _isPausedPool(pool),
+            poolPauseData.decodeUint(_PAUSE_WINDOW_OFFSET, _TIMESTAMP_BITLENGTH),
+            poolPauseData.decodeUint(_BUFFER_PERIOD_OFFSET, _TIMESTAMP_BITLENGTH)
+        );
+    }
+
+    /**
+     * @notice Pause the Pool: an emergency action which disables all pool functions.
+     * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
+     * deployment.
+     */
+    function pausePool(address pool) external withRegisteredPool(pool) authenticate {
+        _ensurePoolNotPaused(pool);
+        _setPoolPaused(pool, true);
+    }
+
+    /**
+     * @notice Reverse a `pause` operation, and restore the Pool to normal functionality.
+     * @dev This is a permissioned function that will only work on a paused Pool within the Buffer Period set during
+     * deployment. Note that the Pool will automatically unpause after the Buffer Period expires.
+     */
+    function unpausePool(address pool) external withRegisteredPool(pool) authenticate {
+        _ensurePoolPaused(pool);
+        _setPoolPaused(pool, false);
+    }
+
+    function _setPoolPaused(address pool, bool paused) internal {
+        // We have already ensured the pool is in the correct paused state (e.g., paused, if we are unpausing it)
+        (, uint256 poolPauseWindowEndTime, uint256 poolBufferPeriodEndTime) = getPoolPausedState(pool);
+
+        if (paused) {
+            if (block.timestamp >= poolPauseWindowEndTime) {
+                revert PoolPauseWindowExpired(pool);
+            }
+        } else {
+            if (block.timestamp >= poolBufferPeriodEndTime) {
+                revert PoolBufferPeriodExpired(pool);
+            }
+        }
+
+        // Update poolConfig
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        config.isPausedPool = paused;
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        emit PoolPausedStateChanged(pool, paused);
+    }
+
+    /**
+     * @dev Reverts if the pool is paused.
+     * @param pool The pool
+     */
+    function _ensurePoolNotPaused(address pool) internal view {
+        if (_isPausedPool(pool)) {
+            revert PoolPaused(pool);
+        }
+    }
+
+    /**
+     * @dev Reverts if the pool is not paused.
+     * @param pool The pool
+     */
+    function _ensurePoolPaused(address pool) internal view {
+        if (!_isPausedPool(pool)) {
+            revert PoolNotPaused(pool);
         }
     }
 }

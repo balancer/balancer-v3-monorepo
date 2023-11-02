@@ -18,6 +18,7 @@ struct PoolCallbacks {
 struct PoolConfig {
     bool isRegisteredPool;
     bool isInitializedPool;
+    bool isPausedPool;
     PoolCallbacks callbacks;
 }
 
@@ -522,7 +523,6 @@ interface IVault {
      */
     function setAuthorizer(IAuthorizer newAuthorizer) external;
 
-
     /*******************************************************************************
                                         Pausing
     *******************************************************************************/
@@ -532,6 +532,13 @@ interface IVault {
      * @param paused True if the Vault was paused
      */
     event VaultPausedStateChanged(bool paused);
+
+    /**
+     * @dev A Pool's pause status has changed.
+     * @param pool The pool that was just paused or unpaused
+     * @param paused True if the pool was paused
+     */
+    event PoolPausedStateChanged(address pool, bool paused);
 
     /// @dev A user tried to invoke an operation while the Vault was paused.
     error VaultPaused();
@@ -546,10 +553,44 @@ interface IVault {
     error VaultBufferPeriodExpired();
 
     /**
+     * @dev A user tried to invoke an operation involving a paused Pool.
+     * @param pool The paused pool
+     */
+    error PoolPaused(address pool);
+
+    /**
+     * @dev Governance tried to unpause the Pool when it was not paused.
+     * @param pool The unpaused pool
+     */
+    error PoolNotPaused(address pool);
+
+    /**
+     * @dev Governance tried to pause a Pool after the pause period expired.
+     * @param pool The pool
+     */
+    error PoolPauseWindowExpired(address pool);
+
+    /**
+     * @dev Governance tried to unpause a Pool after the buffer period expired.
+     * @param pool The pool
+     */
+    error PoolBufferPeriodExpired(address pool);
+
+    /**
      * @notice Returns the paused status, and end times of the Vault's pause window and buffer period.
      * @return paused True is the Vault is paused
      * @return vaultPauseWindowEndTime The timestamp of the end of the Vault's pause window
      * @return vaultBufferPeriodEndTime The timestamp of the end of the Vault's buffer period
      */
     function getVaultPausedState() external view returns (bool, uint256, uint256);
+
+
+    /**
+     * @notice Returns the paused status, and end times of the Vault's pause window and buffer period.
+     * @param pool The pool whose data is requested
+     * @return paused True is the Vault is paused
+     * @return vaultPauseWindowEndTime The timestamp of the end of the Vault's pause window
+     * @return vaultBufferPeriodEndTime The timestamp of the end of the Vault's buffer period
+     */
+    function getPoolPausedState(address pool) external view returns (bool, uint256, uint256);
 }

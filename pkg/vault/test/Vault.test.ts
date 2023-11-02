@@ -195,7 +195,7 @@ describe('Vault', function () {
         .to.emit(timedVault, 'VaultPausedStateChanged')
         .withArgs(true);
 
-        await expect(await timedVault.unpause())
+      await expect(await timedVault.unpause())
         .to.emit(timedVault, 'VaultPausedStateChanged')
         .withArgs(false);
     });
