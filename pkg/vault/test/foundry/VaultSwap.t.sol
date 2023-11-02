@@ -171,7 +171,6 @@ contract VaultSwapTest is Test {
         USDC.mint(bob, AMOUNT);
 
         initPool();
-
         setSwapFeePercentage();
 
         uint256 bobUsdcBeforeSwap = USDC.balanceOf(bob);
@@ -238,7 +237,6 @@ contract VaultSwapTest is Test {
         USDC.mint(bob, AMOUNT);
 
         initPool();
-
         setSwapFeePercentage();
 
         uint256 bobUsdcBeforeSwap = USDC.balanceOf(bob);
