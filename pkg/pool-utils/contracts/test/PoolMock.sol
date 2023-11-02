@@ -28,7 +28,7 @@ contract PoolMock is BasePool {
         address factory,
         IERC20[] memory tokens,
         bool registerPool
-    ) BasePool(vault, name, symbol, 30 days, 90 days) {
+    ) BasePool(vault, name, symbol) {
         if (registerPool) {
             vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
         }
