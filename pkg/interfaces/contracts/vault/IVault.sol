@@ -502,7 +502,7 @@ interface IVault {
      * @param token Token address for which fees are accumulated.
      * @return The amount accumulated.
      */
-    function getProtocolSwapFee(address token) external view returns(uint256);
+    function getProtocolSwapFee(address token) external view returns (uint256);
 
     /**
      * @notice Collects protocol fees for a given array of tokens.
@@ -536,7 +536,6 @@ interface IVault {
      * @return Current swap fee percentage
      */
     function getSwapFeePercentage(address pool) external view returns (uint24);
-
 
     /*******************************************************************************
                                     Queries
