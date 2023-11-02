@@ -584,6 +584,31 @@ interface IVault {
      */
     function getVaultPausedState() external view returns (bool, uint256, uint256);
 
+    /**
+     * @notice Indicates whether the Vault is paused.
+     * @return True if the Vault is paused
+     */
+    function vaultPaused() external view returns (bool);
+
+    /**
+     * @notice Pause the Vault: an emergency action which disables all operational state-changing functions.
+     * @dev This is a permissioned function that will only work during the Pause Window set during deployment.
+     */
+    function pauseVault() external;
+
+    /**
+     * @notice Reverse a `pause` operation, and restore the Vault to normal functionality.
+     * @dev This is a permissioned function that will only work on a paused Vault within the Buffer Period set during
+     * deployment. Note that the Vault will automatically unpause after the Buffer Period expires.
+     */
+    function unpauseVault() external;
+
+    /**
+     * @notice Indicates whether a pool is paused.
+     * @param pool The pool to be checked
+     * @return True if the pool is paused
+     */
+    function poolPaused(address pool) external view returns (bool);
 
     /**
      * @notice Returns the paused status, and end times of the Vault's pause window and buffer period.
@@ -593,4 +618,18 @@ interface IVault {
      * @return vaultBufferPeriodEndTime The timestamp of the end of the Vault's buffer period
      */
     function getPoolPausedState(address pool) external view returns (bool, uint256, uint256);
+
+    /**
+     * @notice Pause the Pool: an emergency action which disables all pool functions.
+     * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
+     * deployment.
+     */
+    function pausePool(address pool) external;
+
+    /**
+     * @notice Reverse a `pause` operation, and restore the Pool to normal functionality.
+     * @dev This is a permissioned function that will only work on a paused Pool within the Buffer Period set during
+     * deployment. Note that the Pool will automatically unpause after the Buffer Period expires.
+     */
+    function unpausePool(address pool) external;
 }

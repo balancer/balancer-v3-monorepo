@@ -952,10 +952,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                                     Vault Pausing
     *******************************************************************************/
 
-    /**
-     * @notice Indicate whether the Vault is paused.
-     * @return True if the Vault is paused
-     */
+    /// @inheritdoc IVault
     function vaultPaused() external view returns (bool) {
         return _isVaultPaused();
     }
@@ -973,20 +970,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         return (_isVaultPaused(), _vaultPauseWindowEndTime, _vaultBufferPeriodEndTime);
     }
 
-    /**
-     * @notice Pause the Vault: an emergency action which disables all operational state-changing functions.
-     * @dev This is a permissioned function that will only work during the Pause Window set during deployment.
-     */
+    /// @inheritdoc IVault
     function pauseVault() external authenticate {
         _ensureVaultNotPaused();
         _setVaultPaused(true);
     }
 
-    /**
-     * @notice Reverse a `pause` operation, and restore the Vault to normal functionality.
-     * @dev This is a permissioned function that will only work on a paused Vault within the Buffer Period set during
-     * deployment. Note that the Vault will automatically unpause after the Buffer Period expires.
-     */
+    /// @inheritdoc IVault
     function unpauseVault() external authenticate {
         _ensureVaultPaused();
         _setVaultPaused(false);
@@ -1026,11 +1016,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                                      Pool Pausing
     *******************************************************************************/
 
-    /**
-     * @notice Indicates whether a pool is paused.
-     * @param pool The pool to be checked
-     * @return True if the pool is paused
-     */
+    /// @inheritdoc IVault
     function poolPaused(address pool) external view withRegisteredPool(pool) returns (bool) {
         return _isPausedPool(pool);
     }
@@ -1046,21 +1032,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         );
     }
 
-    /**
-     * @notice Pause the Pool: an emergency action which disables all pool functions.
-     * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
-     * deployment.
-     */
+    /// @inheritdoc IVault
     function pausePool(address pool) external withRegisteredPool(pool) authenticate {
         _ensurePoolNotPaused(pool);
         _setPoolPaused(pool, true);
     }
 
-    /**
-     * @notice Reverse a `pause` operation, and restore the Pool to normal functionality.
-     * @dev This is a permissioned function that will only work on a paused Pool within the Buffer Period set during
-     * deployment. Note that the Pool will automatically unpause after the Buffer Period expires.
-     */
+    /// @inheritdoc IVault
     function unpausePool(address pool) external withRegisteredPool(pool) authenticate {
         _ensurePoolPaused(pool);
         _setPoolPaused(pool, false);
