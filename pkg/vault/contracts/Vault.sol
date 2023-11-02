@@ -957,14 +957,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         return _isVaultPaused();
     }
 
-    /**
-     * @dev For gas efficiency, storage is only read before `_vaultBufferPeriodEndTime`. Once we're past that
-     * timestamp, the expression short-circuits false, and the Vault is permanently unpaused.
-     */
-    function _isVaultPaused() internal view returns (bool) {
-        return block.timestamp <= _vaultBufferPeriodEndTime && _vaultPaused;
-    }
-
     /// @inheritdoc IVault
     function getVaultPausedState() public view returns (bool, uint256, uint256) {
         return (_isVaultPaused(), _vaultPauseWindowEndTime, _vaultBufferPeriodEndTime);
@@ -980,6 +972,14 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     function unpauseVault() external authenticate {
         _ensureVaultPaused();
         _setVaultPaused(false);
+    }
+
+    /**
+     * @dev For gas efficiency, storage is only read before `_vaultBufferPeriodEndTime`. Once we're past that
+     * timestamp, the expression short-circuits false, and the Vault is permanently unpaused.
+     */
+    function _isVaultPaused() internal view returns (bool) {
+        return block.timestamp <= _vaultBufferPeriodEndTime && _vaultPaused;
     }
 
     function _setVaultPaused(bool paused) internal {
