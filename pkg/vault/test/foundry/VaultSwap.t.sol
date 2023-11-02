@@ -97,6 +97,12 @@ contract VaultSwapTest is Test {
         vault.setSwapFeePercentage(address(pool), 1e4);
     }
 
+    function setProtocolSwapFeePercentage() internal {
+        authorizer.grantRole(vault.getActionId(IVault.setProtocolSwapFeePercentage.selector), alice);
+        vm.prank(alice);
+        vault.setProtocolSwapFeePercentage(50e4); // %50
+    }
+
     function testSwapNotInitialized() public {
         vm.expectRevert(abi.encodeWithSelector(IVault.PoolNotInitialized.selector, address(pool)));
         router.swap(
@@ -197,12 +203,8 @@ contract VaultSwapTest is Test {
         USDC.mint(bob, AMOUNT);
 
         initPool();
-
         setSwapFeePercentage();
-
-        authorizer.grantRole(vault.getActionId(IVault.setProtocolSwapFeePercentage.selector), alice);
-        vm.prank(alice);
-        vault.setProtocolSwapFeePercentage(50e4); // %50
+        setProtocolSwapFeePercentage();
 
         uint256 bobUsdcBeforeSwap = USDC.balanceOf(bob);
         uint256 bobDaiBeforeSwap = DAI.balanceOf(bob);
@@ -268,12 +270,8 @@ contract VaultSwapTest is Test {
         USDC.mint(bob, AMOUNT);
 
         initPool();
-
         setSwapFeePercentage();
-
-        authorizer.grantRole(vault.getActionId(IVault.setProtocolSwapFeePercentage.selector), alice);
-        vm.prank(alice);
-        vault.setProtocolSwapFeePercentage(50e4); // %50
+        setProtocolSwapFeePercentage();
 
         uint256 bobUsdcBeforeSwap = USDC.balanceOf(bob);
         uint256 bobDaiBeforeSwap = DAI.balanceOf(bob);
@@ -307,12 +305,8 @@ contract VaultSwapTest is Test {
         USDC.mint(bob, AMOUNT);
 
         initPool();
-
         setSwapFeePercentage();
-
-        authorizer.grantRole(vault.getActionId(IVault.setProtocolSwapFeePercentage.selector), alice);
-        vm.prank(alice);
-        vault.setProtocolSwapFeePercentage(50e4); // %50
+        setProtocolSwapFeePercentage();
 
         vm.prank(bob);
         router.swap(
