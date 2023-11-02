@@ -233,7 +233,6 @@ contract VaultSwapTest is Test {
 
         // assets are adjusted in the pool
         (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
-        console2.log('balances[0]:', balances[0]);
         assertEq(balances[0], SWAP_FEE - PROTOCOL_SWAP_FEE);
         assertEq(balances[1], 2 * USDC_AMOUNT_IN);
 

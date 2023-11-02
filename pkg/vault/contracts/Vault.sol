@@ -25,9 +25,6 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 
-
-import 'forge-std/console2.sol';
-
 contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
@@ -454,10 +451,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
                 ? params.amountGiven.divUp(
                     swapFeePercentage.complement(PoolConfigLib.SWAP_FEE_PRECISION),
                     PoolConfigLib.SWAP_FEE_PRECISION
-                ) - params.amountGiven 
+                ) - params.amountGiven
                 : 0;
         }
-
 
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
         amountCalculated = IBasePool(params.pool).onSwap(
@@ -483,11 +479,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
                 ? amountCalculated.mulUp(swapFeePercentage, PoolConfigLib.SWAP_FEE_PRECISION)
                 : 0;
             // Should substract the fee from the amountCalculated for GIVEN_OUT swap
-            console2.log('vars.swapFee:', vars.swapFee);
             amountCalculated -= vars.swapFee;
-            console2.log('amountCalculated:', amountCalculated);
         }
-
 
         (amountIn, amountOut) = params.kind == SwapKind.GIVEN_IN
             ? (params.amountGiven, amountCalculated)
@@ -501,11 +494,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             _protocolSwapFees[params.tokenOut] += protocolSwapFee;
         }
 
-        console2.log('tokenOutBalance:', tokenOutBalance);
-        console2.log('amountOut:', amountOut);
         tokenInBalance = tokenInBalance + amountIn;
         // Substruct protocol swap fee from the pool balance
-        console2.log('protocolSwapFee:', protocolSwapFee);
         tokenOutBalance = tokenOutBalance - amountOut - protocolSwapFee;
 
         // Because no tokens were registered or deregistered between now or when we retrieved the indexes for
@@ -518,7 +508,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         // Account amountOut of tokenOut
         _supplyCredit(params.tokenOut, amountOut, msg.sender);
 
-        console2.log('here');
         if (_poolConfig[params.pool].shouldCallAfterSwap()) {
             // if callback is enabled, then update balances
             if (
