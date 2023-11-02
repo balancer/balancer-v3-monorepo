@@ -735,11 +735,16 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     {
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
         InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
+        // Remove
         if (kind != AddLiquidityKind.CUSTOM && userData.length > 0) {
             revert UserDataNotSupported();
         }
 
+        // enforce boundaries at the vault, not router
+        // check if `before` needs kind.
         balances = _beforeAddLiquidity(pool, maxAmountsIn, minBptAmountOut, balances, userData);
+
+        // Reentrancy guard should act here.
 
         if (kind == AddLiquidityKind.PROPORTIONAL) {
             _poolConfig[pool].requireSupportsAddLiquidityProportional();
@@ -829,13 +834,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         // as the pool's math relies on totalSupply.
         _mint(address(pool), to, bptAmountOut);
 
+        emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
+
         if (_poolConfig[pool].shouldCallAfterAddLiquidity()) {
             if (IBasePool(pool).onAfterAddLiquidity(msg.sender, amountsIn, bptAmountOut, balances, userData) == false) {
                 revert CallbackFailed();
             }
         }
-
-        emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }
 
     /// @inheritdoc IVault
@@ -915,6 +920,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         address pool,
         address from,
         uint256 exactBptAmountIn
+        /// TODO: Only in recovery mode
     ) external nonReentrant withInitializedPool(pool) returns (uint256[] memory amountsOut) {
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
 

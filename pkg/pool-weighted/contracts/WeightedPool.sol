@@ -307,13 +307,6 @@ contract WeightedPool is BasePool {
                                    Add Liquidity
     ***************************************************************************/
 
-    function onBeforeAddLiquidity(
-        uint256[] memory,
-        uint256,
-        uint256[] memory,
-        bytes memory
-    ) external override returns (bool) {}
-
     function onAddLiquidityUnbalanced(
         address,
         uint256[] memory exactAmountsIn,
@@ -364,28 +357,9 @@ contract WeightedPool is BasePool {
         return amountIn;
     }
 
-    function onAddLiquidityCustom(
-        address,
-        uint256[] memory,
-        uint256,
-        uint256[] memory,
-        bytes memory
-    ) external pure override returns (uint256[] memory, uint256, bytes memory) {
-        revert CallbackNotImplemented();
-    }
-
     /***************************************************************************
                                  Remove Liquidity
     ***************************************************************************/
-
-    function onBeforeRemoveLiquidity(
-        uint256,
-        uint256[] memory,
-        uint256[] memory,
-        bytes memory
-    ) external pure override returns (bool) {
-        return true;
-    }
 
     function onRemoveLiquiditySingleTokenExactIn(
         address,
@@ -435,15 +409,5 @@ contract WeightedPool is BasePool {
         bptAmountIn.downscaleUp(scalingFactors[tokenOutIndex]);
 
         return bptAmountIn;
-    }
-
-    function onRemoveLiquidityCustom(
-        address,
-        uint256,
-        uint256[] memory,
-        uint256[] memory,
-        bytes memory
-    ) external pure override returns (uint256, uint256[] memory, bytes memory) {
-        revert CallbackNotImplemented();
     }
 }

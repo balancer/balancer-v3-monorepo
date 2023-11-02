@@ -120,7 +120,7 @@ interface IVault {
 
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
-     * @dev This function assumes the default proportional liquidity methods are supported.
+     * @dev This version of the function assumes the default proportional liquidity methods are supported.
      * @param factory The factory address associated with the pool being registered
      * @param tokens An array of token addresses the pool will manage
      * @param config Flags indicating which callbacks the pool supports
@@ -135,6 +135,7 @@ interface IVault {
 
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
+     * @dev This version of the function allows overriding liquidity management default settings.
      * @param factory The factory address associated with the pool being registered
      * @param tokens An array of token addresses the pool will manage
      * @param config Config for the pool
@@ -483,10 +484,8 @@ interface IVault {
 
     /**
      * @notice Remove liquidity from a pool specifying exact pool tokens in, with proportional token amounts out.
-     * The request is solved at the Vault without any interaction with the pool, ensuring it always succeeds.
-     * @dev Trusted routers can burn pool tokens belonging to any user and require no prior approval from the user.
-     * Untrusted routers require prior approval from the user. This is the only function allowed to call
-     * _queryModeBalanceIncrease (and only in a query context).
+     * The request is implemented by the Vault without any interaction with the pool, ensuring that
+     * it works the same for all pools, and cannot be disabled by a new pool type.
      *
      * @param pool Address of the pool
      * @param from Address of user to burn pool tokens from

@@ -47,13 +47,14 @@ interface IBasePool {
      * @param minBptAmountOut Minimum amount of output pool tokens
      * @param currentBalances Current pool balances, in the same order as the tokens registered in the pool
      * @param userData Optional, arbitrary data with the encoded request
+     * @return success True if the pool wishes to proceed with settlement
      */
     function onBeforeAddLiquidity(
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         uint256[] memory currentBalances,
         bytes memory userData
-    ) external returns (bool);
+    ) external returns (bool success);
 
     /**
      * @notice Add liquidity to the pool specifying exact token amounts in.
@@ -104,7 +105,7 @@ interface IBasePool {
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
     /**
-     * @notice Callback after adding liquidity to the pool.
+     * @notice Optional callback to be executed after `onAddLiquidity...` callbacks are executed.
      * @param sender Address of the sender
      * @param amountsIn Actual amounts of tokens added, in the same order as the tokens registered in the pool
      * @param bptAmountOut Amount of pool tokens minted
@@ -130,13 +131,14 @@ interface IBasePool {
      * @param minAmountsOut Minimum amounts of output tokens, in the same order as the tokens registered in the pool
      * @param currentBalances Current pool balances, in the same order as the tokens registered in the pool
      * @param userData Optional, arbitrary data with the encoded request
+     * @return success True if the pool wishes to proceed with settlement
      */
     function onBeforeRemoveLiquidity(
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOut,
         uint256[] memory currentBalances,
         bytes memory userData
-    ) external returns (bool);
+    ) external returns (bool success);
 
     /**
      * @notice Remove liquidity from the pool, specifying exact input pool token amount in exchange for a single token.
@@ -190,7 +192,7 @@ interface IBasePool {
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 
     /**
-     * @notice Callback after removing liquidity from the pool.
+     * @notice Optional callback to be executed after `onAddLiquidity...` callbacks are executed.
      * @param sender Address of the sender
      * @param bptAmountIn Amount of pool tokens to burn
      * @param amountsOut Amount of tokens to receive, in the same order as the tokens registered in the pool

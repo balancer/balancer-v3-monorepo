@@ -19,6 +19,7 @@ contract PoolMock is BasePool {
 
     bool public failOnCallback;
 
+    bytes32 private constant _ALL_BITS_SET = bytes32(type(uint256).max);
     uint256 private immutable _numTokens;
 
     constructor(
@@ -34,7 +35,7 @@ contract PoolMock is BasePool {
                 factory,
                 tokens,
                 PoolConfigBits.wrap(0).toPoolConfig().callbacks,
-                PoolConfigBits.wrap(bytes32(type(uint256).max)).toPoolConfig().liquidityManagement
+                PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
             );
         }
 

@@ -74,7 +74,51 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
         revert CallbackNotImplemented();
     }
 
-    /// @notice Callback performed after adding liquidity. Reverts here if configured but unimplemented.
+    /***************************************************************************
+                                   Add Liquidity
+    ***************************************************************************/
+
+    /// @inheritdoc IBasePool
+    function onBeforeAddLiquidity(
+        uint256[] memory,
+        uint256,
+        uint256[] memory,
+        bytes memory
+    ) external view virtual returns (bool) {
+        revert CallbackNotImplemented();
+    }
+
+    /// @inheritdoc IBasePool
+    function onAddLiquidityUnbalanced(
+        address,
+        uint256[] memory,
+        uint256[] memory
+    ) external view virtual returns (uint256) {
+        revert CallbackNotImplemented();
+    }
+
+    /// @inheritdoc IBasePool
+    function onAddLiquiditySingleTokenExactOut(
+        address,
+        uint256,
+        uint256,
+        uint256[] memory
+    ) external view virtual returns (uint256) {
+        revert CallbackNotImplemented();
+    }
+
+    /// @inheritdoc IBasePool
+    function onAddLiquidityCustom(
+        address,
+        uint256[] memory,
+        uint256,
+        uint256[] memory,
+        bytes memory
+    ) external view virtual returns (uint256[] memory, uint256, bytes memory) {
+        revert CallbackNotImplemented();
+    }
+
+    /// @inheritdoc IBasePool
     function onAfterAddLiquidity(
         address,
         uint256[] memory,
@@ -85,7 +129,53 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
         revert CallbackNotImplemented();
     }
 
-    /// @notice Callback performed after removing liquidity. Reverts here if configured but unimplemented.
+    /***************************************************************************
+                                 Remove Liquidity
+    ***************************************************************************/
+
+    /// @inheritdoc IBasePool
+    function onBeforeRemoveLiquidity(
+        uint256,
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
+    ) external view virtual returns (bool) {
+        revert CallbackNotImplemented();
+    }
+
+    /// @inheritdoc IBasePool
+    function onRemoveLiquiditySingleTokenExactIn(
+        address,
+        uint256,
+        uint256,
+        uint256[] memory
+    ) external view virtual returns (uint256) {
+        revert CallbackNotImplemented();
+    }
+
+    /// @inheritdoc IBasePool
+    function onRemoveLiquiditySingleTokenExactOut(
+        address,
+        uint256,
+        uint256,
+        uint256[] memory
+    ) external view virtual returns (uint256) {
+        revert CallbackNotImplemented();
+    }
+
+
+    /// @inheritdoc IBasePool
+    function onRemoveLiquidityCustom(
+        address,
+        uint256,
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
+    ) external view virtual returns (uint256, uint256[] memory, bytes memory) {
+        revert CallbackNotImplemented();
+    }
+
+    /// @inheritdoc IBasePool
     function onAfterRemoveLiquidity(
         address,
         uint256,
