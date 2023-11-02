@@ -37,7 +37,11 @@ contract VaultMock is Vault {
     }
 
     function pause() external {
-        _pause();
+        _setVaultPaused(true);
+    }
+
+    function unpause() external {
+        _setVaultPaused(false);
     }
 
     // Used for testing the ReentrancyGuard
@@ -48,7 +52,7 @@ contract VaultMock is Vault {
     // Used for testing pool registration, which is ordinarily done in the constructor of the pool.
     // The Mock pool has an argument for whether or not to register on deployment. To call register pool
     // separately, deploy it with the registration flag false, then call this function.
-    function manualRegisterPool(address factory, IERC20[] memory tokens) external whenNotPaused {
+    function manualRegisterPool(address factory, IERC20[] memory tokens) external whenVaultNotPaused {
         _registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
     }
 }

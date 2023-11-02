@@ -521,4 +521,35 @@ interface IVault {
      * Emits an `AuthorizerChanged` event.
      */
     function setAuthorizer(IAuthorizer newAuthorizer) external;
+
+
+    /*******************************************************************************
+                                        Pausing
+    *******************************************************************************/
+
+    /**
+     * @dev The Vault's pause status has changed.
+     * @param paused True if the Vault was paused
+     */
+    event VaultPausedStateChanged(bool paused);
+
+    /// @dev A user tried to invoke an operation while the Vault was paused.
+    error VaultPaused();
+
+    /// @dev Governance tried to unpause the Vault when it was not paused.
+    error VaultNotPaused();
+
+    /// @dev Governance tried to pause the Vault after the pause period expired.
+    error VaultPauseWindowExpired();
+
+    /// @dev Governance tried to unpause the Vault after the buffer period expired.
+    error VaultBufferPeriodExpired();
+
+    /**
+     * @notice Returns the paused status, and end times of the Vault's pause window and buffer period.
+     * @return paused True is the Vault is paused
+     * @return vaultPauseWindowEndTime The timestamp of the end of the Vault's pause window
+     * @return vaultBufferPeriodEndTime The timestamp of the end of the Vault's buffer period
+     */
+    function getVaultPausedState() external view returns (bool, uint256, uint256);
 }

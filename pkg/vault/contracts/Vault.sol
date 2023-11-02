@@ -10,9 +10,9 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IVault, PoolConfig, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+import { ITemporarilyPausable } from "@balancer-labs/v3-interfaces/contracts/vault/ITemporarilyPausable.sol";
 
 import { ReentrancyGuard } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
-import { TemporarilyPausable } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 
@@ -24,7 +24,7 @@ import { ERC20MultiToken } from "@balancer-labs/v3-solidity-utils/contracts/toke
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 
-contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
+contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
     using AssetHelpers for *;
@@ -75,14 +75,40 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     /// @notice If set to true, disables query functionality of the Vault. Can be modified only by governance.
     bool private _isQueryDisabled;
 
+    uint256 public constant MAX_PAUSE_WINDOW_DURATION = 356 days * 4;
+    uint256 public constant MAX_BUFFER_PERIOD_DURATION = 90 days;
+
+    // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
+    // solhint-disable not-rely-on-time
+
+    uint256 internal immutable _vaultPauseWindowEndTime;
+    uint256 internal immutable _vaultBufferPeriodEndTime;
+
+    bool private _vaultPaused;
+
+    /// @dev Modifier to make a function callable only when the Vault is not paused.
+    modifier whenVaultNotPaused() {
+        _ensureVaultNotPaused();
+        _;
+    }
+
     constructor(
         IAuthorizer authorizer,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    )
-        Authentication(bytes32(uint256(uint160(address(this)))))
-        TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
-    {
+    ) Authentication(bytes32(uint256(uint160(address(this))))) {
+        if (pauseWindowDuration > MAX_PAUSE_WINDOW_DURATION) {
+            revert ITemporarilyPausable.PauseWindowDurationTooLarge();
+        }
+        if (bufferPeriodDuration > MAX_BUFFER_PERIOD_DURATION) {
+            revert ITemporarilyPausable.BufferPeriodDurationTooLarge();
+        }
+
+        uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
+
+        _vaultPauseWindowEndTime = pauseWindowEndTime;
+        _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
+
         _authorizer = authorizer;
     }
 
@@ -364,8 +390,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         SwapParams memory params
     )
         public
-        whenNotPaused
         withHandler
+        whenVaultNotPaused
         withInitializedPool(params.pool)
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
     {
@@ -478,7 +504,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         address factory,
         IERC20[] memory tokens,
         PoolCallbacks calldata poolCallbacks
-    ) external nonReentrant whenNotPaused {
+    ) external nonReentrant whenVaultNotPaused {
         _registerPool(factory, tokens, poolCallbacks);
     }
 
@@ -638,7 +664,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     )
         external
         withHandler
-        whenNotPaused
+        whenVaultNotPaused
         withRegisteredPool(pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut)
     {
@@ -697,7 +723,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     )
         external
         withHandler
-        whenNotPaused
+        whenVaultNotPaused
         withInitializedPool(pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut)
     {
@@ -755,8 +781,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         bytes memory userData
     )
         external
-        whenNotPaused
         nonReentrant
+        whenVaultNotPaused
         withInitializedPool(pool)
         returns (uint256[] memory amountsOut, uint256 bptAmountIn)
     {
@@ -886,5 +912,79 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     /// @dev Access control is delegated to the Authorizer
     function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
         return _authorizer.canPerform(actionId, user, address(this));
+    }
+
+    /*******************************************************************************
+                                        Pausing
+    *******************************************************************************/
+
+    /**
+     * @notice Indicate whether the Vault is paused.
+     * @return True if the Vault is paused
+     */
+    function vaultPaused() external view returns (bool) {
+        return _isVaultPaused();
+    }
+
+    /**
+     * @dev For gas efficiency, storage is only read before `_vaultBufferPeriodEndTime`. Once we're past that
+     * timestamp, the expression short-circuits false, and the Vault is permanently unpaused.
+     */
+    function _isVaultPaused() internal view returns (bool) {
+        return block.timestamp <= _vaultBufferPeriodEndTime && _vaultPaused;
+    }
+
+    /// @inheritdoc IVault
+    function getVaultPausedState() public view returns (bool, uint256, uint256) {
+        return (_isVaultPaused(), _vaultPauseWindowEndTime, _vaultBufferPeriodEndTime);
+    }
+
+    /**
+     * @notice Pause the Vault: an emergency action which disables all operational state-changing functions.
+     * @dev This is a permissioned function that will only work during the Pause Window set during deployment.
+     */
+    function pauseVault() external authenticate {
+        _ensureVaultNotPaused();
+        _setVaultPaused(true);
+    }
+
+    /**
+     * @notice Reverse a `pause` operation, and restore the Vault to normal functionality.
+     * @dev This is a permissioned function that will only work on a paused Vault within the Buffer Period set during
+     * deployment. Note that the Vault will automatically unpause after the Buffer Period expires.
+     */
+    function unpauseVault() external authenticate {
+        _ensureVaultPaused();
+        _setVaultPaused(false);
+    }
+
+    function _setVaultPaused(bool paused) internal {
+        if (paused) {
+            if (block.timestamp >= _vaultPauseWindowEndTime) {
+                revert VaultPauseWindowExpired();
+            }
+        } else {
+            if (block.timestamp >= _vaultBufferPeriodEndTime) {
+                revert VaultBufferPeriodExpired();
+            }
+        }
+
+        _vaultPaused = paused;
+
+        emit VaultPausedStateChanged(paused);
+    }
+
+    /// @dev Reverts if the Vault is paused.
+    function _ensureVaultNotPaused() internal view {
+        if (_isVaultPaused()) {
+            revert VaultPaused();
+        }
+    }
+
+    /// @dev Reverts if the Vault is not paused.
+    function _ensureVaultPaused() internal view {
+        if (!_isVaultPaused()) {
+            revert VaultNotPaused();
+        }
     }
 }

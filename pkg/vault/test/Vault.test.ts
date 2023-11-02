@@ -132,7 +132,7 @@ describe('Vault', function () {
 
       await expect(
         vault.connect(unregisteredPoolSigner).manualRegisterPool(factory.address, poolBTokens)
-      ).to.be.revertedWithCustomError(vault, 'AlreadyPaused');
+      ).to.be.revertedWithCustomError(vault, 'VaultPaused');
     });
 
     it('cannot register while registering another pool', async () => {
@@ -175,11 +175,29 @@ describe('Vault', function () {
     });
 
     it('is temporarily pausable', async () => {
-      expect(await timedVault.paused()).to.equal(false);
+      expect(await timedVault.vaultPaused()).to.equal(false);
 
-      const [pauseWindowEndTime, bufferPeriodEndTime] = await timedVault.getPauseEndTimes();
+      const [paused, pauseWindowEndTime, bufferPeriodEndTime] = await timedVault.getVaultPausedState();
+
+      expect(paused).to.be.false;
       expect(pauseWindowEndTime).to.equal(await fromNow(PAUSE_WINDOW_DURATION));
       expect(bufferPeriodEndTime).to.equal((await fromNow(PAUSE_WINDOW_DURATION)) + bn(BUFFER_PERIOD_DURATION));
+
+      await timedVault.pause();
+      expect(await timedVault.vaultPaused()).to.be.true;
+
+      await timedVault.unpause();
+      expect(await timedVault.vaultPaused()).to.be.false;
+    });
+
+    it('pausing emits an event', async () => {
+      await expect(await timedVault.pause())
+        .to.emit(timedVault, 'VaultPausedStateChanged')
+        .withArgs(true);
+
+        await expect(await timedVault.unpause())
+        .to.emit(timedVault, 'VaultPausedStateChanged')
+        .withArgs(false);
     });
   });
 
