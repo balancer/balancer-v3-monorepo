@@ -17,17 +17,14 @@ struct PoolCallbacks {
 }
 
 struct LiquidityManagement {
+    bool supportsAddLiquidityProportional;
     bool supportsAddLiquiditySingleTokenExactOut;
     bool supportsAddLiquidityUnbalanced;
     bool supportsAddLiquidityCustom;
+    bool supportsRemoveLiquidityProportional;
     bool supportsRemoveLiquiditySingleTokenExactIn;
     bool supportsRemoveLiquiditySingleTokenExactOut;
     bool supportsRemoveLiquidityCustom;
-}
-
-struct LiquidityManagementDefaults {
-    bool supportsAddLiquidityProportional;
-    bool supportsRemoveLiquidityProportional;
 }
 
 /// @dev Represents a pool's configuration, including callbacks.
@@ -36,7 +33,6 @@ struct PoolConfig {
     bool isInitializedPool;
     PoolCallbacks callbacks;
     LiquidityManagement liquidityManagement;
-    LiquidityManagementDefaults liquidityManagementDefaults;
 }
 
 interface IVault {
@@ -92,15 +88,13 @@ interface IVault {
      * @param factory The factory creating the pool
      * @param tokens The pool's tokens
      * @param liquidityManagement Supported liquidity management callback flags
-     * @param liquidityManagementDefaults Supported default liquidity management callback flags
      */
     event PoolRegistered(
         address indexed pool,
         address indexed factory,
         IERC20[] tokens,
         PoolCallbacks callbacks,
-        LiquidityManagement liquidityManagement,
-        LiquidityManagementDefaults liquidityManagementDefaults
+        LiquidityManagement liquidityManagement
     );
 
     /**
@@ -131,23 +125,6 @@ interface IVault {
         IERC20[] memory tokens,
         PoolCallbacks calldata config,
         LiquidityManagement calldata liquidityManagement
-    ) external;
-
-    /**
-     * @notice Registers a pool, associating it with its factory and the tokens it manages.
-     * @dev This version of the function allows overriding liquidity management default settings.
-     * @param factory The factory address associated with the pool being registered
-     * @param tokens An array of token addresses the pool will manage
-     * @param config Config for the pool
-     * @param liquidityManagement Liquidity management flags with implemented methods
-     * @param liquidityManagementDefaults Liquidity management flags for default, proportional methods
-     */
-    function registerPool(
-        address factory,
-        IERC20[] memory tokens,
-        PoolCallbacks calldata config,
-        LiquidityManagement calldata liquidityManagement,
-        LiquidityManagementDefaults calldata liquidityManagementDefaults
     ) external;
 
     /**

@@ -8,7 +8,7 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 // solhint-disable-next-line max-line-length
-import { IVault, PoolConfig, PoolCallbacks, LiquidityManagement, LiquidityManagementDefaults } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault, PoolConfig, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 
@@ -483,27 +483,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         PoolCallbacks calldata poolCallbacks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenNotPaused {
-        _registerPool(
-            factory,
-            tokens,
-            poolCallbacks,
-            liquidityManagement,
-            LiquidityManagementDefaults({
-                supportsAddLiquidityProportional: true,
-                supportsRemoveLiquidityProportional: true
-            })
-        );
-    }
-
-    /// @inheritdoc IVault
-    function registerPool(
-        address factory,
-        IERC20[] memory tokens,
-        PoolCallbacks calldata poolCallbacks,
-        LiquidityManagement calldata liquidityManagement,
-        LiquidityManagementDefaults calldata liquidityManagementDefaults
-    ) external nonReentrant whenNotPaused {
-        _registerPool(factory, tokens, poolCallbacks, liquidityManagement, liquidityManagementDefaults);
+        _registerPool(factory, tokens, poolCallbacks, liquidityManagement);
     }
 
     /// @inheritdoc IVault
@@ -552,8 +532,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         address factory,
         IERC20[] memory tokens,
         PoolCallbacks memory callbackConfig,
-        LiquidityManagement memory liquidityManagement,
-        LiquidityManagementDefaults memory liquidityManagementDefaults
+        LiquidityManagement memory liquidityManagement
     ) internal {
         address pool = msg.sender;
 
@@ -595,11 +574,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         config.isRegisteredPool = true;
         config.callbacks = callbackConfig;
         config.liquidityManagement = liquidityManagement;
-        config.liquidityManagementDefaults = liquidityManagementDefaults;
         _poolConfig[pool] = config.fromPoolConfig();
 
         // Emit an event to log the pool registration
-        emit PoolRegistered(pool, factory, tokens, callbackConfig, liquidityManagement, liquidityManagementDefaults);
+        emit PoolRegistered(pool, factory, tokens, callbackConfig, liquidityManagement);
     }
 
     /// @dev See `isRegisteredPool`

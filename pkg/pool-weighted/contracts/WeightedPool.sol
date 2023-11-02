@@ -109,9 +109,11 @@ contract WeightedPool is BasePool {
                 shouldCallAfterSwap: false
             }),
             LiquidityManagement({
+                supportsAddLiquidityProportional: true,
                 supportsAddLiquiditySingleTokenExactOut: true,
                 supportsAddLiquidityUnbalanced: true,
                 supportsAddLiquidityCustom: false,
+                supportsRemoveLiquidityProportional: true,
                 supportsRemoveLiquiditySingleTokenExactIn: true,
                 supportsRemoveLiquiditySingleTokenExactOut: true,
                 supportsRemoveLiquidityCustom: false

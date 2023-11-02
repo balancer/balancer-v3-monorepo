@@ -3,7 +3,7 @@
 pragma solidity ^0.8.4;
 
 // solhint-disable-next-line max-line-length
-import { PoolConfig, PoolCallbacks, LiquidityManagement, LiquidityManagementDefaults } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { PoolConfig, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 
 // @notice Config type to store entire configuration of the pool
@@ -219,6 +219,10 @@ library PoolConfigLib {
         {
             configBits = configBits
                 .insertBool(
+                    config.liquidityManagement.supportsAddLiquidityProportional,
+                    ADD_LIQUIDITY_PROPORTIONAL_OFFSET
+                )
+                .insertBool(
                     config.liquidityManagement.supportsAddLiquiditySingleTokenExactOut,
                     ADD_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET
                 )
@@ -226,29 +230,24 @@ library PoolConfigLib {
                 .insertBool(config.liquidityManagement.supportsAddLiquidityCustom, ADD_LIQUIDITY_CUSTOM_OFFSET);
         }
 
-        {
-            configBits = configBits
-                .insertBool(
-                    config.liquidityManagement.supportsRemoveLiquiditySingleTokenExactIn,
-                    REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET
-                )
-                .insertBool(
-                    config.liquidityManagement.supportsRemoveLiquiditySingleTokenExactOut,
-                    REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET
-                )
-                .insertBool(config.liquidityManagement.supportsRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET);
-        }
-
         return
             PoolConfigBits.wrap(
                 configBits
                     .insertBool(
-                        config.liquidityManagementDefaults.supportsAddLiquidityProportional,
-                        ADD_LIQUIDITY_PROPORTIONAL_OFFSET
+                        config.liquidityManagement.supportsRemoveLiquidityProportional,
+                        REMOVE_LIQUIDITY_PROPORTIONAL_OFFSET
                     )
                     .insertBool(
-                        config.liquidityManagementDefaults.supportsRemoveLiquidityProportional,
-                        REMOVE_LIQUIDITY_PROPORTIONAL_OFFSET
+                        config.liquidityManagement.supportsRemoveLiquiditySingleTokenExactIn,
+                        REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET
+                    )
+                    .insertBool(
+                        config.liquidityManagement.supportsRemoveLiquiditySingleTokenExactOut,
+                        REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET
+                    )
+                    .insertBool(
+                        config.liquidityManagement.supportsRemoveLiquidityCustom,
+                        REMOVE_LIQUIDITY_CUSTOM_OFFSET
                     )
             );
     }
@@ -266,16 +265,14 @@ library PoolConfigLib {
                     shouldCallAfterSwap: config.shouldCallAfterSwap()
                 }),
                 liquidityManagement: LiquidityManagement({
+                    supportsAddLiquidityProportional: config.supportsAddLiquidityProportional(),
                     supportsAddLiquiditySingleTokenExactOut: config.supportsAddLiquiditySingleTokenExactOut(),
                     supportsAddLiquidityUnbalanced: config.supportsAddLiquidityUnbalanced(),
                     supportsAddLiquidityCustom: config.supportsAddLiquidityCustom(),
+                    supportsRemoveLiquidityProportional: config.supportsRemoveLiquidityProportional(),
                     supportsRemoveLiquiditySingleTokenExactIn: config.supportsRemoveLiquiditySingleTokenExactIn(),
                     supportsRemoveLiquiditySingleTokenExactOut: config.supportsRemoveLiquiditySingleTokenExactOut(),
                     supportsRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom()
-                }),
-                liquidityManagementDefaults: LiquidityManagementDefaults({
-                    supportsAddLiquidityProportional: config.supportsAddLiquidityProportional(),
-                    supportsRemoveLiquidityProportional: config.supportsRemoveLiquidityProportional()
                 })
             });
     }

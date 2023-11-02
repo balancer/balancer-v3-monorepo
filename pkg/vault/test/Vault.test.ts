@@ -109,8 +109,7 @@ describe('Vault', function () {
           factory.address,
           poolBTokens,
           [false, false, false, false, false],
-          [true, true, true, true, true, true],
-          [true, true]
+          [true, true, true, true, true, true, true, true]
         );
     });
 
