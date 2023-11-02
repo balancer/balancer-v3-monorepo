@@ -714,7 +714,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         // Emit an event to log the pool initialization
         emit PoolInitialized(pool);
 
-        emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
+        emit PoolBalanceChanged(pool, to, tokens, amountsIn.unsafeCastToInt256(true));
     }
 
     /// @inheritdoc IVault
@@ -729,23 +729,71 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         external
         withHandler
         whenNotPaused
-        nonReentrant // TODO: review scope
         withInitializedPool(pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
         InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
-        // Remove
-        if (kind != AddLiquidityKind.CUSTOM && userData.length > 0) {
-            revert UserDataNotSupported();
+
+        // TODO: check if `before` needs kind.
+        balances = _beforeAddLiquidity(pool, to, maxAmountsIn, minBptAmountOut, balances, userData);
+
+        // This function is non-reentrant, as it performs the accounting updates.
+        (amountsIn, bptAmountOut, balances, returnData) = _addLiquidity(
+            pool,
+            to,
+            tokens,
+            maxAmountsIn,
+            minBptAmountOut,
+            kind,
+            balances,
+            userData
+        );
+
+        _afterAddLiquidityCallback(pool, to, amountsIn, bptAmountOut, balances, userData);
+    }
+
+    function _beforeAddLiquidity(
+        address pool,
+        address to,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptOut,
+        uint256[] memory balances,
+        bytes memory userData
+    ) internal nonReentrant returns (uint256[] memory updatedBalances) {
+        if (_poolConfig[pool].shouldCallBeforeAddLiquidity()) {
+            if (IBasePool(pool).onBeforeAddLiquidity(to, maxAmountsIn, minBptOut, balances, userData) == false) {
+                revert CallbackFailed();
+            }
+
+            // The callback might alter the balances, so we need to read them again to ensure that the data is
+            // fresh moving forward.
+            (, updatedBalances) = _getPoolTokens(pool);
+        } else {
+            // If the callback is not executed, the existing balances are correct.
+            updatedBalances = balances;
         }
+    }
 
-        // enforce boundaries at the vault, not router
-        // check if `before` needs kind.
-        balances = _beforeAddLiquidity(pool, maxAmountsIn, minBptAmountOut, balances, userData);
-
-        // Reentrancy guard should act here.
-
+    function _addLiquidity(
+        address pool,
+        address to,
+        IERC20[] memory tokens,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        AddLiquidityKind kind,
+        uint256[] memory balances,
+        bytes memory userData
+    )
+        internal
+        nonReentrant
+        returns (
+            uint256[] memory amountsIn,
+            uint256 bptAmountOut,
+            uint256[] memory updatedBalances,
+            bytes memory returnData
+        )
+    {
         if (kind == AddLiquidityKind.PROPORTIONAL) {
             _poolConfig[pool].requireSupportsAddLiquidityProportional();
 
@@ -784,60 +832,49 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             revert InvalidAddLiquidityKind();
         }
 
-        _afterAddLiquidity(pool, to, tokens, amountsIn, bptAmountOut, balances, userData);
+        // TODO: enforce min and max. Maybe inside `_addLiquidityUpdateAccounting`, where we iterate the tokens?
+        updatedBalances = _addLiquidityUpdateAccounting(pool, to, tokens, amountsIn, bptAmountOut, balances);
     }
 
-    function _beforeAddLiquidity(
-        address pool,
-        uint256[] memory maxAmountsIn,
-        uint256 minBptOut,
-        uint256[] memory balances,
-        bytes memory userData
-    ) internal returns (uint256[] memory updatedBalances) {
-        if (_poolConfig[pool].shouldCallBeforeAddLiquidity()) {
-            if (IBasePool(pool).onBeforeAddLiquidity(maxAmountsIn, minBptOut, balances, userData) == false) {
-                revert CallbackFailed();
-            }
-
-            // The callback might alter the balances, so we need to read them again to ensure that the data is
-            // fresh moving forward.
-            (, updatedBalances) = _getPoolTokens(pool);
-        } else {
-            // If the callback is not executed, the existing balances are correct.
-            updatedBalances = balances;
-        }
-    }
-
-    function _afterAddLiquidity(
+    function _addLiquidityUpdateAccounting(
         address pool,
         address to,
         IERC20[] memory tokens,
         uint256[] memory amountsIn,
         uint256 bptAmountOut,
-        uint256[] memory balances,
-        bytes memory userData
-    ) internal {
-        uint256[] memory finalBalances = new uint256[](balances.length);
+        uint256[] memory balances
+    ) internal returns (uint256[] memory updatedBalances) {
+        updatedBalances = new uint256[](balances.length);
+
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountIn = amountsIn[i];
 
             // Debit of token[i] for amountIn
             _takeDebt(tokens[i], amountIn, msg.sender);
 
-            finalBalances[i] = balances[i] + amountIn;
+            updatedBalances[i] = balances[i] + amountIn;
         }
 
         // Store the new pool balances.
-        _setPoolBalances(pool, finalBalances);
+        _setPoolBalances(pool, updatedBalances);
 
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
         _mint(address(pool), to, bptAmountOut);
 
-        emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
+        emit PoolBalanceChanged(pool, to, tokens, amountsIn.unsafeCastToInt256(true));
+    }
 
+    function _afterAddLiquidityCallback(
+        address pool,
+        address to,
+        uint256[] memory amountsIn,
+        uint256 bptAmountOut,
+        uint256[] memory balances,
+        bytes memory userData
+    ) internal {
         if (_poolConfig[pool].shouldCallAfterAddLiquidity()) {
-            if (IBasePool(pool).onAfterAddLiquidity(msg.sender, amountsIn, bptAmountOut, balances, userData) == false) {
+            if (IBasePool(pool).onAfterAddLiquidity(to, amountsIn, bptAmountOut, balances, userData) == false) {
                 revert CallbackFailed();
             }
         }
@@ -854,18 +891,88 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     )
         external
         whenNotPaused
-        nonReentrant // TODO: review scope
         withInitializedPool(pool)
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
     {
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
         InputHelpers.ensureInputLengthMatch(tokens.length, minAmountsOut.length);
-        if (kind != RemoveLiquidityKind.CUSTOM && userData.length > 0) {
-            revert UserDataNotSupported();
-        }
 
+        // TODO: check if `before` callback needs kind.
         balances = _beforeRemoveLiquidity(pool, maxBptAmountIn, minAmountsOut, balances, userData);
 
+        // This function is non-reentrant, as it performs the accounting updates.
+        (bptAmountIn, amountsOut, balances, returnData) = _removeLiquidity(
+            pool,
+            from,
+            tokens,
+            maxBptAmountIn,
+            minAmountsOut,
+            kind,
+            balances,
+            userData
+        );
+
+        _afterRemoveLiquidityCallback(pool, from, bptAmountIn, amountsOut, balances, userData, false);
+    }
+
+    /// @inheritdoc IVault
+    function removeLiquidityRecovery(
+        address pool,
+        address from,
+        uint256 exactBptAmountIn
+    )
+        external
+        /// TODO: Only in recovery mode
+        nonReentrant
+        withInitializedPool(pool)
+        returns (uint256[] memory amountsOut)
+    {
+        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
+
+        amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, _totalSupply(pool), exactBptAmountIn);
+
+        _removeLiquidityUpdateAccounting(pool, from, tokens, exactBptAmountIn, amountsOut, balances);
+    }
+
+    function _beforeRemoveLiquidity(
+        address pool,
+        uint256 maxBptAmountIn,
+        uint256[] memory minAmountsOut,
+        uint256[] memory balances,
+        bytes memory userData
+    ) internal returns (uint256[] memory updatedBalances) {
+        if (_poolConfig[pool].shouldCallBeforeRemoveLiquidity()) {
+            if (IBasePool(pool).onBeforeRemoveLiquidity(maxBptAmountIn, minAmountsOut, balances, userData) == false) {
+                revert CallbackFailed();
+            }
+            // The callback might alter the balances, so we need to read them again to ensure that the data is
+            // fresh moving forward.
+            (, updatedBalances) = _getPoolTokens(pool);
+        } else {
+            // If the callback is not executed, the existing balances are correct.
+            updatedBalances = balances;
+        }
+    }
+
+    function _removeLiquidity(
+        address pool,
+        address from,
+        IERC20[] memory tokens,
+        uint256 maxBptAmountIn,
+        uint256[] memory minAmountsOut,
+        RemoveLiquidityKind kind,
+        uint256[] memory balances,
+        bytes memory userData
+    )
+        internal
+        nonReentrant
+        returns (
+            uint256 bptAmountIn,
+            uint256[] memory amountsOut,
+            uint256[] memory updatedBalances,
+            bytes memory returnData
+        )
+    {
         if (kind == RemoveLiquidityKind.PROPORTIONAL) {
             _poolConfig[pool].requireSupportsRemoveLiquidityProportional();
 
@@ -912,54 +1019,19 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             revert InvalidRemoveLiquidityKind();
         }
 
-        _afterRemoveLiquidity(pool, from, tokens, bptAmountIn, amountsOut, balances, userData, false);
+        // TODO: enforce min and max. Maybe inside `_removeLiquidityUpdateAccounting`, where we iterate the tokens?
+        updatedBalances = _removeLiquidityUpdateAccounting(pool, from, tokens, bptAmountIn, amountsOut, balances);
     }
 
-    /// @inheritdoc IVault
-    function removeLiquidityRecovery(
-        address pool,
-        address from,
-        uint256 exactBptAmountIn
-        /// TODO: Only in recovery mode
-    ) external nonReentrant withInitializedPool(pool) returns (uint256[] memory amountsOut) {
-        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens(pool);
-
-        amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, _totalSupply(pool), exactBptAmountIn);
-
-        _afterRemoveLiquidity(pool, from, tokens, exactBptAmountIn, amountsOut, balances, "", true);
-    }
-
-    function _beforeRemoveLiquidity(
-        address pool,
-        uint256 maxBptAmountIn,
-        uint256[] memory minAmountsOut,
-        uint256[] memory balances,
-        bytes memory userData
-    ) internal returns (uint256[] memory updatedBalances) {
-        if (_poolConfig[pool].shouldCallBeforeRemoveLiquidity()) {
-            if (IBasePool(pool).onBeforeRemoveLiquidity(maxBptAmountIn, minAmountsOut, balances, userData) == false) {
-                revert CallbackFailed();
-            }
-            // The callback might alter the balances, so we need to read them again to ensure that the data is
-            // fresh moving forward.
-            (, updatedBalances) = _getPoolTokens(pool);
-        } else {
-            // If the callback is not executed, the existing balances are correct.
-            updatedBalances = balances;
-        }
-    }
-
-    function _afterRemoveLiquidity(
+    function _removeLiquidityUpdateAccounting(
         address pool,
         address from,
         IERC20[] memory tokens,
         uint256 bptAmountIn,
         uint256[] memory amountsOut,
-        uint256[] memory balances,
-        bytes memory userData,
-        bool recoveryMode
-    ) internal {
-        uint256[] memory finalBalances = new uint256[](balances.length);
+        uint256[] memory balances
+    ) internal returns (uint256[] memory updatedBalances) {
+        updatedBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountOut = amountsOut[i];
 
@@ -967,11 +1039,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             _supplyCredit(tokens[i], amountOut, msg.sender);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
-            finalBalances[i] = balances[i] - amountOut;
+            updatedBalances[i] = balances[i] - amountOut;
         }
 
         // Store the new pool balances.
-        _setPoolBalances(pool, finalBalances);
+        _setPoolBalances(pool, updatedBalances);
 
         // Trusted routers use Vault's allowances, which are infinite anyways for pool tokens.
         if (!_isTrustedRouter(msg.sender)) {
@@ -985,21 +1057,29 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         // as the pool's math relies on totalSupply.
         _burn(address(pool), from, bptAmountIn);
 
-        if (_poolConfig[pool].shouldCallAfterRemoveLiquidity() && recoveryMode == false) {
-            if (
-                IBasePool(pool).onAfterRemoveLiquidity(msg.sender, bptAmountIn, amountsOut, balances, userData) == false
-            ) {
-                revert CallbackFailed();
-            }
-        }
-
         emit PoolBalanceChanged(
             pool,
-            msg.sender,
+            from,
             tokens,
             // We can unsafely cast to int256 because balances are actually stored as uint112
             amountsOut.unsafeCastToInt256(false)
         );
+    }
+
+    function _afterRemoveLiquidityCallback(
+        address pool,
+        address from,
+        uint256 bptAmountIn,
+        uint256[] memory amountsOut,
+        uint256[] memory balances,
+        bytes memory userData,
+        bool recoveryMode
+    ) internal {
+        if (_poolConfig[pool].shouldCallAfterRemoveLiquidity() && recoveryMode == false) {
+            if (IBasePool(pool).onAfterRemoveLiquidity(from, bptAmountIn, amountsOut, balances, userData) == false) {
+                revert CallbackFailed();
+            }
+        }
     }
 
     /**

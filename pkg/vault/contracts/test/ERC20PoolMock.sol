@@ -5,20 +5,20 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { BasePool } from "@balancer-labs/v3-pool-utils/contracts/BasePool.sol";
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { ERC20PoolToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20PoolToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 
-contract ERC20PoolMock is ERC20PoolToken, IBasePool {
+contract ERC20PoolMock is BasePool {
     using FixedPoint for uint256;
 
     uint256 public constant MIN_INIT_BPT = 1e6;
 
-    IVault private immutable _vault;
-
     bool public failOnCallback;
+    uint256 private immutable _numTokens;
 
     constructor(
         IVault vault,
@@ -27,9 +27,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         address factory,
         IERC20[] memory tokens,
         bool registerPool
-    ) ERC20PoolToken(vault, name, symbol) {
-        _vault = vault;
-
+    ) BasePool(vault, name, symbol, 30 days, 90 days) {
         if (registerPool) {
             vault.registerPool(
                 factory,
@@ -38,6 +36,8 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
                 PoolConfigBits.wrap(bytes32(type(uint256).max)).toPoolConfig().liquidityManagement
             );
         }
+
+        _numTokens = tokens.length;
     }
 
     function onInitialize(
@@ -53,7 +53,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         uint256,
         uint256[] memory,
         bytes memory
-    ) external view returns (bool) {
+    ) external view override returns (bool) {
         return !failOnCallback;
     }
 
@@ -63,7 +63,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         uint256[] memory,
         uint256[] memory,
         bytes memory
-    ) external view returns (bool) {
+    ) external view override returns (bool) {
         return !failOnCallback;
     }
 
@@ -93,6 +93,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
     }
 
     function onBeforeAddLiquidity(
+        address,
         uint256[] memory,
         uint256,
         uint256[] memory,
@@ -140,18 +141,18 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
     }
 
     function onRemoveLiquiditySingleTokenExactIn(
-        address sender,
-        uint256 tokenIndex,
-        uint256 exactBptAmountIn,
-        uint256[] memory currentBalances
-    ) external returns (uint256 amountOut) {}
+        address,
+        uint256,
+        uint256,
+        uint256[] memory
+    ) external pure override returns (uint256) {}
 
     function onRemoveLiquiditySingleTokenExactOut(
-        address sender,
-        uint256 tokenOutIndex,
-        uint256 exactAmountOut,
-        uint256[] memory currentBalances
-    ) external returns (uint256 bptAmountIn) {}
+        address,
+        uint256,
+        uint256,
+        uint256[] memory
+    ) external pure override returns (uint256) {}
 
     function onRemoveLiquidityCustom(
         address,
@@ -159,9 +160,25 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         uint256[] memory,
         uint256[] memory,
         bytes memory
-    ) external override returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {}
+    ) external pure override returns (uint256, uint256[] memory, bytes memory) {}
 
-    function getPoolTokens() external view returns (IERC20[] memory tokens, uint256[] memory balances) {
-        return _vault.getPoolTokens(address(this));
+    function _getTotalTokens() internal view virtual override returns (uint256) {
+        return _numTokens;
+    }
+
+    function _scalingFactor(IERC20) internal view virtual override returns (uint256) {
+        return 1;
+    }
+
+    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
+        uint256 numTokens = _getTotalTokens();
+
+        uint256[] memory scalingFactors = new uint256[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; i++) {
+            scalingFactors[i] = 1;
+        }
+
+        return scalingFactors;
     }
 }

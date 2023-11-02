@@ -80,6 +80,7 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
 
     /// @inheritdoc IBasePool
     function onBeforeAddLiquidity(
+        address,
         uint256[] memory,
         uint256,
         uint256[] memory,
@@ -162,7 +163,6 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
     ) external view virtual returns (uint256) {
         revert CallbackNotImplemented();
     }
-
 
     /// @inheritdoc IBasePool
     function onRemoveLiquidityCustom(

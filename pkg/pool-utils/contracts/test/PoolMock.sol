@@ -115,6 +115,7 @@ contract PoolMock is BasePool {
     }
 
     function onBeforeAddLiquidity(
+        address,
         uint256[] memory,
         uint256,
         uint256[] memory,

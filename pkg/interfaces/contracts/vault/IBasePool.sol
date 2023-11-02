@@ -43,6 +43,7 @@ interface IBasePool {
 
     /**
      * @notice Optional callback to be executed before `onAddLiquidity...` callbacks are executed.
+     * @param sender Address of the sender
      * @param maxAmountsIn Maximum amounts of input tokens
      * @param minBptAmountOut Minimum amount of output pool tokens
      * @param currentBalances Current pool balances, in the same order as the tokens registered in the pool
@@ -50,6 +51,7 @@ interface IBasePool {
      * @return success True if the pool wishes to proceed with settlement
      */
     function onBeforeAddLiquidity(
+        address sender,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         uint256[] memory currentBalances,
