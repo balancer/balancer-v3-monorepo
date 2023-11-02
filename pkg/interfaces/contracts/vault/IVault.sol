@@ -545,18 +545,18 @@ interface IVault {
     error VaultBufferPeriodExpired();
 
     /**
+     * @notice Indicates whether the Vault is paused.
+     * @return True if the Vault is paused
+     */
+    function vaultPaused() external view returns (bool);
+
+    /**
      * @notice Returns the paused status, and end times of the Vault's pause window and buffer period.
      * @return paused True is the Vault is paused
      * @return vaultPauseWindowEndTime The timestamp of the end of the Vault's pause window
      * @return vaultBufferPeriodEndTime The timestamp of the end of the Vault's buffer period
      */
     function getVaultPausedState() external view returns (bool, uint256, uint256);
-
-    /**
-     * @notice Indicates whether the Vault is paused.
-     * @return True if the Vault is paused
-     */
-    function vaultPaused() external view returns (bool);
 
     /**
      * @notice Pause the Vault: an emergency action which disables all operational state-changing functions.
