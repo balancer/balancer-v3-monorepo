@@ -15,7 +15,7 @@ import { BasePool } from "../BasePool.sol";
 contract PoolMock is BasePool {
     using FixedPoint for uint256;
 
-    uint256 public constant MIN_INIT_BPT = 1e10;
+    uint256 public constant MIN_INIT_BPT = 1e6;
 
     bool public failOnCallback;
 

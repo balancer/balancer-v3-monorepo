@@ -15,8 +15,8 @@ import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
+import { PoolMock } from "@balancer-labs/v3-pool-utils/contracts/test/PoolMock.sol";
 
-import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
@@ -32,7 +32,7 @@ contract VaultSwapTest is Test {
     VaultMock vault;
     Router router;
     BasicAuthorizerMock authorizer;
-    ERC20PoolMock pool;
+    PoolMock pool;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
     address alice = vm.addr(1);
@@ -47,7 +47,7 @@ contract VaultSwapTest is Test {
         router = new Router(IVault(vault), address(0));
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
-        pool = new ERC20PoolMock(
+        pool = new PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",
@@ -99,7 +99,19 @@ contract VaultSwapTest is Test {
         pool.setMultiplier(1e30);
 
         vm.prank(bob);
-        // should not fail
+
+        // Calls `onSwap` in the pool.
+        vm.expectCall(address(pool), abi.encodeWithSelector(IBasePool.onSwap.selector, IBasePool.SwapParams({
+            kind: IVault.SwapKind.GIVEN_IN,
+            tokenIn: IERC20(USDC),
+            tokenOut: IERC20(DAI),
+            amountGiven: USDC_AMOUNT_IN,
+            balances: [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
+            indexIn: 1,
+            indexOut: 0,
+            sender: address(router),
+            userData: bytes("")
+        })));
         router.swap(
             IVault.SwapKind.GIVEN_IN,
             address(pool),

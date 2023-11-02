@@ -14,6 +14,8 @@ import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 contract ERC20PoolMock is ERC20PoolToken, IBasePool {
     using FixedPoint for uint256;
 
+    uint256 public constant MIN_INIT_BPT = 1e6;
+
     IVault private immutable _vault;
 
     bool public failOnCallback;
@@ -42,7 +44,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         uint256[] memory amountsIn,
         bytes memory
     ) external pure override returns (uint256[] memory, uint256) {
-        return (amountsIn, amountsIn[0]);
+        return (amountsIn, MIN_INIT_BPT > amountsIn[0] ? MIN_INIT_BPT : amountsIn[0]);
     }
 
     function onAfterAddLiquidity(
