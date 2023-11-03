@@ -620,6 +620,14 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             }
         }
 
+        // Set pool's pause window from the factory.
+        (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = factory.getPauseConfiguration();
+        uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
+
+        _poolPauseEndTimes[pool] = bytes32(0)
+            .insertUint(pauseWindowEndTime, _PAUSE_WINDOW_OFFSET, _TIMESTAMP_BITLENGTH)
+            .insertUint(pauseWindowEndTime + bufferPeriodDuration, _BUFFER_PERIOD_OFFSET, _TIMESTAMP_BITLENGTH);
+
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
         config.isRegisteredPool = true;
