@@ -101,6 +101,10 @@ describe('Vault', function () {
         .withArgs(poolBAddress);
     });
 
+    it('pools are initially unpaused', async () => {
+      expect(await vault.poolPaused(poolAAddress)).to.equal(false);
+    });
+
     it('registering a pool emits an event', async () => {
       await expect(await vault.connect(unregisteredPoolSigner).manualRegisterPool(factory.address, poolBTokens))
         .to.emit(vault, 'PoolRegistered')
@@ -128,7 +132,7 @@ describe('Vault', function () {
     });
 
     it('cannot register a pool when paused', async () => {
-      await vault.pause();
+      await vault.manualPauseVault();
 
       await expect(
         vault.connect(unregisteredPoolSigner).manualRegisterPool(factory.address, poolBTokens)
@@ -174,7 +178,7 @@ describe('Vault', function () {
       });
     });
 
-    it('is temporarily pausable', async () => {
+    it('Vault is temporarily pausable', async () => {
       expect(await timedVault.vaultPaused()).to.equal(false);
 
       const [paused, pauseWindowEndTime, bufferPeriodEndTime] = await timedVault.getVaultPausedState();
@@ -183,19 +187,19 @@ describe('Vault', function () {
       expect(pauseWindowEndTime).to.equal(await fromNow(PAUSE_WINDOW_DURATION));
       expect(bufferPeriodEndTime).to.equal((await fromNow(PAUSE_WINDOW_DURATION)) + bn(BUFFER_PERIOD_DURATION));
 
-      await timedVault.pause();
+      await timedVault.manualPauseVault();
       expect(await timedVault.vaultPaused()).to.be.true;
 
-      await timedVault.unpause();
+      await timedVault.manualUnpauseVault();
       expect(await timedVault.vaultPaused()).to.be.false;
     });
 
-    it('pausing emits an event', async () => {
-      await expect(await timedVault.pause())
+    it('pausing the Vault emits an event', async () => {
+      await expect(await timedVault.manualPauseVault())
         .to.emit(timedVault, 'VaultPausedStateChanged')
         .withArgs(true);
 
-      await expect(await timedVault.unpause())
+      await expect(await timedVault.manualUnpauseVault())
         .to.emit(timedVault, 'VaultPausedStateChanged')
         .withArgs(false);
     });

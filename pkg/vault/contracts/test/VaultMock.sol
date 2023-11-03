@@ -36,12 +36,20 @@ contract VaultMock is Vault {
         _poolConfig[pool] = config.fromPoolConfig();
     }
 
-    function pause() external {
+    function manualPauseVault() external {
         _setVaultPaused(true);
     }
 
-    function unpause() external {
+    function manualUnpauseVault() external {
         _setVaultPaused(false);
+    }
+
+    function manualPausePool(address pool) external {
+        _setPoolPaused(pool, true);
+    }
+
+    function manualUnpausePool(address pool) external {
+        _setPoolPaused(pool, false);
     }
 
     // Used for testing the ReentrancyGuard
