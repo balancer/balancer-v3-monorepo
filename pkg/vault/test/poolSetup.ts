@@ -26,7 +26,7 @@ export async function setupEnvironment(): Promise<{
   const vaultAddress = await vault.getAddress();
 
   const factory: WeightedPoolFactory = await deploy('v3-pool-weighted/WeightedPoolFactory', {
-    args: [vaultAddress, 0, 0],
+    args: [vaultAddress, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
   });
   const factoryAddress = await factory.getAddress();
 

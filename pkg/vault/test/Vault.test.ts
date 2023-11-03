@@ -18,6 +18,7 @@ import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import '@balancer-labs/v3-common/setupTests';
+import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -36,7 +37,7 @@ describe('Vault', function () {
   let tokenAAddress: string;
   let tokenBAddress: string;
   let factoryAddress: string;
-
+  let vaultAddress: string;
   let poolAAddress: string;
   let poolBAddress: string;
 
@@ -53,6 +54,8 @@ describe('Vault', function () {
     const { vault: vaultMock, tokens, pools, factory: factoryContract } = await setupEnvironment();
 
     vault = vaultMock;
+    vaultAddress = await vault.getAddress();
+
     factory = factoryContract;
     factoryAddress = await factory.getAddress();
 
@@ -206,6 +209,41 @@ describe('Vault', function () {
       await expect(await timedVault.manualUnpauseVault())
         .to.emit(timedVault, 'VaultPausedStateChanged')
         .withArgs(false);
+    });
+
+    describe('pausing pools', () => {
+      let pool: PoolMock;
+      let poolAddress: string;
+
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deploy('v3-pool-utils/PoolMock', {
+          args: [vaultAddress, 'Pool X', 'POOLX', factoryAddress, poolATokens, true],
+        });
+        poolAddress = await pool.getAddress();
+      });
+
+      it('Pools are temporarily pausable', async () => {
+        expect(await vault.poolPaused(poolAddress)).to.equal(false);
+
+        const paused = await vault.poolPaused(poolAddress);
+        expect(paused).to.be.false;
+
+        await vault.manualPausePool(poolAddress);
+        expect(await vault.poolPaused(poolAddress)).to.be.true;
+
+        await vault.manualUnpausePool(poolAddress);
+        expect(await vault.poolPaused(poolAddress)).to.be.false;
+      });
+
+      it('pausing a pool emits an event', async () => {
+        await expect(await vault.manualPausePool(poolAddress))
+          .to.emit(vault, 'PoolPausedStateChanged')
+          .withArgs(poolAddress, true);
+
+        await expect(await vault.manualUnpausePool(poolAddress))
+          .to.emit(vault, 'PoolPausedStateChanged')
+          .withArgs(poolAddress, false);
+      });
     });
   });
 
