@@ -3,9 +3,11 @@
 pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IBasePool } from "./IBasePool.sol";
 import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
+import { ITemporarilyPausable } from "./ITemporarilyPausable.sol";
 
 /// @dev Represents a pool's callbacks.
 struct PoolCallbacks {
@@ -94,11 +96,12 @@ interface IVault {
 
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
+     * @dev The factory creating the pool must support `getPauseConfiguration`.
      * @param factory The factory address associated with the pool being registered
      * @param tokens An array of token addresses the pool will manage
      * @param config Config for the pool
      */
-    function registerPool(address factory, IERC20[] memory tokens, PoolCallbacks calldata config) external;
+    function registerPool(ITemporarilyPausable factory, IERC20[] memory tokens, PoolCallbacks calldata config) external;
 
     /**
      * @notice Initializes a registered pool by adding liquidity; mints BPT tokens for the first time in exchange.

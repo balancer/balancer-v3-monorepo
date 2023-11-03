@@ -6,6 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { ITemporarilyPausable } from "@balancer-labs/v3-interfaces/contracts/vault/ITemporarilyPausable.sol";
 
 import { BasePoolMath } from "@balancer-labs/v3-pool-utils/contracts/lib/BasePoolMath.sol";
 import { BasePool } from "@balancer-labs/v3-pool-utils/contracts/BasePool.sol";
@@ -94,7 +95,7 @@ contract WeightedPool is BasePool {
         _normalizedWeight3 = numTokens > 3 ? params.normalizedWeights[3] : 0;
 
         vault.registerPool(
-            msg.sender,
+            ITemporarilyPausable(msg.sender), // factory
             params.tokens,
             PoolCallbacks({
                 shouldCallAfterAddLiquidity: false,

@@ -93,7 +93,6 @@ abstract contract BasePool is IBasePool, ERC20PoolToken {
 
     /**
      * @notice Return the scaling factors of all tokens.
-     *
      * @return An array of the scaling factors
      */
     function getScalingFactors() external view returns (uint256[] memory) {

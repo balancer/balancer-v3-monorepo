@@ -526,7 +526,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
     /// @inheritdoc IVault
     function registerPool(
-        address factory,
+        ITemporarilyPausable factory,
         IERC20[] memory tokens,
         PoolCallbacks calldata poolCallbacks
     ) external nonReentrant whenVaultNotPaused {
@@ -580,7 +580,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      *
      * Emits a `PoolRegistered` event upon successful registration.
      */
-    function _registerPool(address factory, IERC20[] memory tokens, PoolCallbacks memory callbackConfig) internal {
+    function _registerPool(
+        ITemporarilyPausable factory,
+        IERC20[] memory tokens,
+        PoolCallbacks memory callbackConfig
+    ) internal {
         address pool = msg.sender;
 
         // Ensure the pool isn't already registered
@@ -623,7 +627,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         _poolConfig[pool] = config.fromPoolConfig();
 
         // Emit an event to log the pool registration
-        emit PoolRegistered(pool, factory, tokens);
+        emit PoolRegistered(pool, address(factory), tokens);
     }
 
     /// @dev See `isRegisteredPool`

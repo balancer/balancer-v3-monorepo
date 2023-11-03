@@ -9,6 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { ITemporarilyPausable } from "@balancer-labs/v3-interfaces/contracts/vault/ITemporarilyPausable.sol";
 
 import { BasePool } from "../BasePool.sol";
 
@@ -25,7 +26,7 @@ contract PoolMock is BasePool {
         IVault vault,
         string memory name,
         string memory symbol,
-        address factory,
+        ITemporarilyPausable factory,
         IERC20[] memory tokens,
         bool registerPool
     ) BasePool(vault, name, symbol) {
