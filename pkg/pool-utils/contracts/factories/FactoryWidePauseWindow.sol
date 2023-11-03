@@ -5,26 +5,27 @@ pragma solidity ^0.8.4;
 import "@balancer-labs/v3-interfaces/contracts/vault/ITemporarilyPausable.sol";
 
 /**
- * @dev Utility to create Pool factories for Pools that use the `TemporarilyPausable` contract.
+ * @dev Base contract for V3 factories to support pause windows for pools based on the factory deployment time.
  *
- * By calling `TemporarilyPausable`'s constructor with the result of `getPauseConfiguration`, all Pools created by this
- * factory will share the same Pause Window end time, after which both old and new Pools will not be pausable.
+ * Pool registration takes a factory argument, and the Vault calls `getPauseConfiguration` on the factory so that
+ * all Pools created by this factory will share the same Pause Window end time, after which both old and new Pools
+ * will not be pausable.
  */
 contract FactoryWidePauseWindow is ITemporarilyPausable {
-    // This contract relies on timestamps in a similar way as `TemporarilyPausable` does - the same caveats apply.
+    // This contract relies on timestamps - the usual caveats apply.
     // solhint-disable not-rely-on-time
 
     uint256 private immutable _initialPauseWindowDuration;
     uint256 private immutable _bufferPeriodDuration;
 
-    // Time when the pause window for all created Pools expires, and the pause window duration of new Pools becomes
-    // zero.
+    // Time when the pause window for all created Pools expires, and the pause window duration of new Pools
+    // becomes zero.
     uint256 private immutable _poolsPauseWindowEndTime;
 
     constructor(uint256 initialPauseWindowDuration, uint256 bufferPeriodDuration) {
-        // New pools will check on deployment that the durations given are within the bounds specified by
-        // `TemporarilyPausable`. Since it is now possible for a factory to pass in arbitrary values here,
-        // pre-emptively verify that these durations are valid for pool creation.
+        // The Vault will check on deployment that the durations given are within the bounds specified by
+        // the maximums in `PausableConstants` (see ITemporarilyPausable). Since it is now possible for a factory
+        // to pass in arbitrary values here, pre-emptively verify that these durations are valid for pool creation.
         // (Otherwise, you would be able to deploy a useless factory where `create` would always revert.)
 
         if (initialPauseWindowDuration > PausableConstants.MAX_PAUSE_WINDOW_DURATION) {
