@@ -75,8 +75,8 @@ contract WeightedPoolTest is Test {
         (paused, pauseWindow, bufferPeriod) = vault.getPoolPausedState(address(pool));
 
         assertEq(paused, false);
-        assertEq(pauseWindow, 365 days);
-        assertEq(bufferPeriod, 90 days);
+        assertApproxEqAbs(pauseWindow, 365 days, 1);
+        assertApproxEqAbs(bufferPeriod, 365 days + 90 days, 1);
 
         USDC.mint(alice, USDC_AMOUNT);
         DAI.mint(alice, DAI_AMOUNT);
