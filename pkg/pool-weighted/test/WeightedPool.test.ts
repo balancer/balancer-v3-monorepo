@@ -11,12 +11,13 @@ import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/sign
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { FP_ZERO, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { WeightedPoolFactory } from '@balancer-labs/v3-pool-weighted/typechain-types/contracts/WeightedPoolFactory';
 
 describe('WeightedPool', function () {
   let vault: VaultMock;
   let pool: PoolMock;
   let router: Router;
-  let factory: SignerWithAddress;
+  let factory: WeightedPoolFactory;
   let alice: SignerWithAddress;
   let tokenA: ERC20TestToken;
   let tokenB: ERC20TestToken;
@@ -24,9 +25,10 @@ describe('WeightedPool', function () {
   let poolTokens: string[];
   let vaultAddress: string;
   let poolAddress: string;
+  let factoryAddress: string;
 
   before('setup signers', async () => {
-    [, factory, alice] = await ethers.getSigners();
+    [, alice] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault, router, tokens, and pool', async function () {
@@ -38,6 +40,9 @@ describe('WeightedPool', function () {
       args: [await authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
     });
     vaultAddress = await vault.getAddress();
+
+    factory = await deploy('v3-pool-weighted/WeightedPoolFactory', { args: [vaultAddress, 0, 0] });
+    factoryAddress = await factory.getAddress();
 
     router = await deploy('v3-vault/Router', { args: [vaultAddress, ZERO_ADDRESS] });
 
@@ -52,7 +57,7 @@ describe('WeightedPool', function () {
     poolTokens = [tokenAAddress, tokenBAddress, tokenCAddress];
 
     pool = await deploy('v3-pool-utils/PoolMock', {
-      args: [vaultAddress, 'Pool', 'POOL', factory, poolTokens, true],
+      args: [vaultAddress, 'Pool', 'POOL', factoryAddress, poolTokens, true],
     });
 
     poolAddress = await pool.getAddress();

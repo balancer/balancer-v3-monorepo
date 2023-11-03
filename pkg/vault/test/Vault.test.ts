@@ -7,6 +7,7 @@ import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20BalancerPoolToken } from '../typechain-types/contracts/ERC20BalancerPoolToken';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
+import { WeightedPoolFactory } from '@balancer-labs/v3-pool-weighted/typechain-types/contracts/WeightedPoolFactory';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
@@ -23,17 +24,18 @@ describe('Vault', function () {
   const BUFFER_PERIOD_DURATION = MONTH;
 
   let vault: VaultMock;
+  let factory: WeightedPoolFactory;
   let poolA: ERC20BalancerPoolToken;
   let poolB: ERC20BalancerPoolToken;
   let tokenA: ERC20TestToken;
   let tokenB: ERC20TestToken;
   let tokenC: ERC20TestToken;
 
-  let factory: SignerWithAddress;
   let alice: SignerWithAddress;
 
   let tokenAAddress: string;
   let tokenBAddress: string;
+  let factoryAddress: string;
 
   let poolAAddress: string;
   let poolBAddress: string;
@@ -44,13 +46,15 @@ describe('Vault', function () {
   let duplicateTokens: string[];
 
   before('setup signers', async () => {
-    [, factory, alice] = await ethers.getSigners();
+    [, alice] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
-    const { vault: vaultMock, tokens, pools } = await setupEnvironment(factory.address);
+    const { vault: vaultMock, tokens, pools, factory: factoryContract } = await setupEnvironment();
 
     vault = vaultMock;
+    factory = factoryContract;
+    factoryAddress = await factory.getAddress();
 
     tokenA = tokens[0];
     tokenB = tokens[1];
@@ -106,27 +110,27 @@ describe('Vault', function () {
     });
 
     it('registering a pool emits an event', async () => {
-      await expect(await vault.connect(unregisteredPoolSigner).manualRegisterPool(factory.address, poolBTokens))
+      await expect(await vault.connect(unregisteredPoolSigner).manualRegisterPool(factoryAddress, poolBTokens))
         .to.emit(vault, 'PoolRegistered')
-        .withArgs(poolBAddress, factory.address, poolBTokens);
+        .withArgs(poolBAddress, factoryAddress, poolBTokens);
     });
 
     it('cannot register a pool twice', async () => {
-      await vault.connect(unregisteredPoolSigner).manualRegisterPool(factory.address, poolBTokens);
+      await vault.connect(unregisteredPoolSigner).manualRegisterPool(factoryAddress, poolBTokens);
 
-      await expect(vault.connect(unregisteredPoolSigner).manualRegisterPool(factory.address, poolBTokens))
+      await expect(vault.connect(unregisteredPoolSigner).manualRegisterPool(factoryAddress, poolBTokens))
         .to.be.revertedWithCustomError(vault, 'PoolAlreadyRegistered')
         .withArgs(poolBAddress);
     });
 
     it('cannot register a pool with an invalid token', async () => {
       await expect(
-        vault.connect(unregisteredPoolSigner).manualRegisterPool(factory.address, invalidTokens)
+        vault.connect(unregisteredPoolSigner).manualRegisterPool(factoryAddress, invalidTokens)
       ).to.be.revertedWithCustomError(vault, 'InvalidToken');
     });
 
     it('cannot register a pool with duplicate tokens', async () => {
-      await expect(vault.connect(unregisteredPoolSigner).manualRegisterPool(factory.address, duplicateTokens))
+      await expect(vault.connect(unregisteredPoolSigner).manualRegisterPool(factoryAddress, duplicateTokens))
         .to.be.revertedWithCustomError(vault, 'TokenAlreadyRegistered')
         .withArgs(tokenAAddress);
     });
@@ -135,7 +139,7 @@ describe('Vault', function () {
       await vault.manualPauseVault();
 
       await expect(
-        vault.connect(unregisteredPoolSigner).manualRegisterPool(factory.address, poolBTokens)
+        vault.connect(unregisteredPoolSigner).manualRegisterPool(factoryAddress, poolBTokens)
       ).to.be.revertedWithCustomError(vault, 'VaultPaused');
     });
 
@@ -154,7 +158,7 @@ describe('Vault', function () {
 
     it('cannot register a pool with too few tokens', async () => {
       await expect(
-        vault.connect(unregisteredPoolSigner).manualRegisterPool(factory.address, [poolATokens[0]])
+        vault.connect(unregisteredPoolSigner).manualRegisterPool(factoryAddress, [poolATokens[0]])
       ).to.be.revertedWithCustomError(vault, 'MinTokens');
     });
 
@@ -162,7 +166,7 @@ describe('Vault', function () {
       const tokens = await ERC20TokenList.create(5);
 
       await expect(
-        vault.connect(unregisteredPoolSigner).manualRegisterPool(factory.address, await tokens.addresses)
+        vault.connect(unregisteredPoolSigner).manualRegisterPool(factoryAddress, await tokens.addresses)
       ).to.be.revertedWithCustomError(vault, 'MaxTokens');
     });
   });

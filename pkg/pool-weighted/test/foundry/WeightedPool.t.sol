@@ -20,6 +20,7 @@ import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
 import { Router } from "@balancer-labs/v3-vault/contracts/Router.sol";
 import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
 import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
+import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
 
 contract WeightedPoolTest is Test {
     using AssetHelpers for *;
@@ -27,6 +28,7 @@ contract WeightedPoolTest is Test {
     using ArrayHelpers for uint256[2];
 
     VaultMock vault;
+    WeightedPoolFactory factory;
     Router router;
     WeightedPool pool;
     ERC20TestToken USDC;
@@ -42,21 +44,31 @@ contract WeightedPoolTest is Test {
 
     uint256 constant DELTA = 1e9;
 
+    bytes32 constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+
     function setUp() public {
         BasicAuthorizerMock authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
+        factory = new WeightedPoolFactory(vault, 365 days, 90 days);
+
+        uint256 pauseWindow;
+        uint256 bufferPeriod;
+        (pauseWindow, bufferPeriod) = factory.getPauseConfiguration();
+        assertEq(pauseWindow, 365 days);
+        assertEq(bufferPeriod, 90 days);
+
         router = new Router(IVault(vault), address(0));
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IERC20[] memory tokens = [address(DAI), address(USDC)].toMemoryArray().asIERC20();
-        pool = new WeightedPool(
-            WeightedPool.NewPoolParams({
-                name: "ERC20 Pool",
-                symbol: "ERC20POOL",
-                tokens: tokens,
-                normalizedWeights: [uint256(0.50e18), uint256(0.50e18)].toMemoryArray()
-            }),
-            vault
+        pool = WeightedPool(
+            factory.create(
+                "ERC20 Pool",
+                "ERC20POOL",
+                tokens,
+                [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                ZERO_BYTES32
+            )
         );
 
         USDC.mint(alice, USDC_AMOUNT);

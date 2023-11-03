@@ -18,7 +18,6 @@ describe('ERC20PoolToken', function () {
   let user: SignerWithAddress;
   let other: SignerWithAddress;
   let relayer: SignerWithAddress;
-  let factory: SignerWithAddress;
 
   let registeredPoolSigner: SignerWithAddress;
 
@@ -26,12 +25,12 @@ describe('ERC20PoolToken', function () {
   let poolBAddress: string;
 
   before('setup signers', async () => {
-    [, user, other, factory, relayer] = await ethers.getSigners();
+    [, user, other, relayer] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { vault: vaultMock, tokens, pools } = await setupEnvironment(factory.address);
+    const { vault: vaultMock, pools } = await setupEnvironment();
 
     vault = vaultMock;
 
