@@ -156,11 +156,13 @@ contract ERC20PoolMock is BasePool {
 
     function onRemoveLiquidityCustom(
         address,
-        uint256,
+        uint256 maxBptAmountIn,
+        uint256[] memory minAmountsOut,
         uint256[] memory,
-        uint256[] memory,
-        bytes memory
-    ) external pure override returns (uint256, uint256[] memory, bytes memory) {}
+        bytes memory userData
+    ) external pure override returns (uint256, uint256[] memory, bytes memory) {
+        return (maxBptAmountIn, minAmountsOut, userData);
+    }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
         return _numTokens;

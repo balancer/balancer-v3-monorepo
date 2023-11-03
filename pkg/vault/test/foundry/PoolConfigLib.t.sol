@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 
 import { PoolConfig, PoolConfigBits, PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 
-contract VaultLiquidityTest is Test {
+contract PoolConfigLibTest is Test {
 
     uint256 private constant CONFIG_MSB = 14;
 

@@ -38,10 +38,6 @@ contract VaultLiquidityTest is Test {
     uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
 
-    // Tolerances: 0.1 cents.
-    uint256 constant USDC_TOLERANCE = 1e6 / 1000;
-    uint256 constant DAI_TOLERANCE = 1e18 / 1000;
-
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
@@ -143,29 +139,29 @@ contract VaultLiquidityTest is Test {
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             DAI_AMOUNT_IN,
-            [uint256(DAI_AMOUNT_IN) - 1e18 / 100, uint256(USDC_AMOUNT_IN) - 1e6 / 100].toMemoryArray(),
-            IVault.RemoveLiquidityKind.PROPORTIONAL,
+            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
+            IVault.RemoveLiquidityKind.CUSTOM,
             bytes("")
         );
 
         vm.stopPrank();
 
         // assets are transferred back to Alice
-        assertApproxEqAbs(USDC.balanceOf(alice), USDC_AMOUNT_IN, USDC_TOLERANCE);
-        assertApproxEqAbs(DAI.balanceOf(alice), DAI_AMOUNT_IN, DAI_TOLERANCE);
+        assertEq(USDC.balanceOf(alice), USDC_AMOUNT_IN);
+        assertEq(DAI.balanceOf(alice), DAI_AMOUNT_IN);
 
         // assets are no longer in the vault
-        assertApproxEqAbs(USDC.balanceOf(address(vault)), 0, USDC_TOLERANCE);
-        assertApproxEqAbs(DAI.balanceOf(address(vault)), 0, DAI_TOLERANCE);
+        assertEq(USDC.balanceOf(address(vault)), 0);
+        assertEq(DAI.balanceOf(address(vault)), 0);
 
         // assets are not in the pool
         (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
-        assertApproxEqAbs(balances[0], 0, DAI_TOLERANCE);
-        assertApproxEqAbs(balances[1], 0, USDC_TOLERANCE);
+        assertEq(balances[0], 0);
+        assertEq(balances[1], 0);
 
         // amountsOut are correct
-        assertApproxEqAbs(amountsOut[0], DAI_AMOUNT_IN, DAI_TOLERANCE);
-        assertApproxEqAbs(amountsOut[1], USDC_AMOUNT_IN, USDC_TOLERANCE);
+        assertEq(amountsOut[0], DAI_AMOUNT_IN);
+        assertEq(amountsOut[1], USDC_AMOUNT_IN);
 
         // Alice has burnt the correct amount of BPT
         assertEq(pool.balanceOf(alice), 0);
