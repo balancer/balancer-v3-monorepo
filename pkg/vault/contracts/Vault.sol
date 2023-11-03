@@ -414,13 +414,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         public
         withHandler
         withInitializedPool(params.pool)
-        returns (
-            //whenNotPaused(params.pool)
-            uint256 amountCalculated,
-            uint256 amountIn,
-            uint256 amountOut
-        )
+        returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
     {
+        // Modifier causes stack too deep
+        _ensureVaultNotPaused();
+        _ensurePoolNotPaused(params.pool);
+
         if (params.amountGiven == 0) {
             revert AmountGivenZero();
         }
@@ -751,16 +750,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         uint256 minBptAmountOut,
         IBasePool.AddLiquidityKind kind,
         bytes memory userData
-    )
-        external
-        withHandler
-        withInitializedPool(pool)
-        returns (
-            //whenNotPaused(pool)
-            uint256[] memory amountsIn,
-            uint256 bptAmountOut
-        )
-    {
+    ) external withHandler withInitializedPool(pool) returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+        // Modifier causes stack too deep
+        _ensureVaultNotPaused();
+        _ensurePoolNotPaused(pool);
+
         InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
 
         // We first check that the caller passed the Pool's registered tokens in the correct order
