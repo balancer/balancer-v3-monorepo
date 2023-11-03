@@ -118,6 +118,33 @@ contract VaultSwapTest is Test {
         assertEq(balances[1], USDC_AMOUNT_IN * 2);
     }
 
+    function testCannotSwapWhenPaused() public {
+        vm.prank(alice);
+        router.initialize(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
+            0,
+            bytes("")
+        );
+
+        vault.manualPausePool(address(pool));
+
+        vm.expectRevert(abi.encodeWithSelector(IVault.PoolPaused.selector, address(pool)));
+
+        vm.prank(bob);
+        router.swap(
+            IVault.SwapKind.GIVEN_IN,
+            address(pool),
+            address(USDC).asAsset(),
+            address(DAI).asAsset(),
+            USDC_AMOUNT_IN,
+            DAI_AMOUNT_IN,
+            type(uint256).max,
+            bytes("")
+        );
+    }
+
     function testSwapNotInitialized() public {
         vm.expectRevert(abi.encodeWithSelector(IVault.PoolNotInitialized.selector, address(pool)));
         router.swap(
