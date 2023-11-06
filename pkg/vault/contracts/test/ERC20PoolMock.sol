@@ -17,8 +17,15 @@ contract ERC20PoolMock is BasePool {
 
     uint256 public constant MIN_INIT_BPT = 1e6;
 
-    bool public failOnCallback;
+    bool public failOnAfterSwapCallback;
+    bool public failOnBeforeAddLiquidity;
+    bool public failOnAfterAddLiquidity;
+    bool public failOnBeforeRemoveLiquidity;
+    bool public failOnAfterRemoveLiquidity;
     uint256 private immutable _numTokens;
+
+    // Amounts in are multiplied by the multiplier, amounts out are divided by it
+    uint256 private _multiplier = FixedPoint.ONE;
 
     constructor(
         IVault vault,
@@ -47,31 +54,24 @@ contract ERC20PoolMock is BasePool {
         return (amountsIn, MIN_INIT_BPT > amountsIn[0] ? MIN_INIT_BPT : amountsIn[0]);
     }
 
-    function onAfterAddLiquidity(
-        address,
-        uint256[] memory,
-        uint256,
-        uint256[] memory,
-        bytes memory
-    ) external view override returns (bool) {
-        return !failOnCallback;
+    function setFailOnAfterSwapCallback(bool fail) external {
+        failOnAfterSwapCallback = fail;
     }
 
-    function onAfterRemoveLiquidity(
-        address,
-        uint256,
-        uint256[] memory,
-        uint256[] memory,
-        bytes memory
-    ) external view override returns (bool) {
-        return !failOnCallback;
+    function setFailOnBeforeAddLiquidityCallback(bool fail) external {
+        failOnBeforeAddLiquidity = fail;
     }
 
-    // Amounts in are multiplied by the multiplier, amounts out are divided by it
-    uint256 private _multiplier = FixedPoint.ONE;
+    function setFailOnAfterAddLiquidityCallback(bool fail) external {
+        failOnAfterAddLiquidity = fail;
+    }
 
-    function setFailOnAfterSwap(bool fail) external {
-        failOnCallback = fail;
+    function setFailOnBeforeRemoveLiquidityCallback(bool fail) external {
+        failOnBeforeRemoveLiquidity = fail;
+    }
+
+    function setFailOnAfterRemoveLiquidityCallback(bool fail) external {
+        failOnAfterRemoveLiquidity = fail;
     }
 
     function setMultiplier(uint256 newMultiplier) external {
@@ -82,7 +82,7 @@ contract ERC20PoolMock is BasePool {
         IBasePool.AfterSwapParams calldata params,
         uint256 amountCalculated
     ) external view override returns (bool success) {
-        return params.tokenIn != params.tokenOut && amountCalculated > 0 && !failOnCallback;
+        return params.tokenIn != params.tokenOut && amountCalculated > 0 && !failOnAfterSwapCallback;
     }
 
     function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
@@ -92,14 +92,16 @@ contract ERC20PoolMock is BasePool {
                 : params.amountGiven.divDown(_multiplier);
     }
 
+    // Liquidity lifecycle callbacks
+
     function onBeforeAddLiquidity(
         address,
         uint256[] memory,
         uint256,
         uint256[] memory,
         bytes memory
-    ) external pure override returns (bool) {
-        return true;
+    ) external view override returns (bool) {
+        return !failOnBeforeAddLiquidity;
     }
 
     function onBeforeRemoveLiquidity(
@@ -107,8 +109,28 @@ contract ERC20PoolMock is BasePool {
         uint256[] memory,
         uint256[] memory,
         bytes memory
-    ) external pure override returns (bool) {
-        return true;
+    ) external view override returns (bool) {
+        return !failOnBeforeRemoveLiquidity;
+    }
+
+    function onAfterAddLiquidity(
+        address,
+        uint256[] memory,
+        uint256,
+        uint256[] memory,
+        bytes memory
+    ) external view override returns (bool) {
+        return !failOnAfterAddLiquidity;
+    }
+
+    function onAfterRemoveLiquidity(
+        address,
+        uint256,
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
+    ) external view override returns (bool) {
+        return !failOnAfterRemoveLiquidity;
     }
 
     function onAddLiquidityUnbalanced(
