@@ -64,7 +64,7 @@ library PoolConfigLib {
     }
 
     // Convert from an array of decimal differences, to the encoded 24 bit value (only uses bottom 20 bits).
-    function toTokenDecimalDiffs(uint256[] memory tokenDecimalDiffs) internal pure returns (uint24) {
+    function toTokenDecimalDiffs(uint8[] memory tokenDecimalDiffs) internal pure returns (uint24) {
         bytes32 value;
 
         for (uint256 i = 0; i < tokenDecimalDiffs.length; i++) {

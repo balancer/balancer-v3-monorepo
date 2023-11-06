@@ -607,7 +607,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         // Retrieve or create the pool's token balances mapping
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
 
-        uint256[] memory tokenDecimalDiffs = new uint256[](numTokens);
+        uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
             IERC20 token = tokens[i];
@@ -626,7 +626,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
                 revert TokenAlreadyRegistered(token);
             }
 
-            tokenDecimalDiffs[i] = uint256(18) - IERC20Metadata(address(token)).decimals();
+            tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
         }
 
         // Store config and mark the pool as registered
