@@ -743,6 +743,17 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         }
     }
 
+    /**
+     * @dev Calls the appropriate pool callback and calculates the required inputs and outputs for the operation
+     * considering the given kind, and updates the vault's internal accounting. This includes:
+     * - Setting pool balances
+     * - Taking debt from the liquidity provider
+     * - Minting pool tokens
+     * - Emitting events
+     *
+     * It is non-reentrant, as it performs external calls and updates the vault's state accordingly. This is the only
+     * place where the state is updated within `addLiquidity`.
+     */
     function _addLiquidity(
         address pool,
         address to,
@@ -887,6 +898,17 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         _removeLiquidityUpdateAccounting(pool, from, tokens, exactBptAmountIn, amountsOut, balances);
     }
 
+    /**
+     * @dev Calls the appropriate pool callback and calculates the required inputs and outputs for the operation
+     * considering the given kind, and updates the vault's internal accounting. This includes:
+     * - Setting pool balances
+     * - Supplying credit to the liquidity provider
+     * - Burning pool tokens
+     * - Emitting events
+     *
+     * It is non-reentrant, as it performs external calls and updates the vault's state accordingly. This is the only
+     * place where the state is updated within `removeLiquidity`.
+     */
     function _removeLiquidity(
         address pool,
         address from,
@@ -956,6 +978,15 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         updatedBalances = _removeLiquidityUpdateAccounting(pool, from, tokens, bptAmountIn, amountsOut, balances);
     }
 
+    /**
+     * @dev Updates the vault's accounting within a `removeLiquidity` operation. This includes:
+     * - Setting pool balances
+     * - Supplying credit to the liquidity provider
+     * - Burning pool tokens
+     * - Emitting events
+     *
+     * This function also supports queries as a special case, where the pool tokens from the sender are not required.
+     */
     function _removeLiquidityUpdateAccounting(
         address pool,
         address from,
