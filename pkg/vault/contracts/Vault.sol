@@ -383,7 +383,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
     // Needed to avoid "stack too deep"
     struct SwapSharedLocals {
-        SharedLocals common;
+        // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
+        PoolConfig config;
+        uint256[] balances;
+        uint256[] scalingFactors;
+        uint256[] upscaledBalances;
         uint256 numTokens;
         uint256 indexIn;
         uint256 indexOut;
@@ -396,13 +400,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     ) private view returns (SwapSharedLocals memory vars, EnumerableMap.IERC20ToUint256Map storage poolBalances) {
         poolBalances = _poolTokenBalances[params.pool];
         vars.numTokens = poolBalances.length();
-        vars.common.config = _poolConfig[params.pool].toPoolConfig();
-        vars.common.scalingFactors = PoolConfigLib.getScalingFactors(vars.common.config, vars.numTokens);
-        vars.common.balances = new uint256[](vars.numTokens);
-        vars.common.upscaledBalances = new uint256[](vars.numTokens);
+        vars.config = _poolConfig[params.pool].toPoolConfig();
+        vars.scalingFactors = PoolConfigLib.getScalingFactors(vars.config, vars.numTokens);
+        vars.balances = new uint256[](vars.numTokens);
+        vars.upscaledBalances = new uint256[](vars.numTokens);
         for (uint256 i = 0; i < vars.numTokens; i++) {
-            vars.common.balances[i] = poolBalances.unchecked_valueAt(i);
-            vars.common.upscaledBalances[i] = poolBalances.unchecked_valueAt(i).upscale(vars.common.scalingFactors[i]);
+            vars.balances[i] = poolBalances.unchecked_valueAt(i);
+            vars.upscaledBalances[i] = poolBalances.unchecked_valueAt(i).upscale(vars.scalingFactors[i]);
         }
 
         // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value for non-existence.
@@ -463,7 +467,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         ) = _populateSharedSwapLocals(params);
 
         uint256 upscaledAmountGiven = params.amountGiven.upscale(
-            vars.common.scalingFactors[params.kind == SwapKind.GIVEN_IN ? vars.indexIn : vars.indexOut]
+            vars.scalingFactors[params.kind == SwapKind.GIVEN_IN ? vars.indexIn : vars.indexOut]
         );
 
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
@@ -473,7 +477,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
                 tokenIn: params.tokenIn,
                 tokenOut: params.tokenOut,
                 amountGiven: upscaledAmountGiven,
-                balances: vars.common.upscaledBalances,
+                balances: vars.upscaledBalances,
                 indexIn: vars.indexIn,
                 indexOut: vars.indexOut,
                 sender: msg.sender,
@@ -482,8 +486,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         );
 
         amountCalculated = params.kind == SwapKind.GIVEN_IN
-            ? upscaledAmountCalculated.downscaleDown(vars.common.scalingFactors[vars.indexOut])
-            : upscaledAmountCalculated.downscaleUp(vars.common.scalingFactors[vars.indexIn]);
+            ? upscaledAmountCalculated.downscaleDown(vars.scalingFactors[vars.indexOut])
+            : upscaledAmountCalculated.downscaleUp(vars.scalingFactors[vars.indexIn]);
 
         (amountIn, amountOut) = params.kind == SwapKind.GIVEN_IN
             ? (params.amountGiven, amountCalculated)
@@ -498,7 +502,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         // Account amountOut of tokenOut
         _supplyCredit(params.tokenOut, amountOut, msg.sender);
 
-        if (vars.common.config.callbacks.shouldCallAfterSwap) {
+        if (vars.config.callbacks.shouldCallAfterSwap) {
             // Set to upscaled values for the callback.
             (uint256 upscaledAmountIn, uint256 upscaledAmountOut) = params.kind == SwapKind.GIVEN_IN
                 ? (upscaledAmountGiven, upscaledAmountCalculated)
@@ -513,8 +517,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
                         tokenOut: params.tokenOut,
                         amountIn: upscaledAmountIn,
                         amountOut: upscaledAmountOut,
-                        tokenInBalance: vars.common.upscaledBalances[vars.indexIn] + upscaledAmountIn,
-                        tokenOutBalance: vars.common.upscaledBalances[vars.indexOut] - upscaledAmountOut,
+                        tokenInBalance: vars.upscaledBalances[vars.indexIn] + upscaledAmountIn,
+                        tokenOutBalance: vars.upscaledBalances[vars.indexOut] - upscaledAmountOut,
                         sender: msg.sender,
                         userData: params.userData
                     }),
