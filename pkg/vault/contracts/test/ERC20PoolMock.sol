@@ -120,39 +120,44 @@ contract ERC20PoolMock is BasePool {
     }
 
     function onAddLiquiditySingleTokenExactOut(
-        address,
+        address sender,
+        uint256 tokenInIndex,
         uint256,
-        uint256 exactBptAmountOut,
         uint256[] memory
-    ) external pure override returns (uint256 amountIn) {
-        return exactBptAmountOut;
+    ) external view override returns (uint256 amountIn) {
+        (IERC20[] memory tokens, ) = _vault.getPoolTokens(address(this));
+        return tokens[tokenInIndex].balanceOf(sender);
     }
 
     function onAddLiquidityCustom(
         address,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
         uint256[] memory,
-        uint256,
-        uint256[] memory currentBalances,
         bytes memory userData
     ) external pure override returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
-        amountsIn = currentBalances;
-        bptAmountOut = currentBalances[0];
+        amountsIn = maxAmountsIn;
+        bptAmountOut = minBptAmountOut;
         returnData = userData;
     }
 
     function onRemoveLiquiditySingleTokenExactIn(
         address,
+        uint256 tokenOutIndex,
         uint256,
-        uint256,
-        uint256[] memory
-    ) external pure override returns (uint256) {}
+        uint256[] memory currentBalances
+    ) external pure override returns (uint256 amountOut) {
+        amountOut = currentBalances[tokenOutIndex];
+    }
 
     function onRemoveLiquiditySingleTokenExactOut(
-        address,
+        address sender,
         uint256,
         uint256,
         uint256[] memory
-    ) external pure override returns (uint256) {}
+    ) external view override returns (uint256 bptAmountIn) {
+        return balanceOf(sender);
+    }
 
     function onRemoveLiquidityCustom(
         address,
