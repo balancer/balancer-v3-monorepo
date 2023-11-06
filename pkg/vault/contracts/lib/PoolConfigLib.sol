@@ -97,6 +97,7 @@ library PoolConfigLib {
             .insertBool(config.callbacks.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET)
             .insertBool(config.callbacks.shouldCallAfterRemoveLiquidity, AFTER_REMOVE_LIQUIDITY_OFFSET);
 
+        // Needed to resolve "stack too deep"
         return
             PoolConfigBits.wrap(
                 val.insertUint(config.tokenDecimalDiffs, DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH)
