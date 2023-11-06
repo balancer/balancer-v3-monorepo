@@ -986,6 +986,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
      * - Emitting events
      *
      * This function also supports queries as a special case, where the pool tokens from the sender are not required.
+     * It must be called in a non-reentrant context.
      */
     function _removeLiquidityUpdateAccounting(
         address pool,
