@@ -368,7 +368,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     }
 
     // For add/remove liquidity
-    function _populateSharedLocals(
+    function _populateSharedLiquidityLocals(
         address pool,
         IERC20[] memory tokens
     ) private view returns (SharedLocals memory vars) {
@@ -778,7 +778,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         InputHelpers.ensureInputLengthMatch(numTokens, maxAmountsIn.length);
 
-        SharedLocals memory vars = _populateSharedLocals(pool, tokens);
+        SharedLocals memory vars = _populateSharedLiquidityLocals(pool, tokens);
 
         maxAmountsIn.upscaleArray(vars.scalingFactors);
 
@@ -853,7 +853,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         InputHelpers.ensureInputLengthMatch(numTokens, minAmountsOut.length);
 
-        SharedLocals memory vars = _populateSharedLocals(pool, tokens);
+        SharedLocals memory vars = _populateSharedLiquidityLocals(pool, tokens);
 
         minAmountsOut.upscaleArray(vars.scalingFactors);
 
