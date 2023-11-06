@@ -771,7 +771,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             _poolConfig[pool].requireSupportsAddLiquidityUnbalanced();
 
             amountsIn = maxAmountsIn;
-            bptAmountOut = IBasePool(pool).onAddLiquidityUnbalanced(msg.sender, amountsIn, balances);
+            bptAmountOut = IBasePool(pool).onAddLiquidityUnbalanced(to, amountsIn, balances);
         } else if (kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             _poolConfig[pool].requireSupportsAddLiquiditySingleTokenExactOut();
 
@@ -779,7 +779,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             bptAmountOut = minBptAmountOut;
 
             uint256 amountIn = IBasePool(pool).onAddLiquiditySingleTokenExactOut(
-                msg.sender,
+                to,
                 tokenIndex,
                 bptAmountOut,
                 balances
@@ -790,7 +790,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             _poolConfig[pool].requireSupportsAddLiquidityCustom();
 
             (amountsIn, bptAmountOut, returnData) = IBasePool(pool).onAddLiquidityCustom(
-                msg.sender,
+                to,
                 maxAmountsIn,
                 minBptAmountOut,
                 balances,
@@ -918,7 +918,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             bptAmountIn = maxBptAmountIn;
 
             uint256 amountOut = IBasePool(pool).onRemoveLiquiditySingleTokenExactIn(
-                msg.sender,
+                from,
                 tokenIndex,
                 bptAmountIn,
                 balances
@@ -933,7 +933,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             amountsOut = minAmountsOut;
 
             bptAmountIn = IBasePool(pool).onRemoveLiquiditySingleTokenExactOut(
-                msg.sender,
+                from,
                 tokenIndex,
                 amountsOut[tokenIndex],
                 balances
@@ -942,7 +942,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             _poolConfig[pool].requireSupportsRemoveLiquidityCustom();
 
             (bptAmountIn, amountsOut, returnData) = IBasePool(pool).onRemoveLiquidityCustom(
-                msg.sender,
+                from,
                 maxBptAmountIn,
                 minAmountsOut,
                 balances,
