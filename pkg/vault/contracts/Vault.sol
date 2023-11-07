@@ -858,12 +858,14 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         InputHelpers.ensureInputLengthMatch(numTokens, minAmountsOut.length);
 
         SharedLocals memory vars = _populateSharedLiquidityLocals(pool, tokens);
+        amountsOut = new uint256[](numTokens);
+        uint256[] memory upscaledAmountsOut;
 
         minAmountsOut.upscaleArray(vars.scalingFactors);
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked,
         // and its final balances are computed
-        (amountsOut, bptAmountIn) = IBasePool(pool).onRemoveLiquidity(
+        (upscaledAmountsOut, bptAmountIn) = IBasePool(pool).onRemoveLiquidity(
             msg.sender,
             vars.upscaledBalances,
             minAmountsOut,
@@ -877,13 +879,14 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             // amountsOut are amounts exiting the Pool, so we round down.
             // Need amountsOut scaled for the `onAfterRemoveLiquidity` callback,
             // so downscale each amount individually here to compute unscaled `finalBalances`.
-            uint256 amountOut = amountsOut[i].downscaleDown(vars.scalingFactors[i]);
+            uint256 amountOut = upscaledAmountsOut[i].downscaleDown(vars.scalingFactors[i]);
 
             // Credit token[i] for amountIn
             _supplyCredit(tokens[i], amountOut, msg.sender);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
             finalBalances[i] = vars.balances[i] - amountOut;
+            amountsOut[i] = amountOut;
         }
 
         // Store the new pool balances.
@@ -907,15 +910,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
                     vars.upscaledBalances,
                     bptAmountIn,
                     userData,
-                    amountsOut
+                    upscaledAmountsOut
                 ) == false
             ) {
                 revert CallbackFailed();
             }
         }
-
-        // After the callback, we can downscale `amountsOut` for the event.
-        amountsOut.downscaleDownArray(vars.scalingFactors);
 
         emit PoolBalanceChanged(
             pool,
