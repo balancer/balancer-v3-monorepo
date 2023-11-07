@@ -493,7 +493,7 @@ interface IVault {
 
     /**
      * @notice Retrieves the current protocol swap fee percentage.
-     * @return The current protocol swap fee percentage.
+     * @return The current protocol swap fee percentage
      */
     function getProtocolSwapFeePercentage() external view returns (uint24);
 
