@@ -506,8 +506,8 @@ interface IVault {
 
     /**
      * @notice Collects accumulated protocol fees for the specified array of tokens.
-     * @param tokens An array of token addresses for which the fees should be collected.
-     * @dev Fees are sent to msg.sender
+     * @dev Fees are sent to msg.sender.
+     * @param tokens An array of token addresses for which the fees should be collected
      */
     function collectProtocolFees(IERC20[] calldata tokens) external;
 
