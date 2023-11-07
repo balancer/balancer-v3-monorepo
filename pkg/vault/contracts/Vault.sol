@@ -377,7 +377,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         vars.scalingFactors = PoolConfigLib.getScalingFactors(vars.config, tokens.length);
         vars.upscaledBalances = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
-            vars.upscaledBalances[i] = vars.balances[i].upscale(vars.scalingFactors[i]);
+            vars.upscaledBalances[i] = vars.balances[i].upscaleDown(vars.scalingFactors[i]);
         }
     }
 
@@ -406,7 +406,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         vars.upscaledBalances = new uint256[](vars.numTokens);
         for (uint256 i = 0; i < vars.numTokens; i++) {
             vars.balances[i] = poolBalances.unchecked_valueAt(i);
-            vars.upscaledBalances[i] = poolBalances.unchecked_valueAt(i).upscale(vars.scalingFactors[i]);
+            vars.upscaledBalances[i] = poolBalances.unchecked_valueAt(i).upscaleDown(vars.scalingFactors[i]);
         }
 
         // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value for non-existence.
@@ -463,9 +463,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         (SwapLocals memory vars, EnumerableMap.IERC20ToUint256Map storage poolBalances) = _populateSwapLocals(params);
 
-        uint256 upscaledAmountGiven = params.amountGiven.upscale(
-            vars.scalingFactors[params.kind == SwapKind.GIVEN_IN ? vars.indexIn : vars.indexOut]
-        );
+        // If the amountGiven is entering the Vault (GivenIn), round up; round down if it is leaving the Vault.
+        uint256 upscaledAmountGiven = params.kind == SwapKind.GIVEN_IN
+            ? params.amountGiven.upscaleUp(vars.scalingFactors[vars.indexIn])
+            : params.amountGiven.upscaleDown(vars.scalingFactors[vars.indexOut]);
 
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
         uint256 upscaledAmountCalculated = IBasePool(params.pool).onSwap(
@@ -482,6 +483,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             })
         );
 
+        // If the amountCalculated is entering the Vault (GivenOut), round up; round down if it is leaving the Vault.
         amountCalculated = params.kind == SwapKind.GIVEN_IN
             ? upscaledAmountCalculated.downscaleDown(vars.scalingFactors[vars.indexOut])
             : upscaledAmountCalculated.downscaleUp(vars.scalingFactors[vars.indexIn]);
@@ -721,7 +723,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         _validateTokensAndGetBalances(pool, tokens);
 
         uint256[] memory scalingFactors = PoolConfigLib.getScalingFactors(config, tokens.length);
-        maxAmountsIn.upscaleArray(scalingFactors);
+        // Amounts are entering pool math, so scale down.
+        maxAmountsIn.upscaleDownArray(scalingFactors);
 
         (amountsIn, bptAmountOut) = IBasePool(pool).onInitialize(maxAmountsIn, userData);
 
@@ -783,7 +786,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         amountsIn = new uint256[](numTokens);
         uint256[] memory upscaledAmountsIn;
 
-        maxAmountsIn.upscaleArray(vars.scalingFactors);
+        // Amounts are entering pool math, so scale down
+        maxAmountsIn.upscaleDownArray(vars.scalingFactors);
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked
         // its final balances are computed
@@ -858,7 +862,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         amountsOut = new uint256[](numTokens);
         uint256[] memory upscaledAmountsOut;
 
-        minAmountsOut.upscaleArray(vars.scalingFactors);
+        // Amounts are entering pool math, so round down.
+        minAmountsOut.upscaleDownArray(vars.scalingFactors);
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked,
         // and its final balances are computed
