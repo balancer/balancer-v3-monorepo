@@ -946,7 +946,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     *******************************************************************************/
 
     /// @inheritdoc IVault
-    function setProtocolSwapFeePercentage(uint24 newProtocolSwapFeePercentage) external whenNotPaused authenticate {
+    function setProtocolSwapFeePercentage(uint24 newProtocolSwapFeePercentage) external authenticate {
         if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
             revert ProtocolSwapFeePercentageTooHigh();
         }
