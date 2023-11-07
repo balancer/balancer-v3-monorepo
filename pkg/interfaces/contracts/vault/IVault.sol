@@ -481,7 +481,7 @@ interface IVault {
 
     /**
      * @notice Sets a new swap fee percentage for the protocol.
-     * @param newSwapFeePercentage The new swap fee percentage to be set.
+     * @param newSwapFeePercentage The new swap fee percentage to be set
      */
     function setProtocolSwapFeePercentage(uint24 newSwapFeePercentage) external;
 
