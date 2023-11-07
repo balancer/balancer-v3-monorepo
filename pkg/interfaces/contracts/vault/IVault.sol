@@ -520,8 +520,8 @@ interface IVault {
 
     /**
      * @notice Assigns a new swap fee percentage to the specified pool.
-     * @param pool The address of the pool for which the swap fee will be changed.
-     * @param swapFeePercentage The new swap fee percentage to apply to the pool.
+     * @param pool The address of the pool for which the swap fee will be changed
+     * @param swapFeePercentage The new swap fee percentage to apply to the pool
      */
     function setSwapFeePercentage(address pool, uint24 swapFeePercentage) external;
 
