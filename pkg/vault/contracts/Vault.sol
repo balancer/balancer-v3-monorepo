@@ -488,7 +488,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         // Charge protocolSwapFee
         uint256 protocolSwapFee;
-        if (_protocolSwapFeePercentage > 0 && vars.swapFee > 0) {
+        if (vars.swapFee > 0 && _protocolSwapFeePercentage > 0) {
             protocolSwapFee = vars.swapFee.mulUp(_protocolSwapFeePercentage, PoolConfigLib.SWAP_FEE_PRECISION);
             // Always charge fees on tokenOut
             _protocolSwapFees[params.tokenOut] += protocolSwapFee;
