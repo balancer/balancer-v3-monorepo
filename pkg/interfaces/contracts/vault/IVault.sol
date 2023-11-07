@@ -533,8 +533,8 @@ interface IVault {
 
     /**
      * @notice Fetches the current swap fee percentage for a given pool.
-     * @param pool The address of the pool whose swap fee percentage is being queried.
-     * @return The current swap fee percentage for the specified pool.
+     * @param pool The address of the pool whose swap fee percentage is being queried
+     * @return The current swap fee percentage for the specified pool
      */
     function getSwapFeePercentage(address pool) external view returns (uint24);
 
