@@ -382,7 +382,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     }
 
     // Needed to avoid "stack too deep"
-    struct SwapSharedLocals {
+    struct SwapLocals {
         // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
         PoolConfig config;
         uint256[] balances;
@@ -395,9 +395,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         uint256 tokenOutBalance;
     }
 
-    function _populateSharedSwapLocals(
+    function _populateSwapLocals(
         SwapParams memory params
-    ) private view returns (SwapSharedLocals memory vars, EnumerableMap.IERC20ToUint256Map storage poolBalances) {
+    ) private view returns (SwapLocals memory vars, EnumerableMap.IERC20ToUint256Map storage poolBalances) {
         poolBalances = _poolTokenBalances[params.pool];
         vars.numTokens = poolBalances.length();
         vars.config = _poolConfig[params.pool].toPoolConfig();
@@ -461,10 +461,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             revert CannotSwapSameToken();
         }
 
-        (
-            SwapSharedLocals memory vars,
-            EnumerableMap.IERC20ToUint256Map storage poolBalances
-        ) = _populateSharedSwapLocals(params);
+        (SwapLocals memory vars, EnumerableMap.IERC20ToUint256Map storage poolBalances) = _populateSwapLocals(params);
 
         uint256 upscaledAmountGiven = params.amountGiven.upscale(
             vars.scalingFactors[params.kind == SwapKind.GIVEN_IN ? vars.indexIn : vars.indexOut]
