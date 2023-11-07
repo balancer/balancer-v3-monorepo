@@ -41,10 +41,6 @@ library PoolConfigLib {
 
     using WordCodec for bytes32;
 
-    // [  249 bit |    1 bit     |     1 bit     |   1 bit   |   1 bit    |    1 bit   |    1 bit    |    1 bit   ]
-    // [ not used | after remove | before remove | after add | before add | after swap | initialized | registered ]
-    // |MSB                                                                                                    LSB|
-
     // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
     uint8 public constant POOL_INITIALIZED_OFFSET = 1;
