@@ -56,8 +56,8 @@ library ScalingHelpers {
     ***************************************************************************/
 
     /**
-     * @dev Same as `_upscaleDown`, but for an entire array. This function does not return anything, but instead *mutates*
-     * the `amounts` array.
+     * @dev Same as `upscaleDown`, but for an entire array. This function does not return anything,
+     * but instead *mutates* the `amounts` array.
      */
     function upscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
         uint256 length = amounts.length;
@@ -69,8 +69,8 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `_upscaleUp`, but for an entire array. This function does not return anything, but instead *mutates*
-     * the `amounts` array.
+     * @dev Same as `upscaleUp`, but for an entire array. This function does not return anything,
+     * but instead *mutates* the `amounts` array.
      */
     function upscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
         uint256 length = amounts.length;
@@ -82,7 +82,7 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `_downscaleDown`, but for an entire array. This function does not return anything, but instead
+     * @dev Same as `downscaleDown`, but for an entire array. This function does not return anything, but instead
      * *mutates* the `amounts` array.
      */
     function downscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
@@ -95,7 +95,7 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `_downscaleUp`, but for an entire array. This function does not return anything, but instead
+     * @dev Same as `downscaleUp`, but for an entire array. This function does not return anything, but instead
      * *mutates* the `amounts` array.
      */
     function downscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
