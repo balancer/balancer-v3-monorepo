@@ -513,8 +513,8 @@ interface IVault {
 
     /**
      * @notice Logs the collection of fees in a specific token and amount.
-     * @param token The token in which the fee has been collected.
-     * @param amount The amount of the token collected as fees.
+     * @param token The token in which the fee has been collected
+     * @param amount The amount of the token collected as fees
      */
     event ProtocolFeeCollected(IERC20 indexed token, uint256 indexed amount);
 
