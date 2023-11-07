@@ -499,8 +499,8 @@ interface IVault {
 
     /**
      * @notice Returns the accumulated swap fee in `token` collected by the protocol.
-     * @param token The address of the token in which fees have been accumulated.
-     * @return The total amount of fees accumulated in the specified token.
+     * @param token The address of the token in which fees have been accumulated
+     * @return The total amount of fees accumulated in the specified token
      */
     function getProtocolSwapFee(address token) external view returns (uint256);
 
