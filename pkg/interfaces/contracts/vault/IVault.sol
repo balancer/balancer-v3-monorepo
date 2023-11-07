@@ -487,7 +487,7 @@ interface IVault {
 
     /**
      * @notice Emitted when the protocol swap fee percentage is updated.
-     * @param swapFeePercentage The updated protocol swap fee percentage.
+     * @param swapFeePercentage The updated protocol swap fee percentage
      */
     event ProtocolSwapFeePercentageChanged(uint256 indexed swapFeePercentage);
 
