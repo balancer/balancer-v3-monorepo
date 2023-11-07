@@ -495,7 +495,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         }
 
         tokenInBalance = tokenInBalance + amountIn;
-        // Substruct protocol swap fee from the pool balance
+        // Subtract protocol swap fee from the pool balance.
         tokenOutBalance = tokenOutBalance - amountOut - protocolSwapFee;
 
         // Because no tokens were registered or deregistered between now or when we retrieved the indexes for
