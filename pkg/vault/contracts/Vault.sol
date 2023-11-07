@@ -783,12 +783,14 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         InputHelpers.ensureInputLengthMatch(numTokens, maxAmountsIn.length);
 
         SharedLocals memory vars = _populateSharedLiquidityLocals(pool, tokens);
+        amountsIn = new uint256[](numTokens);
+        uint256[] memory upscaledAmountsIn;
 
         maxAmountsIn.upscaleArray(vars.scalingFactors);
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked
         // its final balances are computed
-        (amountsIn, bptAmountOut) = IBasePool(pool).onAddLiquidity(
+        (upscaledAmountsIn, bptAmountOut) = IBasePool(pool).onAddLiquidity(
             msg.sender,
             vars.upscaledBalances,
             maxAmountsIn,
@@ -801,12 +803,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         for (uint256 i = 0; i < numTokens; ++i) {
             // amountsIn are amounts entering the Pool, so we round up.
             // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` callback
-            uint256 amountIn = amountsIn[i].downscaleUp(vars.scalingFactors[i]);
+            uint256 amountIn = upscaledAmountsIn[i].downscaleUp(vars.scalingFactors[i]);
 
             // Debit of token[i] for amountIn
             _takeDebt(tokens[i], amountIn, msg.sender);
 
             finalBalances[i] = vars.balances[i] + amountIn;
+            amountsIn[i] = amountIn;
         }
 
         // Store the new pool balances.
@@ -823,16 +826,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
                     msg.sender,
                     vars.upscaledBalances,
                     userData,
-                    amountsIn,
+                    upscaledAmountsIn,
                     bptAmountOut
                 ) == false
             ) {
                 revert CallbackFailed();
             }
         }
-
-        // Now downscale all for the event
-        amountsIn.downscaleUpArray(vars.scalingFactors);
 
         emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }
