@@ -861,8 +861,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         SharedLocals memory vars = _populateSharedLiquidityLocals(pool, tokens);
 
-        // Amounts are entering pool math, so round down.
-        minAmountsOut.upscaleDownArray(vars.scalingFactors);
+        // Amounts are entering pool math; higher amounts would burn more BPT, so round up to favor the pool.
+        minAmountsOut.upscaleUpArray(vars.scalingFactors);
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked,
         // and its final balances are computed
