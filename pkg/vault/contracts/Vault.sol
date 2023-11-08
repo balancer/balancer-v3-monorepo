@@ -483,7 +483,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             })
         );
 
-        // If the amountCalculated is entering the Vault (GivenOut), round up; round down if it is leaving the Vault.
+        // For `GivenIn` the amount calculated is leaving the Vault, so we round down.
+        // Round up when entering the Vault on `GivenOut`.
         amountCalculated = params.kind == SwapKind.GIVEN_IN
             ? upscaledAmountCalculated.downscaleDown(vars.scalingFactors[vars.indexOut])
             : upscaledAmountCalculated.downscaleUp(vars.scalingFactors[vars.indexIn]);
