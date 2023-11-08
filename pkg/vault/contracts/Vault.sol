@@ -783,14 +783,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         InputHelpers.ensureInputLengthMatch(numTokens, maxAmountsIn.length);
 
         SharedLocals memory vars = _populateSharedLiquidityLocals(pool, tokens);
-        amountsIn = new uint256[](numTokens);
-        uint256[] memory upscaledAmountsIn;
 
         // Amounts are entering pool math, so scale down
         maxAmountsIn.upscaleDownArray(vars.scalingFactors);
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked
         // its final balances are computed
+        uint256[] memory upscaledAmountsIn;
         (upscaledAmountsIn, bptAmountOut) = IBasePool(pool).onAddLiquidity(
             msg.sender,
             vars.upscaledBalances,
@@ -801,6 +800,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         );
 
         uint256[] memory finalBalances = new uint256[](numTokens);
+        amountsIn = new uint256[](numTokens);
+
         for (uint256 i = 0; i < numTokens; ++i) {
             // amountsIn are amounts entering the Pool, so we round up.
             // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` callback
