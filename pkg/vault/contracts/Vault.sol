@@ -463,10 +463,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         (SwapLocals memory vars, EnumerableMap.IERC20ToUint256Map storage poolBalances) = _populateSwapLocals(params);
 
-        // If the amountGiven is entering the Vault (GivenIn), round up; round down if it is leaving the Vault.
+        // If the amountGiven is entering the pool math (GivenIn), round down, since a lower apparent amount in leads
+        // to a lower calculated amount out, favoring the pool.
         uint256 upscaledAmountGiven = params.kind == SwapKind.GIVEN_IN
-            ? params.amountGiven.upscaleUp(vars.scalingFactors[vars.indexIn])
-            : params.amountGiven.upscaleDown(vars.scalingFactors[vars.indexOut]);
+            ? params.amountGiven.upscaleDown(vars.scalingFactors[vars.indexIn])
+            : params.amountGiven.upscaleUp(vars.scalingFactors[vars.indexOut]);
 
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
         uint256 upscaledAmountCalculated = IBasePool(params.pool).onSwap(
