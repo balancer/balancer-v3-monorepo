@@ -359,6 +359,33 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         return true;
     }
 
+    /*******************************************************************************
+                                    Pool Operations
+    *******************************************************************************/
+
+    // The Vault performs all upscaling and downscaling (due to token decimals, rates, etc.), so that the pools
+    // don't have to. However, scaling inevitably leads to rounding errors, so we take great care to ensure that
+    // any rounding errors favor the Vault. An important invariant of the system is that there is no repeatable
+    // path where tokensOut > tokensIn.
+    //
+    // In general, this means rounding up any values entering the Vault, and rounding down any values leaving
+    // the Vault, so that external users either pay a little extra or receive a little less in the case of a
+    // rounding error.
+    //
+    // However, it's not always straightforward to determine the correct rounding direction, given the presence
+    // and complexity of intermediate steps. An "amountIn" sounds like it should be rounded up: but only if that
+    // is the amount actually being transferred. If instead it is an amount sent to the pool math, where rounding
+    // up would result in a *higher* calculated amount out, that would favor the user instead of the Vault. So in
+    // that case, amountIn should be rounded down.
+    //
+    // See comments justifying the rounding direction in each case.
+    //
+    // TODO: this reasoning applies to Weighted Pool math, and is likely to apply to others as well, but of course
+    // it's possible a new pool type might not conform. Duplicate the tests for new pool types (e.g., Stable Math).
+    // Also, the final code should ensure that we are not relying entirely on the rounding directions here,
+    // but have enough additional layers (e.g., minimum amounts, buffer wei on all transfers) to guarantee safety,
+    // even if it turns out these directions are incorrect for a new pool type.
+
     // Needed to avoid "stack too deep"
     struct SharedLocals {
         PoolConfig config;
@@ -370,14 +397,30 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     // For add/remove liquidity
     function _populateSharedLiquidityLocals(
         address pool,
-        IERC20[] memory tokens
+        IERC20[] memory tokens,
+        bool addingLiquidity
     ) private view returns (SharedLocals memory vars) {
         vars.balances = _validateTokensAndGetBalances(pool, tokens);
         vars.config = _poolConfig[pool].toPoolConfig();
         vars.scalingFactors = PoolConfigLib.getScalingFactors(vars.config, tokens.length);
         vars.upscaledBalances = new uint256[](tokens.length);
+
+        // Round up when adding liquidity:
+        // If proportional, higher balances = higher proportional amountsIn, favoring the pool.
+        // If unbalanced, higher balances = lower invariant ratio with fees.
+        // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
+        //
+        // Round down when removing liquidity:
+        // If proportional, lower balances = lower proportional amountsOut, favoring the pool.
+        // If unbalanced, lower balances = lower invariant ratio without fees.
+        // bptIn = supply * (1 - ratio), so lower ratio = more bptIn, favoring the pool.
+        //
+        // See `calcBptOutGivenExactTokensIn` and `calcBptInGivenExactTokensOut` WeightedMath tests.
+
         for (uint256 i = 0; i < tokens.length; i++) {
-            vars.upscaledBalances[i] = vars.balances[i].upscaleDown(vars.scalingFactors[i]);
+            vars.upscaledBalances[i] = addingLiquidity
+                ? vars.balances[i].upscaleUp(vars.scalingFactors[i])
+                : vars.balances[i].upscaleDown(vars.scalingFactors[i]);
         }
     }
 
@@ -406,6 +449,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         vars.upscaledBalances = new uint256[](vars.numTokens);
         for (uint256 i = 0; i < vars.numTokens; i++) {
             vars.balances[i] = poolBalances.unchecked_valueAt(i);
+            // It turns out that we always want to round the balances down here. The exponentiation makes it
+            // somewhat counterintuitive.
+            //
+            // In the GivenIn case, lower balances cause `calcOutGivenIn` to calculate a lower amountOut.
+            // In the GivenOut case, lower balances cause `calcInGivenOut` to calculate a higher amountIn.
+            // See `calcOutGivenIn` and `calcInGivenOut` WeightedMath tests.
             vars.upscaledBalances[i] = poolBalances.unchecked_valueAt(i).upscaleDown(vars.scalingFactors[i]);
         }
 
@@ -463,8 +512,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         (SwapLocals memory vars, EnumerableMap.IERC20ToUint256Map storage poolBalances) = _populateSwapLocals(params);
 
-        // If the amountGiven is entering the pool math (GivenIn), round down, since a lower apparent amount in leads
-        // to a lower calculated amount out, favoring the pool.
+        // If the amountGiven is entering the pool math (GivenIn), round down, since a lower apparent amountIn leads
+        // to a lower calculated amountOut, favoring the pool.
         uint256 upscaledAmountGiven = params.kind == SwapKind.GIVEN_IN
             ? params.amountGiven.upscaleDown(vars.scalingFactors[vars.indexIn])
             : params.amountGiven.upscaleUp(vars.scalingFactors[vars.indexOut]);
@@ -504,7 +553,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         _supplyCredit(params.tokenOut, amountOut, msg.sender);
 
         if (vars.config.callbacks.shouldCallAfterSwap) {
-            // Set to upscaled values for the callback.
             (uint256 upscaledAmountIn, uint256 upscaledAmountOut) = params.kind == SwapKind.GIVEN_IN
                 ? (upscaledAmountGiven, upscaledAmountCalculated)
                 : (upscaledAmountCalculated, upscaledAmountGiven);
@@ -725,7 +773,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         _validateTokensAndGetBalances(pool, tokens);
 
         uint256[] memory scalingFactors = PoolConfigLib.getScalingFactors(config, tokens.length);
-        // Amounts are entering pool math, so scale down.
+        // Amounts are entering pool math, so scale down. A lower invariant after the join means less bptOut,
+        // favoring the pool.
         maxAmountsIn.upscaleDownArray(scalingFactors);
 
         (amountsIn, bptAmountOut) = IBasePool(pool).onInitialize(maxAmountsIn, userData);
@@ -734,7 +783,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             revert BptAmountBelowAbsoluteMin();
         }
 
-        // amountsIn are amounts entering the Pool, so we round up.
+        // amountsIn are entering the Vault, so we round up.
         amountsIn.downscaleUpArray(scalingFactors);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
@@ -784,7 +833,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         InputHelpers.ensureInputLengthMatch(numTokens, maxAmountsIn.length);
 
-        SharedLocals memory vars = _populateSharedLiquidityLocals(pool, tokens);
+        // Set `addingLiquidity` parameter to true to set rounding direction for balances.
+        SharedLocals memory vars = _populateSharedLiquidityLocals(pool, tokens, true);
 
         // Amounts are entering pool math, so scale down
         maxAmountsIn.upscaleDownArray(vars.scalingFactors);
@@ -861,7 +911,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         InputHelpers.ensureInputLengthMatch(numTokens, minAmountsOut.length);
 
-        SharedLocals memory vars = _populateSharedLiquidityLocals(pool, tokens);
+        // Set `addingLiquidity` parameter to false to set rounding direction for balances.
+        SharedLocals memory vars = _populateSharedLiquidityLocals(pool, tokens, false);
 
         // Amounts are entering pool math; higher amounts would burn more BPT, so round up to favor the pool.
         minAmountsOut.upscaleUpArray(vars.scalingFactors);
