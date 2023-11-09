@@ -142,7 +142,7 @@ library FixedPoint {
 
     function complement(uint256 x, uint256 unit) internal pure returns (uint256 result) {
         // Equivalent to:
-        // result = (x < ONE) ? (ONE - x) : 0;
+        // result = (x < unit) ? (unit - x) : 0;
         assembly {
             result := mul(lt(x, unit), sub(unit, x))
         }
