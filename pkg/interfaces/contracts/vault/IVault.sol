@@ -22,6 +22,15 @@ struct PoolConfig {
     PoolCallbacks callbacks;
 }
 
+/**
+ * @dev Represents a pool's pause configuration (end timestamps).
+ * Note that the actual paused state is a bit in PoolConfig.
+ */
+struct PoolPauseConfig {
+    uint256 pauseWindowEndTime;
+    uint256 bufferPeriodEndTime;
+}
+
 interface IVault {
     /*******************************************************************************
                         Pool Registration and Initialization
