@@ -538,7 +538,7 @@ interface IVault {
      * @param pool The pool that was just paused or unpaused
      * @param paused True if the pool was paused
      */
-    event PoolPausedStateChanged(address pool, bool paused);
+    event PoolPausedStateChanged(address indexed pool, bool paused);
 
     /// @dev A user tried to invoke an operation while the Vault was paused.
     error VaultPaused();
