@@ -7,9 +7,8 @@ import "@balancer-labs/v3-interfaces/contracts/vault/ITemporarilyPausable.sol";
 /**
  * @dev Base contract for V3 factories to support pause windows for pools based on the factory deployment time.
  *
- * Pool registration takes a factory argument, and the Vault calls `getPauseConfiguration` on the factory so that
- * all Pools created by this factory will share the same Pause Window end time, after which both old and new Pools
- * will not be pausable.
+ * Each pool deployment calls `getPauseConfiguration` on the factory so that all Pools created by this factory
+ * will share the same Pause Window end time, after which both old and new Pools will not be pausable.
  */
 contract FactoryWidePauseWindow is ITemporarilyPausable {
     // This contract relies on timestamps - the usual caveats apply.

@@ -633,9 +633,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     function registerPool(
         address pool,
         IERC20[] memory tokens,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration,
         PoolCallbacks calldata poolCallbacks
     ) external nonReentrant whenVaultNotPaused {
-        _registerPool(pool, tokens, poolCallbacks);
+        _registerPool(pool, tokens, pauseWindowDuration, bufferPeriodDuration, poolCallbacks);
     }
 
     /// @inheritdoc IVault
@@ -685,7 +687,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      *
      * Emits a `PoolRegistered` event upon successful registration.
      */
-    function _registerPool(address pool, IERC20[] memory tokens, PoolCallbacks memory callbackConfig) internal {
+    function _registerPool(
+        address pool,
+        IERC20[] memory tokens,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration,
+        PoolCallbacks memory callbackConfig
+    ) internal {
         address factory = msg.sender;
 
         // Ensure the pool isn't already registered
@@ -727,9 +735,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
         }
 
-        // Set pool's pause window from the factory.
-        (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = ITemporarilyPausable(factory)
-            .getPauseConfiguration();
         uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
 
         PoolPauseConfig memory pauseConfig = PoolPauseConfig({
@@ -749,7 +754,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         _poolConfig[pool] = config.fromPoolConfig();
 
         // Emit an event to log the pool registration
-        emit PoolRegistered(pool, address(factory), tokens);
+        emit PoolRegistered(pool, factory, tokens);
     }
 
     /// @dev See `isRegisteredPool`

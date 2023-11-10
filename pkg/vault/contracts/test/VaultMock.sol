@@ -62,7 +62,7 @@ contract VaultMock is Vault {
 
     // Used for testing the ReentrancyGuard
     function reentrantRegisterPool(address pool, IERC20[] memory tokens) external nonReentrant {
-        this.registerPool(pool, tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
+        this.registerPool(pool, tokens, 365 days, 30 days, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
     }
 
     // Used for testing pool registration, which is ordinarily done in the pool factory.

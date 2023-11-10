@@ -106,12 +106,19 @@ interface IVault {
 
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
-     * @dev The sender must be a factory contract that supports `getPauseConfiguration` (ITemporarilyPausable).
      * @param pool The pool being registered
      * @param tokens An array of token addresses the pool will manage
+     * @param pauseWindowDuration The length of the pause window
+     * @param bufferPeriodDuration The length of the buffer period after the pause window
      * @param config Pool configuration
      */
-    function registerPool(address pool, IERC20[] memory tokens, PoolCallbacks calldata config) external;
+    function registerPool(
+        address pool,
+        IERC20[] memory tokens,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration,
+        PoolCallbacks calldata config
+    ) external;
 
     /**
      * @notice Initializes a registered pool by adding liquidity; mints BPT tokens for the first time in exchange.

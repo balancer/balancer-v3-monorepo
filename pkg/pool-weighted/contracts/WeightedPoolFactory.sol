@@ -44,9 +44,13 @@ contract WeightedPoolFactory is BasePoolFactory {
             )
         );
 
+        (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
+
         getVault().registerPool(
             pool,
             tokens,
+            pauseWindowDuration,
+            bufferPeriodDuration,
             PoolCallbacks({
                 shouldCallAfterAddLiquidity: false,
                 shouldCallAfterRemoveLiquidity: false,
