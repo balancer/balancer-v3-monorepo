@@ -27,6 +27,8 @@ interface IBasePool {
     /**
      * @notice Initialize pool with seed funds.
      * @dev The vault enforces that this callback will only be called once.
+     * `maxAmountsIn` have been upscaled by the Vault, and are given here as 18-decimal floating point values.
+     *
      * @param maxAmountsIn Maximum amounts of tokens to be added
      * @param userData Additional (optional) data provided by the user
      * @return amountsIn Actual amounts of tokens added
@@ -49,6 +51,9 @@ interface IBasePool {
 
     /**
      * @notice Add liquidity to the pool.
+     * @dev `balances` and `maxAmountsIn` have been upscaled by the Vault, and are given here as 18-decimal
+     * floating point values.
+     *
      * @param sender Address of the sender
      * @param balances Current balances of the tokens
      * @param maxAmountsIn Maximum amounts of tokens to be added
@@ -69,6 +74,9 @@ interface IBasePool {
 
     /**
      * @notice Callback after adding liquidity to the pool.
+     * @dev `currentBalances` and `amountsIn` have been upscaled by the Vault, and are given here as 18-decimal
+     * floating point values.
+     *
      * @param sender Address of the sender
      * @param currentBalances Current balances of the tokens
      * @param userData Additional (optional) data provided by the user
@@ -94,6 +102,9 @@ interface IBasePool {
 
     /**
      * @notice Remove liquidity from the pool.
+     * @dev `balances` and `minAmountsOut` have been upscaled by the Vault, and are given here as 18-decimal
+     * floating point values.
+     *
      * @param sender Address of the sender
      * @param balances Current balances of the tokens
      * @param minAmountsOut Minimum amounts of tokens to be removed
@@ -114,6 +125,9 @@ interface IBasePool {
 
     /**
      * @notice Callback after removing liquidity from the pool.
+     * @dev `currentBalances` and `amountsOut` have been upscaled by the Vault, and are given here as 18-decimal
+     * floating point values.
+     *
      * @param sender Address of the sender
      * @param currentBalances Current balances of the tokens
      * @param userData Additional (optional) data provided by the user
@@ -133,6 +147,9 @@ interface IBasePool {
 
     /**
      * @dev Data for a swap operation.
+     * @dev `amountGiven` and `balances` have been upscaled by the Vault, and are given here as 18-decimal
+     * floating point values.
+     *
      * @param kind Type of swap (given in or given out)
      * @param pool Address of the liquidity pool
      * @param tokenIn Token to be swapped from (entering the Vault)
@@ -157,6 +174,9 @@ interface IBasePool {
 
     /**
      * @dev Data for the callback after a swap operation.
+     * `amountIn`, `amountOut`, `tokenInBalance`, and `tokenOutBalance` have been upscaled by the Vault,
+     * and are given here as 18-decimal floating point values.
+     *
      * @param kind Type of swap (given in or given out)
      * @param tokenIn Token to be swapped from
      * @param tokenOut Token to be swapped to
