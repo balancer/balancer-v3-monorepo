@@ -51,12 +51,6 @@ contract WeightedPoolTest is Test {
         vault = new VaultMock(authorizer, 30 days, 90 days);
         factory = new WeightedPoolFactory(vault, 365 days, 90 days);
 
-        uint256 pauseWindow;
-        uint256 bufferPeriod;
-        (pauseWindow, bufferPeriod) = factory.getPauseConfiguration();
-        assertEq(pauseWindow, 365 days);
-        assertEq(bufferPeriod, 90 days);
-
         router = new Router(IVault(vault), address(0));
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
@@ -70,13 +64,6 @@ contract WeightedPoolTest is Test {
                 ZERO_BYTES32
             )
         );
-
-        bool paused;
-        (paused, pauseWindow, bufferPeriod) = vault.getPoolPausedState(address(pool));
-
-        assertEq(paused, false);
-        assertApproxEqAbs(pauseWindow, 365 days, 1);
-        assertApproxEqAbs(bufferPeriod, 365 days + 90 days, 1);
 
         USDC.mint(alice, USDC_AMOUNT);
         DAI.mint(alice, DAI_AMOUNT);
@@ -101,6 +88,14 @@ contract WeightedPoolTest is Test {
         vm.label(address(vault), "Vault");
         vm.label(address(router), "Router");
         vm.label(address(pool), "Pool");
+    }
+
+    function testPoolPausedState() public {
+        (bool paused, uint256 pauseWindow, uint256 bufferPeriod) = vault.getPoolPausedState(address(pool));
+
+        assertEq(paused, false);
+        assertApproxEqAbs(pauseWindow, 365 days, 1);
+        assertApproxEqAbs(bufferPeriod, 365 days + 90 days, 1);
     }
 
     function testInitialize() public {
