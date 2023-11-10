@@ -55,4 +55,11 @@ contract VaultMock is Vault {
     function manualRegisterPool(address factory, IERC20[] memory tokens) external whenVaultNotPaused {
         _registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
     }
+
+    function getScalingFactors(address pool) external view returns (uint256[] memory) {
+        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
+        (IERC20[] memory tokens, ) = _getPoolTokens(pool);
+
+        return PoolConfigLib.getScalingFactors(config, tokens.length);
+    }
 }

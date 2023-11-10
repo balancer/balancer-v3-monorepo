@@ -2,13 +2,14 @@
 
 pragma solidity ^0.8.4;
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 
 import { BasePool } from "../BasePool.sol";
 
@@ -114,19 +115,13 @@ contract PoolMock is BasePool {
         return _numTokens;
     }
 
-    function _scalingFactor(IERC20) internal view virtual override returns (uint256) {
-        return 1;
-    }
+    /// @dev Even though pools do not handle scaling, we still need this for the tests.
+    function getScalingFactors() external view returns (uint256[] memory scalingFactors) {
+        (IERC20[] memory tokens, ) = _vault.getPoolTokens(address(this));
+        scalingFactors = new uint256[](tokens.length);
 
-    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
-        uint256 numTokens = _getTotalTokens();
-
-        uint256[] memory scalingFactors = new uint256[](numTokens);
-
-        for (uint256 i = 0; i < numTokens; i++) {
-            scalingFactors[i] = 1;
+        for (uint256 i = 0; i < tokens.length; i++) {
+            scalingFactors[i] = ScalingHelpers.computeScalingFactor(tokens[i]);
         }
-
-        return scalingFactors;
     }
 }
