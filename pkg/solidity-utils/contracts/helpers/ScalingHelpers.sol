@@ -21,13 +21,18 @@ library ScalingHelpers {
 
     /**
      * @dev Applies `scalingFactor` to `amount`, resulting in a larger or equal value depending on whether it needed
-     * scaling or not.
+     * scaling or not. The result is rounded down.
      */
-    function upscale(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        // Upscale rounding wouldn't necessarily always go in the same direction: in a swap for example the balance of
-        // token in should be rounded up, and that of token out rounded down. This is the only place where we round in
-        // the same direction for all amounts, as the impact of this rounding is expected to be minimal.
+    function upscaleDown(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
         return FixedPoint.mulDown(amount, scalingFactor);
+    }
+
+    /**
+     * @dev Applies `scalingFactor` to `amount`, resulting in a larger or equal value depending on whether it needed
+     * scaling or not. The result is rounded up.
+     */
+    function upscaleUp(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
+        return FixedPoint.mulUp(amount, scalingFactor);
     }
 
     /**
@@ -51,10 +56,10 @@ library ScalingHelpers {
     ***************************************************************************/
 
     /**
-     * @dev Same as `_upscale`, but for an entire array. This function does not return anything, but instead *mutates*
-     * the `amounts` array.
+     * @dev Same as `upscaleDown`, but for an entire array. This function does not return anything,
+     * but instead *mutates* the `amounts` array.
      */
-    function upscaleArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
+    function upscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
         uint256 length = amounts.length;
         InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
 
@@ -64,7 +69,20 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `_downscaleDown`, but for an entire array. This function does not return anything, but instead
+     * @dev Same as `upscaleUp`, but for an entire array. This function does not return anything,
+     * but instead *mutates* the `amounts` array.
+     */
+    function upscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
+        uint256 length = amounts.length;
+        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
+
+        for (uint256 i = 0; i < length; ++i) {
+            amounts[i] = FixedPoint.mulUp(amounts[i], scalingFactors[i]);
+        }
+    }
+
+    /**
+     * @dev Same as `downscaleDown`, but for an entire array. This function does not return anything, but instead
      * *mutates* the `amounts` array.
      */
     function downscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
@@ -77,7 +95,7 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `_downscaleUp`, but for an entire array. This function does not return anything, but instead
+     * @dev Same as `downscaleUp`, but for an entire array. This function does not return anything, but instead
      * *mutates* the `amounts` array.
      */
     function downscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {

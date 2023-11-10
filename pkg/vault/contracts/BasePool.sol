@@ -9,13 +9,9 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 
 import { ERC20PoolToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20PoolToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 /// @notice Reference implementation for the base layer of a Pool contract.
 abstract contract BasePool is IBasePool, ERC20PoolToken {
-    using FixedPoint for uint256;
-    using ScalingHelpers for *;
-
     IVault internal immutable _vault;
 
     uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
@@ -34,6 +30,11 @@ abstract contract BasePool is IBasePool, ERC20PoolToken {
      */
     function getSwapFeePercentage() public pure virtual returns (uint256) {
         return _SWAP_FEE_PERCENTAGE;
+    }
+
+    /// @inheritdoc IBasePool
+    function getPoolTokens() external view returns (IERC20[] memory tokens, uint256[] memory balances) {
+        return _vault.getPoolTokens(address(this));
     }
 
     /*******************************************************************************
@@ -65,43 +66,5 @@ abstract contract BasePool is IBasePool, ERC20PoolToken {
         uint256[] memory
     ) external view virtual returns (bool) {
         revert CallbackNotImplemented();
-    }
-
-    /*******************************************************************************
-                                      Scaling
-    *******************************************************************************/
-
-    /**
-     * @dev Returns the scaling factor for one of the Pool's tokens. Reverts if `token` is not a token registered by the
-     * Pool.
-     *
-     * All scaling factors are fixed-point values with 18 decimals, to allow for this function to be overridden by
-     * derived contracts that need to apply further scaling, making these factors potentially non-integer.
-     *
-     * The largest 'base' scaling factor (i.e. in tokens with less than 18 decimals) is 10**18, which in fixed-point is
-     * 10**36. This value can be multiplied with a 112 bit Vault balance with no overflow by a factor of ~1e7, making
-     * even relatively 'large' factors safe to use.
-     *
-     * The 1e7 figure is the result of 2**256 / (1e18 * 1e18 * 2**112).
-     */
-    function _scalingFactor(IERC20 token) internal view virtual returns (uint256);
-
-    /**
-     * @dev Same as `_scalingFactor()`, except for all registered tokens (in the same order as registered). The Vault
-     * will always pass balances in this order when calling any of the Pool callbacks.
-     */
-    function _scalingFactors() internal view virtual returns (uint256[] memory);
-
-    /**
-     * @notice Return the scaling factors of all tokens.
-     * @return An array of the scaling factors
-     */
-    function getScalingFactors() external view returns (uint256[] memory) {
-        return _scalingFactors();
-    }
-
-    /// @inheritdoc IBasePool
-    function getPoolTokens() external view returns (IERC20[] memory tokens, uint256[] memory balances) {
-        return _vault.getPoolTokens(address(this));
     }
 }

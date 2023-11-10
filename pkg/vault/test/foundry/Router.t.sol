@@ -92,8 +92,6 @@ contract RouterTest is Test {
             bytes("")
         );
 
-        pool.setMultiplier(1e30);
-
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(EVMCallModeHelpers.NotStaticCall.selector));
         router.querySwap(
@@ -115,8 +113,6 @@ contract RouterTest is Test {
             0,
             bytes("")
         );
-
-        pool.setMultiplier(1e30);
 
         vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
 

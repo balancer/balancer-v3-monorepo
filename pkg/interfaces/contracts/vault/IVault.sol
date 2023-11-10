@@ -21,6 +21,7 @@ struct PoolConfig {
     bool isRegisteredPool;
     bool isInitializedPool;
     bool isPausedPool;
+    uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
     PoolCallbacks callbacks;
 }
 

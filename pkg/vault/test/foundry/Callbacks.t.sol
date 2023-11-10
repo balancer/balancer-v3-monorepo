@@ -95,8 +95,6 @@ contract VaultSwapTest is Test {
             bytes("")
         );
 
-        pool.setMultiplier(1e30);
-
         vm.prank(bob);
         // should not fail
         router.swap(
@@ -120,8 +118,6 @@ contract VaultSwapTest is Test {
             0,
             bytes("")
         );
-
-        pool.setMultiplier(1e30);
 
         pool.setFailOnAfterSwap(true);
         vm.prank(bob);
