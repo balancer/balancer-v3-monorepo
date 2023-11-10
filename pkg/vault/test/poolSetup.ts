@@ -40,10 +40,10 @@ export async function setupEnvironment(): Promise<{
   const poolATokens = [tokenAAddress, tokenBAddress, tokenCAddress];
   const poolBTokens = [tokenAAddress, tokenCAddress];
 
-  const poolA: PoolMock = await deploy('v3-pool-utils/PoolMock', {
+  const poolA: PoolMock = await deploy('v3-vault/PoolMock', {
     args: [vaultAddress, 'Pool A', 'POOLA', poolATokens, true],
   });
-  const poolB: PoolMock = await deploy('v3-pool-utils/PoolMock', {
+  const poolB: PoolMock = await deploy('v3-vault/PoolMock', {
     args: [vaultAddress, 'Pool B', 'POOLB', poolBTokens, false],
   });
 

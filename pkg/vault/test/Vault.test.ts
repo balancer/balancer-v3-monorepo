@@ -209,7 +209,7 @@ describe('Vault', function () {
       let poolAddress: string;
 
       sharedBeforeEach('deploy pool', async () => {
-        pool = await deploy('v3-pool-utils/PoolMock', {
+        pool = await deploy('v3-vault/PoolMock', {
           args: [vault, 'Pool X', 'POOLX', poolATokens, true],
         });
         poolAddress = await pool.getAddress();

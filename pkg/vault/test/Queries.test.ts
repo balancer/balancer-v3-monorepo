@@ -41,7 +41,7 @@ describe('Queries', function () {
     DAI = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['DAI', 'Token A', 18] });
     USDC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['USDC', 'USDC', 18] });
 
-    pool = await deploy('v3-pool-utils/PoolMock', {
+    pool = await deploy('v3-vault/PoolMock', {
       args: [vaultAddress, 'Pool', 'POOL', [DAI, USDC], true],
     });
 
