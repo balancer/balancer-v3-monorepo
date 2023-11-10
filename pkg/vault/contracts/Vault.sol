@@ -449,8 +449,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         vars.upscaledBalances = new uint256[](vars.numTokens);
         for (uint256 i = 0; i < vars.numTokens; i++) {
             vars.balances[i] = poolBalances.unchecked_valueAt(i);
-            // It turns out that we always want to round the balances down here. The exponentiation makes it
-            // somewhat counterintuitive.
+            // Rounding down is legacy behavior, and seems the right direction generally, as described below.
+            // However, likely because of the non-linearity introduced by power functions, the calculation
+            // error for very small values is greater than the rounding correction, so it is possible that
+            // rounding down here will not decrease `amountOut` or increase `amountIn`. Further measures
+            // are required to ensure safety.
             //
             // In the GivenIn case, lower balances cause `calcOutGivenIn` to calculate a lower amountOut.
             // In the GivenOut case, lower balances cause `calcInGivenOut` to calculate a higher amountIn.
