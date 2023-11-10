@@ -36,10 +36,6 @@ describe('Vault', function () {
 
   let tokenAAddress: string;
   let tokenBAddress: string;
-  let factoryAddress: string;
-  let vaultAddress: string;
-  let poolAAddress: string;
-  let poolBAddress: string;
 
   let poolATokens: string[];
   let poolBTokens: string[];
@@ -54,10 +50,8 @@ describe('Vault', function () {
     const { vault: vaultMock, tokens, pools, factory: factoryContract } = await setupEnvironment();
 
     vault = vaultMock;
-    vaultAddress = await vault.getAddress();
 
     factory = factoryContract;
-    factoryAddress = await factory.getAddress();
 
     tokenA = tokens[0];
     tokenB = tokens[1];
@@ -65,9 +59,6 @@ describe('Vault', function () {
 
     poolA = pools[0]; // This pool is registered
     poolB = pools[1]; // This pool is unregistered
-
-    poolAAddress = await poolA.getAddress();
-    poolBAddress = await poolB.getAddress();
 
     tokenAAddress = await tokenA.getAddress();
     tokenBAddress = await tokenB.getAddress();
@@ -89,51 +80,53 @@ describe('Vault', function () {
 
   describe('registration', () => {
     let unregisteredPoolSigner: SignerWithAddress;
+    let poolBAddress: string;
 
     sharedBeforeEach('get pool signer for calls through vault', async () => {
+      poolBAddress = await poolB.getAddress();
       // PoolB isn't registered
       unregisteredPoolSigner = await impersonate(poolBAddress);
     });
 
     it('can register a pool', async () => {
-      expect(await vault.isRegisteredPool(poolAAddress)).to.be.true;
-      expect(await vault.isRegisteredPool(poolBAddress)).to.be.false;
+      expect(await vault.isRegisteredPool(poolA)).to.be.true;
+      expect(await vault.isRegisteredPool(poolB)).to.be.false;
 
-      const { tokens, balances } = await vault.getPoolTokens(poolAAddress);
+      const { tokens, balances } = await vault.getPoolTokens(poolA);
       expect(tokens).to.deep.equal(poolATokens);
       expect(balances).to.deep.equal(Array(tokens.length).fill(0));
 
-      await expect(vault.getPoolTokens(poolBAddress))
+      await expect(vault.getPoolTokens(poolB))
         .to.be.revertedWithCustomError(vault, 'PoolNotRegistered')
         .withArgs(poolBAddress);
     });
 
     it('pools are initially unpaused', async () => {
-      expect(await vault.poolPaused(poolAAddress)).to.equal(false);
+      expect(await vault.poolPaused(poolA)).to.equal(false);
     });
 
     it('registering a pool emits an event', async () => {
-      await expect(await vault.connect(unregisteredPoolSigner).manualRegisterPool(factoryAddress, poolBTokens))
+      await expect(await vault.connect(unregisteredPoolSigner).manualRegisterPool(factory, poolBTokens))
         .to.emit(vault, 'PoolRegistered')
-        .withArgs(poolBAddress, factoryAddress, poolBTokens);
+        .withArgs(await poolB.getAddress(), await factory.getAddress(), poolBTokens);
     });
 
     it('cannot register a pool twice', async () => {
-      await vault.connect(unregisteredPoolSigner).manualRegisterPool(factoryAddress, poolBTokens);
+      await vault.connect(unregisteredPoolSigner).manualRegisterPool(factory, poolBTokens);
 
-      await expect(vault.connect(unregisteredPoolSigner).manualRegisterPool(factoryAddress, poolBTokens))
+      await expect(vault.connect(unregisteredPoolSigner).manualRegisterPool(factory, poolBTokens))
         .to.be.revertedWithCustomError(vault, 'PoolAlreadyRegistered')
-        .withArgs(poolBAddress);
+        .withArgs(await poolB.getAddress());
     });
 
     it('cannot register a pool with an invalid token', async () => {
       await expect(
-        vault.connect(unregisteredPoolSigner).manualRegisterPool(factoryAddress, invalidTokens)
+        vault.connect(unregisteredPoolSigner).manualRegisterPool(factory, invalidTokens)
       ).to.be.revertedWithCustomError(vault, 'InvalidToken');
     });
 
     it('cannot register a pool with duplicate tokens', async () => {
-      await expect(vault.connect(unregisteredPoolSigner).manualRegisterPool(factoryAddress, duplicateTokens))
+      await expect(vault.connect(unregisteredPoolSigner).manualRegisterPool(factory, duplicateTokens))
         .to.be.revertedWithCustomError(vault, 'TokenAlreadyRegistered')
         .withArgs(tokenAAddress);
     });
@@ -142,7 +135,7 @@ describe('Vault', function () {
       await vault.manualPauseVault();
 
       await expect(
-        vault.connect(unregisteredPoolSigner).manualRegisterPool(factoryAddress, poolBTokens)
+        vault.connect(unregisteredPoolSigner).manualRegisterPool(factory, poolBTokens)
       ).to.be.revertedWithCustomError(vault, 'VaultPaused');
     });
 
@@ -161,7 +154,7 @@ describe('Vault', function () {
 
     it('cannot register a pool with too few tokens', async () => {
       await expect(
-        vault.connect(unregisteredPoolSigner).manualRegisterPool(factoryAddress, [poolATokens[0]])
+        vault.connect(unregisteredPoolSigner).manualRegisterPool(factory, [poolATokens[0]])
       ).to.be.revertedWithCustomError(vault, 'MinTokens');
     });
 
@@ -169,7 +162,7 @@ describe('Vault', function () {
       const tokens = await ERC20TokenList.create(5);
 
       await expect(
-        vault.connect(unregisteredPoolSigner).manualRegisterPool(factoryAddress, await tokens.addresses)
+        vault.connect(unregisteredPoolSigner).manualRegisterPool(factory, await tokens.addresses)
       ).to.be.revertedWithCustomError(vault, 'MaxTokens');
     });
   });
@@ -217,7 +210,7 @@ describe('Vault', function () {
 
       sharedBeforeEach('deploy pool', async () => {
         pool = await deploy('v3-pool-utils/PoolMock', {
-          args: [vaultAddress, 'Pool X', 'POOLX', factoryAddress, poolATokens, true],
+          args: [vault, 'Pool X', 'POOLX', factory, poolATokens, true],
         });
         poolAddress = await pool.getAddress();
       });
@@ -261,7 +254,7 @@ describe('Vault', function () {
 
     context('without permission', () => {
       it('cannot change authorizer', async () => {
-        await expect(vault.setAuthorizer(await newAuthorizer.getAddress())).to.be.revertedWithCustomError(
+        await expect(vault.setAuthorizer(newAuthorizer.getAddress())).to.be.revertedWithCustomError(
           vault,
           'SenderNotAllowed'
         );
