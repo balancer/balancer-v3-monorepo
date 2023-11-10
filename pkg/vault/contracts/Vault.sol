@@ -6,8 +6,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-
-import { IVault, PoolConfig, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+// solhint-disable-next-line max-line-length
+import { IVault, PoolConfig, PoolCallbacks, PoolPauseConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { ITemporarilyPausable } from "@balancer-labs/v3-interfaces/contracts/vault/ITemporarilyPausable.sol";
@@ -24,6 +24,7 @@ import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { ERC20MultiToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20MultiToken.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
+import { PoolPauseConfigBits, PoolPauseConfigLib } from "./lib/PoolPauseConfigLib.sol";
 
 contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
@@ -35,6 +36,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
     using PoolConfigLib for PoolCallbacks;
+    using PoolPauseConfigLib for PoolPauseConfig;
     using WordCodec for bytes32;
 
     // Minimum BPT amount minted upon initialization.
@@ -48,17 +50,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     mapping(address => PoolConfigBits) internal _poolConfig;
 
     // Store pool pause periods.
-    mapping(address => bytes32) internal _poolPauseEndTimes;
-
-    // Each value in `_poolPauseEndTimes` containts two timestamps.
-    // [ 192 bits |    32 bits   |    32 bits    ]
-    // [  unused  | pause window | buffer period ]
-    // [ MSB                                 LSB ]
-
-    uint256 private constant _TIMESTAMP_BITLENGTH = 32;
-
-    uint256 private constant _BUFFER_PERIOD_OFFSET = 0;
-    uint256 private constant _PAUSE_WINDOW_OFFSET = _BUFFER_PERIOD_OFFSET + _TIMESTAMP_BITLENGTH;
+    mapping(address => PoolPauseConfigBits) internal _poolPauseConfig;
 
     // Pool -> (token -> balance): Pool's ERC20 tokens balances stored at the Vault.
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolTokenBalances;
@@ -1029,13 +1021,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
     /// @inheritdoc IVault
     function getPoolPausedState(address pool) public view withRegisteredPool(pool) returns (bool, uint256, uint256) {
-        bytes32 poolPauseData = _poolPauseEndTimes[pool];
+        PoolPauseConfig memory pauseConfig = PoolPauseConfigLib.toPoolPauseConfig(_poolPauseConfig[pool]);
 
-        return (
-            _isPausedPool(pool),
-            poolPauseData.decodeUint(_PAUSE_WINDOW_OFFSET, _TIMESTAMP_BITLENGTH),
-            poolPauseData.decodeUint(_BUFFER_PERIOD_OFFSET, _TIMESTAMP_BITLENGTH)
-        );
+        return (_isPausedPool(pool), pauseConfig.pauseWindowEndTime, pauseConfig.bufferPeriodEndTime);
     }
 
     /// @inheritdoc IVault
