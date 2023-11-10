@@ -194,20 +194,4 @@ contract ERC20PoolMock is BasePool {
     function _getTotalTokens() internal view virtual override returns (uint256) {
         return _numTokens;
     }
-
-    function _scalingFactor(IERC20) internal view virtual override returns (uint256) {
-        return 1;
-    }
-
-    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
-        uint256 numTokens = _getTotalTokens();
-
-        uint256[] memory scalingFactors = new uint256[](numTokens);
-
-        for (uint256 i = 0; i < numTokens; i++) {
-            scalingFactors[i] = 1;
-        }
-
-        return scalingFactors;
-    }
 }

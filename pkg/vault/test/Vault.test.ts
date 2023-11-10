@@ -4,7 +4,6 @@ import { Contract } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH, fromNow } from '@balancer-labs/v3-helpers/src/time';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
-import { ERC20BalancerPoolToken } from '../typechain-types/contracts/ERC20BalancerPoolToken';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
@@ -17,14 +16,16 @@ import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import '@balancer-labs/v3-common/setupTests';
+import { PoolConfigStructOutput } from '../typechain-types/contracts/Vault';
+import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
 
   let vault: VaultMock;
-  let poolA: ERC20BalancerPoolToken;
-  let poolB: ERC20BalancerPoolToken;
+  let poolA: PoolMock;
+  let poolB: PoolMock;
   let tokenA: ERC20TestToken;
   let tokenB: ERC20TestToken;
   let tokenC: ERC20TestToken;
@@ -240,12 +241,48 @@ describe('Vault', function () {
   });
 
   describe('pool tokens', () => {
+    const DECIMAL_DIFF_BITS = 5;
+
+    function decodeDecimalDiffs(diff: number, numTokens: number): number[] {
+      const result: number[] = [];
+
+      for (let i = 0; i < numTokens; i++) {
+        // Compute the 5-bit mask for each token
+        const mask = (2 ** DECIMAL_DIFF_BITS - 1) << (i * DECIMAL_DIFF_BITS);
+        // Logical AND with the input, and shift back down to get the final result
+        result[i] = (diff & mask) >> (i * DECIMAL_DIFF_BITS);
+      }
+
+      return result;
+    }
+
     it('returns the min and max pool counts', async () => {
       const minTokens = await vault.getMinimumPoolTokens();
       const maxTokens = await vault.getMaximumPoolTokens();
 
       expect(minTokens).to.eq(2);
       expect(maxTokens).to.eq(4);
+    });
+
+    it('stores the decimal differences', async () => {
+      const expectedDecimals = await Promise.all(
+        poolATokens.map(async (token) => (await deployedAt('v3-solidity-utils/ERC20TestToken', token)).decimals())
+      );
+      const expectedDecimalDiffs = expectedDecimals.map((d) => bn(18) - d);
+
+      const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(poolAAddress);
+      const actualDecimalDiffs = decodeDecimalDiffs(Number(poolConfig.tokenDecimalDiffs), poolATokens.length);
+
+      expect(actualDecimalDiffs).to.deep.equal(expectedDecimalDiffs);
+    });
+
+    it('computes the scaling factors', async () => {
+      // Get them from the pool (mock), using ScalingHelpers
+      const poolScalingFactors = await poolA.getScalingFactors();
+      // Get them from the Vault (using PoolConfig)
+      const vaultScalingFactors = await vault.getScalingFactors(poolAAddress);
+
+      expect(vaultScalingFactors).to.deep.equal(poolScalingFactors);
     });
   });
 });

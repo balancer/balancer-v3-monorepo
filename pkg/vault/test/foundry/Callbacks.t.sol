@@ -40,6 +40,7 @@ contract VaultSwapTest is Test {
 
     uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
+    uint256 constant USDC_SCALING = 1e12; // 18 - 6
 
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
@@ -97,12 +98,13 @@ contract VaultSwapTest is Test {
     function testOnAfterSwapCallback() public {
         // Calls `onSwap` in the pool.
         vm.prank(bob);
+        // Balances are scaled to 18 decimals; DAI already has 18.
         vm.expectCall(address(pool), abi.encodeWithSelector(IBasePool.onSwap.selector, IBasePool.SwapParams({
             kind: IVault.SwapKind.GIVEN_IN,
             tokenIn: IERC20(USDC),
             tokenOut: IERC20(DAI),
-            amountGiven: USDC_AMOUNT_IN,
-            balances: [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
+            amountGiven: USDC_AMOUNT_IN * USDC_SCALING,
+            balances: [DAI_AMOUNT_IN, USDC_AMOUNT_IN * USDC_SCALING].toMemoryArray(),
             indexIn: 1,
             indexOut: 0,
             sender: address(router),

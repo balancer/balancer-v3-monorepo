@@ -2,9 +2,12 @@
 
 pragma solidity ^0.8.4;
 
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 // solhint-disable-next-line max-line-length
 import { PoolConfig, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 // @notice Config type to store entire configuration of the pool
 type PoolConfigBits is bytes32;
@@ -40,6 +43,7 @@ library PoolConfigLib {
     error DoesNotSupportRemoveLiquidityCustom();
 
     using WordCodec for bytes32;
+    using SafeCast for uint256;
 
     // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
@@ -59,6 +63,13 @@ library PoolConfigLib {
     uint8 public constant REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET = 12;
     uint8 public constant REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET = 13;
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = 14;
+
+    uint8 public constant DECIMAL_SCALING_FACTORS_OFFSET = 16;
+
+    uint256 private constant _DECIMAL_DIFF_BITLENGTH = 5;
+    // Uses a uint24 (3 bytes): least significant 20 bits to store the values, and a 4-bit pad.
+    // This maximum token count is also hard-coded in the Vault.
+    uint256 private constant _TOKEN_DECIMAL_DIFFS_BITLENGTH = 24;
 
     // Bitwise flags for pool's config
     uint256 public constant POOL_REGISTERED_FLAG = 1 << POOL_REGISTERED_OFFSET;
@@ -92,6 +103,14 @@ library PoolConfigLib {
 
     function isPoolInitialized(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_INITIALIZED_OFFSET);
+    }
+
+    function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint24) {
+        return
+            PoolConfigBits
+                .unwrap(config)
+                .decodeUint(DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH)
+                .toUint24();
     }
 
     function shouldCallAfterSwap(PoolConfigBits config) internal pure returns (bool) {
@@ -226,26 +245,57 @@ library PoolConfigLib {
                 .insertBool(config.liquidityManagement.supportsAddLiquidityCustom, ADD_LIQUIDITY_CUSTOM_OFFSET);
         }
 
+        {
+            configBits = configBits
+                .insertBool(
+                    config.liquidityManagement.supportsRemoveLiquidityProportional,
+                    REMOVE_LIQUIDITY_PROPORTIONAL_OFFSET
+                )
+                .insertBool(
+                    config.liquidityManagement.supportsRemoveLiquiditySingleTokenExactIn,
+                    REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET
+                )
+                .insertBool(
+                    config.liquidityManagement.supportsRemoveLiquiditySingleTokenExactOut,
+                    REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET
+                )
+                .insertBool(config.liquidityManagement.supportsRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET);
+        }
+
         return
             PoolConfigBits.wrap(
-                configBits
-                    .insertBool(
-                        config.liquidityManagement.supportsRemoveLiquidityProportional,
-                        REMOVE_LIQUIDITY_PROPORTIONAL_OFFSET
-                    )
-                    .insertBool(
-                        config.liquidityManagement.supportsRemoveLiquiditySingleTokenExactIn,
-                        REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET
-                    )
-                    .insertBool(
-                        config.liquidityManagement.supportsRemoveLiquiditySingleTokenExactOut,
-                        REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET
-                    )
-                    .insertBool(
-                        config.liquidityManagement.supportsRemoveLiquidityCustom,
-                        REMOVE_LIQUIDITY_CUSTOM_OFFSET
-                    )
+                configBits.insertUint(
+                    config.tokenDecimalDiffs,
+                    DECIMAL_SCALING_FACTORS_OFFSET,
+                    _TOKEN_DECIMAL_DIFFS_BITLENGTH
+                )
             );
+    }
+
+    // Convert from an array of decimal differences, to the encoded 24 bit value (only uses bottom 20 bits).
+    function toTokenDecimalDiffs(uint8[] memory tokenDecimalDiffs) internal pure returns (uint24) {
+        bytes32 value;
+
+        for (uint256 i = 0; i < tokenDecimalDiffs.length; i++) {
+            value = value.insertUint(tokenDecimalDiffs[i], i * _DECIMAL_DIFF_BITLENGTH, _DECIMAL_DIFF_BITLENGTH);
+        }
+
+        return uint256(value).toUint24();
+    }
+
+    function getScalingFactors(PoolConfig memory config, uint256 numTokens) internal pure returns (uint256[] memory) {
+        uint256[] memory scalingFactors = new uint256[](numTokens);
+
+        bytes32 tokenDecimalDiffs = bytes32(uint256(config.tokenDecimalDiffs));
+
+        for (uint256 i = 0; i < numTokens; i++) {
+            uint256 decimalDiff = tokenDecimalDiffs.decodeUint(i * _DECIMAL_DIFF_BITLENGTH, _DECIMAL_DIFF_BITLENGTH);
+
+            // This is equivalent to `10**(18+decimalsDifference)` but this form optimizes for 18 decimal tokens.
+            scalingFactors[i] = FixedPoint.ONE * 10 ** decimalDiff;
+        }
+
+        return scalingFactors;
     }
 
     function toPoolConfig(PoolConfigBits config) internal pure returns (PoolConfig memory) {
@@ -253,6 +303,7 @@ library PoolConfigLib {
             PoolConfig({
                 isRegisteredPool: config.isPoolRegistered(),
                 isInitializedPool: config.isPoolInitialized(),
+                tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 callbacks: PoolCallbacks({
                     shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),
                     shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),

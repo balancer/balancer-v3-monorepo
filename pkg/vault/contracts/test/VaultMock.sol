@@ -61,4 +61,11 @@ contract VaultMock is Vault {
             PoolConfigBits.wrap(bytes32(type(uint256).max)).toPoolConfig().liquidityManagement
         );
     }
+
+    function getScalingFactors(address pool) external view returns (uint256[] memory) {
+        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
+        (IERC20[] memory tokens, ) = _getPoolTokens(pool);
+
+        return PoolConfigLib.getScalingFactors(config, tokens.length);
+    }
 }
