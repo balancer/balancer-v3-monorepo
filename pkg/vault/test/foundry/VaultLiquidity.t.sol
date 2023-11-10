@@ -84,7 +84,7 @@ contract VaultLiquidityTest is Test {
         );
         vm.stopPrank();
 
-        // asssets are transferred from Alice
+        // assets are transferred from Alice
         assertEq(USDC.balanceOf(alice), 0);
         assertEq(DAI.balanceOf(alice), 0);
 
@@ -146,7 +146,7 @@ contract VaultLiquidityTest is Test {
 
         vm.stopPrank();
 
-        // asssets are transferred from Alice
+        // assets are transferred from Alice
         assertEq(USDC.balanceOf(alice), USDC_AMOUNT_IN);
         assertEq(DAI.balanceOf(alice), DAI_AMOUNT_IN);
 
