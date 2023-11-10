@@ -17,9 +17,8 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
-import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
 
-import { PoolMock } from "@balancer-labs/v3-pool-utils/contracts/test/PoolMock.sol";
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
@@ -32,7 +31,6 @@ contract RouterTest is Test {
     using ArrayHelpers for uint256[2];
 
     VaultMock vault;
-    WeightedPoolFactory factory;
     Router router;
     BasicAuthorizerMock authorizer;
     PoolMock pool;
@@ -47,7 +45,6 @@ contract RouterTest is Test {
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
-        factory = new WeightedPoolFactory(vault, 365 days, 90 days);
         router = new Router(IVault(vault), address(0));
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
@@ -55,7 +52,6 @@ contract RouterTest is Test {
             vault,
             "ERC20 Pool",
             "ERC20POOL",
-            factory,
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             true
         );

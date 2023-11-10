@@ -13,6 +13,8 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 
+import { PoolFactoryMock } from "./PoolFactoryMock.sol";
+
 contract ERC20PoolMock is ERC20PoolToken, IBasePool {
     using FixedPoint for uint256;
 
@@ -24,14 +26,15 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         IVault vault,
         string memory name,
         string memory symbol,
-        ITemporarilyPausable factory,
         IERC20[] memory tokens,
         bool registerPool
     ) ERC20PoolToken(vault, name, symbol) {
         _vault = vault;
 
         if (registerPool) {
-            vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
+            PoolFactoryMock factory = new PoolFactoryMock(vault, 365 days, 30 days);
+
+            factory.registerPool(address(this), tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
         }
     }
 

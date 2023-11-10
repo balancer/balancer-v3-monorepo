@@ -4,7 +4,7 @@ pragma solidity ^0.8.4;
 
 import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import "@balancer-labs/v3-pool-utils/contracts/factories/BasePoolFactory.sol";
+import "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
 
 import "./WeightedPool.sol";
 
@@ -42,6 +42,16 @@ contract WeightedPoolFactory is BasePoolFactory {
                 }),
                 getVault()
             )
+        );
+
+        getVault().registerPool(
+            pool,
+            tokens,
+            PoolCallbacks({
+                shouldCallAfterAddLiquidity: false,
+                shouldCallAfterRemoveLiquidity: false,
+                shouldCallAfterSwap: false
+            })
         );
 
         _registerPoolWithFactory(pool);

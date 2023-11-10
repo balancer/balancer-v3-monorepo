@@ -14,15 +14,23 @@ import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/
 
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 
+import { PoolFactoryMock } from "./PoolFactoryMock.sol";
+
 contract VaultMock is Vault {
     using PoolConfigLib for PoolConfig;
+
+    PoolFactoryMock private immutable _poolFactoryMock;
 
     constructor(
         IAuthorizer authorizer,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
     ) Vault(authorizer, pauseWindowDuration, bufferPeriodDuration) {
-        // solhint-disable-previous-line no-empty-blocks
+        _poolFactoryMock = new PoolFactoryMock(this, pauseWindowDuration, bufferPeriodDuration);
+    }
+
+    function getPoolFactoryMock() external view returns (address) {
+        return address(_poolFactoryMock);
     }
 
     function burnERC20(address token, address from, uint256 amount) external {
@@ -54,14 +62,14 @@ contract VaultMock is Vault {
     }
 
     // Used for testing the ReentrancyGuard
-    function reentrantRegisterPool(ITemporarilyPausable factory, IERC20[] memory tokens) external nonReentrant {
-        this.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
+    function reentrantRegisterPool(address pool, IERC20[] memory tokens) external nonReentrant {
+        this.registerPool(pool, tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
     }
 
-    // Used for testing pool registration, which is ordinarily done in the constructor of the pool.
+    // Used for testing pool registration, which is ordinarily done in the pool factory.
     // The Mock pool has an argument for whether or not to register on deployment. To call register pool
     // separately, deploy it with the registration flag false, then call this function.
-    function manualRegisterPool(ITemporarilyPausable factory, IERC20[] memory tokens) external whenVaultNotPaused {
-        _registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
+    function manualRegisterPool(address pool, IERC20[] memory tokens) external whenVaultNotPaused {
+        _poolFactoryMock.registerPool(pool, tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
     }
 }

@@ -518,11 +518,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
     /// @inheritdoc IVault
     function registerPool(
-        ITemporarilyPausable factory,
+        address pool,
         IERC20[] memory tokens,
         PoolCallbacks calldata poolCallbacks
     ) external nonReentrant whenVaultNotPaused {
-        _registerPool(factory, tokens, poolCallbacks);
+        _registerPool(pool, tokens, poolCallbacks);
     }
 
     /// @inheritdoc IVault
@@ -572,12 +572,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      *
      * Emits a `PoolRegistered` event upon successful registration.
      */
-    function _registerPool(
-        ITemporarilyPausable factory,
-        IERC20[] memory tokens,
-        PoolCallbacks memory callbackConfig
-    ) internal {
-        address pool = msg.sender;
+    function _registerPool(address pool, IERC20[] memory tokens, PoolCallbacks memory callbackConfig) internal {
+        address factory = msg.sender;
 
         // Ensure the pool isn't already registered
         if (_isRegisteredPool(pool)) {
@@ -613,7 +609,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
 
         // Set pool's pause window from the factory.
-        (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = factory.getPauseConfiguration();
+        (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = ITemporarilyPausable(factory)
+            .getPauseConfiguration();
         uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
 
         PoolPauseConfig memory pauseConfig = PoolPauseConfig({

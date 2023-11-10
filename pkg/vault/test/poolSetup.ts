@@ -5,8 +5,8 @@ import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
-import { WeightedPoolFactory } from '@balancer-labs/v3-pool-weighted/typechain-types/contracts/WeightedPoolFactory';
 import { PoolMock } from '@balancer-labs/v3-pool-utils/typechain-types/contracts/test/PoolMock';
+import { PoolFactoryMock } from '../typechain-types';
 
 // This deploys a Vault, then creates 3 tokens and 2 pools. The first pool (A) is registered; the second (B) )s not,
 // which, along with a registration flag in the Pool mock, permits separate testing of registration functions.
@@ -14,7 +14,7 @@ export async function setupEnvironment(): Promise<{
   vault: VaultMock;
   tokens: ERC20TestToken[];
   pools: PoolMock[];
-  factory: WeightedPoolFactory;
+  factory: PoolFactoryMock;
 }> {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
@@ -25,10 +25,9 @@ export async function setupEnvironment(): Promise<{
   });
   const vaultAddress = await vault.getAddress();
 
-  const factory: WeightedPoolFactory = await deploy('v3-pool-weighted/WeightedPoolFactory', {
+  const factory: PoolFactoryMock = await deploy('v3-vault/PoolFactoryMock', {
     args: [vaultAddress, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
   });
-  const factoryAddress = await factory.getAddress();
 
   const tokenA: ERC20TestToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });
   const tokenB: ERC20TestToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token B', 'TKNB', 6] });
@@ -42,10 +41,10 @@ export async function setupEnvironment(): Promise<{
   const poolBTokens = [tokenAAddress, tokenCAddress];
 
   const poolA: PoolMock = await deploy('v3-pool-utils/PoolMock', {
-    args: [vaultAddress, 'Pool A', 'POOLA', factoryAddress, poolATokens, true],
+    args: [vaultAddress, 'Pool A', 'POOLA', poolATokens, true],
   });
   const poolB: PoolMock = await deploy('v3-pool-utils/PoolMock', {
-    args: [vaultAddress, 'Pool B', 'POOLB', factoryAddress, poolBTokens, false],
+    args: [vaultAddress, 'Pool B', 'POOLB', poolBTokens, false],
   });
 
   return { vault: vault, tokens: [tokenA, tokenB, tokenC], pools: [poolA, poolB], factory };
