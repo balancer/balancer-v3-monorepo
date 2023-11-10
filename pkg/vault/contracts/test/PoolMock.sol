@@ -7,11 +7,12 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { ITemporarilyPausable } from "@balancer-labs/v3-interfaces/contracts/vault/ITemporarilyPausable.sol";
 
 import { BasePool } from "../BasePool.sol";
+import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
+import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 
 contract PoolMock is BasePool {
     using FixedPoint for uint256;
@@ -26,12 +27,13 @@ contract PoolMock is BasePool {
         IVault vault,
         string memory name,
         string memory symbol,
-        ITemporarilyPausable factory,
         IERC20[] memory tokens,
         bool registerPool
     ) BasePool(vault, name, symbol) {
         if (registerPool) {
-            vault.registerPool(factory, tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
+            PoolFactoryMock factory = new PoolFactoryMock(vault, 365 days, 30 days);
+
+            factory.registerPool(address(this), tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
         }
 
         _numTokens = tokens.length;
