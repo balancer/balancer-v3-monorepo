@@ -19,7 +19,8 @@ struct PoolConfig {
     bool isRegisteredPool;
     bool isInitializedPool;
     bool hasDynamicSwapFee;
-    uint24 staticSwapFee;
+    uint24 staticSwapFeePercentage;
+    uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
     PoolCallbacks callbacks;
 }
 

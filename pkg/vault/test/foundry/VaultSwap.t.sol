@@ -87,8 +87,6 @@ contract VaultSwapTest is Test {
             0,
             bytes("")
         );
-
-        pool.setMultiplier(1e18);
     }
 
     function setSwapFeePercentage() internal {
@@ -132,7 +130,7 @@ contract VaultSwapTest is Test {
             bytes("")
         );
 
-        // asssets are transferred to/from Bob
+        // assets are transferred to/from Bob
         assertEq(USDC.balanceOf(bob), 0);
         assertEq(DAI.balanceOf(bob), 2 * AMOUNT);
 

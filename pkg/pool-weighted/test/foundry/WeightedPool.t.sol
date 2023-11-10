@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IERC20Errors } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/token/IERC20Errors.sol";
@@ -88,6 +88,7 @@ contract WeightedPoolTest is Test {
 
     function testInitialize() public {
         vm.prank(alice);
+
         (uint256[] memory amountsIn, uint256 bptAmountOut) = router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
@@ -98,7 +99,7 @@ contract WeightedPoolTest is Test {
             bytes("")
         );
 
-        // asssets are transferred from Alice
+        // assets are transferred from Alice
         assertEq(USDC.balanceOf(alice), 0);
         assertEq(DAI.balanceOf(alice), 0);
 
@@ -123,8 +124,12 @@ contract WeightedPoolTest is Test {
 
     function testAddLiquidity() public {
         vm.prank(alice);
+
+        uint256[] memory amountsIn;
+        uint256 bptAmountOut;
+
         // init
-        router.initialize(
+        (amountsIn, bptAmountOut) = router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
@@ -135,7 +140,7 @@ contract WeightedPoolTest is Test {
         );
 
         vm.prank(bob);
-        (uint256[] memory amountsIn, uint256 bptAmountOut) = router.addLiquidity(
+        (amountsIn, bptAmountOut) = router.addLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
@@ -144,7 +149,7 @@ contract WeightedPoolTest is Test {
             bytes("")
         );
 
-        // asssets are transferred from Bob
+        // assets are transferred from Bob
         assertEq(USDC.balanceOf(bob), 0);
         assertEq(DAI.balanceOf(bob), 0);
 
@@ -204,7 +209,7 @@ contract WeightedPoolTest is Test {
 
         vm.stopPrank();
 
-        // asssets are transferred to Bob
+        // assets are transferred to Bob
         assertApproxEqAbs(USDC.balanceOf(bob), USDC_AMOUNT, DELTA);
         assertApproxEqAbs(DAI.balanceOf(bob), DAI_AMOUNT, DELTA);
 
@@ -250,7 +255,7 @@ contract WeightedPoolTest is Test {
             bytes("")
         );
 
-        // asssets are transferred from Bob
+        // assets are transferred from Bob
         assertEq(USDC.balanceOf(bob), USDC_AMOUNT + amountCalculated);
         assertEq(DAI.balanceOf(bob), DAI_AMOUNT - DAI_AMOUNT_IN);
 
