@@ -6,16 +6,13 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { ITemporarilyPausable } from "@balancer-labs/v3-interfaces/contracts/vault/ITemporarilyPausable.sol";
 
 import { BasePoolMath } from "@balancer-labs/v3-pool-utils/contracts/lib/BasePoolMath.sol";
 import { BasePool } from "@balancer-labs/v3-vault/contracts/BasePool.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
-import { IVault, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 /// @notice Basic Weighted Pool with immutable weights.
@@ -257,7 +254,6 @@ contract WeightedPool is BasePool {
             return amountOut;
         } else {
             // All token amounts are upscaled.
-
             uint256 amountIn = WeightedMath.calcInGivenOut(
                 balanceTokenIn,
                 _getNormalizedWeight(request.tokenIn),
@@ -266,7 +262,6 @@ contract WeightedPool is BasePool {
                 request.amountGiven
             );
 
-            // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
             return amountIn;
         }
     }
