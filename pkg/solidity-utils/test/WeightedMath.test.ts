@@ -58,11 +58,20 @@ describe('WeightedMath', function () {
 
   describe('calcOutGivenIn', () => {
     it('calculates correct outAmountPool', async () => {
-      const tokenBalanceIn = bn(100e18);
       const tokenWeightIn = bn(50e18);
-      const tokenBalanceOut = bn(100e18);
       const tokenWeightOut = bn(40e18);
+
+      const tokenBalanceIn = bn(100e18);
+      const roundedUpBalanceIn = bn(100.1e18);
+      const roundedDownBalanceIn = bn(99.9e18);
+
+      const tokenBalanceOut = bn(100e18);
+      const roundedUpBalanceOut = bn(100.1e18);
+      const roundedDownBalanceOut = bn(99.9e18);
+
       const tokenAmountIn = bn(15e18);
+      const roundedUpAmountGiven = bn(15.01e18);
+      const roundedDownAmountGiven = bn(14.99e18);
 
       const expected = calcOutGivenIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn);
       const result = await math.calcOutGivenIn(
@@ -72,7 +81,48 @@ describe('WeightedMath', function () {
         tokenWeightOut,
         tokenAmountIn
       );
+
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
+
+      const amountOutWithRoundedUpBalances = await math.calcOutGivenIn(
+        roundedUpBalanceIn,
+        tokenWeightIn,
+        roundedUpBalanceOut,
+        tokenWeightOut,
+        tokenAmountIn
+      );
+
+      const amountOutWithRoundedDownBalances = await math.calcOutGivenIn(
+        roundedDownBalanceIn,
+        tokenWeightIn,
+        roundedDownBalanceOut,
+        tokenWeightOut,
+        tokenAmountIn
+      );
+
+      // Ensure "rounding" the balances moves the amountOut in the expected direction.
+      expect(amountOutWithRoundedUpBalances).gt(result);
+      expect(amountOutWithRoundedDownBalances).lt(result);
+
+      const amountOutWithRoundedUpAmountGiven = await math.calcOutGivenIn(
+        tokenBalanceIn,
+        tokenWeightIn,
+        tokenBalanceOut,
+        tokenWeightOut,
+        roundedUpAmountGiven
+      );
+
+      const amountOutWithRoundedDownAmountGiven = await math.calcOutGivenIn(
+        tokenBalanceIn,
+        tokenWeightIn,
+        tokenBalanceOut,
+        tokenWeightOut,
+        roundedDownAmountGiven
+      );
+
+      // Ensure "rounding" the amountIn moves the amountOut in the expected direction.
+      expect(amountOutWithRoundedUpAmountGiven).gt(result);
+      expect(amountOutWithRoundedDownAmountGiven).lt(result);
     });
 
     it('calculates correct outAmountPool when tokenAmountIn is extremely small', async () => {
@@ -151,11 +201,20 @@ describe('WeightedMath', function () {
 
   describe('calcInGivenOut', () => {
     it('calculates correct result', async () => {
-      const tokenBalanceIn = bn(100e18);
       const tokenWeightIn = bn(50e18);
-      const tokenBalanceOut = bn(100e18);
       const tokenWeightOut = bn(40e18);
+
+      const tokenBalanceIn = bn(100e18);
+      const roundedUpBalanceIn = bn(100.1e18);
+      const roundedDownBalanceIn = bn(99.9e18);
+
+      const tokenBalanceOut = bn(100e18);
+      const roundedUpBalanceOut = bn(100.1e18);
+      const roundedDownBalanceOut = bn(99.9e18);
+
       const tokenAmountOut = bn(15e18);
+      const roundedUpAmountGiven = bn(15.01e18);
+      const roundedDownAmountGiven = bn(14.99e18);
 
       const expected = calcInGivenOut(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountOut);
       const result = await math.calcInGivenOut(
@@ -165,7 +224,48 @@ describe('WeightedMath', function () {
         tokenWeightOut,
         tokenAmountOut
       );
+
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
+
+      const amountInWithRoundedUpBalances = await math.calcInGivenOut(
+        roundedUpBalanceIn,
+        tokenWeightIn,
+        roundedUpBalanceOut,
+        tokenWeightOut,
+        tokenAmountOut
+      );
+
+      const amountInWithRoundedDownBalances = await math.calcInGivenOut(
+        roundedDownBalanceIn,
+        tokenWeightIn,
+        roundedDownBalanceOut,
+        tokenWeightOut,
+        tokenAmountOut
+      );
+
+      // Ensure "rounding" the balances moves the amountIn in the expected direction.
+      expect(amountInWithRoundedUpBalances).lt(result);
+      expect(amountInWithRoundedDownBalances).gt(result);
+
+      const amountInWithRoundedUpAmountGiven = await math.calcInGivenOut(
+        tokenBalanceIn,
+        tokenWeightIn,
+        tokenBalanceOut,
+        tokenWeightOut,
+        roundedUpAmountGiven
+      );
+
+      const amountInWithRoundedDownAmountGiven = await math.calcInGivenOut(
+        tokenBalanceIn,
+        tokenWeightIn,
+        tokenBalanceOut,
+        tokenWeightOut,
+        roundedDownAmountGiven
+      );
+
+      // Ensure "rounding" the amountGiven moves the amountOut in the expected direction.
+      expect(amountInWithRoundedUpAmountGiven).gt(result);
+      expect(amountInWithRoundedDownAmountGiven).lt(result);
     });
 
     it('calculates correct inAmountPool when tokenAmountOut is extremely small', async () => {
@@ -203,32 +303,65 @@ describe('WeightedMath', function () {
   });
 
   describe('calcBptOutGivenExactTokensIn', () => {
+    const standardBalances = [bn(100e18), bn(100e18)];
+    const roundedUpBalances = [bn(100.1e18), bn(100.1e18)];
+    const roundedDownBalances = [bn(99.9e18), bn(99.9e18)];
+
     it('calculates correct BPT out for exact tokens in', async () => {
-      const balances = [bn(100e18), bn(100e18)];
       const normalizedWeights = [bn(0.5e18), bn(0.5e18)];
       const amountsIn = [bn(10e18), bn(10e18)];
       const bptTotalSupply = bn(100e18);
-
-      const expected = calcBptOutGivenExactTokensIn(balances, normalizedWeights, amountsIn, bptTotalSupply, SWAP_FEE);
+      const expected = calcBptOutGivenExactTokensIn(
+        standardBalances,
+        normalizedWeights,
+        amountsIn,
+        bptTotalSupply,
+        SWAP_FEE
+      );
       const result = await math.calcBptOutGivenExactTokensIn(
-        balances,
+        standardBalances,
         normalizedWeights,
         amountsIn,
         bptTotalSupply,
         SWAP_FEE
       );
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
+
+      const bptOutWithRoundedUpBalances = await math.calcBptOutGivenExactTokensIn(
+        roundedUpBalances,
+        normalizedWeights,
+        amountsIn,
+        bptTotalSupply,
+        SWAP_FEE
+      );
+
+      const bptOutWithRoundedDownBalances = await math.calcBptOutGivenExactTokensIn(
+        roundedDownBalances,
+        normalizedWeights,
+        amountsIn,
+        bptTotalSupply,
+        SWAP_FEE
+      );
+
+      // Ensure "rounding" balances moves the bptOut in the expected direction.
+      expect(bptOutWithRoundedUpBalances).to.lt(result);
+      expect(bptOutWithRoundedDownBalances).to.gt(result);
     });
 
     it('calculates correct BPT out when swap fee is applied', async () => {
-      const balances = [bn(100e18), bn(100e18)];
       const normalizedWeights = [bn(0.5e18), bn(0.5e18)];
       const amountsIn = [bn(10e18), bn(1e18)];
       const bptTotalSupply = bn(100e18);
 
-      const expected = calcBptOutGivenExactTokensIn(balances, normalizedWeights, amountsIn, bptTotalSupply, SWAP_FEE);
+      const expected = calcBptOutGivenExactTokensIn(
+        standardBalances,
+        normalizedWeights,
+        amountsIn,
+        bptTotalSupply,
+        SWAP_FEE
+      );
       const result = await math.calcBptOutGivenExactTokensIn(
-        balances,
+        standardBalances,
         normalizedWeights,
         amountsIn,
         bptTotalSupply,
@@ -238,13 +371,12 @@ describe('WeightedMath', function () {
     });
 
     it('returns zero BPT out when invariantRatio is less than ONE', async () => {
-      const balances = [bn(100e18), bn(100e18)];
       const normalizedWeights = [bn(0.5e18), bn(0.5e18)];
       const amountsIn = [bn(0), bn(0)];
       const bptTotalSupply = bn(1000e18);
 
       const result = await math.calcBptOutGivenExactTokensIn(
-        balances,
+        standardBalances,
         normalizedWeights,
         amountsIn,
         bptTotalSupply,
@@ -399,32 +531,66 @@ describe('WeightedMath', function () {
   });
 
   describe('calcBptInGivenExactTokensOut', () => {
+    const standardBalances = [bn(100e18), bn(100e18)];
+    const roundedUpBalances = [bn(100.1e18), bn(100.1e18)];
+    const roundedDownBalances = [bn(99.9e18), bn(99.9e18)];
+
     it('calculates correct BPT in for exact tokens out', async () => {
-      const balances = [bn(100e18), bn(100e18)];
       const normalizedWeights = [bn(0.5e18), bn(0.5e18)];
       const amountsOut = [bn(10e18), bn(10e18)];
       const bptTotalSupply = bn(100e18);
 
-      const expected = calcBptInGivenExactTokensOut(balances, normalizedWeights, amountsOut, bptTotalSupply, SWAP_FEE);
+      const expected = calcBptInGivenExactTokensOut(
+        standardBalances,
+        normalizedWeights,
+        amountsOut,
+        bptTotalSupply,
+        SWAP_FEE
+      );
       const result = await math.calcBptInGivenExactTokensOut(
-        balances,
+        standardBalances,
         normalizedWeights,
         amountsOut,
         bptTotalSupply,
         SWAP_FEE
       );
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
+
+      const bptInWithRoundedUpBalances = await math.calcBptInGivenExactTokensOut(
+        roundedUpBalances,
+        normalizedWeights,
+        amountsOut,
+        bptTotalSupply,
+        SWAP_FEE
+      );
+
+      const bptInWithRoundedDownBalances = await math.calcBptInGivenExactTokensOut(
+        roundedDownBalances,
+        normalizedWeights,
+        amountsOut,
+        bptTotalSupply,
+        SWAP_FEE
+      );
+
+      // Ensure "rounding" the balances move the bptIn in the expected direction.
+      expect(bptInWithRoundedUpBalances).to.lt(result);
+      expect(bptInWithRoundedDownBalances).to.gt(result);
     });
 
     it('calculates correct BPT when swap fee is applied', async () => {
-      const balances = [bn(100e18), bn(100e18)];
       const normalizedWeights = [bn(0.01e18), bn(0.99e18)];
       const amountsOut = [bn(50e18), bn(10e18)];
       const bptTotalSupply = bn(100e18);
 
-      const expected = calcBptInGivenExactTokensOut(balances, normalizedWeights, amountsOut, bptTotalSupply, SWAP_FEE);
+      const expected = calcBptInGivenExactTokensOut(
+        standardBalances,
+        normalizedWeights,
+        amountsOut,
+        bptTotalSupply,
+        SWAP_FEE
+      );
       const result = await math.calcBptInGivenExactTokensOut(
-        balances,
+        standardBalances,
         normalizedWeights,
         amountsOut,
         bptTotalSupply,
@@ -434,14 +600,19 @@ describe('WeightedMath', function () {
     });
 
     it('calculates correct BPT when one of the token amountsOut is zero', async () => {
-      const balances = [bn(100e18), bn(100e18)];
       const normalizedWeights = [bn(0.5e18), bn(0.5e18)];
       const amountsOut = [bn(0), bn(10e18)];
       const bptTotalSupply = bn(100e18);
 
-      const expected = calcBptInGivenExactTokensOut(balances, normalizedWeights, amountsOut, bptTotalSupply, SWAP_FEE);
+      const expected = calcBptInGivenExactTokensOut(
+        standardBalances,
+        normalizedWeights,
+        amountsOut,
+        bptTotalSupply,
+        SWAP_FEE
+      );
       const result = await math.calcBptInGivenExactTokensOut(
-        balances,
+        standardBalances,
         normalizedWeights,
         amountsOut,
         bptTotalSupply,
