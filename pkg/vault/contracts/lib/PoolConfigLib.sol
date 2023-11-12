@@ -17,10 +17,8 @@ library PoolConfigLib {
     using WordCodec for bytes32;
     using SafeCast for uint256;
 
-    uint24 public constant SWAP_FEE_PRECISION = 1e6;
-
     // "reserved" bits are padding so that values fall on byte boundaries.
-    // [ 200 bits |  24 bits   |  4 bits  | 4x5 bits |  2 bits  | 1 bit  | 1 bit | 1 bit  |  1 bit   | 1 bit | 1 bit ]
+    // [ 160 bits |  64 bits   |  4 bits  | 4x5 bits |  2 bits  | 1 bit  | 1 bit | 1 bit  |  1 bit   | 1 bit | 1 bit ]
     // [ not used | static fee | reserved | decimals | reserved | remove |  add  |  swap  | dyn. fee | init. | reg.  ]
     // |MSB                                                                                                       LSB|
 
@@ -38,8 +36,8 @@ library PoolConfigLib {
     uint8 private constant _TOKEN_DECIMAL_DIFFS_BITLENGTH = 24;
     uint8 private constant _DECIMAL_DIFF_BITLENGTH = 5;
 
-    // 24 bits represent values up to 2^24 - 1 = 16,777,216 − 1 which should be enough for the swap fee
-    uint8 private constant _STATIC_SWAP_FEE_BITLENGTH = 24;
+    // A fee can never be larger than FixedPoint.ONE, which fits in 60 bits
+    uint8 private constant _STATIC_SWAP_FEE_BITLENGTH = 64;
 
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_REGISTERED_OFFSET);
@@ -53,8 +51,8 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(DYNAMIC_SWAP_FEE_OFFSET);
     }
 
-    function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint24) {
-        return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, _STATIC_SWAP_FEE_BITLENGTH).toUint24();
+    function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint64) {
+        return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, _STATIC_SWAP_FEE_BITLENGTH).toUint64();
     }
 
     function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint24) {

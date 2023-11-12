@@ -34,7 +34,7 @@ contract VaultSwapTest is Test {
     address bob = vm.addr(2);
 
     uint256 constant AMOUNT = 1e3 * 1e18;
-    uint256 constant SWAP_FEE = (AMOUNT * 1e4) / 1e6;
+    uint256 constant SWAP_FEE = 1e3 * 1e16; // 1%
     uint256 constant PROTOCOL_SWAP_FEE = SWAP_FEE / 2;
 
     function setUp() public {
@@ -92,13 +92,13 @@ contract VaultSwapTest is Test {
     function setSwapFeePercentage() internal {
         authorizer.grantRole(vault.getActionId(IVault.setSwapFeePercentage.selector), alice);
         vm.prank(alice);
-        vault.setSwapFeePercentage(address(pool), 1e4);
+        vault.setSwapFeePercentage(address(pool), 1e16); // 1%
     }
 
     function setProtocolSwapFeePercentage() internal {
         authorizer.grantRole(vault.getActionId(IVault.setProtocolSwapFeePercentage.selector), alice);
         vm.prank(alice);
-        vault.setProtocolSwapFeePercentage(50e4); // %50
+        vault.setProtocolSwapFeePercentage(50e16); // %50
     }
 
     function testSwapNotInitialized() public {

@@ -47,11 +47,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     // This maximum token count is also hard-coded in `PoolConfigLib`.
     uint256 private constant _MAX_TOKENS = 4;
 
-    // 1e6 corresponds to a 100% fee.
-    uint24 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e4; // 50%
+    // 1e18 corresponds to a 100% fee.
+    uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
 
-    // 1e6 corresponds to a 100% fee.
-    uint24 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e5; // 10% - this fits in 24 bits
+    // 1e18 corresponds to a 100% fee.
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
@@ -82,8 +82,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
     // We allow 0% swap fee.
     // The protocol swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
-    // TODO: Consider packing it with some other variable; 24 bits should be enough for this one
-    uint24 private _protocolSwapFeePercentage;
+    // TODO consider using uint64 and packing with other things (when we have other things).
+    uint256 private _protocolSwapFeePercentage;
 
     // Token -> fee: Protocol's swap fees accumulated in the Vault for harvest.
     mapping(IERC20 => uint256) private _protocolSwapFees;
@@ -542,13 +542,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         vars.swapFeePercentage = _getSwapFeePercentage(vars.config);
 
         if (vars.swapFeePercentage > 0 && params.kind == IVault.SwapKind.GIVEN_OUT) {
-            // Round up to avoid losses during precision loss.
-            vars.swapFeeAmount =
-                upscaledAmountGiven.divUp(
-                    vars.swapFeePercentage.complement(PoolConfigLib.SWAP_FEE_PRECISION),
-                    PoolConfigLib.SWAP_FEE_PRECISION
-                ) -
-                upscaledAmountGiven;
+            vars.swapFeeAmount = upscaledAmountGiven.divUp(vars.swapFeePercentage.complement()) - upscaledAmountGiven;
         }
 
         // Add swap fee to the amountGiven to account for the fee taken in GIVEN_OUT swap on tokenOut
@@ -570,10 +564,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         if (vars.swapFeePercentage > 0 && params.kind == IVault.SwapKind.GIVEN_IN) {
             // Swap fee is a percentage of the amountCalculated for the GIVEN_IN swap
             // Round up to avoid losses during precision loss.
-            vars.swapFeeAmount = upscaledAmountCalculated.mulUp(
-                vars.swapFeePercentage,
-                PoolConfigLib.SWAP_FEE_PRECISION
-            );
+            vars.swapFeeAmount = upscaledAmountCalculated.mulUp(vars.swapFeePercentage);
             // Should substract the fee from the amountCalculated for GIVEN_IN swap
             upscaledAmountCalculated -= vars.swapFeeAmount;
         }
@@ -591,10 +582,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         // Charge protocolSwapFee
         if (vars.swapFeeAmount > 0 && _protocolSwapFeePercentage > 0) {
             // Always charge fees on tokenOut. Store amount in native decimals.
-            vars.protocolSwapFeeAmount = vars
-                .swapFeeAmount
-                .mulUp(_protocolSwapFeePercentage, PoolConfigLib.SWAP_FEE_PRECISION)
-                .downscaleDown(vars.scalingFactors[vars.indexOut]);
+            vars.protocolSwapFeeAmount = vars.swapFeeAmount.mulUp(_protocolSwapFeePercentage).downscaleDown(
+                vars.scalingFactors[vars.indexOut]
+            );
 
             _protocolSwapFees[params.tokenOut] += vars.protocolSwapFeeAmount;
         }
@@ -1102,7 +1092,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     *******************************************************************************/
 
     /// @inheritdoc IVault
-    function setProtocolSwapFeePercentage(uint24 newProtocolSwapFeePercentage) external authenticate {
+    function setProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external authenticate {
         if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
             revert ProtocolSwapFeePercentageTooHigh();
         }
@@ -1111,7 +1101,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     }
 
     /// @inheritdoc IVault
-    function getProtocolSwapFeePercentage() external view returns (uint24) {
+    function getProtocolSwapFeePercentage() external view returns (uint256) {
         return _protocolSwapFeePercentage;
     }
 
@@ -1143,23 +1133,24 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
      * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
      * bounds set by [0, MAX_SWAP_FEE_PERCENTAGE]. Emits the SwapFeePercentageChanged event.
      */
-    function setSwapFeePercentage(address pool, uint24 swapFeePercentage) external authenticate whenNotPaused {
+    function setSwapFeePercentage(address pool, uint256 swapFeePercentage) external authenticate whenNotPaused {
         _setSwapFeePercentage(pool, swapFeePercentage);
     }
 
-    function _setSwapFeePercentage(address pool, uint24 swapFeePercentage) internal virtual {
+    function _setSwapFeePercentage(address pool, uint256 swapFeePercentage) internal virtual {
         if (swapFeePercentage > _MAX_SWAP_FEE_PERCENTAGE) {
             revert MaxSwapFeePercentage();
         }
+
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.staticSwapFeePercentage = swapFeePercentage;
+        config.staticSwapFeePercentage = swapFeePercentage.toUint64();
         _poolConfig[pool] = config.fromPoolConfig();
 
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
     /// @inheritdoc IVault
-    function getSwapFeePercentage(address pool) external view returns (uint24) {
+    function getSwapFeePercentage(address pool) external view returns (uint256) {
         return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
     }
 
