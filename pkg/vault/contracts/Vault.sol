@@ -789,7 +789,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         _validateTokensAndGetBalances(pool, tokens);
 
         uint256[] memory scalingFactors = PoolConfigLib.getScalingFactors(config, tokens.length);
-        // Amounts are entering pool math, so scale down. A lower invariant after the join means less bptOut,
+        // Amounts are entering pool math, so round down. A lower invariant after the join means less bptOut,
         // favoring the pool.
         maxAmountsIn.upscaleDownArray(scalingFactors);
 
@@ -848,7 +848,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         SharedLocals memory vars = _populateSharedLiquidityLocals(pool, true);
         InputHelpers.ensureInputLengthMatch(vars.tokens.length, maxAmountsIn.length);
 
-        // Amounts are entering pool math, so scale down
+        // Amounts are entering pool math, so round down
         maxAmountsIn.upscaleDownArray(vars.scalingFactors);
 
         if (vars.config.callbacks.shouldCallBeforeAddLiquidity) {
@@ -862,7 +862,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
             // The callback might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
-            // We also need to upscale (adding liquidity, so up) again.
+            // We also need to upscale (adding liquidity, so round up) again.
             (, vars.upscaledBalances) = _getPoolTokens(pool);
             vars.upscaledBalances.upscaleUpArray(vars.scalingFactors);
         }
@@ -1030,7 +1030,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             }
             // The callback might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
-            // We also need to upscale (removing liquidity, so down) again.
+            // We also need to upscale (removing liquidity, so round down) again.
             (, vars.upscaledBalances) = _getPoolTokens(pool);
             vars.upscaledBalances.upscaleDownArray(vars.scalingFactors);
         }
