@@ -137,18 +137,17 @@ interface IVault {
      * @param pool Address of the pool to initialize
      * @param to Address that will receive the output BPT
      * @param tokens tokens involved in the liquidity provision
-     * @param maxAmountsIn Maximum amounts of input tokens
+     * @param exactAmountsIn Exact amounts of input tokens
      * @param userData Additional (optional) data for the initialization
-     * @return amountsIn Actual amounts of input tokens
      * @return bptAmountOut Output pool token amount
      */
     function initialize(
         address pool,
         address to,
         IERC20[] memory tokens,
-        uint256[] memory maxAmountsIn,
+        uint256[] memory exactAmountsIn,
         bytes memory userData
-    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+    ) external returns (uint256 bptAmountOut);
 
     /**
      * @notice Checks whether a pool is registered.

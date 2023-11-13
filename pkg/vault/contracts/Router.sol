@@ -42,10 +42,10 @@ contract Router is IRouter, ReentrancyGuard {
     function initialize(
         address pool,
         Asset[] memory assets,
-        uint256[] memory maxAmountsIn,
+        uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+    ) external payable returns (uint256 bptAmountOut) {
         return
             abi.decode(
                 _vault.invoke{ value: msg.value }(
@@ -55,13 +55,13 @@ contract Router is IRouter, ReentrancyGuard {
                             sender: msg.sender,
                             pool: pool,
                             assets: assets,
-                            maxAmountsIn: maxAmountsIn,
+                            exactAmountsIn: exactAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             userData: userData
                         })
                     )
                 ),
-                (uint256[], uint256)
+                (uint256)
             );
     }
 
@@ -69,21 +69,14 @@ contract Router is IRouter, ReentrancyGuard {
      * @notice Callback for initialization.
      * @dev Can only be called by the Vault.
      * @param params Initialization parameters (see IRouter for struct definition)
-     * @return amountsIn Actual amounts in required for the initial join
      * @return bptAmountOut BPT amount minted in exchange for the input tokens
      */
     function initializeCallback(
         InitializeCallbackParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+    ) external payable nonReentrant onlyVault returns (uint256 bptAmountOut) {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
-        (amountsIn, bptAmountOut) = _vault.initialize(
-            params.pool,
-            params.sender,
-            tokens,
-            params.maxAmountsIn,
-            params.userData
-        );
+        bptAmountOut = _vault.initialize(params.pool, params.sender, tokens, params.exactAmountsIn, params.userData);
 
         if (bptAmountOut < params.minBptAmountOut) {
             revert BptAmountBelowMin();
@@ -93,12 +86,7 @@ contract Router is IRouter, ReentrancyGuard {
         for (uint256 i = 0; i < params.assets.length; ++i) {
             // Receive assets from the handler
             Asset asset = params.assets[i];
-            uint256 amountIn = amountsIn[i];
-
-            if (amountIn > params.maxAmountsIn[i]) {
-                revert JoinAboveMax();
-            }
-
+            uint256 amountIn = params.exactAmountsIn[i];
             IERC20 token = asset.toIERC20(_weth);
 
             // There can be only one WETH token in the pool

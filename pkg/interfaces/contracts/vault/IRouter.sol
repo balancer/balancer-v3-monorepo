@@ -17,7 +17,7 @@ interface IRouter {
      * @param sender Account originating the pool initialization operation
      * @param pool Address of the liquidity pool
      * @param assets Pool tokens
-     * @param maxAmountsIn Maximum amounts of assets to be added
+     * @param exactAmountsIn Exact amounts of assets to be added
      * @param minBptAmountOut Minimum pool tokens to be received
      * @param userData Additional (optional) data required for initialization
      */
@@ -25,7 +25,7 @@ interface IRouter {
         address sender;
         address pool;
         Asset[] assets;
-        uint256[] maxAmountsIn;
+        uint256[] exactAmountsIn;
         uint256 minBptAmountOut;
         bytes userData;
     }
@@ -34,19 +34,18 @@ interface IRouter {
      * @notice Initialize a liquidity pool.
      * @param pool Address of the liquidity pool
      * @param tokens Pool tokens
-     * @param maxAmountsIn Maximum amounts of assets to be added
+     * @param exactAmountsIn Exact amounts of assets to be added
      * @param minBptAmountOut Minimum pool tokens to be received
      * @param userData Additional (optional) data required for initialization
-     * @return amountsIn Actual token amounts transferred (e.g., including fees)
      * @return bptAmountOut Actual pool tokens minted in exchange for initial liquidity
      */
     function initialize(
         address pool,
         Asset[] memory tokens,
-        uint256[] memory maxAmountsIn,
+        uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+    ) external payable returns (uint256 bptAmountOut);
 
     /***************************************************************************
                                    Add Liquidity

@@ -27,17 +27,16 @@ interface IBasePool {
     /**
      * @notice Initialize pool with seed funds.
      * @dev The vault enforces that this callback will only be called once.
-     * `maxAmountsIn` have been upscaled by the Vault, and are given here as 18-decimal floating point values.
+     * `exactAmountsIn` have been upscaled by the Vault, and are given here as 18-decimal floating point values.
      *
-     * @param maxAmountsIn Maximum amounts of tokens to be added
+     * @param exactAmountsIn Exact amounts of tokens to be added
      * @param userData Additional (optional) data provided by the user
-     * @return amountsIn Actual amounts of tokens added, in the same order as the tokens registered in the pool
      * @return bptAmountOut Amount of pool tokens minted
      */
     function onInitialize(
-        uint256[] memory maxAmountsIn,
+        uint256[] memory exactAmountsIn,
         bytes memory userData
-    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+    ) external returns (uint256 bptAmountOut);
 
     /***************************************************************************
                                    Add Liquidity

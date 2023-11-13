@@ -44,10 +44,10 @@ contract PoolMock is BasePool {
     }
 
     function onInitialize(
-        uint256[] memory amountsIn,
+        uint256[] memory exactAmountsIn,
         bytes memory
-    ) external view onlyVault returns (uint256[] memory, uint256) {
-        return (amountsIn, MIN_INIT_BPT > amountsIn[0] ? MIN_INIT_BPT : amountsIn[0]);
+    ) external view onlyVault returns (uint256) {
+        return (MIN_INIT_BPT > exactAmountsIn[0] ? MIN_INIT_BPT : exactAmountsIn[0]);
     }
 
     function onAfterAddLiquidity(
@@ -147,6 +147,7 @@ contract PoolMock is BasePool {
     }
 
     function onBeforeRemoveLiquidity(
+        address,
         uint256,
         uint256[] memory,
         uint256[] memory,

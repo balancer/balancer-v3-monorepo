@@ -769,49 +769,42 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         address pool,
         address to,
         IERC20[] memory tokens,
-        uint256[] memory maxAmountsIn,
+        uint256[] memory exactAmountsIn,
         bytes memory userData
-    )
-        external
-        withHandler
-        whenNotPaused
-        nonReentrant
-        withRegisteredPool(pool)
-        returns (uint256[] memory amountsIn, uint256 bptAmountOut)
-    {
+    ) external withHandler whenNotPaused nonReentrant withRegisteredPool(pool) returns (uint256 bptAmountOut) {
         PoolConfig memory config = _poolConfig[pool].toPoolConfig();
 
         if (config.isInitializedPool) {
             revert PoolAlreadyInitialized(pool);
         }
 
-        InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
+        InputHelpers.ensureInputLengthMatch(tokens.length, exactAmountsIn.length);
 
         _validateTokensAndGetBalances(pool, tokens);
 
-        uint256[] memory scalingFactors = PoolConfigLib.getScalingFactors(config, tokens.length);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            // Debit of token[i] for amountIn
+            _takeDebt(tokens[i], exactAmountsIn[i], msg.sender);
+        }
+
+        // Store the new Pool balances.
+        _setPoolBalances(pool, exactAmountsIn);
+        emit PoolBalanceChanged(pool, to, tokens, exactAmountsIn.unsafeCastToInt256(true));
+
+        // Store config and mark the pool as initialized
+        config.isInitializedPool = true;
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        // Finally, call pool hook. Doing this at the end also means we do not need to downscale exact amounts in.
         // Amounts are entering pool math, so round down. A lower invariant after the join means less bptOut,
         // favoring the pool.
-        maxAmountsIn.upscaleDownArray(scalingFactors);
+        exactAmountsIn.upscaleDownArray(PoolConfigLib.getScalingFactors(config, tokens.length));
 
-        (amountsIn, bptAmountOut) = IBasePool(pool).onInitialize(maxAmountsIn, userData);
+        bptAmountOut = IBasePool(pool).onInitialize(exactAmountsIn, userData);
 
         if (bptAmountOut < _MINIMUM_BPT) {
             revert BptAmountBelowAbsoluteMin();
         }
-
-        // amountsIn are entering the Vault, so we round up.
-        amountsIn.downscaleUpArray(scalingFactors);
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            uint256 amountIn = amountsIn[i];
-
-            // Debit of token[i] for amountIn
-            _takeDebt(tokens[i], amountIn, msg.sender);
-        }
-
-        // Store the new Pool balances.
-        _setPoolBalances(pool, amountsIn);
 
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
@@ -820,14 +813,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         _mint(address(pool), to, bptAmountOut);
         _mintToAddressZero(address(pool), _MINIMUM_BPT);
 
-        // Store config and mark the pool as initialized
-        config.isInitializedPool = true;
-        _poolConfig[pool] = config.fromPoolConfig();
-
         // Emit an event to log the pool initialization
         emit PoolInitialized(pool);
-
-        emit PoolBalanceChanged(pool, to, tokens, amountsIn.unsafeCastToInt256(true));
     }
 
     /// @inheritdoc IVault

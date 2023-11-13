@@ -89,10 +89,11 @@ contract WeightedPoolTest is Test {
     function testInitialize() public {
         vm.prank(alice);
 
-        (uint256[] memory amountsIn, uint256 bptAmountOut) = router.initialize(
+        uint256[] memory amountsIn = [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray();
+        uint256 bptAmountOut = router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
+            amountsIn,
             // Initial BPT is invariant * tokens.length
             // Account for the precision less
             DAI_AMOUNT * 2 - DELTA,
