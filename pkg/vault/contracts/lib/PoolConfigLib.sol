@@ -71,32 +71,6 @@ library PoolConfigLib {
     // This maximum token count is also hard-coded in the Vault.
     uint256 private constant _TOKEN_DECIMAL_DIFFS_BITLENGTH = 24;
 
-    // Bitwise flags for pool's config
-    uint256 public constant POOL_REGISTERED_FLAG = 1 << POOL_REGISTERED_OFFSET;
-    uint256 public constant POOL_INITIALIZED_FLAG = 1 << POOL_INITIALIZED_OFFSET;
-    uint256 public constant AFTER_SWAP_FLAG = 1 << AFTER_SWAP_OFFSET;
-    uint256 public constant BEFORE_ADD_LIQUIDITY_FLAG = 1 << BEFORE_ADD_LIQUIDITY_OFFSET;
-    uint256 public constant AFTER_ADD_LIQUIDITY_FLAG = 1 << AFTER_ADD_LIQUIDITY_OFFSET;
-    uint256 public constant BEFORE_REMOVE_LIQUIDITY_FLAG = 1 << BEFORE_REMOVE_LIQUIDITY_OFFSET;
-    uint256 public constant AFTER_REMOVE_LIQUIDITY_FLAG = 1 << AFTER_REMOVE_LIQUIDITY_OFFSET;
-
-    // Bitwise flags for supported API
-    uint256 public constant ADD_LIQUIDITY_PROPORTIONAL_FLAG = 1 << ADD_LIQUIDITY_PROPORTIONAL_OFFSET;
-    uint256 public constant ADD_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_FLAG =
-        1 << ADD_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET;
-    uint256 public constant ADD_LIQUIDITY_UNBALANCED_FLAG = 1 << ADD_LIQUIDITY_UNBALANCED_OFFSET;
-    uint256 public constant ADD_LIQUIDITY_CUSTOM_FLAG = 1 << ADD_LIQUIDITY_CUSTOM_OFFSET;
-    uint256 public constant REMOVE_LIQUIDITY_PROPORTIONAL_FLAG = 1 << REMOVE_LIQUIDITY_PROPORTIONAL_OFFSET;
-    uint256 public constant REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_FLAG =
-        1 << REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET;
-    uint256 public constant REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_FLAG =
-        1 << REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET;
-    uint256 public constant REMOVE_LIQUIDITY_CUSTOM_FLAG = 1 << REMOVE_LIQUIDITY_CUSTOM_OFFSET;
-
-    function addRegistration(PoolConfigBits config) internal pure returns (PoolConfigBits) {
-        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(true, POOL_REGISTERED_OFFSET));
-    }
-
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_REGISTERED_OFFSET);
     }
