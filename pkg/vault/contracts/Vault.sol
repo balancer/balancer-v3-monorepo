@@ -419,8 +419,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         for (uint256 i = 0; i < tokens.length; i++) {
             vars.scaled18Balances[i] = addingLiquidity
-                ? vars.rawBalances[i].toScale18RoundUp(vars.scalingFactors[i])
-                : vars.rawBalances[i].toScale18RoundDown(vars.scalingFactors[i]);
+                ? vars.rawBalances[i].toScaled18RoundUp(vars.scalingFactors[i])
+                : vars.rawBalances[i].toScaled18RoundDown(vars.scalingFactors[i]);
         }
     }
 
@@ -458,7 +458,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             // In the GivenIn case, lower balances cause `calcOutGivenIn` to calculate a lower amountOut.
             // In the GivenOut case, lower balances cause `calcInGivenOut` to calculate a higher amountIn.
             // See `calcOutGivenIn` and `calcInGivenOut` WeightedMath tests.
-            vars.scaled18Balances[i] = poolBalances.unchecked_valueAt(i).toScale18RoundDown(vars.scalingFactors[i]);
+            vars.scaled18Balances[i] = poolBalances.unchecked_valueAt(i).toScaled18RoundDown(vars.scalingFactors[i]);
         }
 
         // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value for non-existence.
@@ -518,8 +518,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         // If the amountGiven is entering the pool math (GivenIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
         uint256 scaled18AmountGiven = params.kind == SwapKind.GIVEN_IN
-            ? params.rawAmountGiven.toScale18RoundDown(vars.scalingFactors[vars.indexIn])
-            : params.rawAmountGiven.toScale18RoundUp(vars.scalingFactors[vars.indexOut]);
+            ? params.rawAmountGiven.toScaled18RoundDown(vars.scalingFactors[vars.indexIn])
+            : params.rawAmountGiven.toScaled18RoundUp(vars.scalingFactors[vars.indexOut]);
 
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
         uint256 scaled18AmountCalculated = IBasePool(params.pool).onSwap(
@@ -778,7 +778,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         uint256[] memory scalingFactors = PoolConfigLib.getScalingFactors(config, tokens.length);
         // Amounts are entering pool math, so scale down. A lower invariant after the join means less bptOut,
         // favoring the pool.
-        maxAmountsIn.toScale18RoundDownArray(scalingFactors);
+        maxAmountsIn.toScaled18RoundDownArray(scalingFactors);
 
         (amountsIn, bptAmountOut) = IBasePool(pool).onInitialize(maxAmountsIn, userData);
 
@@ -840,7 +840,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         SharedLocals memory vars = _populateSharedLiquidityLocals(pool, tokens, true);
 
         // Amounts are entering pool math, so round down.
-        maxAmountsIn.toScale18RoundDownArray(vars.scalingFactors);
+        maxAmountsIn.toScaled18RoundDownArray(vars.scalingFactors);
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked
         // its final balances are computed
@@ -918,7 +918,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         SharedLocals memory vars = _populateSharedLiquidityLocals(pool, tokens, false);
 
         // Amounts are entering pool math; higher amounts would burn more BPT, so round up to favor the pool.
-        minAmountsOut.toScale18RoundUpArray(vars.scalingFactors);
+        minAmountsOut.toScaled18RoundUpArray(vars.scalingFactors);
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked,
         // and its final balances are computed

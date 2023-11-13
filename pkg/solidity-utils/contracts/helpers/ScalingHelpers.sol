@@ -23,7 +23,7 @@ library ScalingHelpers {
      * @dev Applies `scalingFactor` to `amount`, resulting in a larger or equal value depending on whether it needed
      * scaling or not. The result is rounded down.
      */
-    function toScale18RoundDown(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
+    function toScaled18RoundDown(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
         return FixedPoint.mulDown(amount, scalingFactor);
     }
 
@@ -31,7 +31,7 @@ library ScalingHelpers {
      * @dev Applies `scalingFactor` to `amount`, resulting in a larger or equal value depending on whether it needed
      * scaling or not. The result is rounded up.
      */
-    function toScale18RoundUp(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
+    function toScaled18RoundUp(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
         return FixedPoint.mulUp(amount, scalingFactor);
     }
 
@@ -56,10 +56,10 @@ library ScalingHelpers {
     ***************************************************************************/
 
     /**
-     * @dev Same as `toScale18RoundDown`, but for an entire array. This function does not return anything,
+     * @dev Same as `toScaled18RoundDown`, but for an entire array. This function does not return anything,
      * but instead *mutates* the `amounts` array.
      */
-    function toScale18RoundDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
+    function toScaled18RoundDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
         uint256 length = amounts.length;
         InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
 
@@ -69,10 +69,10 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `toScale18RoundUp`, but for an entire array. This function does not return anything,
+     * @dev Same as `toScaled18RoundUp`, but for an entire array. This function does not return anything,
      * but instead *mutates* the `amounts` array.
      */
-    function toScale18RoundUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
+    function toScaled18RoundUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
         uint256 length = amounts.length;
         InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
 
