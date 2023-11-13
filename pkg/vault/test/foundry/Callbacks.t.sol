@@ -149,6 +149,7 @@ contract VaultSwapTest is Test {
 
     // Before add
 
+    /// forge-config: default.fuzz.runs = 32
     function testOnBeforeAddLiquidityFlag(uint8 kindUint) public {
         IVault.AddLiquidityKind kind = IVault.AddLiquidityKind(
             bound(kindUint, 0, uint256(type(IVault.AddLiquidityKind).max))
@@ -167,6 +168,7 @@ contract VaultSwapTest is Test {
         );
     }
 
+    /// forge-config: default.fuzz.runs = 32
     function testOnBeforeAddLiquidityCallback(uint8 kindUint) public {
         IVault.AddLiquidityKind kind = IVault.AddLiquidityKind(
             bound(kindUint, 0, uint256(type(IVault.AddLiquidityKind).max))
@@ -202,6 +204,7 @@ contract VaultSwapTest is Test {
 
     // Before remove
 
+    /// forge-config: default.fuzz.runs = 32
     function testOnBeforeRemoveLiquidityFlag(uint8 kindUint) public {
         IVault.RemoveLiquidityKind kind = IVault.RemoveLiquidityKind(
             bound(kindUint, 0, uint256(type(IVault.RemoveLiquidityKind).max))
@@ -222,6 +225,7 @@ contract VaultSwapTest is Test {
         );
     }
 
+    /// forge-config: default.fuzz.runs = 32
     function testOnBeforeRemoveLiquidityCallback(uint8 kindUint) public {
         IVault.RemoveLiquidityKind kind = IVault.RemoveLiquidityKind(
             bound(kindUint, 0, uint256(type(IVault.RemoveLiquidityKind).max))
@@ -259,6 +263,7 @@ contract VaultSwapTest is Test {
 
     // After add
 
+    /// forge-config: default.fuzz.runs = 32
     function testOnAfterAddLiquidityFlag(uint8 kindUint) public {
         IVault.AddLiquidityKind kind = IVault.AddLiquidityKind(
             bound(kindUint, 0, uint256(type(IVault.AddLiquidityKind).max))
@@ -277,6 +282,7 @@ contract VaultSwapTest is Test {
         );
     }
 
+    /// forge-config: default.fuzz.runs = 32
     function testOnAfterAddLiquidityCallback(uint8 kindUint) public {
         IVault.AddLiquidityKind kind = IVault.AddLiquidityKind(
             bound(kindUint, 0, uint256(type(IVault.AddLiquidityKind).max))
@@ -326,6 +332,7 @@ contract VaultSwapTest is Test {
 
     // After remove
 
+    /// forge-config: default.fuzz.runs = 32
     function testOnAfterRemoveLiquidityFlag(uint8 kindUint) public {
         IVault.RemoveLiquidityKind kind = IVault.RemoveLiquidityKind(
             bound(kindUint, 0, uint256(type(IVault.RemoveLiquidityKind).max))
@@ -346,6 +353,7 @@ contract VaultSwapTest is Test {
         );
     }
 
+    /// forge-config: default.fuzz.runs = 32
     function testOnAfterRemoveLiquidityCallback(uint8 kindUint) public {
         IVault.RemoveLiquidityKind kind = IVault.RemoveLiquidityKind(
             bound(kindUint, 0, uint256(type(IVault.RemoveLiquidityKind).max))
