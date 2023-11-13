@@ -58,4 +58,18 @@ contract VaultMock is Vault {
 
         return PoolConfigLib.getScalingFactors(config, tokens.length);
     }
+
+    function manualEnableRecoveryMode(address pool) external {
+        _ensurePoolNotInRecoveryMode(pool);
+        _setPoolRecoveryMode(pool, true);
+    }
+
+    function manualDisableRecoveryMode(address pool) external {
+        _ensurePoolInRecoveryMode(pool);
+        _setPoolRecoveryMode(pool, false);
+    }
+
+    function recoveryModeExit(address pool) external view onlyInRecoveryMode(pool) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 }

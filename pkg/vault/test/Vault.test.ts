@@ -102,6 +102,10 @@ describe('Vault', function () {
         .withArgs(poolBAddress);
     });
 
+    it('pools are initially  not in recovery mode', async () => {
+      expect(await vault.isPoolInRecoveryMode(poolBAddress)).to.be.false;
+    });
+
     it('registering a pool emits an event', async () => {
       await expect(await vault.connect(unregisteredPoolSigner).manualRegisterPool(factory.address, poolBTokens))
         .to.emit(vault, 'PoolRegistered')
@@ -277,6 +281,72 @@ describe('Vault', function () {
       const vaultScalingFactors = await vault.getScalingFactors(poolAAddress);
 
       expect(vaultScalingFactors).to.deep.equal(poolScalingFactors);
+    });
+  });
+
+  describe('recovery mode', () => {
+    sharedBeforeEach('register pool', async () => {
+      const unregisteredPoolSigner = await impersonate(poolBAddress);
+
+      await vault.connect(unregisteredPoolSigner).manualRegisterPool(factory.address, poolBTokens);
+    });
+
+    it('enable/disable functions are permissioned', async () => {
+      await expect(vault.enableRecoveryMode(poolB)).to.be.revertedWithCustomError(vault, 'SenderNotAllowed');
+      await expect(vault.disableRecoveryMode(poolB)).to.be.revertedWithCustomError(vault, 'SenderNotAllowed');
+    });
+
+    context('in recovery mode', () => {
+      sharedBeforeEach('put pool in recovery mode', async () => {
+        await vault.manualEnableRecoveryMode(poolB);
+      });
+
+      it('can place pool in recovery mode', async () => {
+        expect(await vault.isPoolInRecoveryMode(poolB)).to.be.true;
+      });
+
+      it('cannot put in recovery mode twice', async () => {
+        await expect(vault.manualEnableRecoveryMode(poolB)).to.be.revertedWithCustomError(vault, 'PoolInRecoveryMode');
+      });
+
+      it('can call recovery mode only function', async () => {
+        await expect(vault.recoveryModeExit(poolB)).to.not.be.reverted;
+      });
+
+      it('can disable recovery mode', async () => {
+        await vault.manualDisableRecoveryMode(poolB);
+
+        expect(await vault.isPoolInRecoveryMode(poolB)).to.be.false;
+      });
+
+      it('disabling recovery mode emits an event', async () => {
+        await expect(vault.manualDisableRecoveryMode(poolB))
+          .to.emit(vault, 'PoolRecoveryModeStateChanged')
+          .withArgs(poolBAddress, false);
+      });
+    });
+
+    context('not in recovery mode', () => {
+      it('is initially not in recovery mode', async () => {
+        expect(await vault.isPoolInRecoveryMode(poolB)).to.be.false;
+      });
+
+      it('cannot disable when not in recovery mode', async () => {
+        await expect(vault.manualDisableRecoveryMode(poolB)).to.be.revertedWithCustomError(
+          vault,
+          'PoolNotInRecoveryMode'
+        );
+      });
+
+      it('cannot call recovery mode only function when not in recovery mode', async () => {
+        await expect(vault.recoveryModeExit(poolB)).to.be.revertedWithCustomError(vault, 'PoolNotInRecoveryMode');
+      });
+
+      it('enabling recovery mode emits an event', async () => {
+        await expect(vault.manualEnableRecoveryMode(poolB))
+          .to.emit(vault, 'PoolRecoveryModeStateChanged')
+          .withArgs(poolBAddress, true);
+      });
     });
   });
 });

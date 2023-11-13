@@ -18,9 +18,9 @@ library PoolConfigLib {
     using SafeCast for uint256;
 
     // "reserved" bits are padding so that values fall on byte boundaries.
-    // [ 224 bits |  4 bits  | 4x5 bits |  3 bits  |    1 bit     |   1 bit   |    1 bit   |    1 bit    |    1 bit   ]
-    // [ not used | reserved | decimals | reserved | after remove | after add | after swap | initialized | registered ]
-    // |MSB                                                                                                        LSB|
+    // [ 224 bits |  4 bits  | 4x5 bits |  2 bits  |   1 bit  | 1 bit  | 1 bit |  1 bit |    1 bit    |    1 bit   ]
+    // [ not used | reserved | decimals | reserved | recovery | remove |  add  |   swap | initialized | registered ]
+    // |MSB                                                                                                     LSB|
 
     // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
@@ -28,6 +28,7 @@ library PoolConfigLib {
     uint8 public constant AFTER_SWAP_OFFSET = 2;
     uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = 3;
     uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = 4;
+    uint8 public constant RECOVERY_MODE_OFFSET = 5;
     uint8 public constant DECIMAL_SCALING_FACTORS_OFFSET = 8;
 
     uint256 private constant _DECIMAL_DIFF_BITLENGTH = 5;
@@ -41,6 +42,10 @@ library PoolConfigLib {
 
     function isPoolInitialized(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_INITIALIZED_OFFSET);
+    }
+
+    function isPoolInRecoveryMode(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(RECOVERY_MODE_OFFSET);
     }
 
     function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint24) {
@@ -93,6 +98,9 @@ library PoolConfigLib {
         bytes32 val = bytes32(0)
             .insertBool(config.isRegisteredPool, POOL_REGISTERED_OFFSET)
             .insertBool(config.isInitializedPool, POOL_INITIALIZED_OFFSET)
+            .insertBool(config.isPoolInRecoveryMode, RECOVERY_MODE_OFFSET);
+
+        val = val
             .insertBool(config.callbacks.shouldCallAfterSwap, AFTER_SWAP_OFFSET)
             .insertBool(config.callbacks.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET)
             .insertBool(config.callbacks.shouldCallAfterRemoveLiquidity, AFTER_REMOVE_LIQUIDITY_OFFSET);
@@ -109,6 +117,7 @@ library PoolConfigLib {
             PoolConfig({
                 isRegisteredPool: config.isPoolRegistered(),
                 isInitializedPool: config.isPoolInitialized(),
+                isPoolInRecoveryMode: config.isPoolInRecoveryMode(),
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 callbacks: PoolCallbacks({
                     shouldCallAfterSwap: config.shouldCallAfterSwap(),
