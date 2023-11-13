@@ -136,6 +136,7 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
 
     /// @inheritdoc IBasePool
     function onBeforeRemoveLiquidity(
+        address,
         uint256,
         uint256[] memory,
         uint256[] memory,

@@ -44,10 +44,6 @@ contract VaultLiquidityTest is Test {
     uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
 
-    // Tolerances: 0.1 cents.
-    uint256 constant USDC_TOLERANCE = 1e6 / 1000;
-    uint256 constant DAI_TOLERANCE = 1e18 / 1000;
-
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
@@ -65,8 +61,17 @@ contract VaultLiquidityTest is Test {
 
         USDC.mint(alice, USDC_AMOUNT_IN);
         DAI.mint(alice, DAI_AMOUNT_IN);
+        USDC.mint(bob, USDC_AMOUNT_IN);
+        DAI.mint(bob, DAI_AMOUNT_IN);
 
         vm.startPrank(alice);
+
+        USDC.approve(address(vault), type(uint256).max);
+        DAI.approve(address(vault), type(uint256).max);
+
+        vm.stopPrank();
+
+        vm.startPrank(bob);
 
         USDC.approve(address(vault), type(uint256).max);
         DAI.approve(address(vault), type(uint256).max);
@@ -214,13 +219,11 @@ contract VaultLiquidityTest is Test {
 
         Balances memory balancesBefore = _getBalances(alice);
 
-        // Proportional remove liquidity is not precise because of the initial minimum BPT, and is solved at the Vault
-        // so it cannot be mocked at the pool. Therefore, we need to consider some tolerance.
         (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidity(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             DAI_AMOUNT_IN,
-            [uint256(DAI_AMOUNT_IN) - DAI_TOLERANCE, uint256(USDC_AMOUNT_IN) - USDC_TOLERANCE].toMemoryArray(),
+            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             IVault.RemoveLiquidityKind.PROPORTIONAL,
             bytes("")
         );
@@ -232,8 +235,8 @@ contract VaultLiquidityTest is Test {
         _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, amountsOut);
 
         // amountsOut are correct
-        assertApproxEqAbs(amountsOut[0], DAI_AMOUNT_IN, DAI_TOLERANCE);
-        assertApproxEqAbs(amountsOut[1], USDC_AMOUNT_IN, USDC_TOLERANCE);
+        assertEq(amountsOut[0], DAI_AMOUNT_IN);
+        assertEq(amountsOut[1], USDC_AMOUNT_IN);
     }
 
     function testRemoveLiquiditySingleTokenExactIn() public {
@@ -268,8 +271,8 @@ contract VaultLiquidityTest is Test {
 
         _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, amountsOut);
 
-        // amountsOut are correct
-        assertEq(amountsOut[0], DAI_AMOUNT_IN);
+        // amountsOut are correct (takes out initial liquidity as well)
+        assertEq(amountsOut[0], DAI_AMOUNT_IN * 2);
         assertEq(amountsOut[1], 0);
     }
 
@@ -369,7 +372,7 @@ contract VaultLiquidityTest is Test {
         router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(0), uint256(0)].toMemoryArray(),
+            [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
             0,
             bytes("")
         );

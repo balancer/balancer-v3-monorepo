@@ -855,8 +855,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         if (vars.config.callbacks.shouldCallBeforeAddLiquidity) {
             // TODO: check if `before` needs kind.
             if (
-                IBasePool(pool).onBeforeAddLiquidity(to, maxAmountsIn, minBptAmountOut, vars.balances, userData) ==
-                false
+                IBasePool(pool).onBeforeAddLiquidity(
+                    to,
+                    maxAmountsIn,
+                    minBptAmountOut,
+                    vars.upscaledBalances,
+                    userData
+                ) == false
             ) {
                 revert CallbackFailed();
             }
@@ -1021,6 +1026,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             // TODO: check if `before` callback needs kind.
             if (
                 IBasePool(pool).onBeforeRemoveLiquidity(
+                    from,
                     maxBptAmountIn,
                     minAmountsOut,
                     vars.upscaledBalances,

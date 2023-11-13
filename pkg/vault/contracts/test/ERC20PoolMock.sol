@@ -105,6 +105,7 @@ contract ERC20PoolMock is BasePool {
     }
 
     function onBeforeRemoveLiquidity(
+        address,
         uint256,
         uint256[] memory,
         uint256[] memory,
