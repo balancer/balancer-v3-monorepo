@@ -113,8 +113,16 @@ contract WeightedPool is BasePool {
         // prettier-ignore
         normalizedWeights[0] = _normalizedWeight0;
         normalizedWeights[1] = _normalizedWeight1;
-        if (totalTokens > 2) { normalizedWeights[2] = _normalizedWeight2; } else { return normalizedWeights; }
-        if (totalTokens > 3) { normalizedWeights[3] = _normalizedWeight3; } else { return normalizedWeights; }
+        if (totalTokens > 2) {
+            normalizedWeights[2] = _normalizedWeight2;
+        } else {
+            return normalizedWeights;
+        }
+        if (totalTokens > 3) {
+            normalizedWeights[3] = _normalizedWeight3;
+        } else {
+            return normalizedWeights;
+        }
 
         return normalizedWeights;
     }
@@ -247,41 +255,38 @@ contract WeightedPool is BasePool {
 
     /// @inheritdoc IBasePool
     function onSwap(IBasePool.SwapParams memory request) public view onlyVault returns (uint256) {
-        uint256 balanceTokenIn = request.balances[request.indexIn];
-        uint256 balanceTokenOut = request.balances[request.indexOut];
+        uint256 scaled18BalanceTokenIn = request.scaled18Balances[request.indexIn];
+        uint256 scaled18BalanceTokenOut = request.scaled18Balances[request.indexOut];
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            uint256 amountOut = WeightedMath.calcOutGivenIn(
-                balanceTokenIn,
+            uint256 scaled18AmountOut = WeightedMath.calcOutGivenIn(
+                scaled18BalanceTokenIn,
                 _getNormalizedWeight(request.tokenIn),
-                balanceTokenOut,
+                scaled18BalanceTokenOut,
                 _getNormalizedWeight(request.tokenOut),
-                // All token amounts are upscaled.
-                request.amountGiven
+                request.scaled18AmountGiven
             );
 
-            return amountOut;
+            return scaled18AmountOut;
         } else {
-            // All token amounts are upscaled.
-
-            uint256 amountIn = WeightedMath.calcInGivenOut(
-                balanceTokenIn,
+            uint256 scaled18AmountIn = WeightedMath.calcInGivenOut(
+                scaled18BalanceTokenIn,
                 _getNormalizedWeight(request.tokenIn),
-                balanceTokenOut,
+                scaled18BalanceTokenOut,
                 _getNormalizedWeight(request.tokenOut),
-                request.amountGiven
+                request.scaled18AmountGiven
             );
 
             // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
-            return amountIn;
+            return scaled18AmountIn;
         }
     }
 
     /// @inheritdoc IBasePool
     function onAfterSwap(
         IBasePool.AfterSwapParams calldata params,
-        uint256 amountCalculated
+        uint256 scaled18AmountCalculated
     ) external pure override returns (bool success) {
-        return params.tokenIn != params.tokenOut && amountCalculated > 0;
+        return params.tokenIn != params.tokenOut && scaled18AmountCalculated > 0;
     }
 }

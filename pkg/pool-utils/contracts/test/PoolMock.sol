@@ -99,16 +99,18 @@ contract PoolMock is BasePool {
 
     function onAfterSwap(
         IBasePool.AfterSwapParams calldata,
-        uint256 amountCalculated
+        uint256 scaled18AmountCalculated
     ) external view override returns (bool success) {
-        return amountCalculated > 0 && !failOnCallback;
+        return scaled18AmountCalculated > 0 && !failOnCallback;
     }
 
-    function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
+    function onSwap(
+        IBasePool.SwapParams calldata params
+    ) external view override returns (uint256 scaled18AmountCalculated) {
         return
             params.kind == IVault.SwapKind.GIVEN_IN
-                ? params.amountGiven.mulDown(_multiplier)
-                : params.amountGiven.divDown(_multiplier);
+                ? params.scaled18AmountGiven.mulDown(_multiplier)
+                : params.scaled18AmountGiven.divDown(_multiplier);
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {

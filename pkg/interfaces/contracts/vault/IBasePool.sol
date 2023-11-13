@@ -27,7 +27,7 @@ interface IBasePool {
     /**
      * @notice Initialize pool with seed funds.
      * @dev The vault enforces that this callback will only be called once.
-     * `maxAmountsIn` have been upscaled by the Vault, and are given here as 18-decimal floating point values.
+     * `maxAmountsIn` have been decimal scaled by the Vault, and are given here as 18-decimal floating point values.
      *
      * @param maxAmountsIn Maximum amounts of tokens to be added
      * @param userData Additional (optional) data provided by the user
@@ -51,7 +51,7 @@ interface IBasePool {
 
     /**
      * @notice Add liquidity to the pool.
-     * @dev `balances` and `maxAmountsIn` have been upscaled by the Vault, and are given here as 18-decimal
+     * @dev `balances` and `maxAmountsIn` have been decimal scaled by the Vault, and are given here as 18-decimal
      * floating point values.
      *
      * @param sender Address of the sender
@@ -74,7 +74,7 @@ interface IBasePool {
 
     /**
      * @notice Callback after adding liquidity to the pool.
-     * @dev `currentBalances` and `amountsIn` have been upscaled by the Vault, and are given here as 18-decimal
+     * @dev `currentBalances` and `amountsIn` have been decimal scaled by the Vault, and are given here as 18-decimal
      * floating point values.
      *
      * @param sender Address of the sender
@@ -102,7 +102,7 @@ interface IBasePool {
 
     /**
      * @notice Remove liquidity from the pool.
-     * @dev `balances` and `minAmountsOut` have been upscaled by the Vault, and are given here as 18-decimal
+     * @dev `balances` and `minAmountsOut` have been decimal scaled by the Vault, and are given here as 18-decimal
      * floating point values.
      *
      * @param sender Address of the sender
@@ -125,7 +125,7 @@ interface IBasePool {
 
     /**
      * @notice Callback after removing liquidity from the pool.
-     * @dev `currentBalances` and `amountsOut` have been upscaled by the Vault, and are given here as 18-decimal
+     * @dev `currentBalances` and `amountsOut` have been decimal scaled by the Vault, and are given here as 18-decimal
      * floating point values.
      *
      * @param sender Address of the sender
@@ -147,15 +147,12 @@ interface IBasePool {
 
     /**
      * @dev Data for a swap operation.
-     * @dev `amountGiven` and `balances` have been upscaled by the Vault, and are given here as 18-decimal
-     * floating point values.
-     *
      * @param kind Type of swap (given in or given out)
      * @param pool Address of the liquidity pool
      * @param tokenIn Token to be swapped from (entering the Vault)
      * @param tokenOut Token to be swapped to (leaving the Vault)
-     * @param amountGiven Amount given based on kind of the swap (e.g., tokenIn for given in)
-     * @param balances Current pool balances
+     * @param scaled18AmountGiven Amount given based on kind of the swap (e.g., tokenIn for given in)
+     * @param scaled18Balances Current pool balances
      * @param indexIn Index of tokenIn
      * @param indexOut Index of tokenOut
      * @param userData Additional (optional) data required for the swap
@@ -164,8 +161,8 @@ interface IBasePool {
         IVault.SwapKind kind;
         IERC20 tokenIn;
         IERC20 tokenOut;
-        uint256 amountGiven;
-        uint256[] balances;
+        uint256 scaled18AmountGiven;
+        uint256[] scaled18Balances;
         uint256 indexIn;
         uint256 indexOut;
         address sender;
@@ -174,16 +171,13 @@ interface IBasePool {
 
     /**
      * @dev Data for the callback after a swap operation.
-     * `amountIn`, `amountOut`, `tokenInBalance`, and `tokenOutBalance` have been upscaled by the Vault,
-     * and are given here as 18-decimal floating point values.
-     *
      * @param kind Type of swap (given in or given out)
      * @param tokenIn Token to be swapped from
      * @param tokenOut Token to be swapped to
-     * @param amountIn Amount of tokenIn (entering the Vault)
-     * @param amountOut Amount of tokenOut (leaving the Vault)
-     * @param tokenInBalance Updated (after swap) balance of tokenIn
-     * @param tokenOutBalance Updated (after swap) balance of tokenOut
+     * @param scaled18AmountIn Amount of tokenIn (entering the Vault)
+     * @param scaled18AmountOut Amount of tokenOut (leaving the Vault)
+     * @param scaled18TokenInBalance Updated (after swap) balance of tokenIn
+     * @param scaled18TokenOutBalance Updated (after swap) balance of tokenOut
      * @param sender Account originating the swap operation
      * @param userData Additional (optional) data required for the swap
      */
@@ -191,10 +185,10 @@ interface IBasePool {
         IVault.SwapKind kind;
         IERC20 tokenIn;
         IERC20 tokenOut;
-        uint256 amountIn;
-        uint256 amountOut;
-        uint256 tokenInBalance;
-        uint256 tokenOutBalance;
+        uint256 scaled18AmountIn;
+        uint256 scaled18AmountOut;
+        uint256 scaled18TokenInBalance;
+        uint256 scaled18TokenOutBalance;
         address sender;
         bytes userData;
     }
@@ -202,19 +196,22 @@ interface IBasePool {
     /**
      * @notice Execute a swap in the pool.
      * @param params Swap parameters (see above for struct definition)
-     * @return amountCalculated Calculated amount for the swap
+     * @return scaled18AmountCalculated Calculated amount for the swap
      */
-    function onSwap(SwapParams calldata params) external returns (uint256 amountCalculated);
+    function onSwap(SwapParams calldata params) external returns (uint256 scaled18AmountCalculated);
 
     /**
      * @notice Called after a swap to give the Pool an opportunity to perform actions.
      * once the balances have been updated by the swap.
      *
      * @param params Swap parameters (see above for struct definition)
-     * @param amountCalculated Token amount calculated by the swap
+     * @param scaled18AmountCalculated Token amount calculated by the swap
      * @return success True if the pool wishes to proceed with settlement
      */
-    function onAfterSwap(AfterSwapParams calldata params, uint256 amountCalculated) external returns (bool success);
+    function onAfterSwap(
+        AfterSwapParams calldata params,
+        uint256 scaled18AmountCalculated
+    ) external returns (bool success);
 
     /**
      * @notice Gets pool tokens and their balances.

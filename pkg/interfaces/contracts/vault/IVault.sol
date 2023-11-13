@@ -429,7 +429,7 @@ interface IVault {
      * @param pool The pool with the tokens being swapped
      * @param tokenIn The token entering the Vault (balance increases)
      * @param tokenOut The token leaving the Vault (balance decreases)
-     * @param amountGiven Amount specified for tokenIn or tokenOut (depending on the type of swap)
+     * @param rawAmountGiven Amount specified for tokenIn or tokenOut (depending on the type of swap)
      * @param userData Additional (optional) user data
      */
     struct SwapParams {
@@ -437,7 +437,7 @@ interface IVault {
         address pool;
         IERC20 tokenIn;
         IERC20 tokenOut;
-        uint256 amountGiven;
+        uint256 rawAmountGiven;
         bytes userData;
     }
 
@@ -459,14 +459,15 @@ interface IVault {
 
     /**
      * @notice Swaps tokens based on provided parameters.
+     * @dev All parameters are given in raw token decimal encoding.
      * @param params Parameters for the swap (see above for struct definition)
-     * @return amountCalculated Calculated swap amount
-     * @return amountIn Amount of input tokens for the swap
-     * @return amountOut Amount of output tokens from the swap
+     * @return rawAmountCalculated Calculated swap amount
+     * @return rawAmountIn Amount of input tokens for the swap
+     * @return rawAmountOut Amount of output tokens from the swap
      */
     function swap(
         SwapParams memory params
-    ) external returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut);
+    ) external returns (uint256 rawAmountCalculated, uint256 rawAmountIn, uint256 rawAmountOut);
 
     /*******************************************************************************
                                     Queries
