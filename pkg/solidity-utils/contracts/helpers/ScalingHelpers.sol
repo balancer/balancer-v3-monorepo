@@ -23,7 +23,7 @@ library ScalingHelpers {
      * @dev Applies `scalingFactor` to `amount`, resulting in a larger or equal value depending on whether it needed
      * scaling or not. The result is rounded down.
      */
-    function upscaleDown(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
+    function toScaled18RoundDown(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
         return FixedPoint.mulDown(amount, scalingFactor);
     }
 
@@ -31,7 +31,7 @@ library ScalingHelpers {
      * @dev Applies `scalingFactor` to `amount`, resulting in a larger or equal value depending on whether it needed
      * scaling or not. The result is rounded up.
      */
-    function upscaleUp(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
+    function toScaled18RoundUp(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
         return FixedPoint.mulUp(amount, scalingFactor);
     }
 
@@ -39,7 +39,7 @@ library ScalingHelpers {
      * @dev Reverses the `scalingFactor` applied to `amount`, resulting in a smaller or equal value depending on
      * whether it needed scaling or not. The result is rounded down.
      */
-    function downscaleDown(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
+    function toRawRoundDown(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
         return FixedPoint.divDown(amount, scalingFactor);
     }
 
@@ -47,7 +47,7 @@ library ScalingHelpers {
      * @dev Reverses the `scalingFactor` applied to `amount`, resulting in a smaller or equal value depending on
      * whether it needed scaling or not. The result is rounded up.
      */
-    function downscaleUp(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
+    function toRawRoundUp(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
         return FixedPoint.divUp(amount, scalingFactor);
     }
 
@@ -56,10 +56,10 @@ library ScalingHelpers {
     ***************************************************************************/
 
     /**
-     * @dev Same as `upscaleDown`, but for an entire array. This function does not return anything,
+     * @dev Same as `toScaled18RoundDown`, but for an entire array. This function does not return anything,
      * but instead *mutates* the `amounts` array.
      */
-    function upscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
+    function toScaled18RoundDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
         uint256 length = amounts.length;
         InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
 
@@ -69,10 +69,10 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `upscaleUp`, but for an entire array. This function does not return anything,
+     * @dev Same as `toScaled18RoundUp`, but for an entire array. This function does not return anything,
      * but instead *mutates* the `amounts` array.
      */
-    function upscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
+    function toScaled18RoundUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
         uint256 length = amounts.length;
         InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
 
@@ -82,10 +82,10 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `downscaleDown`, but for an entire array. This function does not return anything, but instead
+     * @dev Same as `toRawRoundDown`, but for an entire array. This function does not return anything, but instead
      * *mutates* the `amounts` array.
      */
-    function downscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
+    function toRawRoundDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
         uint256 length = amounts.length;
         InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
 
@@ -95,10 +95,10 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `downscaleUp`, but for an entire array. This function does not return anything, but instead
+     * @dev Same as `toRawRoundUp`, but for an entire array. This function does not return anything, but instead
      * *mutates* the `amounts` array.
      */
-    function downscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
+    function toRawRoundUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
         uint256 length = amounts.length;
         InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
 
