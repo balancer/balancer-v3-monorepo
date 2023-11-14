@@ -522,11 +522,11 @@ interface IVault {
     event ProtocolFeeCollected(IERC20 indexed token, uint256 indexed amount);
 
     /**
-     * @notice Assigns a new swap fee percentage to the specified pool.
-     * @param pool The address of the pool for which the swap fee will be changed
+     * @notice Assigns a new static swap fee percentage to the specified pool.
+     * @param pool The address of the pool for which the static swap fee will be changed
      * @param swapFeePercentage The new swap fee percentage to apply to the pool
      */
-    function setSwapFeePercentage(address pool, uint24 swapFeePercentage) external;
+    function setStaticSwapFeePercentage(address pool, uint24 swapFeePercentage) external;
 
     /**
      * @notice Emitted when the swap fee percentage of a pool is updated.
@@ -535,11 +535,11 @@ interface IVault {
     event SwapFeePercentageChanged(address indexed pool, uint24 indexed swapFeePercentage);
 
     /**
-     * @notice Fetches the current swap fee percentage for a given pool.
-     * @param pool The address of the pool whose swap fee percentage is being queried
-     * @return The current swap fee percentage for the specified pool
+     * @notice Fetches the static swap fee percentage for a given pool.
+     * @param pool The address of the pool whose static swap fee percentage is being queried
+     * @return The current static swap fee percentage for the specified pool
      */
-    function getSwapFeePercentage(address pool) external view returns (uint24);
+    function getStaticSwapFeePercentage(address pool) external view returns (uint24);
 
     /*******************************************************************************
                                     Queries

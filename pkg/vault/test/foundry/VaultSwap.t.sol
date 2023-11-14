@@ -90,9 +90,9 @@ contract VaultSwapTest is Test {
     }
 
     function setSwapFeePercentage() internal {
-        authorizer.grantRole(vault.getActionId(IVault.setSwapFeePercentage.selector), alice);
+        authorizer.grantRole(vault.getActionId(IVault.setStaticSwapFeePercentage.selector), alice);
         vm.prank(alice);
-        vault.setSwapFeePercentage(address(pool), 1e4);
+        vault.setStaticSwapFeePercentage(address(pool), 1e4);
     }
 
     function setProtocolSwapFeePercentage() internal {

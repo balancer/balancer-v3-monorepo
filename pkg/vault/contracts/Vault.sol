@@ -1143,11 +1143,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
      * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
      * bounds set by [0, MAX_SWAP_FEE_PERCENTAGE]. Emits the SwapFeePercentageChanged event.
      */
-    function setSwapFeePercentage(address pool, uint24 swapFeePercentage) external authenticate whenNotPaused {
-        _setSwapFeePercentage(pool, swapFeePercentage);
+    function setStaticSwapFeePercentage(address pool, uint24 swapFeePercentage) external authenticate whenNotPaused {
+        _setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 
-    function _setSwapFeePercentage(address pool, uint24 swapFeePercentage) internal virtual {
+    function _setStaticSwapFeePercentage(address pool, uint24 swapFeePercentage) internal virtual {
         if (swapFeePercentage > _MAX_SWAP_FEE_PERCENTAGE) {
             revert SwapFeePercentageTooHigh();
         }
@@ -1159,7 +1159,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     }
 
     /// @inheritdoc IVault
-    function getSwapFeePercentage(address pool) external view returns (uint24) {
+    function getStaticSwapFeePercentage(address pool) external view returns (uint24) {
         return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
     }
 
