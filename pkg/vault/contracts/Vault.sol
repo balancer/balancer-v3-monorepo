@@ -102,7 +102,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     }
 
     /// @dev Modifier to make a function callable only when the Vault and Pool are not paused.
-    modifier whenNotPaused(address pool) {
+    modifier whenPoolNotPaused(address pool) {
         _ensureVaultNotPaused();
         _ensurePoolNotPaused(pool);
         _;
@@ -808,7 +808,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         external
         withHandler
         withRegisteredPool(pool)
-        whenNotPaused(pool)
+        whenPoolNotPaused(pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut)
     {
         PoolConfig memory config = _poolConfig[pool].toPoolConfig();
@@ -951,7 +951,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         external
         nonReentrant
         withInitializedPool(pool)
-        whenNotPaused(pool)
+        whenPoolNotPaused(pool)
         returns (uint256[] memory amountsOut, uint256 bptAmountIn)
     {
         uint256 numTokens = tokens.length;
