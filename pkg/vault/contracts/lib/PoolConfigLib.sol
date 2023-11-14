@@ -4,7 +4,8 @@ pragma solidity ^0.8.4;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import { PoolConfig, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+// solhint-disable-next-line max-line-length
+import { PoolConfig, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -14,22 +15,56 @@ type PoolConfigBits is bytes32;
 using PoolConfigLib for PoolConfigBits global;
 
 library PoolConfigLib {
+    /// @dev Pool does not support adding liquidity proportionally.
+    error DoesNotSupportAddLiquidityProportional();
+
+    /// @dev Pool does not support adding liquidity with unbalanced tokens in.
+    error DoesNotSupportAddLiquidityUnbalanced();
+
+    /// @dev Pool does not support adding liquidity with a single asset, specifying exact pool tokens out.
+    error DoesNotSupportAddLiquiditySingleTokenExactOut();
+
+    /// @dev Pool does not support adding liquidity with a customized input.
+    error DoesNotSupportAddLiquidityCustom();
+
+    /// @dev Pool does not support removing liquidity proportionally.
+    error DoesNotSupportRemoveLiquidityProportional();
+
+    /// @dev Pool does not support removing liquidity with unbalanced tokens out.
+    error DoesNotSupportRemoveLiquidityUnbalanced();
+
+    /// @dev Pool does not support removing liquidity with a single asset, specifying exact pool tokens in.
+    error DoesNotSupportRemoveLiquiditySingleTokenExactIn();
+
+    /// @dev
+    error DoesNotSupportRemoveLiquiditySingleTokenExactOut();
+
+    /// @dev Pool does not support removing liquidity with a customized input.
+    error DoesNotSupportRemoveLiquidityCustom();
+
     using WordCodec for bytes32;
     using SafeCast for uint256;
-
-    // "reserved" bits are padding so that values fall on byte boundaries.
-    // [ 224 bits |  4 bits  | 4x5 bits |  2 bits  |  1 bit | 1 bit | 1 bit | 1 bit  |    1 bit    |    1 bit   ]
-    // [ not used | reserved | decimals | reserved | remove |  add  |  swap | paused | initialized | registered ]
-    // |MSB                                                                                                  LSB|
 
     // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
     uint8 public constant POOL_INITIALIZED_OFFSET = 1;
-    uint8 public constant POOL_PAUSED_OFFSET = 2;
-    uint8 public constant AFTER_SWAP_OFFSET = 3;
+    uint8 public constant AFTER_SWAP_OFFSET = 2;
+    uint8 public constant BEFORE_ADD_LIQUIDITY_OFFSET = 3;
     uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = 4;
-    uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = 5;
-    uint8 public constant DECIMAL_SCALING_FACTORS_OFFSET = 8;
+    uint8 public constant BEFORE_REMOVE_LIQUIDITY_OFFSET = 5;
+    uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = 6;
+
+    // Supported API bit offsets
+    uint8 public constant ADD_LIQUIDITY_PROPORTIONAL_OFFSET = 7;
+    uint8 public constant ADD_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET = 8;
+    uint8 public constant ADD_LIQUIDITY_UNBALANCED_OFFSET = 9;
+    uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = 10;
+    uint8 public constant REMOVE_LIQUIDITY_PROPORTIONAL_OFFSET = 11;
+    uint8 public constant REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET = 12;
+    uint8 public constant REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET = 13;
+    uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = 14;
+
+    uint8 public constant DECIMAL_SCALING_FACTORS_OFFSET = 16;
 
     uint256 private constant _DECIMAL_DIFF_BITLENGTH = 5;
     // Uses a uint24 (3 bytes): least significant 20 bits to store the values, and a 4-bit pad.
@@ -44,10 +79,6 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_INITIALIZED_OFFSET);
     }
 
-    function isPoolPaused(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(POOL_PAUSED_OFFSET);
-    }
-
     function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint24) {
         return
             PoolConfigBits
@@ -60,12 +91,159 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(AFTER_SWAP_OFFSET);
     }
 
+    function shouldCallBeforeAddLiquidity(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(BEFORE_ADD_LIQUIDITY_OFFSET);
+    }
+
     function shouldCallAfterAddLiquidity(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(AFTER_ADD_LIQUIDITY_OFFSET);
     }
 
+    function shouldCallBeforeRemoveLiquidity(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(BEFORE_REMOVE_LIQUIDITY_OFFSET);
+    }
+
     function shouldCallAfterRemoveLiquidity(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(AFTER_REMOVE_LIQUIDITY_OFFSET);
+    }
+
+    function supportsAddLiquidityProportional(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(ADD_LIQUIDITY_PROPORTIONAL_OFFSET);
+    }
+
+    function requireSupportsAddLiquidityProportional(PoolConfigBits config) internal pure {
+        if (config.supportsAddLiquidityProportional() == false) {
+            revert DoesNotSupportAddLiquidityProportional();
+        }
+    }
+
+    function supportsAddLiquiditySingleTokenExactOut(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(ADD_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET);
+    }
+
+    function requireSupportsAddLiquiditySingleTokenExactOut(PoolConfigBits config) internal pure {
+        if (config.supportsAddLiquiditySingleTokenExactOut() == false) {
+            revert DoesNotSupportAddLiquiditySingleTokenExactOut();
+        }
+    }
+
+    function supportsAddLiquidityUnbalanced(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(ADD_LIQUIDITY_UNBALANCED_OFFSET);
+    }
+
+    function requireSupportsAddLiquidityUnbalanced(PoolConfigBits config) internal pure {
+        if (config.supportsAddLiquidityUnbalanced() == false) {
+            revert DoesNotSupportAddLiquidityUnbalanced();
+        }
+    }
+
+    function supportsAddLiquidityCustom(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(ADD_LIQUIDITY_CUSTOM_OFFSET);
+    }
+
+    function requireSupportsAddLiquidityCustom(PoolConfigBits config) internal pure {
+        if (config.supportsAddLiquidityCustom() == false) {
+            revert DoesNotSupportAddLiquidityCustom();
+        }
+    }
+
+    function supportsRemoveLiquidityProportional(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(REMOVE_LIQUIDITY_PROPORTIONAL_OFFSET);
+    }
+
+    function requireSupportsRemoveLiquidityProportional(PoolConfigBits config) internal pure {
+        if (config.supportsRemoveLiquidityProportional() == false) {
+            revert DoesNotSupportRemoveLiquidityProportional();
+        }
+    }
+
+    function supportsRemoveLiquiditySingleTokenExactIn(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET);
+    }
+
+    function requireSupportsRemoveLiquiditySingleTokenExactIn(PoolConfigBits config) internal pure {
+        if (config.supportsRemoveLiquiditySingleTokenExactIn() == false) {
+            revert DoesNotSupportRemoveLiquiditySingleTokenExactIn();
+        }
+    }
+
+    function supportsRemoveLiquiditySingleTokenExactOut(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET);
+    }
+
+    function requireSupportsRemoveLiquiditySingleTokenExactOut(PoolConfigBits config) internal pure {
+        if (config.supportsRemoveLiquiditySingleTokenExactOut() == false) {
+            revert DoesNotSupportRemoveLiquiditySingleTokenExactOut();
+        }
+    }
+
+    function supportsRemoveLiquidityCustom(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(REMOVE_LIQUIDITY_CUSTOM_OFFSET);
+    }
+
+    function requireSupportsRemoveLiquidityCustom(PoolConfigBits config) internal pure {
+        if (config.supportsRemoveLiquidityCustom() == false) {
+            revert DoesNotSupportRemoveLiquidityCustom();
+        }
+    }
+
+    function fromPoolConfig(PoolConfig memory config) internal pure returns (PoolConfigBits) {
+        bytes32 configBits = bytes32(0);
+
+        // Stack too deep.
+        {
+            configBits = configBits.insertBool(config.isPoolRegistered, POOL_REGISTERED_OFFSET);
+            configBits = configBits.insertBool(config.isPoolInitialized, POOL_INITIALIZED_OFFSET);
+        }
+
+        {
+            configBits = configBits
+                .insertBool(config.callbacks.shouldCallAfterSwap, AFTER_SWAP_OFFSET)
+                .insertBool(config.callbacks.shouldCallBeforeAddLiquidity, BEFORE_ADD_LIQUIDITY_OFFSET)
+                .insertBool(config.callbacks.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET)
+                .insertBool(config.callbacks.shouldCallBeforeRemoveLiquidity, BEFORE_REMOVE_LIQUIDITY_OFFSET)
+                .insertBool(config.callbacks.shouldCallAfterRemoveLiquidity, AFTER_REMOVE_LIQUIDITY_OFFSET);
+        }
+
+        {
+            configBits = configBits
+                .insertBool(
+                    config.liquidityManagement.supportsAddLiquidityProportional,
+                    ADD_LIQUIDITY_PROPORTIONAL_OFFSET
+                )
+                .insertBool(
+                    config.liquidityManagement.supportsAddLiquiditySingleTokenExactOut,
+                    ADD_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET
+                )
+                .insertBool(config.liquidityManagement.supportsAddLiquidityUnbalanced, ADD_LIQUIDITY_UNBALANCED_OFFSET)
+                .insertBool(config.liquidityManagement.supportsAddLiquidityCustom, ADD_LIQUIDITY_CUSTOM_OFFSET);
+        }
+
+        {
+            configBits = configBits
+                .insertBool(
+                    config.liquidityManagement.supportsRemoveLiquidityProportional,
+                    REMOVE_LIQUIDITY_PROPORTIONAL_OFFSET
+                )
+                .insertBool(
+                    config.liquidityManagement.supportsRemoveLiquiditySingleTokenExactIn,
+                    REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET
+                )
+                .insertBool(
+                    config.liquidityManagement.supportsRemoveLiquiditySingleTokenExactOut,
+                    REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET
+                )
+                .insertBool(config.liquidityManagement.supportsRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET);
+        }
+
+        return
+            PoolConfigBits.wrap(
+                configBits.insertUint(
+                    config.tokenDecimalDiffs,
+                    DECIMAL_SCALING_FACTORS_OFFSET,
+                    _TOKEN_DECIMAL_DIFFS_BITLENGTH
+                )
+            );
     }
 
     // Convert from an array of decimal differences, to the encoded 24 bit value (only uses bottom 20 bits).
@@ -94,38 +272,28 @@ library PoolConfigLib {
         return scalingFactors;
     }
 
-    function fromPoolConfig(PoolConfig memory config) internal pure returns (PoolConfigBits) {
-        // Needed to avoid "stack too deep".
-        bytes32 val = bytes32(0)
-            .insertBool(config.isRegisteredPool, POOL_REGISTERED_OFFSET)
-            .insertBool(config.isInitializedPool, POOL_INITIALIZED_OFFSET)
-            .insertBool(config.isPausedPool, POOL_PAUSED_OFFSET);
-
-        return
-            PoolConfigBits.wrap(
-                val
-                    .insertBool(config.callbacks.shouldCallAfterSwap, AFTER_SWAP_OFFSET)
-                    .insertBool(config.callbacks.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET)
-                    .insertBool(config.callbacks.shouldCallAfterRemoveLiquidity, AFTER_REMOVE_LIQUIDITY_OFFSET)
-                    .insertUint(
-                        config.tokenDecimalDiffs,
-                        DECIMAL_SCALING_FACTORS_OFFSET,
-                        _TOKEN_DECIMAL_DIFFS_BITLENGTH
-                    )
-            );
-    }
-
     function toPoolConfig(PoolConfigBits config) internal pure returns (PoolConfig memory) {
         return
             PoolConfig({
-                isRegisteredPool: config.isPoolRegistered(),
-                isInitializedPool: config.isPoolInitialized(),
-                isPausedPool: config.isPoolPaused(),
+                isPoolRegistered: config.isPoolRegistered(),
+                isPoolInitialized: config.isPoolInitialized(),
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 callbacks: PoolCallbacks({
-                    shouldCallAfterSwap: config.shouldCallAfterSwap(),
+                    shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),
                     shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),
-                    shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity()
+                    shouldCallBeforeRemoveLiquidity: config.shouldCallBeforeRemoveLiquidity(),
+                    shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity(),
+                    shouldCallAfterSwap: config.shouldCallAfterSwap()
+                }),
+                liquidityManagement: LiquidityManagement({
+                    supportsAddLiquidityProportional: config.supportsAddLiquidityProportional(),
+                    supportsAddLiquiditySingleTokenExactOut: config.supportsAddLiquiditySingleTokenExactOut(),
+                    supportsAddLiquidityUnbalanced: config.supportsAddLiquidityUnbalanced(),
+                    supportsAddLiquidityCustom: config.supportsAddLiquidityCustom(),
+                    supportsRemoveLiquidityProportional: config.supportsRemoveLiquidityProportional(),
+                    supportsRemoveLiquiditySingleTokenExactIn: config.supportsRemoveLiquiditySingleTokenExactIn(),
+                    supportsRemoveLiquiditySingleTokenExactOut: config.supportsRemoveLiquiditySingleTokenExactOut(),
+                    supportsRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom()
                 })
             });
     }

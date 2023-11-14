@@ -20,6 +20,7 @@ import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
+import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
 contract VaultSwapTest is Test {
@@ -32,7 +33,7 @@ contract VaultSwapTest is Test {
     VaultMock vault;
     Router router;
     BasicAuthorizerMock authorizer;
-    PoolMock pool;
+    ERC20PoolMock pool;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
     address alice = vm.addr(1);
@@ -47,7 +48,7 @@ contract VaultSwapTest is Test {
         router = new Router(IVault(vault), address(0));
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
-        pool = new PoolMock(
+        pool = new ERC20PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",

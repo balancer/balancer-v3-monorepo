@@ -52,9 +52,21 @@ contract WeightedPoolFactory is BasePoolFactory {
             pauseWindowDuration,
             bufferPeriodDuration,
             PoolCallbacks({
+                shouldCallBeforeAddLiquidity: false,
                 shouldCallAfterAddLiquidity: false,
+                shouldCallBeforeRemoveLiquidity: false,
                 shouldCallAfterRemoveLiquidity: false,
                 shouldCallAfterSwap: false
+            }),
+            LiquidityManagement({
+                supportsAddLiquidityProportional: true,
+                supportsAddLiquiditySingleTokenExactOut: true,
+                supportsAddLiquidityUnbalanced: true,
+                supportsAddLiquidityCustom: false,
+                supportsRemoveLiquidityProportional: true,
+                supportsRemoveLiquiditySingleTokenExactIn: true,
+                supportsRemoveLiquiditySingleTokenExactOut: true,
+                supportsRemoveLiquidityCustom: false
             })
         );
 

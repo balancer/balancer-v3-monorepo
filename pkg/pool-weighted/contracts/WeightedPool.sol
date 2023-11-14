@@ -4,7 +4,7 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BasePoolMath } from "@balancer-labs/v3-pool-utils/contracts/lib/BasePoolMath.sol";
@@ -138,98 +138,16 @@ contract WeightedPool is BasePool {
     ***************************************************************************/
 
     /// @inheritdoc IBasePool
-    function onInitialize(
-        uint256[] memory amountsIn,
-        bytes memory
-    ) external view onlyVault returns (uint256[] memory, uint256) {
+    function onInitialize(uint256[] memory exactAmountsIn, bytes memory) external view onlyVault returns (uint256) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
-        uint256 invariantAfterJoin = WeightedMath.calculateInvariant(normalizedWeights, amountsIn);
+        uint256 invariantAfterJoin = WeightedMath.calculateInvariant(normalizedWeights, exactAmountsIn);
 
         // Set the initial pool tokens amount to the value of the invariant times the number of tokens.
         // This makes pool token supply more consistent in Pools with similar compositions
         // but different number of tokens.
-        uint256 bptAmountOut = invariantAfterJoin * amountsIn.length;
+        uint256 bptAmountOut = invariantAfterJoin * exactAmountsIn.length;
 
-        return (amountsIn, bptAmountOut);
-    }
-
-    /***************************************************************************
-                                   Add Liquidity
-    ***************************************************************************/
-
-    /// @inheritdoc IBasePool
-    function onAddLiquidity(
-        address,
-        uint256[] memory balances,
-        uint256[] memory amountsIn,
-        uint256 minBptAmountOut,
-        AddLiquidityKind kind,
-        bytes memory
-    ) external view onlyVault returns (uint256[] memory, uint256 bptAmountOut) {
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-
-        if (kind == AddLiquidityKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
-            InputHelpers.ensureInputLengthMatch(balances.length, amountsIn.length);
-
-            bptAmountOut = WeightedMath.calcBptOutGivenExactTokensIn(
-                balances,
-                normalizedWeights,
-                amountsIn,
-                totalSupply(),
-                getSwapFeePercentage()
-            );
-        } else if (kind == AddLiquidityKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            // The token in cannot be specified with these arguments without relying on `userData`.
-            // This shall be implemented in the future with explicit arguments.
-            revert UnhandledJoinKind();
-        } else if (kind == AddLiquidityKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
-            amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, totalSupply(), minBptAmountOut);
-            bptAmountOut = minBptAmountOut;
-        } else {
-            revert UnhandledJoinKind();
-        }
-
-        return (amountsIn, bptAmountOut);
-    }
-
-    /***************************************************************************
-                                 Remove Liquidity
-    ***************************************************************************/
-
-    /// @inheritdoc IBasePool
-    function onRemoveLiquidity(
-        address,
-        uint256[] memory balances,
-        uint256[] memory minAmountsOut,
-        uint256 maxBptAmountIn,
-        RemoveLiquidityKind kind,
-        bytes memory
-    ) external view onlyVault returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-
-        if (kind == RemoveLiquidityKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            // The token in cannot be specified with these arguments without relying on `userData`.
-            // This shall be implemented in the future with explicit arguments.
-            revert UnhandledExitKind();
-        } else if (kind == RemoveLiquidityKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
-            amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, totalSupply(), maxBptAmountIn);
-            bptAmountIn = maxBptAmountIn;
-        } else if (kind == RemoveLiquidityKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
-            InputHelpers.ensureInputLengthMatch(minAmountsOut.length, balances.length);
-
-            // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
-            bptAmountIn = WeightedMath.calcBptInGivenExactTokensOut(
-                balances,
-                normalizedWeights,
-                minAmountsOut,
-                totalSupply(),
-                getSwapFeePercentage()
-            );
-        } else {
-            revert UnhandledExitKind();
-        }
-
-        return (amountsOut, bptAmountIn);
+        return bptAmountOut;
     }
 
     /***************************************************************************
@@ -271,6 +189,86 @@ contract WeightedPool is BasePool {
         IBasePool.AfterSwapParams calldata params,
         uint256 amountCalculated
     ) external pure override returns (bool success) {
+        // TODO: review the need of this.
         return params.tokenIn != params.tokenOut && amountCalculated > 0;
+    }
+
+    /***************************************************************************
+                                   Add Liquidity
+    ***************************************************************************/
+
+    function onAddLiquidityUnbalanced(
+        address,
+        uint256[] memory exactAmountsIn,
+        uint256[] memory currentBalances
+    ) external view override returns (uint256 bptAmountOut) {
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+
+        return
+            WeightedMath.calcBptOutGivenExactTokensIn(
+                currentBalances,
+                normalizedWeights,
+                exactAmountsIn,
+                totalSupply(),
+                getSwapFeePercentage()
+            );
+    }
+
+    function onAddLiquiditySingleTokenExactOut(
+        address,
+        uint256 tokenInIndex,
+        uint256 exactBptAmountOut,
+        uint256[] memory currentBalances
+    ) external view override returns (uint256 amountIn) {
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+
+        return
+            WeightedMath.calcTokenInGivenExactBptOut(
+                currentBalances[tokenInIndex],
+                normalizedWeights[tokenInIndex],
+                exactBptAmountOut,
+                totalSupply(),
+                getSwapFeePercentage()
+            );
+    }
+
+    /***************************************************************************
+                                 Remove Liquidity
+    ***************************************************************************/
+
+    function onRemoveLiquiditySingleTokenExactIn(
+        address,
+        uint256 tokenOutIndex,
+        uint256 exactBptAmountIn,
+        uint256[] memory currentBalances
+    ) external view override returns (uint256 amountOut) {
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+
+        return
+            WeightedMath.calcTokenOutGivenExactBptIn(
+                currentBalances[tokenOutIndex],
+                normalizedWeights[tokenOutIndex],
+                exactBptAmountIn,
+                totalSupply(),
+                getSwapFeePercentage()
+            );
+    }
+
+    function onRemoveLiquiditySingleTokenExactOut(
+        address,
+        uint256 tokenOutIndex,
+        uint256 exactAmountOut,
+        uint256[] memory currentBalances
+    ) external view override returns (uint256 bptAmountIn) {
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+
+        return
+            WeightedMath.calcBptInGivenExactTokenOut(
+                currentBalances[tokenOutIndex],
+                normalizedWeights[tokenOutIndex],
+                exactAmountOut,
+                totalSupply(),
+                getSwapFeePercentage()
+            );
     }
 }

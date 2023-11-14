@@ -88,8 +88,8 @@ describe('Vault', function () {
     });
 
     it('can register a pool', async () => {
-      expect(await vault.isRegisteredPool(poolA)).to.be.true;
-      expect(await vault.isRegisteredPool(poolB)).to.be.false;
+      expect(await vault.isPoolRegistered(poolA)).to.be.true;
+      expect(await vault.isPoolRegistered(poolB)).to.be.false;
 
       const { tokens, balances } = await vault.getPoolTokens(poolA);
       expect(tokens).to.deep.equal(poolATokens);
@@ -107,7 +107,13 @@ describe('Vault', function () {
     it('registering a pool emits an event', async () => {
       await expect(await vault.connect(unregisteredPoolSigner).manualRegisterPool(poolB, poolBTokens))
         .to.emit(vault, 'PoolRegistered')
-        .withArgs(await poolB.getAddress(), await vault.getPoolFactoryMock(), poolBTokens);
+        .withArgs(
+          poolBAddress,
+          await vault.getPoolFactoryMock(),
+          poolBTokens,
+          [false, false, false, false, false],
+          [true, true, true, true, true, true, true, true]
+        );
     });
 
     it('cannot register a pool twice', async () => {

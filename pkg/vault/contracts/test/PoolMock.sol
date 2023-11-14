@@ -17,10 +17,11 @@ import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 contract PoolMock is BasePool {
     using FixedPoint for uint256;
 
-    uint256 public constant MIN_INIT_BPT = 1e10;
+    uint256 public constant MIN_INIT_BPT = 1e6;
 
     bool public failOnCallback;
 
+    bytes32 private constant _ALL_BITS_SET = bytes32(type(uint256).max);
     uint256 private immutable _numTokens;
 
     constructor(
@@ -33,57 +34,37 @@ contract PoolMock is BasePool {
         if (registerPool) {
             PoolFactoryMock factory = new PoolFactoryMock(vault, 365 days, 30 days);
 
-            factory.registerPool(address(this), tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
+            factory.registerPool(
+                address(this),
+                tokens,
+                PoolConfigBits.wrap(0).toPoolConfig().callbacks,
+                PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
+            );
         }
 
         _numTokens = tokens.length;
     }
 
-    function onInitialize(
-        uint256[] memory amountsIn,
-        bytes memory
-    ) external view onlyVault returns (uint256[] memory, uint256) {
-        return (amountsIn, MIN_INIT_BPT > amountsIn[0] ? MIN_INIT_BPT : amountsIn[0]);
-    }
-
-    function onAddLiquidity(
-        address,
-        uint256[] memory,
-        uint256[] memory maxAmountsIn,
-        uint256 minBptAmountOut,
-        AddLiquidityKind,
-        bytes memory
-    ) external pure returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
-        return (maxAmountsIn, minBptAmountOut);
+    function onInitialize(uint256[] memory exactAmountsIn, bytes memory) external view onlyVault returns (uint256) {
+        return (MIN_INIT_BPT > exactAmountsIn[0] ? MIN_INIT_BPT : exactAmountsIn[0]);
     }
 
     function onAfterAddLiquidity(
         address,
-        uint256[] calldata,
-        bytes memory,
-        uint256[] calldata,
-        uint256
+        uint256[] memory,
+        uint256,
+        uint256[] memory,
+        bytes memory
     ) external view override returns (bool) {
         return !failOnCallback;
     }
 
-    function onRemoveLiquidity(
-        address,
-        uint256[] memory,
-        uint256[] memory minAmountsOut,
-        uint256 maxBptAmountIn,
-        RemoveLiquidityKind,
-        bytes memory
-    ) external pure override returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
-        return (minAmountsOut, maxBptAmountIn);
-    }
-
     function onAfterRemoveLiquidity(
         address,
-        uint256[] calldata,
         uint256,
-        bytes memory,
-        uint256[] calldata
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
     ) external view override returns (bool) {
         return !failOnCallback;
     }
@@ -125,5 +106,80 @@ contract PoolMock is BasePool {
         for (uint256 i = 0; i < tokens.length; i++) {
             scalingFactors[i] = ScalingHelpers.computeScalingFactor(tokens[i]);
         }
+    }
+
+    function onBeforeAddLiquidity(
+        address,
+        uint256[] memory,
+        uint256,
+        uint256[] memory,
+        bytes memory
+    ) external pure override returns (bool) {
+        return true;
+    }
+
+    function onAddLiquidityUnbalanced(
+        address,
+        uint256[] memory exactAmountsIn,
+        uint256[] memory
+    ) external pure override returns (uint256) {
+        return exactAmountsIn[0];
+    }
+
+    function onAddLiquiditySingleTokenExactOut(
+        address,
+        uint256,
+        uint256,
+        uint256[] memory
+    ) external pure override returns (uint256) {
+        revert CallbackNotImplemented();
+    }
+
+    function onAddLiquidityCustom(
+        address,
+        uint256[] memory,
+        uint256,
+        uint256[] memory,
+        bytes memory
+    ) external pure override returns (uint256[] memory, uint256, bytes memory) {
+        revert CallbackNotImplemented();
+    }
+
+    function onBeforeRemoveLiquidity(
+        address,
+        uint256,
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
+    ) external pure override returns (bool) {
+        return true;
+    }
+
+    function onRemoveLiquiditySingleTokenExactIn(
+        address,
+        uint256,
+        uint256,
+        uint256[] memory
+    ) external pure override returns (uint256) {
+        revert CallbackNotImplemented();
+    }
+
+    function onRemoveLiquiditySingleTokenExactOut(
+        address,
+        uint256,
+        uint256,
+        uint256[] memory
+    ) external pure override returns (uint256) {
+        revert CallbackNotImplemented();
+    }
+
+    function onRemoveLiquidityCustom(
+        address,
+        uint256,
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
+    ) external pure override returns (uint256, uint256[] memory, bytes memory) {
+        revert CallbackNotImplemented();
     }
 }

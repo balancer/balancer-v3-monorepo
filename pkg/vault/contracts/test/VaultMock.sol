@@ -20,6 +20,8 @@ contract VaultMock is Vault {
 
     PoolFactoryMock private immutable _poolFactoryMock;
 
+    bytes32 private constant _ALL_BITS_SET = bytes32(type(uint256).max);
+
     constructor(
         IAuthorizer authorizer,
         uint256 pauseWindowDuration,
@@ -62,14 +64,26 @@ contract VaultMock is Vault {
 
     // Used for testing the ReentrancyGuard
     function reentrantRegisterPool(address pool, IERC20[] memory tokens) external nonReentrant {
-        this.registerPool(pool, tokens, 365 days, 30 days, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
+        this.registerPool(
+            pool,
+            tokens,
+            365 days,
+            30 days,
+            PoolConfigBits.wrap(0).toPoolConfig().callbacks,
+            PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
+        );
     }
 
     // Used for testing pool registration, which is ordinarily done in the pool factory.
     // The Mock pool has an argument for whether or not to register on deployment. To call register pool
     // separately, deploy it with the registration flag false, then call this function.
     function manualRegisterPool(address pool, IERC20[] memory tokens) external whenVaultNotPaused {
-        _poolFactoryMock.registerPool(pool, tokens, PoolConfigBits.wrap(0).toPoolConfig().callbacks);
+        _poolFactoryMock.registerPool(
+            pool,
+            tokens,
+            PoolConfigBits.wrap(0).toPoolConfig().callbacks,
+            PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
+        );
     }
 
     function getScalingFactors(address pool) external view returns (uint256[] memory) {

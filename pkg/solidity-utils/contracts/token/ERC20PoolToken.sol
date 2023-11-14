@@ -51,6 +51,10 @@ contract ERC20PoolToken is IERC20, IERC20Metadata {
         return _vault.totalSupply(address(this));
     }
 
+    function getVault() public view returns (IVault) {
+        return _vault;
+    }
+
     /// @inheritdoc IERC20
     function balanceOf(address account) public view returns (uint256) {
         return _vault.balanceOf(address(this), account);
