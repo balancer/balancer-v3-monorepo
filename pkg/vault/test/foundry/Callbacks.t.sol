@@ -177,7 +177,7 @@ contract VaultSwapTest is Test {
         config.callbacks.shouldCallBeforeAddLiquidity = true;
         vault.setConfig(address(pool), config);
 
-        (, uint256[] memory poolBalances) = vault.getPoolTokens(address(pool));
+        (, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(address(pool));
         uint256[] memory maxInputs = _getSuitableMaxInputs(kind);
 
         vm.prank(bob);
@@ -234,7 +234,7 @@ contract VaultSwapTest is Test {
         config.callbacks.shouldCallBeforeRemoveLiquidity = true;
         vault.setConfig(address(pool), config);
 
-        (, uint256[] memory poolBalances) = vault.getPoolTokens(address(pool));
+        (, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(address(pool));
         uint256[] memory minOutputs = _getSuitableMinOutputs(kind);
 
         // Alice has LP tokens from initialization
@@ -291,7 +291,7 @@ contract VaultSwapTest is Test {
         config.callbacks.shouldCallAfterAddLiquidity = true;
         vault.setConfig(address(pool), config);
 
-        (, uint256[] memory poolBalances) = vault.getPoolTokens(address(pool));
+        (, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(address(pool));
         uint256[] memory amountsIn;
         uint256 bptAmountOut;
 
@@ -365,7 +365,7 @@ contract VaultSwapTest is Test {
         uint256 bptBalance = pool.balanceOf(alice);
         // Cut the tail so that there is no precision loss when calculating upscaled amounts out in proportional mode
         bptBalance -= bptBalance % USDC_SCALING;
-        (, uint256[] memory poolBalances) = vault.getPoolTokens(address(pool));
+        (, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(address(pool));
         uint256 bptAmountIn;
         uint256[] memory amountsOut;
 

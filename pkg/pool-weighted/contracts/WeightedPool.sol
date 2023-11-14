@@ -145,10 +145,11 @@ contract WeightedPool is BasePool {
 
     /**
      * @dev Get the current invariant.
+     * TODO This will eventually be a callback where the Vault sends the upscaled balances.
      * @return The current value of the invariant
      */
     function getInvariant() public view returns (uint256) {
-        (, uint256[] memory balances) = _vault.getPoolTokens(address(this));
+        uint256[] memory balances = _vault.getScaled18PoolBalancesRoundDown(address(this));
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
         return WeightedMath.calculateInvariant(normalizedWeights, balances);

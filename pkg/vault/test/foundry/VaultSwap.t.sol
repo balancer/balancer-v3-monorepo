@@ -108,7 +108,7 @@ contract VaultSwapTest is Test {
         assertEq(DAI.balanceOf(bob), 2 * DAI_AMOUNT_IN);
 
         // assets are adjusted in the pool
-        (, uint256[] memory balances) = vault.getPoolTokens(address(pool));
+        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], 0);
         assertEq(balances[1], USDC_AMOUNT_IN * 2);
     }

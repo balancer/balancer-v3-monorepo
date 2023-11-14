@@ -38,7 +38,7 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
     }
 
     /// @inheritdoc IBasePool
-    function getPoolTokens() external view returns (IERC20[] memory tokens, uint256[] memory balances) {
+    function getPoolTokens() external view returns (IERC20[] memory tokens) {
         return _vault.getPoolTokens(address(this));
     }
 

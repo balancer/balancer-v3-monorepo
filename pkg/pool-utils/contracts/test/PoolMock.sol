@@ -43,10 +43,7 @@ contract PoolMock is BasePool {
         _numTokens = tokens.length;
     }
 
-    function onInitialize(
-        uint256[] memory exactAmountsIn,
-        bytes memory
-    ) external view onlyVault returns (uint256) {
+    function onInitialize(uint256[] memory exactAmountsIn, bytes memory) external view onlyVault returns (uint256) {
         return (MIN_INIT_BPT > exactAmountsIn[0] ? MIN_INIT_BPT : exactAmountsIn[0]);
     }
 
@@ -103,7 +100,7 @@ contract PoolMock is BasePool {
 
     /// @dev Even though pools do not handle scaling, we still need this for the tests.
     function getScalingFactors() external view returns (uint256[] memory scalingFactors) {
-        (IERC20[] memory tokens, ) = _vault.getPoolTokens(address(this));
+        IERC20[] memory tokens = _vault.getPoolTokens(address(this));
         scalingFactors = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; i++) {

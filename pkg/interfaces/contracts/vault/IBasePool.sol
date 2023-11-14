@@ -286,9 +286,8 @@ interface IBasePool {
     ) external returns (bool success);
 
     /**
-     * @notice Gets pool tokens and their balances.
+     * @notice Gets pool tokens.
      * @return tokens List of tokens in the pool
-     * @return balances Corresponding balances of the tokens
      */
-    function getPoolTokens() external view returns (IERC20[] memory tokens, uint256[] memory balances);
+    function getPoolTokens() external view returns (IERC20[] memory tokens);
 }

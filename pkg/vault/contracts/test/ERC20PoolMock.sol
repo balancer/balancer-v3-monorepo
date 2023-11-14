@@ -145,7 +145,7 @@ contract ERC20PoolMock is BasePool {
         uint256,
         uint256[] memory
     ) external view override returns (uint256 amountIn) {
-        (IERC20[] memory tokens, ) = _vault.getPoolTokens(address(this));
+        IERC20[] memory tokens = _vault.getPoolTokens(address(this));
         return tokens[tokenInIndex].balanceOf(sender);
     }
 

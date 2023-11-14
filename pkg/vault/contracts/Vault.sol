@@ -404,11 +404,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         address pool,
         bool addingLiquidity
     ) private view returns (SharedLocals memory vars) {
-        (vars.tokens, vars.rawBalances) = _getPoolTokens(pool);
+        (vars.tokens, vars.rawBalances, vars.scalingFactors) = _getPoolTokenInfo(pool);
         vars.config = _poolConfig[pool].toPoolConfig();
 
         uint256 numTokens = vars.tokens.length;
-        vars.scalingFactors = PoolConfigLib.getScalingFactors(vars.config, numTokens);
         vars.scaled18Balances = new uint256[](numTokens);
 
         // Round up when adding liquidity:
@@ -620,10 +619,34 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     }
 
     /// @inheritdoc IVault
-    function getPoolTokens(
-        address pool
-    ) external view withRegisteredPool(pool) returns (IERC20[] memory tokens, uint256[] memory balances) {
+    function getPoolTokens(address pool) external view withRegisteredPool(pool) returns (IERC20[] memory) {
         return _getPoolTokens(pool);
+    }
+
+    /// @inheritdoc IVault
+    function getScaled18PoolBalancesRoundUp(
+        address pool
+    ) external view withRegisteredPool(pool) returns (uint256[] memory) {
+        return _getScaled18PoolBalances(pool, true);
+    }
+
+    /// @inheritdoc IVault
+    function getScaled18PoolBalancesRoundDown(
+        address pool
+    ) external view withRegisteredPool(pool) returns (uint256[] memory) {
+        return _getScaled18PoolBalances(pool, false);
+    }
+
+    /// @inheritdoc IVault
+    function getPoolTokenInfo(
+        address pool
+    )
+        external
+        view
+        withRegisteredPool(pool)
+        returns (IERC20[] memory tokens, uint256[] memory rawBalances, uint256[] memory scalingFactors)
+    {
+        return _getPoolTokenInfo(pool);
     }
 
     /// @dev Reverts unless `pool` corresponds to a registered Pool.
@@ -736,21 +759,75 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
      *
      * @param pool The address of the pool for which tokens and balances are to be fetched.
      * @return tokens An array of token addresses.
-     * @return balances An array of corresponding token balances.
      */
-    function _getPoolTokens(address pool) internal view returns (IERC20[] memory tokens, uint256[] memory balances) {
+    function _getPoolTokens(address pool) internal view returns (IERC20[] memory tokens) {
         // Retrieve the mapping of tokens and their balances for the specified pool.
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
 
-        // Initialize arrays to store tokens and their balances based on the number of tokens in the pool.
+        // Initialize arrays to store tokens based on the number of tokens in the pool.
         tokens = new IERC20[](poolTokenBalances.length());
-        balances = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
-            (tokens[i], balances[i]) = poolTokenBalances.unchecked_at(i);
+            (tokens[i], ) = poolTokenBalances.unchecked_at(i);
+        }
+    }
+
+    /**
+     * @notice Fetches the scaled up balances for a given pool.
+     * @dev Utilizes an enumerable map to obtain pool token balances.
+     * The function is structured to minimize storage reads by leveraging the `unchecked_at` method.
+     *
+     * @param pool The address of the pool
+     * @return scaled18Balances An array of token balances, scaled up and rounded as directed
+     */
+    function _getScaled18PoolBalances(
+        address pool,
+        bool roundUp
+    ) internal view returns (uint256[] memory scaled18Balances) {
+        // Retrieve the mapping of tokens and their balances for the specified pool.
+        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+        uint256 numTokens = poolTokenBalances.length();
+
+        uint256[] memory scalingFactors = PoolConfigLib.getScalingFactors(_poolConfig[pool].toPoolConfig(), numTokens);
+
+        // Initialize array to store balances based on the number of tokens in the pool.
+        // Will be read raw, then upscaled and rounded as directed.
+        scaled18Balances = new uint256[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; ++i) {
+            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
+            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
+            // storage reads.
+            (, scaled18Balances[i]) = poolTokenBalances.unchecked_at(i);
+        }
+
+        roundUp
+            ? scaled18Balances.toScaled18RoundUpArray(scalingFactors)
+            : scaled18Balances.toScaled18RoundDownArray(scalingFactors);
+    }
+
+    function _getPoolTokenInfo(
+        address pool
+    ) internal view returns (IERC20[] memory tokens, uint256[] memory rawBalances, uint256[] memory scalingFactors) {
+        // Retrieve the mapping of tokens and their balances for the specified pool.
+        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+        uint256 numTokens = poolTokenBalances.length();
+
+        scalingFactors = PoolConfigLib.getScalingFactors(_poolConfig[pool].toPoolConfig(), numTokens);
+
+        // Initialize arrays to store tokens and balances based on the number of tokens in the pool.
+        // Will be read raw, then upscaled and rounded as directed.
+        tokens = new IERC20[](numTokens);
+        rawBalances = new uint256[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; ++i) {
+            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
+            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
+            // storage reads.
+            (tokens[i], rawBalances[i]) = poolTokenBalances.unchecked_at(i);
         }
     }
 
@@ -856,8 +933,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             // The callback might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (adding liquidity, so round up) again.
-            (, vars.scaled18Balances) = _getPoolTokens(pool);
-            vars.scaled18Balances.toScaled18RoundUpArray(vars.scalingFactors);
+            vars.scaled18Balances = _getScaled18PoolBalances(pool, true);
         }
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked
@@ -1025,8 +1101,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             // The callback might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (removing liquidity, so round down) again.
-            (, vars.scaled18Balances) = _getPoolTokens(pool);
-            vars.scaled18Balances.toScaled18RoundDownArray(vars.scalingFactors);
+            vars.scaled18Balances = _getScaled18PoolBalances(pool, false);
         }
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked,
@@ -1256,7 +1331,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         address pool,
         IERC20[] memory expectedTokens
     ) private view returns (uint256[] memory) {
-        (IERC20[] memory actualTokens, uint256[] memory balances) = _getPoolTokens(pool);
+        (IERC20[] memory actualTokens, uint256[] memory rawBalances, ) = _getPoolTokenInfo(pool);
         InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
 
         for (uint256 i = 0; i < actualTokens.length; ++i) {
@@ -1265,7 +1340,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             }
         }
 
-        return balances;
+        return rawBalances;
     }
 
     function _onlyTrustedRouter(address sender) internal pure {
