@@ -10,9 +10,12 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-import { IVault, PoolConfig, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+// solhint-disable-next-line max-line-length
+import { IVault, PoolConfig, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+
+import { BasePoolMath } from "@balancer-labs/v3-pool-utils/contracts/lib/BasePoolMath.sol";
 
 import { TemporarilyPausable } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
@@ -390,21 +393,24 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     // Needed to avoid "stack too deep"
     struct SharedLocals {
         PoolConfig config;
+        IERC20[] tokens;
         uint256[] balances;
         uint256[] scalingFactors;
         uint256[] upscaledBalances;
+        uint256 tokenIndex;
     }
 
     // For add/remove liquidity
     function _populateSharedLiquidityLocals(
         address pool,
-        IERC20[] memory tokens,
         bool addingLiquidity
     ) private view returns (SharedLocals memory vars) {
-        vars.balances = _validateTokensAndGetBalances(pool, tokens);
+        (vars.tokens, vars.balances) = _getPoolTokens(pool);
         vars.config = _poolConfig[pool].toPoolConfig();
-        vars.scalingFactors = PoolConfigLib.getScalingFactors(vars.config, tokens.length);
-        vars.upscaledBalances = new uint256[](tokens.length);
+
+        uint256 numTokens = vars.tokens.length;
+        vars.scalingFactors = PoolConfigLib.getScalingFactors(vars.config, numTokens);
+        vars.upscaledBalances = new uint256[](numTokens);
 
         // Round up when adding liquidity:
         // If proportional, higher balances = higher proportional amountsIn, favoring the pool.
@@ -418,7 +424,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         //
         // See `calcBptOutGivenExactTokensIn` and `calcBptInGivenExactTokensOut` WeightedMath tests.
 
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i = 0; i < numTokens; i++) {
             vars.upscaledBalances[i] = addingLiquidity
                 ? vars.balances[i].upscaleUp(vars.scalingFactors[i])
                 : vars.balances[i].upscaleDown(vars.scalingFactors[i]);
@@ -593,9 +599,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     function registerPool(
         address factory,
         IERC20[] memory tokens,
-        PoolCallbacks calldata poolCallbacks
+        PoolCallbacks calldata poolCallbacks,
+        LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenNotPaused {
-        _registerPool(factory, tokens, poolCallbacks);
+        _registerPool(factory, tokens, poolCallbacks, liquidityManagement);
     }
 
     /// @inheritdoc IVault
@@ -640,7 +647,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
      *
      * Emits a `PoolRegistered` event upon successful registration.
      */
-    function _registerPool(address factory, IERC20[] memory tokens, PoolCallbacks memory callbackConfig) internal {
+    function _registerPool(
+        address factory,
+        IERC20[] memory tokens,
+        PoolCallbacks memory callbackConfig,
+        LiquidityManagement memory liquidityManagement
+    ) internal {
         address pool = msg.sender;
 
         // Ensure the pool isn't already registered
@@ -687,11 +699,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
         config.isRegisteredPool = true;
         config.callbacks = callbackConfig;
+        config.liquidityManagement = liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         _poolConfig[pool] = config.fromPoolConfig();
 
         // Emit an event to log the pool registration
-        emit PoolRegistered(pool, factory, tokens);
+        emit PoolRegistered(pool, factory, tokens, callbackConfig, liquidityManagement);
     }
 
     /// @dev See `isRegisteredPool`
@@ -757,48 +770,42 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         address pool,
         address to,
         IERC20[] memory tokens,
-        uint256[] memory maxAmountsIn,
+        uint256[] memory exactAmountsIn,
         bytes memory userData
-    )
-        external
-        withHandler
-        whenNotPaused
-        withRegisteredPool(pool)
-        returns (uint256[] memory amountsIn, uint256 bptAmountOut)
-    {
+    ) external withHandler whenNotPaused nonReentrant withRegisteredPool(pool) returns (uint256 bptAmountOut) {
         PoolConfig memory config = _poolConfig[pool].toPoolConfig();
 
         if (config.isInitializedPool) {
             revert PoolAlreadyInitialized(pool);
         }
 
-        InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
+        InputHelpers.ensureInputLengthMatch(tokens.length, exactAmountsIn.length);
 
         _validateTokensAndGetBalances(pool, tokens);
 
-        uint256[] memory scalingFactors = PoolConfigLib.getScalingFactors(config, tokens.length);
-        // Amounts are entering pool math, so scale down. A lower invariant after the join means less bptOut,
-        // favoring the pool.
-        maxAmountsIn.upscaleDownArray(scalingFactors);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            // Debit of token[i] for amountIn
+            _takeDebt(tokens[i], exactAmountsIn[i], msg.sender);
+        }
 
-        (amountsIn, bptAmountOut) = IBasePool(pool).onInitialize(maxAmountsIn, userData);
+        // Store the new Pool balances.
+        _setPoolBalances(pool, exactAmountsIn);
+        emit PoolBalanceChanged(pool, to, tokens, exactAmountsIn.unsafeCastToInt256(true));
+
+        // Store config and mark the pool as initialized
+        config.isInitializedPool = true;
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        // Finally, call pool hook. Doing this at the end also means we do not need to downscale exact amounts in.
+        // Amounts are entering pool math, so round down. A lower invariant after the join means less bptOut,
+        // favoring the pool.
+        exactAmountsIn.upscaleDownArray(PoolConfigLib.getScalingFactors(config, tokens.length));
+
+        bptAmountOut = IBasePool(pool).onInitialize(exactAmountsIn, userData);
 
         if (bptAmountOut < _MINIMUM_BPT) {
             revert BptAmountBelowAbsoluteMin();
         }
-
-        // amountsIn are entering the Vault, so we round up.
-        amountsIn.downscaleUpArray(scalingFactors);
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            uint256 amountIn = amountsIn[i];
-
-            // Debit of token[i] for amountIn
-            _takeDebt(tokens[i], amountIn, msg.sender);
-        }
-
-        // Store the new Pool balances.
-        _setPoolBalances(pool, amountsIn);
 
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
@@ -807,133 +814,381 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         _mint(address(pool), to, bptAmountOut);
         _mintToAddressZero(address(pool), _MINIMUM_BPT);
 
-        // Store config and mark the pool as initialized
-        config.isInitializedPool = true;
-        _poolConfig[pool] = config.fromPoolConfig();
-
         // Emit an event to log the pool initialization
         emit PoolInitialized(pool);
-
-        emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
     }
 
     /// @inheritdoc IVault
     function addLiquidity(
         address pool,
         address to,
-        IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
-        IBasePool.AddLiquidityKind kind,
+        AddLiquidityKind kind,
         bytes memory userData
     )
         external
         withHandler
         whenNotPaused
         withInitializedPool(pool)
-        returns (uint256[] memory amountsIn, uint256 bptAmountOut)
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
-        uint256 numTokens = tokens.length;
-
-        InputHelpers.ensureInputLengthMatch(numTokens, maxAmountsIn.length);
-
         // Set `addingLiquidity` parameter to true to set rounding direction for balances.
-        SharedLocals memory vars = _populateSharedLiquidityLocals(pool, tokens, true);
+        SharedLocals memory vars = _populateSharedLiquidityLocals(pool, true);
+        InputHelpers.ensureInputLengthMatch(vars.tokens.length, maxAmountsIn.length);
 
-        // Amounts are entering pool math, so scale down
+        // Amounts are entering pool math, so round down
         maxAmountsIn.upscaleDownArray(vars.scalingFactors);
+
+        if (vars.config.callbacks.shouldCallBeforeAddLiquidity) {
+            // TODO: check if `before` needs kind.
+            if (
+                IBasePool(pool).onBeforeAddLiquidity(
+                    to,
+                    maxAmountsIn,
+                    minBptAmountOut,
+                    vars.upscaledBalances,
+                    userData
+                ) == false
+            ) {
+                revert CallbackFailed();
+            }
+
+            // The callback might alter the balances, so we need to read them again to ensure that the data is
+            // fresh moving forward.
+            // We also need to upscale (adding liquidity, so round up) again.
+            (, vars.upscaledBalances) = _getPoolTokens(pool);
+            vars.upscaledBalances.upscaleUpArray(vars.scalingFactors);
+        }
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked
         // its final balances are computed
+        // This function is non-reentrant, as it performs the accounting updates.
         uint256[] memory upscaledAmountsIn;
-        (upscaledAmountsIn, bptAmountOut) = IBasePool(pool).onAddLiquidity(
-            msg.sender,
-            vars.upscaledBalances,
+        (amountsIn, upscaledAmountsIn, bptAmountOut, returnData) = _addLiquidity(
+            vars,
+            pool,
+            to,
             maxAmountsIn,
             minBptAmountOut,
             kind,
             userData
         );
 
-        uint256[] memory finalBalances = new uint256[](numTokens);
-        amountsIn = new uint256[](numTokens);
+        if (vars.config.callbacks.shouldCallAfterAddLiquidity) {
+            if (
+                IBasePool(pool).onAfterAddLiquidity(
+                    to,
+                    upscaledAmountsIn,
+                    bptAmountOut,
+                    vars.upscaledBalances,
+                    userData
+                ) == false
+            ) {
+                revert CallbackFailed();
+            }
+        }
+    }
 
+    /**
+     * @dev Calls the appropriate pool callback and calculates the required inputs and outputs for the operation
+     * considering the given kind, and updates the vault's internal accounting. This includes:
+     * - Setting pool balances
+     * - Taking debt from the liquidity provider
+     * - Minting pool tokens
+     * - Emitting events
+     *
+     * It is non-reentrant, as it performs external calls and updates the vault's state accordingly. This is the only
+     * place where the state is updated within `addLiquidity`.
+     */
+    function _addLiquidity(
+        SharedLocals memory vars,
+        address pool,
+        address to,
+        uint256[] memory upscaledMaxAmountsIn,
+        uint256 minBptAmountOut,
+        AddLiquidityKind kind,
+        bytes memory userData
+    )
+        internal
+        nonReentrant
+        returns (
+            uint256[] memory amountsIn,
+            uint256[] memory upscaledAmountsIn,
+            uint256 bptAmountOut,
+            bytes memory returnData
+        )
+    {
+        if (kind == AddLiquidityKind.PROPORTIONAL) {
+            _poolConfig[pool].requireSupportsAddLiquidityProportional();
+
+            bptAmountOut = minBptAmountOut;
+            upscaledAmountsIn = BasePoolMath.computeProportionalAmountsIn(
+                vars.upscaledBalances,
+                _totalSupply(pool),
+                bptAmountOut
+            );
+        } else if (kind == AddLiquidityKind.UNBALANCED) {
+            _poolConfig[pool].requireSupportsAddLiquidityUnbalanced();
+
+            upscaledAmountsIn = upscaledMaxAmountsIn;
+            bptAmountOut = IBasePool(pool).onAddLiquidityUnbalanced(to, upscaledAmountsIn, vars.upscaledBalances);
+        } else if (kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
+            _poolConfig[pool].requireSupportsAddLiquiditySingleTokenExactOut();
+
+            vars.tokenIndex = InputHelpers.getSingleInputIndex(upscaledMaxAmountsIn);
+            bptAmountOut = minBptAmountOut;
+
+            upscaledAmountsIn = upscaledMaxAmountsIn;
+            upscaledAmountsIn[vars.tokenIndex] = IBasePool(pool).onAddLiquiditySingleTokenExactOut(
+                to,
+                vars.tokenIndex,
+                bptAmountOut,
+                vars.upscaledBalances
+            );
+        } else if (kind == AddLiquidityKind.CUSTOM) {
+            _poolConfig[pool].requireSupportsAddLiquidityCustom();
+
+            (upscaledAmountsIn, bptAmountOut, returnData) = IBasePool(pool).onAddLiquidityCustom(
+                to,
+                upscaledMaxAmountsIn,
+                minBptAmountOut,
+                vars.upscaledBalances,
+                userData
+            );
+        } else {
+            revert InvalidAddLiquidityKind();
+        }
+
+        // TODO: enforce min and max.
+        uint256 numTokens = vars.tokens.length;
+        amountsIn = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {
             // amountsIn are amounts entering the Pool, so we round up.
             // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` callback
             uint256 amountIn = upscaledAmountsIn[i].downscaleUp(vars.scalingFactors[i]);
 
             // Debit of token[i] for amountIn
-            _takeDebt(tokens[i], amountIn, msg.sender);
+            _takeDebt(vars.tokens[i], amountIn, msg.sender);
 
-            finalBalances[i] = vars.balances[i] + amountIn;
+            // We need regular balances to complete the accounting, and the upscaled balances
+            // to use in the `after` callback later on.
+            vars.balances[i] += amountIn;
+            vars.upscaledBalances[i] += upscaledAmountsIn[i];
+
             amountsIn[i] = amountIn;
         }
 
         // Store the new pool balances.
-        _setPoolBalances(pool, finalBalances);
+        _setPoolBalances(pool, vars.balances);
 
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
         _mint(address(pool), to, bptAmountOut);
 
-        if (vars.config.callbacks.shouldCallAfterAddLiquidity) {
-            // Send upscaled balances and amounts
-            if (
-                IBasePool(pool).onAfterAddLiquidity(
-                    msg.sender,
-                    vars.upscaledBalances,
-                    userData,
-                    upscaledAmountsIn,
-                    bptAmountOut
-                ) == false
-            ) {
-                revert CallbackFailed();
-            }
-        }
-
-        emit PoolBalanceChanged(pool, msg.sender, tokens, amountsIn.unsafeCastToInt256(true));
+        emit PoolBalanceChanged(pool, to, vars.tokens, amountsIn.unsafeCastToInt256(true));
     }
 
     /// @inheritdoc IVault
     function removeLiquidity(
         address pool,
         address from,
-        IERC20[] memory tokens,
-        uint256[] memory minAmountsOut,
         uint256 maxBptAmountIn,
-        IBasePool.RemoveLiquidityKind kind,
+        uint256[] memory minAmountsOut,
+        RemoveLiquidityKind kind,
         bytes memory userData
     )
         external
         whenNotPaused
-        nonReentrant
         withInitializedPool(pool)
-        returns (uint256[] memory amountsOut, uint256 bptAmountIn)
+        returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
     {
-        uint256 numTokens = tokens.length;
-
-        InputHelpers.ensureInputLengthMatch(numTokens, minAmountsOut.length);
-
         // Set `addingLiquidity` parameter to false to set rounding direction for balances.
-        SharedLocals memory vars = _populateSharedLiquidityLocals(pool, tokens, false);
+        SharedLocals memory vars = _populateSharedLiquidityLocals(pool, false);
+        InputHelpers.ensureInputLengthMatch(vars.tokens.length, minAmountsOut.length);
 
         // Amounts are entering pool math; higher amounts would burn more BPT, so round up to favor the pool.
         minAmountsOut.upscaleUpArray(vars.scalingFactors);
 
+        if (vars.config.callbacks.shouldCallBeforeRemoveLiquidity) {
+            // TODO: check if `before` callback needs kind.
+            if (
+                IBasePool(pool).onBeforeRemoveLiquidity(
+                    from,
+                    maxBptAmountIn,
+                    minAmountsOut,
+                    vars.upscaledBalances,
+                    userData
+                ) == false
+            ) {
+                revert CallbackFailed();
+            }
+            // The callback might alter the balances, so we need to read them again to ensure that the data is
+            // fresh moving forward.
+            // We also need to upscale (removing liquidity, so round down) again.
+            (, vars.upscaledBalances) = _getPoolTokens(pool);
+            vars.upscaledBalances.upscaleDownArray(vars.scalingFactors);
+        }
+
         // The bulk of the work is done here: the corresponding Pool callback is invoked,
         // and its final balances are computed
+        // This function is non-reentrant, as it performs the accounting updates.
         uint256[] memory upscaledAmountsOut;
-        (upscaledAmountsOut, bptAmountIn) = IBasePool(pool).onRemoveLiquidity(
-            msg.sender,
-            vars.upscaledBalances,
-            minAmountsOut,
+        (bptAmountIn, amountsOut, upscaledAmountsOut, returnData) = _removeLiquidity(
+            vars,
+            pool,
+            from,
             maxBptAmountIn,
+            minAmountsOut,
             kind,
             userData
         );
 
-        uint256[] memory finalBalances = new uint256[](numTokens);
+        if (vars.config.callbacks.shouldCallAfterRemoveLiquidity) {
+            if (
+                IBasePool(pool).onAfterRemoveLiquidity(
+                    from,
+                    bptAmountIn,
+                    upscaledAmountsOut,
+                    vars.upscaledBalances,
+                    userData
+                ) == false
+            ) {
+                revert CallbackFailed();
+            }
+        }
+    }
+
+    /// @inheritdoc IVault
+    function removeLiquidityRecovery(
+        address pool,
+        address from,
+        uint256 exactBptAmountIn
+    )
+        external
+        /// TODO: Only in recovery mode
+        nonReentrant
+        withInitializedPool(pool)
+        returns (uint256[] memory amountsOut)
+    {
+        SharedLocals memory vars = _populateSharedLiquidityLocals(pool, false);
+
+        uint256[] memory upscaledAmountsOut = BasePoolMath.computeProportionalAmountsOut(
+            vars.upscaledBalances,
+            _totalSupply(pool),
+            exactBptAmountIn
+        );
+
+        amountsOut = _removeLiquidityUpdateAccounting(
+            vars,
+            pool,
+            from,
+            vars.tokens,
+            exactBptAmountIn,
+            upscaledAmountsOut
+        );
+    }
+
+    /**
+     * @dev Calls the appropriate pool callback and calculates the required inputs and outputs for the operation
+     * considering the given kind, and updates the vault's internal accounting. This includes:
+     * - Setting pool balances
+     * - Supplying credit to the liquidity provider
+     * - Burning pool tokens
+     * - Emitting events
+     *
+     * It is non-reentrant, as it performs external calls and updates the vault's state accordingly. This is the only
+     * place where the state is updated within `removeLiquidity`.
+     */
+    function _removeLiquidity(
+        SharedLocals memory vars,
+        address pool,
+        address from,
+        uint256 maxBptAmountIn,
+        uint256[] memory upscaledMinAmountsOut,
+        RemoveLiquidityKind kind,
+        bytes memory userData
+    )
+        internal
+        nonReentrant
+        returns (
+            uint256 bptAmountIn,
+            uint256[] memory amountsOut,
+            uint256[] memory upscaledAmountsOut,
+            bytes memory returnData
+        )
+    {
+        if (kind == RemoveLiquidityKind.PROPORTIONAL) {
+            _poolConfig[pool].requireSupportsRemoveLiquidityProportional();
+
+            bptAmountIn = maxBptAmountIn;
+            upscaledAmountsOut = BasePoolMath.computeProportionalAmountsOut(
+                vars.upscaledBalances,
+                _totalSupply(pool),
+                bptAmountIn
+            );
+        } else if (kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN) {
+            _poolConfig[pool].requireSupportsRemoveLiquiditySingleTokenExactIn();
+
+            vars.tokenIndex = InputHelpers.getSingleInputIndex(upscaledMinAmountsOut);
+            bptAmountIn = maxBptAmountIn;
+
+            upscaledAmountsOut = upscaledMinAmountsOut;
+            upscaledAmountsOut[vars.tokenIndex] = IBasePool(pool).onRemoveLiquiditySingleTokenExactIn(
+                from,
+                vars.tokenIndex,
+                bptAmountIn,
+                vars.upscaledBalances
+            );
+        } else if (kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
+            _poolConfig[pool].requireSupportsRemoveLiquiditySingleTokenExactOut();
+
+            vars.tokenIndex = InputHelpers.getSingleInputIndex(upscaledMinAmountsOut);
+            upscaledAmountsOut = upscaledMinAmountsOut;
+
+            bptAmountIn = IBasePool(pool).onRemoveLiquiditySingleTokenExactOut(
+                from,
+                vars.tokenIndex,
+                upscaledAmountsOut[vars.tokenIndex],
+                vars.upscaledBalances
+            );
+        } else if (kind == RemoveLiquidityKind.CUSTOM) {
+            _poolConfig[pool].requireSupportsRemoveLiquidityCustom();
+
+            (bptAmountIn, upscaledAmountsOut, returnData) = IBasePool(pool).onRemoveLiquidityCustom(
+                from,
+                maxBptAmountIn,
+                upscaledMinAmountsOut,
+                vars.upscaledBalances,
+                userData
+            );
+        } else {
+            revert InvalidRemoveLiquidityKind();
+        }
+
+        // TODO: enforce min and max. Maybe inside `_removeLiquidityUpdateAccounting`, where we iterate the tokens?
+        amountsOut = _removeLiquidityUpdateAccounting(vars, pool, from, vars.tokens, bptAmountIn, upscaledAmountsOut);
+    }
+
+    /**
+     * @dev Updates the vault's accounting within a `removeLiquidity` operation. This includes:
+     * - Setting pool balances
+     * - Supplying credit to the liquidity provider
+     * - Burning pool tokens
+     * - Emitting events
+     *
+     * This function also supports queries as a special case, where the pool tokens from the sender are not required.
+     * It must be called in a non-reentrant context.
+     */
+    function _removeLiquidityUpdateAccounting(
+        SharedLocals memory vars,
+        address pool,
+        address from,
+        IERC20[] memory tokens,
+        uint256 bptAmountIn,
+        uint256[] memory upscaledAmountsOut
+    ) internal returns (uint256[] memory amountsOut) {
+        uint256 numTokens = tokens.length;
         amountsOut = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -946,13 +1201,17 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             _supplyCredit(tokens[i], amountOut, msg.sender);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
-            finalBalances[i] = vars.balances[i] - amountOut;
+            // We need regular balances to complete the accounting, and the upscaled balances
+            // to use in the `after` callback later on.
+            vars.balances[i] -= amountOut;
+            vars.upscaledBalances[i] -= upscaledAmountsOut[i];
             amountsOut[i] = amountOut;
         }
 
         // Store the new pool balances.
-        _setPoolBalances(pool, finalBalances);
+        _setPoolBalances(pool, vars.balances);
 
+        // Trusted routers use Vault's allowances, which are infinite anyways for pool tokens.
         if (!_isTrustedRouter(msg.sender)) {
             _spendAllowance(address(pool), from, msg.sender, bptAmountIn);
         }
@@ -964,24 +1223,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         // as the pool's math relies on totalSupply.
         _burn(address(pool), from, bptAmountIn);
 
-        if (vars.config.callbacks.shouldCallAfterRemoveLiquidity) {
-            if (
-                IBasePool(pool).onAfterRemoveLiquidity(
-                    msg.sender,
-                    vars.upscaledBalances,
-                    bptAmountIn,
-                    userData,
-                    upscaledAmountsOut
-                ) == false
-            ) {
-                revert CallbackFailed();
-            }
-        }
-
         emit PoolBalanceChanged(
             pool,
-            msg.sender,
-            tokens,
+            from,
+            vars.tokens,
             // We can unsafely cast to int256 because balances are actually stored as uint112
             amountsOut.unsafeCastToInt256(false)
         );
