@@ -5,7 +5,7 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // solhint-disable-next-line max-line-length
-import { IVault, PoolCallbacks, LiquidityManagement, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -151,10 +151,8 @@ contract WeightedPool is BasePool {
      * @return The current value of the invariant
      */
     function getInvariant() public view returns (uint256) {
-        PoolConfig memory poolConfig = _vault.getPoolConfig(address(this));
         // Balances are retrieve raw, and then scaled up below.
-        (, uint256[] memory scaled18Balances, ) = _vault.getPoolTokenInfo(address(this));
-        uint256[] memory scalingFactors = PoolConfigLib.getScalingFactors(poolConfig, scaled18Balances.length);
+        (, uint256[] memory scaled18Balances, uint256[] memory scalingFactors) = _vault.getPoolTokenInfo(address(this));
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
         scaled18Balances.toScaled18RoundDownArray(scalingFactors);
