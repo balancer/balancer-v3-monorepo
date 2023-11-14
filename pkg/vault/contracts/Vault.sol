@@ -550,9 +550,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         if (vars.swapFeePercentage > 0 && params.kind == IVault.SwapKind.GIVEN_OUT) {
             // Round up to avoid losses during precision loss.
             vars.swapFeeAmount =
-                upscaledAmountGiven.divUp(
-                    UD1x6.wrap(vars.swapFeePercentage).complement()
-                ) -
+                upscaledAmountGiven.divUp(UD1x6.wrap(vars.swapFeePercentage).complement()) -
                 upscaledAmountGiven;
         }
 
@@ -593,10 +591,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         // Charge protocolSwapFee
         if (vars.swapFeeAmount > 0 && _protocolSwapFeePercentage > 0) {
             // Always charge fees on tokenOut. Store amount in native decimals.
-            vars.protocolSwapFeeAmount = vars
-                .swapFeeAmount
-                .mulUp(UD1x6.wrap(_protocolSwapFeePercentage))
-                .downscaleDown(vars.scalingFactors[vars.indexOut]);
+            vars.protocolSwapFeeAmount = vars.swapFeeAmount.mulUp(UD1x6.wrap(_protocolSwapFeePercentage)).downscaleDown(
+                vars.scalingFactors[vars.indexOut]
+            );
 
             _protocolSwapFees[params.tokenOut] += vars.protocolSwapFeeAmount;
         }
