@@ -1155,7 +1155,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         config.staticSwapFeePercentage = swapFeePercentage;
         _poolConfig[pool] = config.fromPoolConfig();
 
-        emit SwapFeePercentageChanged(swapFeePercentage);
+        emit SwapFeePercentageChanged(pool, swapFeePercentage);
     }
 
     /// @inheritdoc IVault

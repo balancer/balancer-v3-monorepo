@@ -532,7 +532,7 @@ interface IVault {
      * @notice Emitted when the swap fee percentage of a pool is updated.
      * @param swapFeePercentage The new swap fee percentage for the pool
      */
-    event SwapFeePercentageChanged(uint24 indexed swapFeePercentage);
+    event SwapFeePercentageChanged(address indexed pool, uint24 indexed swapFeePercentage);
 
     /**
      * @notice Fetches the current swap fee percentage for a given pool.
