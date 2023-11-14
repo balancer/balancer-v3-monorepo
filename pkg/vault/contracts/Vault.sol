@@ -634,7 +634,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             }
         }
 
-        emit Swap(params.pool, params.tokenIn, params.tokenOut, amountIn, amountOut);
+        emit Swap(params.pool, params.tokenIn, params.tokenOut, amountIn, amountOut, vars.swapFeeAmount);
     }
 
     /// @dev Returns swap fee for the pool.

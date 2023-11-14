@@ -450,13 +450,15 @@ interface IVault {
      * @param tokenOut The token leaving the Vault (balance decreases)
      * @param amountIn Number of tokenIn tokens
      * @param amountOut Number of tokenOut tokens
+     * @param swapFeeAmount Swap fee amount paid in token out
      */
     event Swap(
         address indexed pool,
         IERC20 indexed tokenIn,
         IERC20 indexed tokenOut,
         uint256 amountIn,
-        uint256 amountOut
+        uint256 amountOut,
+        uint256 swapFeeAmount
     );
 
     /**
