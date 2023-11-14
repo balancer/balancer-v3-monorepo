@@ -109,8 +109,8 @@ contract VaultSwapTest is Test {
                     kind: IVault.SwapKind.GIVEN_IN,
                     tokenIn: IERC20(USDC),
                     tokenOut: IERC20(DAI),
-                    amountGiven: USDC_AMOUNT_IN * USDC_SCALING,
-                    balances: [DAI_AMOUNT_IN, USDC_AMOUNT_IN * USDC_SCALING].toMemoryArray(),
+                    scaled18AmountGiven: USDC_AMOUNT_IN * USDC_SCALING,
+                    scaled18Balances: [DAI_AMOUNT_IN, USDC_AMOUNT_IN * USDC_SCALING].toMemoryArray(),
                     indexIn: 1,
                     indexOut: 0,
                     sender: address(router),
@@ -177,7 +177,7 @@ contract VaultSwapTest is Test {
         config.callbacks.shouldCallBeforeAddLiquidity = true;
         vault.setConfig(address(pool), config);
 
-        (, uint256[] memory poolBalances) = vault.getPoolTokens(address(pool));
+        (, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(address(pool));
         uint256[] memory maxInputs = _getSuitableMaxInputs(kind);
 
         vm.prank(bob);
@@ -234,7 +234,7 @@ contract VaultSwapTest is Test {
         config.callbacks.shouldCallBeforeRemoveLiquidity = true;
         vault.setConfig(address(pool), config);
 
-        (, uint256[] memory poolBalances) = vault.getPoolTokens(address(pool));
+        (, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(address(pool));
         uint256[] memory minOutputs = _getSuitableMinOutputs(kind);
 
         // Alice has LP tokens from initialization
@@ -291,7 +291,7 @@ contract VaultSwapTest is Test {
         config.callbacks.shouldCallAfterAddLiquidity = true;
         vault.setConfig(address(pool), config);
 
-        (, uint256[] memory poolBalances) = vault.getPoolTokens(address(pool));
+        (, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(address(pool));
         uint256[] memory amountsIn;
         uint256 bptAmountOut;
 
@@ -365,7 +365,7 @@ contract VaultSwapTest is Test {
         uint256 bptBalance = pool.balanceOf(alice);
         // Cut the tail so that there is no precision loss when calculating upscaled amounts out in proportional mode
         bptBalance -= bptBalance % USDC_SCALING;
-        (, uint256[] memory poolBalances) = vault.getPoolTokens(address(pool));
+        (, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(address(pool));
         uint256 bptAmountIn;
         uint256[] memory amountsOut;
 

@@ -47,10 +47,7 @@ contract ERC20PoolMock is BasePool {
         _numTokens = tokens.length;
     }
 
-    function onInitialize(
-        uint256[] memory exactAmountsIn,
-        bytes memory
-    ) external pure override returns (uint256) {
+    function onInitialize(uint256[] memory exactAmountsIn, bytes memory) external pure override returns (uint256) {
         return (MIN_INIT_BPT > exactAmountsIn[0] ? MIN_INIT_BPT : exactAmountsIn[0]);
     }
 
@@ -88,8 +85,8 @@ contract ERC20PoolMock is BasePool {
     function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
         return
             params.kind == IVault.SwapKind.GIVEN_IN
-                ? params.amountGiven.mulDown(_multiplier)
-                : params.amountGiven.divDown(_multiplier);
+                ? params.scaled18AmountGiven.mulDown(_multiplier)
+                : params.scaled18AmountGiven.divDown(_multiplier);
     }
 
     // Liquidity lifecycle callbacks
@@ -148,7 +145,7 @@ contract ERC20PoolMock is BasePool {
         uint256,
         uint256[] memory
     ) external view override returns (uint256 amountIn) {
-        (IERC20[] memory tokens, ) = _vault.getPoolTokens(address(this));
+        IERC20[] memory tokens = _vault.getPoolTokens(address(this));
         return tokens[tokenInIndex].balanceOf(sender);
     }
 

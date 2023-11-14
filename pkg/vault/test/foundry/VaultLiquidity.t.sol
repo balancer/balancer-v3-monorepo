@@ -384,7 +384,7 @@ contract VaultLiquidityTest is Test {
         balances.userTokens[1] = USDC.balanceOf(user);
         balances.userBpt = pool.balanceOf(user);
 
-        (, uint256[] memory poolBalances) = vault.getPoolTokens(address(pool));
+        (, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(address(pool));
         require(poolBalances[0] == DAI.balanceOf(address(vault)), "DAI pool balance does not match vault balance");
         require(poolBalances[1] == USDC.balanceOf(address(vault)), "USDC pool balance does not match vault balance");
 
