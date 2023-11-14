@@ -1121,7 +1121,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     }
 
     /// @inheritdoc IVault
-    function collectProtocolFees(IERC20[] calldata tokens) external authenticate {
+    function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant {
         for (uint256 index = 0; index < tokens.length; index++) {
             IERC20 token = tokens[index];
             uint256 amount = _protocolSwapFees[token];
