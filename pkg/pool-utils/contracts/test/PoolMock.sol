@@ -43,8 +43,11 @@ contract PoolMock is BasePool {
         _numTokens = tokens.length;
     }
 
-    function onInitialize(uint256[] memory exactAmountsIn, bytes memory) external view onlyVault returns (uint256) {
-        return (MIN_INIT_BPT > exactAmountsIn[0] ? MIN_INIT_BPT : exactAmountsIn[0]);
+    function onInitialize(
+        uint256[] memory exactScaled18AmountsIn,
+        bytes memory
+    ) external view onlyVault returns (uint256) {
+        return (MIN_INIT_BPT > exactScaled18AmountsIn[0] ? MIN_INIT_BPT : exactScaled18AmountsIn[0]);
     }
 
     function onAfterAddLiquidity(
