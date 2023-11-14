@@ -18,17 +18,16 @@ library PoolConfigLib {
     using SafeCast for uint256;
 
     // "reserved" bits are padding so that values fall on byte boundaries.
-    // [ 224 bits |  4 bits  | 4x5 bits |  2 bits  |  1 bit | 1 bit | 1 bit | 1 bit  |    1 bit    |    1 bit   ]
-    // [ not used | reserved | decimals | reserved | remove |  add  |  swap | paused | initialized | registered ]
-    // |MSB                                                                                                  LSB|
+    // [ 224 bits |  4 bits  | 4x5 bits |  3 bits  |  1 bit | 1 bit | 1 bit |    1 bit    |    1 bit   ]
+    // [ not used | reserved | decimals | reserved | remove |  add  |  swap | initialized | registered ]
+    // |MSB                                                                                         LSB|
 
     // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
     uint8 public constant POOL_INITIALIZED_OFFSET = 1;
-    uint8 public constant POOL_PAUSED_OFFSET = 2;
-    uint8 public constant AFTER_SWAP_OFFSET = 3;
-    uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = 4;
-    uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = 5;
+    uint8 public constant AFTER_SWAP_OFFSET = 2;
+    uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = 3;
+    uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = 4;
     uint8 public constant DECIMAL_SCALING_FACTORS_OFFSET = 8;
 
     uint256 private constant _DECIMAL_DIFF_BITLENGTH = 5;
@@ -42,10 +41,6 @@ library PoolConfigLib {
 
     function isPoolInitialized(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_INITIALIZED_OFFSET);
-    }
-
-    function isPoolPaused(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(POOL_PAUSED_OFFSET);
     }
 
     function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint24) {
@@ -96,10 +91,10 @@ library PoolConfigLib {
 
     function fromPoolConfig(PoolConfig memory config) internal pure returns (PoolConfigBits) {
         // Needed to avoid "stack too deep".
-        bytes32 val = bytes32(0)
-            .insertBool(config.isPoolRegistered, POOL_REGISTERED_OFFSET)
-            .insertBool(config.isPoolInitialized, POOL_INITIALIZED_OFFSET)
-            .insertBool(config.isPoolPaused, POOL_PAUSED_OFFSET);
+        bytes32 val = bytes32(0).insertBool(config.isPoolRegistered, POOL_REGISTERED_OFFSET).insertBool(
+            config.isPoolInitialized,
+            POOL_INITIALIZED_OFFSET
+        );
 
         return
             PoolConfigBits.wrap(
@@ -120,7 +115,6 @@ library PoolConfigLib {
             PoolConfig({
                 isPoolRegistered: config.isPoolRegistered(),
                 isPoolInitialized: config.isPoolInitialized(),
-                isPoolPaused: config.isPoolPaused(),
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 callbacks: PoolCallbacks({
                     shouldCallAfterSwap: config.shouldCallAfterSwap(),

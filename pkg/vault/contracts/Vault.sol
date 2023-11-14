@@ -648,11 +648,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         return _isPoolInitialized(pool);
     }
 
-    /// @dev See `isPoolPaused`
-    function _isPoolPaused(address pool) internal view returns (bool) {
-        return _poolConfig[pool].isPoolPaused();
-    }
-
     /// @inheritdoc IVault
     function getPoolConfig(address pool) external view returns (PoolConfig memory) {
         return _poolConfig[pool].toPoolConfig();
@@ -1172,45 +1167,61 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         return _isPoolPaused(pool);
     }
 
+    /// @dev Check both the flag and timestamp to determine whether the pool is paused.
+    function _isPoolPaused(address pool) internal view returns (bool) {
+        (bool paused, , ) = getPoolPausedState(pool);
+
+        return paused;
+    }
+
     /// @inheritdoc IVault
     function getPoolPausedState(address pool) public view withRegisteredPool(pool) returns (bool, uint256, uint256) {
         PoolPauseConfig memory pauseConfig = PoolPauseConfigLib.toPoolPauseConfig(_poolPauseConfig[pool]);
+        bool paused = pauseConfig.isPoolPaused && block.timestamp <= pauseConfig.bufferPeriodEndTime;
 
-        return (_isPoolPaused(pool), pauseConfig.pauseWindowEndTime, pauseConfig.bufferPeriodEndTime);
+        return (paused, pauseConfig.pauseWindowEndTime, pauseConfig.bufferPeriodEndTime);
     }
 
     /// @inheritdoc IVault
     function pausePool(address pool) external withRegisteredPool(pool) authenticate {
-        _ensurePoolNotPaused(pool);
         _setPoolPaused(pool, true);
     }
 
     /// @inheritdoc IVault
     function unpausePool(address pool) external withRegisteredPool(pool) authenticate {
-        _ensurePoolPaused(pool);
         _setPoolPaused(pool, false);
     }
 
-    function _setPoolPaused(address pool, bool paused) internal {
-        // We have already ensured the pool is in the correct paused state (e.g., paused, if we are unpausing it)
-        (, uint256 poolPauseWindowEndTime, uint256 poolBufferPeriodEndTime) = getPoolPausedState(pool);
+    function _setPoolPaused(address pool, bool pausing) internal {
+        // Would be wasteful to read the pauseConfig twice, so have (un)pausePool functions call here directly,
+        // and check for the current state locally. Retain the _ensurePoolNotPaused function for the modifier
+        // and other read-only functions.
 
-        if (paused) {
-            if (block.timestamp >= poolPauseWindowEndTime) {
+        PoolPauseConfig memory pauseConfig = PoolPauseConfigLib.toPoolPauseConfig(_poolPauseConfig[pool]);
+
+        if (pausing) {
+            if (pauseConfig.isPoolPaused) {
+                revert PoolPaused(pool);
+            }
+
+            if (block.timestamp >= pauseConfig.pauseWindowEndTime) {
                 revert PoolPauseWindowExpired(pool);
             }
         } else {
-            if (block.timestamp >= poolBufferPeriodEndTime) {
+            if (!pauseConfig.isPoolPaused) {
+                revert PoolNotPaused(pool);
+            }
+
+            if (block.timestamp >= pauseConfig.bufferPeriodEndTime) {
                 revert PoolBufferPeriodExpired(pool);
             }
         }
 
-        // Update poolConfig
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.isPoolPaused = paused;
-        _poolConfig[pool] = config.fromPoolConfig();
+        // Update pauseConfig
+        pauseConfig.isPoolPaused = pausing;
+        _poolPauseConfig[pool] = pauseConfig.fromPoolPauseConfig();
 
-        emit PoolPausedStateChanged(pool, paused);
+        emit PoolPausedStateChanged(pool, pausing);
     }
 
     /**
@@ -1220,16 +1231,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     function _ensurePoolNotPaused(address pool) internal view {
         if (_isPoolPaused(pool)) {
             revert PoolPaused(pool);
-        }
-    }
-
-    /**
-     * @dev Reverts if the pool is not paused.
-     * @param pool The pool
-     */
-    function _ensurePoolPaused(address pool) internal view {
-        if (!_isPoolPaused(pool)) {
-            revert PoolNotPaused(pool);
         }
     }
 }

@@ -18,7 +18,6 @@ struct PoolCallbacks {
 struct PoolConfig {
     bool isPoolRegistered;
     bool isPoolInitialized;
-    bool isPoolPaused;
     uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
     PoolCallbacks callbacks;
 }
@@ -28,6 +27,7 @@ struct PoolConfig {
  * Note that the actual paused state is a bit in PoolConfig.
  */
 struct PoolPauseConfig {
+    bool isPoolPaused;
     uint256 pauseWindowEndTime;
     uint256 bufferPeriodEndTime;
 }
@@ -622,6 +622,9 @@ interface IVault {
 
     /**
      * @notice Returns the paused status, and end times of the Vault's pause window and buffer period.
+     * @dev Note that even when set to a paused state, the pool will automatically unpause at the end of
+     * the buffer period.
+     *
      * @param pool The pool whose data is requested
      * @return paused True is the Vault is paused
      * @return vaultPauseWindowEndTime The timestamp of the end of the Vault's pause window
