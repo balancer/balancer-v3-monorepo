@@ -66,8 +66,8 @@ describe('WeightedPool', function () {
       it('is registered, but not initialized on deployment', async () => {
         const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(poolAddress);
 
-        expect(poolConfig.isRegisteredPool).to.be.true;
-        expect(poolConfig.isInitializedPool).to.be.false;
+        expect(poolConfig.isPoolRegistered).to.be.true;
+        expect(poolConfig.isPoolInitialized).to.be.false;
       });
     });
 
@@ -87,8 +87,8 @@ describe('WeightedPool', function () {
       it('is registered and initialized', async () => {
         const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(poolAddress);
 
-        expect(poolConfig.isRegisteredPool).to.be.true;
-        expect(poolConfig.isInitializedPool).to.be.true;
+        expect(poolConfig.isPoolRegistered).to.be.true;
+        expect(poolConfig.isPoolInitialized).to.be.true;
       });
 
       it('has the correct pool tokens and balances', async () => {

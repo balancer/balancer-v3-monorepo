@@ -97,9 +97,9 @@ library PoolConfigLib {
     function fromPoolConfig(PoolConfig memory config) internal pure returns (PoolConfigBits) {
         // Needed to avoid "stack too deep".
         bytes32 val = bytes32(0)
-            .insertBool(config.isRegisteredPool, POOL_REGISTERED_OFFSET)
-            .insertBool(config.isInitializedPool, POOL_INITIALIZED_OFFSET)
-            .insertBool(config.isPausedPool, POOL_PAUSED_OFFSET);
+            .insertBool(config.isPoolRegistered, POOL_REGISTERED_OFFSET)
+            .insertBool(config.isPoolInitialized, POOL_INITIALIZED_OFFSET)
+            .insertBool(config.isPoolPaused, POOL_PAUSED_OFFSET);
 
         return
             PoolConfigBits.wrap(
@@ -118,9 +118,9 @@ library PoolConfigLib {
     function toPoolConfig(PoolConfigBits config) internal pure returns (PoolConfig memory) {
         return
             PoolConfig({
-                isRegisteredPool: config.isPoolRegistered(),
-                isInitializedPool: config.isPoolInitialized(),
-                isPausedPool: config.isPoolPaused(),
+                isPoolRegistered: config.isPoolRegistered(),
+                isPoolInitialized: config.isPoolInitialized(),
+                isPoolPaused: config.isPoolPaused(),
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 callbacks: PoolCallbacks({
                     shouldCallAfterSwap: config.shouldCallAfterSwap(),

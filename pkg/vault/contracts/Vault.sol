@@ -639,17 +639,17 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     }
 
     /// @inheritdoc IVault
-    function isRegisteredPool(address pool) external view returns (bool) {
-        return _isRegisteredPool(pool);
+    function isPoolRegistered(address pool) external view returns (bool) {
+        return _isPoolRegistered(pool);
     }
 
     /// @inheritdoc IVault
-    function isInitializedPool(address pool) external view returns (bool) {
-        return _isInitializedPool(pool);
+    function isPoolInitialized(address pool) external view returns (bool) {
+        return _isPoolInitialized(pool);
     }
 
     /// @dev See `isPoolPaused`
-    function _isPausedPool(address pool) internal view returns (bool) {
+    function _isPoolPaused(address pool) internal view returns (bool) {
         return _poolConfig[pool].isPoolPaused();
     }
 
@@ -673,7 +673,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
     /// @dev Reverts unless `pool` corresponds to a registered Pool.
     function _ensureRegisteredPool(address pool) internal view {
-        if (!_isRegisteredPool(pool)) {
+        if (!_isPoolRegistered(pool)) {
             revert PoolNotRegistered(pool);
         }
     }
@@ -689,7 +689,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         address pool = msg.sender;
 
         // Ensure the pool isn't already registered
-        if (_isRegisteredPool(pool)) {
+        if (_isPoolRegistered(pool)) {
             revert PoolAlreadyRegistered(pool);
         }
 
@@ -730,7 +730,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
 
-        config.isRegisteredPool = true;
+        config.isPoolRegistered = true;
         config.callbacks = callbackConfig;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         _poolConfig[pool] = config.fromPoolConfig();
@@ -739,8 +739,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         emit PoolRegistered(pool, factory, tokens);
     }
 
-    /// @dev See `isRegisteredPool`
-    function _isRegisteredPool(address pool) internal view returns (bool) {
+    /// @dev See `isPoolRegistered`
+    function _isPoolRegistered(address pool) internal view returns (bool) {
         return _poolConfig[pool].isPoolRegistered();
     }
 
@@ -752,13 +752,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
     /// @dev Reverts unless `pool` corresponds to an initialized Pool.
     function _ensureInitializedPool(address pool) internal view {
-        if (!_isInitializedPool(pool)) {
+        if (!_isPoolInitialized(pool)) {
             revert PoolNotInitialized(pool);
         }
     }
 
-    /// @dev See `isInitialized`
-    function _isInitializedPool(address pool) internal view returns (bool) {
+    /// @dev See `isPoolInitialized`
+    function _isPoolInitialized(address pool) internal view returns (bool) {
         return _poolConfig[pool].isPoolInitialized();
     }
 
@@ -813,7 +813,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     {
         PoolConfig memory config = _poolConfig[pool].toPoolConfig();
 
-        if (config.isInitializedPool) {
+        if (config.isPoolInitialized) {
             revert PoolAlreadyInitialized(pool);
         }
 
@@ -853,7 +853,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         _mintToAddressZero(address(pool), _MINIMUM_BPT);
 
         // Store config and mark the pool as initialized
-        config.isInitializedPool = true;
+        config.isPoolInitialized = true;
         _poolConfig[pool] = config.fromPoolConfig();
 
         // Emit an event to log the pool initialization
@@ -1169,14 +1169,14 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
     /// @inheritdoc IVault
     function poolPaused(address pool) external view withRegisteredPool(pool) returns (bool) {
-        return _isPausedPool(pool);
+        return _isPoolPaused(pool);
     }
 
     /// @inheritdoc IVault
     function getPoolPausedState(address pool) public view withRegisteredPool(pool) returns (bool, uint256, uint256) {
         PoolPauseConfig memory pauseConfig = PoolPauseConfigLib.toPoolPauseConfig(_poolPauseConfig[pool]);
 
-        return (_isPausedPool(pool), pauseConfig.pauseWindowEndTime, pauseConfig.bufferPeriodEndTime);
+        return (_isPoolPaused(pool), pauseConfig.pauseWindowEndTime, pauseConfig.bufferPeriodEndTime);
     }
 
     /// @inheritdoc IVault
@@ -1207,7 +1207,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
         // Update poolConfig
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.isPausedPool = paused;
+        config.isPoolPaused = paused;
         _poolConfig[pool] = config.fromPoolConfig();
 
         emit PoolPausedStateChanged(pool, paused);
@@ -1218,7 +1218,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      * @param pool The pool
      */
     function _ensurePoolNotPaused(address pool) internal view {
-        if (_isPausedPool(pool)) {
+        if (_isPoolPaused(pool)) {
             revert PoolPaused(pool);
         }
     }
@@ -1228,7 +1228,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      * @param pool The pool
      */
     function _ensurePoolPaused(address pool) internal view {
-        if (!_isPausedPool(pool)) {
+        if (!_isPoolPaused(pool)) {
             revert PoolNotPaused(pool);
         }
     }

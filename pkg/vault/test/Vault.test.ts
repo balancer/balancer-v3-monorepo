@@ -90,8 +90,8 @@ describe('Vault', function () {
     });
 
     it('can register a pool', async () => {
-      expect(await vault.isRegisteredPool(poolAAddress)).to.be.true;
-      expect(await vault.isRegisteredPool(poolBAddress)).to.be.false;
+      expect(await vault.isPoolRegistered(poolAAddress)).to.be.true;
+      expect(await vault.isPoolRegistered(poolBAddress)).to.be.false;
 
       const { tokens, balances } = await vault.getPoolTokens(poolAAddress);
       expect(tokens).to.deep.equal(poolATokens);

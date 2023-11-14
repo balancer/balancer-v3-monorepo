@@ -16,9 +16,9 @@ struct PoolCallbacks {
 
 /// @dev Represents a pool's configuration, including callbacks.
 struct PoolConfig {
-    bool isRegisteredPool;
-    bool isInitializedPool;
-    bool isPausedPool;
+    bool isPoolRegistered;
+    bool isPoolInitialized;
+    bool isPoolPaused;
     uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
     PoolCallbacks callbacks;
 }
@@ -137,7 +137,7 @@ interface IVault {
      * @param pool Address of the pool to check
      * @return True if the pool is registered, false otherwise
      */
-    function isRegisteredPool(address pool) external view returns (bool);
+    function isPoolRegistered(address pool) external view returns (bool);
 
     /**
      * @notice Checks whether a pool is initialized.
@@ -145,7 +145,7 @@ interface IVault {
      * @param pool Address of the pool to check
      * @return True if the pool is initialized, false otherwise
      */
-    function isInitializedPool(address pool) external view returns (bool);
+    function isPoolInitialized(address pool) external view returns (bool);
 
     /**
      * @notice Gets tokens and their balances of a pool.
