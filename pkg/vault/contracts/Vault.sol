@@ -1331,7 +1331,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     *******************************************************************************/
 
     /// @inheritdoc IVault
-    function vaultPaused() external view returns (bool) {
+    function isVaultPaused() external view returns (bool) {
         return _isVaultPaused();
     }
 
@@ -1342,13 +1342,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
     /// @inheritdoc IVault
     function pauseVault() external authenticate {
-        _ensureVaultNotPaused();
         _setVaultPaused(true);
     }
 
     /// @inheritdoc IVault
     function unpauseVault() external authenticate {
-        _ensureVaultPaused();
         _setVaultPaused(false);
     }
 
@@ -1360,33 +1358,41 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         return block.timestamp <= _vaultBufferPeriodEndTime && _vaultPaused;
     }
 
-    function _setVaultPaused(bool paused) internal {
-        if (paused) {
-            if (block.timestamp >= _vaultPauseWindowEndTime) {
-                revert VaultPauseWindowExpired();
+    /**
+     * @dev The contract can only be paused until the end of the Pause Window, and
+     * unpaused until the end of the Buffer Period.
+     */
+    function _setVaultPaused(bool pausing) internal {
+        if (_isVaultPaused()) {
+            if (pausing) {
+                // Already paused, and we're trying to pause it again.
+                revert VaultPaused();
             }
+
+            // The pool can always be unpaused while it's paused.
+            // When the buffer period expires, `_isVaultPaused` will return false, so we would be in the outside
+            // else clause, where trying to unpause will revert unconditionally.
         } else {
-            if (block.timestamp >= _vaultBufferPeriodEndTime) {
-                revert VaultBufferPeriodExpired();
+            if (pausing) {
+                // Not already paused; we can pause within the window.
+                if (block.timestamp >= _vaultPauseWindowEndTime) {
+                    revert VaultPauseWindowExpired();
+                }
+            } else {
+                // Not paused, and we're trying to unpause it.
+                revert VaultNotPaused();
             }
         }
 
-        _vaultPaused = paused;
+        _vaultPaused = pausing;
 
-        emit VaultPausedStateChanged(paused);
+        emit VaultPausedStateChanged(pausing);
     }
 
     /// @dev Reverts if the Vault is paused.
     function _ensureVaultNotPaused() internal view {
         if (_isVaultPaused()) {
             revert VaultPaused();
-        }
-    }
-
-    /// @dev Reverts if the Vault is not paused.
-    function _ensureVaultPaused() internal view {
-        if (!_isVaultPaused()) {
-            revert VaultNotPaused();
         }
     }
 }

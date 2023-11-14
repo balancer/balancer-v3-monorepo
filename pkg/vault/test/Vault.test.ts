@@ -182,7 +182,7 @@ describe('Vault', function () {
     });
 
     it('is temporarily pausable', async () => {
-      expect(await timedVault.vaultPaused()).to.equal(false);
+      expect(await timedVault.isVaultPaused()).to.equal(false);
 
       const [paused, pauseWindowEndTime, bufferPeriodEndTime] = await timedVault.getVaultPausedState();
 
@@ -191,10 +191,10 @@ describe('Vault', function () {
       expect(bufferPeriodEndTime).to.equal((await fromNow(PAUSE_WINDOW_DURATION)) + bn(BUFFER_PERIOD_DURATION));
 
       await timedVault.pause();
-      expect(await timedVault.vaultPaused()).to.be.true;
+      expect(await timedVault.isVaultPaused()).to.be.true;
 
       await timedVault.unpause();
-      expect(await timedVault.vaultPaused()).to.be.false;
+      expect(await timedVault.isVaultPaused()).to.be.false;
     });
 
     it('pausing emits an event', async () => {

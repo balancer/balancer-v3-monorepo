@@ -603,14 +603,11 @@ interface IVault {
     /// @dev Governance tried to pause the Vault after the pause period expired.
     error VaultPauseWindowExpired();
 
-    /// @dev Governance tried to unpause the Vault after the buffer period expired.
-    error VaultBufferPeriodExpired();
-
     /**
      * @notice Indicates whether the Vault is paused.
      * @return True if the Vault is paused
      */
-    function vaultPaused() external view returns (bool);
+    function isVaultPaused() external view returns (bool);
 
     /**
      * @notice Returns the paused status, and end times of the Vault's pause window and buffer period.
