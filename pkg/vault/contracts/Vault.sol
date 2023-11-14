@@ -798,7 +798,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         // Finally, call pool hook. Doing this at the end also means we do not need to downscale exact amounts in.
         // Amounts are entering pool math, so round down. A lower invariant after the join means less bptOut,
         // favoring the pool.
-        exactAmountsIn.toScaled18RoundUpArray(PoolConfigLib.getScalingFactors(config, tokens.length));
+        exactAmountsIn.toScaled18RoundDownArray(PoolConfigLib.getScalingFactors(config, tokens.length));
 
         bptAmountOut = IBasePool(pool).onInitialize(exactAmountsIn, userData);
 
