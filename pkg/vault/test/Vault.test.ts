@@ -109,7 +109,13 @@ describe('Vault', function () {
     it('registering a pool emits an event', async () => {
       await expect(await vault.connect(unregisteredPoolSigner).manualRegisterPool(factory.address, poolBTokens))
         .to.emit(vault, 'PoolRegistered')
-        .withArgs(poolBAddress, factory.address, poolBTokens);
+        .withArgs(
+          poolBAddress,
+          factory.address,
+          poolBTokens,
+          [false, false, false, false, false],
+          [true, true, true, true, true, true, true, true]
+        );
     });
 
     it('cannot register a pool twice', async () => {

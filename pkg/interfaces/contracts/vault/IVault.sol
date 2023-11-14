@@ -10,8 +10,21 @@ import { IAuthorizer } from "./IAuthorizer.sol";
 /// @dev Represents a pool's callbacks.
 struct PoolCallbacks {
     bool shouldCallAfterSwap;
+    bool shouldCallBeforeAddLiquidity;
     bool shouldCallAfterAddLiquidity;
+    bool shouldCallBeforeRemoveLiquidity;
     bool shouldCallAfterRemoveLiquidity;
+}
+
+struct LiquidityManagement {
+    bool supportsAddLiquidityProportional;
+    bool supportsAddLiquiditySingleTokenExactOut;
+    bool supportsAddLiquidityUnbalanced;
+    bool supportsAddLiquidityCustom;
+    bool supportsRemoveLiquidityProportional;
+    bool supportsRemoveLiquiditySingleTokenExactIn;
+    bool supportsRemoveLiquiditySingleTokenExactOut;
+    bool supportsRemoveLiquidityCustom;
 }
 
 /// @dev Represents a pool's configuration, including callbacks.
@@ -20,6 +33,7 @@ struct PoolConfig {
     bool isPoolInitialized;
     uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
     PoolCallbacks callbacks;
+    LiquidityManagement liquidityManagement;
 }
 
 /**
@@ -84,8 +98,15 @@ interface IVault {
      * @param pool The pool being registered
      * @param factory The factory creating the pool
      * @param tokens The pool's tokens
+     * @param liquidityManagement Supported liquidity management callback flags
      */
-    event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
+    event PoolRegistered(
+        address indexed pool,
+        address indexed factory,
+        IERC20[] tokens,
+        PoolCallbacks callbacks,
+        LiquidityManagement liquidityManagement
+    );
 
     /**
      * @notice A Pool was initialized by calling `initialize`.
@@ -104,11 +125,18 @@ interface IVault {
 
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
+     * @dev This version of the function assumes the default proportional liquidity methods are supported.
      * @param factory The factory address associated with the pool being registered
      * @param tokens An array of token addresses the pool will manage
-     * @param config Config for the pool
+     * @param config Flags indicating which callbacks the pool supports
+     * @param liquidityManagement Liquidity management flags with implemented methods
      */
-    function registerPool(address factory, IERC20[] memory tokens, PoolCallbacks calldata config) external;
+    function registerPool(
+        address factory,
+        IERC20[] memory tokens,
+        PoolCallbacks calldata config,
+        LiquidityManagement calldata liquidityManagement
+    ) external;
 
     /**
      * @notice Initializes a registered pool by adding liquidity; mints BPT tokens for the first time in exchange.
@@ -119,18 +147,17 @@ interface IVault {
      * @param pool Address of the pool to initialize
      * @param to Address that will receive the output BPT
      * @param tokens tokens involved in the liquidity provision
-     * @param maxAmountsIn Maximum amounts of input tokens
+     * @param exactAmountsIn Exact amounts of input tokens
      * @param userData Additional (optional) data for the initialization
-     * @return amountsIn Actual amounts of input tokens
      * @return bptAmountOut Output pool token amount
      */
     function initialize(
         address pool,
         address to,
         IERC20[] memory tokens,
-        uint256[] memory maxAmountsIn,
+        uint256[] memory exactAmountsIn,
         bytes memory userData
-    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+    ) external returns (uint256 bptAmountOut);
 
     /**
      * @notice Checks whether a pool is registered.
@@ -352,6 +379,16 @@ interface IVault {
                                    Add Liquidity
     ***************************************************************************/
 
+    enum AddLiquidityKind {
+        PROPORTIONAL,
+        UNBALANCED,
+        SINGLE_TOKEN_EXACT_OUT,
+        CUSTOM
+    }
+
+    /// @dev Add liquidity kind not supported.
+    error InvalidAddLiquidityKind();
+
     /**
      * @dev The token list passed into an operation does not match the pool tokens in the pool.
      * @param pool Address of the pool
@@ -376,27 +413,36 @@ interface IVault {
      *
      * @param pool Address of the pool
      * @param to  Address of user to mint to
-     * @param assets Assets involved in the liquidity
-     * @param maxAmountsIn Maximum amounts of input assets
-     * @param minBptAmountOut Minimum output pool token amount
+     * @param maxAmountsIn Maximum amounts of input tokens
+     * @param minBptAmountOut Minimum amount of output pool tokens
      * @param kind Add liquidity kind
      * @param userData Additional (optional) user data
      * @return amountsIn Actual amounts of input assets
      * @return bptAmountOut Output pool token amount
+     * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function addLiquidity(
         address pool,
         address to,
-        IERC20[] memory assets,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
-        IBasePool.AddLiquidityKind kind,
+        AddLiquidityKind kind,
         bytes memory userData
-    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
     /***************************************************************************
                                  Remove Liquidity
     ***************************************************************************/
+
+    enum RemoveLiquidityKind {
+        PROPORTIONAL,
+        SINGLE_TOKEN_EXACT_IN,
+        SINGLE_TOKEN_EXACT_OUT,
+        CUSTOM
+    }
+
+    /// @dev Remove liquidity kind not supported.
+    error InvalidRemoveLiquidityKind();
 
     /**
      * @notice Removes liquidity from a pool.
@@ -406,23 +452,38 @@ interface IVault {
      *
      * @param pool Address of the pool
      * @param from Address of user to burn from
-     * @param assets Assets involved in the liquidity removal
-     * @param minAmountsOut Minimum amounts of output assets
-     * @param maxBptAmountIn Input pool token amount
+     * @param maxBptAmountIn Maximum amount of input pool tokens
+     * @param minAmountsOut Minimum amounts of output tokens
      * @param kind Remove liquidity kind
      * @param userData Additional (optional) user data
-     * @return amountsOut Actual amounts of output assets
      * @return bptAmountIn Actual amount of BPT burnt
+     * @return amountsOut Actual amounts of output assets
+     * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function removeLiquidity(
         address pool,
         address from,
-        IERC20[] memory assets,
-        uint256[] memory minAmountsOut,
         uint256 maxBptAmountIn,
-        IBasePool.RemoveLiquidityKind kind,
+        uint256[] memory minAmountsOut,
+        RemoveLiquidityKind kind,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
+    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
+
+    /**
+     * @notice Remove liquidity from a pool specifying exact pool tokens in, with proportional token amounts out.
+     * The request is implemented by the Vault without any interaction with the pool, ensuring that
+     * it works the same for all pools, and cannot be disabled by a new pool type.
+     *
+     * @param pool Address of the pool
+     * @param from Address of user to burn pool tokens from
+     * @param exactBptAmountIn Input pool token amount
+     * @return amountsOut Actual calculated amounts of output tokens
+     */
+    function removeLiquidityRecovery(
+        address pool,
+        address from,
+        uint256 exactBptAmountIn
+    ) external returns (uint256[] memory amountsOut);
 
     /***************************************************************************
                                        Swaps
@@ -645,4 +706,11 @@ interface IVault {
      * deployment. Note that the Pool will automatically unpause after the Buffer Period expires.
      */
     function unpausePool(address pool) external;
+
+    /*******************************************************************************
+                                    Miscellaneous
+    *******************************************************************************/
+
+    /// @dev Optional User Data should be empty in the current add / remove liquidity kind.
+    error UserDataNotSupported();
 }
