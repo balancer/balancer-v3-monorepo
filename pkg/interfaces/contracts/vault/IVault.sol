@@ -172,22 +172,6 @@ interface IVault {
     function getPoolTokens(address pool) external view returns (IERC20[] memory);
 
     /**
-     * @notice Gets the balances of a pool, scaled in the specified direction.
-     * @dev We need to specify the rounding direction, since the Vault cannot know how the balances will be used.
-     * @param pool Address of the pool
-     * @return scaled18Balances Corresponding scaled up balances of the tokens, rounded up
-     */
-    function getScaled18PoolBalancesRoundUp(address pool) external view returns (uint256[] memory);
-
-    /**
-     * @notice Gets the balances of a pool, scaled in the specified direction.
-     * @dev We need to specify the rounding direction, since the Vault cannot know how the balances will be used.
-     * @param pool Address of the pool
-     * @return scaled18Balances Corresponding scaled up balances of the tokens, rounded down
-     */
-    function getScaled18PoolBalancesRoundDown(address pool) external view returns (uint256[] memory);
-
-    /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
      * @dev TODO Add rates when we have them.
      * @return tokens Tokens registered to the pool

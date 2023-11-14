@@ -624,20 +624,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     }
 
     /// @inheritdoc IVault
-    function getScaled18PoolBalancesRoundUp(
-        address pool
-    ) external view withRegisteredPool(pool) returns (uint256[] memory) {
-        return _getScaled18PoolBalances(pool, true);
-    }
-
-    /// @inheritdoc IVault
-    function getScaled18PoolBalancesRoundDown(
-        address pool
-    ) external view withRegisteredPool(pool) returns (uint256[] memory) {
-        return _getScaled18PoolBalances(pool, false);
-    }
-
-    /// @inheritdoc IVault
     function getPoolTokenInfo(
         address pool
     )

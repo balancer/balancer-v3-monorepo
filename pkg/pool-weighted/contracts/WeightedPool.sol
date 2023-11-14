@@ -4,7 +4,10 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+// solhint-disable-next-line max-line-length
+import { IVault, PoolCallbacks, LiquidityManagement, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IVault, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BasePoolMath } from "@balancer-labs/v3-pool-utils/contracts/lib/BasePoolMath.sol";
@@ -13,13 +16,12 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-
-import { IVault, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 
 /// @notice Basic Weighted Pool with immutable weights.
 contract WeightedPool is BasePool {
     using FixedPoint for uint256;
+    using ScalingHelpers for *;
 
     uint256 private immutable _totalTokens;
 
@@ -149,10 +151,15 @@ contract WeightedPool is BasePool {
      * @return The current value of the invariant
      */
     function getInvariant() public view returns (uint256) {
-        uint256[] memory balances = _vault.getScaled18PoolBalancesRoundDown(address(this));
+        PoolConfig memory poolConfig = _vault.getPoolConfig(address(this));
+        // Balances are retrieve raw, and then scaled up below.
+        (, uint256[] memory scaled18Balances, ) = _vault.getPoolTokenInfo(address(this));
+        uint256[] memory scalingFactors = PoolConfigLib.getScalingFactors(poolConfig, scaled18Balances.length);
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
-        return WeightedMath.calculateInvariant(normalizedWeights, balances);
+        scaled18Balances.toScaled18RoundDownArray(scalingFactors);
+
+        return WeightedMath.calculateInvariant(normalizedWeights, scaled18Balances);
     }
 
     /**
