@@ -44,10 +44,10 @@ contract PoolMock is BasePool {
     }
 
     function onInitialize(
-        uint256[] memory exactAmountsIn,
+        uint256[] memory exactScaled18AmountsIn,
         bytes memory
     ) external view onlyVault returns (uint256) {
-        return (MIN_INIT_BPT > exactAmountsIn[0] ? MIN_INIT_BPT : exactAmountsIn[0]);
+        return (MIN_INIT_BPT > exactScaled18AmountsIn[0] ? MIN_INIT_BPT : exactScaled18AmountsIn[0]);
     }
 
     function onAfterAddLiquidity(
@@ -83,16 +83,18 @@ contract PoolMock is BasePool {
 
     function onAfterSwap(
         IBasePool.AfterSwapParams calldata,
-        uint256 amountCalculated
+        uint256 scaled18AmountCalculated
     ) external view override returns (bool success) {
-        return amountCalculated > 0 && !failOnCallback;
+        return scaled18AmountCalculated > 0 && !failOnCallback;
     }
 
-    function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
+    function onSwap(
+        IBasePool.SwapParams calldata params
+    ) external view override returns (uint256 scaled18AmountCalculated) {
         return
             params.kind == IVault.SwapKind.GIVEN_IN
-                ? params.amountGiven.mulDown(_multiplier)
-                : params.amountGiven.divDown(_multiplier);
+                ? params.scaled18AmountGiven.mulDown(_multiplier)
+                : params.scaled18AmountGiven.divDown(_multiplier);
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
@@ -101,7 +103,7 @@ contract PoolMock is BasePool {
 
     /// @dev Even though pools do not handle scaling, we still need this for the tests.
     function getScalingFactors() external view returns (uint256[] memory scalingFactors) {
-        (IERC20[] memory tokens, ) = _vault.getPoolTokens(address(this));
+        IERC20[] memory tokens = _vault.getPoolTokens(address(this));
         scalingFactors = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; i++) {

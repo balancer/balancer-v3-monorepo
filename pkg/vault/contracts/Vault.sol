@@ -419,9 +419,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     struct SharedLocals {
         PoolConfig config;
         IERC20[] tokens;
-        uint256[] balances;
+        uint256[] rawBalances;
         uint256[] scalingFactors;
-        uint256[] upscaledBalances;
+        uint256[] scaled18Balances;
         uint256 tokenIndex;
     }
 
@@ -430,12 +430,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         address pool,
         bool addingLiquidity
     ) private view returns (SharedLocals memory vars) {
-        (vars.tokens, vars.balances) = _getPoolTokens(pool);
+        (vars.tokens, vars.rawBalances, vars.scalingFactors) = _getPoolTokenInfo(pool);
         vars.config = _poolConfig[pool].toPoolConfig();
 
         uint256 numTokens = vars.tokens.length;
-        vars.scalingFactors = PoolConfigLib.getScalingFactors(vars.config, numTokens);
-        vars.upscaledBalances = new uint256[](numTokens);
+        vars.scaled18Balances = new uint256[](numTokens);
 
         // Round up when adding liquidity:
         // If proportional, higher balances = higher proportional amountsIn, favoring the pool.
@@ -450,9 +449,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // See `calcBptOutGivenExactTokensIn` and `calcBptInGivenExactTokensOut` WeightedMath tests.
 
         for (uint256 i = 0; i < numTokens; i++) {
-            vars.upscaledBalances[i] = addingLiquidity
-                ? vars.balances[i].upscaleUp(vars.scalingFactors[i])
-                : vars.balances[i].upscaleDown(vars.scalingFactors[i]);
+            vars.scaled18Balances[i] = addingLiquidity
+                ? vars.rawBalances[i].toScaled18RoundUp(vars.scalingFactors[i])
+                : vars.rawBalances[i].toScaled18RoundDown(vars.scalingFactors[i]);
         }
     }
 
@@ -460,9 +459,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     struct SwapLocals {
         // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
         PoolConfig config;
-        uint256[] balances;
+        uint256[] rawBalances;
         uint256[] scalingFactors;
-        uint256[] upscaledBalances;
+        uint256[] scaled18Balances;
         uint256 numTokens;
         uint256 indexIn;
         uint256 indexOut;
@@ -477,10 +476,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         vars.numTokens = poolBalances.length();
         vars.config = _poolConfig[params.pool].toPoolConfig();
         vars.scalingFactors = PoolConfigLib.getScalingFactors(vars.config, vars.numTokens);
-        vars.balances = new uint256[](vars.numTokens);
-        vars.upscaledBalances = new uint256[](vars.numTokens);
+        vars.rawBalances = new uint256[](vars.numTokens);
+        vars.scaled18Balances = new uint256[](vars.numTokens);
         for (uint256 i = 0; i < vars.numTokens; i++) {
-            vars.balances[i] = poolBalances.unchecked_valueAt(i);
+            vars.rawBalances[i] = poolBalances.unchecked_valueAt(i);
             // Rounding down is legacy behavior, and seems the right direction generally, as described below.
             // However, likely because of the non-linearity introduced by power functions, the calculation
             // error for very small values is greater than the rounding correction, so it is possible that
@@ -490,7 +489,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             // In the GivenIn case, lower balances cause `calcOutGivenIn` to calculate a lower amountOut.
             // In the GivenOut case, lower balances cause `calcInGivenOut` to calculate a higher amountIn.
             // See `calcOutGivenIn` and `calcInGivenOut` WeightedMath tests.
-            vars.upscaledBalances[i] = poolBalances.unchecked_valueAt(i).upscaleDown(vars.scalingFactors[i]);
+            vars.scaled18Balances[i] = poolBalances.unchecked_valueAt(i).toScaled18RoundDown(vars.scalingFactors[i]);
         }
 
         // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value for non-existence.
@@ -537,7 +536,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         withInitializedPool(params.pool)
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
     {
-        if (params.amountGiven == 0) {
+        if (params.rawAmountGiven == 0) {
             revert AmountGivenZero();
         }
 
@@ -549,18 +548,18 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
         // If the amountGiven is entering the pool math (GivenIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
-        uint256 upscaledAmountGiven = params.kind == SwapKind.GIVEN_IN
-            ? params.amountGiven.upscaleDown(vars.scalingFactors[vars.indexIn])
-            : params.amountGiven.upscaleUp(vars.scalingFactors[vars.indexOut]);
+        uint256 scaled18AmountGiven = params.kind == SwapKind.GIVEN_IN
+            ? params.rawAmountGiven.toScaled18RoundDown(vars.scalingFactors[vars.indexIn])
+            : params.rawAmountGiven.toScaled18RoundUp(vars.scalingFactors[vars.indexOut]);
 
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
-        uint256 upscaledAmountCalculated = IBasePool(params.pool).onSwap(
+        uint256 scaled18AmountCalculated = IBasePool(params.pool).onSwap(
             IBasePool.SwapParams({
                 kind: params.kind,
                 tokenIn: params.tokenIn,
                 tokenOut: params.tokenOut,
-                amountGiven: upscaledAmountGiven,
-                balances: vars.upscaledBalances,
+                scaled18AmountGiven: scaled18AmountGiven,
+                scaled18Balances: vars.scaled18Balances,
                 indexIn: vars.indexIn,
                 indexOut: vars.indexOut,
                 sender: msg.sender,
@@ -571,12 +570,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // For `GivenIn` the amount calculated is leaving the Vault, so we round down.
         // Round up when entering the Vault on `GivenOut`.
         amountCalculated = params.kind == SwapKind.GIVEN_IN
-            ? upscaledAmountCalculated.downscaleDown(vars.scalingFactors[vars.indexOut])
-            : upscaledAmountCalculated.downscaleUp(vars.scalingFactors[vars.indexIn]);
+            ? scaled18AmountCalculated.toRawRoundDown(vars.scalingFactors[vars.indexOut])
+            : scaled18AmountCalculated.toRawRoundUp(vars.scalingFactors[vars.indexIn]);
 
         (amountIn, amountOut) = params.kind == SwapKind.GIVEN_IN
-            ? (params.amountGiven, amountCalculated)
-            : (amountCalculated, params.amountGiven);
+            ? (params.rawAmountGiven, amountCalculated)
+            : (amountCalculated, params.rawAmountGiven);
 
         // Use `unchecked_setAt` to save storage reads.
         poolBalances.unchecked_setAt(vars.indexIn, vars.tokenInBalance + amountIn);
@@ -588,9 +587,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         _supplyCredit(params.tokenOut, amountOut, msg.sender);
 
         if (vars.config.callbacks.shouldCallAfterSwap) {
-            (uint256 upscaledAmountIn, uint256 upscaledAmountOut) = params.kind == SwapKind.GIVEN_IN
-                ? (upscaledAmountGiven, upscaledAmountCalculated)
-                : (upscaledAmountCalculated, upscaledAmountGiven);
+            (uint256 scaled18AmountIn, uint256 scaled18AmountOut) = params.kind == SwapKind.GIVEN_IN
+                ? (scaled18AmountGiven, scaled18AmountCalculated)
+                : (scaled18AmountCalculated, scaled18AmountGiven);
 
             // if callback is enabled, then update balances
             if (
@@ -599,14 +598,14 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                         kind: params.kind,
                         tokenIn: params.tokenIn,
                         tokenOut: params.tokenOut,
-                        amountIn: upscaledAmountIn,
-                        amountOut: upscaledAmountOut,
-                        tokenInBalance: vars.upscaledBalances[vars.indexIn] + upscaledAmountIn,
-                        tokenOutBalance: vars.upscaledBalances[vars.indexOut] - upscaledAmountOut,
+                        scaled18AmountIn: scaled18AmountIn,
+                        scaled18AmountOut: scaled18AmountOut,
+                        scaled18TokenInBalance: vars.scaled18Balances[vars.indexIn] + scaled18AmountIn,
+                        scaled18TokenOutBalance: vars.scaled18Balances[vars.indexOut] - scaled18AmountOut,
                         sender: msg.sender,
                         userData: params.userData
                     }),
-                    amountCalculated
+                    scaled18AmountCalculated
                 ) == false
             ) {
                 revert CallbackFailed();
@@ -646,10 +645,20 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     }
 
     /// @inheritdoc IVault
-    function getPoolTokens(
-        address pool
-    ) external view withRegisteredPool(pool) returns (IERC20[] memory tokens, uint256[] memory balances) {
+    function getPoolTokens(address pool) external view withRegisteredPool(pool) returns (IERC20[] memory) {
         return _getPoolTokens(pool);
+    }
+
+    /// @inheritdoc IVault
+    function getPoolTokenInfo(
+        address pool
+    )
+        external
+        view
+        withRegisteredPool(pool)
+        returns (IERC20[] memory tokens, uint256[] memory rawBalances, uint256[] memory scalingFactors)
+    {
+        return _getPoolTokenInfo(pool);
     }
 
     /// @dev Reverts unless `pool` corresponds to a registered Pool.
@@ -762,21 +771,75 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      *
      * @param pool The address of the pool for which tokens and balances are to be fetched.
      * @return tokens An array of token addresses.
-     * @return balances An array of corresponding token balances.
      */
-    function _getPoolTokens(address pool) internal view returns (IERC20[] memory tokens, uint256[] memory balances) {
+    function _getPoolTokens(address pool) internal view returns (IERC20[] memory tokens) {
         // Retrieve the mapping of tokens and their balances for the specified pool.
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
 
-        // Initialize arrays to store tokens and their balances based on the number of tokens in the pool.
+        // Initialize arrays to store tokens based on the number of tokens in the pool.
         tokens = new IERC20[](poolTokenBalances.length());
-        balances = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
-            (tokens[i], balances[i]) = poolTokenBalances.unchecked_at(i);
+            (tokens[i], ) = poolTokenBalances.unchecked_at(i);
+        }
+    }
+
+    /**
+     * @notice Fetches the scaled up balances for a given pool.
+     * @dev Utilizes an enumerable map to obtain pool token balances.
+     * The function is structured to minimize storage reads by leveraging the `unchecked_at` method.
+     *
+     * @param pool The address of the pool
+     * @return scaled18Balances An array of token balances, scaled up and rounded as directed
+     */
+    function _getScaled18PoolBalances(
+        address pool,
+        bool roundUp
+    ) internal view returns (uint256[] memory scaled18Balances) {
+        // Retrieve the mapping of tokens and their balances for the specified pool.
+        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+        uint256 numTokens = poolTokenBalances.length();
+
+        uint256[] memory scalingFactors = PoolConfigLib.getScalingFactors(_poolConfig[pool].toPoolConfig(), numTokens);
+
+        // Initialize array to store balances based on the number of tokens in the pool.
+        // Will be read raw, then upscaled and rounded as directed.
+        scaled18Balances = new uint256[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; ++i) {
+            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
+            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
+            // storage reads.
+            (, scaled18Balances[i]) = poolTokenBalances.unchecked_at(i);
+        }
+
+        roundUp
+            ? scaled18Balances.toScaled18RoundUpArray(scalingFactors)
+            : scaled18Balances.toScaled18RoundDownArray(scalingFactors);
+    }
+
+    function _getPoolTokenInfo(
+        address pool
+    ) internal view returns (IERC20[] memory tokens, uint256[] memory rawBalances, uint256[] memory scalingFactors) {
+        // Retrieve the mapping of tokens and their balances for the specified pool.
+        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+        uint256 numTokens = poolTokenBalances.length();
+
+        scalingFactors = PoolConfigLib.getScalingFactors(_poolConfig[pool].toPoolConfig(), numTokens);
+
+        // Initialize arrays to store tokens and balances based on the number of tokens in the pool.
+        // Will be read raw, then upscaled and rounded as directed.
+        tokens = new IERC20[](numTokens);
+        rawBalances = new uint256[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; ++i) {
+            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
+            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
+            // storage reads.
+            (tokens[i], rawBalances[i]) = poolTokenBalances.unchecked_at(i);
         }
     }
 
@@ -824,7 +887,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // Finally, call pool hook. Doing this at the end also means we do not need to downscale exact amounts in.
         // Amounts are entering pool math, so round down. A lower invariant after the join means less bptOut,
         // favoring the pool.
-        exactAmountsIn.upscaleDownArray(PoolConfigLib.getScalingFactors(config, tokens.length));
+        exactAmountsIn.toScaled18RoundDownArray(PoolConfigLib.getScalingFactors(config, tokens.length));
 
         bptAmountOut = IBasePool(pool).onInitialize(exactAmountsIn, userData);
 
@@ -862,8 +925,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         SharedLocals memory vars = _populateSharedLiquidityLocals(pool, true);
         InputHelpers.ensureInputLengthMatch(vars.tokens.length, maxAmountsIn.length);
 
-        // Amounts are entering pool math, so round down
-        maxAmountsIn.upscaleDownArray(vars.scalingFactors);
+        // Amounts are entering pool math, so round down.
+        maxAmountsIn.toScaled18RoundDownArray(vars.scalingFactors);
 
         if (vars.config.callbacks.shouldCallBeforeAddLiquidity) {
             // TODO: check if `before` needs kind.
@@ -872,7 +935,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                     to,
                     maxAmountsIn,
                     minBptAmountOut,
-                    vars.upscaledBalances,
+                    vars.scaled18Balances,
                     userData
                 ) == false
             ) {
@@ -882,15 +945,14 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             // The callback might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (adding liquidity, so round up) again.
-            (, vars.upscaledBalances) = _getPoolTokens(pool);
-            vars.upscaledBalances.upscaleUpArray(vars.scalingFactors);
+            vars.scaled18Balances = _getScaled18PoolBalances(pool, true);
         }
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked
         // its final balances are computed
         // This function is non-reentrant, as it performs the accounting updates.
-        uint256[] memory upscaledAmountsIn;
-        (amountsIn, upscaledAmountsIn, bptAmountOut, returnData) = _addLiquidity(
+        uint256[] memory scaled18AmountsIn;
+        (amountsIn, scaled18AmountsIn, bptAmountOut, returnData) = _addLiquidity(
             vars,
             pool,
             to,
@@ -904,9 +966,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             if (
                 IBasePool(pool).onAfterAddLiquidity(
                     to,
-                    upscaledAmountsIn,
+                    scaled18AmountsIn,
                     bptAmountOut,
-                    vars.upscaledBalances,
+                    vars.scaled18Balances,
                     userData
                 ) == false
             ) {
@@ -939,7 +1001,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         nonReentrant
         returns (
             uint256[] memory amountsIn,
-            uint256[] memory upscaledAmountsIn,
+            uint256[] memory scaled18AmountsIn,
             uint256 bptAmountOut,
             bytes memory returnData
         )
@@ -948,37 +1010,37 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             _poolConfig[pool].requireSupportsAddLiquidityProportional();
 
             bptAmountOut = minBptAmountOut;
-            upscaledAmountsIn = BasePoolMath.computeProportionalAmountsIn(
-                vars.upscaledBalances,
+            scaled18AmountsIn = BasePoolMath.computeProportionalAmountsIn(
+                vars.scaled18Balances,
                 _totalSupply(pool),
                 bptAmountOut
             );
         } else if (kind == AddLiquidityKind.UNBALANCED) {
             _poolConfig[pool].requireSupportsAddLiquidityUnbalanced();
 
-            upscaledAmountsIn = upscaledMaxAmountsIn;
-            bptAmountOut = IBasePool(pool).onAddLiquidityUnbalanced(to, upscaledAmountsIn, vars.upscaledBalances);
+            scaled18AmountsIn = upscaledMaxAmountsIn;
+            bptAmountOut = IBasePool(pool).onAddLiquidityUnbalanced(to, scaled18AmountsIn, vars.scaled18Balances);
         } else if (kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             _poolConfig[pool].requireSupportsAddLiquiditySingleTokenExactOut();
 
             vars.tokenIndex = InputHelpers.getSingleInputIndex(upscaledMaxAmountsIn);
             bptAmountOut = minBptAmountOut;
 
-            upscaledAmountsIn = upscaledMaxAmountsIn;
-            upscaledAmountsIn[vars.tokenIndex] = IBasePool(pool).onAddLiquiditySingleTokenExactOut(
+            scaled18AmountsIn = upscaledMaxAmountsIn;
+            scaled18AmountsIn[vars.tokenIndex] = IBasePool(pool).onAddLiquiditySingleTokenExactOut(
                 to,
                 vars.tokenIndex,
                 bptAmountOut,
-                vars.upscaledBalances
+                vars.scaled18Balances
             );
         } else if (kind == AddLiquidityKind.CUSTOM) {
             _poolConfig[pool].requireSupportsAddLiquidityCustom();
 
-            (upscaledAmountsIn, bptAmountOut, returnData) = IBasePool(pool).onAddLiquidityCustom(
+            (scaled18AmountsIn, bptAmountOut, returnData) = IBasePool(pool).onAddLiquidityCustom(
                 to,
                 upscaledMaxAmountsIn,
                 minBptAmountOut,
-                vars.upscaledBalances,
+                vars.scaled18Balances,
                 userData
             );
         } else {
@@ -991,21 +1053,21 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         for (uint256 i = 0; i < numTokens; ++i) {
             // amountsIn are amounts entering the Pool, so we round up.
             // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` callback
-            uint256 amountIn = upscaledAmountsIn[i].downscaleUp(vars.scalingFactors[i]);
+            uint256 amountIn = scaled18AmountsIn[i].toRawRoundUp(vars.scalingFactors[i]);
 
             // Debit of token[i] for amountIn
             _takeDebt(vars.tokens[i], amountIn, msg.sender);
 
             // We need regular balances to complete the accounting, and the upscaled balances
             // to use in the `after` callback later on.
-            vars.balances[i] += amountIn;
-            vars.upscaledBalances[i] += upscaledAmountsIn[i];
+            vars.rawBalances[i] += amountIn;
+            vars.scaled18Balances[i] += scaled18AmountsIn[i];
 
             amountsIn[i] = amountIn;
         }
 
         // Store the new pool balances.
-        _setPoolBalances(pool, vars.balances);
+        _setPoolBalances(pool, vars.rawBalances);
 
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
@@ -1033,7 +1095,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         InputHelpers.ensureInputLengthMatch(vars.tokens.length, minAmountsOut.length);
 
         // Amounts are entering pool math; higher amounts would burn more BPT, so round up to favor the pool.
-        minAmountsOut.upscaleUpArray(vars.scalingFactors);
+        minAmountsOut.toScaled18RoundUpArray(vars.scalingFactors);
 
         if (vars.config.callbacks.shouldCallBeforeRemoveLiquidity) {
             // TODO: check if `before` callback needs kind.
@@ -1042,7 +1104,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                     from,
                     maxBptAmountIn,
                     minAmountsOut,
-                    vars.upscaledBalances,
+                    vars.scaled18Balances,
                     userData
                 ) == false
             ) {
@@ -1051,8 +1113,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             // The callback might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (removing liquidity, so round down) again.
-            (, vars.upscaledBalances) = _getPoolTokens(pool);
-            vars.upscaledBalances.upscaleDownArray(vars.scalingFactors);
+            vars.scaled18Balances = _getScaled18PoolBalances(pool, false);
         }
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked,
@@ -1075,7 +1136,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                     from,
                     bptAmountIn,
                     upscaledAmountsOut,
-                    vars.upscaledBalances,
+                    vars.scaled18Balances,
                     userData
                 ) == false
             ) {
@@ -1099,7 +1160,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         SharedLocals memory vars = _populateSharedLiquidityLocals(pool, false);
 
         uint256[] memory upscaledAmountsOut = BasePoolMath.computeProportionalAmountsOut(
-            vars.upscaledBalances,
+            vars.scaled18Balances,
             _totalSupply(pool),
             exactBptAmountIn
         );
@@ -1148,7 +1209,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
             bptAmountIn = maxBptAmountIn;
             upscaledAmountsOut = BasePoolMath.computeProportionalAmountsOut(
-                vars.upscaledBalances,
+                vars.scaled18Balances,
                 _totalSupply(pool),
                 bptAmountIn
             );
@@ -1163,7 +1224,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 from,
                 vars.tokenIndex,
                 bptAmountIn,
-                vars.upscaledBalances
+                vars.scaled18Balances
             );
         } else if (kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             _poolConfig[pool].requireSupportsRemoveLiquiditySingleTokenExactOut();
@@ -1175,7 +1236,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 from,
                 vars.tokenIndex,
                 upscaledAmountsOut[vars.tokenIndex],
-                vars.upscaledBalances
+                vars.scaled18Balances
             );
         } else if (kind == RemoveLiquidityKind.CUSTOM) {
             _poolConfig[pool].requireSupportsRemoveLiquidityCustom();
@@ -1184,7 +1245,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 from,
                 maxBptAmountIn,
                 upscaledMinAmountsOut,
-                vars.upscaledBalances,
+                vars.scaled18Balances,
                 userData
             );
         } else {
@@ -1211,7 +1272,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         address from,
         IERC20[] memory tokens,
         uint256 bptAmountIn,
-        uint256[] memory upscaledAmountsOut
+        uint256[] memory scaled18AmountsOut
     ) internal returns (uint256[] memory amountsOut) {
         uint256 numTokens = tokens.length;
         amountsOut = new uint256[](numTokens);
@@ -1219,8 +1280,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         for (uint256 i = 0; i < numTokens; ++i) {
             // amountsOut are amounts exiting the Pool, so we round down.
             // Need amountsOut scaled for the `onAfterRemoveLiquidity` callback,
-            // so downscale each amount individually here to compute unscaled `finalBalances`.
-            uint256 amountOut = upscaledAmountsOut[i].downscaleDown(vars.scalingFactors[i]);
+            // so convert each amount individually here to raw decimals to compute unscaled `finalBalances`.
+            uint256 amountOut = scaled18AmountsOut[i].toRawRoundDown(vars.scalingFactors[i]);
 
             // Credit token[i] for amountIn
             _supplyCredit(tokens[i], amountOut, msg.sender);
@@ -1228,13 +1289,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
             // We need regular balances to complete the accounting, and the upscaled balances
             // to use in the `after` callback later on.
-            vars.balances[i] -= amountOut;
-            vars.upscaledBalances[i] -= upscaledAmountsOut[i];
+            vars.rawBalances[i] -= amountOut;
+            vars.scaled18Balances[i] -= scaled18AmountsOut[i];
             amountsOut[i] = amountOut;
         }
 
         // Store the new pool balances.
-        _setPoolBalances(pool, vars.balances);
+        _setPoolBalances(pool, vars.rawBalances);
 
         // Trusted routers use Vault's allowances, which are infinite anyways for pool tokens.
         if (!_isTrustedRouter(msg.sender)) {
@@ -1282,7 +1343,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         address pool,
         IERC20[] memory expectedTokens
     ) private view returns (uint256[] memory) {
-        (IERC20[] memory actualTokens, uint256[] memory balances) = _getPoolTokens(pool);
+        (IERC20[] memory actualTokens, uint256[] memory rawBalances, ) = _getPoolTokenInfo(pool);
         InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
 
         for (uint256 i = 0; i < actualTokens.length; ++i) {
@@ -1291,7 +1352,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             }
         }
 
-        return balances;
+        return rawBalances;
     }
 
     function _onlyTrustedRouter(address sender) internal pure {

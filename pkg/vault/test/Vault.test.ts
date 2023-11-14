@@ -93,7 +93,7 @@ describe('Vault', function () {
       expect(await vault.isRegisteredPool(poolAAddress)).to.be.true;
       expect(await vault.isRegisteredPool(poolBAddress)).to.be.false;
 
-      const { tokens, balances } = await vault.getPoolTokens(poolAAddress);
+      const [tokens, balances] = await vault.getPoolTokenInfo(poolAAddress);
       expect(tokens).to.deep.equal(poolATokens);
       expect(balances).to.deep.equal(Array(tokens.length).fill(0));
 
