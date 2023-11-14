@@ -62,7 +62,7 @@ interface IBasePool {
     /**
      * @notice Add liquidity to the pool specifying exact token amounts in.
      * @param sender Address of the sender
-     * @param scaled18ExactAmountsIn Exact amounts of tokens to be added, in the same order as the tokens registered in the pool
+     * @param scaled18ExactAmountsIn Exact tokenIn amounts, in the same order as the tokens registered in the pool
      * @param scaled18Balances Current pool balances, in the same order as the tokens registered in the pool
      * @return bptAmountOut Amount of pool tokens minted in exchange for the added liquidity
      */
@@ -91,11 +91,11 @@ interface IBasePool {
     /**
      * @notice Add liquidity to the pool with a custom handler.
      * @param sender Address of the sender
-     * @param scaled18MaxAmountsIn Maximum amounts of input tokens, in the same order as the tokens registered in the pool
+     * @param scaled18MaxAmountsIn Maximum input amounts, in the same order as the tokens registered in the pool
      * @param minBptAmountOut Minimum amount of output pool tokens
      * @param scaled18Balances Current pool balances, in the same order as the tokens registered in the pool
      * @param userData Arbitrary data with the encoded request
-     * @return scaled18AmountsIn Amount of tokens required as input, in the same order as the tokens registered in the pool
+     * @return scaled18AmountsIn Input token amounts, in the same order as the tokens registered in the pool
      * @return bptAmountOut Calculated pool token amount to receive
      * @return returnData Arbitrary data with encoded response from the pool
      */
@@ -132,7 +132,7 @@ interface IBasePool {
      * @notice Optional callback to be executed before `onRemoveLiquidity...` callbacks are executed.
      * @param sender Address of the sender
      * @param maxBptAmountIn Maximum amount of input pool tokens
-     * @param scaled18MinAmountsOut Minimum amounts of output tokens, in the same order as the tokens registered in the pool
+     * @param scaled18MinAmountsOut Minimum output amounts, in the same order as the tokens registered in the pool
      * @param scaled18Balances Current pool balances, in the same order as the tokens registered in the pool
      * @param userData Optional, arbitrary data with the encoded request
      * @return success True if the pool wishes to proceed with settlement
@@ -181,7 +181,7 @@ interface IBasePool {
      * @notice Remove liquidity from the pool with a custom handler.
      * @param sender Address of the sender
      * @param maxBptAmountIn Maximum amount of input pool tokens
-     * @param scaled18MinAmountsOut Minimum amounts of output tokens, in the same order as the tokens registered in the pool
+     * @param scaled18MinAmountsOut Minimum output amounts, in the same order as the tokens registered in the pool
      * @param scaled18Balances Current pool balances, in the same order as the tokens registered in the pool
      * @param userData Arbitrary data with the encoded request
      * @return bptAmountIn Calculated pool token amount to burn
