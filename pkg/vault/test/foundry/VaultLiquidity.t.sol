@@ -399,12 +399,28 @@ contract VaultLiquidityTest is Test {
         uint256 bptAmountOut
     ) internal {
         // Assets are transferred from the user to the vault
-        assertEq(balancesAfter.userTokens[0], balancesBefore.userTokens[0] - amountsIn[0], "Add - User balance: token 0");
-        assertEq(balancesAfter.userTokens[1], balancesBefore.userTokens[1] - amountsIn[1], "Add - User balance: token 1");
+        assertEq(
+            balancesAfter.userTokens[0],
+            balancesBefore.userTokens[0] - amountsIn[0],
+            "Add - User balance: token 0"
+        );
+        assertEq(
+            balancesAfter.userTokens[1],
+            balancesBefore.userTokens[1] - amountsIn[1],
+            "Add - User balance: token 1"
+        );
 
         // Assets are now in the vault / pool
-        assertEq(balancesAfter.poolTokens[0], balancesBefore.poolTokens[0] + amountsIn[0], "Add - Pool balance: token 0");
-        assertEq(balancesAfter.poolTokens[1], balancesBefore.poolTokens[1] + amountsIn[1], "Add - Pool balance: token 1");
+        assertEq(
+            balancesAfter.poolTokens[0],
+            balancesBefore.poolTokens[0] + amountsIn[0],
+            "Add - Pool balance: token 0"
+        );
+        assertEq(
+            balancesAfter.poolTokens[1],
+            balancesBefore.poolTokens[1] + amountsIn[1],
+            "Add - Pool balance: token 1"
+        );
 
         // User now has BPT
         assertEq(balancesBefore.userBpt, 0, "Add - User BPT balance before");
@@ -418,12 +434,28 @@ contract VaultLiquidityTest is Test {
         uint256[] memory amountsOut
     ) internal {
         // Assets are transferred back to user
-        assertEq(balancesAfter.userTokens[0], balancesBefore.userTokens[0] + amountsOut[0], "Remove - User balance: token 0");
-        assertEq(balancesAfter.userTokens[1], balancesBefore.userTokens[1] + amountsOut[1], "Remove - User balance: token 1");
+        assertEq(
+            balancesAfter.userTokens[0],
+            balancesBefore.userTokens[0] + amountsOut[0],
+            "Remove - User balance: token 0"
+        );
+        assertEq(
+            balancesAfter.userTokens[1],
+            balancesBefore.userTokens[1] + amountsOut[1],
+            "Remove - User balance: token 1"
+        );
 
         // Assets are no longer in the vault / pool
-        assertEq(balancesAfter.poolTokens[0], balancesBefore.poolTokens[0] - amountsOut[0], "Remove - Pool balance: token 0");
-        assertEq(balancesAfter.poolTokens[1], balancesBefore.poolTokens[1] - amountsOut[1], "Remove - Pool balance: token 1");
+        assertEq(
+            balancesAfter.poolTokens[0],
+            balancesBefore.poolTokens[0] - amountsOut[0],
+            "Remove - Pool balance: token 0"
+        );
+        assertEq(
+            balancesAfter.poolTokens[1],
+            balancesBefore.poolTokens[1] - amountsOut[1],
+            "Remove - Pool balance: token 1"
+        );
 
         // User has burnt the correct amount of BPT
         assertEq(balancesBefore.userBpt, bptAmountIn, "Remove - User BPT balance before");

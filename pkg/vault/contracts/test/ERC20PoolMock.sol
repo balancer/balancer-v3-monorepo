@@ -47,10 +47,7 @@ contract ERC20PoolMock is BasePool {
         _numTokens = tokens.length;
     }
 
-    function onInitialize(
-        uint256[] memory exactAmountsIn,
-        bytes memory
-    ) external pure override returns (uint256) {
+    function onInitialize(uint256[] memory exactAmountsIn, bytes memory) external pure override returns (uint256) {
         return (MIN_INIT_BPT > exactAmountsIn[0] ? MIN_INIT_BPT : exactAmountsIn[0]);
     }
 

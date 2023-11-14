@@ -1388,8 +1388,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
      * @dev This is a permissioned function, and disabled if the Vault is paused. The swap fee must be <=
      * MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
      */
-    function setStaticSwapFeePercentage(address pool, uint24 swapFeePercentage)
-    external authenticate whenNotPaused withRegisteredPool(pool) {
+    function setStaticSwapFeePercentage(
+        address pool,
+        uint24 swapFeePercentage
+    ) external authenticate whenNotPaused withRegisteredPool(pool) {
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 
