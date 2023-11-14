@@ -1149,7 +1149,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
 
     function _setSwapFeePercentage(address pool, uint24 swapFeePercentage) internal virtual {
         if (swapFeePercentage > _MAX_SWAP_FEE_PERCENTAGE) {
-            revert MaxSwapFeePercentage();
+            revert SwapFeePercentageTooHigh();
         }
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
         config.staticSwapFeePercentage = swapFeePercentage;

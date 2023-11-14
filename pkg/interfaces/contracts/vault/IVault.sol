@@ -480,7 +480,7 @@ interface IVault {
     error ProtocolSwapFeePercentageTooHigh();
 
     /// @dev Error raised when the swap fee percentage exceeds the maximum allowed value.
-    error MaxSwapFeePercentage();
+    error SwapFeePercentageTooHigh();
 
     /**
      * @notice Sets a new swap fee percentage for the protocol.
