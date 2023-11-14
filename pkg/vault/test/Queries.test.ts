@@ -28,6 +28,9 @@ describe('Queries', function () {
   let factory: SignerWithAddress;
   let alice: SignerWithAddress;
 
+  const ADD_LIQUIDITY_TEST_KIND = 1; // UNBALANCED
+  const REMOVE_LIQUIDITY_TEST_KIND = 0; // PROPORTIONAL
+
   before('setup signers', async () => {
     zero = new VoidSigner('0x0000000000000000000000000000000000000000', ethers.provider);
     [, factory, alice] = await ethers.getSigners();
@@ -59,7 +62,14 @@ describe('Queries', function () {
     sharedBeforeEach('add liquidity', async () => {
       await router
         .connect(alice)
-        .addLiquidity(await pool.getAddress(), [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], DAI_AMOUNT_IN, 0, '0x');
+        .addLiquidity(
+          await pool.getAddress(),
+          [DAI, USDC],
+          [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
+          0,
+          ADD_LIQUIDITY_TEST_KIND,
+          '0x'
+        );
     });
 
     it('queries a swap correctly', async () => {
@@ -81,14 +91,28 @@ describe('Queries', function () {
     it('queries addLiquidity correctly', async () => {
       const { amountsIn, bptAmountOut } = await router
         .connect(zero)
-        .queryAddLiquidity.staticCall(pool, [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], DAI_AMOUNT_IN, 0, '0x');
+        .queryAddLiquidity.staticCall(
+          pool,
+          [DAI, USDC],
+          [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
+          DAI_AMOUNT_IN,
+          ADD_LIQUIDITY_TEST_KIND,
+          '0x'
+        );
       expect(amountsIn).to.be.deep.eq([DAI_AMOUNT_IN, USDC_AMOUNT_IN]);
       expect(bptAmountOut).to.be.eq(DAI_AMOUNT_IN);
     });
 
     it('reverts if not a static call', async () => {
       await expect(
-        router.queryAddLiquidity.staticCall(pool, [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], DAI_AMOUNT_IN, 0, '0x')
+        router.queryAddLiquidity.staticCall(
+          pool,
+          [DAI, USDC],
+          [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
+          DAI_AMOUNT_IN,
+          ADD_LIQUIDITY_TEST_KIND,
+          '0x'
+        )
       ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
     });
   });
@@ -97,15 +121,31 @@ describe('Queries', function () {
     sharedBeforeEach('add liquidity', async () => {
       await router
         .connect(alice)
-        .addLiquidity(await pool.getAddress(), [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], DAI_AMOUNT_IN, 0, '0x');
+        .addLiquidity(
+          await pool.getAddress(),
+          [DAI, USDC],
+          [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
+          DAI_AMOUNT_IN,
+          ADD_LIQUIDITY_TEST_KIND,
+          '0x'
+        );
     });
 
-    it('queries a removeLiquidity correctly', async () => {
+    it('queries removeLiquidity correctly', async () => {
       const { amountsOut, bptAmountIn } = await router
         .connect(zero)
-        .queryRemoveLiquidity.staticCall(pool, [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], DAI_AMOUNT_IN, 0, '0x');
-      expect(amountsOut).to.be.deep.eq([DAI_AMOUNT_IN, USDC_AMOUNT_IN]);
-      expect(bptAmountIn).to.be.eq(DAI_AMOUNT_IN);
+        .queryRemoveLiquidity.staticCall(
+          pool,
+          [DAI, USDC],
+          DAI_AMOUNT_IN,
+          [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
+          REMOVE_LIQUIDITY_TEST_KIND,
+          '0x'
+        );
+
+      expect(amountsOut[0]).to.be.almostEqual(DAI_AMOUNT_IN);
+      expect(amountsOut[1]).to.be.almostEqual(USDC_AMOUNT_IN);
+      expect(bptAmountIn).to.be.almostEqual(DAI_AMOUNT_IN);
     });
 
     it('reverts if not a static call', async () => {
@@ -113,9 +153,9 @@ describe('Queries', function () {
         router.queryRemoveLiquidity.staticCall(
           pool,
           [DAI, USDC],
-          [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
           DAI_AMOUNT_IN,
-          0,
+          [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
+          REMOVE_LIQUIDITY_TEST_KIND,
           '0x'
         )
       ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
