@@ -7,7 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
-import { BasePoolMath } from "@balancer-labs/v3-pool-utils/contracts/lib/BasePoolMath.sol";
+import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { BasePool } from "@balancer-labs/v3-pool-utils/contracts/BasePool.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
@@ -162,10 +162,7 @@ contract WeightedPool is BasePool {
     ***************************************************************************/
 
     /// @inheritdoc IBasePool
-    function onInitialize(
-        uint256[] memory exactAmountsIn,
-        bytes memory
-    ) external view onlyVault returns (uint256) {
+    function onInitialize(uint256[] memory exactAmountsIn, bytes memory) external view onlyVault returns (uint256) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
         uint256 invariantAfterJoin = WeightedMath.calculateInvariant(normalizedWeights, exactAmountsIn);
 
@@ -233,13 +230,14 @@ contract WeightedPool is BasePool {
     ) external view override returns (uint256 bptAmountOut) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        return WeightedMath.calcBptOutGivenExactTokensIn(
-            currentBalances,
-            normalizedWeights,
-            exactAmountsIn,
-            totalSupply(),
-            getSwapFeePercentage()
-        );
+        return
+            WeightedMath.calcBptOutGivenExactTokensIn(
+                currentBalances,
+                normalizedWeights,
+                exactAmountsIn,
+                totalSupply(),
+                getSwapFeePercentage()
+            );
     }
 
     function onAddLiquiditySingleTokenExactOut(
@@ -250,13 +248,14 @@ contract WeightedPool is BasePool {
     ) external view override returns (uint256 amountIn) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        return WeightedMath.calcTokenInGivenExactBptOut(
-            currentBalances[tokenInIndex],
-            normalizedWeights[tokenInIndex],
-            exactBptAmountOut,
-            totalSupply(),
-            getSwapFeePercentage()
-        );
+        return
+            WeightedMath.calcTokenInGivenExactBptOut(
+                currentBalances[tokenInIndex],
+                normalizedWeights[tokenInIndex],
+                exactBptAmountOut,
+                totalSupply(),
+                getSwapFeePercentage()
+            );
     }
 
     /***************************************************************************
@@ -271,13 +270,14 @@ contract WeightedPool is BasePool {
     ) external view override returns (uint256 amountOut) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        return WeightedMath.calcTokenOutGivenExactBptIn(
-            currentBalances[tokenOutIndex],
-            normalizedWeights[tokenOutIndex],
-            exactBptAmountIn,
-            totalSupply(),
-            getSwapFeePercentage()
-        );
+        return
+            WeightedMath.calcTokenOutGivenExactBptIn(
+                currentBalances[tokenOutIndex],
+                normalizedWeights[tokenOutIndex],
+                exactBptAmountIn,
+                totalSupply(),
+                getSwapFeePercentage()
+            );
     }
 
     function onRemoveLiquiditySingleTokenExactOut(
@@ -288,12 +288,13 @@ contract WeightedPool is BasePool {
     ) external view override returns (uint256 bptAmountIn) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        return WeightedMath.calcBptInGivenExactTokenOut(
-            currentBalances[tokenOutIndex],
-            normalizedWeights[tokenOutIndex],
-            exactAmountOut,
-            totalSupply(),
-            getSwapFeePercentage()
-        );
+        return
+            WeightedMath.calcBptInGivenExactTokenOut(
+                currentBalances[tokenOutIndex],
+                normalizedWeights[tokenOutIndex],
+                exactAmountOut,
+                totalSupply(),
+                getSwapFeePercentage()
+            );
     }
 }
