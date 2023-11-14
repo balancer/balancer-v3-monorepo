@@ -20,7 +20,6 @@ contract PoolConfigLibTest is Test {
 
     function testUnusedConfigBits() public {
         bytes32 unusedBits = bytes32(uint256(type(uint256).max << (CONFIG_MSB + 1)));
-        console2.logBytes32(unusedBits);
 
         PoolConfig memory config = PoolConfigLib.toPoolConfig(PoolConfigBits.wrap(unusedBits));
         bytes32 configBytes32 = PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config));

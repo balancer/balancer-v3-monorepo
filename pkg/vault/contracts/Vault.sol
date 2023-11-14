@@ -25,14 +25,14 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { ERC20MultiToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20MultiToken.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { FixedPoint, UD1x6 } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 
 contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, TemporarilyPausable {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
-    using FixedPoint for uint256;
+    using FixedPoint for *;
     using AssetHelpers for *;
     using ArrayHelpers for uint256[];
     using Address for *;
@@ -458,7 +458,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         uint256 tokenInBalance;
         uint256 tokenOutBalance;
         uint256 swapFeeAmount;
-        uint256 swapFeePercentage;
+        uint24 swapFeePercentage;
         uint256 protocolSwapFeeAmount;
     }
 
@@ -551,8 +551,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             // Round up to avoid losses during precision loss.
             vars.swapFeeAmount =
                 upscaledAmountGiven.divUp(
-                    vars.swapFeePercentage.complement(PoolConfigLib.SWAP_FEE_PRECISION),
-                    PoolConfigLib.SWAP_FEE_PRECISION
+                    UD1x6.wrap(vars.swapFeePercentage).complement()
                 ) -
                 upscaledAmountGiven;
         }
@@ -576,10 +575,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
         if (vars.swapFeePercentage > 0 && params.kind == IVault.SwapKind.GIVEN_IN) {
             // Swap fee is a percentage of the amountCalculated for the GIVEN_IN swap
             // Round up to avoid losses during precision loss.
-            vars.swapFeeAmount = upscaledAmountCalculated.mulUp(
-                vars.swapFeePercentage,
-                PoolConfigLib.SWAP_FEE_PRECISION
-            );
+            vars.swapFeeAmount = upscaledAmountCalculated.mulUp(UD1x6.wrap(vars.swapFeePercentage));
             // Should substract the fee from the amountCalculated for GIVEN_IN swap
             upscaledAmountCalculated -= vars.swapFeeAmount;
         }
@@ -599,7 +595,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
             // Always charge fees on tokenOut. Store amount in native decimals.
             vars.protocolSwapFeeAmount = vars
                 .swapFeeAmount
-                .mulUp(_protocolSwapFeePercentage, PoolConfigLib.SWAP_FEE_PRECISION)
+                .mulUp(UD1x6.wrap(_protocolSwapFeePercentage))
                 .downscaleDown(vars.scalingFactors[vars.indexOut]);
 
             _protocolSwapFees[params.tokenOut] += vars.protocolSwapFeeAmount;
@@ -644,7 +640,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard, Temp
     }
 
     /// @dev Returns swap fee for the pool.
-    function _getSwapFeePercentage(PoolConfig memory config) internal pure returns (uint256) {
+    function _getSwapFeePercentage(PoolConfig memory config) internal pure returns (uint24) {
         if (config.hasDynamicSwapFee) {
             // TODO: Fetch dynamic swap fee from the pool using callback
             return 0;

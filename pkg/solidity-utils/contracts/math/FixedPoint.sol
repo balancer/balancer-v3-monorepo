@@ -6,12 +6,18 @@ import "./LogExpMath.sol";
 
 /* solhint-disable private-vars-leading-underscore */
 
+// TODO: Use user defined value types for all fixed-point numbers.
+/// @notice The unsigned 1.6-decimal fixed-point number representation, which can have up to 1 digits and up to 6
+/// decimals.
+type UD1x6 is uint24;
+
 library FixedPoint {
     /// @dev Attempted division by zero.
     error ZeroDivision();
 
     // solhint-disable no-inline-assembly
 
+    uint256 internal constant THIRD = 1e6; // 6 decimal places
     uint256 internal constant ONE = 1e18; // 18 decimal places
     uint256 internal constant TWO = 2 * ONE;
     uint256 internal constant FOUR = 4 * ONE;
@@ -27,6 +33,12 @@ library FixedPoint {
         return product / unit;
     }
 
+    // mulDown for 6 decimal precision
+    function mulDown(uint256 a, UD1x6 b) internal pure returns (uint256) {
+        return mulDown(a, UD1x6.unwrap(b), THIRD);
+    }
+
+    // mulDown for 18 decimal precision
     function mulDown(uint256 a, uint256 b) internal pure returns (uint256) {
         return mulDown(a, b, ONE);
     }
@@ -48,6 +60,10 @@ library FixedPoint {
         }
     }
 
+    function mulUp(uint256 a, UD1x6 b) internal pure returns (uint256 result) {
+        return mulUp(a, UD1x6.unwrap(b), THIRD);
+    }
+
     function mulUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
         return mulUp(a, b, ONE);
     }
@@ -58,6 +74,10 @@ library FixedPoint {
 
         // Solidity 0.8 reverts with a "Division by Zero" Panic code (0x12) if b is zero
         return aInflated / b;
+    }
+
+    function divDown(uint256 a, UD1x6 b) internal pure returns (uint256) {
+        return divDown(a, UD1x6.unwrap(b), THIRD);
     }
 
     function divDown(uint256 a, uint256 b) internal pure returns (uint256) {
@@ -84,6 +104,10 @@ library FixedPoint {
         assembly {
             result := mul(iszero(iszero(aInflated)), add(div(sub(aInflated, 1), b), 1))
         }
+    }
+
+    function divUp(uint256 a, UD1x6 b) internal pure returns (uint256 result) {
+        return divUp(a, UD1x6.unwrap(b), THIRD);
     }
 
     function divUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
@@ -146,6 +170,11 @@ library FixedPoint {
         assembly {
             result := mul(lt(x, unit), sub(unit, x))
         }
+    }
+
+    function complement(UD1x6 x) internal pure returns (UD1x6 result) {
+        // downcaust is safe because complement always returns value <= THIRD
+        return UD1x6.wrap(uint24(complement(UD1x6.unwrap(x), THIRD)));
     }
 
     /**
