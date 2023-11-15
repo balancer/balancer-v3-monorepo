@@ -138,6 +138,10 @@ contract VaultSwapTest is Test {
         (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], 0);
         assertEq(balances[1], AMOUNT * 2);
+
+        // vault are adjusted balances
+        assertEq(DAI.balanceOf(address(vault)), 0);
+        assertEq(USDC.balanceOf(address(vault)), 2 * AMOUNT);
     }
 
     function testSwapGivenOut() public {
@@ -163,6 +167,10 @@ contract VaultSwapTest is Test {
         (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], 0);
         assertEq(balances[1], AMOUNT * 2);
+
+        // vault are adjusted balances
+        assertEq(DAI.balanceOf(address(vault)), 0);
+        assertEq(USDC.balanceOf(address(vault)), 2 * AMOUNT);
     }
 
     function testSwapFeeGivenIn() public {
@@ -194,6 +202,10 @@ contract VaultSwapTest is Test {
         (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], SWAP_FEE);
         assertEq(balances[1], 2 * AMOUNT);
+
+        // vault are adjusted balances
+        assertEq(DAI.balanceOf(address(vault)), SWAP_FEE);
+        assertEq(USDC.balanceOf(address(vault)), 2 * AMOUNT);
     }
 
     function testProtocolSwapFeeGivenIn() public {
@@ -229,6 +241,10 @@ contract VaultSwapTest is Test {
 
         // protocol fees are accrued
         assertEq(PROTOCOL_SWAP_FEE, vault.getProtocolSwapFee(address(DAI)));
+
+        // vault are adjusted balances
+        assertEq(DAI.balanceOf(address(vault)), SWAP_FEE);
+        assertEq(USDC.balanceOf(address(vault)), 2 * AMOUNT);
     }
 
     function testSwapFeeGivenOut() public {
@@ -260,6 +276,10 @@ contract VaultSwapTest is Test {
         (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], SWAP_FEE);
         assertEq(balances[1], 2 * AMOUNT);
+
+        // vault are adjusted balances
+        assertEq(DAI.balanceOf(address(vault)), SWAP_FEE);
+        assertEq(USDC.balanceOf(address(vault)), 2 * AMOUNT);
     }
 
     function testProtocolSwapFeeGivenOut() public {
@@ -295,6 +315,10 @@ contract VaultSwapTest is Test {
 
         // protocol fees are accrued
         assertEq(PROTOCOL_SWAP_FEE, vault.getProtocolSwapFee(address(DAI)));
+
+        // vault are adjusted balances
+        assertEq(DAI.balanceOf(address(vault)), SWAP_FEE);
+        assertEq(USDC.balanceOf(address(vault)), 2 * AMOUNT);
     }
 
     function testProtocolSwapFeeAccumulation() public {
@@ -342,6 +366,10 @@ contract VaultSwapTest is Test {
 
         // protocol fees are accrued
         assertEq(PROTOCOL_SWAP_FEE, vault.getProtocolSwapFee(address(DAI)));
+
+        // vault are adjusted balances
+        assertEq(DAI.balanceOf(address(vault)), SWAP_FEE);
+        assertEq(USDC.balanceOf(address(vault)), 2 * AMOUNT);
     }
 
     function testCollectProtocolFees() public {
