@@ -6,11 +6,6 @@ import "./LogExpMath.sol";
 
 /* solhint-disable private-vars-leading-underscore */
 
-// TODO: Use user defined value types for all fixed-point numbers.
-/// @notice The unsigned 1.6-decimal fixed-point number representation, which can have up to 1 digits and up to 6
-/// decimals.
-type UD1x6 is uint24;
-
 library FixedPoint {
     /// @dev Attempted division by zero.
     error ZeroDivision();
