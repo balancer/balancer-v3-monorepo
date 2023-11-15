@@ -85,8 +85,8 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
     function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
         return
             params.kind == IVault.SwapKind.GIVEN_IN
-                ? params.amountGiven.mulDown(_multiplier)
-                : params.amountGiven.divDown(_multiplier);
+                ? params.scaled18AmountGiven.mulDown(_multiplier)
+                : params.scaled18AmountGiven.divDown(_multiplier);
     }
 
     // Liquidity lifecycle callbacks
@@ -145,7 +145,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         uint256,
         uint256[] memory
     ) external view override returns (uint256 amountIn) {
-        (IERC20[] memory tokens, ) = getVault().getPoolTokens(address(this));
+        IERC20[] memory tokens = getVault().getPoolTokens(address(this));
         return tokens[tokenInIndex].balanceOf(sender);
     }
 
@@ -189,7 +189,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         return (maxBptAmountIn, minAmountsOut, userData);
     }
 
-    function getPoolTokens() external view returns (IERC20[] memory tokens, uint256[] memory balances) {
+    function getPoolTokens() external view returns (IERC20[] memory tokens) {
         return getVault().getPoolTokens(address(this));
     }
 }

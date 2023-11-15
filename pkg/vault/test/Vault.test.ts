@@ -91,7 +91,7 @@ describe('Vault', function () {
       expect(await vault.isPoolRegistered(poolA)).to.be.true;
       expect(await vault.isPoolRegistered(poolB)).to.be.false;
 
-      const { tokens, balances } = await vault.getPoolTokens(poolA);
+      const [tokens, balances] = await vault.getPoolTokenInfo(poolA);
       expect(tokens).to.deep.equal(poolATokens);
       expect(balances).to.deep.equal(Array(tokens.length).fill(0));
 
@@ -101,7 +101,7 @@ describe('Vault', function () {
     });
 
     it('pools are initially unpaused', async () => {
-      expect(await vault.poolPaused(poolA)).to.equal(false);
+      expect(await vault.isPoolPaused(poolA)).to.equal(false);
     });
 
     it('registering a pool emits an event', async () => {
@@ -183,8 +183,8 @@ describe('Vault', function () {
       });
     });
 
-    it('Vault is temporarily pausable', async () => {
-      expect(await timedVault.vaultPaused()).to.equal(false);
+    it('is temporarily pausable', async () => {
+      expect(await timedVault.isVaultPaused()).to.equal(false);
 
       const [paused, pauseWindowEndTime, bufferPeriodEndTime] = await timedVault.getVaultPausedState();
 
@@ -193,10 +193,10 @@ describe('Vault', function () {
       expect(bufferPeriodEndTime).to.equal((await fromNow(PAUSE_WINDOW_DURATION)) + bn(BUFFER_PERIOD_DURATION));
 
       await timedVault.manualPauseVault();
-      expect(await timedVault.vaultPaused()).to.be.true;
+      expect(await timedVault.isVaultPaused()).to.be.true;
 
       await timedVault.manualUnpauseVault();
-      expect(await timedVault.vaultPaused()).to.be.false;
+      expect(await timedVault.isVaultPaused()).to.be.false;
     });
 
     it('pausing the Vault emits an event', async () => {
@@ -221,16 +221,16 @@ describe('Vault', function () {
       });
 
       it('Pools are temporarily pausable', async () => {
-        expect(await vault.poolPaused(poolAddress)).to.equal(false);
+        expect(await vault.isPoolPaused(poolAddress)).to.equal(false);
 
-        const paused = await vault.poolPaused(poolAddress);
+        const paused = await vault.isPoolPaused(poolAddress);
         expect(paused).to.be.false;
 
         await vault.manualPausePool(poolAddress);
-        expect(await vault.poolPaused(poolAddress)).to.be.true;
+        expect(await vault.isPoolPaused(poolAddress)).to.be.true;
 
         await vault.manualUnpausePool(poolAddress);
-        expect(await vault.poolPaused(poolAddress)).to.be.false;
+        expect(await vault.isPoolPaused(poolAddress)).to.be.false;
       });
 
       it('pausing a pool emits an event', async () => {

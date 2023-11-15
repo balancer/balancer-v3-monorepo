@@ -86,13 +86,12 @@ describe('WeightedPool', function () {
       });
 
       it('has the correct pool tokens and balances', async () => {
-        const { tokens: tokensFromPool, balances: balancesFromPool } = await pool.getPoolTokens();
+        const tokensFromPool = await pool.getPoolTokens();
         expect(tokensFromPool).to.deep.equal(poolTokens);
-        expect(balancesFromPool).to.deep.equal(INITIAL_BALANCES);
 
-        const { tokens: tokensFromVault, balances: balancesFromVault } = await vault.getPoolTokens(pool);
+        const [tokensFromVault, balancesFromVault] = await vault.getPoolTokenInfo(pool);
         expect(tokensFromVault).to.deep.equal(tokensFromPool);
-        expect(balancesFromVault).to.deep.equal(balancesFromPool);
+        expect(balancesFromVault).to.deep.equal(INITIAL_BALANCES);
       });
 
       it('cannot be initialized twice', async () => {

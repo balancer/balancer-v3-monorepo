@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.4;
 
-import "@balancer-labs/v3-interfaces/contracts/vault/ITemporarilyPausable.sol";
+import "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/ITemporarilyPausable.sol";
 
 /**
  * @dev Base contract for V3 factories to support pause windows for pools based on the factory deployment time.
