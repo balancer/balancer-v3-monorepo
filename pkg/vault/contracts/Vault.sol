@@ -1451,7 +1451,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 revert VaultPaused();
             }
 
-            // The pool can always be unpaused while it's paused.
+            // The Vault can always be unpaused while it's paused.
             // When the buffer period expires, `_isVaultPaused` will return false, so we would be in the outside
             // else clause, where trying to unpause will revert unconditionally.
         } else {
