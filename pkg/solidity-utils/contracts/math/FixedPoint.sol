@@ -26,24 +26,14 @@ library FixedPoint {
     // Minimum base for the power function when the exponent is 'free' (larger than ONE).
     uint256 internal constant MIN_POW_BASE_FREE_EXPONENT = 0.7e18;
 
-    function mulDown(uint256 a, uint256 b, uint256 unit) internal pure returns (uint256) {
+    function mulDown(uint256 a, uint256 b) internal pure returns (uint256) {
         // Multiplication overflow protection is provided by Solidity 0.8.x
         uint256 product = a * b;
 
-        return product / unit;
+        return product / ONE;
     }
 
-    // mulDown for 6 decimal precision
-    function mulDown(uint256 a, UD1x6 b) internal pure returns (uint256) {
-        return mulDown(a, UD1x6.unwrap(b), THIRD);
-    }
-
-    // mulDown for 18 decimal precision
-    function mulDown(uint256 a, uint256 b) internal pure returns (uint256) {
-        return mulDown(a, b, ONE);
-    }
-
-    function mulUp(uint256 a, uint256 b, uint256 unit) internal pure returns (uint256 result) {
+    function mulUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
         // Multiplication overflow protection is provided by Solidity 0.8.x
         uint256 product = a * b;
 
@@ -56,42 +46,26 @@ library FixedPoint {
         // Equivalent to:
         // result = product == 0 ? 0 : ((product - 1) / FixedPoint.ONE) + 1;
         assembly {
-            result := mul(iszero(iszero(product)), add(div(sub(product, 1), unit), 1))
+            result := mul(iszero(iszero(product)), add(div(sub(product, 1), ONE), 1))
         }
     }
 
-    function mulUp(uint256 a, UD1x6 b) internal pure returns (uint256 result) {
-        return mulUp(a, UD1x6.unwrap(b), THIRD);
-    }
-
-    function mulUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
-        return mulUp(a, b, ONE);
-    }
-
-    function divDown(uint256 a, uint256 b, uint256 unit) internal pure returns (uint256) {
+    function divDown(uint256 a, uint256 b) internal pure returns (uint256) {
         // Solidity 0.8 reverts with a Panic code (0x11) if the multiplication overflows.
-        uint256 aInflated = a * unit;
+        uint256 aInflated = a * ONE;
 
         // Solidity 0.8 reverts with a "Division by Zero" Panic code (0x12) if b is zero
         return aInflated / b;
     }
 
-    function divDown(uint256 a, UD1x6 b) internal pure returns (uint256) {
-        return divDown(a, UD1x6.unwrap(b), THIRD);
-    }
-
-    function divDown(uint256 a, uint256 b) internal pure returns (uint256) {
-        return divDown(a, b, ONE);
-    }
-
-    function divUp(uint256 a, uint256 b, uint256 unit) internal pure returns (uint256 result) {
+    function divUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
         // This check is required because Yul's `div` doesn't revert on b==0
         if (b == 0) {
             revert ZeroDivision();
         }
 
         // Multiple overflow protection is done by Solidity 0.8x
-        uint256 aInflated = a * unit;
+        uint256 aInflated = a * ONE;
 
         // The traditional divUp formula is:
         // divUp(x, y) := (x + y - 1) / y
@@ -100,18 +74,10 @@ library FixedPoint {
         // Note that this requires x != 0, if x == 0 then the result is zero
         //
         // Equivalent to:
-        // result = a == 0 ? 0 : (a * unit - 1) / b + 1;
+        // result = a == 0 ? 0 : (a * FixedPoint.ONE - 1) / b + 1;
         assembly {
             result := mul(iszero(iszero(aInflated)), add(div(sub(aInflated, 1), b), 1))
         }
-    }
-
-    function divUp(uint256 a, UD1x6 b) internal pure returns (uint256 result) {
-        return divUp(a, UD1x6.unwrap(b), THIRD);
-    }
-
-    function divUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
-        return divUp(a, b, ONE);
     }
 
     /**
@@ -164,19 +130,6 @@ library FixedPoint {
         }
     }
 
-    function complement(uint256 x, uint256 unit) internal pure returns (uint256 result) {
-        // Equivalent to:
-        // result = (x < unit) ? (unit - x) : 0;
-        assembly {
-            result := mul(lt(x, unit), sub(unit, x))
-        }
-    }
-
-    function complement(UD1x6 x) internal pure returns (UD1x6 result) {
-        // downcaust is safe because complement always returns value <= THIRD
-        return UD1x6.wrap(uint24(complement(UD1x6.unwrap(x), THIRD)));
-    }
-
     /**
      * @dev Returns the complement of a value (1 - x), capped to 0 if x is larger than 1.
      *
@@ -184,6 +137,10 @@ library FixedPoint {
      * prevents intermediate negative values.
      */
     function complement(uint256 x) internal pure returns (uint256 result) {
-        return complement(x, ONE);
+        // Equivalent to:
+        // result = (x < ONE) ? (ONE - x) : 0;
+        assembly {
+            result := mul(lt(x, ONE), sub(ONE, x))
+        }
     }
 }

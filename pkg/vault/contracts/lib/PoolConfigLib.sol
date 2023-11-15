@@ -79,8 +79,8 @@ library PoolConfigLib {
     uint8 private constant _TOKEN_DECIMAL_DIFFS_BITLENGTH = 24;
     uint8 private constant _DECIMAL_DIFF_BITLENGTH = 5;
 
-    // 24 bits represent values up to 2^24 - 1 = 16,777,216 − 1 which should be enough for the swap fee
-    uint8 private constant _STATIC_SWAP_FEE_BITLENGTH = 24;
+    // A fee can never be larger than FixedPoint.ONE, which fits in 60 bits
+    uint8 private constant _STATIC_SWAP_FEE_BITLENGTH = 64;
 
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_REGISTERED_OFFSET);
@@ -94,8 +94,8 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(DYNAMIC_SWAP_FEE_OFFSET);
     }
 
-    function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint24) {
-        return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, _STATIC_SWAP_FEE_BITLENGTH).toUint24();
+    function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint64) {
+        return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, _STATIC_SWAP_FEE_BITLENGTH).toUint64();
     }
 
     function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint24) {
