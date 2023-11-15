@@ -218,11 +218,11 @@ contract VaultSwapTest is Test {
             bytes("")
         );
 
-        // asssets are transferred to/from Bob
-        assertEq(USDC.balanceOf(bob), bobUsdcBeforeSwap - AMOUNT);
+        // asssets are transferred to/from Bob: USDC in, DAI out
         assertEq(DAI.balanceOf(bob), bobDaiBeforeSwap + AMOUNT - SWAP_FEE);
+        assertEq(USDC.balanceOf(bob), bobUsdcBeforeSwap - AMOUNT);
 
-        // assets are adjusted in the pool
+        // assets are adjusted in the pool: DAI out, USDC in
         (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], SWAP_FEE - PROTOCOL_SWAP_FEE);
         assertEq(balances[1], 2 * AMOUNT);
