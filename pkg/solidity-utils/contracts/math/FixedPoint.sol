@@ -12,7 +12,6 @@ library FixedPoint {
 
     // solhint-disable no-inline-assembly
 
-    uint256 internal constant THIRD = 1e6; // 6 decimal places
     uint256 internal constant ONE = 1e18; // 18 decimal places
     uint256 internal constant TWO = 2 * ONE;
     uint256 internal constant FOUR = 4 * ONE;
