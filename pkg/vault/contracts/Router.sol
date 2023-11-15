@@ -94,7 +94,6 @@ contract Router is IRouter, ReentrancyGuard {
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
             }
-
             // transfer tokens from the user to the Vault
             _vault.retrieve(token, params.sender, amountIn);
         }
