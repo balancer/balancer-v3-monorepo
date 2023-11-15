@@ -175,12 +175,20 @@ interface IVault {
     function isPoolInitialized(address pool) external view returns (bool);
 
     /**
-     * @notice Gets tokens and their balances of a pool.
+     * @notice Gets the tokens registered to a pool.
      * @param pool Address of the pool
      * @return tokens List of tokens in the pool
-     * @return balances Corresponding balances of the tokens
      */
-    function getPoolTokens(address pool) external view returns (IERC20[] memory tokens, uint256[] memory balances);
+    function getPoolTokens(address pool) external view returns (IERC20[] memory);
+
+    /**
+     * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
+     * @dev TODO Add rates when we have them.
+     * @return tokens Tokens registered to the pool
+     * @return rawBalances Corresponding raw balances of the tokens
+     * @return scalingFactors Corresponding scalingFactors of the tokens
+     */
+    function getPoolTokenInfo(address pool) external view returns (IERC20[] memory, uint256[] memory, uint256[] memory);
 
     /**
      * @notice Gets the configuration paramters of a pool.
@@ -500,7 +508,7 @@ interface IVault {
      * @param pool The pool with the tokens being swapped
      * @param tokenIn The token entering the Vault (balance increases)
      * @param tokenOut The token leaving the Vault (balance decreases)
-     * @param amountGiven Amount specified for tokenIn or tokenOut (depending on the type of swap)
+     * @param rawAmountGiven Amount specified for tokenIn or tokenOut (depending on the type of swap)
      * @param userData Additional (optional) user data
      */
     struct SwapParams {
@@ -508,7 +516,7 @@ interface IVault {
         address pool;
         IERC20 tokenIn;
         IERC20 tokenOut;
-        uint256 amountGiven;
+        uint256 rawAmountGiven;
         bytes userData;
     }
 
@@ -530,14 +538,15 @@ interface IVault {
 
     /**
      * @notice Swaps tokens based on provided parameters.
+     * @dev All parameters are given in raw token decimal encoding.
      * @param params Parameters for the swap (see above for struct definition)
-     * @return amountCalculated Calculated swap amount
-     * @return amountIn Amount of input tokens for the swap
-     * @return amountOut Amount of output tokens from the swap
+     * @return rawAmountCalculated Calculated swap amount
+     * @return rawAmountIn Amount of input tokens for the swap
+     * @return rawAmountOut Amount of output tokens from the swap
      */
     function swap(
         SwapParams memory params
-    ) external returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut);
+    ) external returns (uint256 rawAmountCalculated, uint256 rawAmountIn, uint256 rawAmountOut);
 
     /*******************************************************************************
                                     Queries
@@ -620,9 +629,6 @@ interface IVault {
     /// @dev Governance tried to pause the Vault after the pause period expired.
     error VaultPauseWindowExpired();
 
-    /// @dev Governance tried to unpause the Vault after the buffer period expired.
-    error VaultBufferPeriodExpired();
-
     /**
      * @dev A user tried to invoke an operation involving a paused Pool.
      * @param pool The paused pool
@@ -642,16 +648,10 @@ interface IVault {
     error PoolPauseWindowExpired(address pool);
 
     /**
-     * @dev Governance tried to unpause a Pool after the buffer period expired.
-     * @param pool The pool
-     */
-    error PoolBufferPeriodExpired(address pool);
-
-    /**
      * @notice Indicates whether the Vault is paused.
      * @return True if the Vault is paused
      */
-    function vaultPaused() external view returns (bool);
+    function isVaultPaused() external view returns (bool);
 
     /**
      * @notice Returns the paused status, and end times of the Vault's pause window and buffer period.
@@ -679,7 +679,7 @@ interface IVault {
      * @param pool The pool to be checked
      * @return True if the pool is paused
      */
-    function poolPaused(address pool) external view returns (bool);
+    function isPoolPaused(address pool) external view returns (bool);
 
     /**
      * @notice Returns the paused status, and end times of the Vault's pause window and buffer period.

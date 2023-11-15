@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.4;
 
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { FixedPoint } from "./FixedPoint.sol";
 
 library BasePoolMath {
     using FixedPoint for uint256;
