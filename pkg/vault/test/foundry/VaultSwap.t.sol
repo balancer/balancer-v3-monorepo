@@ -32,6 +32,7 @@ contract VaultSwapTest is Test {
     ERC20TestToken DAI;
     address alice = vm.addr(1);
     address bob = vm.addr(2);
+    address admin = vm.addr(3);
 
     uint256 constant AMOUNT = 1e3 * 1e18;
     uint256 constant SWAP_FEE = 1e3 * 1e16; // 1%
@@ -74,6 +75,7 @@ contract VaultSwapTest is Test {
 
         vm.label(alice, "alice");
         vm.label(bob, "bob");
+        vm.label(admin, "admin");
         vm.label(address(USDC), "USDC");
         vm.label(address(DAI), "DAI");
     }
@@ -391,16 +393,14 @@ contract VaultSwapTest is Test {
             bytes("")
         );
 
-        uint256 aliceBalanceBefore = USDC.balanceOf(alice);
-
-        authorizer.grantRole(vault.getActionId(IVault.collectProtocolFees.selector), alice);
-        vm.prank(alice);
+        authorizer.grantRole(vault.getActionId(IVault.collectProtocolFees.selector), admin);
+        vm.prank(admin);
         vault.collectProtocolFees([address(DAI)].toMemoryArray().asIERC20());
 
         // protocol fees are zero
         assertEq(0, vault.getProtocolSwapFee(address(DAI)));
 
         // alice received protocol fees
-        assertEq(DAI.balanceOf(alice), aliceBalanceBefore + (PROTOCOL_SWAP_FEE));
+        assertEq(DAI.balanceOf(admin), (PROTOCOL_SWAP_FEE));
     }
 }
