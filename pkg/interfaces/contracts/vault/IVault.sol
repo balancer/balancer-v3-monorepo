@@ -10,8 +10,21 @@ import { IAuthorizer } from "./IAuthorizer.sol";
 /// @dev Represents a pool's callbacks.
 struct PoolCallbacks {
     bool shouldCallAfterSwap;
+    bool shouldCallBeforeAddLiquidity;
     bool shouldCallAfterAddLiquidity;
+    bool shouldCallBeforeRemoveLiquidity;
     bool shouldCallAfterRemoveLiquidity;
+}
+
+struct LiquidityManagement {
+    bool supportsAddLiquidityProportional;
+    bool supportsAddLiquiditySingleTokenExactOut;
+    bool supportsAddLiquidityUnbalanced;
+    bool supportsAddLiquidityCustom;
+    bool supportsRemoveLiquidityProportional;
+    bool supportsRemoveLiquiditySingleTokenExactIn;
+    bool supportsRemoveLiquiditySingleTokenExactOut;
+    bool supportsRemoveLiquidityCustom;
 }
 
 /// @dev Represents a pool's configuration, including callbacks.
@@ -22,6 +35,7 @@ struct PoolConfig {
     uint64 staticSwapFeePercentage; // stores an 18-decimal FP value (max FixedPoint.ONE)
     uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
     PoolCallbacks callbacks;
+    LiquidityManagement liquidityManagement;
 }
 
 interface IVault {
@@ -76,8 +90,15 @@ interface IVault {
      * @param pool The pool being registered
      * @param factory The factory creating the pool
      * @param tokens The pool's tokens
+     * @param liquidityManagement Supported liquidity management callback flags
      */
-    event PoolRegistered(address indexed pool, address indexed factory, IERC20[] tokens);
+    event PoolRegistered(
+        address indexed pool,
+        address indexed factory,
+        IERC20[] tokens,
+        PoolCallbacks callbacks,
+        LiquidityManagement liquidityManagement
+    );
 
     /**
      * @notice A Pool was initialized by calling `initialize`.
@@ -96,11 +117,18 @@ interface IVault {
 
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
+     * @dev This version of the function assumes the default proportional liquidity methods are supported.
      * @param factory The factory address associated with the pool being registered
      * @param tokens An array of token addresses the pool will manage
-     * @param config Config for the pool
+     * @param config Flags indicating which callbacks the pool supports
+     * @param liquidityManagement Liquidity management flags with implemented methods
      */
-    function registerPool(address factory, IERC20[] memory tokens, PoolCallbacks calldata config) external;
+    function registerPool(
+        address factory,
+        IERC20[] memory tokens,
+        PoolCallbacks calldata config,
+        LiquidityManagement calldata liquidityManagement
+    ) external;
 
     /**
      * @notice Initializes a registered pool by adding liquidity; mints BPT tokens for the first time in exchange.
@@ -111,18 +139,17 @@ interface IVault {
      * @param pool Address of the pool to initialize
      * @param to Address that will receive the output BPT
      * @param tokens tokens involved in the liquidity provision
-     * @param maxAmountsIn Maximum amounts of input tokens
+     * @param exactAmountsIn Exact amounts of input tokens
      * @param userData Additional (optional) data for the initialization
-     * @return amountsIn Actual amounts of input tokens
      * @return bptAmountOut Output pool token amount
      */
     function initialize(
         address pool,
         address to,
         IERC20[] memory tokens,
-        uint256[] memory maxAmountsIn,
+        uint256[] memory exactAmountsIn,
         bytes memory userData
-    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+    ) external returns (uint256 bptAmountOut);
 
     /**
      * @notice Checks whether a pool is registered.
@@ -140,12 +167,20 @@ interface IVault {
     function isInitializedPool(address pool) external view returns (bool);
 
     /**
-     * @notice Gets tokens and their balances of a pool.
+     * @notice Gets the tokens registered to a pool.
      * @param pool Address of the pool
      * @return tokens List of tokens in the pool
-     * @return balances Corresponding balances of the tokens
      */
-    function getPoolTokens(address pool) external view returns (IERC20[] memory tokens, uint256[] memory balances);
+    function getPoolTokens(address pool) external view returns (IERC20[] memory);
+
+    /**
+     * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
+     * @dev TODO Add rates when we have them.
+     * @return tokens Tokens registered to the pool
+     * @return rawBalances Corresponding raw balances of the tokens
+     * @return scalingFactors Corresponding scalingFactors of the tokens
+     */
+    function getPoolTokenInfo(address pool) external view returns (IERC20[] memory, uint256[] memory, uint256[] memory);
 
     /**
      * @notice Gets the configuration paramters of a pool.
@@ -344,6 +379,16 @@ interface IVault {
                                    Add Liquidity
     ***************************************************************************/
 
+    enum AddLiquidityKind {
+        PROPORTIONAL,
+        UNBALANCED,
+        SINGLE_TOKEN_EXACT_OUT,
+        CUSTOM
+    }
+
+    /// @dev Add liquidity kind not supported.
+    error InvalidAddLiquidityKind();
+
     /**
      * @dev The token list passed into an operation does not match the pool tokens in the pool.
      * @param pool Address of the pool
@@ -368,27 +413,36 @@ interface IVault {
      *
      * @param pool Address of the pool
      * @param to  Address of user to mint to
-     * @param assets Assets involved in the liquidity
-     * @param maxAmountsIn Maximum amounts of input assets
-     * @param minBptAmountOut Minimum output pool token amount
+     * @param maxAmountsIn Maximum amounts of input tokens
+     * @param minBptAmountOut Minimum amount of output pool tokens
      * @param kind Add liquidity kind
      * @param userData Additional (optional) user data
      * @return amountsIn Actual amounts of input assets
      * @return bptAmountOut Output pool token amount
+     * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function addLiquidity(
         address pool,
         address to,
-        IERC20[] memory assets,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
-        IBasePool.AddLiquidityKind kind,
+        AddLiquidityKind kind,
         bytes memory userData
-    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut);
+    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
     /***************************************************************************
                                  Remove Liquidity
     ***************************************************************************/
+
+    enum RemoveLiquidityKind {
+        PROPORTIONAL,
+        SINGLE_TOKEN_EXACT_IN,
+        SINGLE_TOKEN_EXACT_OUT,
+        CUSTOM
+    }
+
+    /// @dev Remove liquidity kind not supported.
+    error InvalidRemoveLiquidityKind();
 
     /**
      * @notice Removes liquidity from a pool.
@@ -398,23 +452,38 @@ interface IVault {
      *
      * @param pool Address of the pool
      * @param from Address of user to burn from
-     * @param assets Assets involved in the liquidity removal
-     * @param minAmountsOut Minimum amounts of output assets
-     * @param maxBptAmountIn Input pool token amount
+     * @param maxBptAmountIn Maximum amount of input pool tokens
+     * @param minAmountsOut Minimum amounts of output tokens
      * @param kind Remove liquidity kind
      * @param userData Additional (optional) user data
-     * @return amountsOut Actual amounts of output assets
      * @return bptAmountIn Actual amount of BPT burnt
+     * @return amountsOut Actual amounts of output assets
+     * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function removeLiquidity(
         address pool,
         address from,
-        IERC20[] memory assets,
-        uint256[] memory minAmountsOut,
         uint256 maxBptAmountIn,
-        IBasePool.RemoveLiquidityKind kind,
+        uint256[] memory minAmountsOut,
+        RemoveLiquidityKind kind,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn);
+    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
+
+    /**
+     * @notice Remove liquidity from a pool specifying exact pool tokens in, with proportional token amounts out.
+     * The request is implemented by the Vault without any interaction with the pool, ensuring that
+     * it works the same for all pools, and cannot be disabled by a new pool type.
+     *
+     * @param pool Address of the pool
+     * @param from Address of user to burn pool tokens from
+     * @param exactBptAmountIn Input pool token amount
+     * @return amountsOut Actual calculated amounts of output tokens
+     */
+    function removeLiquidityRecovery(
+        address pool,
+        address from,
+        uint256 exactBptAmountIn
+    ) external returns (uint256[] memory amountsOut);
 
     /***************************************************************************
                                        Swaps
@@ -431,7 +500,7 @@ interface IVault {
      * @param pool The pool with the tokens being swapped
      * @param tokenIn The token entering the Vault (balance increases)
      * @param tokenOut The token leaving the Vault (balance decreases)
-     * @param amountGiven Amount specified for tokenIn or tokenOut (depending on the type of swap)
+     * @param rawAmountGiven Amount specified for tokenIn or tokenOut (depending on the type of swap)
      * @param userData Additional (optional) user data
      */
     struct SwapParams {
@@ -439,7 +508,7 @@ interface IVault {
         address pool;
         IERC20 tokenIn;
         IERC20 tokenOut;
-        uint256 amountGiven;
+        uint256 rawAmountGiven;
         bytes userData;
     }
 
@@ -450,25 +519,28 @@ interface IVault {
      * @param tokenOut The token leaving the Vault (balance decreases)
      * @param amountIn Number of tokenIn tokens
      * @param amountOut Number of tokenOut tokens
+     * @param swapFeeAmount Swap fee amount paid in token out
      */
     event Swap(
         address indexed pool,
         IERC20 indexed tokenIn,
         IERC20 indexed tokenOut,
         uint256 amountIn,
-        uint256 amountOut
+        uint256 amountOut,
+        uint256 swapFeeAmount
     );
 
     /**
      * @notice Swaps tokens based on provided parameters.
+     * @dev All parameters are given in raw token decimal encoding.
      * @param params Parameters for the swap (see above for struct definition)
-     * @return amountCalculated Calculated swap amount
-     * @return amountIn Amount of input tokens for the swap
-     * @return amountOut Amount of output tokens from the swap
+     * @return rawAmountCalculated Calculated swap amount
+     * @return rawAmountIn Amount of input tokens for the swap
+     * @return rawAmountOut Amount of output tokens from the swap
      */
     function swap(
         SwapParams memory params
-    ) external returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut);
+    ) external returns (uint256 rawAmountCalculated, uint256 rawAmountIn, uint256 rawAmountOut);
 
     /*******************************************************************************
                                    Fees
@@ -478,7 +550,7 @@ interface IVault {
     error ProtocolSwapFeePercentageTooHigh();
 
     /// @dev Error raised when the swap fee percentage exceeds the maximum allowed value.
-    error MaxSwapFeePercentage();
+    error SwapFeePercentageTooHigh();
 
     /**
      * @notice Sets a new swap fee percentage for the protocol.
@@ -520,24 +592,24 @@ interface IVault {
     event ProtocolFeeCollected(IERC20 indexed token, uint256 indexed amount);
 
     /**
-     * @notice Assigns a new swap fee percentage to the specified pool.
-     * @param pool The address of the pool for which the swap fee will be changed
+     * @notice Assigns a new static swap fee percentage to the specified pool.
+     * @param pool The address of the pool for which the static swap fee will be changed
      * @param swapFeePercentage The new swap fee percentage to apply to the pool
      */
-    function setSwapFeePercentage(address pool, uint256 swapFeePercentage) external;
+    function setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) external;
 
     /**
      * @notice Emitted when the swap fee percentage of a pool is updated.
      * @param swapFeePercentage The new swap fee percentage for the pool
      */
-    event SwapFeePercentageChanged(uint256 indexed swapFeePercentage);
+    event SwapFeePercentageChanged(address indexed pool, uint256 indexed swapFeePercentage);
 
     /**
-     * @notice Fetches the current swap fee percentage for a given pool.
-     * @param pool The address of the pool whose swap fee percentage is being queried
-     * @return The current swap fee percentage for the specified pool
+     * @notice Fetches the static swap fee percentage for a given pool.
+     * @param pool The address of the pool whose static swap fee percentage is being queried
+     * @return The current static swap fee percentage for the specified pool
      */
-    function getSwapFeePercentage(address pool) external view returns (uint256);
+    function getStaticSwapFeePercentage(address pool) external view returns (uint256);
 
     /*******************************************************************************
                                     Queries
@@ -593,4 +665,11 @@ interface IVault {
      * Emits an `AuthorizerChanged` event.
      */
     function setAuthorizer(IAuthorizer newAuthorizer) external;
+
+    /*******************************************************************************
+                                Miscellaneous
+    *******************************************************************************/
+
+    /// @dev Optional User Data should be empty in the current add / remove liquidity kind.
+    error UserDataNotSupported();
 }

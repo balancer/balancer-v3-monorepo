@@ -40,6 +40,8 @@ contract VaultSwapTest is Test {
 
     uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
+    uint256 constant USDC_SCALING = 1e12; // 18 - 6
+    uint256 initialBptSupply;
 
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
@@ -78,6 +80,15 @@ contract VaultSwapTest is Test {
         USDC.approve(address(vault), type(uint256).max);
         DAI.approve(address(vault), type(uint256).max);
 
+        router.initialize(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
+            0,
+            bytes("")
+        );
+        initialBptSupply = IERC20(pool).totalSupply();
+
         vm.stopPrank();
 
         vm.label(alice, "alice");
@@ -87,42 +98,42 @@ contract VaultSwapTest is Test {
     }
 
     function testOnAfterSwapCallback() public {
-        vm.prank(alice);
-        router.initialize(
-            address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            0,
-            bytes("")
-        );
-
+        // Calls `onSwap` in the pool.
         vm.prank(bob);
-        // should not fail
+        // Balances are scaled to 18 decimals; DAI already has 18.
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IBasePool.onSwap.selector,
+                IBasePool.SwapParams({
+                    kind: IVault.SwapKind.GIVEN_IN,
+                    tokenIn: IERC20(USDC),
+                    tokenOut: IERC20(DAI),
+                    scaled18AmountGiven: USDC_AMOUNT_IN * USDC_SCALING,
+                    scaled18Balances: [DAI_AMOUNT_IN, USDC_AMOUNT_IN * USDC_SCALING].toMemoryArray(),
+                    indexIn: 1,
+                    indexOut: 0,
+                    sender: address(router),
+                    userData: bytes("")
+                })
+            )
+        );
         router.swap(
             IVault.SwapKind.GIVEN_IN,
             address(pool),
             address(USDC).asAsset(),
             address(DAI).asAsset(),
             USDC_AMOUNT_IN,
-            DAI_AMOUNT_IN,
+            0,
             type(uint256).max,
             bytes("")
         );
     }
 
     function testOnAfterSwapCallbackRevert() public {
-        vm.prank(alice);
-        router.initialize(
-            address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            0,
-            bytes("")
-        );
-
-        pool.setFailOnAfterSwap(true);
+        // should fail
+        pool.setFailOnAfterSwapCallback(true);
         vm.prank(bob);
-        // should not fail
         vm.expectRevert(abi.encodeWithSelector(IVault.CallbackFailed.selector));
         router.swap(
             IVault.SwapKind.GIVEN_IN,
@@ -134,5 +145,287 @@ contract VaultSwapTest is Test {
             type(uint256).max,
             bytes("")
         );
+    }
+
+    // Before add
+
+    /// forge-config: default.fuzz.runs = 32
+    function testOnBeforeAddLiquidityFlag(uint8 kindUint) public {
+        IVault.AddLiquidityKind kind = IVault.AddLiquidityKind(
+            bound(kindUint, 0, uint256(type(IVault.AddLiquidityKind).max))
+        );
+        pool.setFailOnBeforeAddLiquidityCallback(true);
+
+        vm.prank(bob);
+        // Doesn't fail, does not call callbacks
+        router.addLiquidity(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            _getSuitableMaxInputs(kind),
+            initialBptSupply,
+            kind,
+            bytes("")
+        );
+    }
+
+    /// forge-config: default.fuzz.runs = 32
+    function testOnBeforeAddLiquidityCallback(uint8 kindUint) public {
+        IVault.AddLiquidityKind kind = IVault.AddLiquidityKind(
+            bound(kindUint, 0, uint256(type(IVault.AddLiquidityKind).max))
+        );
+        PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.callbacks.shouldCallBeforeAddLiquidity = true;
+        vault.setConfig(address(pool), config);
+
+        (, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(address(pool));
+        uint256[] memory maxInputs = _getSuitableMaxInputs(kind);
+
+        vm.prank(bob);
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IBasePool.onBeforeAddLiquidity.selector,
+                bob,
+                [maxInputs[0], maxInputs[1] * USDC_SCALING].toMemoryArray(),
+                initialBptSupply,
+                [poolBalances[0], poolBalances[1] * USDC_SCALING].toMemoryArray(),
+                bytes("")
+            )
+        );
+        router.addLiquidity(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            maxInputs,
+            initialBptSupply,
+            kind,
+            bytes("")
+        );
+    }
+
+    // Before remove
+
+    /// forge-config: default.fuzz.runs = 32
+    function testOnBeforeRemoveLiquidityFlag(uint8 kindUint) public {
+        IVault.RemoveLiquidityKind kind = IVault.RemoveLiquidityKind(
+            bound(kindUint, 0, uint256(type(IVault.RemoveLiquidityKind).max))
+        );
+        pool.setFailOnBeforeRemoveLiquidityCallback(true);
+
+        uint256 bptBalance = pool.balanceOf(alice);
+        // Alice has LP tokens from initialization
+        vm.prank(alice);
+        // Doesn't fail, does not call callbacks
+        router.removeLiquidity(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            bptBalance,
+            _getSuitableMinOutputs(kind),
+            kind,
+            bytes("")
+        );
+    }
+
+    /// forge-config: default.fuzz.runs = 32
+    function testOnBeforeRemoveLiquidityCallback(uint8 kindUint) public {
+        IVault.RemoveLiquidityKind kind = IVault.RemoveLiquidityKind(
+            bound(kindUint, 0, uint256(type(IVault.RemoveLiquidityKind).max))
+        );
+        PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.callbacks.shouldCallBeforeRemoveLiquidity = true;
+        vault.setConfig(address(pool), config);
+
+        (, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(address(pool));
+        uint256[] memory minOutputs = _getSuitableMinOutputs(kind);
+
+        // Alice has LP tokens from initialization
+        uint256 bptBalance = pool.balanceOf(alice);
+        vm.prank(alice);
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IBasePool.onBeforeRemoveLiquidity.selector,
+                alice,
+                bptBalance,
+                [minOutputs[0], minOutputs[1] * USDC_SCALING].toMemoryArray(),
+                [poolBalances[0], poolBalances[1] * USDC_SCALING].toMemoryArray(),
+                bytes("")
+            )
+        );
+        router.removeLiquidity(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            bptBalance,
+            _getSuitableMinOutputs(kind),
+            kind,
+            bytes("")
+        );
+    }
+
+    // After add
+
+    /// forge-config: default.fuzz.runs = 32
+    function testOnAfterAddLiquidityFlag(uint8 kindUint) public {
+        IVault.AddLiquidityKind kind = IVault.AddLiquidityKind(
+            bound(kindUint, 0, uint256(type(IVault.AddLiquidityKind).max))
+        );
+        pool.setFailOnAfterAddLiquidityCallback(true);
+
+        vm.prank(bob);
+        // Doesn't fail, does not call callbacks
+        router.addLiquidity(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            _getSuitableMaxInputs(kind),
+            initialBptSupply,
+            kind,
+            bytes("")
+        );
+    }
+
+    /// forge-config: default.fuzz.runs = 32
+    function testOnAfterAddLiquidityCallback(uint8 kindUint) public {
+        IVault.AddLiquidityKind kind = IVault.AddLiquidityKind(
+            bound(kindUint, 0, uint256(type(IVault.AddLiquidityKind).max))
+        );
+        PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.callbacks.shouldCallAfterAddLiquidity = true;
+        vault.setConfig(address(pool), config);
+
+        (, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(address(pool));
+        uint256[] memory amountsIn;
+        uint256 bptAmountOut;
+
+        // Dry run to get actual amounts in and bpt out from the operation
+        uint256 snapshot = vm.snapshot();
+        vm.prank(bob);
+        (amountsIn, bptAmountOut, ) = router.addLiquidity(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            _getSuitableMaxInputs(kind),
+            initialBptSupply,
+            kind,
+            bytes("")
+        );
+        vm.revertTo(snapshot);
+
+        vm.prank(bob);
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IBasePool.onAfterAddLiquidity.selector,
+                bob,
+                [amountsIn[0], amountsIn[1] * USDC_SCALING].toMemoryArray(),
+                bptAmountOut,
+                [poolBalances[0] + amountsIn[0], (poolBalances[1] + amountsIn[1]) * USDC_SCALING].toMemoryArray(),
+                bytes("")
+            )
+        );
+        router.addLiquidity(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            _getSuitableMaxInputs(kind),
+            initialBptSupply,
+            kind,
+            bytes("")
+        );
+    }
+
+    // After remove
+
+    /// forge-config: default.fuzz.runs = 32
+    function testOnAfterRemoveLiquidityFlag(uint8 kindUint) public {
+        IVault.RemoveLiquidityKind kind = IVault.RemoveLiquidityKind(
+            bound(kindUint, 0, uint256(type(IVault.RemoveLiquidityKind).max))
+        );
+        pool.setFailOnAfterRemoveLiquidityCallback(true);
+
+        uint256 bptBalance = pool.balanceOf(alice);
+        // Alice has LP tokens from initialization
+        vm.prank(alice);
+        // Doesn't fail, does not call callbacks
+        router.removeLiquidity(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            bptBalance,
+            _getSuitableMinOutputs(kind),
+            kind,
+            bytes("")
+        );
+    }
+
+    /// forge-config: default.fuzz.runs = 32
+    function testOnAfterRemoveLiquidityCallback(uint8 kindUint) public {
+        IVault.RemoveLiquidityKind kind = IVault.RemoveLiquidityKind(
+            bound(kindUint, 0, uint256(type(IVault.RemoveLiquidityKind).max))
+        );
+        PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.callbacks.shouldCallAfterRemoveLiquidity = true;
+        vault.setConfig(address(pool), config);
+
+        uint256 bptBalance = pool.balanceOf(alice);
+        // Cut the tail so that there is no precision loss when calculating upscaled amounts out in proportional mode
+        bptBalance -= bptBalance % USDC_SCALING;
+        (, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(address(pool));
+        uint256 bptAmountIn;
+        uint256[] memory amountsOut;
+
+        // Dry run to get actual amounts out and bpt in from the operation
+        uint256 snapshot = vm.snapshot();
+        // Alice has LP tokens from initialization
+        vm.prank(alice);
+        (bptAmountIn, amountsOut, ) = router.removeLiquidity(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            bptBalance,
+            _getSuitableMinOutputs(kind),
+            kind,
+            bytes("")
+        );
+        vm.revertTo(snapshot);
+
+        vm.prank(alice);
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IBasePool.onAfterRemoveLiquidity.selector,
+                alice,
+                bptAmountIn,
+                [amountsOut[0], amountsOut[1] * USDC_SCALING].toMemoryArray(),
+                [poolBalances[0] - amountsOut[0], (poolBalances[1] - amountsOut[1]) * USDC_SCALING].toMemoryArray(),
+                bytes("")
+            )
+        );
+        router.removeLiquidity(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            bptBalance,
+            _getSuitableMinOutputs(kind),
+            kind,
+            bytes("")
+        );
+    }
+
+    // Helpers
+
+    function _getSuitableMaxInputs(IVault.AddLiquidityKind kind) internal pure returns (uint256[] memory maxInputs) {
+        if (kind == IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
+            maxInputs = [DAI_AMOUNT_IN, uint256(0)].toMemoryArray();
+        } else {
+            maxInputs = [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray();
+        }
+    }
+
+    function _getSuitableMinOutputs(
+        IVault.RemoveLiquidityKind kind
+    ) internal pure returns (uint256[] memory minOutputs) {
+        if (
+            kind == IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN ||
+            kind == IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT
+        ) {
+            minOutputs = [DAI_AMOUNT_IN, uint256(0)].toMemoryArray();
+        } else {
+            // In proportional it's not possible to extract all the tokens given that some BPT is sent to address(0).
+            minOutputs = [DAI_AMOUNT_IN / 10, USDC_AMOUNT_IN / 10].toMemoryArray();
+        }
     }
 }

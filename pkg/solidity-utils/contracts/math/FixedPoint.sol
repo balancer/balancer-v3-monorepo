@@ -6,12 +6,18 @@ import "./LogExpMath.sol";
 
 /* solhint-disable private-vars-leading-underscore */
 
+// TODO: Use user defined value types for all fixed-point numbers.
+/// @notice The unsigned 1.6-decimal fixed-point number representation, which can have up to 1 digits and up to 6
+/// decimals.
+type UD1x6 is uint24;
+
 library FixedPoint {
     /// @dev Attempted division by zero.
     error ZeroDivision();
 
     // solhint-disable no-inline-assembly
 
+    uint256 internal constant THIRD = 1e6; // 6 decimal places
     uint256 internal constant ONE = 1e18; // 18 decimal places
     uint256 internal constant TWO = 2 * ONE;
     uint256 internal constant FOUR = 4 * ONE;
