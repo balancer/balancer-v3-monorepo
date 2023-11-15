@@ -46,7 +46,7 @@ library PoolConfigLib {
     using SafeCast for uint256;
 
     // TODO: Implement bitmap in the config in the following format. Use vertical if too big.
-    // [ 200 bits |  24 bits   |  4 bits  | 4x5 bits |  2 bits  | 1 bit  | 1 bit | 1 bit  |  1 bit   | 1 bit | 1 bit ]
+    // [ 160 bits |  64 bits   |  4 bits  | 4x5 bits |  2 bits  | 1 bit  | 1 bit | 1 bit  |  1 bit   | 1 bit | 1 bit ]
     // [ not used | static fee | reserved | decimals | reserved | remove |  add  |  swap  | dyn. fee | init. | reg.  ]
     // |MSB                                                                                                       LSB|
 
