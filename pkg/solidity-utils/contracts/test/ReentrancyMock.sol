@@ -2,7 +2,8 @@
 
 pragma solidity ^0.8.4;
 
-import "../openzeppelin/ReentrancyGuard.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
 import "./ReentrancyAttack.sol";
 
 contract ReentrancyMock is ReentrancyGuard {
@@ -41,10 +42,10 @@ contract ReentrancyMock is ReentrancyGuard {
     }
 
     function guardedCheckEntered() public nonReentrant {
-        require(reentrancyGuardEntered());
+        require(_reentrancyGuardEntered());
     }
 
     function unguardedCheckNotEntered() public view {
-        require(!reentrancyGuardEntered());
+        require(!_reentrancyGuardEntered());
     }
 }

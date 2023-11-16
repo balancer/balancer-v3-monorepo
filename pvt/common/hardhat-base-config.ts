@@ -12,7 +12,7 @@ type SolcConfig = {
 
 export const compilers: [SolcConfig] = [
   {
-    version: '0.8.18',
+    version: '0.8.21',
     settings: {
       optimizer: {
         enabled: true,

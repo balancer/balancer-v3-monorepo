@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.4;
 
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
-import { ReentrancyGuard } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -42,10 +42,10 @@ contract Router is IRouter, ReentrancyGuard {
     function initialize(
         address pool,
         Asset[] memory assets,
-        uint256[] memory maxAmountsIn,
+        uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+    ) external payable returns (uint256 bptAmountOut) {
         return
             abi.decode(
                 _vault.invoke{ value: msg.value }(
@@ -55,13 +55,13 @@ contract Router is IRouter, ReentrancyGuard {
                             sender: msg.sender,
                             pool: pool,
                             assets: assets,
-                            maxAmountsIn: maxAmountsIn,
+                            exactAmountsIn: exactAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             userData: userData
                         })
                     )
                 ),
-                (uint256[], uint256)
+                (uint256)
             );
     }
 
@@ -69,21 +69,14 @@ contract Router is IRouter, ReentrancyGuard {
      * @notice Callback for initialization.
      * @dev Can only be called by the Vault.
      * @param params Initialization parameters (see IRouter for struct definition)
-     * @return amountsIn Actual amounts in required for the initial join
      * @return bptAmountOut BPT amount minted in exchange for the input tokens
      */
     function initializeCallback(
         InitializeCallbackParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+    ) external payable nonReentrant onlyVault returns (uint256 bptAmountOut) {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
-        (amountsIn, bptAmountOut) = _vault.initialize(
-            params.pool,
-            params.sender,
-            tokens,
-            params.maxAmountsIn,
-            params.userData
-        );
+        bptAmountOut = _vault.initialize(params.pool, params.sender, tokens, params.exactAmountsIn, params.userData);
 
         if (bptAmountOut < params.minBptAmountOut) {
             revert BptAmountBelowMin();
@@ -93,12 +86,7 @@ contract Router is IRouter, ReentrancyGuard {
         for (uint256 i = 0; i < params.assets.length; ++i) {
             // Receive assets from the handler
             Asset asset = params.assets[i];
-            uint256 amountIn = amountsIn[i];
-
-            if (amountIn > params.maxAmountsIn[i]) {
-                revert JoinAboveMax();
-            }
-
+            uint256 amountIn = params.exactAmountsIn[i];
             IERC20 token = asset.toIERC20(_weth);
 
             // There can be only one WETH token in the pool
@@ -106,7 +94,6 @@ contract Router is IRouter, ReentrancyGuard {
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
             }
-
             // transfer tokens from the user to the Vault
             _vault.retrieve(token, params.sender, amountIn);
         }
@@ -121,9 +108,9 @@ contract Router is IRouter, ReentrancyGuard {
         Asset[] memory assets,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
-        IBasePool.AddLiquidityKind kind,
+        IVault.AddLiquidityKind kind,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         return
             abi.decode(
                 _vault.invoke{ value: msg.value }(
@@ -140,7 +127,7 @@ contract Router is IRouter, ReentrancyGuard {
                         })
                     )
                 ),
-                (uint256[], uint256)
+                (uint256[], uint256, bytes)
             );
     }
 
@@ -153,13 +140,16 @@ contract Router is IRouter, ReentrancyGuard {
      */
     function addLiquidityCallback(
         AddLiquidityCallbackParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
-        IERC20[] memory tokens = params.assets.toIERC20(_weth);
-
-        (amountsIn, bptAmountOut) = _vault.addLiquidity(
+    )
+        external
+        payable
+        nonReentrant
+        onlyVault
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
+    {
+        (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
             params.pool,
             params.sender,
-            tokens,
             params.maxAmountsIn,
             params.minBptAmountOut,
             params.kind,
@@ -176,6 +166,7 @@ contract Router is IRouter, ReentrancyGuard {
             Asset asset = params.assets[i];
             uint256 amountIn = amountsIn[i];
 
+            // TODO: check amounts in for every type.
             if (amountIn > params.maxAmountsIn[i]) {
                 revert JoinAboveMax();
             }
@@ -198,11 +189,11 @@ contract Router is IRouter, ReentrancyGuard {
     function removeLiquidity(
         address pool,
         Asset[] memory assets,
-        uint256[] memory minAmountsOut,
         uint256 maxBptAmountIn,
-        IBasePool.RemoveLiquidityKind kind,
+        uint256[] memory minAmountsOut,
+        IVault.RemoveLiquidityKind kind,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
+    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
         return
             abi.decode(
                 _vault.invoke(
@@ -219,7 +210,7 @@ contract Router is IRouter, ReentrancyGuard {
                         })
                     )
                 ),
-                (uint256[], uint256)
+                (uint256, uint256[], bytes)
             );
     }
 
@@ -227,20 +218,23 @@ contract Router is IRouter, ReentrancyGuard {
      * @notice Callback for removing liquidity.
      * @dev Can only be called by the Vault.
      * @param params Remove liquiity parameters (see IRouter for struct definition)
-     * @return amountsOut Actual token amounts transferred in exchange for the BPT
      * @return bptAmountIn BPT amount burned for the output tokens
+     * @return amountsOut Actual token amounts transferred in exchange for the BPT
+     * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function removeLiquidityCallback(
         RemoveLiquidityCallbackParams calldata params
-    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
-        IERC20[] memory tokens = params.assets.toIERC20(_weth);
-
-        (amountsOut, bptAmountIn) = _vault.removeLiquidity(
+    )
+        external
+        nonReentrant
+        onlyVault
+        returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
+    {
+        (bptAmountIn, amountsOut, returnData) = _vault.removeLiquidity(
             params.pool,
             params.sender,
-            tokens,
-            params.minAmountsOut,
             params.maxBptAmountIn,
+            params.minAmountsOut,
             params.kind,
             params.userData
         );
@@ -375,7 +369,7 @@ contract Router is IRouter, ReentrancyGuard {
                 pool: params.pool,
                 tokenIn: tokenIn,
                 tokenOut: tokenOut,
-                amountGiven: params.amountGiven,
+                rawAmountGiven: params.amountGiven,
                 userData: params.userData
             })
         );
@@ -440,9 +434,9 @@ contract Router is IRouter, ReentrancyGuard {
         Asset[] memory assets,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
-        IBasePool.AddLiquidityKind kind,
+        IVault.AddLiquidityKind kind,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         return
             abi.decode(
                 _vault.quote{ value: msg.value }(
@@ -461,7 +455,7 @@ contract Router is IRouter, ReentrancyGuard {
                         })
                     )
                 ),
-                (uint256[], uint256)
+                (uint256[], uint256, bytes)
             );
     }
 
@@ -469,18 +463,22 @@ contract Router is IRouter, ReentrancyGuard {
      * @notice Callback for add liquidity queries.
      * @dev Can only be called by the Vault.
      * @param params Add liquiity parameters (see IRouter for struct definition)
-     * @return amountsIn Actual amounts in required for the join
-     * @return bptAmountOut BPT amount minted in exchange for the input tokens
+     * @return amountsIn Actual token amounts in required as inputs
+     * @return bptAmountOut Expected pool tokens to be minted
+     * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function queryAddLiquidityCallback(
         AddLiquidityCallbackParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
-        IERC20[] memory tokens = params.assets.toIERC20(_weth);
-
-        (amountsIn, bptAmountOut) = _vault.addLiquidity(
+    )
+        external
+        payable
+        nonReentrant
+        onlyVault
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
+    {
+        (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
             params.pool,
             params.sender,
-            tokens,
             params.maxAmountsIn,
             params.minBptAmountOut,
             params.kind,
@@ -492,11 +490,11 @@ contract Router is IRouter, ReentrancyGuard {
     function queryRemoveLiquidity(
         address pool,
         Asset[] memory assets,
-        uint256[] memory minAmountsOut,
         uint256 maxBptAmountIn,
-        IBasePool.RemoveLiquidityKind kind,
+        uint256[] memory minAmountsOut,
+        IVault.RemoveLiquidityKind kind,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
+    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
         return
             abi.decode(
                 _vault.quote(
@@ -515,7 +513,7 @@ contract Router is IRouter, ReentrancyGuard {
                         })
                     )
                 ),
-                (uint256[], uint256)
+                (uint256, uint256[], bytes)
             );
     }
 
@@ -523,19 +521,24 @@ contract Router is IRouter, ReentrancyGuard {
      * @notice Callback for remove liquidity queries.
      * @dev Can only be called by the Vault.
      * @param params Remove liquiity parameters (see IRouter for struct definition)
-     * @return amountsOut Actual token amounts transferred in exchange for the BPT
-     * @return bptAmountIn BPT amount burned for the output tokens
+     * @return bptAmountIn Pool token amount to be burned for the output tokens
+     * @return amountsOut Expected token amounts to be transferred to the sender
+     * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function queryRemoveLiquidityCallback(
         RemoveLiquidityCallbackParams calldata params
-    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
+    )
+        external
+        nonReentrant
+        onlyVault
+        returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
+    {
         return
             _vault.removeLiquidity(
                 params.pool,
                 params.sender,
-                params.assets.toIERC20(_weth),
-                params.minAmountsOut,
                 params.maxBptAmountIn,
+                params.minAmountsOut,
                 params.kind,
                 params.userData
             );
