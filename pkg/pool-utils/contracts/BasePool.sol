@@ -7,22 +7,15 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { ERC20PoolToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20PoolToken.sol";
-import { TemporarilyPausable } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 
 /// @notice Reference implementation for the base layer of a Pool contract.
-abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
+abstract contract BasePool is IBasePool, ERC20PoolToken {
     IVault internal immutable _vault;
 
     uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
     uint256 private constant _SWAP_FEE_PERCENTAGE = 0;
 
-    constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
-    ) ERC20PoolToken(vault, name, symbol) TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration) {
+    constructor(IVault vault, string memory name, string memory symbol) ERC20PoolToken(vault, name, symbol) {
         _vault = vault;
     }
 
@@ -40,29 +33,6 @@ abstract contract BasePool is IBasePool, ERC20PoolToken, TemporarilyPausable {
     /// @inheritdoc IBasePool
     function getPoolTokens() external view returns (IERC20[] memory tokens) {
         return _vault.getPoolTokens(address(this));
-    }
-
-    /*******************************************************************************
-                              Temporarily Pausable
-    *******************************************************************************/
-
-    /**
-     * @notice Pause the pool: an emergency action which disables all pool functions.
-     * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
-     * deployment (see `TemporarilyPausable`).
-     */
-    function pause() external {
-        _pause();
-    }
-
-    /**
-     * @notice Reverse a `pause` operation, and restore a pool to normal functionality.
-     * @dev This is a permissioned function that will only work on a paused pool within the Buffer Period set during
-     * pool factory deployment (see `TemporarilyPausable`). Note that any paused pools will automatically unpause
-     * after the Buffer Period expires.
-     */
-    function unpause() external {
-        _unpause();
     }
 
     /*******************************************************************************

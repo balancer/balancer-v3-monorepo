@@ -10,7 +10,7 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IVault, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
-import { BasePoolMath } from "@balancer-labs/v3-pool-utils/contracts/lib/BasePoolMath.sol";
+import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { BasePool } from "@balancer-labs/v3-pool-utils/contracts/BasePool.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
@@ -48,12 +48,7 @@ contract WeightedPool is BasePool {
     /// @dev Indicates that the sum of the pool tokens' weights is not FP 1.
     error NormalizedWeightInvariant();
 
-    constructor(
-        NewPoolParams memory params,
-        IVault vault,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
-    ) BasePool(vault, params.name, params.symbol, pauseWindowDuration, bufferPeriodDuration) {
+    constructor(NewPoolParams memory params, IVault vault) BasePool(vault, params.name, params.symbol) {
         uint256 numTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
 
