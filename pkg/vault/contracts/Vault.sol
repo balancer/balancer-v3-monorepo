@@ -874,7 +874,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     )
         external
         withHandler
-        whenVaultNotPaused
         nonReentrant
         withRegisteredPool(pool)
         whenPoolNotPaused(pool)
@@ -936,7 +935,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     )
         external
         withHandler
-        whenVaultNotPaused
         withInitializedPool(pool)
         whenPoolNotPaused(pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
@@ -1106,7 +1104,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         bytes memory userData
     )
         external
-        whenVaultNotPaused
         withInitializedPool(pool)
         whenPoolNotPaused(pool)
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
