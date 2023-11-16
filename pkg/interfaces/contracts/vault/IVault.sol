@@ -731,7 +731,7 @@ interface IVault {
 
     /**
      * @notice Returns the paused status, and end times of the Vault's pause window and buffer period.
-     * @return paused True is the Vault is paused
+     * @return paused True if the Vault is paused
      * @return vaultPauseWindowEndTime The timestamp of the end of the Vault's pause window
      * @return vaultBufferPeriodEndTime The timestamp of the end of the Vault's buffer period
      */
@@ -763,7 +763,7 @@ interface IVault {
      * the buffer period.
      *
      * @param pool The pool whose data is requested
-     * @return paused True is the Pool is paused
+     * @return paused True if the Pool is paused
      * @return poolPauseWindowEndTime The timestamp of the end of the Pool's pause window
      * @return poolBufferPeriodEndTime The timestamp of the end of the Pool's buffer period
      */
