@@ -499,6 +499,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         uint256 swapFeeAmount;
         uint256 swapFeePercentage;
         uint256 protocolSwapFeeAmount;
+        uint256 scaled18AmountCalculated;
     }
 
     function _populateSwapLocals(
@@ -565,6 +566,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         public
         withHandler
         withInitializedPool(params.pool)
+        whenPoolNotPaused(params.pool)
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
     {
         if (params.rawAmountGiven == 0) {
@@ -592,7 +594,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
         // Add swap fee to the amountGiven to account for the fee taken in GIVEN_OUT swap on tokenOut
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
-        uint256 scaled18AmountCalculated = IBasePool(params.pool).onSwap(
+        vars.scaled18AmountCalculated = IBasePool(params.pool).onSwap(
             IBasePool.SwapParams({
                 kind: params.kind,
                 tokenIn: params.tokenIn,
@@ -609,16 +611,16 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         if (vars.swapFeePercentage > 0 && params.kind == IVault.SwapKind.GIVEN_IN) {
             // Swap fee is a percentage of the amountCalculated for the GIVEN_IN swap
             // Round up to avoid losses during precision loss.
-            vars.swapFeeAmount = scaled18AmountCalculated.mulUp(vars.swapFeePercentage);
+            vars.swapFeeAmount = vars.scaled18AmountCalculated.mulUp(vars.swapFeePercentage);
             // Should substract the fee from the amountCalculated for GIVEN_IN swap
-            scaled18AmountCalculated -= vars.swapFeeAmount;
+            vars.scaled18AmountCalculated -= vars.swapFeeAmount;
         }
 
         // For `GivenIn` the amount calculated is leaving the Vault, so we round down.
         // Round up when entering the Vault on `GivenOut`.
         amountCalculated = params.kind == SwapKind.GIVEN_IN
-            ? scaled18AmountCalculated.toRawRoundDown(vars.scalingFactors[vars.indexOut])
-            : scaled18AmountCalculated.toRawRoundUp(vars.scalingFactors[vars.indexIn]);
+            ? vars.scaled18AmountCalculated.toRawRoundDown(vars.scalingFactors[vars.indexOut])
+            : vars.scaled18AmountCalculated.toRawRoundUp(vars.scalingFactors[vars.indexIn]);
 
         (amountIn, amountOut) = params.kind == SwapKind.GIVEN_IN
             ? (params.rawAmountGiven, amountCalculated)
@@ -645,8 +647,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
         if (vars.config.callbacks.shouldCallAfterSwap) {
             (uint256 scaled18AmountIn, uint256 scaled18AmountOut) = params.kind == SwapKind.GIVEN_IN
-                ? (scaled18AmountGiven, scaled18AmountCalculated)
-                : (scaled18AmountCalculated, scaled18AmountGiven);
+                ? (scaled18AmountGiven, vars.scaled18AmountCalculated)
+                : (vars.scaled18AmountCalculated, scaled18AmountGiven);
 
             // if callback is enabled, then update balances
             if (
@@ -662,7 +664,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                         sender: msg.sender,
                         userData: params.userData
                     }),
-                    scaled18AmountCalculated
+                    vars.scaled18AmountCalculated
                 ) == false
             ) {
                 revert CallbackFailed();
