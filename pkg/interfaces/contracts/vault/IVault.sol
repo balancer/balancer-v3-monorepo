@@ -31,6 +31,8 @@ struct LiquidityManagement {
 struct PoolConfig {
     bool isPoolRegistered;
     bool isPoolInitialized;
+    bool hasDynamicSwapFee;
+    uint64 staticSwapFeePercentage; // stores an 18-decimal FP value (max FixedPoint.ONE)
     uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
     PoolCallbacks callbacks;
     LiquidityManagement liquidityManagement;
@@ -527,13 +529,15 @@ interface IVault {
      * @param tokenOut The token leaving the Vault (balance decreases)
      * @param amountIn Number of tokenIn tokens
      * @param amountOut Number of tokenOut tokens
+     * @param swapFeeAmount Swap fee amount paid in token out
      */
     event Swap(
         address indexed pool,
         IERC20 indexed tokenIn,
         IERC20 indexed tokenOut,
         uint256 amountIn,
-        uint256 amountOut
+        uint256 amountOut,
+        uint256 swapFeeAmount
     );
 
     /**
@@ -547,6 +551,75 @@ interface IVault {
     function swap(
         SwapParams memory params
     ) external returns (uint256 rawAmountCalculated, uint256 rawAmountIn, uint256 rawAmountOut);
+
+    /*******************************************************************************
+                                   Fees
+    *******************************************************************************/
+
+    /// @dev Error raised when the protocol swap fee percentage exceeds the maximum allowed value.
+    error ProtocolSwapFeePercentageTooHigh();
+
+    /// @dev Error raised when the swap fee percentage exceeds the maximum allowed value.
+    error SwapFeePercentageTooHigh();
+
+    /**
+     * @notice Sets a new swap fee percentage for the protocol.
+     * @param newSwapFeePercentage The new swap fee percentage to be set
+     */
+    function setProtocolSwapFeePercentage(uint256 newSwapFeePercentage) external;
+
+    /**
+     * @notice Emitted when the protocol swap fee percentage is updated.
+     * @param swapFeePercentage The updated protocol swap fee percentage
+     */
+    event ProtocolSwapFeePercentageChanged(uint256 indexed swapFeePercentage);
+
+    /**
+     * @notice Retrieves the current protocol swap fee percentage.
+     * @return The current protocol swap fee percentage
+     */
+    function getProtocolSwapFeePercentage() external view returns (uint256);
+
+    /**
+     * @notice Returns the accumulated swap fee in `token` collected by the protocol.
+     * @param token The address of the token in which fees have been accumulated
+     * @return The total amount of fees accumulated in the specified token
+     */
+    function getProtocolSwapFee(address token) external view returns (uint256);
+
+    /**
+     * @notice Collects accumulated protocol fees for the specified array of tokens.
+     * @dev Fees are sent to msg.sender.
+     * @param tokens An array of token addresses for which the fees should be collected
+     */
+    function collectProtocolFees(IERC20[] calldata tokens) external;
+
+    /**
+     * @notice Logs the collection of fees in a specific token and amount.
+     * @param token The token in which the fee has been collected
+     * @param amount The amount of the token collected as fees
+     */
+    event ProtocolFeeCollected(IERC20 indexed token, uint256 indexed amount);
+
+    /**
+     * @notice Assigns a new static swap fee percentage to the specified pool.
+     * @param pool The address of the pool for which the static swap fee will be changed
+     * @param swapFeePercentage The new swap fee percentage to apply to the pool
+     */
+    function setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) external;
+
+    /**
+     * @notice Emitted when the swap fee percentage of a pool is updated.
+     * @param swapFeePercentage The new swap fee percentage for the pool
+     */
+    event SwapFeePercentageChanged(address indexed pool, uint256 indexed swapFeePercentage);
+
+    /**
+     * @notice Fetches the static swap fee percentage for a given pool.
+     * @param pool The address of the pool whose static swap fee percentage is being queried
+     * @return The current static swap fee percentage for the specified pool
+     */
+    function getStaticSwapFeePercentage(address pool) external view returns (uint256);
 
     /*******************************************************************************
                                     Queries

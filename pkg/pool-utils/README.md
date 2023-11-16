@@ -4,7 +4,6 @@
 
 This package contains Solidity utilities for developing Balancer V3 Pools, implementing common patterns.
 
-
 ## Overview
 
 ### Installation

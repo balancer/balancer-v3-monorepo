@@ -70,15 +70,8 @@ contract PoolMock is BasePool {
         return !failOnCallback;
     }
 
-    // Amounts in are multiplied by the multiplier, amounts out are divided by it
-    uint256 private _multiplier = FixedPoint.ONE;
-
     function setFailOnAfterSwap(bool fail) external {
         failOnCallback = fail;
-    }
-
-    function setMultiplier(uint256 newMultiplier) external {
-        _multiplier = newMultiplier;
     }
 
     function onAfterSwap(
@@ -88,13 +81,8 @@ contract PoolMock is BasePool {
         return scaled18AmountCalculated > 0 && !failOnCallback;
     }
 
-    function onSwap(
-        IBasePool.SwapParams calldata params
-    ) external view override returns (uint256 scaled18AmountCalculated) {
-        return
-            params.kind == IVault.SwapKind.GIVEN_IN
-                ? params.scaled18AmountGiven.mulDown(_multiplier)
-                : params.scaled18AmountGiven.divDown(_multiplier);
+    function onSwap(IBasePool.SwapParams calldata params) external pure override returns (uint256 amountCalculated) {
+        return params.scaled18AmountGiven;
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
