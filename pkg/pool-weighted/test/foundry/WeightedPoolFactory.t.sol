@@ -17,12 +17,11 @@ contract WeightedPoolFactoryTest is Test {
     function setUp() public {
         BasicAuthorizerMock authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
-        factory = new WeightedPoolFactory(vault, 365 days, 90 days);
+        factory = new WeightedPoolFactory(vault, 365 days);
     }
 
     function testFactoryPausedState() public {
-        (uint256 pauseWindow, uint256 bufferPeriod) = factory.getPauseConfiguration();
-        assertEq(pauseWindow, 365 days);
-        assertEq(bufferPeriod, 90 days);
+        uint256 pauseWindowDuration = factory.getPauseWindowDuration();
+        assertEq(pauseWindowDuration, 365 days);
     }
 }

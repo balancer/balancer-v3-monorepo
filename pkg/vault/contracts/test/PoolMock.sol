@@ -32,7 +32,7 @@ contract PoolMock is BasePool {
         bool registerPool
     ) BasePool(vault, name, symbol) {
         if (registerPool) {
-            PoolFactoryMock factory = new PoolFactoryMock(vault, 365 days, 30 days);
+            PoolFactoryMock factory = new PoolFactoryMock(vault, 365 days);
 
             factory.registerPool(
                 address(this),

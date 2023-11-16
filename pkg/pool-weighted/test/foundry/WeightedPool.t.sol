@@ -49,7 +49,7 @@ contract WeightedPoolTest is Test {
     function setUp() public {
         BasicAuthorizerMock authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
-        factory = new WeightedPoolFactory(vault, 365 days, 90 days);
+        factory = new WeightedPoolFactory(vault, 365 days);
 
         router = new Router(IVault(vault), address(0));
         USDC = new ERC20TestToken("USDC", "USDC", 6);

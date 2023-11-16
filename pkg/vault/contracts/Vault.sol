@@ -12,7 +12,6 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 // solhint-disable max-line-length
 import { IVault, PoolConfig, PoolCallbacks, PoolPauseConfig, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { ITemporarilyPausable } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/ITemporarilyPausable.sol";
 // solhint-enable max-line-length
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
@@ -134,10 +133,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         uint256 bufferPeriodDuration
     ) Authentication(bytes32(uint256(uint160(address(this))))) {
         if (pauseWindowDuration > MAX_PAUSE_WINDOW_DURATION) {
-            revert ITemporarilyPausable.PauseWindowDurationTooLarge();
+            revert PauseWindowDurationTooLarge();
         }
         if (bufferPeriodDuration > MAX_BUFFER_PERIOD_DURATION) {
-            revert ITemporarilyPausable.BufferPeriodDurationTooLarge();
+            revert BufferPeriodDurationTooLarge();
         }
 
         uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
@@ -695,12 +694,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     function registerPool(
         address pool,
         IERC20[] memory tokens,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
+        uint256 pauseWindowEndTime,
         PoolCallbacks calldata poolCallbacks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused {
-        _registerPool(pool, tokens, pauseWindowDuration, bufferPeriodDuration, poolCallbacks, liquidityManagement);
+        _registerPool(pool, tokens, pauseWindowEndTime, poolCallbacks, liquidityManagement);
     }
 
     /// @inheritdoc IVault
@@ -758,8 +756,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     function _registerPool(
         address pool,
         IERC20[] memory tokens,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
+        uint256 pauseWindowEndTime,
         PoolCallbacks memory callbackConfig,
         LiquidityManagement memory liquidityManagement
     ) internal {
@@ -804,13 +801,14 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
         }
 
-        uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
-
-        PoolPauseConfig memory pauseConfig = PoolPauseConfig({
-            isPoolPaused: false,
-            pauseWindowEndTime: pauseWindowEndTime,
-            bufferPeriodEndTime: pauseWindowEndTime + bufferPeriodDuration
-        });
+        PoolPauseConfig memory pauseConfig;
+        unchecked {
+            pauseConfig = PoolPauseConfig({
+                isPoolPaused: false,
+                pauseWindowEndTime: pauseWindowEndTime,
+                bufferPeriodEndTime: pauseWindowEndTime + (_vaultBufferPeriodEndTime - _vaultPauseWindowEndTime)
+            });
+        }
 
         // Store the pause period end times.
         _poolPauseConfig[pool] = pauseConfig.fromPoolPauseConfig();

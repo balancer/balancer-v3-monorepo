@@ -27,7 +27,7 @@ contract VaultMock is Vault {
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
     ) Vault(authorizer, pauseWindowDuration, bufferPeriodDuration) {
-        _poolFactoryMock = new PoolFactoryMock(this, pauseWindowDuration, bufferPeriodDuration);
+        _poolFactoryMock = new PoolFactoryMock(this, pauseWindowDuration);
     }
 
     function getPoolFactoryMock() external view returns (address) {
@@ -68,7 +68,6 @@ contract VaultMock is Vault {
             pool,
             tokens,
             365 days,
-            30 days,
             PoolConfigBits.wrap(0).toPoolConfig().callbacks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
         );

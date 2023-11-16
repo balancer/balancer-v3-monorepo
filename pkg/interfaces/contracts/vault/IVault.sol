@@ -131,14 +131,14 @@ interface IVault {
      * @dev This version of the function assumes the default proportional liquidity methods are supported.
      * @param factory The factory address associated with the pool being registered
      * @param tokens An array of token addresses the pool will manage
+     * @param pauseWindowEndTime The timestamp when the pause window expires
      * @param config Flags indicating which callbacks the pool supports
      * @param liquidityManagement Liquidity management flags with implemented methods
      */
     function registerPool(
         address factory,
         IERC20[] memory tokens,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
+        uint256 pauseWindowEndTime,
         PoolCallbacks calldata config,
         LiquidityManagement calldata liquidityManagement
     ) external;
@@ -695,6 +695,12 @@ interface IVault {
      * @param paused True if the pool was paused
      */
     event PoolPausedStateChanged(address indexed pool, bool paused);
+
+    /// @dev The caller specified a pause window period longer than the maximum.
+    error PauseWindowDurationTooLarge();
+
+    /// @dev The caller specified a buffer period longer than the maximum.
+    error BufferPeriodDurationTooLarge();
 
     /// @dev A user tried to invoke an operation while the Vault was paused.
     error VaultPaused();

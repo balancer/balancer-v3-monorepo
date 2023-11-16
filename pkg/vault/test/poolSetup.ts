@@ -26,7 +26,7 @@ export async function setupEnvironment(): Promise<{
   const vaultAddress = await vault.getAddress();
 
   const factory: PoolFactoryMock = await deploy('v3-vault/PoolFactoryMock', {
-    args: [vaultAddress, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
+    args: [vaultAddress, PAUSE_WINDOW_DURATION],
   });
 
   const tokenA: ERC20TestToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });
