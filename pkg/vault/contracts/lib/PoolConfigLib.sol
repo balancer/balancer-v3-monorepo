@@ -47,30 +47,36 @@ library PoolConfigLib {
 
     // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
-    uint8 public constant POOL_INITIALIZED_OFFSET = 1;
-    uint8 public constant AFTER_SWAP_OFFSET = 2;
-    uint8 public constant BEFORE_ADD_LIQUIDITY_OFFSET = 3;
-    uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = 4;
-    uint8 public constant BEFORE_REMOVE_LIQUIDITY_OFFSET = 5;
-    uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = 6;
+    uint8 public constant POOL_INITIALIZED_OFFSET = POOL_REGISTERED_OFFSET + 1;
+    uint8 public constant DYNAMIC_SWAP_FEE_OFFSET = POOL_INITIALIZED_OFFSET + 1;
+    uint8 public constant AFTER_SWAP_OFFSET = DYNAMIC_SWAP_FEE_OFFSET + 1;
+    uint8 public constant BEFORE_ADD_LIQUIDITY_OFFSET = AFTER_SWAP_OFFSET + 1;
+    uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = BEFORE_ADD_LIQUIDITY_OFFSET + 1;
+    uint8 public constant BEFORE_REMOVE_LIQUIDITY_OFFSET = AFTER_ADD_LIQUIDITY_OFFSET + 1;
+    uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = BEFORE_REMOVE_LIQUIDITY_OFFSET + 1;
+    uint8 public constant POOL_RECOVERY_MODE_OFFSET = AFTER_REMOVE_LIQUIDITY_OFFSET + 1;
 
-    // Supported API bit offsets
-    uint8 public constant ADD_LIQUIDITY_PROPORTIONAL_OFFSET = 7;
-    uint8 public constant ADD_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET = 8;
-    uint8 public constant ADD_LIQUIDITY_UNBALANCED_OFFSET = 9;
-    uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = 10;
-    uint8 public constant REMOVE_LIQUIDITY_PROPORTIONAL_OFFSET = 11;
-    uint8 public constant REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET = 12;
-    uint8 public constant REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET = 13;
-    uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = 14;
-    uint8 public constant POOL_RECOVERY_MODE_OFFSET = 15;
+    // Supported liquidity API bit offsets
+    uint8 public constant ADD_LIQUIDITY_PROPORTIONAL_OFFSET = POOL_RECOVERY_MODE_OFFSET + 1;
+    uint8 public constant ADD_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET = ADD_LIQUIDITY_PROPORTIONAL_OFFSET + 1;
+    uint8 public constant ADD_LIQUIDITY_UNBALANCED_OFFSET = ADD_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET + 1;
+    uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_UNBALANCED_OFFSET + 1;
+    uint8 public constant REMOVE_LIQUIDITY_PROPORTIONAL_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
+    uint8 public constant REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET = REMOVE_LIQUIDITY_PROPORTIONAL_OFFSET + 1;
+    uint8 public constant REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET =
+        REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET + 1;
+    uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET + 1;
 
-    uint8 public constant DECIMAL_SCALING_FACTORS_OFFSET = 16;
+    uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
+    uint8 public constant DECIMAL_SCALING_FACTORS_OFFSET = STATIC_SWAP_FEE_OFFSET + _STATIC_SWAP_FEE_BITLENGTH;
 
-    uint256 private constant _DECIMAL_DIFF_BITLENGTH = 5;
     // Uses a uint24 (3 bytes): least significant 20 bits to store the values, and a 4-bit pad.
     // This maximum token count is also hard-coded in the Vault.
-    uint256 private constant _TOKEN_DECIMAL_DIFFS_BITLENGTH = 24;
+    uint8 private constant _TOKEN_DECIMAL_DIFFS_BITLENGTH = 24;
+    uint8 private constant _DECIMAL_DIFF_BITLENGTH = 5;
+
+    // A fee can never be larger than FixedPoint.ONE, which fits in 60 bits
+    uint8 private constant _STATIC_SWAP_FEE_BITLENGTH = 64;
 
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_REGISTERED_OFFSET);
@@ -82,6 +88,14 @@ library PoolConfigLib {
 
     function isPoolInRecoveryMode(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_RECOVERY_MODE_OFFSET);
+    }
+
+    function hasDynamicSwapFee(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(DYNAMIC_SWAP_FEE_OFFSET);
+    }
+
+    function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint64) {
+        return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, _STATIC_SWAP_FEE_BITLENGTH).toUint64();
     }
 
     function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint24) {
@@ -197,9 +211,18 @@ library PoolConfigLib {
 
         // Stack too deep.
         {
-            configBits = configBits.insertBool(config.isRegisteredPool, POOL_REGISTERED_OFFSET);
-            configBits = configBits.insertBool(config.isInitializedPool, POOL_INITIALIZED_OFFSET);
-            configBits = configBits.insertBool(config.isPoolInRecoveryMode, POOL_RECOVERY_MODE_OFFSET);
+            configBits = configBits
+                .insertBool(config.isRegisteredPool, POOL_REGISTERED_OFFSET)
+                .insertBool(config.isInitializedPool, POOL_INITIALIZED_OFFSET)
+                .insertBool(config.isPoolInRecoveryMode, POOL_RECOVERY_MODE_OFFSET);
+        }
+
+        {
+            configBits = configBits.insertBool(config.hasDynamicSwapFee, DYNAMIC_SWAP_FEE_OFFSET).insertUint(
+                config.staticSwapFeePercentage,
+                STATIC_SWAP_FEE_OFFSET,
+                _STATIC_SWAP_FEE_BITLENGTH
+            );
         }
 
         {
@@ -284,6 +307,8 @@ library PoolConfigLib {
                 isRegisteredPool: config.isPoolRegistered(),
                 isInitializedPool: config.isPoolInitialized(),
                 isPoolInRecoveryMode: config.isPoolInRecoveryMode(),
+                hasDynamicSwapFee: config.hasDynamicSwapFee(),
+                staticSwapFeePercentage: config.getStaticSwapFeePercentage(),
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 callbacks: PoolCallbacks({
                     shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),
