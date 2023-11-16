@@ -56,9 +56,7 @@ contract WeightedPoolTest is Test {
                 tokens: tokens,
                 normalizedWeights: [uint256(0.50e18), uint256(0.50e18)].toMemoryArray()
             }),
-            vault,
-            30 days,
-            90 days
+            vault
         );
 
         USDC.mint(alice, USDC_AMOUNT);
