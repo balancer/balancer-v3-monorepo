@@ -45,11 +45,6 @@ library PoolConfigLib {
     using WordCodec for bytes32;
     using SafeCast for uint256;
 
-    // TODO: Implement bitmap in the config in the following format. Use vertical if too big.
-    // [ 160 bits |  64 bits   |  4 bits  | 4x5 bits |  2 bits  | 1 bit  | 1 bit | 1 bit  |  1 bit   | 1 bit | 1 bit ]
-    // [ not used | static fee | reserved | decimals | reserved | remove |  add  |  swap  | dyn. fee | init. | reg.  ]
-    // |MSB                                                                                                       LSB|
-
     // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
     uint8 public constant POOL_INITIALIZED_OFFSET = POOL_REGISTERED_OFFSET + 1;
