@@ -2,11 +2,13 @@
 
 pragma solidity ^0.8.4;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 // solhint-disable max-line-length
 import { IVault, PoolConfig, PoolCallbacks, PoolPauseConfig, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -15,7 +17,7 @@ import { ITemporarilyPausable } from "@balancer-labs/v3-interfaces/contracts/sol
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 
-import { ReentrancyGuard } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
@@ -33,6 +35,7 @@ import { PoolPauseConfigBits, PoolPauseConfigLib } from "./lib/PoolPauseConfigLi
 contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
+    using FixedPoint for *;
     using AssetHelpers for *;
     using ArrayHelpers for uint256[];
     using Address for *;
@@ -50,6 +53,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     uint256 private constant _MIN_TOKENS = 2;
     // This maximum token count is also hard-coded in `PoolConfigLib`.
     uint256 private constant _MAX_TOKENS = 4;
+
+    // 1e18 corresponds to a 100% fee.
+    uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
+
+    // 1e18 corresponds to a 100% fee.
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
@@ -80,6 +89,14 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      * @dev It should be always equal to `token.balanceOf(vault)`, except during `invoke`.
      */
     mapping(IERC20 => uint256) private _tokenReserves;
+
+    // We allow 0% swap fee.
+    // The protocol swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
+    // TODO consider using uint64 and packing with other things (when we have other things).
+    uint256 private _protocolSwapFeePercentage;
+
+    // Token -> fee: Protocol's swap fees accumulated in the Vault for harvest.
+    mapping(IERC20 => uint256) private _protocolSwapFees;
 
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer private _authorizer;
@@ -481,6 +498,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         uint256 tokenOutBalance;
         uint256 scaled18AmountGiven;
         uint256 scaled18AmountCalculated;
+        uint256 swapFeeAmount;
+        uint256 swapFeePercentage;
+        uint256 protocolSwapFeeAmount;
     }
 
     function _populateSwapLocals(
@@ -566,13 +586,23 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             ? params.rawAmountGiven.toScaled18RoundDown(vars.scalingFactors[vars.indexIn])
             : params.rawAmountGiven.toScaled18RoundUp(vars.scalingFactors[vars.indexOut]);
 
+        vars.swapFeePercentage = _getSwapFeePercentage(vars.config);
+
+        if (vars.swapFeePercentage > 0 && params.kind == IVault.SwapKind.GIVEN_OUT) {
+            // Round up to avoid losses during precision loss.
+            vars.swapFeeAmount =
+                vars.scaled18AmountGiven.divUp(vars.swapFeePercentage.complement()) -
+                vars.scaled18AmountGiven;
+        }
+
+        // Add swap fee to the amountGiven to account for the fee taken in GIVEN_OUT swap on tokenOut
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
         vars.scaled18AmountCalculated = IBasePool(params.pool).onSwap(
             IBasePool.SwapParams({
                 kind: params.kind,
                 tokenIn: params.tokenIn,
                 tokenOut: params.tokenOut,
-                scaled18AmountGiven: vars.scaled18AmountGiven,
+                scaled18AmountGiven: vars.scaled18AmountGiven + vars.swapFeeAmount,
                 scaled18Balances: vars.scaled18Balances,
                 indexIn: vars.indexIn,
                 indexOut: vars.indexOut,
@@ -580,6 +610,14 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 userData: params.userData
             })
         );
+
+        if (vars.swapFeePercentage > 0 && params.kind == IVault.SwapKind.GIVEN_IN) {
+            // Swap fee is a percentage of the amountCalculated for the GIVEN_IN swap
+            // Round up to avoid losses during precision loss.
+            vars.swapFeeAmount = vars.scaled18AmountCalculated.mulUp(vars.swapFeePercentage);
+            // Should substract the fee from the amountCalculated for GIVEN_IN swap
+            vars.scaled18AmountCalculated -= vars.swapFeeAmount;
+        }
 
         // For `GivenIn` the amount calculated is leaving the Vault, so we round down.
         // Round up when entering the Vault on `GivenOut`.
@@ -591,9 +629,19 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             ? (params.rawAmountGiven, amountCalculated)
             : (amountCalculated, params.rawAmountGiven);
 
+        // Charge protocolSwapFee
+        if (vars.swapFeeAmount > 0 && _protocolSwapFeePercentage > 0) {
+            // Always charge fees on tokenOut. Store amount in native decimals.
+            vars.protocolSwapFeeAmount = vars.swapFeeAmount.mulUp(_protocolSwapFeePercentage).toRawRoundDown(
+                vars.scalingFactors[vars.indexOut]
+            );
+
+            _protocolSwapFees[params.tokenOut] += vars.protocolSwapFeeAmount;
+        }
+
         // Use `unchecked_setAt` to save storage reads.
         poolBalances.unchecked_setAt(vars.indexIn, vars.tokenInBalance + amountIn);
-        poolBalances.unchecked_setAt(vars.indexOut, vars.tokenOutBalance - amountOut);
+        poolBalances.unchecked_setAt(vars.indexOut, vars.tokenOutBalance - amountOut - vars.protocolSwapFeeAmount);
 
         // Account amountIn of tokenIn
         _takeDebt(params.tokenIn, amountIn, msg.sender);
@@ -626,7 +674,17 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             }
         }
 
-        emit Swap(params.pool, params.tokenIn, params.tokenOut, amountIn, amountOut);
+        emit Swap(params.pool, params.tokenIn, params.tokenOut, amountIn, amountOut, vars.swapFeeAmount);
+    }
+
+    /// @dev Returns swap fee for the pool.
+    function _getSwapFeePercentage(PoolConfig memory config) internal pure returns (uint256) {
+        if (config.hasDynamicSwapFee) {
+            // TODO: Fetch dynamic swap fee from the pool using callback
+            return 0;
+        } else {
+            return config.staticSwapFeePercentage;
+        }
     }
 
     /*******************************************************************************
@@ -892,7 +950,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     )
         external
         withHandler
-        whenVaultNotPaused
         nonReentrant
         withRegisteredPool(pool)
         whenPoolNotPaused(pool)
@@ -954,7 +1011,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     )
         external
         withHandler
-        whenVaultNotPaused
         withInitializedPool(pool)
         whenPoolNotPaused(pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
@@ -1124,7 +1180,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         bytes memory userData
     )
         external
-        whenVaultNotPaused
         withInitializedPool(pool)
         whenPoolNotPaused(pool)
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
@@ -1403,6 +1458,76 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     function _isTrustedRouter(address) internal pure returns (bool) {
         //TODO: Implement based on approval by governance and user
         return true;
+    }
+
+    /*******************************************************************************
+                                        Fees
+    *******************************************************************************/
+
+    /// @inheritdoc IVault
+    function setProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external authenticate {
+        if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
+            revert ProtocolSwapFeePercentageTooHigh();
+        }
+        _protocolSwapFeePercentage = newProtocolSwapFeePercentage;
+        emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
+    }
+
+    /// @inheritdoc IVault
+    function getProtocolSwapFeePercentage() external view returns (uint256) {
+        return _protocolSwapFeePercentage;
+    }
+
+    /// @inheritdoc IVault
+    function getProtocolSwapFee(address token) external view returns (uint256) {
+        return _protocolSwapFees[IERC20(token)];
+    }
+
+    /// @inheritdoc IVault
+    function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant {
+        for (uint256 index = 0; index < tokens.length; index++) {
+            IERC20 token = tokens[index];
+            uint256 amount = _protocolSwapFees[token];
+            // checks
+            if (amount > 0) {
+                // effects
+                // set fees to zero for the token
+                _protocolSwapFees[token] = 0;
+                // interactions
+                token.safeTransfer(msg.sender, amount);
+                // emit an event
+                emit ProtocolFeeCollected(token, amount);
+            }
+        }
+    }
+
+    /**
+     * @inheritdoc IVault
+     * @dev This is a permissioned function, and disabled if the Vault is paused. The swap fee must be <=
+     * MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
+     */
+    function setStaticSwapFeePercentage(
+        address pool,
+        uint256 swapFeePercentage
+    ) external authenticate whenVaultNotPaused withRegisteredPool(pool) {
+        _setStaticSwapFeePercentage(pool, swapFeePercentage);
+    }
+
+    function _setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) internal virtual {
+        if (swapFeePercentage > _MAX_SWAP_FEE_PERCENTAGE) {
+            revert SwapFeePercentageTooHigh();
+        }
+
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        config.staticSwapFeePercentage = swapFeePercentage.toUint64();
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        emit SwapFeePercentageChanged(pool, swapFeePercentage);
+    }
+
+    /// @inheritdoc IVault
+    function getStaticSwapFeePercentage(address pool) external view returns (uint256) {
+        return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
     }
 
     /*******************************************************************************
