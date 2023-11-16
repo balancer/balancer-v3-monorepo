@@ -22,11 +22,6 @@ contract FactoryWidePauseWindow is ITemporarilyPausable {
     uint256 private immutable _poolsPauseWindowEndTime;
 
     constructor(uint256 initialPauseWindowDuration, uint256 bufferPeriodDuration) {
-        // The Vault will check on deployment that the durations given are within the bounds specified by
-        // the maximums in `PausableConstants` (see ITemporarilyPausable). Since it is now possible for a factory
-        // to pass in arbitrary values here, pre-emptively verify that these durations are valid for pool creation.
-        // (Otherwise, you would be able to deploy a useless factory where `create` would always revert.)
-
         if (initialPauseWindowDuration > PausableConstants.MAX_PAUSE_WINDOW_DURATION) {
             revert PauseWindowDurationTooLarge();
         }
