@@ -32,21 +32,13 @@ struct LiquidityManagement {
 struct PoolConfig {
     bool isPoolRegistered;
     bool isPoolInitialized;
+    bool isPoolPaused;
     bool hasDynamicSwapFee;
     uint64 staticSwapFeePercentage; // stores an 18-decimal FP value (max FixedPoint.ONE)
     uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
+    uint32 pauseWindowEndTime;
     PoolCallbacks callbacks;
     LiquidityManagement liquidityManagement;
-}
-
-/**
- * @dev Represents a pool's pause configuration (end timestamps).
- * Note that the actual paused state is a bit in PoolConfig.
- */
-struct PoolPauseConfig {
-    bool isPoolPaused;
-    uint256 pauseWindowEndTime;
-    uint256 bufferPeriodEndTime;
 }
 
 interface IVault {
@@ -139,6 +131,7 @@ interface IVault {
         address factory,
         IERC20[] memory tokens,
         uint256 pauseWindowEndTime,
+        address pauseManager,
         PoolCallbacks calldata config,
         LiquidityManagement calldata liquidityManagement
     ) external;
@@ -770,10 +763,9 @@ interface IVault {
      *
      * @param pool The pool whose data is requested
      * @return paused True is the Vault is paused
-     * @return vaultPauseWindowEndTime The timestamp of the end of the Vault's pause window
-     * @return vaultBufferPeriodEndTime The timestamp of the end of the Vault's buffer period
+     * @return vaultPauseWindowEndTime The timestamp of the end of the Pool's pause window (not including the buffer)
      */
-    function getPoolPausedState(address pool) external view returns (bool, uint256, uint256);
+    function getPoolPausedState(address pool) external view returns (bool, uint256);
 
     /**
      * @notice Pause the Pool: an emergency action which disables all pool functions.

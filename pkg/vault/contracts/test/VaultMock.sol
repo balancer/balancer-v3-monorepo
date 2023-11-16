@@ -68,6 +68,7 @@ contract VaultMock is Vault {
             pool,
             tokens,
             365 days,
+            address(0),
             PoolConfigBits.wrap(0).toPoolConfig().callbacks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
         );

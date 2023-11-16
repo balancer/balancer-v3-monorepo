@@ -23,6 +23,6 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
     ) external {
         uint256 pauseWindowEndTime = block.timestamp + getPauseWindowDuration();
 
-        _vault.registerPool(pool, tokens, pauseWindowEndTime, poolCallbacks, liquidityManagement);
+        _vault.registerPool(pool, tokens, pauseWindowEndTime, address(0), poolCallbacks, liquidityManagement);
     }
 }

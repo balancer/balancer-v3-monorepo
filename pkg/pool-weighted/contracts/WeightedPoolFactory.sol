@@ -13,6 +13,8 @@ import "./WeightedPool.sol";
  * @dev This is the most general factory, which allows up to four tokens and arbitrary weights.
  */
 contract WeightedPoolFactory is BasePoolFactory {
+    // solhint-disable not-rely-on-time
+
     constructor(IVault vault, uint256 initialPauseWindowDuration) BasePoolFactory(vault, initialPauseWindowDuration) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -46,6 +48,7 @@ contract WeightedPoolFactory is BasePoolFactory {
             pool,
             tokens,
             pauseWindowEndTime,
+            address(0), // no pause manager
             PoolCallbacks({
                 shouldCallBeforeAddLiquidity: false,
                 shouldCallAfterAddLiquidity: false,
