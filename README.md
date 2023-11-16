@@ -30,7 +30,7 @@ One option to quickly select the suggested Node version is using `nvm`, and runn
 $ nvm use
 ```
 
-Solidity 0.8.4 or higher is required, as V3 uses custom error messages. We strongly recommend using the latest released version of the Solidity compiler (at least 0.8.18), to incorporate all the latest bug fixes.
+Solidity 0.8.4 or higher is required, as V3 uses custom error messages. We strongly recommend using the latest released version of the Solidity compiler (at least 0.8.21), to incorporate all the latest bug fixes.
 
 ## Build and Test
 
@@ -86,7 +86,6 @@ $ yarn slither
 ```
 
 The analyzer's global settings can be found in `.slither.config.json`.
-
 
 Some of the analyzer's known findings are already filtered out using [--triage-mode option](https://github.com/crytic/slither/wiki/Usage#triage-mode); the results of the triage can be found in `slither.db.json` files inside each individual workspace.
 
