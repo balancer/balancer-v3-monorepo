@@ -757,13 +757,13 @@ interface IVault {
     function isPoolPaused(address pool) external view returns (bool);
 
     /**
-     * @notice Returns the paused status, and end times of the Vault's pause window and buffer period.
+     * @notice Returns the paused status, and end times of the Pool's pause window and buffer period.
      * @dev Note that even when set to a paused state, the pool will automatically unpause at the end of
      * the buffer period.
      *
      * @param pool The pool whose data is requested
-     * @return paused True is the Vault is paused
-     * @return vaultPauseWindowEndTime The timestamp of the end of the Pool's pause window (not including the buffer)
+     * @return paused True if the Pool is paused
+     * @return poolPauseWindowEndTime The timestamp of the end of the Pool's pause window (not including the buffer)
      */
     function getPoolPausedState(address pool) external view returns (bool, uint256);
 
