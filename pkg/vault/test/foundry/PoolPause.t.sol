@@ -105,15 +105,16 @@ contract PoolPauseTest is Test {
     }
 
     function testGovernancePause() public {
-        // Authorize alice
-        bytes32 pausePoolRole = vault.getActionId(IVault.pausePool.selector);
-        authorizer.grantRole(pausePoolRole, alice);
-
+        // Nice try, Bob!
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
         vault.pausePool(address(unmanagedPool));
 
-        vm.prank(alice);
+        // Reluctantly authorize Bob
+        bytes32 pausePoolRole = vault.getActionId(IVault.pausePool.selector);
+        authorizer.grantRole(pausePoolRole, bob);
+
+        vm.prank(bob);
         vault.pausePool(address(unmanagedPool));
 
         assertTrue(vault.isPoolPaused(address(unmanagedPool)));
