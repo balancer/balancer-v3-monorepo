@@ -97,7 +97,7 @@ contract WeightedPoolTest is Test {
 
         assertFalse(paused);
         assertApproxEqAbs(pauseWindow, 365 days, 1);
-        assertApproxEqAbs(bufferPeriod, 90 days, 1);
+        assertApproxEqAbs(bufferPeriod, 365 days + 90 days, 1);
         assertEq(pauseManager, address(0));
     }
 
