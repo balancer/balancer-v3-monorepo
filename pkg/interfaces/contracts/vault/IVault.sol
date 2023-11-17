@@ -120,11 +120,17 @@ interface IVault {
 
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
-     * @dev The vault defines an additional buffer period during which a paused pool will stay paused. After the buffer
-     * period passes, a paused pool will automatically unpause.
+     * @dev A pool can opt-out of pausing by providing a zero value for the pause window, or allow pausing indefinitely
+     * by providing a large value. (Pool pause windows are not limited by the Vault maximums.) The vault defines an
+     * additional buffer period during which a paused pool will stay paused. After the buffer period passes, a paused
+     * pool will automatically unpause.
      *
-     * If the zero address is provided for the `pauseManager`, permissions for pausing the pool will be controlled by
-     * the authorizer.
+     * A pool can opt out of Balancer governance pausing by providing a custom `pauseManager`. This might be a
+     * multi-sig contract, or an arbitrary smart contract that controls access to which accounts can make calls that
+     * are forwarded to the Vault.
+     *
+     * If the zero address is provided for the `pauseManager`, permissions for pausing the pool will default to the
+     * authorizer.
      *
      * @param factory The factory address associated with the pool being registered
      * @param tokens An array of token addresses the pool will manage
