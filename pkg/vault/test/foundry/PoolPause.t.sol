@@ -25,6 +25,7 @@ contract PoolPauseTest is Test {
     BasicAuthorizerMock authorizer;
     ERC20PoolMock pool;
     ERC20PoolMock unmanagedPool;
+    ERC20PoolMock permissionlessPool;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
     address alice = vm.addr(1);
@@ -43,6 +44,7 @@ contract PoolPauseTest is Test {
             "ERC20POOL",
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             true,
+            365 days,
             admin
         );
 
@@ -53,6 +55,17 @@ contract PoolPauseTest is Test {
             "ERC20POOL",
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             true,
+            365 days,
+            address(0)
+        );
+
+        permissionlessPool = new ERC20PoolMock(
+            vault,
+            "ERC20 Pool",
+            "ERC20POOL",
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            true,
+            0,
             address(0)
         );
     }
@@ -105,4 +118,14 @@ contract PoolPauseTest is Test {
 
         assertTrue(vault.isPoolPaused(address(unmanagedPool)));
     }
+
+    function testCannotPausePermissionlessPool() public {
+        // Authorize alice
+        bytes32 pausePoolRole = vault.getActionId(IVault.pausePool.selector);
+        authorizer.grantRole(pausePoolRole, alice);
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IAuthentication.PoolPauseWindowExpired.selector), address(pool));
+        vault.pausePool(address(permissionlessPool));
+    };
 }

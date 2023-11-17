@@ -51,6 +51,7 @@ contract VaultSwapTest is Test {
             "ERC20POOL",
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             true,
+            365 days,
             address(0)
         );
 

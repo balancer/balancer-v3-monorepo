@@ -40,6 +40,7 @@ contract ERC20PoolTokenTest is Test {
             "ERC20POOL",
             [address(USDC), address(DAI)].toMemoryArray().asIERC20(),
             true,
+            365 days,
             address(0)
         );
     }

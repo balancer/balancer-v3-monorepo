@@ -34,10 +34,11 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         string memory symbol,
         IERC20[] memory tokens,
         bool registerPool,
+        uint256 pauseWindowDuration,
         address pauseManager
     ) ERC20PoolToken(vault, name, symbol) {
         if (registerPool) {
-            PoolFactoryMock factory = new PoolFactoryMock(vault, 365 days);
+            PoolFactoryMock factory = new PoolFactoryMock(vault, pauseWindowDuration);
 
             factory.registerPool(
                 address(this),
