@@ -10,23 +10,22 @@ import { PoolFactoryMock } from '../typechain-types';
 
 // This deploys a Vault, then creates 3 tokens and 2 pools. The first pool (A) is registered; the second (B) )s not,
 // which, along with a registration flag in the Pool mock, permits separate testing of registration functions.
-export async function setupEnvironment(): Promise<{
+export async function setupEnvironment(pauseWindowDuration: number): Promise<{
   vault: VaultMock;
   tokens: ERC20TestToken[];
   pools: PoolMock[];
   factory: PoolFactoryMock;
 }> {
-  const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
 
   const authorizer: BasicAuthorizerMock = await deploy('v3-solidity-utils/BasicAuthorizerMock');
   const vault: VaultMock = await deploy('VaultMock', {
-    args: [authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
+    args: [authorizer.getAddress(), pauseWindowDuration, BUFFER_PERIOD_DURATION],
   });
   const vaultAddress = await vault.getAddress();
 
   const factory: PoolFactoryMock = await deploy('v3-vault/PoolFactoryMock', {
-    args: [vaultAddress, PAUSE_WINDOW_DURATION],
+    args: [vaultAddress, pauseWindowDuration],
   });
 
   const tokenA: ERC20TestToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });

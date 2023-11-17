@@ -93,12 +93,16 @@ interface IVault {
      * @param pool The pool being registered
      * @param factory The factory creating the pool
      * @param tokens The pool's tokens
+     * @param pauseWindowEndTime The pool's pause window end time
+     * @param pauseManager The pool's external pause manager (or 0 for governance)
      * @param liquidityManagement Supported liquidity management callback flags
      */
     event PoolRegistered(
         address indexed pool,
         address indexed factory,
         IERC20[] tokens,
+        uint256 pauseWindowEndTime,
+        address pauseManager,
         PoolCallbacks callbacks,
         LiquidityManagement liquidityManagement
     );

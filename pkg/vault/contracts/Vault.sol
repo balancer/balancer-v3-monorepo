@@ -815,7 +815,15 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         _poolConfig[pool] = config.fromPoolConfig();
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
-        emit PoolRegistered(pool, msg.sender, tokens, callbackConfig, liquidityManagement);
+        emit PoolRegistered(
+            pool,
+            msg.sender,
+            tokens,
+            pauseWindowEndTime,
+            pauseManager,
+            callbackConfig,
+            liquidityManagement
+        );
     }
 
     /// @dev See `isPoolRegistered`

@@ -9,8 +9,11 @@ import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { impersonate } from '@balancer-labs/v3-helpers/src/signers';
 import { setupEnvironment } from './poolSetup';
 import '@balancer-labs/v3-common/setupTests';
+import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 
 describe('ERC20PoolToken', function () {
+  const PAUSE_WINDOW_DURATION = MONTH * 9;
+
   let vault: VaultMock;
   let poolA: PoolMock;
   let poolB: PoolMock;
@@ -30,7 +33,7 @@ describe('ERC20PoolToken', function () {
 
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { vault: vaultMock, pools } = await setupEnvironment();
+    const { vault: vaultMock, pools } = await setupEnvironment(PAUSE_WINDOW_DURATION);
 
     vault = vaultMock;
 
