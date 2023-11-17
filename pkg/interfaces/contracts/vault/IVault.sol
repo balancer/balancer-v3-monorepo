@@ -124,6 +124,7 @@ interface IVault {
      * @param factory The factory address associated with the pool being registered
      * @param tokens An array of token addresses the pool will manage
      * @param pauseWindowEndTime The timestamp when the pause window expires
+     * @param pauseManager Optional contract the Vault will allow to pause the pool
      * @param config Flags indicating which callbacks the pool supports
      * @param liquidityManagement Liquidity management flags with implemented methods
      */
