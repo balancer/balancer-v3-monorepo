@@ -39,7 +39,8 @@ contract ERC20PoolTokenTest is Test {
             "ERC20 Pool",
             "ERC20POOL",
             [address(USDC), address(DAI)].toMemoryArray().asIERC20(),
-            true
+            true,
+            address(0)
         );
     }
 

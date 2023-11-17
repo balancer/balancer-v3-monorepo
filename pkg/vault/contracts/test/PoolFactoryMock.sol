@@ -18,11 +18,12 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
     function registerPool(
         address pool,
         IERC20[] memory tokens,
+        address pauseManager,
         PoolCallbacks calldata poolCallbacks,
         LiquidityManagement calldata liquidityManagement
     ) external {
         uint256 pauseWindowEndTime = block.timestamp + getPauseWindowDuration();
 
-        _vault.registerPool(pool, tokens, pauseWindowEndTime, address(0), poolCallbacks, liquidityManagement);
+        _vault.registerPool(pool, tokens, pauseWindowEndTime, pauseManager, poolCallbacks, liquidityManagement);
     }
 }

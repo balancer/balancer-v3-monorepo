@@ -91,10 +91,11 @@ contract WeightedPoolTest is Test {
     }
 
     function testPoolPausedState() public {
-        (bool paused, uint256 pauseWindow) = vault.getPoolPausedState(address(pool));
+        (bool paused, uint256 pauseWindow, address pauseManager) = vault.getPoolPausedState(address(pool));
 
-        assertEq(paused, false);
+        assertFalse(paused);
         assertApproxEqAbs(pauseWindow, 365 days, 1);
+        assertEq(pauseManager, address(0));
     }
 
     function testInitialize() public {

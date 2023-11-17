@@ -37,6 +37,7 @@ contract PoolMock is BasePool {
             factory.registerPool(
                 address(this),
                 tokens,
+                address(0),
                 PoolConfigBits.wrap(0).toPoolConfig().callbacks,
                 PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
             );

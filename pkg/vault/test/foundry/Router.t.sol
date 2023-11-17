@@ -54,7 +54,8 @@ contract RouterTest is Test {
             "ERC20 Pool",
             "ERC20POOL",
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
-            true
+            true,
+            address(0)
         );
 
         USDC.mint(bob, USDC_AMOUNT_IN);

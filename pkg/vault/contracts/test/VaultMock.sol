@@ -81,6 +81,7 @@ contract VaultMock is Vault {
         _poolFactoryMock.registerPool(
             pool,
             tokens,
+            address(0),
             PoolConfigBits.wrap(0).toPoolConfig().callbacks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
         );

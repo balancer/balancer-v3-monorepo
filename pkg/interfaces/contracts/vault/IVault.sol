@@ -723,6 +723,12 @@ interface IVault {
     error PoolPauseWindowExpired(address pool);
 
     /**
+     * @dev The caller is not the registered pause manager for the pool.
+     * @param pool The pool
+     */
+    error SenderIsNotPauseManager(address pool);
+
+    /**
      * @notice Indicates whether the Vault is paused.
      * @return True if the Vault is paused
      */
@@ -764,8 +770,9 @@ interface IVault {
      * @param pool The pool whose data is requested
      * @return paused True if the Pool is paused
      * @return poolPauseWindowEndTime The timestamp of the end of the Pool's pause window (not including the buffer)
+     * @return pauseManager The pause manager, or the zero address
      */
-    function getPoolPausedState(address pool) external view returns (bool, uint256);
+    function getPoolPausedState(address pool) external view returns (bool, uint256, address);
 
     /**
      * @notice Pause the Pool: an emergency action which disables all pool functions.

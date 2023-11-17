@@ -1615,35 +1615,55 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                                      Pool Pausing
     *******************************************************************************/
 
+    modifier withAuthenticatedPauserFor(address pool) {
+        address pauseManager = _poolPauseManagers[pool];
+
+        if (pauseManager == address(0)) {
+            // If there is no pause manager, default to the authorizer.
+            _authenticateCaller();
+        } else {
+            // Sender must be the pause manager.
+            if (msg.sender != pauseManager) {
+                revert SenderIsNotPauseManager(pool);
+            }
+        }
+        _;
+    }
+
     /// @inheritdoc IVault
     function isPoolPaused(address pool) external view withRegisteredPool(pool) returns (bool) {
         return _isPoolPaused(pool);
     }
 
+    /// @inheritdoc IVault
+    function getPoolPausedState(address pool) external view withRegisteredPool(pool) returns (bool, uint256, address) {
+        (bool paused, uint256 pauseWindowEndTime) = _getPoolPausedState(pool);
+
+        return (paused, pauseWindowEndTime, _poolPauseManagers[pool]);
+    }
+
     /// @dev Check both the flag and timestamp to determine whether the pool is paused.
     function _isPoolPaused(address pool) internal view returns (bool) {
-        (bool paused, ) = getPoolPausedState(pool);
+        (bool paused, ) = _getPoolPausedState(pool);
 
         return paused;
     }
 
-    /// @inheritdoc IVault
-    function getPoolPausedState(address pool) public view withRegisteredPool(pool) returns (bool, uint256) {
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+    /// @dev Lowest level routine that plucks only the minimum necessary parts from storage.
+    function _getPoolPausedState(address pool) private view returns (bool, uint256) {
+        (bool pauseBit, uint256 pauseWindowEndTime) = PoolConfigLib.getPoolPausedState(_poolConfig[pool]);
 
         // Use the Vault's buffer period.
-        bool paused = config.isPoolPaused && block.timestamp <= config.pauseWindowEndTime + _vaultBufferPeriodDuration;
-
-        return (paused, config.pauseWindowEndTime);
+        return (pauseBit && block.timestamp <= pauseWindowEndTime + _vaultBufferPeriodDuration, pauseWindowEndTime);
     }
 
     /// @inheritdoc IVault
-    function pausePool(address pool) external withRegisteredPool(pool) authenticate {
+    function pausePool(address pool) external withRegisteredPool(pool) withAuthenticatedPauserFor(pool) {
         _setPoolPaused(pool, true);
     }
 
     /// @inheritdoc IVault
-    function unpausePool(address pool) external withRegisteredPool(pool) authenticate {
+    function unpausePool(address pool) external withRegisteredPool(pool) withAuthenticatedPauserFor(pool) {
         _setPoolPaused(pool, false);
     }
 

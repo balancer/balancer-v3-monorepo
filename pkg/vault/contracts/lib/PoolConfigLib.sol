@@ -333,4 +333,8 @@ library PoolConfigLib {
                 })
             });
     }
+
+    function getPoolPausedState(PoolConfigBits config) internal pure returns (bool, uint256) {
+        return (config.isPoolPaused(), config.getPauseWindowEndTime());
+    }
 }
