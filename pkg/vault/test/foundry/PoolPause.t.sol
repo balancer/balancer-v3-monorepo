@@ -127,5 +127,5 @@ contract PoolPauseTest is Test {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IAuthentication.PoolPauseWindowExpired.selector), address(pool));
         vault.pausePool(address(permissionlessPool));
-    };
+    }
 }
