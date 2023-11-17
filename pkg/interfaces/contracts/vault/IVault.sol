@@ -120,10 +120,15 @@ interface IVault {
 
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
-     * @dev This version of the function assumes the default proportional liquidity methods are supported.
+     * @dev The vault defines an additional buffer period during which a paused pool will stay paused. After the buffer
+     * period passes, a paused pool will automatically unpause.
+     *
+     * If the zero address is provided for the `pauseManager`, permissions for pausing the pool will be controlled by
+     * the authorizer.
+     *
      * @param factory The factory address associated with the pool being registered
      * @param tokens An array of token addresses the pool will manage
-     * @param pauseWindowEndTime The timestamp when the pause window expires
+     * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param pauseManager Optional contract the Vault will allow to pause the pool
      * @param config Flags indicating which callbacks the pool supports
      * @param liquidityManagement Liquidity management flags with implemented methods
