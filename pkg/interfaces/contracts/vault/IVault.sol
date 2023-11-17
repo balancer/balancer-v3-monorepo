@@ -4,7 +4,6 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IBasePool } from "./IBasePool.sol";
 import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
 
