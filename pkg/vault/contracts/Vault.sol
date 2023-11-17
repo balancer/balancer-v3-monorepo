@@ -1636,10 +1636,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     }
 
     /// @inheritdoc IVault
-    function getPoolPausedState(address pool) external view withRegisteredPool(pool) returns (bool, uint256, address) {
+    function getPoolPausedState(
+        address pool
+    ) external view withRegisteredPool(pool) returns (bool, uint256, uint256, address) {
         (bool paused, uint256 pauseWindowEndTime) = _getPoolPausedState(pool);
 
-        return (paused, pauseWindowEndTime, _poolPauseManagers[pool]);
+        return (paused, pauseWindowEndTime, _vaultBufferPeriodDuration, _poolPauseManagers[pool]);
     }
 
     /// @dev Check both the flag and timestamp to determine whether the pool is paused.

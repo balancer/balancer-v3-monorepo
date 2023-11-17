@@ -58,10 +58,10 @@ contract PoolPauseTest is Test {
     }
 
     function testHasPauseManager() public {
-        (, , address pauseManager) = vault.getPoolPausedState(address(pool));
+        (, , , address pauseManager) = vault.getPoolPausedState(address(pool));
         assertEq(pauseManager, admin);
 
-        (, , pauseManager) = vault.getPoolPausedState(address(unmanagedPool));
+        (, , , pauseManager) = vault.getPoolPausedState(address(unmanagedPool));
         assertEq(pauseManager, address(0));
     }
 

@@ -775,10 +775,11 @@ interface IVault {
      *
      * @param pool The pool whose data is requested
      * @return paused True if the Pool is paused
-     * @return poolPauseWindowEndTime The timestamp of the end of the Pool's pause window (not including the buffer)
+     * @return poolPauseWindowEndTime The timestamp of the end of the Pool's pause window
+     * @return bufferPeriodDuration The duration of the buffer period (inherited from the Vault)
      * @return pauseManager The pause manager, or the zero address
      */
-    function getPoolPausedState(address pool) external view returns (bool, uint256, address);
+    function getPoolPausedState(address pool) external view returns (bool, uint256, uint256, address);
 
     /**
      * @notice Pause the Pool: an emergency action which disables all pool functions.
