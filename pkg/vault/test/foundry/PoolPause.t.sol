@@ -15,6 +15,8 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 import { Router } from "../../contracts/Router.sol";
+import { FactoryWidePauseWindow } from "../../contracts/factories/FactoryWidePauseWindow.sol";
+import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 
 contract PoolPauseTest is Test {
     using AssetHelpers for *;
@@ -26,6 +28,8 @@ contract PoolPauseTest is Test {
     ERC20PoolMock pool;
     ERC20PoolMock unmanagedPool;
     ERC20PoolMock permissionlessPool;
+    ERC20PoolMock infinityPool;
+    PoolFactoryMock factory;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
     address alice = vm.addr(1);
@@ -66,6 +70,45 @@ contract PoolPauseTest is Test {
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             true,
             0,
+            address(0)
+        );
+
+        infinityPool = new ERC20PoolMock(
+            vault,
+            "ERC20 Pool",
+            "ERC20POOL",
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            true,
+            10000 days,
+            address(0)
+        );
+
+        factory = new PoolFactoryMock(vault, 365 days);
+    }
+
+    function testPoolFactory() public {
+        uint256 expectedEndTime = block.timestamp + 365 days;
+
+        assertEq(factory.getPauseWindowDuration(), 365 days);
+        assertEq(factory.getOriginalPauseWindowEndTime(), expectedEndTime);
+        assertEq(factory.getNewPoolPauseWindowEndTime(), expectedEndTime);
+
+        skip(365 days);
+        assertEq(factory.getOriginalPauseWindowEndTime(), expectedEndTime);
+        assertEq(factory.getNewPoolPauseWindowEndTime(), 0);
+    }
+
+    function testInvalidDuration() public {
+        uint256 maxEndTimeTimestamp = type(uint32).max - block.timestamp;
+
+        vm.expectRevert(FactoryWidePauseWindow.PoolPauseWindowDurationTooLarge.selector);
+        new ERC20PoolMock(
+            vault,
+            "ERC20 Pool",
+            "ERC20POOL",
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            true,
+            maxEndTimeTimestamp + 1,
             address(0)
         );
     }
@@ -128,5 +171,19 @@ contract PoolPauseTest is Test {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IVault.PoolPauseWindowExpired.selector, address(permissionlessPool)));
         vault.pausePool(address(permissionlessPool));
+    }
+
+    function testInfinitePausePool() public {
+        (, , , address pauseManager) = vault.getPoolPausedState(address(infinityPool));
+        assertEq(pauseManager, address(0));
+
+        // Authorize alice
+        bytes32 pausePoolRole = vault.getActionId(IVault.pausePool.selector);
+        authorizer.grantRole(pausePoolRole, alice);
+
+        vm.prank(alice);
+        vault.pausePool(address(infinityPool));
+
+        assertTrue(vault.isPoolPaused(address(infinityPool)));
     }
 }

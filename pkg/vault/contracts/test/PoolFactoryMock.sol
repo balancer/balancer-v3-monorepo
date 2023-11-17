@@ -11,7 +11,7 @@ import { FactoryWidePauseWindow } from "../factories/FactoryWidePauseWindow.sol"
 contract PoolFactoryMock is FactoryWidePauseWindow {
     IVault private immutable _vault;
 
-    constructor(IVault vault, uint256 initialPauseWindowDuration) FactoryWidePauseWindow(initialPauseWindowDuration) {
+    constructor(IVault vault, uint256 pauseWindowDuration) FactoryWidePauseWindow(pauseWindowDuration) {
         _vault = vault;
     }
 
@@ -22,9 +22,14 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         PoolCallbacks calldata poolCallbacks,
         LiquidityManagement calldata liquidityManagement
     ) external {
-        uint256 pauseWindowEndTime = block.timestamp + getPauseWindowDuration();
-
-        _vault.registerPool(pool, tokens, pauseWindowEndTime, pauseManager, poolCallbacks, liquidityManagement);
+        _vault.registerPool(
+            pool,
+            tokens,
+            getNewPoolPauseWindowEndTime(),
+            pauseManager,
+            poolCallbacks,
+            liquidityManagement
+        );
     }
 
     // For tests; otherwise can't get the exact event arguments.

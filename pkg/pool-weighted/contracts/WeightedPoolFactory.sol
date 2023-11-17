@@ -42,12 +42,10 @@ contract WeightedPoolFactory is BasePoolFactory {
             )
         );
 
-        uint256 pauseWindowEndTime = block.timestamp + getPauseWindowDuration();
-
         getVault().registerPool(
             pool,
             tokens,
-            pauseWindowEndTime,
+            getNewPoolPauseWindowEndTime(),
             address(0), // no pause manager
             PoolCallbacks({
                 shouldCallBeforeAddLiquidity: false,

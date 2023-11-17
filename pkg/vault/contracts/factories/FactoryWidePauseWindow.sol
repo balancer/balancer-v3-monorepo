@@ -17,37 +17,51 @@ contract FactoryWidePauseWindow {
     // This contract relies on timestamps - the usual caveats apply.
     // solhint-disable not-rely-on-time
 
-    uint256 private immutable _initialPauseWindowDuration;
+    /// @dev Must fit in 32 bits.
+    error PoolPauseWindowDurationTooLarge();
 
-    // Time when the pause window for all created Pools expires, and the pause window duration of new Pools
-    // becomes zero.
+    uint256 private constant _MAX_TIMESTAMP = type(uint32).max;
+
+    uint256 private immutable _pauseWindowDuration;
+
+    // Time when the pause window for all created Pools expires.
     uint256 private immutable _poolsPauseWindowEndTime;
 
-    constructor(uint256 initialPauseWindowDuration) {
-        _initialPauseWindowDuration = initialPauseWindowDuration;
+    constructor(uint256 pauseWindowDuration) {
+        if (block.timestamp + pauseWindowDuration > _MAX_TIMESTAMP) {
+            revert PoolPauseWindowDurationTooLarge();
+        }
 
-        _poolsPauseWindowEndTime = block.timestamp + initialPauseWindowDuration;
+        _pauseWindowDuration = pauseWindowDuration;
+
+        _poolsPauseWindowEndTime = block.timestamp + pauseWindowDuration;
     }
 
     /**
-     * @dev Returns the current pauseWindowDuration that will be applied to Pools created by this factory.
-     *
-     * `pauseWindowDuration` will decrease over time until it reaches zero, at which point any pools created are
-     * permissionless forever.
+     * @notice Return the pause window duration. This is the time pools will be pausable after factory deployment.
+     * @return The duration in seconds
      */
-    function getPauseWindowDuration() public view returns (uint256 pauseWindowDuration) {
-        uint256 currentTime = block.timestamp;
+    function getPauseWindowDuration() external view returns (uint256) {
+        return _pauseWindowDuration;
+    }
 
-        if (currentTime < _poolsPauseWindowEndTime) {
-            // The Pause Window duration decreases as the end time approaches.
+    /**
+     * @notice Returns the original factory pauseWindowEndTime, regardless of the current time.
+     * @return The end time as a timestamp
+     */
+    function getOriginalPauseWindowEndTime() external view returns (uint256) {
+        return _poolsPauseWindowEndTime;
+    }
 
-            unchecked {
-                pauseWindowDuration = _poolsPauseWindowEndTime - currentTime; // No need for checked arithmetic.
-            }
-        } else {
-            // After the end time, newly created Pools have no Pause Window, since they are no longer pausable.
-
-            pauseWindowDuration = 0;
-        }
+    /**
+     * @notice Returns the current pauseWindowEndTime that will be applied to Pools created by this factory.
+     * @dev We intend for all pools deployed by this factory to have the same pause window end time (i.e., after
+     * this date, all future pools will be permissionless - unpausable - forever). This function will return
+     * `_poolsPauseWindowEndTime` until it passes, after which it will return 0.
+     *
+     * @return The resolved pause window end time (0 indicating it's no longer pausable)
+     */
+    function getNewPoolPauseWindowEndTime() public view returns (uint256) {
+        return block.timestamp < _poolsPauseWindowEndTime ? _poolsPauseWindowEndTime : 0;
     }
 }
