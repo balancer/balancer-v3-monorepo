@@ -125,7 +125,7 @@ contract PoolPauseTest is Test {
         authorizer.grantRole(pausePoolRole, alice);
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.PoolPauseWindowExpired.selector), address(pool));
+        vm.expectRevert(abi.encodeWithSelector(IVault.PoolPauseWindowExpired.selector, address(permissionlessPool)));
         vault.pausePool(address(permissionlessPool));
     }
 }
