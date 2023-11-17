@@ -85,8 +85,8 @@ contract ERC20PoolMock is BasePool {
     function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
         return
             params.kind == IVault.SwapKind.GIVEN_IN
-                ? params.scaled18AmountGiven.mulDown(_multiplier)
-                : params.scaled18AmountGiven.divDown(_multiplier);
+                ? params.amountGivenScaled18.mulDown(_multiplier)
+                : params.amountGivenScaled18.divDown(_multiplier);
     }
 
     // Liquidity lifecycle callbacks
