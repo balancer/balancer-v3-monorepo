@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
-import { PoolMock } from '@balancer-labs/v3-pool-utils/typechain-types/contracts/test/PoolMock';
+import { PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/PoolMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
@@ -9,8 +9,11 @@ import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { impersonate } from '@balancer-labs/v3-helpers/src/signers';
 import { setupEnvironment } from './poolSetup';
 import '@balancer-labs/v3-common/setupTests';
+import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 
 describe('ERC20PoolToken', function () {
+  const PAUSE_WINDOW_DURATION = MONTH * 9;
+
   let vault: VaultMock;
   let poolA: PoolMock;
   let poolB: PoolMock;
@@ -18,7 +21,6 @@ describe('ERC20PoolToken', function () {
   let user: SignerWithAddress;
   let other: SignerWithAddress;
   let relayer: SignerWithAddress;
-  let factory: SignerWithAddress;
 
   let registeredPoolSigner: SignerWithAddress;
 
@@ -26,12 +28,12 @@ describe('ERC20PoolToken', function () {
   let poolBAddress: string;
 
   before('setup signers', async () => {
-    [, user, other, factory, relayer] = await ethers.getSigners();
+    [, user, other, relayer] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { vault: vaultMock, tokens, pools } = await setupEnvironment(factory.address);
+    const { vault: vaultMock, pools } = await setupEnvironment(PAUSE_WINDOW_DURATION);
 
     vault = vaultMock;
 

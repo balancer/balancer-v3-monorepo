@@ -6,7 +6,7 @@ import { PoolConfigStructOutput, VaultMock } from '@balancer-labs/v3-vault/typec
 import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
-import { PoolMock } from '@balancer-labs/v3-pool-utils/typechain-types/contracts/test/PoolMock';
+import { PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/PoolMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { FP_ZERO, fp } from '@balancer-labs/v3-helpers/src/numbers';
@@ -16,17 +16,14 @@ describe('WeightedPool', function () {
   let vault: VaultMock;
   let pool: PoolMock;
   let router: Router;
-  let factory: SignerWithAddress;
   let alice: SignerWithAddress;
   let tokenA: ERC20TestToken;
   let tokenB: ERC20TestToken;
   let tokenC: ERC20TestToken;
   let poolTokens: string[];
-  let vaultAddress: string;
-  let poolAddress: string;
 
   before('setup signers', async () => {
-    [, factory, alice] = await ethers.getSigners();
+    [, alice] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault, router, tokens, and pool', async function () {
@@ -35,11 +32,10 @@ describe('WeightedPool', function () {
 
     const authorizer: BasicAuthorizerMock = await deploy('v3-solidity-utils/BasicAuthorizerMock');
     vault = await deploy('v3-vault/VaultMock', {
-      args: [await authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
+      args: [authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
     });
-    vaultAddress = await vault.getAddress();
 
-    router = await deploy('v3-vault/Router', { args: [vaultAddress, ZERO_ADDRESS] });
+    router = await deploy('v3-vault/Router', { args: [vault, ZERO_ADDRESS] });
 
     tokenA = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });
     tokenB = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token B', 'TKNB', 6] });
@@ -51,11 +47,9 @@ describe('WeightedPool', function () {
 
     poolTokens = [tokenAAddress, tokenBAddress, tokenCAddress];
 
-    pool = await deploy('v3-pool-utils/PoolMock', {
-      args: [vaultAddress, 'Pool', 'POOL', factory, poolTokens, true],
+    pool = await deploy('v3-vault/PoolMock', {
+      args: [vault, 'Pool', 'POOL', poolTokens, true],
     });
-
-    poolAddress = await pool.getAddress();
   });
 
   describe('initialization', () => {
@@ -64,7 +58,7 @@ describe('WeightedPool', function () {
 
     context('uninitialized', () => {
       it('is registered, but not initialized on deployment', async () => {
-        const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(poolAddress);
+        const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(pool);
 
         expect(poolConfig.isPoolRegistered).to.be.true;
         expect(poolConfig.isPoolInitialized).to.be.false;
@@ -76,34 +70,35 @@ describe('WeightedPool', function () {
         tokenA.mint(alice, TOKEN_AMOUNT);
         tokenB.mint(alice, TOKEN_AMOUNT);
 
-        tokenA.connect(alice).approve(await vault.getAddress(), MAX_UINT256);
-        tokenB.connect(alice).approve(await vault.getAddress(), MAX_UINT256);
+        tokenA.connect(alice).approve(vault, MAX_UINT256);
+        tokenB.connect(alice).approve(vault, MAX_UINT256);
 
-        expect(await router.connect(alice).initialize(poolAddress, poolTokens, INITIAL_BALANCES, FP_ZERO, '0x'))
+        expect(await router.connect(alice).initialize(pool, poolTokens, INITIAL_BALANCES, FP_ZERO, '0x'))
           .to.emit(vault, 'PoolInitialized')
-          .withArgs(poolAddress);
+          .withArgs(pool);
       });
 
       it('is registered and initialized', async () => {
-        const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(poolAddress);
+        const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(pool);
 
         expect(poolConfig.isPoolRegistered).to.be.true;
         expect(poolConfig.isPoolInitialized).to.be.true;
+        expect(poolConfig.isPoolPaused).to.be.false;
       });
 
       it('has the correct pool tokens and balances', async () => {
         const tokensFromPool = await pool.getPoolTokens();
         expect(tokensFromPool).to.deep.equal(poolTokens);
 
-        const [tokensFromVault, balancesFromVault] = await vault.getPoolTokenInfo(poolAddress);
+        const [tokensFromVault, balancesFromVault] = await vault.getPoolTokenInfo(pool);
         expect(tokensFromVault).to.deep.equal(tokensFromPool);
         expect(balancesFromVault).to.deep.equal(INITIAL_BALANCES);
       });
 
       it('cannot be initialized twice', async () => {
-        await expect(router.connect(alice).initialize(poolAddress, poolTokens, INITIAL_BALANCES, FP_ZERO, '0x'))
+        await expect(router.connect(alice).initialize(pool, poolTokens, INITIAL_BALANCES, FP_ZERO, '0x'))
           .to.be.revertedWithCustomError(vault, 'PoolAlreadyInitialized')
-          .withArgs(poolAddress);
+          .withArgs(await pool.getAddress());
       });
     });
   });
