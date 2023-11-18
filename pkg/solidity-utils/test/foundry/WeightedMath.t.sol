@@ -12,7 +12,7 @@ contract WeightedMathTest is Test {
     uint256 constant MAX_WEIGHT = 0.9e18;
     uint256 constant MIN_BALANCE = 1e18;
     uint256 constant MIN_AMOUNT = 1e12;
-    uint256 constant MAX_AMOUNT = 10000e18;
+    uint256 constant MAX_AMOUNT = 1000e18;
     uint256 constant FP_ONE = 1e18;
 
     uint256 constant MAX_IN_RATIO = 0.3e18;

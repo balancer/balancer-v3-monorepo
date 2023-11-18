@@ -10,11 +10,13 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
@@ -48,9 +50,10 @@ contract VaultSwapTest is Test {
             vault,
             "ERC20 Pool",
             "ERC20POOL",
-            address(0),
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
-            true
+            true,
+            365 days,
+            address(0)
         );
 
         USDC.mint(bob, AMOUNT);
@@ -101,6 +104,33 @@ contract VaultSwapTest is Test {
         authorizer.grantRole(vault.getActionId(IVault.setProtocolSwapFeePercentage.selector), alice);
         vm.prank(alice);
         vault.setProtocolSwapFeePercentage(50e16); // %50
+    }
+
+    function testCannotSwapWhenPaused() public {
+        vm.prank(alice);
+        router.initialize(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [uint256(AMOUNT), uint256(AMOUNT)].toMemoryArray(),
+            0,
+            bytes("")
+        );
+
+        vault.manualPausePool(address(pool));
+
+        vm.expectRevert(abi.encodeWithSelector(IVault.PoolPaused.selector, address(pool)));
+
+        vm.prank(bob);
+        router.swap(
+            IVault.SwapKind.GIVEN_IN,
+            address(pool),
+            address(USDC).asAsset(),
+            address(DAI).asAsset(),
+            AMOUNT,
+            AMOUNT,
+            type(uint256).max,
+            bytes("")
+        );
     }
 
     function testSwapNotInitialized() public {

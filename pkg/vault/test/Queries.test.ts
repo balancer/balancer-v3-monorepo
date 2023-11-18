@@ -5,7 +5,7 @@ import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { WETH, MAX_UINT256 } from '@balancer-labs/v3-helpers/src/constants';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { Router } from '../typechain-types/contracts/Router';
-import { PoolMock } from '@balancer-labs/v3-pool-utils/typechain-types/contracts/test/PoolMock';
+import { PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/PoolMock';
 import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
@@ -25,7 +25,6 @@ describe('Queries', function () {
   const DAI_AMOUNT_IN = fp(1000);
   const USDC_AMOUNT_IN = fp(1000);
 
-  let factory: SignerWithAddress;
   let alice: SignerWithAddress;
 
   const ADD_LIQUIDITY_TEST_KIND = 1; // UNBALANCED
@@ -33,7 +32,7 @@ describe('Queries', function () {
 
   before('setup signers', async () => {
     zero = new VoidSigner('0x0000000000000000000000000000000000000000', ethers.provider);
-    [, factory, alice] = await ethers.getSigners();
+    [, alice] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
@@ -45,8 +44,8 @@ describe('Queries', function () {
     DAI = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['DAI', 'Token A', 18] });
     USDC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['USDC', 'USDC', 18] });
 
-    pool = await deploy('v3-pool-utils/PoolMock', {
-      args: [vaultAddress, 'Pool', 'POOL', factory, [DAI, USDC], true],
+    pool = await deploy('v3-vault/PoolMock', {
+      args: [vaultAddress, 'Pool', 'POOL', [DAI, USDC], true],
     });
 
     await USDC.mint(alice, USDC_AMOUNT_IN);
