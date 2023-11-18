@@ -15,7 +15,6 @@ import { impersonate } from '@balancer-labs/v3-helpers/src/signers';
 import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
-import '@balancer-labs/v3-common/setupTests';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
 import { PoolFactoryMock } from '../typechain-types';
 

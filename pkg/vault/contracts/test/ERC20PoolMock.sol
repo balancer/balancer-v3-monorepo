@@ -11,7 +11,6 @@ import { ERC20PoolToken } from "@balancer-labs/v3-solidity-utils/contracts/token
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
-
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 
 contract ERC20PoolMock is ERC20PoolToken, IBasePool {

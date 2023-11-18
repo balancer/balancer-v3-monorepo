@@ -2,9 +2,8 @@
 
 pragma solidity ^0.8.4;
 
-import { Vault } from "../Vault.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
@@ -12,8 +11,8 @@ import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAutho
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
-
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
+import { Vault } from "../Vault.sol";
 
 contract VaultMock is Vault {
     using PoolConfigLib for PoolConfig;
