@@ -5,14 +5,15 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { BasePool } from "@balancer-labs/v3-pool-utils/contracts/BasePool.sol";
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+
 import { ERC20PoolToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20PoolToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
+import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 
-contract ERC20PoolMock is BasePool {
+contract ERC20PoolMock is ERC20PoolToken, IBasePool {
     using FixedPoint for uint256;
 
     uint256 public constant MIN_INIT_BPT = 1e6;
@@ -22,7 +23,6 @@ contract ERC20PoolMock is BasePool {
     bool public failOnAfterAddLiquidity;
     bool public failOnBeforeRemoveLiquidity;
     bool public failOnAfterRemoveLiquidity;
-    uint256 private immutable _numTokens;
 
     // Amounts in are multiplied by the multiplier, amounts out are divided by it
     uint256 private _multiplier = FixedPoint.ONE;
@@ -31,20 +31,22 @@ contract ERC20PoolMock is BasePool {
         IVault vault,
         string memory name,
         string memory symbol,
-        address factory,
         IERC20[] memory tokens,
-        bool registerPool
-    ) BasePool(vault, name, symbol) {
+        bool registerPool,
+        uint256 pauseWindowDuration,
+        address pauseManager
+    ) ERC20PoolToken(vault, name, symbol) {
         if (registerPool) {
-            vault.registerPool(
-                factory,
+            PoolFactoryMock factory = new PoolFactoryMock(vault, pauseWindowDuration);
+
+            factory.registerPool(
+                address(this),
                 tokens,
+                pauseManager,
                 PoolConfigBits.wrap(0).toPoolConfig().callbacks,
                 PoolConfigBits.wrap(bytes32(type(uint256).max)).toPoolConfig().liquidityManagement
             );
         }
-
-        _numTokens = tokens.length;
     }
 
     function onInitialize(uint256[] memory exactAmountsIn, bytes memory) external pure override returns (uint256) {
@@ -145,7 +147,7 @@ contract ERC20PoolMock is BasePool {
         uint256,
         uint256[] memory
     ) external view override returns (uint256 amountIn) {
-        IERC20[] memory tokens = _vault.getPoolTokens(address(this));
+        IERC20[] memory tokens = getVault().getPoolTokens(address(this));
         return tokens[tokenInIndex].balanceOf(sender);
     }
 
@@ -189,7 +191,7 @@ contract ERC20PoolMock is BasePool {
         return (maxBptAmountIn, minAmountsOut, userData);
     }
 
-    function _getTotalTokens() internal view virtual override returns (uint256) {
-        return _numTokens;
+    function getPoolTokens() external view returns (IERC20[] memory tokens) {
+        return getVault().getPoolTokens(address(this));
     }
 }

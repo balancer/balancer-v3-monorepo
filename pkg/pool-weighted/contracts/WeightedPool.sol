@@ -11,7 +11,7 @@ import { IVault, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/va
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
-import { BasePool } from "@balancer-labs/v3-pool-utils/contracts/BasePool.sol";
+import { BasePool } from "@balancer-labs/v3-vault/contracts/BasePool.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -79,28 +79,6 @@ contract WeightedPool is BasePool {
         _normalizedWeight1 = params.normalizedWeights[1];
         _normalizedWeight2 = numTokens > 2 ? params.normalizedWeights[2] : 0;
         _normalizedWeight3 = numTokens > 3 ? params.normalizedWeights[3] : 0;
-
-        vault.registerPool(
-            msg.sender,
-            params.tokens,
-            PoolCallbacks({
-                shouldCallBeforeAddLiquidity: false,
-                shouldCallAfterAddLiquidity: false,
-                shouldCallBeforeRemoveLiquidity: false,
-                shouldCallAfterRemoveLiquidity: false,
-                shouldCallAfterSwap: false
-            }),
-            LiquidityManagement({
-                supportsAddLiquidityProportional: true,
-                supportsAddLiquiditySingleTokenExactOut: true,
-                supportsAddLiquidityUnbalanced: true,
-                supportsAddLiquidityCustom: false,
-                supportsRemoveLiquidityProportional: true,
-                supportsRemoveLiquiditySingleTokenExactIn: true,
-                supportsRemoveLiquiditySingleTokenExactOut: true,
-                supportsRemoveLiquidityCustom: false
-            })
-        );
     }
 
     function _getNormalizedWeight(IERC20 token) internal view virtual returns (uint256) {
