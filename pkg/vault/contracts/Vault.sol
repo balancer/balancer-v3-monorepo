@@ -132,7 +132,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         uint256 bufferPeriodDuration
     ) Authentication(bytes32(uint256(uint160(address(this))))) {
         if (pauseWindowDuration > MAX_PAUSE_WINDOW_DURATION) {
-            revert PauseWindowDurationTooLarge();
+            revert VaultPauseWindowDurationTooLarge();
         }
         if (bufferPeriodDuration > MAX_BUFFER_PERIOD_DURATION) {
             revert BufferPeriodDurationTooLarge();

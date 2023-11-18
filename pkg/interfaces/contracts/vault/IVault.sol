@@ -705,7 +705,7 @@ interface IVault {
     event PoolPausedStateChanged(address indexed pool, bool paused);
 
     /// @dev The caller specified a pause window period longer than the maximum.
-    error PauseWindowDurationTooLarge();
+    error VaultPauseWindowDurationTooLarge();
 
     /// @dev The caller specified a buffer period longer than the maximum.
     error BufferPeriodDurationTooLarge();
