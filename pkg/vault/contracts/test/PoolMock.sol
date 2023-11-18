@@ -5,8 +5,8 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
@@ -32,11 +32,12 @@ contract PoolMock is BasePool {
         bool registerPool
     ) BasePool(vault, name, symbol) {
         if (registerPool) {
-            PoolFactoryMock factory = new PoolFactoryMock(vault, 365 days, 30 days);
+            PoolFactoryMock factory = new PoolFactoryMock(vault, 365 days);
 
             factory.registerPool(
                 address(this),
                 tokens,
+                address(0),
                 PoolConfigBits.wrap(0).toPoolConfig().callbacks,
                 PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
             );

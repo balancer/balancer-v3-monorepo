@@ -11,29 +11,36 @@ import { FactoryWidePauseWindow } from "../factories/FactoryWidePauseWindow.sol"
 contract PoolFactoryMock is FactoryWidePauseWindow {
     IVault private immutable _vault;
 
-    constructor(
-        IVault vault,
-        uint256 initialPauseWindowDuration,
-        uint256 bufferPeriodDuration
-    ) FactoryWidePauseWindow(initialPauseWindowDuration, bufferPeriodDuration) {
+    constructor(IVault vault, uint256 pauseWindowDuration) FactoryWidePauseWindow(pauseWindowDuration) {
         _vault = vault;
     }
 
     function registerPool(
         address pool,
         IERC20[] memory tokens,
+        address pauseManager,
         PoolCallbacks calldata poolCallbacks,
         LiquidityManagement calldata liquidityManagement
     ) external {
-        (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
-
         _vault.registerPool(
             pool,
             tokens,
-            pauseWindowDuration,
-            bufferPeriodDuration,
+            getNewPoolPauseWindowEndTime(),
+            pauseManager,
             poolCallbacks,
             liquidityManagement
         );
+    }
+
+    // For tests; otherwise can't get the exact event arguments.
+    function registerPoolAtTimestamp(
+        address pool,
+        IERC20[] memory tokens,
+        address pauseManager,
+        PoolCallbacks calldata poolCallbacks,
+        LiquidityManagement calldata liquidityManagement,
+        uint256 timestamp
+    ) external {
+        _vault.registerPool(pool, tokens, timestamp, pauseManager, poolCallbacks, liquidityManagement);
     }
 }

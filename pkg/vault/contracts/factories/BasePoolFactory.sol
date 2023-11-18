@@ -27,9 +27,8 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
 
     constructor(
         IVault vault,
-        uint256 initialPauseWindowDuration,
-        uint256 bufferPeriodDuration
-    ) SingletonAuthentication(vault) FactoryWidePauseWindow(initialPauseWindowDuration, bufferPeriodDuration) {
+        uint256 initialPauseWindowDuration
+    ) SingletonAuthentication(vault) FactoryWidePauseWindow(initialPauseWindowDuration) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

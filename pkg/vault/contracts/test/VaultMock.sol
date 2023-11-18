@@ -2,9 +2,8 @@
 
 pragma solidity ^0.8.4;
 
-import { Vault } from "../Vault.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
@@ -12,8 +11,8 @@ import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAutho
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
-
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
+import { Vault } from "../Vault.sol";
 
 contract VaultMock is Vault {
     using PoolConfigLib for PoolConfig;
@@ -27,7 +26,7 @@ contract VaultMock is Vault {
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
     ) Vault(authorizer, pauseWindowDuration, bufferPeriodDuration) {
-        _poolFactoryMock = new PoolFactoryMock(this, pauseWindowDuration, bufferPeriodDuration);
+        _poolFactoryMock = new PoolFactoryMock(this, pauseWindowDuration);
     }
 
     function getPoolFactoryMock() external view returns (address) {
@@ -68,7 +67,7 @@ contract VaultMock is Vault {
             pool,
             tokens,
             365 days,
-            30 days,
+            address(0),
             PoolConfigBits.wrap(0).toPoolConfig().callbacks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
         );
@@ -81,8 +80,25 @@ contract VaultMock is Vault {
         _poolFactoryMock.registerPool(
             pool,
             tokens,
+            address(0),
             PoolConfigBits.wrap(0).toPoolConfig().callbacks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
+        );
+    }
+
+    function manualRegisterPoolAtTimestamp(
+        address pool,
+        IERC20[] memory tokens,
+        uint256 timestamp,
+        address pauseManager
+    ) external whenVaultNotPaused {
+        _poolFactoryMock.registerPoolAtTimestamp(
+            pool,
+            tokens,
+            pauseManager,
+            PoolConfigBits.wrap(0).toPoolConfig().callbacks,
+            PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement,
+            timestamp
         );
     }
 

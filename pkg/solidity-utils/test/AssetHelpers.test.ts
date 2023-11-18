@@ -1,13 +1,11 @@
 import { expect } from 'chai';
+import { Typed } from 'ethers';
 
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
-import '@balancer-labs/v3-common/setupTests';
+import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 
 import { AssetHelpersMock } from '../typechain-types/contracts/test/AssetHelpersMock';
-import { Typed } from 'ethers';
-
-import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 
 describe('AssetHelpers', function () {
   const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';

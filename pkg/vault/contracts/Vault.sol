@@ -10,10 +10,8 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-// solhint-disable max-line-length
-import { IVault, PoolConfig, PoolCallbacks, PoolPauseConfig, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { ITemporarilyPausable } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/ITemporarilyPausable.sol";
-// solhint-enable max-line-length
+// solhint-disable-next-line max-line-length
+import { IVault, PoolConfig, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 
@@ -30,7 +28,6 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
-import { PoolPauseConfigBits, PoolPauseConfigLib } from "./lib/PoolPauseConfigLib.sol";
 
 contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
@@ -43,7 +40,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
     using PoolConfigLib for PoolCallbacks;
-    using PoolPauseConfigLib for PoolPauseConfig;
     using ScalingHelpers for *;
 
     // Minimum BPT amount minted upon initialization.
@@ -63,8 +59,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
 
-    // Store pool pause periods.
-    mapping(address => PoolPauseConfigBits) internal _poolPauseConfig;
+    // Store pool pause managers.
+    mapping(address => address) internal _poolPauseManagers;
 
     // Pool -> (token -> balance): Pool's ERC20 tokens balances stored at the Vault.
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolTokenBalances;
@@ -112,6 +108,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
     uint256 internal immutable _vaultPauseWindowEndTime;
     uint256 internal immutable _vaultBufferPeriodEndTime;
+    // Stored as a convenience, to avoid calculating it on every operation.
+    uint256 internal immutable _vaultBufferPeriodDuration;
 
     bool private _vaultPaused;
 
@@ -134,15 +132,16 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         uint256 bufferPeriodDuration
     ) Authentication(bytes32(uint256(uint160(address(this))))) {
         if (pauseWindowDuration > MAX_PAUSE_WINDOW_DURATION) {
-            revert ITemporarilyPausable.PauseWindowDurationTooLarge();
+            revert VaultPauseWindowDurationTooLarge();
         }
         if (bufferPeriodDuration > MAX_BUFFER_PERIOD_DURATION) {
-            revert ITemporarilyPausable.BufferPeriodDurationTooLarge();
+            revert PauseBufferPeriodDurationTooLarge();
         }
 
         uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
 
         _vaultPauseWindowEndTime = pauseWindowEndTime;
+        _vaultBufferPeriodDuration = bufferPeriodDuration;
         _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
 
         _authorizer = authorizer;
@@ -695,12 +694,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     function registerPool(
         address pool,
         IERC20[] memory tokens,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
+        uint256 pauseWindowEndTime,
+        address pauseManager,
         PoolCallbacks calldata poolCallbacks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused {
-        _registerPool(pool, tokens, pauseWindowDuration, bufferPeriodDuration, poolCallbacks, liquidityManagement);
+        _registerPool(pool, tokens, pauseWindowEndTime, pauseManager, poolCallbacks, liquidityManagement);
     }
 
     /// @inheritdoc IVault
@@ -758,13 +757,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     function _registerPool(
         address pool,
         IERC20[] memory tokens,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
+        uint256 pauseWindowEndTime,
+        address pauseManager,
         PoolCallbacks memory callbackConfig,
         LiquidityManagement memory liquidityManagement
     ) internal {
-        address factory = msg.sender;
-
         // Ensure the pool isn't already registered
         if (_isPoolRegistered(pool)) {
             revert PoolAlreadyRegistered(pool);
@@ -804,16 +801,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
         }
 
-        uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
-
-        PoolPauseConfig memory pauseConfig = PoolPauseConfig({
-            isPoolPaused: false,
-            pauseWindowEndTime: pauseWindowEndTime,
-            bufferPeriodEndTime: pauseWindowEndTime + bufferPeriodDuration
-        });
-
-        // Store the pause period end times.
-        _poolPauseConfig[pool] = pauseConfig.fromPoolPauseConfig();
+        // Store the pause manager. A zero address means default to the authorizer.
+        _poolPauseManagers[pool] = pauseManager;
 
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
@@ -822,10 +811,19 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         config.callbacks = callbackConfig;
         config.liquidityManagement = liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
+        config.pauseWindowEndTime = pauseWindowEndTime.toUint32();
         _poolConfig[pool] = config.fromPoolConfig();
 
-        // Emit an event to log the pool registration
-        emit PoolRegistered(pool, factory, tokens, callbackConfig, liquidityManagement);
+        // Emit an event to log the pool registration (pass msg.sender as the factory argument)
+        emit PoolRegistered(
+            pool,
+            msg.sender,
+            tokens,
+            pauseWindowEndTime,
+            pauseManager,
+            callbackConfig,
+            liquidityManagement
+        );
     }
 
     /// @dev See `isPoolRegistered`
@@ -1625,42 +1623,62 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                                      Pool Pausing
     *******************************************************************************/
 
+    modifier onlyAuthenticatedPauser(address pool) {
+        address pauseManager = _poolPauseManagers[pool];
+
+        if (pauseManager == address(0)) {
+            // If there is no pause manager, default to the authorizer.
+            _authenticateCaller();
+        } else {
+            // Sender must be the pause manager.
+            if (msg.sender != pauseManager) {
+                revert SenderIsNotPauseManager(pool);
+            }
+        }
+        _;
+    }
+
     /// @inheritdoc IVault
     function isPoolPaused(address pool) external view withRegisteredPool(pool) returns (bool) {
         return _isPoolPaused(pool);
     }
 
+    /// @inheritdoc IVault
+    function getPoolPausedState(
+        address pool
+    ) external view withRegisteredPool(pool) returns (bool, uint256, uint256, address) {
+        (bool paused, uint256 pauseWindowEndTime) = _getPoolPausedState(pool);
+
+        return (paused, pauseWindowEndTime, pauseWindowEndTime + _vaultBufferPeriodDuration, _poolPauseManagers[pool]);
+    }
+
     /// @dev Check both the flag and timestamp to determine whether the pool is paused.
     function _isPoolPaused(address pool) internal view returns (bool) {
-        (bool paused, , ) = getPoolPausedState(pool);
+        (bool paused, ) = _getPoolPausedState(pool);
 
         return paused;
     }
 
-    /// @inheritdoc IVault
-    function getPoolPausedState(address pool) public view withRegisteredPool(pool) returns (bool, uint256, uint256) {
-        PoolPauseConfig memory pauseConfig = PoolPauseConfigLib.toPoolPauseConfig(_poolPauseConfig[pool]);
-        bool paused = pauseConfig.isPoolPaused && block.timestamp <= pauseConfig.bufferPeriodEndTime;
+    /// @dev Lowest level routine that plucks only the minimum necessary parts from storage.
+    function _getPoolPausedState(address pool) private view returns (bool, uint256) {
+        (bool pauseBit, uint256 pauseWindowEndTime) = PoolConfigLib.getPoolPausedState(_poolConfig[pool]);
 
-        return (paused, pauseConfig.pauseWindowEndTime, pauseConfig.bufferPeriodEndTime);
+        // Use the Vault's buffer period.
+        return (pauseBit && block.timestamp <= pauseWindowEndTime + _vaultBufferPeriodDuration, pauseWindowEndTime);
     }
 
     /// @inheritdoc IVault
-    function pausePool(address pool) external withRegisteredPool(pool) authenticate {
+    function pausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) {
         _setPoolPaused(pool, true);
     }
 
     /// @inheritdoc IVault
-    function unpausePool(address pool) external withRegisteredPool(pool) authenticate {
+    function unpausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) {
         _setPoolPaused(pool, false);
     }
 
     function _setPoolPaused(address pool, bool pausing) internal {
-        // Would be wasteful to read the pauseConfig twice, so have (un)pausePool functions call here directly,
-        // and check for the current state locally. Retain the _ensurePoolNotPaused function for the modifier
-        // and other read-only functions.
-
-        PoolPauseConfig memory pauseConfig = PoolPauseConfigLib.toPoolPauseConfig(_poolPauseConfig[pool]);
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
 
         if (_isPoolPaused(pool)) {
             if (pausing) {
@@ -1674,7 +1692,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         } else {
             if (pausing) {
                 // Not already paused; we can pause within the window.
-                if (block.timestamp >= pauseConfig.pauseWindowEndTime) {
+                if (block.timestamp >= config.pauseWindowEndTime) {
                     revert PoolPauseWindowExpired(pool);
                 }
             } else {
@@ -1683,9 +1701,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             }
         }
 
-        // Update pauseConfig
-        pauseConfig.isPoolPaused = pausing;
-        _poolPauseConfig[pool] = pauseConfig.fromPoolPauseConfig();
+        // Update poolConfig.
+        config.isPoolPaused = pausing;
+        _poolConfig[pool] = config.fromPoolConfig();
 
         emit PoolPausedStateChanged(pool, pausing);
     }

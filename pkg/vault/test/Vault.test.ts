@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
-import { MONTH, fromNow } from '@balancer-labs/v3-helpers/src/time';
+import { MONTH, currentTimestamp, fromNow } from '@balancer-labs/v3-helpers/src/time';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
@@ -15,7 +15,6 @@ import { impersonate } from '@balancer-labs/v3-helpers/src/signers';
 import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
-import '@balancer-labs/v3-common/setupTests';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
 import { PoolFactoryMock } from '../typechain-types';
 
@@ -46,7 +45,7 @@ describe('Vault', function () {
   });
 
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
-    const { vault: vaultMock, tokens, pools, factory: factoryContract } = await setupEnvironment();
+    const { vault: vaultMock, tokens, pools, factory: factoryContract } = await setupEnvironment(PAUSE_WINDOW_DURATION);
 
     vault = vaultMock;
 
@@ -105,12 +104,21 @@ describe('Vault', function () {
     });
 
     it('registering a pool emits an event', async () => {
-      await expect(await vault.connect(unregisteredPoolSigner).manualRegisterPool(poolB, poolBTokens))
+      const currentTime = await currentTimestamp();
+      const pauseWindowEndTime = Number(currentTime) + PAUSE_WINDOW_DURATION;
+
+      await expect(
+        await vault
+          .connect(unregisteredPoolSigner)
+          .manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS)
+      )
         .to.emit(vault, 'PoolRegistered')
         .withArgs(
           poolBAddress,
           await vault.getPoolFactoryMock(),
           poolBTokens,
+          pauseWindowEndTime,
+          ANY_ADDRESS,
           [false, false, false, false, false],
           [true, true, true, true, true, true, true, true]
         );

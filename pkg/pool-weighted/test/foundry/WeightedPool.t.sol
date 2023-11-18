@@ -49,7 +49,7 @@ contract WeightedPoolTest is Test {
     function setUp() public {
         BasicAuthorizerMock authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
-        factory = new WeightedPoolFactory(vault, 365 days, 90 days);
+        factory = new WeightedPoolFactory(vault, 365 days);
 
         router = new Router(IVault(vault), address(0));
         USDC = new ERC20TestToken("USDC", "USDC", 6);
@@ -91,11 +91,14 @@ contract WeightedPoolTest is Test {
     }
 
     function testPoolPausedState() public {
-        (bool paused, uint256 pauseWindow, uint256 bufferPeriod) = vault.getPoolPausedState(address(pool));
+        (bool paused, uint256 pauseWindow, uint256 bufferPeriod, address pauseManager) = vault.getPoolPausedState(
+            address(pool)
+        );
 
-        assertEq(paused, false);
+        assertFalse(paused);
         assertApproxEqAbs(pauseWindow, 365 days, 1);
         assertApproxEqAbs(bufferPeriod, 365 days + 90 days, 1);
+        assertEq(pauseManager, address(0));
     }
 
     function testInitialize() public {

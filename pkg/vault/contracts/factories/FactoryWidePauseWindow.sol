@@ -2,61 +2,67 @@
 
 pragma solidity ^0.8.4;
 
-import "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/ITemporarilyPausable.sol";
-
 /**
  * @dev Base contract for V3 factories to support pause windows for pools based on the factory deployment time.
- *
- * Each pool deployment calls `getPauseConfiguration` on the factory so that all Pools created by this factory
+ * Each pool deployment calls `getPauseWindowDuration` on the factory so that all Pools created by this factory
  * will share the same Pause Window end time, after which both old and new Pools will not be pausable.
+ *
+ * All pools are reversibly pausable until the pause window expires. Afterward, there is an additional buffer
+ * period, set to the same duration as the Vault's buffer period. If a pool was paused, it will remain paused
+ * through this buffer period, and cannot be unpaused.
+ *
+ * When the buffer period expires, it will unpause automatically, and remain permissionless forever after.
  */
-contract FactoryWidePauseWindow is ITemporarilyPausable {
+contract FactoryWidePauseWindow {
     // This contract relies on timestamps - the usual caveats apply.
     // solhint-disable not-rely-on-time
 
-    uint256 private immutable _initialPauseWindowDuration;
-    uint256 private immutable _bufferPeriodDuration;
+    /// @dev The factory deployer gave a duration that would overflow the Unix timestamp.
+    error PoolPauseWindowDurationOverflow();
 
-    // Time when the pause window for all created Pools expires, and the pause window duration of new Pools
-    // becomes zero.
+    // The pause window end time is stored in 32 bits.
+    uint256 private constant _MAX_TIMESTAMP = type(uint32).max;
+
+    uint256 private immutable _pauseWindowDuration;
+
+    // Time when the pause window for all created Pools expires.
     uint256 private immutable _poolsPauseWindowEndTime;
 
-    constructor(uint256 initialPauseWindowDuration, uint256 bufferPeriodDuration) {
-        if (initialPauseWindowDuration > PausableConstants.MAX_PAUSE_WINDOW_DURATION) {
-            revert PauseWindowDurationTooLarge();
+    constructor(uint256 pauseWindowDuration) {
+        if (block.timestamp + pauseWindowDuration > _MAX_TIMESTAMP) {
+            revert PoolPauseWindowDurationOverflow();
         }
 
-        if (bufferPeriodDuration > PausableConstants.MAX_BUFFER_PERIOD_DURATION) {
-            revert BufferPeriodDurationTooLarge();
-        }
+        _pauseWindowDuration = pauseWindowDuration;
 
-        _initialPauseWindowDuration = initialPauseWindowDuration;
-        _bufferPeriodDuration = bufferPeriodDuration;
-
-        _poolsPauseWindowEndTime = block.timestamp + initialPauseWindowDuration;
+        _poolsPauseWindowEndTime = block.timestamp + pauseWindowDuration;
     }
 
     /**
-     * @dev Returns the current `TemporarilyPausable` configuration that will be applied to Pools created by this
-     * factory.
-     *
-     * `pauseWindowDuration` will decrease over time until it reaches zero, at which point both it and
-     * `bufferPeriodDuration` will be zero forever, meaning deployed Pools will not be pausable.
+     * @notice Return the pause window duration. This is the time pools will be pausable after factory deployment.
+     * @return The duration in seconds
      */
-    function getPauseConfiguration() public view returns (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) {
-        uint256 currentTime = block.timestamp;
-        if (currentTime < _poolsPauseWindowEndTime) {
-            // The buffer period is always the same since its duration is related to how much time is needed to respond
-            // to a potential emergency. The Pause Window duration however decreases as the end time approaches.
+    function getPauseWindowDuration() external view returns (uint256) {
+        return _pauseWindowDuration;
+    }
 
-            pauseWindowDuration = _poolsPauseWindowEndTime - currentTime; // No need for checked arithmetic.
-            bufferPeriodDuration = _bufferPeriodDuration;
-        } else {
-            // After the end time, newly created Pools have no Pause Window, nor Buffer Period (since they are not
-            // pausable in the first place).
+    /**
+     * @notice Returns the original factory pauseWindowEndTime, regardless of the current time.
+     * @return The end time as a timestamp
+     */
+    function getOriginalPauseWindowEndTime() external view returns (uint256) {
+        return _poolsPauseWindowEndTime;
+    }
 
-            pauseWindowDuration = 0;
-            bufferPeriodDuration = 0;
-        }
+    /**
+     * @notice Returns the current pauseWindowEndTime that will be applied to Pools created by this factory.
+     * @dev We intend for all pools deployed by this factory to have the same pause window end time (i.e., after
+     * this date, all future pools will be unpausable). This function will return `_poolsPauseWindowEndTime`
+     * until it passes, after which it will return 0.
+     *
+     * @return The resolved pause window end time (0 indicating it's no longer pausable)
+     */
+    function getNewPoolPauseWindowEndTime() public view returns (uint256) {
+        return block.timestamp < _poolsPauseWindowEndTime ? _poolsPauseWindowEndTime : 0;
     }
 }
