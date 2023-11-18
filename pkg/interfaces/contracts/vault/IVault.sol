@@ -129,8 +129,8 @@ interface IVault {
      * pool will automatically unpause.
      *
      * A pool can opt out of Balancer governance pausing by providing a custom `pauseManager`. This might be a
-     * multi-sig contract, or an arbitrary smart contract that controls access to which accounts can make calls that
-     * are forwarded to the Vault.
+     * multi-sig contract or an arbitrary smart contract with its own access controls, that forwards calls to
+     * the Vault.
      *
      * If the zero address is provided for the `pauseManager`, permissions for pausing the pool will default to the
      * authorizer.
@@ -708,7 +708,7 @@ interface IVault {
     error VaultPauseWindowDurationTooLarge();
 
     /// @dev The caller specified a buffer period longer than the maximum.
-    error BufferPeriodDurationTooLarge();
+    error PauseBufferPeriodDurationTooLarge();
 
     /// @dev A user tried to invoke an operation while the Vault was paused.
     error VaultPaused();

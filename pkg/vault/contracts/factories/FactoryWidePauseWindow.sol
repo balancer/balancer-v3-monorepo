@@ -57,8 +57,8 @@ contract FactoryWidePauseWindow {
     /**
      * @notice Returns the current pauseWindowEndTime that will be applied to Pools created by this factory.
      * @dev We intend for all pools deployed by this factory to have the same pause window end time (i.e., after
-     * this date, all future pools will be permissionless - unpausable - forever). This function will return
-     * `_poolsPauseWindowEndTime` until it passes, after which it will return 0.
+     * this date, all future pools will be unpausable). This function will return `_poolsPauseWindowEndTime`
+     * until it passes, after which it will return 0.
      *
      * @return The resolved pause window end time (0 indicating it's no longer pausable)
      */

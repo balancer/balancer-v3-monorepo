@@ -335,6 +335,15 @@ library PoolConfigLib {
             });
     }
 
+    /**
+     * @dev There is a lot of data packed into the PoolConfig, but most often we only need one or two pieces of it.
+     * Since it is costly to pack and unpack the entire structure, convenience functions like `getPoolPausedState`
+     * help streamline frequent operations. The pause state needs to be checked on every state-changing pool operation.
+     *
+     * @param config The encoded pool configuration
+     * @return paused Whether the pool was paused (i.e., the bit was set)
+     * @return pauseWindowEndTime The end of the pause period, used to determine whether the pool is actually paused
+     */
     function getPoolPausedState(PoolConfigBits config) internal pure returns (bool, uint256) {
         return (config.isPoolPaused(), config.getPauseWindowEndTime());
     }

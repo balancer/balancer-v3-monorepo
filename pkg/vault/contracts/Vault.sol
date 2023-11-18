@@ -135,7 +135,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             revert VaultPauseWindowDurationTooLarge();
         }
         if (bufferPeriodDuration > MAX_BUFFER_PERIOD_DURATION) {
-            revert BufferPeriodDurationTooLarge();
+            revert PauseBufferPeriodDurationTooLarge();
         }
 
         uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
@@ -1623,7 +1623,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                                      Pool Pausing
     *******************************************************************************/
 
-    modifier withAuthenticatedPauserFor(address pool) {
+    modifier onlyAuthenticatedPauser(address pool) {
         address pauseManager = _poolPauseManagers[pool];
 
         if (pauseManager == address(0)) {
@@ -1668,12 +1668,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     }
 
     /// @inheritdoc IVault
-    function pausePool(address pool) external withRegisteredPool(pool) withAuthenticatedPauserFor(pool) {
+    function pausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) {
         _setPoolPaused(pool, true);
     }
 
     /// @inheritdoc IVault
-    function unpausePool(address pool) external withRegisteredPool(pool) withAuthenticatedPauserFor(pool) {
+    function unpausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) {
         _setPoolPaused(pool, false);
     }
 
