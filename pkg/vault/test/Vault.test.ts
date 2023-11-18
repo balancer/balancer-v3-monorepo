@@ -34,6 +34,7 @@ describe('Vault', function () {
 
   let tokenAAddress: string;
   let tokenBAddress: string;
+  let poolBAddress: string;
 
   let poolATokens: string[];
   let poolBTokens: string[];
@@ -60,6 +61,7 @@ describe('Vault', function () {
 
     tokenAAddress = await tokenA.getAddress();
     tokenBAddress = await tokenB.getAddress();
+    poolBAddress = await poolB.getAddress();
 
     const tokenCAddress = await tokenC.getAddress();
     poolATokens = [tokenAAddress, tokenBAddress, tokenCAddress];
@@ -77,15 +79,6 @@ describe('Vault', function () {
   });
 
   describe('registration', () => {
-    let unregisteredPoolSigner: SignerWithAddress;
-    let poolBAddress: string;
-
-    sharedBeforeEach('get pool signer for calls through vault', async () => {
-      poolBAddress = await poolB.getAddress();
-      // PoolB isn't registered
-      unregisteredPoolSigner = await impersonate(poolBAddress);
-    });
-
     it('can register a pool', async () => {
       expect(await vault.isPoolRegistered(poolA)).to.be.true;
       expect(await vault.isPoolRegistered(poolB)).to.be.false;
@@ -108,9 +101,7 @@ describe('Vault', function () {
       const pauseWindowEndTime = Number(currentTime) + PAUSE_WINDOW_DURATION;
 
       await expect(
-        await vault
-          .connect(unregisteredPoolSigner)
-          .manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS)
+        await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS)
       )
         .to.emit(vault, 'PoolRegistered')
         .withArgs(
@@ -125,21 +116,21 @@ describe('Vault', function () {
     });
 
     it('cannot register a pool twice', async () => {
-      await vault.connect(unregisteredPoolSigner).manualRegisterPool(poolB, poolBTokens);
+      await vault.manualRegisterPool(poolB, poolBTokens);
 
-      await expect(vault.connect(unregisteredPoolSigner).manualRegisterPool(poolB, poolBTokens))
+      await expect(vault.manualRegisterPool(poolB, poolBTokens))
         .to.be.revertedWithCustomError(vault, 'PoolAlreadyRegistered')
         .withArgs(await poolB.getAddress());
     });
 
     it('cannot register a pool with an invalid token', async () => {
       await expect(
-        vault.connect(unregisteredPoolSigner).manualRegisterPool(poolB, invalidTokens)
+        vault.manualRegisterPool(poolB, invalidTokens)
       ).to.be.revertedWithCustomError(vault, 'InvalidToken');
     });
 
     it('cannot register a pool with duplicate tokens', async () => {
-      await expect(vault.connect(unregisteredPoolSigner).manualRegisterPool(poolB, duplicateTokens))
+      await expect(vault.manualRegisterPool(poolB, duplicateTokens))
         .to.be.revertedWithCustomError(vault, 'TokenAlreadyRegistered')
         .withArgs(tokenAAddress);
     });
@@ -148,12 +139,12 @@ describe('Vault', function () {
       await vault.manualPauseVault();
 
       await expect(
-        vault.connect(unregisteredPoolSigner).manualRegisterPool(factory, poolBTokens)
+        vault.manualRegisterPool(poolB, poolBTokens)
       ).to.be.revertedWithCustomError(vault, 'VaultPaused');
     });
 
     it('cannot register while registering another pool', async () => {
-      await expect(vault.reentrantRegisterPool(factory, poolATokens)).to.be.revertedWithCustomError(
+      await expect(vault.reentrantRegisterPool(poolB, poolATokens)).to.be.revertedWithCustomError(
         vault,
         'ReentrancyGuardReentrantCall'
       );
@@ -167,7 +158,7 @@ describe('Vault', function () {
 
     it('cannot register a pool with too few tokens', async () => {
       await expect(
-        vault.connect(unregisteredPoolSigner).manualRegisterPool(factory, [poolATokens[0]])
+        vault.manualRegisterPool(poolB, [poolATokens[0]])
       ).to.be.revertedWithCustomError(vault, 'MinTokens');
     });
 
@@ -175,7 +166,7 @@ describe('Vault', function () {
       const tokens = await ERC20TokenList.create(5);
 
       await expect(
-        vault.connect(unregisteredPoolSigner).manualRegisterPool(factory, await tokens.addresses)
+        vault.manualRegisterPool(poolB, await tokens.addresses)
       ).to.be.revertedWithCustomError(vault, 'MaxTokens');
     });
   });
