@@ -18,7 +18,7 @@ contract FactoryWidePauseWindow {
     // solhint-disable not-rely-on-time
 
     /// @dev The factory deployer gave a duration that would overflow the Unix timestamp.
-    error PoolPauseWindowDurationTooLarge();
+    error PoolPauseWindowDurationOverflow();
 
     // The pause window end time is stored in 32 bits.
     uint256 private constant _MAX_TIMESTAMP = type(uint32).max;
@@ -30,7 +30,7 @@ contract FactoryWidePauseWindow {
 
     constructor(uint256 pauseWindowDuration) {
         if (block.timestamp + pauseWindowDuration > _MAX_TIMESTAMP) {
-            revert PoolPauseWindowDurationTooLarge();
+            revert PoolPauseWindowDurationOverflow();
         }
 
         _pauseWindowDuration = pauseWindowDuration;

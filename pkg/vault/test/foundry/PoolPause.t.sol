@@ -101,7 +101,7 @@ contract PoolPauseTest is Test {
     function testInvalidDuration() public {
         uint256 maxEndTimeTimestamp = type(uint32).max - block.timestamp;
 
-        vm.expectRevert(FactoryWidePauseWindow.PoolPauseWindowDurationTooLarge.selector);
+        vm.expectRevert(FactoryWidePauseWindow.PoolPauseWindowDurationOverflow.selector);
         new ERC20PoolMock(
             vault,
             "ERC20 Pool",
