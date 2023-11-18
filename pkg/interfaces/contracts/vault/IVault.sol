@@ -3,6 +3,7 @@
 pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
 
@@ -28,12 +29,14 @@ struct LiquidityManagement {
 
 /// @dev Represents a pool's configuration, including callbacks.
 struct PoolConfig {
-    bool isRegisteredPool;
-    bool isInitializedPool;
+    bool isPoolRegistered;
+    bool isPoolInitialized;
+    bool isPoolPaused;
     bool isPoolInRecoveryMode;
     bool hasDynamicSwapFee;
     uint64 staticSwapFeePercentage; // stores an 18-decimal FP value (max FixedPoint.ONE)
     uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
+    uint32 pauseWindowEndTime;
     PoolCallbacks callbacks;
     LiquidityManagement liquidityManagement;
 }
@@ -90,12 +93,16 @@ interface IVault {
      * @param pool The pool being registered
      * @param factory The factory creating the pool
      * @param tokens The pool's tokens
+     * @param pauseWindowEndTime The pool's pause window end time
+     * @param pauseManager The pool's external pause manager (or 0 for governance)
      * @param liquidityManagement Supported liquidity management callback flags
      */
     event PoolRegistered(
         address indexed pool,
         address indexed factory,
         IERC20[] tokens,
+        uint256 pauseWindowEndTime,
+        address pauseManager,
         PoolCallbacks callbacks,
         LiquidityManagement liquidityManagement
     );
@@ -117,15 +124,30 @@ interface IVault {
 
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
-     * @dev This version of the function assumes the default proportional liquidity methods are supported.
+     * @dev A pool can opt-out of pausing by providing a zero value for the pause window, or allow pausing indefinitely
+     * by providing a large value. (Pool pause windows are not limited by the Vault maximums.) The vault defines an
+     * additional buffer period during which a paused pool will stay paused. After the buffer period passes, a paused
+     * pool will automatically unpause.
+     *
+     * A pool can opt out of Balancer governance pausing by providing a custom `pauseManager`. This might be a
+     * multi-sig contract or an arbitrary smart contract with its own access controls, that forwards calls to
+     * the Vault.
+     *
+     * If the zero address is provided for the `pauseManager`, permissions for pausing the pool will default to the
+     * authorizer.
+     *
      * @param factory The factory address associated with the pool being registered
      * @param tokens An array of token addresses the pool will manage
+     * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
+     * @param pauseManager Optional contract the Vault will allow to pause the pool
      * @param config Flags indicating which callbacks the pool supports
      * @param liquidityManagement Liquidity management flags with implemented methods
      */
     function registerPool(
         address factory,
         IERC20[] memory tokens,
+        uint256 pauseWindowEndTime,
+        address pauseManager,
         PoolCallbacks calldata config,
         LiquidityManagement calldata liquidityManagement
     ) external;
@@ -156,7 +178,7 @@ interface IVault {
      * @param pool Address of the pool to check
      * @return True if the pool is registered, false otherwise
      */
-    function isRegisteredPool(address pool) external view returns (bool);
+    function isPoolRegistered(address pool) external view returns (bool);
 
     /**
      * @notice Checks whether a pool is initialized.
@@ -164,7 +186,7 @@ interface IVault {
      * @param pool Address of the pool to check
      * @return True if the pool is initialized, false otherwise
      */
-    function isInitializedPool(address pool) external view returns (bool);
+    function isPoolInitialized(address pool) external view returns (bool);
 
     /**
      * @notice Gets the tokens registered to a pool.
@@ -720,6 +742,19 @@ interface IVault {
      */
     event VaultPausedStateChanged(bool paused);
 
+    /**
+     * @dev A Pool's pause status has changed.
+     * @param pool The pool that was just paused or unpaused
+     * @param paused True if the pool was paused
+     */
+    event PoolPausedStateChanged(address indexed pool, bool paused);
+
+    /// @dev The caller specified a pause window period longer than the maximum.
+    error VaultPauseWindowDurationTooLarge();
+
+    /// @dev The caller specified a buffer period longer than the maximum.
+    error PauseBufferPeriodDurationTooLarge();
+
     /// @dev A user tried to invoke an operation while the Vault was paused.
     error VaultPaused();
 
@@ -730,6 +765,30 @@ interface IVault {
     error VaultPauseWindowExpired();
 
     /**
+     * @dev A user tried to invoke an operation involving a paused Pool.
+     * @param pool The paused pool
+     */
+    error PoolPaused(address pool);
+
+    /**
+     * @dev Governance tried to unpause the Pool when it was not paused.
+     * @param pool The unpaused pool
+     */
+    error PoolNotPaused(address pool);
+
+    /**
+     * @dev Governance tried to pause a Pool after the pause period expired.
+     * @param pool The pool
+     */
+    error PoolPauseWindowExpired(address pool);
+
+    /**
+     * @dev The caller is not the registered pause manager for the pool.
+     * @param pool The pool
+     */
+    error SenderIsNotPauseManager(address pool);
+
+    /**
      * @notice Indicates whether the Vault is paused.
      * @return True if the Vault is paused
      */
@@ -737,7 +796,7 @@ interface IVault {
 
     /**
      * @notice Returns the paused status, and end times of the Vault's pause window and buffer period.
-     * @return paused True is the Vault is paused
+     * @return paused True if the Vault is paused
      * @return vaultPauseWindowEndTime The timestamp of the end of the Vault's pause window
      * @return vaultBufferPeriodEndTime The timestamp of the end of the Vault's buffer period
      */
@@ -755,6 +814,40 @@ interface IVault {
      * deployment. Note that the Vault will automatically unpause after the Buffer Period expires.
      */
     function unpauseVault() external;
+
+    /**
+     * @notice Indicates whether a pool is paused.
+     * @param pool The pool to be checked
+     * @return True if the pool is paused
+     */
+    function isPoolPaused(address pool) external view returns (bool);
+
+    /**
+     * @notice Returns the paused status, and end times of the Pool's pause window and buffer period.
+     * @dev Note that even when set to a paused state, the pool will automatically unpause at the end of
+     * the buffer period.
+     *
+     * @param pool The pool whose data is requested
+     * @return paused True if the Pool is paused
+     * @return poolPauseWindowEndTime The timestamp of the end of the Pool's pause window
+     * @return poolBufferPeriodEndTime The timestamp after which the Pool unpauses itself (if paused)
+     * @return pauseManager The pause manager, or the zero address
+     */
+    function getPoolPausedState(address pool) external view returns (bool, uint256, uint256, address);
+
+    /**
+     * @notice Pause the Pool: an emergency action which disables all pool functions.
+     * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
+     * deployment.
+     */
+    function pausePool(address pool) external;
+
+    /**
+     * @notice Reverse a `pause` operation, and restore the Pool to normal functionality.
+     * @dev This is a permissioned function that will only work on a paused Pool within the Buffer Period set during
+     * deployment. Note that the Pool will automatically unpause after the Buffer Period expires.
+     */
+    function unpausePool(address pool) external;
 
     /*******************************************************************************
                                     Miscellaneous

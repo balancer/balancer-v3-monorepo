@@ -6,6 +6,7 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 // solhint-disable-next-line max-line-length
 import { PoolConfig, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -48,7 +49,8 @@ library PoolConfigLib {
     // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
     uint8 public constant POOL_INITIALIZED_OFFSET = POOL_REGISTERED_OFFSET + 1;
-    uint8 public constant DYNAMIC_SWAP_FEE_OFFSET = POOL_INITIALIZED_OFFSET + 1;
+    uint8 public constant POOL_PAUSED_OFFSET = POOL_INITIALIZED_OFFSET + 1;
+    uint8 public constant DYNAMIC_SWAP_FEE_OFFSET = POOL_PAUSED_OFFSET + 1;
     uint8 public constant AFTER_SWAP_OFFSET = DYNAMIC_SWAP_FEE_OFFSET + 1;
     uint8 public constant BEFORE_ADD_LIQUIDITY_OFFSET = AFTER_SWAP_OFFSET + 1;
     uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = BEFORE_ADD_LIQUIDITY_OFFSET + 1;
@@ -69,6 +71,8 @@ library PoolConfigLib {
 
     uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
     uint8 public constant DECIMAL_SCALING_FACTORS_OFFSET = STATIC_SWAP_FEE_OFFSET + _STATIC_SWAP_FEE_BITLENGTH;
+    uint8 public constant PAUSE_WINDOW_END_TIME_OFFSET =
+        DECIMAL_SCALING_FACTORS_OFFSET + _TOKEN_DECIMAL_DIFFS_BITLENGTH;
 
     // Uses a uint24 (3 bytes): least significant 20 bits to store the values, and a 4-bit pad.
     // This maximum token count is also hard-coded in the Vault.
@@ -77,6 +81,7 @@ library PoolConfigLib {
 
     // A fee can never be larger than FixedPoint.ONE, which fits in 60 bits
     uint8 private constant _STATIC_SWAP_FEE_BITLENGTH = 64;
+    uint8 private constant _TIMESTAMP_BITLENGTH = 32;
 
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_REGISTERED_OFFSET);
@@ -88,6 +93,10 @@ library PoolConfigLib {
 
     function isPoolInRecoveryMode(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_RECOVERY_MODE_OFFSET);
+    }
+
+    function isPoolPaused(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(POOL_PAUSED_OFFSET);
     }
 
     function hasDynamicSwapFee(PoolConfigBits config) internal pure returns (bool) {
@@ -104,6 +113,10 @@ library PoolConfigLib {
                 .unwrap(config)
                 .decodeUint(DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH)
                 .toUint24();
+    }
+
+    function getPauseWindowEndTime(PoolConfigBits config) internal pure returns (uint32) {
+        return PoolConfigBits.unwrap(config).decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH).toUint32();
     }
 
     function shouldCallAfterSwap(PoolConfigBits config) internal pure returns (bool) {
@@ -212,17 +225,11 @@ library PoolConfigLib {
         // Stack too deep.
         {
             configBits = configBits
-                .insertBool(config.isRegisteredPool, POOL_REGISTERED_OFFSET)
-                .insertBool(config.isInitializedPool, POOL_INITIALIZED_OFFSET)
-                .insertBool(config.isPoolInRecoveryMode, POOL_RECOVERY_MODE_OFFSET);
-        }
-
-        {
-            configBits = configBits.insertBool(config.hasDynamicSwapFee, DYNAMIC_SWAP_FEE_OFFSET).insertUint(
-                config.staticSwapFeePercentage,
-                STATIC_SWAP_FEE_OFFSET,
-                _STATIC_SWAP_FEE_BITLENGTH
-            );
+                .insertBool(config.isPoolRegistered, POOL_REGISTERED_OFFSET)
+                .insertBool(config.isPoolInitialized, POOL_INITIALIZED_OFFSET)
+                .insertBool(config.isPoolPaused, POOL_PAUSED_OFFSET)
+                .insertBool(config.isPoolInRecoveryMode, POOL_RECOVERY_MODE_OFFSET)
+                .insertBool(config.hasDynamicSwapFee, DYNAMIC_SWAP_FEE_OFFSET);
         }
 
         {
@@ -267,11 +274,14 @@ library PoolConfigLib {
 
         return
             PoolConfigBits.wrap(
-                configBits.insertUint(
-                    config.tokenDecimalDiffs,
-                    DECIMAL_SCALING_FACTORS_OFFSET,
-                    _TOKEN_DECIMAL_DIFFS_BITLENGTH
-                )
+                configBits
+                    .insertUint(
+                        config.tokenDecimalDiffs,
+                        DECIMAL_SCALING_FACTORS_OFFSET,
+                        _TOKEN_DECIMAL_DIFFS_BITLENGTH
+                    )
+                    .insertUint(config.staticSwapFeePercentage, STATIC_SWAP_FEE_OFFSET, _STATIC_SWAP_FEE_BITLENGTH)
+                    .insertUint(config.pauseWindowEndTime, PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH)
             );
     }
 
@@ -304,12 +314,14 @@ library PoolConfigLib {
     function toPoolConfig(PoolConfigBits config) internal pure returns (PoolConfig memory) {
         return
             PoolConfig({
-                isRegisteredPool: config.isPoolRegistered(),
-                isInitializedPool: config.isPoolInitialized(),
+                isPoolRegistered: config.isPoolRegistered(),
+                isPoolInitialized: config.isPoolInitialized(),
+                isPoolPaused: config.isPoolPaused(),
                 isPoolInRecoveryMode: config.isPoolInRecoveryMode(),
                 hasDynamicSwapFee: config.hasDynamicSwapFee(),
                 staticSwapFeePercentage: config.getStaticSwapFeePercentage(),
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
+                pauseWindowEndTime: config.getPauseWindowEndTime(),
                 callbacks: PoolCallbacks({
                     shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),
                     shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),
@@ -328,5 +340,18 @@ library PoolConfigLib {
                     supportsRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom()
                 })
             });
+    }
+
+    /**
+     * @dev There is a lot of data packed into the PoolConfig, but most often we only need one or two pieces of it.
+     * Since it is costly to pack and unpack the entire structure, convenience functions like `getPoolPausedState`
+     * help streamline frequent operations. The pause state needs to be checked on every state-changing pool operation.
+     *
+     * @param config The encoded pool configuration
+     * @return paused Whether the pool was paused (i.e., the bit was set)
+     * @return pauseWindowEndTime The end of the pause period, used to determine whether the pool is actually paused
+     */
+    function getPoolPausedState(PoolConfigBits config) internal pure returns (bool, uint256) {
+        return (config.isPoolPaused(), config.getPauseWindowEndTime());
     }
 }

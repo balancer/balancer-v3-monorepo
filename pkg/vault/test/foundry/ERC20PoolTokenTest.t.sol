@@ -38,9 +38,10 @@ contract ERC20PoolTokenTest is Test {
             vault,
             "ERC20 Pool",
             "ERC20POOL",
-            address(0),
             [address(USDC), address(DAI)].toMemoryArray().asIERC20(),
-            true
+            true,
+            365 days,
+            address(0)
         );
     }
 
