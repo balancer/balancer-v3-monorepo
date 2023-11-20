@@ -914,8 +914,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         IERC20 token;
 
         for (uint256 i = 0; i < rateScalingFactors.length; ++i) {
-            // Because the iteration is bounded by `rateScalingFactors.length`, which matches the EnumerableMap's length,
-            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
+            // Because the iteration is bounded by `rateScalingFactors.length`, which matches the EnumerableMap's
+            // length, we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
             (token, ) = poolTokenBalances.unchecked_at(i);
             (rateScalingFactors[i], ) = _getRateForPoolToken(pool, token);

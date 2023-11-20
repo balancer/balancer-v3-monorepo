@@ -8,8 +8,8 @@ import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types
 import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
-import { ANY_ADDRESS, ZERO, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
-import { bn } from '@balancer-labs/v3-helpers/src/numbers';
+import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { FP_ONE, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { setupEnvironment } from './poolSetup';
 import { impersonate } from '@balancer-labs/v3-helpers/src/signers';
 import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer';
@@ -17,6 +17,7 @@ import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
 import { PoolFactoryMock } from '../typechain-types';
+import { RateProviderMock } from '../typechain-types';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -217,6 +218,41 @@ describe('Vault', function () {
       await expect(await timedVault.manualUnpauseVault())
         .to.emit(timedVault, 'VaultPausedStateChanged')
         .withArgs(false);
+    });
+
+    describe('rate providers', () => {
+      let poolC: PoolMock;
+      let rateProviders: string[];
+      let expectedRates: bigint[];
+      let rateProvider: RateProviderMock;
+
+      sharedBeforeEach('deploy pool', async () => {
+        rateProviders = Array(poolATokens.length).fill(ZERO_ADDRESS);
+        rateProvider = await deploy('v3-vault/RateProviderMock');
+        rateProviders[0] = await rateProvider.getAddress();
+        expectedRates = Array(poolATokens.length).fill(FP_ONE);
+
+        poolC = await deploy('v3-vault/PoolMock', {
+          args: [vault, 'Pool C', 'POOLC', poolATokens, rateProviders, true],
+        });
+      });
+
+      it('has rate providers', async () => {
+        const [, , , rateScalingFactors, poolProviders] = await vault.getPoolTokenInfo(poolC);
+
+        expect(poolProviders).to.deep.equal(rateProviders);
+        expect(rateScalingFactors).to.deep.equal(expectedRates);
+      });
+
+      it('rate providers respond to changing rates', async () => {
+        const newRate = fp(0.5);
+
+        await rateProvider.mockRate(newRate);
+        expectedRates[0] = newRate;
+
+        const [, , , rateScalingFactors] = await vault.getPoolTokenInfo(poolC);
+        expect(rateScalingFactors).to.deep.equal(expectedRates);
+      });
     });
 
     describe('pausing pools', () => {
