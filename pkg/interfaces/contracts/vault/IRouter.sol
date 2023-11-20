@@ -314,6 +314,8 @@ interface IRouter {
     struct SwapPathStep {
         address pool;
         IERC20 tokenOut;
+        //if we want to explicitly signal nested join/exits, we could add an enum value or boolean flag here
+
     }
     
     function swapExactAmountIn(
