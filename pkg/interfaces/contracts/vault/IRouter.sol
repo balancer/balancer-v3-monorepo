@@ -6,6 +6,7 @@ import { Asset } from "../solidity-utils/misc/Asset.sol";
 
 import { IVault } from "./IVault.sol";
 import { IBasePool } from "./IBasePool.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IRouter {
     /***************************************************************************
@@ -267,4 +268,55 @@ interface IRouter {
         uint256 amountGiven,
         bytes calldata userData
     ) external payable returns (uint256 amountCalculated);
+
+    /***************************************************************************
+                                WIP Swap interfaces
+    ***************************************************************************/
+
+    function swapSingleExactAmountIn(
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 amountInExact,
+        uint256 amountOutMin,
+        bool wethIsEth
+    ) external payable returns (uint256 amountOut);
+
+    function swapSingleExactAmountOut(
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 amountInMax,
+        uint256 amountOutExact,
+        bool wethIsEth
+    ) external payable returns (uint256 amountIn);
+
+    struct SwapPathExactAmountIn {
+        IERC20 tokenIn;
+        SwapPathStep[] steps;
+        uint256 amountInExact;
+        uint256 amountOutMin;
+    }
+
+    struct SwapPathExactAmountOut {
+        IERC20 tokenIn;
+        SwapPathStep[] steps;
+        uint256 amountInMax;
+        uint256 amountOutExact;
+    }
+
+    struct SwapPathStep {
+        address pool;
+        IERC20 tokenOut;
+    }
+    
+    function swapExactAmountIn(
+        SwapPathExactAmountIn[] memory paths,
+        bool wethIsEth
+    ) external payable returns (uint256[] memory amountsIn);
+
+    function swapExactAmountOut(
+        SwapPathExactAmountOut[] memory paths,
+        bool wethIsEth
+    ) external payable returns (uint256[] memory amountsOut);
 }
