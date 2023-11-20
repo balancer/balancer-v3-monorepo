@@ -1257,14 +1257,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             exactBptAmountIn
         );
 
-        amountsOut = _removeLiquidityUpdateAccounting(
-            vars,
-            pool,
-            from,
-            vars.tokens,
-            exactBptAmountIn,
-            upscaledAmountsOut
-        );
+        amountsOut = _removeLiquidityUpdateAccounting(vars, pool, from, exactBptAmountIn, upscaledAmountsOut);
     }
 
     /**
@@ -1345,7 +1338,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
 
         // TODO: enforce min and max. Maybe inside `_removeLiquidityUpdateAccounting`, where we iterate the tokens?
-        amountsOut = _removeLiquidityUpdateAccounting(vars, pool, from, vars.tokens, bptAmountIn, upscaledAmountsOut);
+        amountsOut = _removeLiquidityUpdateAccounting(vars, pool, from, bptAmountIn, upscaledAmountsOut);
     }
 
     /**
@@ -1362,11 +1355,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         SharedLocals memory vars,
         address pool,
         address from,
-        IERC20[] memory tokens,
         uint256 bptAmountIn,
         uint256[] memory scaled18AmountsOut
     ) internal returns (uint256[] memory amountsOut) {
-        uint256 numTokens = tokens.length;
+        uint256 numTokens = vars.tokens.length;
         amountsOut = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -1376,7 +1368,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             uint256 amountOut = scaled18AmountsOut[i].toRawRoundDown(vars.scalingFactors[i]);
 
             // Credit token[i] for amountIn
-            _supplyCredit(tokens[i], amountOut, msg.sender);
+            _supplyCredit(vars.tokens[i], amountOut, msg.sender);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
             // We need regular balances to complete the accounting, and the upscaled balances
