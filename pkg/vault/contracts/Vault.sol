@@ -463,9 +463,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         address pool,
         bool addingLiquidity
     ) private view returns (SharedLocals memory vars) {
-        (vars.tokens, vars.rawBalances, vars.decimalScalingFactors, vars.rateScalingFactors, ) = _getPoolTokenInfo(
-            pool
-        );
+        (vars.tokens, vars.rawBalances, vars.decimalScalingFactors, ) = _getPoolTokenInfo(pool);
+        vars.rateScalingFactors = _getPoolRateScalingFactors(pool);
         vars.config = _poolConfig[pool].toPoolConfig();
 
         uint256 numTokens = vars.tokens.length;
@@ -755,11 +754,17 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             IERC20[] memory tokens,
             uint256[] memory rawBalances,
             uint256[] memory decimalScalingFactors,
-            uint256[] memory rateScalingFactors,
             IRateProvider[] memory rateProviders
         )
     {
         return _getPoolTokenInfo(pool);
+    }
+
+    /// @inheritdoc IVault
+    function getPoolRateScalingFactors(
+        address pool
+    ) external view withRegisteredPool(pool) returns (uint256[] memory rateScalingFactors) {
+        return _getPoolRateScalingFactors(pool);
     }
 
     /// @dev Reverts unless `pool` corresponds to a registered Pool.
@@ -903,9 +908,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
     }
 
-    function _getPoolRateScalingFactors(
-        address pool
-    ) internal view withRegisteredPool(pool) returns (uint256[] memory rateScalingFactors) {
+    function _getPoolRateScalingFactors(address pool) internal view returns (uint256[] memory rateScalingFactors) {
         // Retrieve the mapping of tokens for the specified pool.
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
 
@@ -918,7 +921,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             // length, we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
             (token, ) = poolTokenBalances.unchecked_at(i);
-            (rateScalingFactors[i], ) = _getRateForPoolToken(pool, token);
+            rateScalingFactors[i] = _getRateForPoolToken(pool, token);
         }
     }
 
@@ -955,7 +958,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
             (token, rawBalance) = poolTokenBalances.unchecked_at(i);
-            (rateScalingFactor, ) = _getRateForPoolToken(pool, token);
+            rateScalingFactor = _getRateForPoolToken(pool, token);
 
             scaled18Balances[i] = roundUp
                 ? rawBalance.toScaled18RoundUp(decimalScalingFactors[i].mulUp(rateScalingFactor))
@@ -972,7 +975,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             IERC20[] memory tokens,
             uint256[] memory rawBalances,
             uint256[] memory decimalScalingFactors,
-            uint256[] memory rateScalingFactors,
             IRateProvider[] memory rateProviders
         )
     {
@@ -986,7 +988,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // Will be read raw, then upscaled and rounded as directed.
         tokens = new IERC20[](numTokens);
         rawBalances = new uint256[](numTokens);
-        rateScalingFactors = new uint256[](numTokens);
         rateProviders = new IRateProvider[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -994,16 +995,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
             (tokens[i], rawBalances[i]) = poolTokenBalances.unchecked_at(i);
-            (rateScalingFactors[i], rateProviders[i]) = _getRateForPoolToken(pool, tokens[i]);
+            rateProviders[i] = _poolRateProviders[pool][tokens[i]];
         }
     }
 
     // Convenience function for a common operation.
-    function _getRateForPoolToken(
-        address pool,
-        IERC20 token
-    ) private view returns (uint256 rate, IRateProvider rateProvider) {
-        rateProvider = _poolRateProviders[pool][token];
+    function _getRateForPoolToken(address pool, IERC20 token) private view returns (uint256 rate) {
+        IRateProvider rateProvider = _poolRateProviders[pool][token];
         rate = rateProvider == IRateProvider(address(0)) ? FixedPoint.ONE : rateProvider.getRate();
     }
 
@@ -1336,7 +1334,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // regular removeLiquidity.
 
         SharedLocals memory vars;
-        (vars.tokens, vars.rawBalances, vars.decimalScalingFactors, , ) = _getPoolTokenInfo(pool);
+        (vars.tokens, vars.rawBalances, vars.decimalScalingFactors, ) = _getPoolTokenInfo(pool);
         uint256 numTokens = vars.tokens.length;
 
         vars.scaled18Balances = new uint256[](numTokens);
@@ -1520,7 +1518,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         address pool,
         IERC20[] memory expectedTokens
     ) private view returns (uint256[] memory) {
-        (IERC20[] memory actualTokens, uint256[] memory rawBalances, , , ) = _getPoolTokenInfo(pool);
+        (IERC20[] memory actualTokens, uint256[] memory rawBalances, , ) = _getPoolTokenInfo(pool);
         InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
 
         for (uint256 i = 0; i < actualTokens.length; ++i) {

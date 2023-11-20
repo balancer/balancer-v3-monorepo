@@ -238,7 +238,8 @@ describe('Vault', function () {
       });
 
       it('has rate providers', async () => {
-        const [, , , rateScalingFactors, poolProviders] = await vault.getPoolTokenInfo(poolC);
+        const [, , , poolProviders] = await vault.getPoolTokenInfo(poolC);
+        const rateScalingFactors = await vault.getPoolRateScalingFactors(poolC);
 
         expect(poolProviders).to.deep.equal(rateProviders);
         expect(rateScalingFactors).to.deep.equal(expectedRates);
@@ -250,7 +251,7 @@ describe('Vault', function () {
         await rateProvider.mockRate(newRate);
         expectedRates[0] = newRate;
 
-        const [, , , rateScalingFactors] = await vault.getPoolTokenInfo(poolC);
+        const rateScalingFactors = await vault.getPoolRateScalingFactors(poolC);
         expect(rateScalingFactors).to.deep.equal(expectedRates);
       });
     });

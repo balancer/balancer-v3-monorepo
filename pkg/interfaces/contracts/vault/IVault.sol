@@ -203,15 +203,18 @@ interface IVault {
      * @return tokens Tokens registered to the pool
      * @return rawBalances Corresponding raw balances of the tokens
      * @return decimalScalingFactors Scaling factors due to token decimals
-     * @return rateScalingFactors Scaling factors due to rate providers
      * @return rateProviders Corresponding rateProviders of the tokens
      */
     function getPoolTokenInfo(
         address pool
-    )
-        external
-        view
-        returns (IERC20[] memory, uint256[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
+    ) external view returns (IERC20[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
+
+    /**
+     * @notice Retrieve the scaling factors from a pool's rate providers.
+     * @dev This is not included in `getPoolTokenInfo` since it makes external calls that might revert,
+     * effectively preventing retrieval of basic pool parameters.
+     */
+    function getPoolRateScalingFactors(address pool) external view returns (uint256[] memory);
 
     /**
      * @notice Gets the configuration paramters of a pool.
