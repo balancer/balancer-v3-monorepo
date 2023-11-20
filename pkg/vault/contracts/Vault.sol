@@ -880,7 +880,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      * @param pool The address of the pool
      * @return balancesScaled18 An array of token balances, scaled up and rounded as directed
      */
-    function _getpoolBalancesScaled18(
+    function _getPoolBalancesScaled18(
         address pool,
         bool roundUp
     ) internal view returns (uint256[] memory balancesScaled18) {
@@ -1037,7 +1037,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             // The callback might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (adding liquidity, so round up) again.
-            vars.balancesScaled18 = _getpoolBalancesScaled18(pool, true);
+            vars.balancesScaled18 = _getPoolBalancesScaled18(pool, true);
         }
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked
@@ -1205,7 +1205,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             // The callback might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (removing liquidity, so round down) again.
-            vars.balancesScaled18 = _getpoolBalancesScaled18(pool, false);
+            vars.balancesScaled18 = _getPoolBalancesScaled18(pool, false);
         }
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked,
