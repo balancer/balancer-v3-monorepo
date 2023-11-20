@@ -11,12 +11,10 @@ import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { FP_ONE, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { setupEnvironment } from './poolSetup';
-import { impersonate } from '@balancer-labs/v3-helpers/src/signers';
 import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
-import { PoolFactoryMock } from '../typechain-types';
 import { RateProviderMock } from '../typechain-types';
 
 describe('Vault', function () {
@@ -24,7 +22,6 @@ describe('Vault', function () {
   const BUFFER_PERIOD_DURATION = MONTH;
 
   let vault: VaultMock;
-  let factory: PoolFactoryMock;
   let poolA: PoolMock;
   let poolB: PoolMock;
   let tokenA: ERC20TestToken;
@@ -35,6 +32,7 @@ describe('Vault', function () {
 
   let tokenAAddress: string;
   let tokenBAddress: string;
+  let poolBAddress: string;
 
   let poolATokens: string[];
   let poolBTokens: string[];
@@ -46,11 +44,9 @@ describe('Vault', function () {
   });
 
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
-    const { vault: vaultMock, tokens, pools, factory: factoryContract } = await setupEnvironment(PAUSE_WINDOW_DURATION);
+    const { vault: vaultMock, tokens, pools } = await setupEnvironment(PAUSE_WINDOW_DURATION);
 
     vault = vaultMock;
-
-    factory = factoryContract;
 
     tokenA = tokens[0];
     tokenB = tokens[1];
@@ -61,6 +57,7 @@ describe('Vault', function () {
 
     tokenAAddress = await tokenA.getAddress();
     tokenBAddress = await tokenB.getAddress();
+    poolBAddress = await poolB.getAddress();
 
     const tokenCAddress = await tokenC.getAddress();
     poolATokens = [tokenAAddress, tokenBAddress, tokenCAddress];
@@ -78,15 +75,6 @@ describe('Vault', function () {
   });
 
   describe('registration', () => {
-    let unregisteredPoolSigner: SignerWithAddress;
-    let poolBAddress: string;
-
-    sharedBeforeEach('get pool signer for calls through vault', async () => {
-      poolBAddress = await poolB.getAddress();
-      // PoolB isn't registered
-      unregisteredPoolSigner = await impersonate(poolBAddress);
-    });
-
     it('can register a pool', async () => {
       expect(await vault.isPoolRegistered(poolA)).to.be.true;
       expect(await vault.isPoolRegistered(poolB)).to.be.false;
@@ -109,11 +97,7 @@ describe('Vault', function () {
       const pauseWindowEndTime = Number(currentTime) + PAUSE_WINDOW_DURATION;
       const rateProviders = Array(poolBTokens.length).fill(ZERO_ADDRESS);
 
-      await expect(
-        await vault
-          .connect(unregisteredPoolSigner)
-          .manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS)
-      )
+      await expect(await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS))
         .to.emit(vault, 'PoolRegistered')
         .withArgs(
           poolBAddress,
@@ -128,21 +112,19 @@ describe('Vault', function () {
     });
 
     it('cannot register a pool twice', async () => {
-      await vault.connect(unregisteredPoolSigner).manualRegisterPool(poolB, poolBTokens);
+      await vault.manualRegisterPool(poolB, poolBTokens);
 
-      await expect(vault.connect(unregisteredPoolSigner).manualRegisterPool(poolB, poolBTokens))
+      await expect(vault.manualRegisterPool(poolB, poolBTokens))
         .to.be.revertedWithCustomError(vault, 'PoolAlreadyRegistered')
         .withArgs(await poolB.getAddress());
     });
 
     it('cannot register a pool with an invalid token', async () => {
-      await expect(
-        vault.connect(unregisteredPoolSigner).manualRegisterPool(poolB, invalidTokens)
-      ).to.be.revertedWithCustomError(vault, 'InvalidToken');
+      await expect(vault.manualRegisterPool(poolB, invalidTokens)).to.be.revertedWithCustomError(vault, 'InvalidToken');
     });
 
     it('cannot register a pool with duplicate tokens', async () => {
-      await expect(vault.connect(unregisteredPoolSigner).manualRegisterPool(poolB, duplicateTokens))
+      await expect(vault.manualRegisterPool(poolB, duplicateTokens))
         .to.be.revertedWithCustomError(vault, 'TokenAlreadyRegistered')
         .withArgs(tokenAAddress);
     });
@@ -150,13 +132,11 @@ describe('Vault', function () {
     it('cannot register a pool when paused', async () => {
       await vault.manualPauseVault();
 
-      await expect(
-        vault.connect(unregisteredPoolSigner).manualRegisterPool(factory, poolBTokens)
-      ).to.be.revertedWithCustomError(vault, 'VaultPaused');
+      await expect(vault.manualRegisterPool(poolB, poolBTokens)).to.be.revertedWithCustomError(vault, 'VaultPaused');
     });
 
     it('cannot register while registering another pool', async () => {
-      await expect(vault.reentrantRegisterPool(factory, poolATokens)).to.be.revertedWithCustomError(
+      await expect(vault.reentrantRegisterPool(poolB, poolATokens)).to.be.revertedWithCustomError(
         vault,
         'ReentrancyGuardReentrantCall'
       );
@@ -169,17 +149,16 @@ describe('Vault', function () {
     });
 
     it('cannot register a pool with too few tokens', async () => {
-      await expect(
-        vault.connect(unregisteredPoolSigner).manualRegisterPool(factory, [poolATokens[0]])
-      ).to.be.revertedWithCustomError(vault, 'MinTokens');
+      await expect(vault.manualRegisterPool(poolB, [poolATokens[0]])).to.be.revertedWithCustomError(vault, 'MinTokens');
     });
 
     it('cannot register a pool with too many tokens', async () => {
       const tokens = await ERC20TokenList.create(5);
 
-      await expect(
-        vault.connect(unregisteredPoolSigner).manualRegisterPool(factory, await tokens.addresses)
-      ).to.be.revertedWithCustomError(vault, 'MaxTokens');
+      await expect(vault.manualRegisterPool(poolB, await tokens.addresses)).to.be.revertedWithCustomError(
+        vault,
+        'MaxTokens'
+      );
     });
   });
 
@@ -239,10 +218,10 @@ describe('Vault', function () {
 
       it('has rate providers', async () => {
         const [, , , poolProviders] = await vault.getPoolTokenInfo(poolC);
-        const rateScalingFactors = await vault.getPoolRateScalingFactors(poolC);
+        const tokenRates = await vault.getPoolTokenRates(poolC);
 
         expect(poolProviders).to.deep.equal(rateProviders);
-        expect(rateScalingFactors).to.deep.equal(expectedRates);
+        expect(tokenRates).to.deep.equal(expectedRates);
       });
 
       it('rate providers respond to changing rates', async () => {
@@ -251,8 +230,8 @@ describe('Vault', function () {
         await rateProvider.mockRate(newRate);
         expectedRates[0] = newRate;
 
-        const rateScalingFactors = await vault.getPoolRateScalingFactors(poolC);
-        expect(rateScalingFactors).to.deep.equal(expectedRates);
+        const tokenRates = await vault.getPoolTokenRates(poolC);
+        expect(tokenRates).to.deep.equal(expectedRates);
       });
     });
 

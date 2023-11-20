@@ -214,7 +214,7 @@ interface IVault {
      * @dev This is not included in `getPoolTokenInfo` since it makes external calls that might revert,
      * effectively preventing retrieval of basic pool parameters.
      */
-    function getPoolRateScalingFactors(address pool) external view returns (uint256[] memory);
+    function getPoolTokenRates(address pool) external view returns (uint256[] memory);
 
     /**
      * @notice Gets the configuration paramters of a pool.

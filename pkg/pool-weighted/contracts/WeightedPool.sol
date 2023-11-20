@@ -128,11 +128,11 @@ contract WeightedPool is BasePool {
         (, uint256[] memory scaled18Balances, uint256[] memory decimalScalingFactors, ) = _vault.getPoolTokenInfo(
             address(this)
         );
-        uint256[] memory rateScalingFactors = _vault.getPoolRateScalingFactors(address(this));
+        uint256[] memory tokenRates = _vault.getPoolTokenRates(address(this));
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
         scaled18Balances.toScaled18RoundDownArray(decimalScalingFactors);
-        scaled18Balances.toScaled18RoundDownArray(rateScalingFactors);
+        scaled18Balances.toScaled18RoundDownArray(tokenRates);
 
         return WeightedMath.calculateInvariant(normalizedWeights, scaled18Balances);
     }
