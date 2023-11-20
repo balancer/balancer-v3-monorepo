@@ -4,7 +4,6 @@ import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
 import { PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/PoolMock';
-import { PoolFactoryMock } from '../typechain-types';
 
 // This deploys a Vault, then creates 3 tokens and 2 pools. The first pool (A) is registered; the second (B) )s not,
 // which, along with a registration flag in the Pool mock, permits separate testing of registration functions.
@@ -12,7 +11,6 @@ export async function setupEnvironment(pauseWindowDuration: number): Promise<{
   vault: VaultMock;
   tokens: ERC20TestToken[];
   pools: PoolMock[];
-  factory: PoolFactoryMock;
 }> {
   const BUFFER_PERIOD_DURATION = MONTH;
 
@@ -21,10 +19,6 @@ export async function setupEnvironment(pauseWindowDuration: number): Promise<{
     args: [authorizer.getAddress(), pauseWindowDuration, BUFFER_PERIOD_DURATION],
   });
   const vaultAddress = await vault.getAddress();
-
-  const factory: PoolFactoryMock = await deploy('v3-vault/PoolFactoryMock', {
-    args: [vaultAddress, pauseWindowDuration],
-  });
 
   const tokenA: ERC20TestToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });
   const tokenB: ERC20TestToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token B', 'TKNB', 6] });
@@ -44,5 +38,5 @@ export async function setupEnvironment(pauseWindowDuration: number): Promise<{
     args: [vaultAddress, 'Pool B', 'POOLB', poolBTokens, false],
   });
 
-  return { vault: vault, tokens: [tokenA, tokenB, tokenC], pools: [poolA, poolB], factory };
+  return { vault: vault, tokens: [tokenA, tokenB, tokenC], pools: [poolA, poolB] };
 }
