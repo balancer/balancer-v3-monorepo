@@ -14,6 +14,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ERC20PoolToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20PoolToken.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
@@ -34,11 +35,14 @@ contract ERC20PoolTokenTest is Test {
         vault = new VaultMock(authorizer, 30 days, 90 days);
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
+        IRateProvider[] memory rateProviders = new IRateProvider[](2);
+
         token = new ERC20PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",
             [address(USDC), address(DAI)].toMemoryArray().asIERC20(),
+            rateProviders,
             true,
             365 days,
             address(0)

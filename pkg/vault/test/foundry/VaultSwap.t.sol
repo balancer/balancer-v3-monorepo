@@ -10,6 +10,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -46,11 +47,14 @@ contract VaultSwapTest is Test {
         router = new Router(IVault(vault), address(0));
         USDC = new ERC20TestToken("USDC", "USDC", 18);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
+        IRateProvider[] memory rateProviders = new IRateProvider[](2);
+
         pool = new ERC20PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            rateProviders,
             true,
             365 days,
             address(0)
@@ -167,7 +171,7 @@ contract VaultSwapTest is Test {
         assertEq(DAI.balanceOf(bob), 2 * AMOUNT);
 
         // assets are adjusted in the pool
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, uint256[] memory balances, , , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], 0);
         assertEq(balances[1], AMOUNT * 2);
 
@@ -196,7 +200,7 @@ contract VaultSwapTest is Test {
         assertEq(DAI.balanceOf(bob), 2 * AMOUNT);
 
         // assets are adjusted in the pool
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, uint256[] memory balances, , , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], 0);
         assertEq(balances[1], AMOUNT * 2);
 
@@ -231,7 +235,7 @@ contract VaultSwapTest is Test {
         assertEq(DAI.balanceOf(bob), bobDaiBeforeSwap + AMOUNT - SWAP_FEE);
 
         // assets are adjusted in the pool
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, uint256[] memory balances, , , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], SWAP_FEE);
         assertEq(balances[1], 2 * AMOUNT);
 
@@ -267,7 +271,7 @@ contract VaultSwapTest is Test {
         assertEq(USDC.balanceOf(bob), bobUsdcBeforeSwap - AMOUNT);
 
         // assets are adjusted in the pool: DAI out, USDC in
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, uint256[] memory balances, , , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], SWAP_FEE - PROTOCOL_SWAP_FEE);
         assertEq(balances[1], 2 * AMOUNT);
 
@@ -305,7 +309,7 @@ contract VaultSwapTest is Test {
         assertEq(DAI.balanceOf(bob), bobDaiBeforeSwap + AMOUNT - SWAP_FEE);
 
         // assets are adjusted in the pool
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, uint256[] memory balances, , , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], SWAP_FEE);
         assertEq(balances[1], 2 * AMOUNT);
 
@@ -341,7 +345,7 @@ contract VaultSwapTest is Test {
         assertEq(DAI.balanceOf(bob), bobDaiBeforeSwap + AMOUNT - SWAP_FEE);
 
         // assets are adjusted in the pool
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, uint256[] memory balances, , , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], SWAP_FEE - PROTOCOL_SWAP_FEE);
         assertEq(balances[1], 2 * AMOUNT);
 
@@ -392,7 +396,7 @@ contract VaultSwapTest is Test {
         assertEq(DAI.balanceOf(bob), bobDaiBeforeSwap + AMOUNT - SWAP_FEE);
 
         // assets are adjusted in the pool
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, uint256[] memory balances, , , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], SWAP_FEE - PROTOCOL_SWAP_FEE);
         assertEq(balances[1], 2 * AMOUNT);
 

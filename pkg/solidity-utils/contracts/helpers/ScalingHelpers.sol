@@ -13,6 +13,8 @@ import { InputHelpers } from "./InputHelpers.sol";
  * 18 decimals. When comparing DAI (18 decimals) and USDC (6 decimals), 1 USDC and 1 DAI would both be
  * represented as 1e18. This allows us to not consider differences in token decimals in the internal Pool
  * math, simplifying it greatly.
+ *
+ * These helpers can also be used to scale amounts by other 18-decimal floating point values, such as rates.
  */
 library ScalingHelpers {
     /***************************************************************************

@@ -8,7 +8,7 @@ import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types
 import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
-import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { ANY_ADDRESS, ZERO, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { bn } from '@balancer-labs/v3-helpers/src/numbers';
 import { setupEnvironment } from './poolSetup';
 import { impersonate } from '@balancer-labs/v3-helpers/src/signers';
@@ -106,6 +106,7 @@ describe('Vault', function () {
     it('registering a pool emits an event', async () => {
       const currentTime = await currentTimestamp();
       const pauseWindowEndTime = Number(currentTime) + PAUSE_WINDOW_DURATION;
+      const rateProviders = Array(poolBTokens.length).fill(ZERO_ADDRESS);
 
       await expect(
         await vault
@@ -117,6 +118,7 @@ describe('Vault', function () {
           poolBAddress,
           await vault.getPoolFactoryMock(),
           poolBTokens,
+          rateProviders,
           pauseWindowEndTime,
           ANY_ADDRESS,
           [false, false, false, false, false],
@@ -223,7 +225,7 @@ describe('Vault', function () {
 
       sharedBeforeEach('deploy pool', async () => {
         pool = await deploy('v3-vault/PoolMock', {
-          args: [vault, 'Pool X', 'POOLX', poolATokens, true],
+          args: [vault, 'Pool X', 'POOLX', poolATokens, Array(poolATokens.length).fill(ZERO_ADDRESS), true],
         });
         poolAddress = await pool.getAddress();
       });
@@ -343,7 +345,7 @@ describe('Vault', function () {
       // Get them from the pool (mock), using ScalingHelpers
       const poolScalingFactors = await poolA.getScalingFactors();
       // Get them from the Vault (using PoolConfig)
-      const vaultScalingFactors = await vault.getScalingFactors(poolA);
+      const vaultScalingFactors = await vault.getDecimalScalingFactors(poolA);
 
       expect(vaultScalingFactors).to.deep.equal(poolScalingFactors);
     });

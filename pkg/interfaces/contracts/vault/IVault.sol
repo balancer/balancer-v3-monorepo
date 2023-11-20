@@ -6,6 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
+import { IRateProvider } from "./IRateProvider.sol";
 
 /// @dev Represents a pool's callbacks.
 struct PoolCallbacks {
@@ -100,6 +101,7 @@ interface IVault {
         address indexed pool,
         address indexed factory,
         IERC20[] tokens,
+        IRateProvider[] rateProviders,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolCallbacks callbacks,
@@ -137,6 +139,7 @@ interface IVault {
      *
      * @param factory The factory address associated with the pool being registered
      * @param tokens An array of token addresses the pool will manage
+     * @param rateProviders An array of rate providers corresponding to the tokens
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param pauseManager Optional contract the Vault will allow to pause the pool
      * @param config Flags indicating which callbacks the pool supports
@@ -145,6 +148,7 @@ interface IVault {
     function registerPool(
         address factory,
         IERC20[] memory tokens,
+        IRateProvider[] memory rateProviders,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolCallbacks calldata config,
@@ -196,12 +200,18 @@ interface IVault {
 
     /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
-     * @dev TODO Add rates when we have them.
      * @return tokens Tokens registered to the pool
      * @return rawBalances Corresponding raw balances of the tokens
-     * @return scalingFactors Corresponding scalingFactors of the tokens
+     * @return decimalScalingFactors Scaling factors due to token decimals
+     * @return rateScalingFactors Scaling factors due to rate providers
+     * @return rateProviders Corresponding rateProviders of the tokens
      */
-    function getPoolTokenInfo(address pool) external view returns (IERC20[] memory, uint256[] memory, uint256[] memory);
+    function getPoolTokenInfo(
+        address pool
+    )
+        external
+        view
+        returns (IERC20[] memory, uint256[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
 
     /**
      * @notice Gets the configuration paramters of a pool.

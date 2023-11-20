@@ -6,6 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
@@ -29,6 +30,7 @@ contract PoolMock is BasePool {
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
+        IRateProvider[] memory rateProviders,
         bool registerPool
     ) BasePool(vault, name, symbol) {
         if (registerPool) {
@@ -37,6 +39,7 @@ contract PoolMock is BasePool {
             factory.registerPool(
                 address(this),
                 tokens,
+                rateProviders,
                 address(0),
                 PoolConfigBits.wrap(0).toPoolConfig().callbacks,
                 PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement

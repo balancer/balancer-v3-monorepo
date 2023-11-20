@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.4;
 
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
@@ -26,6 +27,7 @@ contract WeightedPoolFactory is BasePoolFactory {
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
+        IRateProvider[] memory rateProviders,
         uint256[] memory normalizedWeights,
         bytes32 salt
     ) external returns (address pool) {
@@ -45,6 +47,7 @@ contract WeightedPoolFactory is BasePoolFactory {
         getVault().registerPool(
             pool,
             tokens,
+            rateProviders,
             getNewPoolPauseWindowEndTime(),
             address(0), // no pause manager
             PoolCallbacks({
