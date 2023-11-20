@@ -50,10 +50,10 @@ contract PoolMock is BasePool {
     }
 
     function onInitialize(
-        uint256[] memory exactScaled18AmountsIn,
+        uint256[] memory exactAmountsInScaled18,
         bytes memory
     ) external view onlyVault returns (uint256) {
-        return (MIN_INIT_BPT > exactScaled18AmountsIn[0] ? MIN_INIT_BPT : exactScaled18AmountsIn[0]);
+        return (MIN_INIT_BPT > exactAmountsInScaled18[0] ? MIN_INIT_BPT : exactAmountsInScaled18[0]);
     }
 
     function onAfterAddLiquidity(
@@ -82,13 +82,13 @@ contract PoolMock is BasePool {
 
     function onAfterSwap(
         IBasePool.AfterSwapParams calldata,
-        uint256 scaled18AmountCalculated
+        uint256 amountCalculatedScaled18
     ) external view override returns (bool success) {
-        return scaled18AmountCalculated > 0 && !failOnCallback;
+        return amountCalculatedScaled18 > 0 && !failOnCallback;
     }
 
     function onSwap(IBasePool.SwapParams calldata params) external pure override returns (uint256 amountCalculated) {
-        return params.scaled18AmountGiven;
+        return params.amountGivenScaled18;
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {

@@ -201,8 +201,8 @@ interface IVault {
     /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
      * @return tokens Tokens registered to the pool
-     * @return rawBalances Corresponding raw balances of the tokens
-     * @return decimalScalingFactors Scaling factors due to token decimals
+     * @return balancesRaw Corresponding raw balances of the tokens
+     * @return scalingFactors Corresponding scalingFactors of the tokens
      * @return rateProviders Corresponding rateProviders of the tokens
      */
     function getPoolTokenInfo(
@@ -534,7 +534,7 @@ interface IVault {
      * @param pool The pool with the tokens being swapped
      * @param tokenIn The token entering the Vault (balance increases)
      * @param tokenOut The token leaving the Vault (balance decreases)
-     * @param rawAmountGiven Amount specified for tokenIn or tokenOut (depending on the type of swap)
+     * @param amountGivenRaw Amount specified for tokenIn or tokenOut (depending on the type of swap)
      * @param userData Additional (optional) user data
      */
     struct SwapParams {
@@ -542,7 +542,7 @@ interface IVault {
         address pool;
         IERC20 tokenIn;
         IERC20 tokenOut;
-        uint256 rawAmountGiven;
+        uint256 amountGivenRaw;
         bytes userData;
     }
 
@@ -568,13 +568,13 @@ interface IVault {
      * @notice Swaps tokens based on provided parameters.
      * @dev All parameters are given in raw token decimal encoding.
      * @param params Parameters for the swap (see above for struct definition)
-     * @return rawAmountCalculated Calculated swap amount
-     * @return rawAmountIn Amount of input tokens for the swap
-     * @return rawAmountOut Amount of output tokens from the swap
+     * @return amountCalculatedRaw Calculated swap amount
+     * @return amountInRaw Amount of input tokens for the swap
+     * @return amountOutRaw Amount of output tokens from the swap
      */
     function swap(
         SwapParams memory params
-    ) external returns (uint256 rawAmountCalculated, uint256 rawAmountIn, uint256 rawAmountOut);
+    ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
     /*******************************************************************************
                                    Fees
