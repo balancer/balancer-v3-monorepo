@@ -320,10 +320,24 @@ interface IRouter {
     function swapExactAmountIn(
         SwapPathExactAmountIn[] memory paths,
         bool wethIsEth
-    ) external payable returns (uint256[] memory amountsIn);
+    ) external payable returns (uint256[] memory amountsOut);
 
     function swapExactAmountOut(
         SwapPathExactAmountOut[] memory paths,
         bool wethIsEth
-    ) external payable returns (uint256[] memory amountsOut);
+    ) external payable returns (uint256[] memory amountsIn);
+
+    // join / exit with nested pools
+    // unstake -> exit
+    // join -> stake
+    // join / exit / swap / stake / unstake
+    // do we need swaps?
+
+
+    // batch relayer:
+    // we don't need the wrapping / unwrapping if this is built in
+
+    // withdraw from gauge and claim BAL rewards and third party rewards (separate calls)
+    // gauge actions
+    // claim, withdraw, exit
 }
