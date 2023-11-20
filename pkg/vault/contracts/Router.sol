@@ -369,7 +369,7 @@ contract Router is IRouter, ReentrancyGuard {
                 pool: params.pool,
                 tokenIn: tokenIn,
                 tokenOut: tokenOut,
-                rawAmountGiven: params.amountGiven,
+                amountGivenRaw: params.amountGiven,
                 userData: params.userData
             })
         );
