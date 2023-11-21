@@ -543,4 +543,140 @@ contract Router is IRouter, ReentrancyGuard {
                 params.userData
             );
     }
+
+    function removeLiquidityNestedProportional(
+        address pool,
+        uint256 bptAmountIn,
+        IERC20[] memory tokens,
+        uint256[] memory minAmountsOut
+    ) external payable returns (uint256[] memory amountsOut) {
+        // require tokens.length == minAmountsOut.length
+
+        amountsOut = new uint256[](tokens.length);
+
+        IERC20[] memory parentPoolTokens = _vault.getPoolTokens(pool);
+        uint256[] memory zeroMinAmountsOut = new uint256[](parentPoolTokens.length);
+
+        (,uint256[] memory parentAmountsOut,) = _vault.removeLiquidity(
+            pool,
+            msg.sender,
+            bptAmountIn,
+            // we set our limits on the final amounts out
+            zeroMinAmountsOut,
+            IVault.RemoveLiquidityKind.PROPORTIONAL,
+            ""
+        );
+
+        _validateAndFillNestedProportionalAmountsOut(tokens, minAmountsOut, parentPoolTokens, parentAmountsOut, amountsOut);
+
+        for (uint i = 0; i < parentPoolTokens.length; i++) {
+            if (_vault.isPoolRegistered(address(parentPoolTokens[i]))) {
+                IERC20[] memory childPoolTokens = _vault.getPoolTokens(address(parentPoolTokens[i]));
+                zeroMinAmountsOut = new uint256[](childPoolTokens.length);
+
+                (,uint256[] memory childAmountsOut,) = _vault.removeLiquidity(
+                    address(parentPoolTokens[i]),
+                    msg.sender,
+                    parentAmountsOut[i],
+                    // we set our limits on the final amounts out
+                    zeroMinAmountsOut,
+                    IVault.RemoveLiquidityKind.PROPORTIONAL,
+                    ""
+                );
+
+                _validateAndFillNestedProportionalAmountsOut(
+                    tokens,
+                    minAmountsOut,
+                    childPoolTokens,
+                    childAmountsOut,
+                    amountsOut
+                );
+            }
+        }
+    }
+
+    function _validateAndFillNestedProportionalAmountsOut(
+        IERC20[] memory tokens,
+        uint256[] memory minAmountsOut,
+        IERC20[] memory poolTokens,
+        uint256[] memory poolTokensAmountOut,
+        uint256[] memory amountsOut
+    ) internal pure {
+        for (uint i = 0; i < poolTokens.length; i++) {
+           for (uint j = 0; j < tokens.length; j++) {
+                if (poolTokens[i] == tokens[j]) {
+                    //require poolTokensAmountOut[i] >= minAmountsOut[j]
+
+                    //mutate the array
+                    amountsOut[j] = poolTokensAmountOut[i];
+                }
+            } 
+        }
+    }
+
+    function addLiquidityNestedUnbalanced(
+        address pool,
+        IERC20[] memory tokens,
+        uint256[] memory amountsIn,
+        uint256 minBptAmountOut
+    ) external payable returns (uint256 bptAmountOut) {
+        IERC20[] memory parentPoolTokens = _vault.getPoolTokens(pool);
+        uint256[] memory childBptAmountOut = new uint256[](parentPoolTokens.length);
+
+        for (uint i = 0; i < parentPoolTokens.length; i++) {
+            if (_vault.isPoolRegistered(address(parentPoolTokens[i]))) {
+                IERC20[] memory childPoolTokens = _vault.getPoolTokens(address(parentPoolTokens[i]));
+                uint256[] memory childAmountsIn = _getAmountsInForNestedAdd(tokens, amountsIn, childPoolTokens);
+
+                (,childBptAmountOut[i],) = _vault.addLiquidity(
+                    address(parentPoolTokens[i]),
+                    msg.sender,
+                    childAmountsIn,
+                    0, // we set our limits on the bpt out for the parent pool
+                    IVault.AddLiquidityKind.UNBALANCED,
+                    ""
+                );
+
+            }
+        }
+
+        uint256[] memory parentAmountsIn = new uint256[](parentPoolTokens.length);
+
+        for (uint i = 0; i < parentPoolTokens.length; i++) {
+            if (childBptAmountOut[i] > 0) {
+                parentAmountsIn[i] = childBptAmountOut[i];
+            } else {
+                for (uint j = 0; j < tokens.length; j++) {
+                    if (parentPoolTokens[i] == tokens[j]) {
+                        parentAmountsIn[i] = amountsIn[j];
+                    }
+                }
+            }
+        }
+
+        (,bptAmountOut,) = _vault.addLiquidity(
+            pool,
+            msg.sender,
+            parentAmountsIn,
+            minBptAmountOut,
+            IVault.AddLiquidityKind.UNBALANCED,
+            ""
+        );
+    }
+
+    function _getAmountsInForNestedAdd(
+        IERC20[] memory tokens,
+        uint256[] memory amountsIn,
+        IERC20[] memory poolTokens
+    ) internal pure returns (uint256[] memory poolAmountsIn) {
+        poolAmountsIn = new uint256[](poolTokens.length);
+
+        for (uint i = 0; i < poolTokens.length; i++) {
+           for (uint j = 0; j < tokens.length; j++) {
+                if (poolTokens[i] == tokens[j]) {
+                    poolAmountsIn[i] = amountsIn[j];
+                }
+            } 
+        }
+    }
 }

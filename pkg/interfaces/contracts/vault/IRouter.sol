@@ -4,6 +4,8 @@ pragma solidity ^0.8.4;
 
 import { Asset } from "../solidity-utils/misc/Asset.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVault } from "./IVault.sol";
 import { IBasePool } from "./IBasePool.sol";
 
@@ -267,4 +269,19 @@ interface IRouter {
         uint256 amountGiven,
         bytes calldata userData
     ) external payable returns (uint256 amountCalculated);
+
+
+    function removeLiquidityNestedProportional(
+        address pool,
+        uint256 bptAmountIn,
+        IERC20[] memory tokens, // these would be the "main" tokens in the nested structure
+        uint256[] memory minAmountsOut  // these would align with the tokens above
+    ) external payable returns (uint256[] memory amountsOut);
+
+    function addLiquidityNestedUnbalanced(
+        address pool,
+        IERC20[] memory tokens, // these would be "main" tokens anywhere in the nested structure
+        uint256[] memory amountsIn, // this array would align with the tokens above
+        uint256 minBptAmountOut
+    ) external payable returns (uint256 bptAmountOut);
 }
