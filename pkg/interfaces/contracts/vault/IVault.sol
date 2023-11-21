@@ -32,6 +32,7 @@ struct PoolConfig {
     bool isPoolRegistered;
     bool isPoolInitialized;
     bool isPoolPaused;
+    bool isPoolInRecoveryMode;
     bool hasDynamicSwapFee;
     uint64 staticSwapFeePercentage; // stores an 18-decimal FP value (max FixedPoint.ONE)
     uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
@@ -663,6 +664,50 @@ interface IVault {
      * @return If true, then queries are disabled
      */
     function isQueryDisabled() external view returns (bool);
+
+    /*******************************************************************************
+                                Recovery Mode
+    *******************************************************************************/
+
+    /**
+     * @dev Recovery mode has been enabled or disabled for a pool.
+     * @param pool The pool
+     * @param recoveryMode True if recovery mode was enabled
+     */
+    event PoolRecoveryModeStateChanged(address indexed pool, bool recoveryMode);
+
+    /**
+     * @dev Cannot enable recovery mode when already enabled.
+     * @param pool The pool
+     */
+    error PoolInRecoveryMode(address pool);
+
+    /**
+     * @dev Cannot disable recovery mode when not enabled.
+     * @param pool The pool
+     */
+    error PoolNotInRecoveryMode(address pool);
+
+    /**
+     * @notice Checks whether a pool is in recovery mode.
+     * @param pool Address of the pool to check
+     * @return True if the pool is initialized, false otherwise
+     */
+    function isPoolInRecoveryMode(address pool) external returns (bool);
+
+    /**
+     * @notice Enable recovery mode for a pool.
+     * @dev This is a permissioned function.
+     * @param pool The pool
+     */
+    function enableRecoveryMode(address pool) external;
+
+    /**
+     * @notice Disable recovery mode for a pool.
+     * @dev This is a permissioned function.
+     * @param pool The pool
+     */
+    function disableRecoveryMode(address pool) external;
 
     /*******************************************************************************
                                 Authentication
