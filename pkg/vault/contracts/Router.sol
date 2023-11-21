@@ -561,7 +561,7 @@ contract Router is IRouter, ReentrancyGuard {
             pool,
             msg.sender,
             bptAmountIn,
-            // we set our limits on the final amounts out
+            // we validate the limits on the final amounts out
             zeroMinAmountsOut,
             IVault.RemoveLiquidityKind.PROPORTIONAL,
             ""
@@ -578,7 +578,7 @@ contract Router is IRouter, ReentrancyGuard {
                     address(parentPoolTokens[i]),
                     msg.sender,
                     parentAmountsOut[i],
-                    // we set our limits on the final amounts out
+                    // we validate the limits on the final amounts out
                     zeroMinAmountsOut,
                     IVault.RemoveLiquidityKind.PROPORTIONAL,
                     ""
