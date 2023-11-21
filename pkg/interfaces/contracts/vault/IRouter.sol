@@ -71,12 +71,6 @@ interface IRouter {
         bytes userData;
     }
 
-    /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
-    error BptAmountBelowMin();
-
-    /// @dev A required amountIn exceeds the maximum limit specified in the join.
-    error JoinAboveMax();
-
     /**
      * @notice Adds liquidity to a pool.
      * @param pool Address of the liquidity pool
@@ -121,9 +115,6 @@ interface IRouter {
         IVault.RemoveLiquidityKind kind;
         bytes userData;
     }
-
-    /// @dev The actual bptAmountOut is below the minimum limit specified in the exit.
-    error ExitBelowMin();
 
     /**
      * @notice Removes liquidity from a pool.

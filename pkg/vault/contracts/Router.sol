@@ -76,11 +76,14 @@ contract Router is IRouter, ReentrancyGuard {
     ) external payable nonReentrant onlyVault returns (uint256 bptAmountOut) {
         IERC20[] memory tokens = params.assets.toIERC20(_weth);
 
-        bptAmountOut = _vault.initialize(params.pool, params.sender, tokens, params.exactAmountsIn, params.userData);
-
-        if (bptAmountOut < params.minBptAmountOut) {
-            revert BptAmountBelowMin();
-        }
+        bptAmountOut = _vault.initialize(
+            params.pool,
+            params.sender,
+            tokens,
+            params.exactAmountsIn,
+            params.minBptAmountOut,
+            params.userData
+        );
 
         uint256 ethAmountIn;
         for (uint256 i = 0; i < params.assets.length; ++i) {
@@ -156,21 +159,11 @@ contract Router is IRouter, ReentrancyGuard {
             params.userData
         );
 
-        if (bptAmountOut < params.minBptAmountOut) {
-            revert BptAmountBelowMin();
-        }
-
         uint256 ethAmountIn;
         for (uint256 i = 0; i < params.assets.length; ++i) {
             // Receive assets from the handler
             Asset asset = params.assets[i];
             uint256 amountIn = amountsIn[i];
-
-            // TODO: check amounts in for every type.
-            if (amountIn > params.maxAmountsIn[i]) {
-                revert JoinAboveMax();
-            }
-
             IERC20 token = asset.toIERC20(_weth);
 
             // There can be only one WETH token in the pool
@@ -242,9 +235,6 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 ethAmountOut;
         for (uint256 i = 0; i < params.assets.length; ++i) {
             uint256 amountOut = amountsOut[i];
-            if (amountOut < params.minAmountsOut[i]) {
-                revert ExitBelowMin();
-            }
 
             Asset asset = params.assets[i];
             IERC20 token = asset.toIERC20(_weth);

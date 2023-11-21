@@ -162,6 +162,7 @@ interface IVault {
      * @param to Address that will receive the output BPT
      * @param tokens tokens involved in the liquidity provision
      * @param exactAmountsIn Exact amounts of input tokens
+     * @param minBptAmountOut Minimum amount of output pool tokens
      * @param userData Additional (optional) data for the initialization
      * @return bptAmountOut Output pool token amount
      */
@@ -170,6 +171,7 @@ interface IVault {
         address to,
         IERC20[] memory tokens,
         uint256[] memory exactAmountsIn,
+        uint256 minBptAmountOut,
         bytes memory userData
     ) external returns (uint256 bptAmountOut);
 
@@ -299,9 +301,6 @@ interface IVault {
      */
     error SenderIsNotVault(address sender);
 
-    /// @dev The BPT amount requested from removing liquidity is above the maximum specified for the operation.
-    error BptAmountAboveMax();
-
     /// @dev A transient accounting operation completed with outstanding token deltas.
     error BalanceNotSettled();
 
@@ -428,6 +427,13 @@ interface IVault {
     /// @dev The user attempted to swap a token not in the pool.
     error TokenNotRegistered();
 
+    /// @dev A required amountIn exceeds the maximum limit specified for the operation.
+    error AmountInAboveMax(IERC20 token);
+
+    /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
+    error BptAmountBelowMin();
+
+
     /**
      * @notice Adds liquidity to a pool.
      * @dev Caution should be exercised when adding liquidity because the Vault has the capability
@@ -465,6 +471,12 @@ interface IVault {
 
     /// @dev Remove liquidity kind not supported.
     error InvalidRemoveLiquidityKind();
+
+    /// @dev The actual amount out is below the minimum limit specified for the operation.
+    error AmountOutBelowMin(IERC20 token);
+
+    /// @dev The required BPT amount in exceeds the maximum limit specified for the operation.
+    error BptAmountAboveMax();
 
     /**
      * @notice Removes liquidity from a pool.

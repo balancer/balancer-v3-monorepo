@@ -69,6 +69,24 @@ library ScalingHelpers {
     }
 
     /**
+     * @dev Same as `toScaled18RoundDownArray` but returns a new array, leaving the original intact.
+     */
+    function copyToScaled18RoundDownArray(
+        uint256[] memory amounts,
+        uint256[] memory scalingFactors
+    ) internal pure returns (uint256[] memory) {
+        uint256 length = amounts.length;
+        uint256[] memory amountsScaled18 = new uint256[](length);
+        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
+
+        for (uint256 i = 0; i < length; ++i) {
+            amountsScaled18[i] = FixedPoint.mulDown(amounts[i], scalingFactors[i]);
+        }
+
+        return amountsScaled18;
+    }
+
+    /**
      * @dev Same as `toScaled18RoundUp`, but for an entire array. This function does not return anything,
      * but instead *mutates* the `amounts` array.
      */
@@ -79,6 +97,24 @@ library ScalingHelpers {
         for (uint256 i = 0; i < length; ++i) {
             amounts[i] = FixedPoint.mulUp(amounts[i], scalingFactors[i]);
         }
+    }
+
+    /**
+     * @dev Same as `toScaled18RoundUpArray` but returns a new array, leaving the original intact.
+     */
+    function copyToScaled18RoundUpArray(
+        uint256[] memory amounts,
+        uint256[] memory scalingFactors
+    ) internal pure returns (uint256[] memory) {
+        uint256 length = amounts.length;
+        uint256[] memory amountsScaled18 = new uint256[](length);
+        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
+
+        for (uint256 i = 0; i < length; ++i) {
+            amountsScaled18[i] = FixedPoint.mulUp(amounts[i], scalingFactors[i]);
+        }
+
+        return amountsScaled18;
     }
 
     /**
