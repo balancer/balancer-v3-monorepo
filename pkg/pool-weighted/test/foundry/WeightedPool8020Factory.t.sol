@@ -33,12 +33,38 @@ contract WeightedPool8020FactoryTest is Test {
         assertEq(pauseWindowDuration, 365 days);
     }
 
-    function testPoolCreation() public {
-        WeightedPool pool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokenA, tokenB, bytes32(0)));
+    function testPoolCreationWithCreate2() public {
+        WeightedPool pool = WeightedPool(
+            factory.create("Balancer 80/20 Pool", "Pool8020", tokenA, tokenB, bytes32(0), false)
+        );
 
         uint256[] memory poolWeights = pool.getNormalizedWeights();
         assertEq(poolWeights[0], 8e17);
         assertEq(poolWeights[1], 2e17);
         assertEq(pool.symbol(), "Pool8020");
+    }
+
+    function testPoolCreationWithCreate3(bytes32 salt) public {
+        vm.assume(salt > 0);
+
+        WeightedPool pool = WeightedPool(
+            factory.create("Balancer 80/20 Pool", "Pool8020", tokenA, tokenB, bytes32(0), true)
+        );
+
+        uint256[] memory poolWeights = pool.getNormalizedWeights();
+        assertEq(poolWeights[0], 8e17);
+        assertEq(poolWeights[1], 2e17);
+        assertEq(pool.symbol(), "Pool8020");
+
+        WeightedPool secondPool = WeightedPool(
+            factory.create("Balancer 80/20 Pool", "Pool8020", tokenA, tokenB, salt, true)
+        );
+
+        poolWeights = pool.getNormalizedWeights();
+        assertEq(poolWeights[0], 8e17);
+        assertEq(poolWeights[1], 2e17);
+        assertEq(pool.symbol(), "Pool8020");
+
+        assertFalse(address(pool) == address(secondPool));
     }
 }

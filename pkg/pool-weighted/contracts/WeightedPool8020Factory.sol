@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 
 import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 import "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
 
 import "./WeightedPool.sol";
@@ -15,8 +16,10 @@ contract WeightedPool8020Factory is BasePoolFactory {
     uint256 private constant _EIGHTY = 8e17; // 80%
     uint256 private constant _TWENTY = 2e17; // 20%
 
+    bytes private _coreBytecode;
+
     constructor(IVault vault, uint256 pauseWindowDuration) BasePoolFactory(vault, pauseWindowDuration) {
-        // solhint-disable-previous-line no-empty-blocks
+        _coreBytecode = type(WeightedPool).creationCode;
     }
 
     /**
@@ -27,7 +30,8 @@ contract WeightedPool8020Factory is BasePoolFactory {
         string memory symbol,
         IERC20 highWeightToken,
         IERC20 lowWeightToken,
-        bytes32 salt
+        bytes32 salt,
+        bool useCreate3
     ) external returns (address pool) {
         IERC20[] memory tokens = new IERC20[](2);
         tokens[0] = highWeightToken;
@@ -37,13 +41,27 @@ contract WeightedPool8020Factory is BasePoolFactory {
         weights[0] = _EIGHTY;
         weights[1] = _TWENTY;
 
-        // Passing the salt argument causes the contract to be deployed with create2.
-        pool = address(
-            new WeightedPool{ salt: salt }(
+        if (useCreate3) {
+            bytes memory constructorArgs = abi.encode(
                 WeightedPool.NewPoolParams({ name: name, symbol: symbol, tokens: tokens, normalizedWeights: weights }),
                 getVault()
-            )
-        );
+            );
+
+            pool = CREATE3.deploy(salt, abi.encodePacked(_coreBytecode, constructorArgs), 0);
+        } else {
+            // Passing the salt argument causes the contract to be deployed with create2.
+            pool = address(
+                new WeightedPool{ salt: salt }(
+                    WeightedPool.NewPoolParams({
+                        name: name,
+                        symbol: symbol,
+                        tokens: tokens,
+                        normalizedWeights: weights
+                    }),
+                    getVault()
+                )
+            );
+        }
 
         getVault().registerPool(
             pool,
