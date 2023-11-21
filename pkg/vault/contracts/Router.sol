@@ -547,12 +547,12 @@ contract Router is IRouter, ReentrancyGuard {
     function removeLiquidityNestedProportional(
         address pool,
         uint256 bptAmountIn,
-        IERC20[] memory tokens,
+        IERC20[] memory tokensOut,
         uint256[] memory minAmountsOut
     ) external payable returns (uint256[] memory amountsOut) {
         // require tokens.length == minAmountsOut.length
 
-        amountsOut = new uint256[](tokens.length);
+        amountsOut = new uint256[](tokensOut.length);
 
         IERC20[] memory parentPoolTokens = _vault.getPoolTokens(pool);
         uint256[] memory zeroMinAmountsOut = new uint256[](parentPoolTokens.length);
@@ -567,7 +567,7 @@ contract Router is IRouter, ReentrancyGuard {
             ""
         );
 
-        _validateAndFillNestedProportionalAmountsOut(tokens, minAmountsOut, parentPoolTokens, parentAmountsOut, amountsOut);
+        _validateAndFillNestedProportionalAmountsOut(tokensOut, minAmountsOut, parentPoolTokens, parentAmountsOut, amountsOut);
 
         for (uint i = 0; i < parentPoolTokens.length; i++) {
             if (_vault.isPoolRegistered(address(parentPoolTokens[i]))) {
@@ -585,7 +585,7 @@ contract Router is IRouter, ReentrancyGuard {
                 );
 
                 _validateAndFillNestedProportionalAmountsOut(
-                    tokens,
+                    tokensOut,
                     minAmountsOut,
                     childPoolTokens,
                     childAmountsOut,
@@ -616,7 +616,7 @@ contract Router is IRouter, ReentrancyGuard {
 
     function addLiquidityNestedUnbalanced(
         address pool,
-        IERC20[] memory tokens,
+        IERC20[] memory tokensIn,
         uint256[] memory amountsIn,
         uint256 minBptAmountOut
     ) external payable returns (uint256 bptAmountOut) {
@@ -626,7 +626,7 @@ contract Router is IRouter, ReentrancyGuard {
         for (uint i = 0; i < parentPoolTokens.length; i++) {
             if (_vault.isPoolRegistered(address(parentPoolTokens[i]))) {
                 IERC20[] memory childPoolTokens = _vault.getPoolTokens(address(parentPoolTokens[i]));
-                uint256[] memory childAmountsIn = _getAmountsInForNestedAdd(tokens, amountsIn, childPoolTokens);
+                uint256[] memory childAmountsIn = _getAmountsInForNestedAdd(tokensIn, amountsIn, childPoolTokens);
 
                 (,childBptAmountOut[i],) = _vault.addLiquidity(
                     address(parentPoolTokens[i]),
@@ -646,8 +646,8 @@ contract Router is IRouter, ReentrancyGuard {
             if (childBptAmountOut[i] > 0) {
                 parentAmountsIn[i] = childBptAmountOut[i];
             } else {
-                for (uint j = 0; j < tokens.length; j++) {
-                    if (parentPoolTokens[i] == tokens[j]) {
+                for (uint j = 0; j < tokensIn.length; j++) {
+                    if (parentPoolTokens[i] == tokensIn[j]) {
                         parentAmountsIn[i] = amountsIn[j];
                     }
                 }
