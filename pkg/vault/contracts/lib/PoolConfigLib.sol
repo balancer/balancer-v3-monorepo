@@ -56,9 +56,10 @@ library PoolConfigLib {
     uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = BEFORE_ADD_LIQUIDITY_OFFSET + 1;
     uint8 public constant BEFORE_REMOVE_LIQUIDITY_OFFSET = AFTER_ADD_LIQUIDITY_OFFSET + 1;
     uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = BEFORE_REMOVE_LIQUIDITY_OFFSET + 1;
+    uint8 public constant POOL_RECOVERY_MODE_OFFSET = AFTER_REMOVE_LIQUIDITY_OFFSET + 1;
 
     // Supported liquidity API bit offsets
-    uint8 public constant ADD_LIQUIDITY_PROPORTIONAL_OFFSET = AFTER_REMOVE_LIQUIDITY_OFFSET + 1;
+    uint8 public constant ADD_LIQUIDITY_PROPORTIONAL_OFFSET = POOL_RECOVERY_MODE_OFFSET + 1;
     uint8 public constant ADD_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET = ADD_LIQUIDITY_PROPORTIONAL_OFFSET + 1;
     uint8 public constant ADD_LIQUIDITY_UNBALANCED_OFFSET = ADD_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET + 1;
     uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_UNBALANCED_OFFSET + 1;
@@ -88,6 +89,10 @@ library PoolConfigLib {
 
     function isPoolInitialized(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_INITIALIZED_OFFSET);
+    }
+
+    function isPoolInRecoveryMode(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(POOL_RECOVERY_MODE_OFFSET);
     }
 
     function isPoolPaused(PoolConfigBits config) internal pure returns (bool) {
@@ -223,6 +228,7 @@ library PoolConfigLib {
                 .insertBool(config.isPoolRegistered, POOL_REGISTERED_OFFSET)
                 .insertBool(config.isPoolInitialized, POOL_INITIALIZED_OFFSET)
                 .insertBool(config.isPoolPaused, POOL_PAUSED_OFFSET)
+                .insertBool(config.isPoolInRecoveryMode, POOL_RECOVERY_MODE_OFFSET)
                 .insertBool(config.hasDynamicSwapFee, DYNAMIC_SWAP_FEE_OFFSET);
         }
 
@@ -314,6 +320,7 @@ library PoolConfigLib {
                 isPoolRegistered: config.isPoolRegistered(),
                 isPoolInitialized: config.isPoolInitialized(),
                 isPoolPaused: config.isPoolPaused(),
+                isPoolInRecoveryMode: config.isPoolInRecoveryMode(),
                 hasDynamicSwapFee: config.hasDynamicSwapFee(),
                 staticSwapFeePercentage: config.getStaticSwapFeePercentage(),
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),

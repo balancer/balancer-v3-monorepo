@@ -732,6 +732,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     }
 
     /// @inheritdoc IVault
+    function isPoolInRecoveryMode(address pool) external view returns (bool) {
+        return _isPoolInRecoveryMode(pool);
+    }
+
+    /// @inheritdoc IVault
     function getPoolConfig(address pool) external view returns (PoolConfig memory) {
         return _poolConfig[pool].toPoolConfig();
     }
@@ -861,6 +866,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     /// @dev See `isPoolRegistered`
     function _isPoolRegistered(address pool) internal view returns (bool) {
         return _poolConfig[pool].isPoolRegistered();
+    }
+
+    /// @dev See `isPoolInRecoveryMode`
+    function _isPoolInRecoveryMode(address pool) internal view returns (bool) {
+        return _poolConfig[pool].isPoolInRecoveryMode();
     }
 
     /// @dev Reverts unless `pool` corresponds to an initialized Pool.
@@ -1315,13 +1325,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         address pool,
         address from,
         uint256 exactBptAmountIn
-    )
-        external
-        /// TODO: Only in recovery mode
-        nonReentrant
-        withInitializedPool(pool)
-        returns (uint256[] memory amountsOut)
-    {
+    ) external nonReentrant withInitializedPool(pool) onlyInRecoveryMode(pool) returns (uint256[] memory amountsOut) {
         // TODO maybe refactor this?
         // Ideally we would not do any scaling at all in Recovery Mode. We certainly cannot call the regular
         // `_populateSharedLiquidityLocals`, which applies rates (making external calls).
@@ -1338,13 +1342,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             vars.balancesScaled18[i] = vars.balancesRaw[i].toScaled18RoundDown(vars.decimalScalingFactors[i]);
         }
 
-        uint256[] memory upscaledAmountsOut = BasePoolMath.computeProportionalAmountsOut(
+        uint256[] memory amountsOutScaled18 = BasePoolMath.computeProportionalAmountsOut(
             vars.balancesScaled18,
             _totalSupply(pool),
             exactBptAmountIn
         );
 
-        amountsOut = _removeLiquidityUpdateAccounting(vars, pool, from, exactBptAmountIn, upscaledAmountsOut);
+        amountsOut = _removeLiquidityUpdateAccounting(vars, pool, from, exactBptAmountIn, amountsOutScaled18);
     }
 
     /**
@@ -1535,6 +1539,60 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     function _isTrustedRouter(address) internal pure returns (bool) {
         //TODO: Implement based on approval by governance and user
         return true;
+    }
+
+    /*******************************************************************************
+                                    Recovery Mode
+    *******************************************************************************/
+
+    /**
+     * @dev Place on functions that may only be called when the associated pool is in recovery mode.
+     * @param pool The pool
+     */
+    modifier onlyInRecoveryMode(address pool) {
+        _ensurePoolInRecoveryMode(pool);
+        _;
+    }
+
+    /// @inheritdoc IVault
+    function enableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate {
+        _ensurePoolNotInRecoveryMode(pool);
+        _setPoolRecoveryMode(pool, true);
+    }
+
+    /// @inheritdoc IVault
+    function disableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate {
+        _ensurePoolInRecoveryMode(pool);
+        _setPoolRecoveryMode(pool, false);
+    }
+
+    function _setPoolRecoveryMode(address pool, bool recoveryMode) internal {
+        // Update poolConfig
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        config.isPoolInRecoveryMode = recoveryMode;
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        emit PoolRecoveryModeStateChanged(pool, recoveryMode);
+    }
+
+    /**
+     * @dev Reverts if the pool is in recovery mode.
+     * @param pool The pool
+     */
+    function _ensurePoolNotInRecoveryMode(address pool) internal view {
+        if (_isPoolInRecoveryMode(pool)) {
+            revert PoolInRecoveryMode(pool);
+        }
+    }
+
+    /**
+     * @dev Reverts if the pool is not in recovery mode.
+     * @param pool The pool
+     */
+    function _ensurePoolInRecoveryMode(address pool) internal view {
+        if (!_isPoolInRecoveryMode(pool)) {
+            revert PoolNotInRecoveryMode(pool);
+        }
     }
 
     /*******************************************************************************
