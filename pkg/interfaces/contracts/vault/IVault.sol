@@ -94,6 +94,7 @@ interface IVault {
      * @param pool The pool being registered
      * @param factory The factory creating the pool
      * @param tokens The pool's tokens
+     * @param rateProviders The pool's rate providers (or zero)
      * @param pauseWindowEndTime The pool's pause window end time
      * @param pauseManager The pool's external pause manager (or 0 for governance)
      * @param liquidityManagement Supported liquidity management callback flags
@@ -140,7 +141,7 @@ interface IVault {
      *
      * @param factory The factory address associated with the pool being registered
      * @param tokens An array of token addresses the pool will manage
-     * @param rateProviders An array of rate providers corresponding to the tokens
+     * @param rateProviders An array of rate providers corresponding to the tokens (or zero for tokens without rates)
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param pauseManager Optional contract the Vault will allow to pause the pool
      * @param config Flags indicating which callbacks the pool supports
@@ -204,7 +205,7 @@ interface IVault {
      * @return tokens Tokens registered to the pool
      * @return balancesRaw Corresponding raw balances of the tokens
      * @return scalingFactors Corresponding scalingFactors of the tokens
-     * @return rateProviders Corresponding rateProviders of the tokens
+     * @return rateProviders Corresponding rateProviders of the tokens (or zero for tokens with no rates)
      */
     function getPoolTokenInfo(
         address pool
@@ -213,7 +214,8 @@ interface IVault {
     /**
      * @notice Retrieve the scaling factors from a pool's rate providers.
      * @dev This is not included in `getPoolTokenInfo` since it makes external calls that might revert,
-     * effectively preventing retrieval of basic pool parameters.
+     * effectively preventing retrieval of basic pool parameters. Tokens without rate providers will always return
+     * FixedPoint.ONE (1e18).
      */
     function getPoolTokenRates(address pool) external view returns (uint256[] memory);
 
