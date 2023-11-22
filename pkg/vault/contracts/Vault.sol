@@ -504,9 +504,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         uint256 tokenOutBalance;
         uint256 amountGivenScaled18;
         uint256 amountCalculatedScaled18;
-        uint256 swapFeeAmount;
+        uint256 swapFeeAmountScaled18;
         uint256 swapFeePercentage;
-        uint256 protocolSwapFeeAmount;
+        uint256 protocolSwapFeeAmountRaw;
     }
 
     function _populateSwapLocals(
@@ -599,7 +599,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
         if (vars.swapFeePercentage > 0 && params.kind == IVault.SwapKind.GIVEN_OUT) {
             // Round up to avoid losses during precision loss.
-            vars.swapFeeAmount =
+            vars.swapFeeAmountScaled18 =
                 vars.amountGivenScaled18.divUp(vars.swapFeePercentage.complement()) -
                 vars.amountGivenScaled18;
         }
@@ -611,7 +611,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 kind: params.kind,
                 tokenIn: params.tokenIn,
                 tokenOut: params.tokenOut,
-                amountGivenScaled18: vars.amountGivenScaled18 + vars.swapFeeAmount,
+                amountGivenScaled18: vars.amountGivenScaled18 + vars.swapFeeAmountScaled18,
                 balancesScaled18: vars.balancesScaled18,
                 indexIn: vars.indexIn,
                 indexOut: vars.indexOut,
@@ -623,9 +623,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         if (vars.swapFeePercentage > 0 && params.kind == IVault.SwapKind.GIVEN_IN) {
             // Swap fee is a percentage of the amountCalculated for the GIVEN_IN swap
             // Round up to avoid losses during precision loss.
-            vars.swapFeeAmount = vars.amountCalculatedScaled18.mulUp(vars.swapFeePercentage);
+            vars.swapFeeAmountScaled18 = vars.amountCalculatedScaled18.mulUp(vars.swapFeePercentage);
             // Should substract the fee from the amountCalculated for GIVEN_IN swap
-            vars.amountCalculatedScaled18 -= vars.swapFeeAmount;
+            vars.amountCalculatedScaled18 -= vars.swapFeeAmountScaled18;
         }
 
         // For `GivenIn` the amount calculated is leaving the Vault, so we round down.
@@ -639,18 +639,18 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             : (amountCalculated, params.amountGivenRaw);
 
         // Charge protocolSwapFee
-        if (vars.swapFeeAmount > 0 && _protocolSwapFeePercentage > 0) {
+        if (vars.swapFeeAmountScaled18 > 0 && _protocolSwapFeePercentage > 0) {
             // Always charge fees on tokenOut. Store amount in native decimals.
-            vars.protocolSwapFeeAmount = vars.swapFeeAmount.mulUp(_protocolSwapFeePercentage).toRawRoundDown(
+            vars.protocolSwapFeeAmountRaw = vars.swapFeeAmountScaled18.mulUp(_protocolSwapFeePercentage).toRawRoundDown(
                 vars.decimalScalingFactors[vars.indexOut]
             );
 
-            _protocolSwapFees[params.tokenOut] += vars.protocolSwapFeeAmount;
+            _protocolSwapFees[params.tokenOut] += vars.protocolSwapFeeAmountRaw;
         }
 
         // Use `unchecked_setAt` to save storage reads.
         poolBalances.unchecked_setAt(vars.indexIn, vars.tokenInBalance + amountIn);
-        poolBalances.unchecked_setAt(vars.indexOut, vars.tokenOutBalance - amountOut - vars.protocolSwapFeeAmount);
+        poolBalances.unchecked_setAt(vars.indexOut, vars.tokenOutBalance - amountOut - vars.protocolSwapFeeAmountRaw);
 
         // Account amountIn of tokenIn
         _takeDebt(params.tokenIn, amountIn, msg.sender);
@@ -683,7 +683,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             }
         }
 
-        emit Swap(params.pool, params.tokenIn, params.tokenOut, amountIn, amountOut, vars.swapFeeAmount);
+        uint256 swapFeeAmountRaw = params.kind == SwapKind.GIVEN_IN
+            ? vars.swapFeeAmountScaled18.toRawRoundDown(vars.decimalScalingFactors[vars.indexOut])
+            : vars.swapFeeAmountScaled18.toRawRoundUp(vars.decimalScalingFactors[vars.indexIn]);
+
+        emit Swap(params.pool, params.tokenIn, params.tokenOut, amountIn, amountOut, swapFeeAmountRaw);
     }
 
     /// @dev Returns swap fee for the pool.
