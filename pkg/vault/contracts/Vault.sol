@@ -592,8 +592,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // If the amountGiven is entering the pool math (GivenIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
         vars.amountGivenScaled18 = params.kind == SwapKind.GIVEN_IN
-            ? params.amountGivenRaw.toScaled18RoundDown(vars.decimalScalingFactors[vars.indexIn])
-            : params.amountGivenRaw.toScaled18RoundUp(vars.decimalScalingFactors[vars.indexOut]);
+            ? params.amountGivenRaw.toScaled18RoundDown(
+                vars.decimalScalingFactors[vars.indexIn].mulDown(vars.tokenRates[vars.indexIn])
+            )
+            : params.amountGivenRaw.toScaled18RoundUp(
+                vars.decimalScalingFactors[vars.indexOut].mulUp(vars.tokenRates[vars.indexOut])
+            );
 
         vars.swapFeePercentage = _getSwapFeePercentage(vars.config);
 
@@ -631,8 +635,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // For `GivenIn` the amount calculated is leaving the Vault, so we round down.
         // Round up when entering the Vault on `GivenOut`.
         amountCalculated = params.kind == SwapKind.GIVEN_IN
-            ? vars.amountCalculatedScaled18.toRawRoundDown(vars.decimalScalingFactors[vars.indexOut])
-            : vars.amountCalculatedScaled18.toRawRoundUp(vars.decimalScalingFactors[vars.indexIn]);
+            ? vars.amountCalculatedScaled18.toRawRoundDown(
+                vars.decimalScalingFactors[vars.indexOut].mulDown(vars.tokenRates[vars.indexOut])
+            )
+            : vars.amountCalculatedScaled18.toRawRoundUp(
+                vars.decimalScalingFactors[vars.indexIn].mulUp(vars.tokenRates[vars.indexIn])
+            );
 
         (amountIn, amountOut) = params.kind == SwapKind.GIVEN_IN
             ? (params.amountGivenRaw, amountCalculated)
