@@ -433,7 +433,6 @@ interface IVault {
     /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
     error BptAmountBelowMin();
 
-
     /**
      * @notice Adds liquidity to a pool.
      * @dev Caution should be exercised when adding liquidity because the Vault has the capability
