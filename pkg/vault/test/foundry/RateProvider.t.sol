@@ -30,4 +30,30 @@ contract RateProviderTest is Test {
 
         assertEq(rateProvider.getRate(), rate);
     }
+
+    function testWrappedToken() public {
+        // Flag is initialized to false
+        assertFalse(rateProvider.isWrappedToken());
+
+        // Can set to true
+        rateProvider.setWrappedTokenFlag(true);
+        assertTrue(rateProvider.isWrappedToken());
+
+        // Can reset to false
+        rateProvider.setWrappedTokenFlag(false);
+        assertFalse(rateProvider.isWrappedToken());
+    }
+
+    function testYieldExemptToken() public {
+        // Flag is initialized to false
+        assertFalse(rateProvider.isExemptFromYieldProtocolFee());
+
+        // Can set to true
+        rateProvider.setYieldExemptFlag(true);
+        assertTrue(rateProvider.isExemptFromYieldProtocolFee());
+
+        // Can reset to false
+        rateProvider.setYieldExemptFlag(false);
+        assertFalse(rateProvider.isExemptFromYieldProtocolFee());
+    }
 }
