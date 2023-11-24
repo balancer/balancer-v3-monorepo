@@ -51,23 +51,25 @@ interface IRouter {
                                    Add Liquidity
     ***************************************************************************/
 
+    error InvalidTokenIndex();
+
     /**
      * @dev Data for the add liquidity callback.
      * @param sender Account originating the add liquidity operation
      * @param pool Address of the liquidity pool
-     * @param assets Array of assets to add
      * @param maxAmountsIn Maximum amounts of assets to be added
      * @param minBptAmountOut Minimum pool tokens to be received
      * @param kind Type of join (e.g., single or multi-token)
+     * @param wethIsEth True if native ETH is being added (i.e. wrap in router)
      * @param userData Additional (optional) data required for adding liquidity
      */
     struct AddLiquidityCallbackParams {
         address sender;
         address pool;
-        Asset[] assets;
         uint256[] maxAmountsIn;
         uint256 minBptAmountOut;
         IVault.AddLiquidityKind kind;
+        bool wethIsEth;
         bytes userData;
     }
 
@@ -78,23 +80,74 @@ interface IRouter {
     error JoinAboveMax();
 
     /**
-     * @notice Adds liquidity to a pool.
+     * @notice Adds liquidity with proportional token amounts in to a pool, receiving an exact amount of pool tokens.
      * @param pool Address of the liquidity pool
-     * @param assets Array of assets to add
-     * @param maxAmountsIn Maximum amounts of assets to be added
+     * @param maxAmountsIn Maximum amounts of tokens to be added
+     * @param exactBptAmountOut Exact pool tokens to be received
+     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
+     * @param userData Additional (optional) data required for adding liquidity
+     * @return amountsIn Actual amounts of tokens added
+     */
+    function addLiquidityProportional(
+        address pool,
+        uint256[] memory maxAmountsIn,
+        uint256 exactBptAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsIn);
+
+    /**
+     * @notice Adds with arbitrary token amounts in to a pool.
+     * @param pool Address of the liquidity pool
+     * @param exactAmountsIn Exact amounts of tokens to be added
+     * @param minBptAmountOut Minimum amount of pool tokens to be received
+     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
+     * @param userData Additional (optional) data required for adding liquidity
+     * @return bptAmountOut Pool tokens received
+     */
+    function addLiquidityUnbalanced(
+        address pool,
+        uint256[] memory exactAmountsIn,
+        uint256 minBptAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256 bptAmountOut);
+
+    /**
+     * @notice Adds with a single token to a pool, receiving an exact amount of pool tokens.
+     * @param pool Address of the liquidity pool
+     * @param tokenInIndex Index of the token used to add liquidity in the pool's token array
+     * @param maxAmountIn Max amount tokens to be added
+     * @param exactBptAmountOut Exact amount of pool tokens to be received
+     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
+     * @param userData Additional (optional) data required for adding liquidity
+     * @return amountIn Actual amount of tokens added
+     */
+    function addLiquiditySingleTokenExactOut(
+        address pool,
+        uint256 tokenInIndex,
+        uint256 maxAmountIn,
+        uint256 exactBptAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256 amountIn);
+
+    /**
+     * @notice Adds liquidity to a pool with a custom request.
+     * @param pool Address of the liquidity pool
+     * @param maxAmountsIn Maximum amounts of tokens to be added
      * @param minBptAmountOut Minimum pool tokens to be received
-     * @param kind Add liquidity kind
+     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
      * @param userData Additional (optional) data required for adding liquidity
      * @return amountsIn Actual amounts of assets added
      * @return bptAmountOut Pool tokens received
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
-    function addLiquidity(
+    function addLiquidityCustom(
         address pool,
-        Asset[] memory assets,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
-        IVault.AddLiquidityKind kind,
+        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
@@ -110,15 +163,16 @@ interface IRouter {
      * @param minAmountsOut Minimum amounts of assets to be received
      * @param maxBptAmountIn Pool tokens provided
      * @param kind Type of exit (e.g., single or multi-token)
+     * @param wethIsEth True if native ETH is being added (i.e. wrap in router)
      * @param userData Additional (optional) data required for removing liquidity
      */
     struct RemoveLiquidityCallbackParams {
         address sender;
         address pool;
-        Asset[] assets;
         uint256[] minAmountsOut;
         uint256 maxBptAmountIn;
         IVault.RemoveLiquidityKind kind;
+        bool wethIsEth;
         bytes userData;
     }
 
@@ -126,23 +180,77 @@ interface IRouter {
     error ExitBelowMin();
 
     /**
-     * @notice Removes liquidity from a pool.
+     * @notice Removes liquidity with proportional token amounts from a pool, burning an exact pool token amount.
      * @param pool Address of the liquidity pool
-     * @param assets Array of assets to remove
+     * @param exactBptAmountIn Exact pool tokens provided
+     * @param minAmountsOut Minimum amounts of tokens to be received
+     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
+     * @param userData Additional (optional) data required for removing liquidity
+     * @return amountsOut Actual amounts of tokens received
+     */
+    function removeLiquidityProportional(
+        address pool,
+        uint256 exactBptAmountIn,
+        uint256[] memory minAmountsOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsOut);
+
+
+    /**
+     * @notice Removes liquidity from a pool via a single token, burning an exact pool token amount.
+     * @param pool Address of the liquidity pool
+     * @param exactBptAmountIn Exact pool tokens provided
+     * @param tokenOutIndex Index of the token used to remove liquidity in the pool's token array 
+     * @param minAmountOut Minimum amount of tokens to be received
+     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
+     * @param userData Additional (optional) data required for removing liquidity
+     * @return amountsOut Actual amounts of tokens received
+     */
+    function removeLiquiditySingleTokenExactIn(
+        address pool,
+        uint256 exactBptAmountIn,
+        uint256 tokenOutIndex,
+        uint256 minAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsOut);
+
+    /**
+     * @notice Removes liquidity from a pool via a single token, specifying the exact amount of tokens to receive.
+     * @param pool Address of the liquidity pool
+     * @param maxBptAmountIn Maximum pool tokens provided
+     * @param tokenOutIndex Index of the token used to remove liquidity in the pool's token array 
+     * @param exactAmountOut Exact amount of tokens to be received
+     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
+     * @param userData Additional (optional) data required for removing liquidity
+     * @return bptAmountIn Actual amount of pool tokens burnt
+     */
+    function removeLiquiditySingleTokenExactOut(
+        address pool,
+        uint256 maxBptAmountIn,
+        uint256 tokenOutIndex,
+        uint256 exactAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256 bptAmountIn);
+
+    /**
+     * @notice Removes liquidity from a pool with a custom request.
+     * @param pool Address of the liquidity pool
      * @param maxBptAmountIn Pool tokens provided
      * @param minAmountsOut Minimum amounts of assets to be received
-     * @param kind Remove liquidity kind
+     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
      * @param userData Additional (optional) data required for removing liquidity
      * @return bptAmountIn Actual amount of pool tokens burnt
      * @return amountsOut Actual amounts of assets received
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
-    function removeLiquidity(
+    function removeLiquidityCustom(
         address pool,
-        Asset[] memory assets,
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOut,
-        IVault.RemoveLiquidityKind kind,
+        bool wethIsEth,
         bytes memory userData
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 
@@ -210,18 +318,16 @@ interface IRouter {
     /**
      * @notice Queries an addLiquidity operation without executing it.
      * @param pool Address of the liquidity pool
-     * @param assets Array of assets to add
-     * @param maxAmountsIn Maximum amounts of assets to be added
+     * @param maxAmountsIn Maximum amounts of tokens to be added
      * @param minBptAmountOut Minimum pool tokens expected
      * @param kind Add liquidity kind
      * @param userData Additional (optional) data required for the query
-     * @return amountsIn Expected amounts of assets to add
+     * @return amountsIn Expected amounts of tokens to add
      * @return bptAmountOut Expected pool tokens to receive
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function queryAddLiquidity(
         address pool,
-        Asset[] memory assets,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         IVault.AddLiquidityKind kind,
@@ -231,18 +337,16 @@ interface IRouter {
     /**
      * @notice Queries removeLiquidity operation without executing it.
      * @param pool Address of the liquidity pool
-     * @param assets Array of assets to remove
      * @param maxBptAmountIn Pool tokens provided for the query
-     * @param minAmountsOut Minimum amounts of assets expected
+     * @param minAmountsOut Minimum amounts of tokens expected
      * @param kind Remove liquidity kind
      * @param userData Additional (optional) data required for the query
      * @return bptAmountIn Expected amount of pool tokens to burn
-     * @return amountsOut Expected amounts of assets to receive
+     * @return amountsOut Expected amounts of tokens to receive
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function queryRemoveLiquidity(
         address pool,
-        Asset[] memory assets,
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOut,
         IVault.RemoveLiquidityKind kind,
