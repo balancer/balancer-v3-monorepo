@@ -926,6 +926,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
     }
 
+    /**
+     * @dev Called by the external `getPoolTokenRates` function, and internally during pool operations,
+     * this will make external calls for tokens that have rate providers.
+     */
     function _getPoolTokenRates(address pool) internal view returns (uint256[] memory tokenRates) {
         // Retrieve the mapping of tokens for the specified pool.
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
@@ -1017,7 +1021,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
     }
 
-    // Convenience function for a common operation.
+    /**
+     * @dev Convenience function for a common operation. If the referenced token has a rate provider, this function
+     * will make an external call.
+     */
     function _getRateForPoolToken(address pool, IERC20 token) private view returns (uint256 rate) {
         IRateProvider rateProvider = _poolRateProviders[pool][token];
         rate = rateProvider == IRateProvider(address(0)) ? FixedPoint.ONE : rateProvider.getRate();
