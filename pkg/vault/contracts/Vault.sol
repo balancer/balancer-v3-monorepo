@@ -628,7 +628,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             // Swap fee is a percentage of the amountCalculated for the GIVEN_IN swap
             // Round up to avoid losses during precision loss.
             vars.swapFeeAmountScaled18 = vars.amountCalculatedScaled18.mulUp(vars.swapFeePercentage);
-            // Should substract the fee from the amountCalculated for GIVEN_IN swap
+            // Should subtract the fee from the amountCalculated for GIVEN_IN swap
             vars.amountCalculatedScaled18 -= vars.swapFeeAmountScaled18;
         }
 
@@ -691,9 +691,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             }
         }
 
-        uint256 swapFeeAmountRaw = params.kind == SwapKind.GIVEN_IN
-            ? vars.swapFeeAmountScaled18.toRawRoundDown(vars.decimalScalingFactors[vars.indexOut])
-            : vars.swapFeeAmountScaled18.toRawRoundUp(vars.decimalScalingFactors[vars.indexIn]);
+        // Swap fee is always deducted from tokenOut.
+        uint256 swapFeeAmountRaw = vars.swapFeeAmountScaled18.toRawRoundDown(vars.decimalScalingFactors[vars.indexOut]);
 
         emit Swap(params.pool, params.tokenIn, params.tokenOut, amountIn, amountOut, swapFeeAmountRaw);
     }
