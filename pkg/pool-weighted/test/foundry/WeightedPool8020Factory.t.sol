@@ -43,6 +43,8 @@ contract WeightedPool8020FactoryTest is Test {
         assertEq(poolWeights[1], 2e17);
         assertEq(pool.symbol(), "Pool8020");
 
+        address expectedPoolAddress = factory.getDeploymentAddress(salt);
+
         WeightedPool secondPool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokenA, tokenB, salt));
 
         poolWeights = pool.getNormalizedWeights();
@@ -51,5 +53,6 @@ contract WeightedPool8020FactoryTest is Test {
         assertEq(pool.symbol(), "Pool8020");
 
         assertFalse(address(pool) == address(secondPool));
+        assertEq(address(secondPool), expectedPoolAddress);
     }
 }

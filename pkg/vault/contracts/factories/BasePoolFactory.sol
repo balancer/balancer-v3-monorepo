@@ -48,6 +48,11 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     }
 
     /// @inheritdoc IBasePoolFactory
+    function getDeploymentAddress(bytes32 salt) external view returns (address) {
+        return CREATE3.getDeployed(salt);
+    }
+
+    /// @inheritdoc IBasePoolFactory
     function disable() external authenticate {
         _ensureEnabled();
 
