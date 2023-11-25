@@ -25,7 +25,12 @@ contract WeightedPoolFactory is BasePoolFactory {
     }
 
     /**
-     * @dev Deploys a new `WeightedPool`.
+     * @notice Deploys a new `WeightedPool`.
+     * @param name The name of the pool
+     * @param symbol The symbol of the pool
+     * @param tokens The tokens that will be registered to the pool
+     * @param normalizedWeights The pool weights (must add to FixedPoint.ONE)
+     * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
         string memory name,

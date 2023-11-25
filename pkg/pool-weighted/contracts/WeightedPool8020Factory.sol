@@ -23,7 +23,12 @@ contract WeightedPool8020Factory is BasePoolFactory {
     }
 
     /**
-     * @dev Deploys a new `WeightedPool`.
+     * @notice Deploys a new `WeightedPool`.
+     * @param name Name of the pool
+     * @param symbol Symbol of the pool
+     * @param highWeightToken The 80% token
+     * @param lowWeightToken The 20% token
+     * @param salt Value passed to create3, used to create the address
      */
     function create(
         string memory name,
