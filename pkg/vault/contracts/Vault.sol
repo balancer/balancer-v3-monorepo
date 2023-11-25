@@ -494,7 +494,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     struct SwapLocals {
         // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
         PoolConfig config;
-        uint256[] balancesRaw;
         uint256[] decimalScalingFactors;
         uint256[] tokenRates;
         uint256[] balancesScaled18;
@@ -518,10 +517,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         vars.config = _poolConfig[params.pool].toPoolConfig();
         vars.decimalScalingFactors = PoolConfigLib.getDecimalScalingFactors(vars.config, vars.numTokens);
         vars.tokenRates = _getPoolTokenRates(params.pool);
-        vars.balancesRaw = new uint256[](vars.numTokens);
         vars.balancesScaled18 = new uint256[](vars.numTokens);
         for (uint256 i = 0; i < vars.numTokens; i++) {
-            vars.balancesRaw[i] = poolBalances.unchecked_valueAt(i);
             // Rounding down is legacy behavior, and seems the right direction generally, as described below.
             // However, likely because of the non-linearity introduced by power functions, the calculation
             // error for very small values is greater than the rounding correction, so it is possible that
