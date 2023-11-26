@@ -202,12 +202,11 @@ interface IRouter {
         bytes memory userData
     ) external payable returns (uint256[] memory amountsOut);
 
-
     /**
      * @notice Removes liquidity from a pool via a single token, burning an exact pool token amount.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact pool tokens provided
-     * @param tokenOutIndex Index of the token used to remove liquidity in the pool's token array 
+     * @param tokenOutIndex Index of the token used to remove liquidity in the pool's token array
      * @param minAmountOut Minimum amount of tokens to be received
      * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
      * @param userData Additional (optional) data required for removing liquidity
@@ -226,7 +225,7 @@ interface IRouter {
      * @notice Removes liquidity from a pool via a single token, specifying the exact amount of tokens to receive.
      * @param pool Address of the liquidity pool
      * @param maxBptAmountIn Maximum pool tokens provided
-     * @param tokenOutIndex Index of the token used to remove liquidity in the pool's token array 
+     * @param tokenOutIndex Index of the token used to remove liquidity in the pool's token array
      * @param exactAmountOut Exact amount of tokens to be received
      * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
      * @param userData Additional (optional) data required for removing liquidity
