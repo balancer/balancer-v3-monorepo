@@ -84,9 +84,10 @@ contract VaultSwapTest is Test {
 
         router.initialize(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
             0,
+            false,
             bytes("")
         );
         initialBptSupply = IERC20(pool).totalSupply();
@@ -160,9 +161,8 @@ contract VaultSwapTest is Test {
 
         vm.prank(bob);
         // Doesn't fail, does not call callbacks
-        router.addLiquidity(
+        _addLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             _getSuitableMaxInputs(kind),
             initialBptSupply,
             kind,
@@ -194,9 +194,8 @@ contract VaultSwapTest is Test {
                 bytes("")
             )
         );
-        router.addLiquidity(
+        _addLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             maxInputs,
             initialBptSupply,
             kind,
@@ -217,9 +216,8 @@ contract VaultSwapTest is Test {
         // Alice has LP tokens from initialization
         vm.prank(alice);
         // Doesn't fail, does not call callbacks
-        router.removeLiquidity(
+        _removeLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             bptBalance,
             _getSuitableMinOutputs(kind),
             kind,
@@ -253,9 +251,8 @@ contract VaultSwapTest is Test {
                 bytes("")
             )
         );
-        router.removeLiquidity(
+        _removeLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             bptBalance,
             _getSuitableMinOutputs(kind),
             kind,
@@ -274,9 +271,8 @@ contract VaultSwapTest is Test {
 
         vm.prank(bob);
         // Doesn't fail, does not call callbacks
-        router.addLiquidity(
+        _addLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             _getSuitableMaxInputs(kind),
             initialBptSupply,
             kind,
@@ -300,9 +296,8 @@ contract VaultSwapTest is Test {
         // Dry run to get actual amounts in and bpt out from the operation
         uint256 snapshot = vm.snapshot();
         vm.prank(bob);
-        (amountsIn, bptAmountOut, ) = router.addLiquidity(
+        (amountsIn, bptAmountOut) = _addLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             _getSuitableMaxInputs(kind),
             initialBptSupply,
             kind,
@@ -322,9 +317,8 @@ contract VaultSwapTest is Test {
                 bytes("")
             )
         );
-        router.addLiquidity(
+        _addLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             _getSuitableMaxInputs(kind),
             initialBptSupply,
             kind,
@@ -345,9 +339,8 @@ contract VaultSwapTest is Test {
         // Alice has LP tokens from initialization
         vm.prank(alice);
         // Doesn't fail, does not call callbacks
-        router.removeLiquidity(
+        _removeLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             bptBalance,
             _getSuitableMinOutputs(kind),
             kind,
@@ -375,9 +368,8 @@ contract VaultSwapTest is Test {
         uint256 snapshot = vm.snapshot();
         // Alice has LP tokens from initialization
         vm.prank(alice);
-        (bptAmountIn, amountsOut, ) = router.removeLiquidity(
+        (bptAmountIn, amountsOut) = _removeLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             bptBalance,
             _getSuitableMinOutputs(kind),
             kind,
@@ -397,9 +389,8 @@ contract VaultSwapTest is Test {
                 bytes("")
             )
         );
-        router.removeLiquidity(
+        _removeLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             bptBalance,
             _getSuitableMinOutputs(kind),
             kind,
@@ -428,6 +419,52 @@ contract VaultSwapTest is Test {
         } else {
             // In proportional it's not possible to extract all the tokens given that some BPT is sent to address(0).
             minOutputs = [DAI_AMOUNT_IN / 10, USDC_AMOUNT_IN / 10].toMemoryArray();
+        }
+    }
+
+    function _addLiquidity(
+        address _pool,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        IVault.AddLiquidityKind kind,
+        bytes memory userData
+    ) internal  returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+        if (kind == IVault.AddLiquidityKind.PROPORTIONAL) {
+            bptAmountOut = minBptAmountOut;
+            amountsIn = router.addLiquidityProportional(_pool, maxAmountsIn, minBptAmountOut, false, userData);
+        } else if (kind == IVault.AddLiquidityKind.UNBALANCED) {
+            amountsIn = maxAmountsIn;
+            bptAmountOut = router.addLiquidityUnbalanced(_pool, maxAmountsIn, minBptAmountOut, false, userData);
+        } else if (kind == IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
+            bptAmountOut = minBptAmountOut;
+            amountsIn = router.addLiquiditySingleTokenExactOut(_pool, 0, maxAmountsIn[0], minBptAmountOut, false, userData);
+        } else if (kind == IVault.AddLiquidityKind.CUSTOM) {
+            (amountsIn, bptAmountOut,) = router.addLiquidityCustom(_pool, maxAmountsIn, minBptAmountOut, false, userData);
+        } else {
+            revert("Unhandled add liquidity kind");
+        }
+    }
+
+    function _removeLiquidity(
+        address _pool,
+        uint256 maxBptAmountIn,
+        uint256[] memory minAmountsOut,
+        IVault.RemoveLiquidityKind kind,
+        bytes memory userData
+    ) internal returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+        if (kind == IVault.RemoveLiquidityKind.PROPORTIONAL) {
+            bptAmountIn = maxBptAmountIn;
+            amountsOut = router.removeLiquidityProportional(_pool, maxBptAmountIn, minAmountsOut, false, userData);
+        } else if (kind == IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN) {
+            bptAmountIn = maxBptAmountIn;
+            amountsOut = router.removeLiquiditySingleTokenExactIn(_pool, maxBptAmountIn, 0, minAmountsOut[0], false, userData);
+        } else if (kind == IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
+            amountsOut = minAmountsOut;
+            bptAmountIn = router.removeLiquiditySingleTokenExactOut(_pool, maxBptAmountIn, 0, minAmountsOut[0], false, userData);
+        } else if (kind == IVault.RemoveLiquidityKind.CUSTOM) {
+            (bptAmountIn, amountsOut, ) = router.removeLiquidityCustom(_pool, maxBptAmountIn, minAmountsOut, false, userData);
+        } else {
+            revert("Unhandled remove liquidity kind");
         }
     }
 }

@@ -127,7 +127,7 @@ interface IRouter {
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
      * @param userData Additional (optional) data required for adding liquidity
-     * @return amountIn Actual amount of tokens added
+     * @return amountsIn Actual amounts of tokens added
      */
     function addLiquiditySingleTokenExactOut(
         address pool,
@@ -136,7 +136,7 @@ interface IRouter {
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable returns (uint256 amountIn);
+    ) external payable returns (uint256[] memory amountsIn);
 
     /**
      * @notice Adds liquidity to a pool with a custom request.
@@ -145,7 +145,7 @@ interface IRouter {
      * @param minBptAmountOut Minimum pool tokens to be received
      * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
      * @param userData Additional (optional) data required for adding liquidity
-     * @return amountsIn Actual amounts of assets added
+     * @return amountsIn Actual amounts of tokens added
      * @return bptAmountOut Pool tokens received
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */

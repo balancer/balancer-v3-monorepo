@@ -169,7 +169,7 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable returns (uint256 amountIn) {
+    ) external payable returns (uint256[] memory amountsIn) {
         IERC20[] memory tokens = _vault.getPoolTokens(pool);
 
         if (tokenInIndex >= tokens.length) {
@@ -179,7 +179,7 @@ contract Router is IRouter, ReentrancyGuard {
         uint256[] memory maxAmountsIn = new uint256[](tokens.length);
         maxAmountsIn[tokenInIndex] = maxAmountIn;
 
-        (uint256[] memory amountsIn, , ) = abi.decode(
+        (amountsIn, , ) = abi.decode(
             _vault.invoke{ value: msg.value }(
                 abi.encodeWithSelector(
                     Router.addLiquidityCallback.selector,
@@ -196,8 +196,6 @@ contract Router is IRouter, ReentrancyGuard {
             ),
             (uint256[], uint256, bytes)
         );
-
-        return amountsIn[tokenInIndex];
     }
 
     /// @inheritdoc IRouter
@@ -346,8 +344,6 @@ contract Router is IRouter, ReentrancyGuard {
             ),
             (uint256, uint256[], bytes)
         );
-
-        return amountsOut;
     }
 
     /// @inheritdoc IRouter
