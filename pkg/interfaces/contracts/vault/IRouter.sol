@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.4;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { Asset } from "../solidity-utils/misc/Asset.sol";
 
 import { IVault } from "./IVault.sol";
@@ -16,17 +18,19 @@ interface IRouter {
      * @dev Data for the pool initialization callback
      * @param sender Account originating the pool initialization operation
      * @param pool Address of the liquidity pool
-     * @param assets Pool tokens
+     * @param tokens Pool tokens
      * @param exactAmountsIn Exact amounts of assets to be added
      * @param minBptAmountOut Minimum pool tokens to be received
+     * @param wethIsEth True if native ETH is being added (i.e. wrap in router)
      * @param userData Additional (optional) data required for initialization
      */
     struct InitializeCallbackParams {
         address sender;
         address pool;
-        Asset[] assets;
+        IERC20[] tokens;
         uint256[] exactAmountsIn;
         uint256 minBptAmountOut;
+        bool wethIsEth;
         bytes userData;
     }
 
@@ -36,14 +40,16 @@ interface IRouter {
      * @param tokens Pool tokens
      * @param exactAmountsIn Exact amounts of assets to be added
      * @param minBptAmountOut Minimum pool tokens to be received
+     * @param wethIsEth True if native ETH is being added (i.e. wrap in router)
      * @param userData Additional (optional) data required for initialization
      * @return bptAmountOut Actual pool tokens minted in exchange for initial liquidity
      */
     function initialize(
         address pool,
-        Asset[] memory tokens,
+        IERC20[] memory tokens,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
+        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256 bptAmountOut);
 

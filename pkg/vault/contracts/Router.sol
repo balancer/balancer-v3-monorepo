@@ -41,9 +41,10 @@ contract Router is IRouter, ReentrancyGuard {
     /// @inheritdoc IRouter
     function initialize(
         address pool,
-        Asset[] memory assets,
+        IERC20[] memory tokens,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
+        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256 bptAmountOut) {
         return
@@ -54,9 +55,10 @@ contract Router is IRouter, ReentrancyGuard {
                         InitializeCallbackParams({
                             sender: msg.sender,
                             pool: pool,
-                            assets: assets,
+                            tokens: tokens,
                             exactAmountsIn: exactAmountsIn,
                             minBptAmountOut: minBptAmountOut,
+                            wethIsEth: wethIsEth,
                             userData: userData
                         })
                     )
@@ -74,23 +76,20 @@ contract Router is IRouter, ReentrancyGuard {
     function initializeCallback(
         InitializeCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256 bptAmountOut) {
-        IERC20[] memory tokens = params.assets.toIERC20(_weth);
-
-        bptAmountOut = _vault.initialize(params.pool, params.sender, tokens, params.exactAmountsIn, params.userData);
+        bptAmountOut = _vault.initialize(params.pool, params.sender, params.tokens, params.exactAmountsIn, params.userData);
 
         if (bptAmountOut < params.minBptAmountOut) {
             revert BptAmountBelowMin();
         }
 
         uint256 ethAmountIn;
-        for (uint256 i = 0; i < params.assets.length; ++i) {
-            // Receive assets from the handler
-            Asset asset = params.assets[i];
+        for (uint256 i = 0; i < params.tokens.length; ++i) {
+            // Receive tokens from the handler
+            IERC20 token = params.tokens[i];
             uint256 amountIn = params.exactAmountsIn[i];
-            IERC20 token = asset.toIERC20(_weth);
 
             // There can be only one WETH token in the pool
-            if (asset.isETH()) {
+            if (params.wethIsEth && address(token) == address(_weth)) {
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
             }
@@ -99,7 +98,7 @@ contract Router is IRouter, ReentrancyGuard {
         }
 
         // return ETH dust
-        address(params.sender).returnEth(ethAmountIn);
+        address(params.sender).returnEth(msg.value - ethAmountIn);
     }
 
     /// @inheritdoc IRouter
