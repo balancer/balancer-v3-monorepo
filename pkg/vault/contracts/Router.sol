@@ -104,7 +104,7 @@ contract Router is IRouter, ReentrancyGuard {
         }
 
         // return ETH dust
-        address(params.sender).returnEth(msg.value - ethAmountIn);
+        address(params.sender).returnEth(ethAmountIn);
     }
 
     /// @inheritdoc IRouter
