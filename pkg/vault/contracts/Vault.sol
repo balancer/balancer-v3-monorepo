@@ -721,8 +721,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         tokens = poolData.tokens;
         balancesRaw = poolData.balancesRaw;
         decimalScalingFactors = poolData.decimalScalingFactors;
-        // TODO: add rate providers
         rateProviders = new IRateProvider[](poolData.tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            rateProviders[i] = _poolRateProviders[pool][tokens[i]];
+        }
     }
 
     /// @inheritdoc IVault
