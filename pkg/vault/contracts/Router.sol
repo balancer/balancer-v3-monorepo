@@ -41,7 +41,6 @@ contract Router is IRouter, ReentrancyGuard {
     /// @inheritdoc IRouter
     function initialize(
         address pool,
-        IERC20[] memory tokens,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bool wethIsEth,
@@ -55,7 +54,6 @@ contract Router is IRouter, ReentrancyGuard {
                         InitializeCallbackParams({
                             sender: msg.sender,
                             pool: pool,
-                            tokens: tokens,
                             exactAmountsIn: exactAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             wethIsEth: wethIsEth,
@@ -76,22 +74,17 @@ contract Router is IRouter, ReentrancyGuard {
     function initializeCallback(
         InitializeCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256 bptAmountOut) {
-        bptAmountOut = _vault.initialize(
-            params.pool,
-            params.sender,
-            params.tokens,
-            params.exactAmountsIn,
-            params.userData
-        );
+        bptAmountOut = _vault.initialize(params.pool, params.sender, params.exactAmountsIn, params.userData);
 
         if (bptAmountOut < params.minBptAmountOut) {
             revert BptAmountBelowMin();
         }
 
+        IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
         uint256 ethAmountIn;
-        for (uint256 i = 0; i < params.tokens.length; ++i) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
             // Receive tokens from the handler
-            IERC20 token = params.tokens[i];
+            IERC20 token = tokens[i];
             uint256 amountIn = params.exactAmountsIn[i];
 
             // There can be only one WETH token in the pool

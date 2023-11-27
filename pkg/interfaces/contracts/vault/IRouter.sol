@@ -18,7 +18,6 @@ interface IRouter {
      * @dev Data for the pool initialization callback
      * @param sender Account originating the pool initialization operation
      * @param pool Address of the liquidity pool
-     * @param tokens Pool tokens
      * @param exactAmountsIn Exact amounts of assets to be added
      * @param minBptAmountOut Minimum pool tokens to be received
      * @param wethIsEth True if native ETH is being added (i.e. wrap in router)
@@ -27,7 +26,6 @@ interface IRouter {
     struct InitializeCallbackParams {
         address sender;
         address pool;
-        IERC20[] tokens;
         uint256[] exactAmountsIn;
         uint256 minBptAmountOut;
         bool wethIsEth;
@@ -37,7 +35,6 @@ interface IRouter {
     /**
      * @notice Initialize a liquidity pool.
      * @param pool Address of the liquidity pool
-     * @param tokens Pool tokens
      * @param exactAmountsIn Exact amounts of assets to be added
      * @param minBptAmountOut Minimum pool tokens to be received
      * @param wethIsEth True if native ETH is being added (i.e. wrap in router)
@@ -46,7 +43,6 @@ interface IRouter {
      */
     function initialize(
         address pool,
-        IERC20[] memory tokens,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bool wethIsEth,

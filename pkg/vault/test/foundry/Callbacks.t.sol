@@ -84,7 +84,6 @@ contract VaultSwapTest is Test {
 
         router.initialize(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
             0,
             false,

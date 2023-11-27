@@ -54,7 +54,7 @@ describe('Queries', function () {
     await USDC.connect(alice).approve(vault, MAX_UINT256);
     await DAI.connect(alice).approve(vault, MAX_UINT256);
 
-    await router.connect(alice).initialize(await pool.getAddress(), [DAI, USDC], [0, 0], 0, false, '0x');
+    await router.connect(alice).initialize(await pool.getAddress(), [0, 0], 0, false, '0x');
   });
 
   describe('swap', () => {

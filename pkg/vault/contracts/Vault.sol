@@ -952,7 +952,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     function initialize(
         address pool,
         address to,
-        IERC20[] memory tokens,
         uint256[] memory exactAmountsIn,
         bytes memory userData
     )
@@ -969,9 +968,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             revert PoolAlreadyInitialized(pool);
         }
 
+        IERC20[] memory tokens = _getPoolTokens(pool);
         InputHelpers.ensureInputLengthMatch(tokens.length, exactAmountsIn.length);
-
-        _validateTokensAndGetBalances(pool, tokens);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             // Debit of token[i] for amountIn
@@ -1419,28 +1417,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             // to avoid one less storage read per token.
             poolBalances.unchecked_setAt(i, newBalances[i]);
         }
-    }
-
-    /**
-     * @dev Returns the total balances for `pool`'s `expectedTokens`.
-     * `expectedTokens` must exactly equal the token array returned by `getPoolTokens`: both arrays must have the same
-     * length, elements and order. This is only called after pool registration, which has guarantees the number of
-     * tokens is valid (i.e., between the minimum and maximum token count).
-     */
-    function _validateTokensAndGetBalances(
-        address pool,
-        IERC20[] memory expectedTokens
-    ) private view returns (uint256[] memory) {
-        (IERC20[] memory actualTokens, uint256[] memory balancesRaw, ) = _getPoolTokenInfo(pool);
-        InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
-
-        for (uint256 i = 0; i < actualTokens.length; ++i) {
-            if (actualTokens[i] != expectedTokens[i]) {
-                revert TokensMismatch(pool, address(expectedTokens[i]), address(actualTokens[i]));
-            }
-        }
-
-        return balancesRaw;
     }
 
     function _onlyTrustedRouter(address sender) internal pure {

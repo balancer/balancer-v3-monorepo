@@ -90,7 +90,6 @@ contract RouterTest is Test {
         vm.prank(alice);
         router.initialize(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             0,
             false,
@@ -113,7 +112,6 @@ contract RouterTest is Test {
         vm.prank(alice);
         router.initialize(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             0,
             false,
