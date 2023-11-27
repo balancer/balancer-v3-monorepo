@@ -482,12 +482,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             revert CannotSwapSameToken();
         }
 
-        (
-            PoolData memory poolData,
-            EnumerableMap.IERC20ToUint256Map storage poolBalances
-        ) = _getPoolData(params.pool, Rounding.ROUND_DOWN);
+        (PoolData memory poolData, EnumerableMap.IERC20ToUint256Map storage poolBalances) = _getPoolData(
+            params.pool,
+            Rounding.ROUND_DOWN
+        );
 
-        SwapLocals memory vars; 
+        SwapLocals memory vars;
 
         // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value for non-existence.
         vars.indexIn = poolBalances.unchecked_indexOf(params.tokenIn);
@@ -588,7 +588,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             vars.protocolSwapFeeAmountRaw = vars
                 .swapFeeAmountScaled18
                 .mulUp(_protocolSwapFeePercentage)
-                .toRawUndoRateRoundDown(poolData.decimalScalingFactors[vars.indexOut], poolData.tokenRates[vars.indexOut]);
+                .toRawUndoRateRoundDown(
+                    poolData.decimalScalingFactors[vars.indexOut],
+                    poolData.tokenRates[vars.indexOut]
+                );
 
             _protocolSwapFees[params.tokenOut] += vars.protocolSwapFeeAmountRaw;
         }
@@ -945,11 +948,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     function _getPoolData(
         address pool,
         Rounding roundingDirection
-    )
-        internal
-        view
-        returns (PoolData memory poolData, EnumerableMap.IERC20ToUint256Map storage poolTokenBalances)
-    {
+    ) internal view returns (PoolData memory poolData, EnumerableMap.IERC20ToUint256Map storage poolTokenBalances) {
         // Retrieve the mapping of tokens and their balances for the specified pool.
         poolTokenBalances = _poolTokenBalances[pool];
         uint256 numTokens = poolTokenBalances.length();
@@ -1176,19 +1175,24 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             _poolConfig[pool].requireSupportsAddLiquidityUnbalanced();
 
             amountsInScaled18 = maxAmountsInScaled18;
-            bptAmountOut = IBasePool(pool).onAddLiquidityUnbalanced(to, amountsInScaled18, poolData.balancesLiveScaled18);
+            bptAmountOut = IBasePool(pool).onAddLiquidityUnbalanced(
+                to,
+                amountsInScaled18,
+                poolData.balancesLiveScaled18
+            );
         } else if (kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             _poolConfig[pool].requireSupportsAddLiquiditySingleTokenExactOut();
 
             bptAmountOut = minBptAmountOut;
 
             amountsInScaled18 = maxAmountsInScaled18;
-            amountsInScaled18[InputHelpers.getSingleInputIndex(maxAmountsInScaled18)] = IBasePool(pool).onAddLiquiditySingleTokenExactOut(
-                to,
-                InputHelpers.getSingleInputIndex(maxAmountsInScaled18),
-                bptAmountOut,
-                poolData.balancesLiveScaled18
-            );
+            amountsInScaled18[InputHelpers.getSingleInputIndex(maxAmountsInScaled18)] = IBasePool(pool)
+                .onAddLiquiditySingleTokenExactOut(
+                    to,
+                    InputHelpers.getSingleInputIndex(maxAmountsInScaled18),
+                    bptAmountOut,
+                    poolData.balancesLiveScaled18
+                );
         } else if (kind == AddLiquidityKind.CUSTOM) {
             _poolConfig[pool].requireSupportsAddLiquidityCustom();
 
@@ -1333,11 +1337,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             (tokens[i], balancesRaw[i]) = poolTokenBalances.unchecked_at(i);
         }
 
-        amountsOutRaw = BasePoolMath.computeProportionalAmountsOut(
-            balancesRaw,
-            _totalSupply(pool),
-            exactBptAmountIn
-        );
+        amountsOutRaw = BasePoolMath.computeProportionalAmountsOut(balancesRaw, _totalSupply(pool), exactBptAmountIn);
 
         _removeLiquidityUpdateAccounting(pool, from, tokens, balancesRaw, exactBptAmountIn, amountsOutRaw);
     }
@@ -1386,12 +1386,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             bptAmountIn = maxBptAmountIn;
 
             amountsOutScaled18 = minAmountsOutScaled18;
-            amountsOutScaled18[InputHelpers.getSingleInputIndex(minAmountsOutScaled18)] = IBasePool(pool).onRemoveLiquiditySingleTokenExactIn(
-                from,
-                InputHelpers.getSingleInputIndex(minAmountsOutScaled18),
-                bptAmountIn,
-                poolData.balancesLiveScaled18
-            );
+            amountsOutScaled18[InputHelpers.getSingleInputIndex(minAmountsOutScaled18)] = IBasePool(pool)
+                .onRemoveLiquiditySingleTokenExactIn(
+                    from,
+                    InputHelpers.getSingleInputIndex(minAmountsOutScaled18),
+                    bptAmountIn,
+                    poolData.balancesLiveScaled18
+                );
         } else if (kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             _poolConfig[pool].requireSupportsRemoveLiquiditySingleTokenExactOut();
 
@@ -1430,14 +1431,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             );
         }
 
-        _removeLiquidityUpdateAccounting(
-            pool,
-            from,
-            poolData.tokens,
-            poolData.balancesRaw,
-            bptAmountIn,
-            amountsOutRaw
-        );
+        _removeLiquidityUpdateAccounting(pool, from, poolData.tokens, poolData.balancesRaw, bptAmountIn, amountsOutRaw);
     }
 
     /**
