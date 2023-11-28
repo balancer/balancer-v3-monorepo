@@ -827,6 +827,147 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     /// @inheritdoc IRouter
+    function queryRemoveLiquidityProportional(
+        address pool,
+        uint256 exactBptAmountIn,
+        uint256[] memory minAmountsOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsOut) {
+        (, amountsOut, ) = abi.decode(
+            _vault.quote(
+                abi.encodeWithSelector(
+                    Router.queryRemoveLiquidityCallback.selector,
+                    RemoveLiquidityCallbackParams({
+                        // We use router as a sender to simplify basic query functions
+                        // but it is possible to remove liquidity from any sender
+                        sender: address(this),
+                        pool: pool,
+                        minAmountsOut: minAmountsOut,
+                        maxBptAmountIn: exactBptAmountIn,
+                        kind: IVault.RemoveLiquidityKind.PROPORTIONAL,
+                        wethIsEth: wethIsEth,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256, uint256[], bytes)
+        );
+    }
+
+    /// @inheritdoc IRouter
+    function queryRemoveLiquiditySingleTokenExactIn(
+        address pool,
+        uint256 exactBptAmountIn,
+        uint256 tokenOutIndex,
+        uint256 minAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsOut) {
+        IERC20[] memory tokens = _vault.getPoolTokens(pool);
+        uint256 numTokens = tokens.length;
+
+        if (tokenOutIndex >= numTokens) {
+            revert InvalidTokenIndex();
+        }
+
+        uint256[] memory minAmountsOut = new uint256[](numTokens);
+        minAmountsOut[tokenOutIndex] = minAmountOut;
+
+        (, amountsOut, ) = abi.decode(
+            _vault.quote(
+                abi.encodeWithSelector(
+                    Router.queryRemoveLiquidityCallback.selector,
+                    RemoveLiquidityCallbackParams({
+                        // We use router as a sender to simplify basic query functions
+                        // but it is possible to remove liquidity from any sender
+                        sender: address(this),
+                        pool: pool,
+                        minAmountsOut: minAmountsOut,
+                        maxBptAmountIn: exactBptAmountIn,
+                        kind: IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
+                        wethIsEth: wethIsEth,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256, uint256[], bytes)
+        );
+    }
+
+    /// @inheritdoc IRouter
+    function queryRemoveLiquiditySingleTokenExactOut(
+        address pool,
+        uint256 maxBptAmountIn,
+        uint256 tokenOutIndex,
+        uint256 exactAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256 bptAmountIn) {
+        IERC20[] memory tokens = _vault.getPoolTokens(pool);
+        uint256 numTokens = tokens.length;
+
+        if (tokenOutIndex >= numTokens) {
+            revert InvalidTokenIndex();
+        }
+
+        uint256[] memory minAmountsOut = new uint256[](numTokens);
+        minAmountsOut[tokenOutIndex] = exactAmountOut;
+
+        (bptAmountIn, , ) = abi.decode(
+            _vault.quote(
+                abi.encodeWithSelector(
+                    Router.queryRemoveLiquidityCallback.selector,
+                    RemoveLiquidityCallbackParams({
+                        // We use router as a sender to simplify basic query functions
+                        // but it is possible to remove liquidity from any sender
+                        sender: address(this),
+                        pool: pool,
+                        minAmountsOut: minAmountsOut,
+                        maxBptAmountIn: maxBptAmountIn,
+                        kind: IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                        wethIsEth: wethIsEth,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256, uint256[], bytes)
+        );
+
+        return bptAmountIn;
+    }
+
+    /// @inheritdoc IRouter
+    function queryRemoveLiquidityCustom(
+        address pool,
+        uint256 maxBptAmountIn,
+        uint256[] memory minAmountsOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeWithSelector(
+                        Router.queryRemoveLiquidityCallback.selector,
+                        RemoveLiquidityCallbackParams({
+                            // We use router as a sender to simplify basic query functions
+                            // but it is possible to remove liquidity from any sender
+                            sender: address(this),
+                            pool: pool,
+                            minAmountsOut: minAmountsOut,
+                            maxBptAmountIn: maxBptAmountIn,
+                            kind: IVault.RemoveLiquidityKind.CUSTOM,
+                            wethIsEth: wethIsEth,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256, uint256[], bytes)
+            );
+    }
+
+    /// @inheritdoc IRouter
     function queryRemoveLiquidity(
         address pool,
         uint256 maxBptAmountIn,

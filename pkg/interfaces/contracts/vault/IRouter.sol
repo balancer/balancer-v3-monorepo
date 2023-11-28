@@ -419,6 +419,80 @@ interface IRouter {
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
     /**
+     * @notice Queries `removeLiquidityProportional` operation without executing it.
+     * @param pool Address of the liquidity pool
+     * @param exactBptAmountIn Exact pool tokens provided for the query
+     * @param minAmountsOut Expected minimum amounts of tokens to receive
+     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
+     * @param userData Additional (optional) data required for the query
+     * @return amountsOut Expected amounts of tokens to receive
+     */
+    function queryRemoveLiquidityProportional(
+        address pool,
+        uint256 exactBptAmountIn,
+        uint256[] memory minAmountsOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsOut);
+
+    /**
+     * @notice Queries `removeLiquiditySingleTokenExactIn` operation without executing it.
+     * @param pool Address of the liquidity pool
+     * @param exactBptAmountIn Exact pool tokens provided for the query
+     * @param tokenOutIndex Index of the token used to remove liquidity in the pool's token array
+     * @param minAmountOut Expected minimum amount of tokens to receive
+     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
+     * @param userData Additional (optional) data required for the query
+     * @return amountsOut Expected amounts of tokens to receive
+     */
+    function queryRemoveLiquiditySingleTokenExactIn(
+        address pool,
+        uint256 exactBptAmountIn,
+        uint256 tokenOutIndex,
+        uint256 minAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsOut);
+
+    /**
+     * @notice Queries `removeLiquiditySingleTokenExactOut` operation without executing it.
+     * @param pool Address of the liquidity pool
+     * @param maxBptAmountIn Maximum pool tokens provided
+     * @param tokenOutIndex Index of the token used to remove liquidity in the pool's token array
+     * @param exactAmountOut Expected exact amount of tokens to receive
+     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
+     * @param userData Additional (optional) data required for the query
+     * @return bptAmountIn Expected amount of pool tokens to burn
+     */
+    function queryRemoveLiquiditySingleTokenExactOut(
+        address pool,
+        uint256 maxBptAmountIn,
+        uint256 tokenOutIndex,
+        uint256 exactAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256 bptAmountIn);
+
+    /**
+     * @notice Queries `removeLiquidityCustom` operation without executing it.
+     * @param pool Address of the liquidity pool
+     * @param maxBptAmountIn Pool tokens provided
+     * @param minAmountsOut Expected minimum amounts of assets to receive
+     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
+     * @param userData Additional (optional) data required for the query
+     * @return bptAmountIn Expected amount of pool tokens to burn
+     * @return amountsOut Expected amounts of assets to receive
+     * @return returnData Arbitrary (optional) data with encoded response from the pool
+     */
+    function queryRemoveLiquidityCustom(
+        address pool,
+        uint256 maxBptAmountIn,
+        uint256[] memory minAmountsOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
+
+    /**
      * @notice Queries removeLiquidity operation without executing it.
      * @param pool Address of the liquidity pool
      * @param maxBptAmountIn Pool tokens provided for the query
