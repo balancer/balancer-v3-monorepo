@@ -218,7 +218,7 @@ interface IVault {
     function getPoolTokenRates(address pool) external view returns (uint256[] memory);
 
     /**
-     * @notice Gets the configuration paramters of a pool.
+     * @notice Gets the configuration parameters of a pool.
      * @param pool Address of the pool
      * @return Pool configuration
      */
