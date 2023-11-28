@@ -107,6 +107,7 @@ contract WeightedPoolTest is Test {
         uint256[] memory amountsIn = [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray();
         uint256 bptAmountOut = router.initialize(
             address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             amountsIn,
             // Initial BPT is invariant * tokens.length
             // Account for the precision less
@@ -144,6 +145,7 @@ contract WeightedPoolTest is Test {
         // init
         router.initialize(
             address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             // Initial BPT is invariant * tokens.length
             // Account for the precision less
@@ -189,6 +191,7 @@ contract WeightedPoolTest is Test {
         // init
         router.initialize(
             address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             // Initial BPT is invariant * tokens.length
             // Account for the precision less
@@ -247,6 +250,7 @@ contract WeightedPoolTest is Test {
         vm.prank(alice);
         router.initialize(
             address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             // Initial BPT is invariant * tokens.length
             // Account for the precision less
