@@ -165,7 +165,7 @@ interface IVault {
      *
      * @param pool Address of the pool to initialize
      * @param to Address that will receive the output BPT
-     * @param tokens tokens involved in the liquidity provision
+     * @param tokens Tokens used to seed the pool (must match the registered tokens)
      * @param exactAmountsIn Exact amounts of input tokens
      * @param userData Additional (optional) data for the initialization
      * @return bptAmountOut Output pool token amount
@@ -220,7 +220,7 @@ interface IVault {
     function getPoolTokenRates(address pool) external view returns (uint256[] memory);
 
     /**
-     * @notice Gets the configuration paramters of a pool.
+     * @notice Gets the configuration parameters of a pool.
      * @param pool Address of the pool
      * @return Pool configuration
      */
