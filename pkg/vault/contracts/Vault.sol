@@ -1029,6 +1029,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     function initialize(
         address pool,
         address to,
+        IERC20[] memory tokens,
         uint256[] memory exactAmountsIn,
         bytes memory userData
     )
@@ -1048,8 +1049,15 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         InputHelpers.ensureInputLengthMatch(poolData.tokens.length, exactAmountsIn.length);
 
         for (uint256 i = 0; i < poolData.tokens.length; ++i) {
+            IERC20 actualToken = poolData.tokens[i];
+
+            // Tokens passed into `initialize` are the "expected" tokens.
+            if (actualToken != tokens[i]) {
+                revert TokensMismatch(pool, address(tokens[i]), address(actualToken));
+            }
+
             // Debit of token[i] for amountIn
-            _takeDebt(poolData.tokens[i], exactAmountsIn[i], msg.sender);
+            _takeDebt(actualToken, exactAmountsIn[i], msg.sender);
         }
 
         // Store the new Pool balances.
