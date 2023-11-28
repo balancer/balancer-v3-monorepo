@@ -645,6 +645,131 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     /// @inheritdoc IRouter
+    function queryAddLiquidityProportional(
+        address pool,
+        uint256[] memory maxAmountsIn,
+        uint256 exactBptAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsIn) {
+        (amountsIn, , ) = abi.decode(
+            _vault.quote{ value: msg.value }(
+                abi.encodeWithSelector(
+                    Router.queryAddLiquidityCallback.selector,
+                    AddLiquidityCallbackParams({
+                        sender: address(this),
+                        pool: pool,
+                        maxAmountsIn: maxAmountsIn,
+                        minBptAmountOut: exactBptAmountOut,
+                        kind: IVault.AddLiquidityKind.PROPORTIONAL,
+                        wethIsEth: wethIsEth,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256[], uint256, bytes)
+        );
+    }
+
+    /// @inheritdoc IRouter
+    function queryAddLiquidityUnbalanced(
+        address pool,
+        uint256[] memory exactAmountsIn,
+        uint256 minBptAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256 bptAmountOut) {
+        (, bptAmountOut, ) = abi.decode(
+            _vault.quote{ value: msg.value }(
+                abi.encodeWithSelector(
+                    Router.queryAddLiquidityCallback.selector,
+                    AddLiquidityCallbackParams({
+                        // we use router as a sender to simplify basic query functions
+                        // but it is possible to add liquidity to any recepient
+                        sender: address(this),
+                        pool: pool,
+                        maxAmountsIn: exactAmountsIn,
+                        minBptAmountOut: minBptAmountOut,
+                        kind: IVault.AddLiquidityKind.UNBALANCED,
+                        wethIsEth: wethIsEth,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256[], uint256, bytes)
+        );
+    }
+
+    /// @inheritdoc IRouter
+    function queryAddLiquiditySingleTokenExactOut(
+        address pool,
+        uint256 tokenInIndex,
+        uint256 maxAmountIn,
+        uint256 exactBptAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsIn) {
+        IERC20[] memory tokens = _vault.getPoolTokens(pool);
+
+        if (tokenInIndex >= tokens.length) {
+            revert InvalidTokenIndex();
+        }
+
+        uint256[] memory maxAmountsIn = new uint256[](tokens.length);
+        maxAmountsIn[tokenInIndex] = maxAmountIn;
+
+        (amountsIn, , ) = abi.decode(
+            _vault.quote{ value: msg.value }(
+                abi.encodeWithSelector(
+                    Router.queryAddLiquidityCallback.selector,
+                    AddLiquidityCallbackParams({
+                        // we use router as a sender to simplify basic query functions
+                        // but it is possible to add liquidity to any recepient
+                        sender: address(this),
+                        pool: pool,
+                        maxAmountsIn: maxAmountsIn,
+                        minBptAmountOut: exactBptAmountOut,
+                        kind: IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                        wethIsEth: wethIsEth,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256[], uint256, bytes)
+        );
+    }
+
+    /// @inheritdoc IRouter
+    function queryAddLiquidityCustom(
+        address pool,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
+        return
+            abi.decode(
+                _vault.quote{ value: msg.value }(
+                    abi.encodeWithSelector(
+                        Router.queryAddLiquidityCallback.selector,
+                        AddLiquidityCallbackParams({
+                            // we use router as a sender to simplify basic query functions
+                            // but it is possible to add liquidity to any recepient
+                            sender: address(this),
+                            pool: pool,
+                            maxAmountsIn: maxAmountsIn,
+                            minBptAmountOut: minBptAmountOut,
+                            kind: IVault.AddLiquidityKind.CUSTOM,
+                            wethIsEth: wethIsEth,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256[], uint256, bytes)
+            );
+    }
+
+    /// @inheritdoc IRouter
     function queryAddLiquidity(
         address pool,
         uint256[] memory maxAmountsIn,
