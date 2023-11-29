@@ -1010,35 +1010,30 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
     /// @inheritdoc IVault
     function addLiquidity(
-        address pool,
-        address to,
-        uint256[] memory maxAmountsIn,
-        uint256 minBptAmountOut,
-        AddLiquidityKind kind,
-        bytes memory userData
+        AddLiquidityParams memory params
     )
         external
         withHandler
-        withInitializedPool(pool)
-        whenPoolNotPaused(pool)
+        withInitializedPool(params.pool)
+        whenPoolNotPaused(params.pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
         // Set `addingLiquidity` parameter to true to set rounding direction for balances.
-        SharedLocals memory vars = _populateSharedLiquidityLocals(pool, true);
-        InputHelpers.ensureInputLengthMatch(vars.tokens.length, maxAmountsIn.length);
+        SharedLocals memory vars = _populateSharedLiquidityLocals(params.pool, true);
+        InputHelpers.ensureInputLengthMatch(vars.tokens.length, params.maxAmountsIn.length);
 
         // Amounts are entering pool math, so round down.
-        maxAmountsIn.toScaled18RoundDownArray(vars.scalingFactors);
+        params.maxAmountsIn.toScaled18RoundDownArray(vars.scalingFactors);
 
         if (vars.config.callbacks.shouldCallBeforeAddLiquidity) {
             // TODO: check if `before` needs kind.
             if (
-                IBasePool(pool).onBeforeAddLiquidity(
-                    to,
-                    maxAmountsIn,
-                    minBptAmountOut,
+                IBasePool(params.pool).onBeforeAddLiquidity(
+                    params.to,
+                    params.maxAmountsIn,
+                    params.minBptAmountOut,
                     vars.balancesScaled18,
-                    userData
+                    params.userData
                 ) == false
             ) {
                 revert CallbackFailed();
@@ -1047,31 +1042,23 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             // The callback might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (adding liquidity, so round up) again.
-            vars.balancesScaled18 = _getPoolBalancesScaled18(pool, true);
+            vars.balancesScaled18 = _getPoolBalancesScaled18(params.pool, true);
         }
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked
         // its final balances are computed
         // This function is non-reentrant, as it performs the accounting updates.
         uint256[] memory amountsInScaled18;
-        (amountsIn, amountsInScaled18, bptAmountOut, returnData) = _addLiquidity(
-            vars,
-            pool,
-            to,
-            maxAmountsIn,
-            minBptAmountOut,
-            kind,
-            userData
-        );
+        (amountsIn, amountsInScaled18, bptAmountOut, returnData) = _addLiquidity(vars, params);
 
         if (vars.config.callbacks.shouldCallAfterAddLiquidity) {
             if (
-                IBasePool(pool).onAfterAddLiquidity(
-                    to,
+                IBasePool(params.pool).onAfterAddLiquidity(
+                    params.to,
                     amountsInScaled18,
                     bptAmountOut,
                     vars.balancesScaled18,
-                    userData
+                    params.userData
                 ) == false
             ) {
                 revert CallbackFailed();
@@ -1092,12 +1079,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      */
     function _addLiquidity(
         SharedLocals memory vars,
-        address pool,
-        address to,
-        uint256[] memory upscaledMaxAmountsIn,
-        uint256 minBptAmountOut,
-        AddLiquidityKind kind,
-        bytes memory userData
+        AddLiquidityParams memory params
     )
         internal
         nonReentrant
@@ -1108,42 +1090,47 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             bytes memory returnData
         )
     {
-        if (kind == AddLiquidityKind.PROPORTIONAL) {
-            _poolConfig[pool].requireSupportsAddLiquidityProportional();
+        if (params.kind == AddLiquidityKind.PROPORTIONAL) {
+            _poolConfig[params.pool].requireSupportsAddLiquidityProportional();
 
-            bptAmountOut = minBptAmountOut;
+            bptAmountOut = params.minBptAmountOut;
             amountsInScaled18 = BasePoolMath.computeProportionalAmountsIn(
                 vars.balancesScaled18,
-                _totalSupply(pool),
+                _totalSupply(params.pool),
                 bptAmountOut
             );
-        } else if (kind == AddLiquidityKind.UNBALANCED) {
-            _poolConfig[pool].requireSupportsAddLiquidityUnbalanced();
+        } else if (params.kind == AddLiquidityKind.UNBALANCED) {
+            amountsInScaled18 = params.maxAmountsIn;
+            bptAmountOut = BasePoolMath.computeAddLiquidityUnbalanced(
+                vars.balancesScaled18,
+                params.maxAmountsIn,
+                _totalSupply(params.pool),
+                _getSwapFeePercentage(vars.config),
+                IBasePool(params.pool).getInvariant
+            );
+            console2.log("bptAmountOut:", bptAmountOut / 1e18);
+        } else if (params.kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
+            _poolConfig[params.pool].requireSupportsAddLiquiditySingleTokenExactOut();
 
-            amountsInScaled18 = upscaledMaxAmountsIn;
-            bptAmountOut = IBasePool(pool).onAddLiquidityUnbalanced(to, amountsInScaled18, vars.balancesScaled18);
-        } else if (kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
-            _poolConfig[pool].requireSupportsAddLiquiditySingleTokenExactOut();
+            vars.tokenIndex = InputHelpers.getSingleInputIndex(params.maxAmountsIn);
+            bptAmountOut = params.minBptAmountOut;
 
-            vars.tokenIndex = InputHelpers.getSingleInputIndex(upscaledMaxAmountsIn);
-            bptAmountOut = minBptAmountOut;
-
-            amountsInScaled18 = upscaledMaxAmountsIn;
-            amountsInScaled18[vars.tokenIndex] = IBasePool(pool).onAddLiquiditySingleTokenExactOut(
-                to,
+            amountsInScaled18 = params.maxAmountsIn;
+            amountsInScaled18[vars.tokenIndex] = IBasePool(params.pool).onAddLiquiditySingleTokenExactOut(
+                params.to,
                 vars.tokenIndex,
                 bptAmountOut,
                 vars.balancesScaled18
             );
-        } else if (kind == AddLiquidityKind.CUSTOM) {
-            _poolConfig[pool].requireSupportsAddLiquidityCustom();
+        } else if (params.kind == AddLiquidityKind.CUSTOM) {
+            _poolConfig[params.pool].requireSupportsAddLiquidityCustom();
 
-            (amountsInScaled18, bptAmountOut, returnData) = IBasePool(pool).onAddLiquidityCustom(
-                to,
-                upscaledMaxAmountsIn,
-                minBptAmountOut,
+            (amountsInScaled18, bptAmountOut, returnData) = IBasePool(params.pool).onAddLiquidityCustom(
+                params.to,
+                params.maxAmountsIn,
+                params.minBptAmountOut,
                 vars.balancesScaled18,
-                userData
+                params.userData
             );
         } else {
             revert InvalidAddLiquidityKind();
@@ -1169,13 +1156,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
 
         // Store the new pool balances.
-        _setPoolBalances(pool, vars.balancesRaw);
+        _setPoolBalances(params.pool, vars.balancesRaw);
 
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
-        _mint(address(pool), to, bptAmountOut);
+        _mint(address(params.pool), params.to, bptAmountOut);
 
-        emit PoolBalanceChanged(pool, to, vars.tokens, amountsIn.unsafeCastToInt256(true));
+        emit PoolBalanceChanged(params.pool, params.to, vars.tokens, amountsIn.unsafeCastToInt256(true));
     }
 
     /// @inheritdoc IVault
