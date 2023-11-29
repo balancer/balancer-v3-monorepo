@@ -434,7 +434,7 @@ interface IVault {
      * @param maxAmountsIn Maximum amounts of input tokens
      * @param minBptAmountOut Minimum amount of output pool tokens
      * @param kind Add liquidity kind
-     * @param userData Additional (optional) user data
+     * @param userData Optional user data
      */
     struct AddLiquidityParams {
         address pool;
@@ -474,29 +474,34 @@ interface IVault {
     error InvalidRemoveLiquidityKind();
 
     /**
-     * @notice Removes liquidity from a pool.
-     * @dev Trusted routers can burn pool tokens belonging to any user and require no prior approval from the user.
-     * Untrusted routers require prior approval from the user. This is the only function allowed to call
-     * _queryModeBalanceIncrease (and only in a query context).
-     *
      * @param pool Address of the pool
      * @param from Address of user to burn from
      * @param maxBptAmountIn Maximum amount of input pool tokens
      * @param minAmountsOut Minimum amounts of output tokens
      * @param kind Remove liquidity kind
-     * @param userData Additional (optional) user data
+     * @param userData Optional user data
+     */
+    struct RemoveLiquidityParams {
+        address pool;
+        address from;
+        uint256 maxBptAmountIn;
+        uint256[] minAmountsOut;
+        RemoveLiquidityKind kind;
+        bytes userData;
+    }
+
+    /**
+     * @notice Removes liquidity from a pool.
+     * @dev Trusted routers can burn pool tokens belonging to any user and require no prior approval from the user.
+     * Untrusted routers require prior approval from the user. This is the only function allowed to call
+     * _queryModeBalanceIncrease (and only in a query context).
+     *
+     * @param params Parameters for the remove liquidity (see above for struct definition)
      * @return bptAmountIn Actual amount of BPT burnt
      * @return amountsOut Actual amounts of output assets
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
-    function removeLiquidity(
-        address pool,
-        address from,
-        uint256 maxBptAmountIn,
-        uint256[] memory minAmountsOut,
-        RemoveLiquidityKind kind,
-        bytes memory userData
-    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
+    function removeLiquidity(RemoveLiquidityParams memory params) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 
     /**
      * @notice Remove liquidity from a pool specifying exact pool tokens in, with proportional token amounts out.
