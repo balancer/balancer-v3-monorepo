@@ -125,12 +125,12 @@ contract WeightedPool is BasePool {
      */
     function getInvariant() public view returns (uint256) {
         // Balances are retrieve raw, and then scaled up below.
-        (, uint256[] memory scaled18Balances, uint256[] memory scalingFactors) = _vault.getPoolTokenInfo(address(this));
+        (, uint256[] memory balancesScaled18, uint256[] memory scalingFactors) = _vault.getPoolTokenInfo(address(this));
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
-        scaled18Balances.toScaled18RoundDownArray(scalingFactors);
+        balancesScaled18.toScaled18RoundDownArray(scalingFactors);
 
-        return WeightedMath.calculateInvariant(normalizedWeights, scaled18Balances);
+        return WeightedMath.calculateInvariant(normalizedWeights, balancesScaled18);
     }
 
     /**
@@ -147,16 +147,16 @@ contract WeightedPool is BasePool {
 
     /// @inheritdoc IBasePool
     function onInitialize(
-        uint256[] memory scaled18ExactAmountsIn,
+        uint256[] memory exactAmountsInScaled18,
         bytes memory
     ) external view onlyVault returns (uint256) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
-        uint256 invariantAfterJoin = WeightedMath.calculateInvariant(normalizedWeights, scaled18ExactAmountsIn);
+        uint256 invariantAfterJoin = WeightedMath.calculateInvariant(normalizedWeights, exactAmountsInScaled18);
 
         // Set the initial pool tokens amount to the value of the invariant times the number of tokens.
         // This makes pool token supply more consistent in Pools with similar compositions
         // but different number of tokens.
-        uint256 bptAmountOut = invariantAfterJoin * scaled18ExactAmountsIn.length;
+        uint256 bptAmountOut = invariantAfterJoin * exactAmountsInScaled18.length;
 
         return bptAmountOut;
     }
@@ -167,40 +167,40 @@ contract WeightedPool is BasePool {
 
     /// @inheritdoc IBasePool
     function onSwap(IBasePool.SwapParams memory request) public view onlyVault returns (uint256) {
-        uint256 scaled18BalanceTokenIn = request.scaled18Balances[request.indexIn];
-        uint256 scaled18BalanceTokenOut = request.scaled18Balances[request.indexOut];
+        uint256 balanceTokenInScaled18 = request.balancesScaled18[request.indexIn];
+        uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            uint256 scaled18AmountOut = WeightedMath.calcOutGivenIn(
-                scaled18BalanceTokenIn,
+            uint256 amountOutScaled18 = WeightedMath.calcOutGivenIn(
+                balanceTokenInScaled18,
                 _getNormalizedWeight(request.tokenIn),
-                scaled18BalanceTokenOut,
+                balanceTokenOutScaled18,
                 _getNormalizedWeight(request.tokenOut),
-                request.scaled18AmountGiven
+                request.amountGivenScaled18
             );
 
-            return scaled18AmountOut;
+            return amountOutScaled18;
         } else {
-            uint256 scaled18AmountIn = WeightedMath.calcInGivenOut(
-                scaled18BalanceTokenIn,
+            uint256 amountInScaled18 = WeightedMath.calcInGivenOut(
+                balanceTokenInScaled18,
                 _getNormalizedWeight(request.tokenIn),
-                scaled18BalanceTokenOut,
+                balanceTokenOutScaled18,
                 _getNormalizedWeight(request.tokenOut),
-                request.scaled18AmountGiven
+                request.amountGivenScaled18
             );
 
             // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
-            return scaled18AmountIn;
+            return amountInScaled18;
         }
     }
 
     /// @inheritdoc IBasePool
     function onAfterSwap(
         IBasePool.AfterSwapParams calldata params,
-        uint256 scaled18AmountCalculated
+        uint256 amountCalculatedScaled18
     ) external pure override returns (bool success) {
         // TODO: review the need of this.
-        return params.tokenIn != params.tokenOut && scaled18AmountCalculated > 0;
+        return params.tokenIn != params.tokenOut && amountCalculatedScaled18 > 0;
     }
 
     /***************************************************************************
@@ -209,16 +209,16 @@ contract WeightedPool is BasePool {
 
     function onAddLiquidityUnbalanced(
         address,
-        uint256[] memory scaled18ExactAmountsIn,
-        uint256[] memory scaled18Balances
+        uint256[] memory exactAmountsInScaled18,
+        uint256[] memory balancesScaled18
     ) external view override returns (uint256 bptAmountOut) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
         return
             WeightedMath.calcBptOutGivenExactTokensIn(
-                scaled18Balances,
+                balancesScaled18,
                 normalizedWeights,
-                scaled18ExactAmountsIn,
+                exactAmountsInScaled18,
                 totalSupply(),
                 getSwapFeePercentage()
             );
@@ -228,13 +228,13 @@ contract WeightedPool is BasePool {
         address,
         uint256 tokenInIndex,
         uint256 exactBptAmountOut,
-        uint256[] memory scaled18Balances
+        uint256[] memory balancesScaled18
     ) external view override returns (uint256 amountIn) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
         return
             WeightedMath.calcTokenInGivenExactBptOut(
-                scaled18Balances[tokenInIndex],
+                balancesScaled18[tokenInIndex],
                 normalizedWeights[tokenInIndex],
                 exactBptAmountOut,
                 totalSupply(),
@@ -250,13 +250,13 @@ contract WeightedPool is BasePool {
         address,
         uint256 tokenOutIndex,
         uint256 exactBptAmountIn,
-        uint256[] memory scaled18Balances
+        uint256[] memory balancesScaled18
     ) external view override returns (uint256 amountOut) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
         return
             WeightedMath.calcTokenOutGivenExactBptIn(
-                scaled18Balances[tokenOutIndex],
+                balancesScaled18[tokenOutIndex],
                 normalizedWeights[tokenOutIndex],
                 exactBptAmountIn,
                 totalSupply(),
@@ -267,16 +267,16 @@ contract WeightedPool is BasePool {
     function onRemoveLiquiditySingleTokenExactOut(
         address,
         uint256 tokenOutIndex,
-        uint256 scaled18ExactAmountOut,
-        uint256[] memory scaled18Balances
+        uint256 exactAmountOutScaled18,
+        uint256[] memory balancesScaled18
     ) external view override returns (uint256 bptAmountIn) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
         return
             WeightedMath.calcBptInGivenExactTokenOut(
-                scaled18Balances[tokenOutIndex],
+                balancesScaled18[tokenOutIndex],
                 normalizedWeights[tokenOutIndex],
-                scaled18ExactAmountOut,
+                exactAmountOutScaled18,
                 totalSupply(),
                 getSwapFeePercentage()
             );

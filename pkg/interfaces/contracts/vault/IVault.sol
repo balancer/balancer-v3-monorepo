@@ -32,6 +32,7 @@ struct PoolConfig {
     bool isPoolRegistered;
     bool isPoolInitialized;
     bool isPoolPaused;
+    bool isPoolInRecoveryMode;
     bool hasDynamicSwapFee;
     uint64 staticSwapFeePercentage; // stores an 18-decimal FP value (max FixedPoint.ONE)
     uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
@@ -198,7 +199,7 @@ interface IVault {
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
      * @dev TODO Add rates when we have them.
      * @return tokens Tokens registered to the pool
-     * @return rawBalances Corresponding raw balances of the tokens
+     * @return balancesRaw Corresponding raw balances of the tokens
      * @return scalingFactors Corresponding scalingFactors of the tokens
      */
     function getPoolTokenInfo(address pool) external view returns (IERC20[] memory, uint256[] memory, uint256[] memory);
@@ -521,7 +522,7 @@ interface IVault {
      * @param pool The pool with the tokens being swapped
      * @param tokenIn The token entering the Vault (balance increases)
      * @param tokenOut The token leaving the Vault (balance decreases)
-     * @param rawAmountGiven Amount specified for tokenIn or tokenOut (depending on the type of swap)
+     * @param amountGivenRaw Amount specified for tokenIn or tokenOut (depending on the type of swap)
      * @param userData Additional (optional) user data
      */
     struct SwapParams {
@@ -529,7 +530,7 @@ interface IVault {
         address pool;
         IERC20 tokenIn;
         IERC20 tokenOut;
-        uint256 rawAmountGiven;
+        uint256 amountGivenRaw;
         bytes userData;
     }
 
@@ -555,13 +556,13 @@ interface IVault {
      * @notice Swaps tokens based on provided parameters.
      * @dev All parameters are given in raw token decimal encoding.
      * @param params Parameters for the swap (see above for struct definition)
-     * @return rawAmountCalculated Calculated swap amount
-     * @return rawAmountIn Amount of input tokens for the swap
-     * @return rawAmountOut Amount of output tokens from the swap
+     * @return amountCalculatedRaw Calculated swap amount
+     * @return amountInRaw Amount of input tokens for the swap
+     * @return amountOutRaw Amount of output tokens from the swap
      */
     function swap(
         SwapParams memory params
-    ) external returns (uint256 rawAmountCalculated, uint256 rawAmountIn, uint256 rawAmountOut);
+    ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
     /*******************************************************************************
                                    Fees
@@ -663,6 +664,50 @@ interface IVault {
      * @return If true, then queries are disabled
      */
     function isQueryDisabled() external view returns (bool);
+
+    /*******************************************************************************
+                                Recovery Mode
+    *******************************************************************************/
+
+    /**
+     * @dev Recovery mode has been enabled or disabled for a pool.
+     * @param pool The pool
+     * @param recoveryMode True if recovery mode was enabled
+     */
+    event PoolRecoveryModeStateChanged(address indexed pool, bool recoveryMode);
+
+    /**
+     * @dev Cannot enable recovery mode when already enabled.
+     * @param pool The pool
+     */
+    error PoolInRecoveryMode(address pool);
+
+    /**
+     * @dev Cannot disable recovery mode when not enabled.
+     * @param pool The pool
+     */
+    error PoolNotInRecoveryMode(address pool);
+
+    /**
+     * @notice Checks whether a pool is in recovery mode.
+     * @param pool Address of the pool to check
+     * @return True if the pool is initialized, false otherwise
+     */
+    function isPoolInRecoveryMode(address pool) external returns (bool);
+
+    /**
+     * @notice Enable recovery mode for a pool.
+     * @dev This is a permissioned function.
+     * @param pool The pool
+     */
+    function enableRecoveryMode(address pool) external;
+
+    /**
+     * @notice Disable recovery mode for a pool.
+     * @dev This is a permissioned function.
+     * @param pool The pool
+     */
+    function disableRecoveryMode(address pool) external;
 
     /*******************************************************************************
                                 Authentication
