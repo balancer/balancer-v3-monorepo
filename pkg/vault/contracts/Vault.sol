@@ -1165,7 +1165,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     }
 
     /// @inheritdoc IVault
-    function removeLiquidity(RemoveLiquidityParams memory params)
+    function removeLiquidity(
+        RemoveLiquidityParams memory params
+    )
         external
         withInitializedPool(params.pool)
         whenPoolNotPaused(params.pool)
@@ -1201,10 +1203,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // and its final balances are computed
         // This function is non-reentrant, as it performs the accounting updates.
         uint256[] memory upscaledAmountsOut;
-        (bptAmountIn, amountsOut, upscaledAmountsOut, returnData) = _removeLiquidity(
-            vars,
-            params
-        );
+        (bptAmountIn, amountsOut, upscaledAmountsOut, returnData) = _removeLiquidity(vars, params);
 
         if (vars.config.callbacks.shouldCallAfterRemoveLiquidity) {
             if (
