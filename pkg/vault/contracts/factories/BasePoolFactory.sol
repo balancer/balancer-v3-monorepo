@@ -7,6 +7,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 // solhint-disable-next-line max-line-length
 import { SingletonAuthentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
+import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
 import { FactoryWidePauseWindow } from "./FactoryWidePauseWindow.sol";
 
@@ -25,11 +26,15 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     mapping(address => bool) private _isPoolFromFactory;
     bool private _disabled;
 
+    // Store the creationCode of the contract to be deployed by create3.
+    bytes private _creationCode;
+
     constructor(
         IVault vault,
-        uint256 initialPauseWindowDuration
-    ) SingletonAuthentication(vault) FactoryWidePauseWindow(initialPauseWindowDuration) {
-        // solhint-disable-previous-line no-empty-blocks
+        uint256 pauseWindowDuration,
+        bytes memory creationCode
+    ) SingletonAuthentication(vault) FactoryWidePauseWindow(pauseWindowDuration) {
+        _creationCode = creationCode;
     }
 
     /// @inheritdoc IBasePoolFactory
@@ -40,6 +45,11 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     /// @inheritdoc IBasePoolFactory
     function isDisabled() public view returns (bool) {
         return _disabled;
+    }
+
+    /// @inheritdoc IBasePoolFactory
+    function getDeploymentAddress(bytes32 salt) external view returns (address) {
+        return CREATE3.getDeployed(salt);
     }
 
     /// @inheritdoc IBasePoolFactory
@@ -63,5 +73,9 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         _isPoolFromFactory[pool] = true;
 
         emit PoolCreated(pool);
+    }
+
+    function _create(bytes memory constructorArgs, bytes32 salt) internal returns (address) {
+        return CREATE3.deploy(salt, abi.encodePacked(_creationCode, constructorArgs), 0);
     }
 }
