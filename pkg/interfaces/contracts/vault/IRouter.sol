@@ -19,9 +19,9 @@ interface IRouter {
      * @param sender Account originating the pool initialization operation
      * @param pool Address of the liquidity pool
      * @param tokens Pool tokens
-     * @param exactAmountsIn Exact amounts of assets to be added
+     * @param exactAmountsIn Exact amounts of assets to be added, sorted the same way as `tokens`
      * @param minBptAmountOut Minimum pool tokens to be received
-     * @param wethIsEth True if native ETH is being added (i.e. wrap in router)
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for initialization
      */
     struct InitializeCallbackParams {
@@ -38,9 +38,9 @@ interface IRouter {
      * @notice Initialize a liquidity pool.
      * @param pool Address of the liquidity pool
      * @param tokens Pool tokens
-     * @param exactAmountsIn Exact amounts of assets to be added
+     * @param exactAmountsIn Exact amounts of assets to be added, sorted the same way as `tokens`
      * @param minBptAmountOut Minimum pool tokens to be received
-     * @param wethIsEth True if native ETH is being added (i.e. wrap in router)
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for initialization
      * @return bptAmountOut Actual pool tokens minted in exchange for initial liquidity
      */
@@ -63,10 +63,10 @@ interface IRouter {
      * @dev Data for the add liquidity callback.
      * @param sender Account originating the add liquidity operation
      * @param pool Address of the liquidity pool
-     * @param maxAmountsIn Maximum amounts of assets to be added
+     * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum pool tokens to be received
      * @param kind Type of join (e.g., single or multi-token)
-     * @param wethIsEth True if native ETH is being added (i.e. wrap in router)
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for adding liquidity
      */
     struct AddLiquidityCallbackParams {
@@ -88,11 +88,11 @@ interface IRouter {
     /**
      * @notice Adds liquidity with proportional token amounts in to a pool, receiving an exact amount of pool tokens.
      * @param pool Address of the liquidity pool
-     * @param maxAmountsIn Maximum amounts of tokens to be added
+     * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param exactBptAmountOut Exact pool tokens to be received
-     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for adding liquidity
-     * @return amountsIn Actual amounts of tokens added
+     * @return amountsIn Actual amounts of tokens added, sorted in token registration order
      */
     function addLiquidityProportional(
         address pool,
@@ -105,9 +105,9 @@ interface IRouter {
     /**
      * @notice Adds with arbitrary token amounts in to a pool.
      * @param pool Address of the liquidity pool
-     * @param exactAmountsIn Exact amounts of tokens to be added
+     * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
-     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for adding liquidity
      * @return bptAmountOut Pool tokens received
      */
@@ -125,9 +125,9 @@ interface IRouter {
      * @param tokenInIndex Index of the token used to add liquidity in the pool's token array
      * @param maxAmountIn Max amount tokens to be added
      * @param exactBptAmountOut Exact amount of pool tokens to be received
-     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for adding liquidity
-     * @return amountsIn Actual amounts of tokens added
+     * @return amountsIn Actual amounts of tokens added, sorted in token registration order
      */
     function addLiquiditySingleTokenExactOut(
         address pool,
@@ -141,11 +141,11 @@ interface IRouter {
     /**
      * @notice Adds liquidity to a pool with a custom request.
      * @param pool Address of the liquidity pool
-     * @param maxAmountsIn Maximum amounts of tokens to be added
+     * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum pool tokens to be received
-     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for adding liquidity
-     * @return amountsIn Actual amounts of tokens added
+     * @return amountsIn Actual amounts of tokens added, sorted in token registration order
      * @return bptAmountOut Pool tokens received
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
@@ -166,10 +166,10 @@ interface IRouter {
      * @param sender Account originating the remove liquidity operation
      * @param pool Address of the liquidity pool
      * @param assets Array of assets to remove
-     * @param minAmountsOut Minimum amounts of assets to be received
+     * @param minAmountsOut Minimum amounts of assets to be received, sorted in token registration order
      * @param maxBptAmountIn Pool tokens provided
      * @param kind Type of exit (e.g., single or multi-token)
-     * @param wethIsEth True if native ETH is being added (i.e. wrap in router)
+     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
      * @param userData Additional (optional) data required for removing liquidity
      */
     struct RemoveLiquidityCallbackParams {
@@ -189,10 +189,10 @@ interface IRouter {
      * @notice Removes liquidity with proportional token amounts from a pool, burning an exact pool token amount.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact pool tokens provided
-     * @param minAmountsOut Minimum amounts of tokens to be received
-     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
+     * @param minAmountsOut Minimum amounts of assets to be received, sorted in token registration order
+     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
      * @param userData Additional (optional) data required for removing liquidity
-     * @return amountsOut Actual amounts of tokens received
+     * @return amountsOut Actual amounts of tokens received, sorted in token registration order
      */
     function removeLiquidityProportional(
         address pool,
@@ -208,9 +208,9 @@ interface IRouter {
      * @param exactBptAmountIn Exact pool tokens provided
      * @param tokenOutIndex Index of the token used to remove liquidity in the pool's token array
      * @param minAmountOut Minimum amount of tokens to be received
-     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
+     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
      * @param userData Additional (optional) data required for removing liquidity
-     * @return amountsOut Actual amounts of tokens received
+     * @return amountsOut Actual amounts of tokens received, sorted in token registration order
      */
     function removeLiquiditySingleTokenExactIn(
         address pool,
@@ -227,7 +227,7 @@ interface IRouter {
      * @param maxBptAmountIn Maximum pool tokens provided
      * @param tokenOutIndex Index of the token used to remove liquidity in the pool's token array
      * @param exactAmountOut Exact amount of tokens to be received
-     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
+     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
      * @param userData Additional (optional) data required for removing liquidity
      * @return bptAmountIn Actual amount of pool tokens burnt
      */
@@ -244,11 +244,11 @@ interface IRouter {
      * @notice Removes liquidity from a pool with a custom request.
      * @param pool Address of the liquidity pool
      * @param maxBptAmountIn Pool tokens provided
-     * @param minAmountsOut Minimum amounts of assets to be received
-     * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
+     * @param minAmountsOut Minimum amounts of assets to be received, sorted in token registration order
+     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
      * @param userData Additional (optional) data required for removing liquidity
      * @return bptAmountIn Actual amount of pool tokens burnt
-     * @return amountsOut Actual amounts of assets received
+     * @return amountsOut Actual amounts of assets received, sorted in token registration order
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function removeLiquidityCustom(
@@ -323,7 +323,7 @@ interface IRouter {
     /**
      * @notice Queries an addLiquidity operation without executing it.
      * @param pool Address of the liquidity pool
-     * @param maxAmountsIn Maximum amounts of tokens to be added
+     * @param maxAmountsIn Expected maximum amounts of tokens to add, sorted in token registration order
      * @param minBptAmountOut Minimum pool tokens expected
      * @param kind Add liquidity kind
      * @param userData Additional (optional) data required for the query
@@ -343,7 +343,7 @@ interface IRouter {
      * @notice Queries removeLiquidity operation without executing it.
      * @param pool Address of the liquidity pool
      * @param maxBptAmountIn Pool tokens provided for the query
-     * @param minAmountsOut Minimum amounts of tokens expected
+     * @param minAmountsOut Expected minimum amounts of assets to receive, sorted in token registration order
      * @param kind Remove liquidity kind
      * @param userData Additional (optional) data required for the query
      * @return bptAmountIn Expected amount of pool tokens to burn
