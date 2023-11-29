@@ -2,21 +2,18 @@
 
 pragma solidity ^0.8.4;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { IVault, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
 
-import { BasePoolFactory } from "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
-
-import { WeightedPool } from "./WeightedPool.sol";
+import "./WeightedPool.sol";
 
 /**
- * @notice General Weighted Pool factory
- * @dev This is the most general factory, which allows up to four tokens and arbitrary weights.
+ * @notice Weighted Pool factory for 80/20 pools.
  */
-contract WeightedPoolFactory is BasePoolFactory {
-    // solhint-disable not-rely-on-time
+contract WeightedPool8020Factory is BasePoolFactory {
+    uint256 private constant _EIGHTY = 8e17; // 80%
+    uint256 private constant _TWENTY = 2e17; // 20%
 
     constructor(
         IVault vault,
@@ -27,28 +24,36 @@ contract WeightedPoolFactory is BasePoolFactory {
 
     /**
      * @notice Deploys a new `WeightedPool`.
-     * @param name The name of the pool
-     * @param symbol The symbol of the pool
-     * @param tokens The tokens that will be registered to the pool
-     * @param normalizedWeights The pool weights (must add to FixedPoint.ONE)
-     * @param salt The salt value that will be passed to create3 deployment
+     * @param name Name of the pool
+     * @param symbol Symbol of the pool
+     * @param highWeightToken The 80% token
+     * @param lowWeightToken The 20% token
+     * @param salt Value passed to create3, used to create the address
      */
     function create(
         string memory name,
         string memory symbol,
-        IERC20[] memory tokens,
-        IRateProvider[] memory rateProviders,
-        uint256[] memory normalizedWeights,
+        IERC20 highWeightToken,
+        IERC20 lowWeightToken,
+        IRateProvider highWeightRateProvider,
+        IRateProvider lowWeightRateProvider,
         bytes32 salt
     ) external returns (address pool) {
+        IERC20[] memory tokens = new IERC20[](2);
+        tokens[0] = highWeightToken;
+        tokens[1] = lowWeightToken;
+
+        IRateProvider[] memory rateProviders = new IRateProvider[](2);
+        rateProviders[0] = highWeightRateProvider;
+        rateProviders[1] = lowWeightRateProvider;
+
+        uint256[] memory weights = new uint256[](2);
+        weights[0] = _EIGHTY;
+        weights[1] = _TWENTY;
+
         pool = _create(
             abi.encode(
-                WeightedPool.NewPoolParams({
-                    name: name,
-                    symbol: symbol,
-                    tokens: tokens,
-                    normalizedWeights: normalizedWeights
-                }),
+                WeightedPool.NewPoolParams({ name: name, symbol: symbol, tokens: tokens, normalizedWeights: weights }),
                 getVault()
             ),
             salt
