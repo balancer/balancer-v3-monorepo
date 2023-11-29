@@ -25,9 +25,6 @@ contract PoolDataTest is Test {
     using ArrayHelpers for address[2];
     using FixedPoint for uint256;
 
-    uint256 constant USDC_RATE = 0.95e18;
-    uint256 constant DAI_RATE = 1.08e18;
-
     VaultMock vault;
     Router router;
     BasicAuthorizerMock authorizer;
@@ -47,8 +44,6 @@ contract PoolDataTest is Test {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         usdcRateProvider = new RateProviderMock();
         daiRateProvider = new RateProviderMock();
-        usdcRateProvider.mockRate(USDC_RATE);
-        daiRateProvider.mockRate(DAI_RATE);
 
         rateProviders[0] = daiRateProvider;
         rateProviders[1] = usdcRateProvider;
@@ -63,26 +58,44 @@ contract PoolDataTest is Test {
         );
     }
 
-    function testPoolData() public {
+    function testPoolData(uint256 daiRate, uint256 usdcRate, bool roundUp) public {
+        vm.assume(daiRate > 0);
+        vm.assume(usdcRate > 0);
+        vm.assume(daiRate <= 100e18);
+        vm.assume(usdcRate <= 100e18);
+
+        daiRateProvider.mockRate(daiRate);
+        usdcRateProvider.mockRate(usdcRate);
+
         // `getPoolData` and `getRawBalances` are functions in VaultMock.
 
-        PoolData memory data = vault.getPoolData(address(pool), Rounding.ROUND_DOWN);
+        PoolData memory data = vault.getPoolData(address(pool), roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN);
 
         uint256[] memory expectedScalingFactors = pool.getScalingFactors();
         uint256[] memory expectedRawBalances = vault.getRawBalances(address(pool));
         uint256[] memory expectedRates = new uint256[](2);
-        expectedRates[0] = DAI_RATE;
-        expectedRates[1] = USDC_RATE;
+        expectedRates[0] = daiRate;
+        expectedRates[1] = usdcRate;
+
+        uint256 expectedLiveBalance;
 
         for (uint256 i = 0; i < expectedRawBalances.length; i++) {
             assertEq(data.decimalScalingFactors[i], expectedScalingFactors[i]);
             assertEq(data.balancesRaw[i], expectedRawBalances[i]);
             assertEq(data.tokenRates[i], expectedRates[i]);
 
-            uint256 expectedLiveBalance = FixedPoint.mulDown(
-                expectedRawBalances[i],
-                expectedScalingFactors[i].mulDown(expectedRates[i])
-            );
+            if (roundUp) {
+                expectedLiveBalance = FixedPoint.mulUp(
+                    expectedRawBalances[i],
+                    expectedScalingFactors[i].mulUp(expectedRates[i])
+                );
+            } else {
+                expectedLiveBalance = FixedPoint.mulDown(
+                    expectedRawBalances[i],
+                    expectedScalingFactors[i].mulDown(expectedRates[i])
+                );
+            }
+
             assertEq(data.balancesLiveScaled18[i], expectedLiveBalance);
         }
 
