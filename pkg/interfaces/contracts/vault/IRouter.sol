@@ -331,10 +331,10 @@ interface IRouter {
      * @notice Queries an `addLiquidityProportional` operation without executing it.
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added
-     * @param exactBptAmountOut Exact pool tokens to be received
+     * @param exactBptAmountOut Expected exact amount of pool tokens to receive
      * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
-     * @param userData Additional (optional) data required for adding liquidity
-     * @return amountsIn Actual amounts of tokens added
+     * @param userData Additional (optional) data required for the query
+     * @return amountsIn Expected amounts of tokens to add
      */
     function queryAddLiquidityProportional(
         address pool,
@@ -348,10 +348,10 @@ interface IRouter {
      * @notice Queries an `addLiquidityUnbalanced` operation without executing it.
      * @param pool Address of the liquidity pool
      * @param exactAmountsIn Exact amounts of tokens to be added
-     * @param minBptAmountOut Minimum amount of pool tokens to be received
+     * @param minBptAmountOut Expected minimum amount of pool tokens to receive
      * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
-     * @param userData Additional (optional) data required for adding liquidity
-     * @return bptAmountOut Pool tokens received
+     * @param userData Additional (optional) data required for the query
+     * @return bptAmountOut Expected pool tokens to receive
      */
     function queryAddLiquidityUnbalanced(
         address pool,
@@ -366,10 +366,10 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param tokenInIndex Index of the token used to add liquidity in the pool's token array
      * @param maxAmountIn Max amount tokens to be added
-     * @param exactBptAmountOut Exact amount of pool tokens to be received
+     * @param exactBptAmountOut Expected exact amount of pool tokens to receive
      * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
-     * @param userData Additional (optional) data required for adding liquidity
-     * @return amountsIn Actual amounts of tokens added
+     * @param userData Additional (optional) data required for the query
+     * @return amountsIn Expected amounts of tokens to add
      */
     function queryAddLiquiditySingleTokenExactOut(
         address pool,
@@ -384,11 +384,11 @@ interface IRouter {
      * @notice Adds liquidity to a pool with a custom request.
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added
-     * @param minBptAmountOut Minimum pool tokens to be received
+     * @param minBptAmountOut Expected minimum pool tokens to receive
      * @param wethIsEth True if native ETH shall be handled in the operation, false otherwise
-     * @param userData Additional (optional) data required for adding liquidity
-     * @return amountsIn Actual amounts of tokens added
-     * @return bptAmountOut Pool tokens received
+     * @param userData Additional (optional) data required for the query
+     * @return amountsIn Expected amounts of tokens to add
+     * @return bptAmountOut Expected amount of pool tokens to receive
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function queryAddLiquidityCustom(
