@@ -72,10 +72,10 @@ interface IRouter {
     }
 
     /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
-    error BptAmountBelowMin();
+    error BptAmountBelowMin(uint256 amount, uint256 limit);
 
     /// @dev A required amountIn exceeds the maximum limit specified in the join.
-    error JoinAboveMax();
+    error JoinAboveMax(uint256 amount, uint256 limit);
 
     /**
      * @notice Adds liquidity to a pool.
