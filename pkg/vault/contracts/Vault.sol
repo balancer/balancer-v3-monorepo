@@ -11,7 +11,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 // solhint-disable-next-line max-line-length
-import { IVault, PoolConfig, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault, PoolConfig, PoolCallbacks, LiquidityManagement, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
@@ -921,21 +921,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 ? balanceRaw.toScaled18ApplyRateRoundUp(poolData.decimalScalingFactors[i], poolData.tokenRates[i])
                 : balanceRaw.toScaled18ApplyRateRoundDown(poolData.decimalScalingFactors[i], poolData.tokenRates[i]);
         }
-    }
-
-    struct PoolData {
-        PoolConfig config;
-        IERC20[] tokens;
-        IRateProvider[] rateProviders;
-        uint256[] balancesRaw;
-        uint256[] balancesLiveScaled18;
-        uint256[] tokenRates;
-        uint256[] decimalScalingFactors;
-    }
-
-    enum Rounding {
-        ROUND_UP,
-        ROUND_DOWN
     }
 
     function _getPoolTokenInfo(

@@ -42,6 +42,21 @@ struct PoolConfig {
     LiquidityManagement liquidityManagement;
 }
 
+struct PoolData {
+    PoolConfig config;
+    IERC20[] tokens;
+    IRateProvider[] rateProviders;
+    uint256[] balancesRaw;
+    uint256[] balancesLiveScaled18;
+    uint256[] tokenRates;
+    uint256[] decimalScalingFactors;
+}
+
+enum Rounding {
+    ROUND_UP,
+    ROUND_DOWN
+}
+
 interface IVault {
     /*******************************************************************************
                         Pool Registration and Initialization
