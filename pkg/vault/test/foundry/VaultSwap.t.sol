@@ -22,6 +22,7 @@ import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
+import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 
 contract VaultSwapTest is Test {
     using AssetHelpers for *;
@@ -30,6 +31,7 @@ contract VaultSwapTest is Test {
     VaultMock vault;
     Router router;
     BasicAuthorizerMock authorizer;
+    RateProviderMock rateProvider;
     ERC20PoolMock pool;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
@@ -48,6 +50,11 @@ contract VaultSwapTest is Test {
         USDC = new ERC20TestToken("USDC", "USDC", 18);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
+        rateProvider = new RateProviderMock();
+        rateProvider.setUnderlyingToken(DAI);
+        rateProvider.setYieldExemptFlag(true);
+
+        rateProviders[0] = rateProvider;
 
         pool = new ERC20PoolMock(
             vault,
@@ -110,6 +117,15 @@ contract VaultSwapTest is Test {
         vault.setProtocolSwapFeePercentage(50e16); // %50
     }
 
+    function testInitialRateProviderState() public {
+        (, , , IRateProvider[] memory rateProviders) = vault.getPoolTokenInfo(address(pool));
+
+        assertEq(address(rateProviders[0]), address(rateProvider));
+        assertEq(address(rateProviders[1]), address(0));
+        assertEq(address(rateProviders[0].getUnderlyingToken()), address(DAI));
+        assertTrue(rateProviders[0].isExemptFromYieldProtocolFee());
+    }
+
     function testCannotSwapWhenPaused() public {
         vm.prank(alice);
         router.initialize(
@@ -151,8 +167,13 @@ contract VaultSwapTest is Test {
         );
     }
 
-    function testSwapGivenIn() public {
+    function testSwapGivenIn(uint64 rate) public {
+        vm.assume(rate >= 1e18);
+        vm.assume(rate <= 10e18);
+
         initPool();
+
+        rateProvider.mockRate(rate);
 
         vm.prank(bob);
         router.swap(
@@ -161,23 +182,26 @@ contract VaultSwapTest is Test {
             address(USDC).asAsset(),
             address(DAI).asAsset(),
             AMOUNT,
-            AMOUNT,
+            (AMOUNT * 1e18) / rate,
             type(uint256).max,
             bytes("")
         );
 
+        uint256 rateAdjustedBobBalance = AMOUNT + ((AMOUNT * 1e18) / rate);
+        uint256 rateAdjustedPoolBalance = AMOUNT - ((AMOUNT * 1e18) / rate);
+
         // assets are transferred to/from Bob
         assertEq(USDC.balanceOf(bob), 0);
-        assertEq(DAI.balanceOf(bob), 2 * AMOUNT);
+        assertEq(DAI.balanceOf(bob), rateAdjustedBobBalance);
 
         // assets are adjusted in the pool
         (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], 0);
+        assertEq(balances[0], rateAdjustedPoolBalance);
         assertEq(balances[1], AMOUNT * 2);
 
         // vault are adjusted balances
-        assertEq(DAI.balanceOf(address(vault)), 0);
-        assertEq(USDC.balanceOf(address(vault)), 2 * AMOUNT);
+        assertEq(DAI.balanceOf(address(vault)), rateAdjustedPoolBalance);
+        assertEq(USDC.balanceOf(address(vault)), AMOUNT * 2);
     }
 
     function testSwapGivenOut() public {
