@@ -79,7 +79,7 @@ contract Router is IRouter, ReentrancyGuard {
         bptAmountOut = _vault.initialize(params.pool, params.sender, tokens, params.exactAmountsIn, params.userData);
 
         if (bptAmountOut < params.minBptAmountOut) {
-            revert BptAmountBelowMin();
+            revert BptAmountBelowMin(bptAmountOut, params.minBptAmountOut);
         }
 
         uint256 ethAmountIn;
@@ -148,16 +148,18 @@ contract Router is IRouter, ReentrancyGuard {
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
         (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
-            params.pool,
-            params.sender,
-            params.maxAmountsIn,
-            params.minBptAmountOut,
-            params.kind,
-            params.userData
+            IVault.AddLiquidityParams({
+                pool: params.pool,
+                to: params.sender,
+                maxAmountsIn: params.maxAmountsIn,
+                minBptAmountOut: params.minBptAmountOut,
+                kind: params.kind,
+                userData: params.userData
+            })
         );
 
         if (bptAmountOut < params.minBptAmountOut) {
-            revert BptAmountBelowMin();
+            revert BptAmountBelowMin(bptAmountOut, params.minBptAmountOut);
         }
 
         uint256 ethAmountIn;
@@ -168,7 +170,7 @@ contract Router is IRouter, ReentrancyGuard {
 
             // TODO: check amounts in for every type.
             if (amountIn > params.maxAmountsIn[i]) {
-                revert JoinAboveMax();
+                revert JoinAboveMax(amountIn, params.maxAmountsIn[i]);
             }
 
             IERC20 token = asset.toIERC20(_weth);
@@ -477,12 +479,14 @@ contract Router is IRouter, ReentrancyGuard {
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
         (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
-            params.pool,
-            params.sender,
-            params.maxAmountsIn,
-            params.minBptAmountOut,
-            params.kind,
-            params.userData
+            IVault.AddLiquidityParams({
+                pool: params.pool,
+                to: params.sender,
+                maxAmountsIn: params.maxAmountsIn,
+                minBptAmountOut: params.minBptAmountOut,
+                kind: params.kind,
+                userData: params.userData
+            })
         );
     }
 
