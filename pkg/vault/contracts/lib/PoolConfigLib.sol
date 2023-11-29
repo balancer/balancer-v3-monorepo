@@ -61,8 +61,7 @@ library PoolConfigLib {
     // Supported liquidity API bit offsets
     uint8 public constant ADD_LIQUIDITY_PROPORTIONAL_OFFSET = POOL_RECOVERY_MODE_OFFSET + 1;
     uint8 public constant ADD_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET = ADD_LIQUIDITY_PROPORTIONAL_OFFSET + 1;
-    uint8 public constant ADD_LIQUIDITY_UNBALANCED_OFFSET = ADD_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET + 1;
-    uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_UNBALANCED_OFFSET + 1;
+    uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET + 1;
     uint8 public constant REMOVE_LIQUIDITY_PROPORTIONAL_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
     uint8 public constant REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET = REMOVE_LIQUIDITY_PROPORTIONAL_OFFSET + 1;
     uint8 public constant REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET =
@@ -159,16 +158,6 @@ library PoolConfigLib {
         }
     }
 
-    function supportsAddLiquidityUnbalanced(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(ADD_LIQUIDITY_UNBALANCED_OFFSET);
-    }
-
-    function requireSupportsAddLiquidityUnbalanced(PoolConfigBits config) internal pure {
-        if (config.supportsAddLiquidityUnbalanced() == false) {
-            revert DoesNotSupportAddLiquidityUnbalanced();
-        }
-    }
-
     function supportsAddLiquidityCustom(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(ADD_LIQUIDITY_CUSTOM_OFFSET);
     }
@@ -251,7 +240,6 @@ library PoolConfigLib {
                     config.liquidityManagement.supportsAddLiquiditySingleTokenExactOut,
                     ADD_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET
                 )
-                .insertBool(config.liquidityManagement.supportsAddLiquidityUnbalanced, ADD_LIQUIDITY_UNBALANCED_OFFSET)
                 .insertBool(config.liquidityManagement.supportsAddLiquidityCustom, ADD_LIQUIDITY_CUSTOM_OFFSET);
         }
 
@@ -332,7 +320,6 @@ library PoolConfigLib {
                 liquidityManagement: LiquidityManagement({
                     supportsAddLiquidityProportional: config.supportsAddLiquidityProportional(),
                     supportsAddLiquiditySingleTokenExactOut: config.supportsAddLiquiditySingleTokenExactOut(),
-                    supportsAddLiquidityUnbalanced: config.supportsAddLiquidityUnbalanced(),
                     supportsAddLiquidityCustom: config.supportsAddLiquidityCustom(),
                     supportsRemoveLiquidityProportional: config.supportsRemoveLiquidityProportional(),
                     supportsRemoveLiquiditySingleTokenExactIn: config.supportsRemoveLiquiditySingleTokenExactIn(),

@@ -42,10 +42,12 @@ interface IBasePool {
                                    Invariant
     ***************************************************************************/
 
-    /// @notice Calculates and returns the pool's invariant.
-    /// @dev This function computes the invariant based on current balances.
-    /// @param balancesScaled18 Array of current pool balances for each token in the pool, scaled to 18 decimals.
-    /// @return invariant The calculated invariant of the pool, represented as a uint256.
+    /**
+     *  @notice Calculates and returns the pool's invariant.
+     *  @dev This function computes the invariant based on current balances.
+     *  @param balancesScaled18 Array of current pool balances for each token in the pool, scaled to 18 decimals.
+     *  @return invariant The calculated invariant of the pool, represented as a uint256.
+     */
     function getInvariant(uint256[] memory balancesScaled18) external view returns (uint256);
 
     /***************************************************************************
