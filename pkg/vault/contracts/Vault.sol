@@ -1108,7 +1108,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 _getSwapFeePercentage(vars.config),
                 IBasePool(params.pool).getInvariant
             );
-            console2.log("bptAmountOut:", bptAmountOut / 1e18);
         } else if (params.kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             _poolConfig[params.pool].requireSupportsAddLiquiditySingleTokenExactOut();
 
