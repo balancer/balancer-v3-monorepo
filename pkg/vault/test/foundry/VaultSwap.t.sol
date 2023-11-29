@@ -16,6 +16,7 @@ import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
@@ -167,13 +168,14 @@ contract VaultSwapTest is Test {
         );
     }
 
-    function testSwapGivenIn(uint64 rate) public {
-        vm.assume(rate >= 1e18);
-        vm.assume(rate <= 10e18);
+    function testSwapGivenIn(uint256 rate) public {
+        rate = bound(rate, 1e18, 10e18);
 
         initPool();
 
         rateProvider.mockRate(rate);
+
+        uint256 rateAdjustedAmount = FixedPoint.divDown(AMOUNT, rate);
 
         vm.prank(bob);
         router.swap(
@@ -182,35 +184,33 @@ contract VaultSwapTest is Test {
             address(USDC).asAsset(),
             address(DAI).asAsset(),
             AMOUNT,
-            (AMOUNT * 1e18) / rate,
+            rateAdjustedAmount,
             type(uint256).max,
             bytes("")
         );
 
-        uint256 rateAdjustedBobBalance = AMOUNT + ((AMOUNT * 1e18) / rate);
-        uint256 rateAdjustedPoolBalance = AMOUNT - ((AMOUNT * 1e18) / rate);
-
         // assets are transferred to/from Bob
         assertEq(USDC.balanceOf(bob), 0);
-        assertEq(DAI.balanceOf(bob), rateAdjustedBobBalance);
+        assertEq(DAI.balanceOf(bob), AMOUNT + rateAdjustedAmount);
 
         // assets are adjusted in the pool
         (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], rateAdjustedPoolBalance);
+        assertEq(balances[0], AMOUNT - rateAdjustedAmount);
         assertEq(balances[1], AMOUNT * 2);
 
         // vault are adjusted balances
-        assertEq(DAI.balanceOf(address(vault)), rateAdjustedPoolBalance);
+        assertEq(DAI.balanceOf(address(vault)), AMOUNT - rateAdjustedAmount);
         assertEq(USDC.balanceOf(address(vault)), AMOUNT * 2);
     }
 
-    function testSwapGivenOut(uint64 rate) public {
-        vm.assume(rate >= 1e18);
-        vm.assume(rate <= 10e18);
+    function testSwapGivenOut(uint256 rate) public {
+        rate = bound(rate, 1e18, 10e18);
 
         initPool();
 
         rateProvider.mockRate(rate);
+
+        uint256 rateAdjustedAmount = FixedPoint.divDown(AMOUNT, rate);
 
         vm.prank(bob);
         router.swap(
@@ -218,27 +218,25 @@ contract VaultSwapTest is Test {
             address(pool),
             address(USDC).asAsset(),
             address(DAI).asAsset(),
-            (AMOUNT * 1e18) / rate,
+            rateAdjustedAmount,
             AMOUNT,
             type(uint256).max,
             bytes("")
         );
 
-        uint256 rateAdjustedBobBalance = AMOUNT + ((AMOUNT * 1e18) / rate);
-        uint256 rateAdjustedPoolBalance = AMOUNT - ((AMOUNT * 1e18) / rate);
         uint256 DELTA = 10;
 
         // asssets are transferred to/from Bob
         assertApproxEqAbs(USDC.balanceOf(bob), 0, DELTA);
-        assertEq(DAI.balanceOf(bob), rateAdjustedBobBalance);
+        assertEq(DAI.balanceOf(bob), AMOUNT + rateAdjustedAmount);
 
         // assets are adjusted in the pool
         (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], rateAdjustedPoolBalance);
+        assertEq(balances[0], AMOUNT - rateAdjustedAmount);
         assertApproxEqAbs(balances[1], AMOUNT * 2, DELTA);
 
         // vault are adjusted balances
-        assertEq(DAI.balanceOf(address(vault)), rateAdjustedPoolBalance);
+        assertEq(DAI.balanceOf(address(vault)), AMOUNT - rateAdjustedAmount);
         assertApproxEqAbs(USDC.balanceOf(address(vault)), 2 * AMOUNT, DELTA);
     }
 
