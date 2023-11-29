@@ -429,28 +429,36 @@ interface IVault {
     error TokenNotRegistered();
 
     /**
-     * @notice Adds liquidity to a pool.
-     * @dev Caution should be exercised when adding liquidity because the Vault has the capability
-     * to transfer tokens from any user, given that it holds all allowances.
-     *
+     * @dev Data for a add liquidity operation.
      * @param pool Address of the pool
      * @param to  Address of user to mint to
      * @param maxAmountsIn Maximum amounts of input tokens
      * @param minBptAmountOut Minimum amount of output pool tokens
      * @param kind Add liquidity kind
      * @param userData Additional (optional) user data
+     */
+    struct AddLiquidityParams {
+        address pool;
+        address to;
+        uint256[] maxAmountsIn;
+        uint256 minBptAmountOut;
+        AddLiquidityKind kind;
+        bytes userData;
+    }
+
+    /**
+     * @notice Adds liquidity to a pool.
+     * @dev Caution should be exercised when adding liquidity because the Vault has the capability
+     * to transfer tokens from any user, given that it holds all allowances.
+     *
+     * @param params Parameters for the add liquidity (see above for struct definition)
      * @return amountsIn Actual amounts of input assets
      * @return bptAmountOut Output pool token amount
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
-    function addLiquidity(
-        address pool,
-        address to,
-        uint256[] memory maxAmountsIn,
-        uint256 minBptAmountOut,
-        AddLiquidityKind kind,
-        bytes memory userData
-    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
+    function addLiquidity(AddLiquidityParams memory params)
+        external
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
     /***************************************************************************
                                  Remove Liquidity
