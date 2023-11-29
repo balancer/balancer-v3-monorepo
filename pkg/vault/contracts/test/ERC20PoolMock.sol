@@ -54,7 +54,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
     }
 
     function getInvariant(uint256[] memory balancesScaled18) external pure returns (uint256) {
-        return balancesScaled18[0];
+        return balancesScaled18[0] > 0 ? balancesScaled18[0] : balancesScaled18[1];
     }
 
     function setFailOnAfterSwapCallback(bool fail) external {
@@ -166,15 +166,6 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         uint256[] memory currentBalances
     ) external pure override returns (uint256 amountOut) {
         amountOut = currentBalances[tokenOutIndex];
-    }
-
-    function onRemoveLiquiditySingleTokenExactOut(
-        address sender,
-        uint256,
-        uint256,
-        uint256[] memory
-    ) external view override returns (uint256 bptAmountIn) {
-        return balanceOf(sender);
     }
 
     function onRemoveLiquidityCustom(

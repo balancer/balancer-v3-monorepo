@@ -154,15 +154,6 @@ contract PoolMock is BasePool {
         revert CallbackNotImplemented();
     }
 
-    function onRemoveLiquiditySingleTokenExactOut(
-        address,
-        uint256,
-        uint256,
-        uint256[] memory
-    ) external pure override returns (uint256) {
-        revert CallbackNotImplemented();
-    }
-
     function onRemoveLiquidityCustom(
         address,
         uint256,
