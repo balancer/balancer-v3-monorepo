@@ -244,6 +244,13 @@ describe('Vault', function () {
         await rateProvider.setUnderlyingToken(ANY_ADDRESS);
         expect(await rateProvider.getUnderlyingToken()).to.eq(ANY_ADDRESS);
       });
+
+      it('rate providers support exempt flags', async () => {
+        expect(await rateProvider.isExemptFromYieldProtocolFee()).be.false;
+
+        await rateProvider.setYieldExemptFlag(true);
+        expect(await rateProvider.isExemptFromYieldProtocolFee()).to.be.true;
+      });
     });
 
     describe('pausing pools', () => {
