@@ -44,9 +44,9 @@ interface IBasePool {
 
     /**
      *  @notice Calculates and returns the pool's invariant.
-     *  @dev This function computes the invariant based on current balances.
-     *  @param balancesScaled18 Array of current pool balances for each token in the pool, scaled to 18 decimals.
-     *  @return invariant The calculated invariant of the pool, represented as a uint256.
+     *  @dev This function computes the invariant based on current balances
+     *  @param balancesScaled18 Array of current pool balances for each token in the pool, scaled to 18 decimals
+     *  @return invariant The calculated invariant of the pool, represented as a uint256
      */
     function getInvariant(uint256[] memory balancesScaled18) external view returns (uint256);
 
@@ -159,22 +159,6 @@ interface IBasePool {
         uint256 exactBptAmountIn,
         uint256[] memory currentBalances
     ) external returns (uint256 amountOutScaled18);
-
-    /**
-     * @notice Remove liquidity from the pool, specifying exact amount out for a single token.
-     * @param sender Address of the sender
-     * @param tokenOutIndex Index of the token to receive in exchange for pool tokens, corresponding to the token
-     * address in the pool's registered token array
-     * @param exactAmountOutScaled18 Exact amount of tokens to receive
-     * @param currentBalances Current pool balances, in the same order as the tokens registered in the pool
-     * @return bptAmountIn Amount of pool tokens to burn
-     */
-    function onRemoveLiquiditySingleTokenExactOut(
-        address sender,
-        uint256 tokenOutIndex,
-        uint256 exactAmountOutScaled18,
-        uint256[] memory currentBalances
-    ) external returns (uint256 bptAmountIn);
 
     /**
      * @notice Remove liquidity from the pool with a custom handler.
