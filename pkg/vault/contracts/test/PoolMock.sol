@@ -92,6 +92,10 @@ contract PoolMock is BasePool {
         return _numTokens;
     }
 
+    function getInvariant(uint256[] memory) external view returns (uint256) {
+        return 0;
+    }
+
     /// @dev Even though pools do not handle scaling, we still need this for the tests.
     function getScalingFactors() external view returns (uint256[] memory scalingFactors) {
         IERC20[] memory tokens = _vault.getPoolTokens(address(this));
@@ -110,14 +114,6 @@ contract PoolMock is BasePool {
         bytes memory
     ) external pure override returns (bool) {
         return true;
-    }
-
-    function onAddLiquidityUnbalanced(
-        address,
-        uint256[] memory exactAmountsIn,
-        uint256[] memory
-    ) external pure override returns (uint256) {
-        return exactAmountsIn[0];
     }
 
     function onAddLiquiditySingleTokenExactOut(
