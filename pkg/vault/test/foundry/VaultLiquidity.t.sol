@@ -16,6 +16,7 @@ import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
+import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
@@ -37,6 +38,7 @@ contract VaultLiquidityTest is Test {
     VaultMock vault;
     Router router;
     BasicAuthorizerMock authorizer;
+    RateProviderMock rateProvider;
     ERC20PoolMock pool;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
@@ -53,6 +55,8 @@ contract VaultLiquidityTest is Test {
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
+        rateProvider = new RateProviderMock();
+        rateProviders[0] = rateProvider;
 
         pool = new ERC20PoolMock(
             vault,
@@ -90,7 +94,14 @@ contract VaultLiquidityTest is Test {
         vm.label(address(DAI), "DAI");
     }
 
-    function testAddLiquidityProportional() public {
+    function testAddLiquidityProportional(uint256 rate) public {
+        rate = bound(rate, 1e18, 10e18);
+        rateProvider.mockRate(rate);
+
+        // Check that it's using the rate provider
+        (, , , IRateProvider[] memory rateProviders) = vault.getPoolTokenInfo(address(pool));
+        assertEq(address(rateProviders[0]), address(rateProvider));
+
         // Use a different account to initialize so that the main LP is clean at the start of the test.
         _mockInitialize(bob);
 
@@ -116,7 +127,10 @@ contract VaultLiquidityTest is Test {
         assertEq(bptAmountOut, DAI_AMOUNT_IN);
     }
 
-    function testAddLiquidityUnbalanced() public {
+    function testAddLiquidityUnbalanced(uint256 rate) public {
+        rate = bound(rate, 1e18, 10e18);
+        rateProvider.mockRate(rate);
+
         // Use a different account to initialize so that the main LP is clean at the start of the test.
         _mockInitialize(bob);
 
@@ -139,10 +153,13 @@ contract VaultLiquidityTest is Test {
         _compareBalancesAddLiquidity(balancesBefore, balancesAfter, amountsIn, bptAmountOut);
 
         // should mint correct amount of BPT tokens
-        assertEq(bptAmountOut, DAI_AMOUNT_IN);
+        assertEq(bptAmountOut, (DAI_AMOUNT_IN * rate) / 1e18);
     }
 
-    function testAddLiquiditySingleTokenExactOut() public {
+    function testAddLiquiditySingleTokenExactOut(uint256 rate) public {
+        rate = bound(rate, 1e18, 10e18);
+        rateProvider.mockRate(rate);
+
         // Use a different account to initialize so that the main LP is clean at the start of the test.
         _mockInitialize(bob);
 
@@ -168,7 +185,10 @@ contract VaultLiquidityTest is Test {
         assertEq(bptAmountOut, DAI_AMOUNT_IN);
     }
 
-    function testAddLiquidityCustom() public {
+    function testAddLiquidityCustom(uint256 rate) public {
+        rate = bound(rate, 1e18, 10e18);
+        rateProvider.mockRate(rate);
+
         // Use a different account to initialize so that the main LP is clean at the start of the test.
         _mockInitialize(bob);
 
@@ -208,7 +228,10 @@ contract VaultLiquidityTest is Test {
         );
     }
 
-    function testRemoveLiquidityProportional() public {
+    function testRemoveLiquidityProportional(uint256 rate) public {
+        rate = bound(rate, 1e18, 10e18);
+        rateProvider.mockRate(rate);
+
         // Use a different account to initialize so that the main LP is clean at the start of the test.
         _mockInitialize(bob);
 
@@ -229,7 +252,7 @@ contract VaultLiquidityTest is Test {
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             DAI_AMOUNT_IN,
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
+            [uint256(DAI_AMOUNT_IN) / rate, uint256(USDC_AMOUNT_IN) / rate].toMemoryArray(),
             IVault.RemoveLiquidityKind.PROPORTIONAL,
             bytes("")
         );
@@ -238,14 +261,17 @@ contract VaultLiquidityTest is Test {
 
         Balances memory balancesAfter = _getBalances(alice);
 
-        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, amountsOut);
+        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, bptAmountIn, amountsOut);
 
         // amountsOut are correct
-        assertEq(amountsOut[0], DAI_AMOUNT_IN);
-        assertEq(amountsOut[1], USDC_AMOUNT_IN);
+        assertApproxEqAbs(amountsOut[0], (DAI_AMOUNT_IN * 1e18) / rate, 1e6);
+        assertApproxEqAbs(amountsOut[1], (USDC_AMOUNT_IN * 1e18) / rate, 1e3);
     }
 
-    function testRemoveLiquiditySingleTokenExactIn() public {
+    function testRemoveLiquiditySingleTokenExactIn(uint256 rate) public {
+        rate = bound(rate, 1e18, 10e18);
+        rateProvider.mockRate(rate);
+
         // Use a different account to initialize so that the main LP is clean at the start of the test.
         _mockInitialize(bob);
 
@@ -261,6 +287,7 @@ contract VaultLiquidityTest is Test {
         );
 
         Balances memory balancesBefore = _getBalances(alice);
+        console.log("Before: %s", balancesBefore.userBpt);
 
         (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidity(
             address(pool),
@@ -275,14 +302,24 @@ contract VaultLiquidityTest is Test {
 
         Balances memory balancesAfter = _getBalances(alice);
 
-        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, amountsOut);
+        console.log("Raw BPT IN: %s", bptAmountIn);
+        _compareBalancesRemoveLiquidity(
+            balancesBefore,
+            balancesAfter,
+            (bptAmountIn * rate) / 1e18,
+            bptAmountIn,
+            amountsOut
+        );
 
         // amountsOut are correct (takes out initial liquidity as well)
         assertEq(amountsOut[0], DAI_AMOUNT_IN * 2);
         assertEq(amountsOut[1], 0);
     }
 
-    function testRemoveLiquiditySingleTokenExactOut() public {
+    function testRemoveLiquiditySingleTokenExactOut(uint256 rate) public {
+        rate = bound(rate, 1e18, 10e18);
+        rateProvider.mockRate(rate);
+
         // Use a different account to initialize so that the main LP is clean at the start of the test.
         _mockInitialize(bob);
 
@@ -312,14 +349,17 @@ contract VaultLiquidityTest is Test {
 
         Balances memory balancesAfter = _getBalances(alice);
 
-        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, amountsOut);
+        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, bptAmountIn, amountsOut);
 
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN);
         assertEq(amountsOut[1], 0);
     }
 
-    function testRemoveLiquidityCustom() public {
+    function testRemoveLiquidityCustom(uint256 rate) public {
+        rate = bound(rate, 1e18, 10e18);
+        rateProvider.mockRate(rate);
+
         // Use a different account to initialize so that the main LP is clean at the start of the test.
         _mockInitialize(bob);
 
@@ -349,7 +389,13 @@ contract VaultLiquidityTest is Test {
 
         Balances memory balancesAfter = _getBalances(alice);
 
-        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, amountsOut);
+        _compareBalancesRemoveLiquidity(
+            balancesBefore,
+            balancesAfter,
+            (bptAmountIn * rate) / 1e18,
+            bptAmountIn,
+            amountsOut
+        );
 
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN);
@@ -437,6 +483,7 @@ contract VaultLiquidityTest is Test {
         Balances memory balancesBefore,
         Balances memory balancesAfter,
         uint256 bptAmountIn,
+        uint256 rawBptAmountIn,
         uint256[] memory amountsOut
     ) internal {
         // Assets are transferred back to user
@@ -463,8 +510,11 @@ contract VaultLiquidityTest is Test {
             "Remove - Pool balance: token 1"
         );
 
+        console.log("Before: %s,%s", balancesBefore.userBpt, bptAmountIn);
+
         // User has burnt the correct amount of BPT
         assertEq(balancesBefore.userBpt, bptAmountIn, "Remove - User BPT balance before");
-        assertEq(balancesAfter.userBpt, 0, "Remove - User BPT balance after");
+        // Assumes rate >= 1
+        assertEq(balancesAfter.userBpt, bptAmountIn - rawBptAmountIn, "Remove - User BPT balance after");
     }
 }
