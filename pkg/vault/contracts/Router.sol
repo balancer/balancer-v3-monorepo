@@ -219,7 +219,7 @@ contract Router is IRouter, ReentrancyGuard {
     /**
      * @notice Callback for removing liquidity.
      * @dev Can only be called by the Vault.
-     * @param params Remove liquiity parameters (see IRouter for struct definition)
+     * @param params Remove liquidity parameters (see IRouter for struct definition)
      * @return bptAmountIn BPT amount burned for the output tokens
      * @return amountsOut Actual token amounts transferred in exchange for the BPT
      * @return returnData Arbitrary (optional) data with encoded response from the pool
@@ -233,12 +233,14 @@ contract Router is IRouter, ReentrancyGuard {
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
     {
         (bptAmountIn, amountsOut, returnData) = _vault.removeLiquidity(
-            params.pool,
-            params.sender,
-            params.maxBptAmountIn,
-            params.minAmountsOut,
-            params.kind,
-            params.userData
+            IVault.RemoveLiquidityParams({
+                pool: params.pool,
+                from: params.sender,
+                maxBptAmountIn: params.maxBptAmountIn,
+                minAmountsOut: params.minAmountsOut,
+                kind: params.kind,
+                userData: params.userData
+            })
         );
 
         uint256 ethAmountOut;
@@ -539,12 +541,14 @@ contract Router is IRouter, ReentrancyGuard {
     {
         return
             _vault.removeLiquidity(
-                params.pool,
-                params.sender,
-                params.maxBptAmountIn,
-                params.minAmountsOut,
-                params.kind,
-                params.userData
+                IVault.RemoveLiquidityParams({
+                    pool: params.pool,
+                    from: params.sender,
+                    maxBptAmountIn: params.maxBptAmountIn,
+                    minAmountsOut: params.minAmountsOut,
+                    kind: params.kind,
+                    userData: params.userData
+                })
             );
     }
 }
