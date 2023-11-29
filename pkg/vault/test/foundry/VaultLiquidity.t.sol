@@ -16,8 +16,9 @@ import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
-import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
@@ -153,7 +154,7 @@ contract VaultLiquidityTest is Test {
         _compareBalancesAddLiquidity(balancesBefore, balancesAfter, amountsIn, bptAmountOut);
 
         // should mint correct amount of BPT tokens
-        assertEq(bptAmountOut, (DAI_AMOUNT_IN * rate) / 1e18);
+        assertEq(bptAmountOut, FixedPoint.mulDown(DAI_AMOUNT_IN, rate));
     }
 
     function testAddLiquiditySingleTokenExactOut(uint256 rate) public {
@@ -264,8 +265,8 @@ contract VaultLiquidityTest is Test {
         _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, bptAmountIn, amountsOut);
 
         // amountsOut are correct
-        assertApproxEqAbs(amountsOut[0], (DAI_AMOUNT_IN * 1e18) / rate, 1e6);
-        assertApproxEqAbs(amountsOut[1], (USDC_AMOUNT_IN * 1e18) / rate, 1e3);
+        assertApproxEqAbs(amountsOut[0], FixedPoint.divDown(DAI_AMOUNT_IN, rate), 1e6);
+        assertApproxEqAbs(amountsOut[1], FixedPoint.divDown(USDC_AMOUNT_IN, rate), 1e3);
     }
 
     function testRemoveLiquiditySingleTokenExactIn(uint256 rate) public {
@@ -306,7 +307,7 @@ contract VaultLiquidityTest is Test {
         _compareBalancesRemoveLiquidity(
             balancesBefore,
             balancesAfter,
-            (bptAmountIn * rate) / 1e18,
+            FixedPoint.mulDown(bptAmountIn, rate),
             bptAmountIn,
             amountsOut
         );
@@ -392,7 +393,7 @@ contract VaultLiquidityTest is Test {
         _compareBalancesRemoveLiquidity(
             balancesBefore,
             balancesAfter,
-            (bptAmountIn * rate) / 1e18,
+            FixedPoint.mulDown(bptAmountIn, rate),
             bptAmountIn,
             amountsOut
         );
