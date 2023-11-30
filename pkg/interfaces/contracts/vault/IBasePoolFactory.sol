@@ -31,6 +31,14 @@ interface IBasePoolFactory is IAuthentication {
     function getDeploymentAddress(bytes32 salt) external view returns (address);
 
     /**
+     * @notice Return whether the generated salt will include the chainId (ensuring the address will be different
+     * on each chain).
+     *
+     * @return Whether the chainId will be incorporated into the generated salt
+     */
+    function hasCrossChainDeploymentProtection() external view returns (bool);
+
+    /**
      * @notice Check whether this factory has been disabled by governance.
      * @return  True if this factory was disabled
      */

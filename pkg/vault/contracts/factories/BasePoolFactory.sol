@@ -23,6 +23,8 @@ import { FactoryWidePauseWindow } from "./FactoryWidePauseWindow.sol";
  * prevent the creation of any future pools from the factory.
  */
 abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, FactoryWidePauseWindow {
+    bool private immutable _crossChainDeploymentProtection;
+
     mapping(address => bool) private _isPoolFromFactory;
     bool private _disabled;
 
@@ -32,9 +34,11 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     constructor(
         IVault vault,
         uint256 pauseWindowDuration,
+        bool crossChainDeploymentProtection,
         bytes memory creationCode
     ) SingletonAuthentication(vault) FactoryWidePauseWindow(pauseWindowDuration) {
         _creationCode = creationCode;
+        _crossChainDeploymentProtection = crossChainDeploymentProtection;
     }
 
     /// @inheritdoc IBasePoolFactory
@@ -49,7 +53,12 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
 
     /// @inheritdoc IBasePoolFactory
     function getDeploymentAddress(bytes32 salt) external view returns (address) {
-        return CREATE3.getDeployed(salt);
+        return CREATE3.getDeployed(_computeFinalSalt(salt));
+    }
+
+    /// @inheritdoc IBasePoolFactory
+    function hasCrossChainDeploymentProtection() public view returns (bool) {
+        return _crossChainDeploymentProtection;
     }
 
     /// @inheritdoc IBasePoolFactory
@@ -75,7 +84,13 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         emit PoolCreated(pool);
     }
 
+    function _computeFinalSalt(bytes32 salt) internal view returns (bytes32) {
+        uint256 chainByte = _crossChainDeploymentProtection ? block.chainid : 0;
+
+        return keccak256(abi.encode(msg.sender, chainByte, salt));
+    }
+
     function _create(bytes memory constructorArgs, bytes32 salt) internal returns (address) {
-        return CREATE3.deploy(salt, abi.encodePacked(_creationCode, constructorArgs), 0);
+        return CREATE3.deploy(_computeFinalSalt(salt), abi.encodePacked(_creationCode, constructorArgs), 0);
     }
 }
