@@ -22,6 +22,7 @@ import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
+import { RouterAdaptor } from "../../contracts/test/RouterAdaptor.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
 contract VaultSwapTest is Test {
@@ -30,9 +31,10 @@ contract VaultSwapTest is Test {
     using AssetHelpers for address[];
     using ArrayHelpers for address[2];
     using ArrayHelpers for uint256[2];
+    using RouterAdaptor for IRouter;
 
     VaultMock vault;
-    Router router;
+    IRouter router;
     BasicAuthorizerMock authorizer;
     ERC20PoolMock pool;
     ERC20TestToken USDC;
@@ -165,13 +167,7 @@ contract VaultSwapTest is Test {
 
         vm.prank(bob);
         // Doesn't fail, does not call callbacks
-        _addLiquidity(
-            address(pool),
-            _getSuitableMaxInputs(kind),
-            initialBptSupply,
-            kind,
-            bytes("")
-        );
+        router.addLiquidity(address(pool), _getSuitableMaxInputs(kind), initialBptSupply, kind, bytes(""));
     }
 
     /// forge-config: default.fuzz.runs = 32
@@ -198,13 +194,7 @@ contract VaultSwapTest is Test {
                 bytes("")
             )
         );
-        _addLiquidity(
-            address(pool),
-            maxInputs,
-            initialBptSupply,
-            kind,
-            bytes("")
-        );
+        router.addLiquidity(address(pool), maxInputs, initialBptSupply, kind, bytes(""));
     }
 
     // Before remove
@@ -220,13 +210,7 @@ contract VaultSwapTest is Test {
         // Alice has LP tokens from initialization
         vm.prank(alice);
         // Doesn't fail, does not call callbacks
-        _removeLiquidity(
-            address(pool),
-            bptBalance,
-            _getSuitableMinOutputs(kind),
-            kind,
-            bytes("")
-        );
+        router.removeLiquidity(address(pool), bptBalance, _getSuitableMinOutputs(kind), kind, bytes(""));
     }
 
     /// forge-config: default.fuzz.runs = 32
@@ -255,13 +239,7 @@ contract VaultSwapTest is Test {
                 bytes("")
             )
         );
-        _removeLiquidity(
-            address(pool),
-            bptBalance,
-            _getSuitableMinOutputs(kind),
-            kind,
-            bytes("")
-        );
+        router.removeLiquidity(address(pool), bptBalance, _getSuitableMinOutputs(kind), kind, bytes(""));
     }
 
     // After add
@@ -275,13 +253,7 @@ contract VaultSwapTest is Test {
 
         vm.prank(bob);
         // Doesn't fail, does not call callbacks
-        _addLiquidity(
-            address(pool),
-            _getSuitableMaxInputs(kind),
-            initialBptSupply,
-            kind,
-            bytes("")
-        );
+        router.addLiquidity(address(pool), _getSuitableMaxInputs(kind), initialBptSupply, kind, bytes(""));
     }
 
     /// forge-config: default.fuzz.runs = 32
@@ -300,7 +272,7 @@ contract VaultSwapTest is Test {
         // Dry run to get actual amounts in and bpt out from the operation
         uint256 snapshot = vm.snapshot();
         vm.prank(bob);
-        (amountsIn, bptAmountOut) = _addLiquidity(
+        (amountsIn, bptAmountOut) = router.addLiquidity(
             address(pool),
             _getSuitableMaxInputs(kind),
             initialBptSupply,
@@ -321,13 +293,7 @@ contract VaultSwapTest is Test {
                 bytes("")
             )
         );
-        _addLiquidity(
-            address(pool),
-            _getSuitableMaxInputs(kind),
-            initialBptSupply,
-            kind,
-            bytes("")
-        );
+        router.addLiquidity(address(pool), _getSuitableMaxInputs(kind), initialBptSupply, kind, bytes(""));
     }
 
     // After remove
@@ -343,13 +309,7 @@ contract VaultSwapTest is Test {
         // Alice has LP tokens from initialization
         vm.prank(alice);
         // Doesn't fail, does not call callbacks
-        _removeLiquidity(
-            address(pool),
-            bptBalance,
-            _getSuitableMinOutputs(kind),
-            kind,
-            bytes("")
-        );
+        router.removeLiquidity(address(pool), bptBalance, _getSuitableMinOutputs(kind), kind, bytes(""));
     }
 
     /// forge-config: default.fuzz.runs = 32
@@ -372,7 +332,7 @@ contract VaultSwapTest is Test {
         uint256 snapshot = vm.snapshot();
         // Alice has LP tokens from initialization
         vm.prank(alice);
-        (bptAmountIn, amountsOut) = _removeLiquidity(
+        (bptAmountIn, amountsOut) = router.removeLiquidity(
             address(pool),
             bptBalance,
             _getSuitableMinOutputs(kind),
@@ -393,13 +353,7 @@ contract VaultSwapTest is Test {
                 bytes("")
             )
         );
-        _removeLiquidity(
-            address(pool),
-            bptBalance,
-            _getSuitableMinOutputs(kind),
-            kind,
-            bytes("")
-        );
+        router.removeLiquidity(address(pool), bptBalance, _getSuitableMinOutputs(kind), kind, bytes(""));
     }
 
     // Helpers
@@ -423,52 +377,6 @@ contract VaultSwapTest is Test {
         } else {
             // In proportional it's not possible to extract all the tokens given that some BPT is sent to address(0).
             minOutputs = [DAI_AMOUNT_IN / 10, USDC_AMOUNT_IN / 10].toMemoryArray();
-        }
-    }
-
-    function _addLiquidity(
-        address _pool,
-        uint256[] memory maxAmountsIn,
-        uint256 minBptAmountOut,
-        IVault.AddLiquidityKind kind,
-        bytes memory userData
-    ) internal  returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
-        if (kind == IVault.AddLiquidityKind.PROPORTIONAL) {
-            bptAmountOut = minBptAmountOut;
-            amountsIn = router.addLiquidityProportional(_pool, maxAmountsIn, minBptAmountOut, false, userData);
-        } else if (kind == IVault.AddLiquidityKind.UNBALANCED) {
-            amountsIn = maxAmountsIn;
-            bptAmountOut = router.addLiquidityUnbalanced(_pool, maxAmountsIn, minBptAmountOut, false, userData);
-        } else if (kind == IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
-            bptAmountOut = minBptAmountOut;
-            amountsIn = router.addLiquiditySingleTokenExactOut(_pool, 0, maxAmountsIn[0], minBptAmountOut, false, userData);
-        } else if (kind == IVault.AddLiquidityKind.CUSTOM) {
-            (amountsIn, bptAmountOut,) = router.addLiquidityCustom(_pool, maxAmountsIn, minBptAmountOut, false, userData);
-        } else {
-            revert("Unhandled add liquidity kind");
-        }
-    }
-
-    function _removeLiquidity(
-        address _pool,
-        uint256 maxBptAmountIn,
-        uint256[] memory minAmountsOut,
-        IVault.RemoveLiquidityKind kind,
-        bytes memory userData
-    ) internal returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
-        if (kind == IVault.RemoveLiquidityKind.PROPORTIONAL) {
-            bptAmountIn = maxBptAmountIn;
-            amountsOut = router.removeLiquidityProportional(_pool, maxBptAmountIn, minAmountsOut, false, userData);
-        } else if (kind == IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN) {
-            bptAmountIn = maxBptAmountIn;
-            amountsOut = router.removeLiquiditySingleTokenExactIn(_pool, maxBptAmountIn, 0, minAmountsOut[0], false, userData);
-        } else if (kind == IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
-            amountsOut = minAmountsOut;
-            bptAmountIn = router.removeLiquiditySingleTokenExactOut(_pool, maxBptAmountIn, 0, minAmountsOut[0], false, userData);
-        } else if (kind == IVault.RemoveLiquidityKind.CUSTOM) {
-            (bptAmountIn, amountsOut, ) = router.removeLiquidityCustom(_pool, maxBptAmountIn, minAmountsOut, false, userData);
-        } else {
-            revert("Unhandled remove liquidity kind");
         }
     }
 }

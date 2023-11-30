@@ -96,11 +96,18 @@ contract Router is IRouter, ReentrancyGuard {
 
             // There can be only one WETH token in the pool
             if (params.wethIsEth && address(token) == address(_weth)) {
+                if (msg.value < amountIn) {
+                    revert InsufficientEth();
+                }
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
+                // transfer WETH from the router to the Vault
+                IERC20(_weth).approve(address(_vault), amountIn);
+                _vault.retrieve(_weth, address(this), amountIn);
+            } else {
+                // transfer tokens from the user to the Vault
+                _vault.retrieve(token, params.sender, amountIn);
             }
-            // transfer tokens from the user to the Vault
-            _vault.retrieve(token, params.sender, amountIn);
         }
 
         // return ETH dust

@@ -17,6 +17,7 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
+import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 
@@ -37,18 +38,22 @@ contract RouterTest is Test {
     Router router;
     BasicAuthorizerMock authorizer;
     ERC20PoolMock pool;
+    ERC20PoolMock wethPool;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
+    WETHTestToken WETH;
     address alice = vm.addr(1);
     address bob = vm.addr(2);
 
     uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
+    uint256 constant ETH_AMOUNT_IN = 1e3 ether;
 
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
-        router = new Router(IVault(vault), address(0));
+        WETH = new WETHTestToken();
+        router = new Router(IVault(vault), address(WETH));
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
@@ -63,17 +68,29 @@ contract RouterTest is Test {
             365 days,
             address(0)
         );
+        wethPool = new ERC20PoolMock(
+            vault,
+            "ERC20 WETH Pool",
+            "ERC20POOL",
+            [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
+            true,
+            365 days,
+            address(0)
+        );
 
         USDC.mint(bob, USDC_AMOUNT_IN);
         DAI.mint(bob, DAI_AMOUNT_IN);
+        vm.deal(bob, ETH_AMOUNT_IN);
 
         USDC.mint(alice, USDC_AMOUNT_IN);
         DAI.mint(alice, DAI_AMOUNT_IN);
+        vm.deal(alice, ETH_AMOUNT_IN);
 
         vm.startPrank(bob);
 
         USDC.approve(address(vault), type(uint256).max);
         DAI.approve(address(vault), type(uint256).max);
+        WETH.approve(address(vault), type(uint256).max);
 
         vm.stopPrank();
 
@@ -81,6 +98,7 @@ contract RouterTest is Test {
 
         USDC.approve(address(vault), type(uint256).max);
         DAI.approve(address(vault), type(uint256).max);
+        WETH.approve(address(vault), type(uint256).max);
 
         vm.stopPrank();
 
@@ -147,5 +165,86 @@ contract RouterTest is Test {
             USDC_AMOUNT_IN,
             bytes("")
         );
+    }
+
+    function testInitializeWETHNoBalance() public {
+        require(WETH.balanceOf(alice) == 0);
+
+        vm.prank(alice);
+        bool ethIsWeth = false;
+        // Revert when sending ETH while ethIsWeth is false (caller holds no WETH).
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, alice, 0, ETH_AMOUNT_IN)
+        );
+        router.initialize{ value: ETH_AMOUNT_IN }(
+            address(wethPool),
+            [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
+            [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
+            0,
+            ethIsWeth,
+            bytes("")
+        );
+    }
+
+    function testInitializeWETH() public {
+        vm.startPrank(alice);
+        WETH.deposit{ value: ETH_AMOUNT_IN }();
+        // Alice holds WETH, but no pool tokens.
+        require(WETH.balanceOf(alice) == ETH_AMOUNT_IN);
+        require(wethPool.balanceOf(alice) == 0);
+
+        bool ethIsWeth = false;
+        router.initialize(
+            address(wethPool),
+            [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
+            [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
+            0,
+            ethIsWeth,
+            bytes("")
+        );
+
+        // WETH was deposited, pool tokens were minted to Alice.
+        assertEq(WETH.balanceOf(alice), 0);
+        assertGt(wethPool.balanceOf(alice), 0);
+    }
+
+    function testInitializeNativeNoBalance() public {
+        vm.startPrank(alice);
+        WETH.deposit{ value: ETH_AMOUNT_IN }();
+        require(WETH.balanceOf(alice) == ETH_AMOUNT_IN);
+        require(alice.balance < ETH_AMOUNT_IN);
+        require(wethPool.balanceOf(alice) == 0);
+
+        bool ethIsWeth = true;
+        // Caller does not have enough ETH, even if they hold WETH.
+        vm.expectRevert(abi.encodeWithSelector(IRouter.InsufficientEth.selector));
+        router.initialize(
+            address(wethPool),
+            [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
+            [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
+            0,
+            ethIsWeth,
+            bytes("")
+        );
+    }
+
+    function testInitializeNative() public {
+        vm.startPrank(alice);
+        require(address(alice).balance >= ETH_AMOUNT_IN);
+        require(wethPool.balanceOf(alice) == 0);
+
+        bool ethIsWeth = true;
+        router.initialize{ value: ETH_AMOUNT_IN }(
+            address(wethPool),
+            [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
+            [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
+            0,
+            ethIsWeth,
+            bytes("")
+        );
+
+        // WETH was deposited, pool tokens were minted to Alice.
+        assertEq(WETH.balanceOf(alice), 0);
+        assertGt(wethPool.balanceOf(alice), 0);
     }
 }

@@ -57,6 +57,9 @@ interface IRouter {
                                    Add Liquidity
     ***************************************************************************/
 
+    /// @dev The amount of ETH paid is insufficient to complete this operation.
+    error InsufficientEth();
+
     error InvalidTokenIndex();
 
     /**
