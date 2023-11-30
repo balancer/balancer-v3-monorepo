@@ -503,17 +503,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             vars.indexOut -= 1;
         }
 
-        for (uint256 i = 0; i < poolData.tokens.length; i++) {
-            // We know from the above checks that `i` is a valid token index and can use `unchecked_valueAt`
-            // to save storage reads.
-            uint256 balance = poolBalances.unchecked_valueAt(i);
-
-            if (i == vars.indexIn) {
-                vars.tokenInBalance = balance;
-            } else if (i == vars.indexOut) {
-                vars.tokenOutBalance = balance;
-            }
-        }
+        // We know from the above checks that `i` is a valid token index and can use `unchecked_valueAt`
+        // to save storage reads.
+        vars.tokenInBalance = poolBalances.unchecked_valueAt(vars.indexIn);
+        vars.tokenOutBalance = poolBalances.unchecked_valueAt(vars.indexOut);
 
         // If the amountGiven is entering the pool math (GivenIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
@@ -891,33 +884,35 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
     /**
      * @notice Fetches the balances for a given pool, with decimal and rate scaling factors applied.
-     * @dev Utilizes an enumerable map to obtain pool token balances.
+     * @dev Utilizes an enumerable map to obtain pool tokens and raw balances.
      * The function is structured to minimize storage reads by leveraging the `unchecked_at` method.
+     * It is typically called before or after liquidity operations.
      *
      * @param pool The address of the pool
-     * @return balancesScaled18 An array of token balances, scaled and rounded as directed
+     * @param poolData The corresponding poolData to be read and updated
+     * @param roundingDirection Whether balance scaling should round up or down
      */
-    function _getPoolBalancesScaled18ApplyRate(
+    function _updatePoolDataLiveBalancesAndRates(
         address pool,
         PoolData memory poolData,
         Rounding roundingDirection
-    ) internal view returns (uint256[] memory balancesScaled18) {
+    ) internal view {
         // Retrieve the mapping of tokens and their balances for the specified pool.
+        // poolData already contains rawBalances, but they could be stale, so fetch from the Vault.
+        // Likewise, the rates could also have changed.
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
         uint256 numTokens = poolTokenBalances.length();
-
-        // Initialize array to store balances based on the number of tokens in the pool.
-        // Will be read raw, then upscaled and rounded as directed.
-        balancesScaled18 = new uint256[](numTokens);
         uint256 balanceRaw;
+        IERC20 token;
 
         for (uint256 i = 0; i < numTokens; ++i) {
             // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
-            (, balanceRaw) = poolTokenBalances.unchecked_at(i);
+            (token, balanceRaw) = poolTokenBalances.unchecked_at(i);
+            poolData.tokenRates[i] = _getRateForPoolToken(pool, token);
 
-            balancesScaled18[i] = roundingDirection == Rounding.ROUND_UP
+            poolData.balancesLiveScaled18[i] = roundingDirection == Rounding.ROUND_UP
                 ? balanceRaw.toScaled18ApplyRateRoundUp(poolData.decimalScalingFactors[i], poolData.tokenRates[i])
                 : balanceRaw.toScaled18ApplyRateRoundDown(poolData.decimalScalingFactors[i], poolData.tokenRates[i]);
         }
@@ -1117,11 +1112,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             // The callback might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (adding liquidity, so round up) again.
-            poolData.balancesLiveScaled18 = _getPoolBalancesScaled18ApplyRate(pool, poolData, Rounding.ROUND_UP);
+            _updatePoolDataLiveBalancesAndRates(pool, poolData, Rounding.ROUND_UP);
         }
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked and its final balances
         // are computed. This function is non-reentrant, as it performs the accounting updates.
+        // Note that poolData is mutated to update the Raw and Live balances, so they are accurate when passed
+        // into the AfterAddLiquidity callback.
         uint256[] memory amountsInScaled18;
         (amountsIn, amountsInScaled18, bptAmountOut, returnData) = _addLiquidity(
             poolData,
@@ -1294,11 +1291,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             // The callback might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (removing liquidity, so round down) again.
-            poolData.balancesLiveScaled18 = _getPoolBalancesScaled18ApplyRate(pool, poolData, Rounding.ROUND_DOWN);
+            _updatePoolDataLiveBalancesAndRates(pool, poolData, Rounding.ROUND_DOWN);
         }
 
         // The bulk of the work is done here: the corresponding Pool callback is invoked, and its final balances
         // are computed. This function is non-reentrant, as it performs the accounting updates.
+        // Note that poolData is mutated to update the Raw and Live balances, so they are accurate when passed
+        // into the AfterRemoveLiquidity callback.
         uint256[] memory amountsOutScaled18;
         (bptAmountIn, amountsOut, amountsOutScaled18, returnData) = _removeLiquidity(
             poolData,
@@ -1437,6 +1436,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         amountsOutRaw = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
+            // Note that poolData.balancesRaw will also be updated in `_removeLiquidityUpdateAccounting`
             poolData.balancesLiveScaled18[i] -= amountsOutScaled18[i];
 
             // amountsOut are amounts exiting the Pool, so we round down.
