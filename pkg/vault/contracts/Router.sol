@@ -29,9 +29,10 @@ contract Router is IRouter, ReentrancyGuard {
         _;
     }
 
-    constructor(IVault vault, address weth) {
+    constructor(IVault vault, IWETH weth) {
         _vault = vault;
-        _weth = IWETH(weth);
+        _weth = weth;
+        weth.approve(address(_vault), type(uint256).max);
     }
 
     /*******************************************************************************
@@ -102,7 +103,6 @@ contract Router is IRouter, ReentrancyGuard {
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
                 // transfer WETH from the router to the Vault
-                IERC20(_weth).approve(address(_vault), amountIn);
                 _vault.retrieve(_weth, address(this), amountIn);
             } else {
                 // transfer tokens from the user to the Vault

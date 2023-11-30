@@ -53,7 +53,7 @@ contract RouterTest is Test {
         authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
         WETH = new WETHTestToken();
-        router = new Router(IVault(vault), address(WETH));
+        router = new Router(IVault(vault), WETH);
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
