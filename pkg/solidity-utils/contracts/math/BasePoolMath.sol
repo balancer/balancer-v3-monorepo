@@ -117,9 +117,6 @@ library BasePoolMath {
         // Calculate the new invariant ratio by dividing the new invariant (calculated with updated balances) by the old invariant.
         uint256 invariantRatio = calcInvariant(newBalances).divDown(currentInvariant);
 
-        // Create an array to hold the new balances after applying fees.
-        uint256[] memory newBalancesWithFees = new uint256[](numTokens);
-
         // Loop through each token to apply fees if necessary.
         for (uint256 index = 0; index < currentBalances.length; index++) {
             // Check if the adjusted balance (after invariant ratio multiplication) is greater than the new balance.
@@ -127,16 +124,13 @@ library BasePoolMath {
             if (invariantRatio.mulUp(currentBalances[index]) > newBalances[index]) {
                 uint256 taxableAmount = invariantRatio.mulUp(currentBalances[index]) - newBalances[index];
                 // Subtract the fee from the new balance.
-                // We are essentially imposing swap fees on incoming amounts; however, it is not feasible to levy these fees in any other manner.
-                newBalancesWithFees[index] = newBalances[index] - taxableAmount.divUp(swapFeePercentage);
-            } else {
-                // If no fee is applicable, keep the new balance as is.
-                newBalancesWithFees[index] = newBalances[index];
+                // We are essentially imposing swap fees on non-proportional incoming amounts.
+                newBalances[index] = newBalances[index] - taxableAmount.divUp(swapFeePercentage);
             }
         }
 
         // Calculate the new invariant with fees applied.
-        uint256 newInvariantWithFees = calcInvariant(newBalancesWithFees);
+        uint256 newInvariantWithFees = calcInvariant(newBalances);
 
         // Calculate the amount of BPT to mint. This is done by multiplying the total supply with the ratio of the change in invariant.
         //  mulDown/divDown minize amount of pool tokens to mint.
