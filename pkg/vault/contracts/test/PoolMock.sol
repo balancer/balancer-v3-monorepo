@@ -92,7 +92,7 @@ contract PoolMock is BasePool {
         return _numTokens;
     }
 
-    function getInvariant(uint256[] memory) external view returns (uint256) {
+    function getInvariant(uint256[] memory) external pure returns (uint256) {
         return 0;
     }
 

@@ -67,7 +67,6 @@ contract WeightedPoolFactory is BasePoolFactory {
             LiquidityManagement({
                 supportsAddLiquidityProportional: true,
                 supportsAddLiquiditySingleTokenExactOut: true,
-                supportsAddLiquidityUnbalanced: true,
                 supportsAddLiquidityCustom: false,
                 supportsRemoveLiquidityProportional: true,
                 supportsRemoveLiquiditySingleTokenExactIn: true,

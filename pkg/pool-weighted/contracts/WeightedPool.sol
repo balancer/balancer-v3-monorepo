@@ -200,23 +200,6 @@ contract WeightedPool is BasePool {
                                    Add Liquidity
     ***************************************************************************/
 
-    function onAddLiquidityUnbalanced(
-        address,
-        uint256[] memory exactAmountsInScaled18,
-        uint256[] memory balancesScaled18
-    ) external view override returns (uint256 bptAmountOut) {
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-
-        return
-            WeightedMath.calcBptOutGivenExactTokensIn(
-                balancesScaled18,
-                normalizedWeights,
-                exactAmountsInScaled18,
-                totalSupply(),
-                getSwapFeePercentage()
-            );
-    }
-
     function onAddLiquiditySingleTokenExactOut(
         address,
         uint256 tokenInIndex,
@@ -252,24 +235,6 @@ contract WeightedPool is BasePool {
                 balancesScaled18[tokenOutIndex],
                 normalizedWeights[tokenOutIndex],
                 exactBptAmountIn,
-                totalSupply(),
-                getSwapFeePercentage()
-            );
-    }
-
-    function onRemoveLiquiditySingleTokenExactOut(
-        address,
-        uint256 tokenOutIndex,
-        uint256 exactAmountOutScaled18,
-        uint256[] memory balancesScaled18
-    ) external view override returns (uint256 bptAmountIn) {
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-
-        return
-            WeightedMath.calcBptInGivenExactTokenOut(
-                balancesScaled18[tokenOutIndex],
-                normalizedWeights[tokenOutIndex],
-                exactAmountOutScaled18,
                 totalSupply(),
                 getSwapFeePercentage()
             );
