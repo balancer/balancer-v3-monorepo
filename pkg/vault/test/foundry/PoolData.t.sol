@@ -69,7 +69,8 @@ contract PoolDataTest is Test {
 
         PoolData memory data = vault.getPoolData(address(pool), roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN);
 
-        uint256[] memory expectedScalingFactors = pool.getScalingFactors();
+        // Compute decimal scaling factors from the tokens, in the mock.
+        uint256[] memory expectedScalingFactors = pool.getDecimalScalingFactors();
         uint256[] memory expectedRawBalances = vault.getRawBalances(address(pool));
         uint256[] memory expectedRates = new uint256[](2);
         expectedRates[0] = daiRate;

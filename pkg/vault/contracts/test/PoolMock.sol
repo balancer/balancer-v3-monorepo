@@ -96,7 +96,7 @@ contract PoolMock is BasePool {
     }
 
     /// @dev Even though pools do not handle scaling, we still need this for the tests.
-    function getScalingFactors() external view returns (uint256[] memory scalingFactors) {
+    function getDecimalScalingFactors() external view returns (uint256[] memory scalingFactors) {
         IERC20[] memory tokens = _vault.getPoolTokens(address(this));
         scalingFactors = new uint256[](tokens.length);
 
