@@ -9,7 +9,8 @@ library BasePoolMath {
 
     /**
      * @notice Calculates the proportional amounts of tokens to be deposited into the pool.
-     * @dev This function computes the amount of each token that needs to be deposited in order to mint a specific amount of pool tokens (BPT)
+     * @dev This function computes the amount of each token that needs to be deposited
+     *      in order to mint a specific amount of pool tokens (BPT)
      *      It ensures that the amounts of tokens deposited are proportional to the current pool balances
      *      Calculation: For each token, amountIn = balance * (bptAmountOut / bptTotalSupply)
      *      Rounding up is used to ensure that the pool is not underfunded
@@ -45,7 +46,8 @@ library BasePoolMath {
 
     /**
      * @notice Calculates the proportional amounts of tokens to be withdrawn from the pool.
-     * @dev This function computes the amount of each token that will be withdrawn in exchange for burning a specific amount of pool tokens (BPT).
+     * @dev This function computes the amount of each token that will be withdrawn in exchange
+     *      for burning a specific amount of pool tokens (BPT).
      *      It ensures that the amounts of tokens withdrawn are proportional to the current pool balances.
      *      Calculation: For each token, amountOut = balance * (bptAmountIn / bptTotalSupply).
      *      Rounding down is used to prevent withdrawing more than the pool can afford.
@@ -81,9 +83,12 @@ library BasePoolMath {
 
     /**
      * @notice Calculates the amount of pool tokens (BPT) to be minted for an unbalanced liquidity addition.
-     * @dev This function handles liquidity addition where the proportion of tokens deposited does not match the current pool composition
-     *      It considers the current balances, exact amounts of tokens to be added, total supply, and swap fee percentage
-     *      The function calculates a new invariant with the added tokens, applying swap fees if necessary, and then calculates the amount of BPT to mint based on the change in the invariant
+     * @dev This function handles liquidity addition where the proportion of tokens
+     *      deposited does not match the current pool composition.
+     *      It considers the current balances, exact amounts of tokens to be added, total supply,
+     *      and swap fee percentage.
+     *      The function calculates a new invariant with the added tokens, applying swap fees if necessary,
+     *      and then calculates the amount of BPT to mint based on the change in the invariant.
      * @param currentBalances Current pool balances, in the same order as the tokens registered in the pool
      * @param exactAmounts Array of exact amounts for each token to be added to the pool
      * @param totalSupply Current total supply of the pool tokens (BPT)
@@ -112,7 +117,7 @@ library BasePoolMath {
         // Calculate the invariant using the current balances (before the addition).
         uint256 currentInvariant = calcInvariant(currentBalances);
 
-        // Calculate the new invariant ratio by dividing the new invariant (calculated with updated balances) by the old invariant.
+        // Calculate the new invariant ratio by dividing the new invariant by the old invariant.
         uint256 invariantRatio = calcInvariant(newBalances).divDown(currentInvariant);
 
         // Loop through each token to apply fees if necessary.
@@ -130,7 +135,8 @@ library BasePoolMath {
         // Calculate the new invariant with fees applied.
         uint256 newInvariantWithFees = calcInvariant(newBalances);
 
-        // Calculate the amount of BPT to mint. This is done by multiplying the total supply with the ratio of the change in invariant.
+        // Calculate the amount of BPT to mint. This is done by multiplying the
+        // total supply with the ratio of the change in invariant.
         //  mulDown/divDown minize amount of pool tokens to mint.
         return totalSupply.mulDown((newInvariantWithFees - currentInvariant).divDown(currentInvariant));
     }

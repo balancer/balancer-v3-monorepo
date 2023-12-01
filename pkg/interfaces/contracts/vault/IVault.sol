@@ -454,9 +454,9 @@ interface IVault {
      * @return bptAmountOut Output pool token amount
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
-    function addLiquidity(AddLiquidityParams memory params)
-        external
-        returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
+    function addLiquidity(
+        AddLiquidityParams memory params
+    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
     /***************************************************************************
                                  Remove Liquidity
@@ -500,7 +500,9 @@ interface IVault {
      * @return amountsOut Actual amounts of output assets
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
-    function removeLiquidity(RemoveLiquidityParams memory params) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
+    function removeLiquidity(
+        RemoveLiquidityParams memory params
+    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 
     /**
      * @notice Remove liquidity from a pool specifying exact pool tokens in, with proportional token amounts out.
