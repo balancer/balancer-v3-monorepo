@@ -45,7 +45,7 @@ contract WeightedPool8020FactoryTest is Test {
     }
 
     function testCrossChainDeploymentProtection() public {
-        assertFalse(factory.hasCrossChainDeploymentProtection());
+        assertTrue(factory.hasCrossChainDeploymentProtection());
     }
 
     function testPoolSalt(bytes32 salt) public {

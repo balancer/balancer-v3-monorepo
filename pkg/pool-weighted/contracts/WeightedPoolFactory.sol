@@ -17,12 +17,12 @@ import { WeightedPool } from "./WeightedPool.sol";
 contract WeightedPoolFactory is BasePoolFactory {
     // solhint-disable not-rely-on-time
 
-    // We set the `crossChainDeploymentProtection` flag to false in the base contract, so that we can deploy the factory
-    // at the same address on every chain.
+    // We set the `crossChainDeploymentProtection` flag to true in the base contract, ensuring unique pool addresses
+    // across chains.
     constructor(
         IVault vault,
         uint256 pauseWindowDuration
-    ) BasePoolFactory(vault, pauseWindowDuration, false, type(WeightedPool).creationCode) {
+    ) BasePoolFactory(vault, pauseWindowDuration, true, type(WeightedPool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
