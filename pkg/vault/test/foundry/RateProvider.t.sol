@@ -23,8 +23,8 @@ contract RateProviderTest is Test {
         assertEq(address(rateProvider.getUnderlyingToken()), token);
     }
 
-    function testRate(uint64 rate) public {
-        vm.assume(rate <= 10e18);
+    function testRate(uint256 rate) public {
+        rate = bound(rate, 1, 100e18);
 
         rateProvider.mockRate(rate);
 
