@@ -53,8 +53,8 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         return (MIN_INIT_BPT > exactAmountsIn[0] ? MIN_INIT_BPT : exactAmountsIn[0]);
     }
 
-    function getInvariant(uint256[] memory balancesScaled18) external pure returns (uint256) {
-        return balancesScaled18[0] > 0 ? balancesScaled18[0] : balancesScaled18[1];
+    function getInvariant(uint256[] memory balances) external pure returns (uint256) {
+        return balances[0] > 0 ? balances[0] : balances[1];
     }
 
     function setFailOnAfterSwapCallback(bool fail) external {

@@ -64,9 +64,7 @@ library PoolConfigLib {
     uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET + 1;
     uint8 public constant REMOVE_LIQUIDITY_PROPORTIONAL_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
     uint8 public constant REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET = REMOVE_LIQUIDITY_PROPORTIONAL_OFFSET + 1;
-    uint8 public constant REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET =
-        REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET + 1;
-    uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET + 1;
+    uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET + 1;
 
     uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
     uint8 public constant DECIMAL_SCALING_FACTORS_OFFSET = STATIC_SWAP_FEE_OFFSET + _STATIC_SWAP_FEE_BITLENGTH;
@@ -188,16 +186,6 @@ library PoolConfigLib {
         }
     }
 
-    function supportsRemoveLiquiditySingleTokenExactOut(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET);
-    }
-
-    function requireSupportsRemoveLiquiditySingleTokenExactOut(PoolConfigBits config) internal pure {
-        if (config.supportsRemoveLiquiditySingleTokenExactOut() == false) {
-            revert DoesNotSupportRemoveLiquiditySingleTokenExactOut();
-        }
-    }
-
     function supportsRemoveLiquidityCustom(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(REMOVE_LIQUIDITY_CUSTOM_OFFSET);
     }
@@ -252,10 +240,6 @@ library PoolConfigLib {
                 .insertBool(
                     config.liquidityManagement.supportsRemoveLiquiditySingleTokenExactIn,
                     REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_IN_OFFSET
-                )
-                .insertBool(
-                    config.liquidityManagement.supportsRemoveLiquiditySingleTokenExactOut,
-                    REMOVE_LIQUIDITY_SINGLE_TOKEN_EXACT_OUT_OFFSET
                 )
                 .insertBool(config.liquidityManagement.supportsRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET);
         }
@@ -323,7 +307,6 @@ library PoolConfigLib {
                     supportsAddLiquidityCustom: config.supportsAddLiquidityCustom(),
                     supportsRemoveLiquidityProportional: config.supportsRemoveLiquidityProportional(),
                     supportsRemoveLiquiditySingleTokenExactIn: config.supportsRemoveLiquiditySingleTokenExactIn(),
-                    supportsRemoveLiquiditySingleTokenExactOut: config.supportsRemoveLiquiditySingleTokenExactOut(),
                     supportsRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom()
                 })
             });

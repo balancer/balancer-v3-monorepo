@@ -97,7 +97,7 @@ library BasePoolMath {
         uint256 totalSupply,
         uint256 swapFeePercentage,
         function(uint256[] memory) external view returns (uint256) calcInvariant
-    ) external view returns (uint256 bptAmountOut) {
+    ) internal view returns (uint256 bptAmountOut) {
         // Determine the number of tokens in the pool.
         uint256 numTokens = currentBalances.length;
 
@@ -151,7 +151,7 @@ library BasePoolMath {
         uint256 totalSupply,
         uint256 swapFeePercentage,
         function(uint256[] memory) external view returns (uint256) calcInvariant
-    ) external view returns (uint256 bptAmountIn) {
+    ) internal view returns (uint256 bptAmountIn) {
         //tokens_number = len(balances)
         // Determine the number of tokens in the pool.
         uint256 numTokens = currentBalances.length;

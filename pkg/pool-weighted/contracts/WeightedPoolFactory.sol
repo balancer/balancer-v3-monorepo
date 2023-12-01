@@ -70,7 +70,6 @@ contract WeightedPoolFactory is BasePoolFactory {
                 supportsAddLiquidityCustom: false,
                 supportsRemoveLiquidityProportional: true,
                 supportsRemoveLiquiditySingleTokenExactIn: true,
-                supportsRemoveLiquiditySingleTokenExactOut: true,
                 supportsRemoveLiquidityCustom: false
             })
         );

@@ -92,8 +92,8 @@ contract PoolMock is BasePool {
         return _numTokens;
     }
 
-    function getInvariant(uint256[] memory) external pure returns (uint256) {
-        return 0;
+    function getInvariant(uint256[] memory balances) external pure returns (uint256) {
+        return balances[0] > 0 ? balances[0] : balances[1];
     }
 
     /// @dev Even though pools do not handle scaling, we still need this for the tests.
