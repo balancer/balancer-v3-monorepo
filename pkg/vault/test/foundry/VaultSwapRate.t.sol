@@ -34,7 +34,7 @@ contract VaultSwapWithRatesTest is Test {
     BasicAuthorizerMock authorizer;
     RateProviderMock rateProvider;
     ERC20PoolMock pool;
-    ERC20TestToken USDC;
+    ERC20TestToken WSTETH;
     ERC20TestToken DAI;
     address alice = vm.addr(1);
     address bob = vm.addr(2);
@@ -50,7 +50,7 @@ contract VaultSwapWithRatesTest is Test {
         authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
         router = new Router(IVault(vault), address(0));
-        USDC = new ERC20TestToken("USDC", "USDC", 18);
+        WSTETH = new ERC20TestToken("WSTETH", "WSTETH", 18);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProvider = new RateProviderMock();
@@ -60,29 +60,29 @@ contract VaultSwapWithRatesTest is Test {
             vault,
             "ERC20 Pool",
             "ERC20POOL",
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [address(DAI), address(WSTETH)].toMemoryArray().asIERC20(),
             rateProviders,
             true,
             365 days,
             address(0)
         );
 
-        USDC.mint(bob, AMOUNT);
+        WSTETH.mint(bob, AMOUNT);
         DAI.mint(bob, AMOUNT);
 
-        USDC.mint(alice, AMOUNT);
+        WSTETH.mint(alice, AMOUNT);
         DAI.mint(alice, AMOUNT);
 
         vm.startPrank(bob);
 
-        USDC.approve(address(vault), type(uint256).max);
+        WSTETH.approve(address(vault), type(uint256).max);
         DAI.approve(address(vault), type(uint256).max);
 
         vm.stopPrank();
 
         vm.startPrank(alice);
 
-        USDC.approve(address(vault), type(uint256).max);
+        WSTETH.approve(address(vault), type(uint256).max);
         DAI.approve(address(vault), type(uint256).max);
 
         vm.stopPrank();
@@ -90,7 +90,7 @@ contract VaultSwapWithRatesTest is Test {
         vm.label(alice, "alice");
         vm.label(bob, "bob");
         vm.label(admin, "admin");
-        vm.label(address(USDC), "USDC");
+        vm.label(address(WSTETH), "WSTETH");
         vm.label(address(DAI), "DAI");
     }
 
@@ -98,7 +98,7 @@ contract VaultSwapWithRatesTest is Test {
         vm.prank(alice);
         router.initialize(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
             [uint256(AMOUNT), uint256(AMOUNT)].toMemoryArray(),
             0,
             bytes("")
@@ -142,7 +142,7 @@ contract VaultSwapWithRatesTest is Test {
         router.swap(
             IVault.SwapKind.GIVEN_IN,
             address(pool),
-            address(USDC).asAsset(),
+            address(WSTETH).asAsset(),
             address(DAI).asAsset(),
             AMOUNT,
             rateAdjustedAmount, // Adjust limit
@@ -151,7 +151,7 @@ contract VaultSwapWithRatesTest is Test {
         );
 
         // assets are transferred to/from Bob
-        assertEq(USDC.balanceOf(bob), 0);
+        assertEq(WSTETH.balanceOf(bob), 0);
         assertEq(DAI.balanceOf(bob), AMOUNT + rateAdjustedAmount);
 
         // assets are adjusted in the pool
@@ -160,7 +160,7 @@ contract VaultSwapWithRatesTest is Test {
         assertEq(balances[1], AMOUNT * 2);
 
         assertEq(DAI.balanceOf(address(vault)), AMOUNT - rateAdjustedAmount);
-        assertEq(USDC.balanceOf(address(vault)), AMOUNT * 2);
+        assertEq(WSTETH.balanceOf(address(vault)), AMOUNT * 2);
     }
 
     function testSwapGivenOutWithRate() public {
@@ -174,7 +174,7 @@ contract VaultSwapWithRatesTest is Test {
         router.swap(
             IVault.SwapKind.GIVEN_OUT,
             address(pool),
-            address(USDC).asAsset(),
+            address(WSTETH).asAsset(),
             address(DAI).asAsset(),
             rateAdjustedAmount,
             AMOUNT,
@@ -183,7 +183,7 @@ contract VaultSwapWithRatesTest is Test {
         );
 
         // asssets are transferred to/from Bob
-        assertEq(USDC.balanceOf(bob), 0);
+        assertEq(WSTETH.balanceOf(bob), 0);
         assertEq(DAI.balanceOf(bob), AMOUNT + rateAdjustedAmount);
 
         // assets are adjusted in the pool
@@ -193,6 +193,6 @@ contract VaultSwapWithRatesTest is Test {
 
         // vault are adjusted balances
         assertEq(DAI.balanceOf(address(vault)), AMOUNT - rateAdjustedAmount);
-        assertEq(USDC.balanceOf(address(vault)), 2 * AMOUNT);
+        assertEq(WSTETH.balanceOf(address(vault)), 2 * AMOUNT);
     }
 }

@@ -41,13 +41,13 @@ contract VaultLiquidityWithRatesTest is Test {
     BasicAuthorizerMock authorizer;
     RateProviderMock rateProvider;
     ERC20PoolMock pool;
-    ERC20TestToken USDC;
+    ERC20TestToken WSTETH;
     ERC20TestToken DAI;
     address alice = vm.addr(1);
     address bob = vm.addr(2);
 
     // Tokens are 18-decimal here, to isolate rates
-    uint256 constant USDC_AMOUNT_IN = 1e3 * 1e18;
+    uint256 constant WSTETH_AMOUNT_IN = 1e3 * 1e18;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
 
     uint256 constant MOCK_RATE = 2e18;
@@ -56,7 +56,7 @@ contract VaultLiquidityWithRatesTest is Test {
         authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
         router = new Router(IVault(vault), address(0));
-        USDC = new ERC20TestToken("USDC", "USDC", 18);
+        WSTETH = new ERC20TestToken("WSTETH", "WSTETH", 18);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProvider = new RateProviderMock();
@@ -66,35 +66,35 @@ contract VaultLiquidityWithRatesTest is Test {
             vault,
             "ERC20 Pool",
             "ERC20POOL",
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [address(DAI), address(WSTETH)].toMemoryArray().asIERC20(),
             rateProviders,
             true,
             365 days,
             address(0)
         );
 
-        USDC.mint(alice, USDC_AMOUNT_IN);
+        WSTETH.mint(alice, WSTETH_AMOUNT_IN);
         DAI.mint(alice, DAI_AMOUNT_IN);
-        USDC.mint(bob, USDC_AMOUNT_IN);
+        WSTETH.mint(bob, WSTETH_AMOUNT_IN);
         DAI.mint(bob, DAI_AMOUNT_IN);
 
         vm.startPrank(alice);
 
-        USDC.approve(address(vault), type(uint256).max);
+        WSTETH.approve(address(vault), type(uint256).max);
         DAI.approve(address(vault), type(uint256).max);
 
         vm.stopPrank();
 
         vm.startPrank(bob);
 
-        USDC.approve(address(vault), type(uint256).max);
+        WSTETH.approve(address(vault), type(uint256).max);
         DAI.approve(address(vault), type(uint256).max);
 
         vm.stopPrank();
 
         vm.label(alice, "alice");
         vm.label(bob, "bob");
-        vm.label(address(USDC), "USDC");
+        vm.label(address(WSTETH), "WSTETH");
         vm.label(address(DAI), "DAI");
     }
 
@@ -110,8 +110,8 @@ contract VaultLiquidityWithRatesTest is Test {
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = router.addLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
+            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
+            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
             DAI_AMOUNT_IN,
             IVault.AddLiquidityKind.PROPORTIONAL,
             bytes("")
@@ -138,8 +138,8 @@ contract VaultLiquidityWithRatesTest is Test {
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = router.addLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
+            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
+            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
             DAI_AMOUNT_IN,
             IVault.AddLiquidityKind.UNBALANCED,
             bytes("")
@@ -169,7 +169,7 @@ contract VaultLiquidityWithRatesTest is Test {
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = router.addLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
             [DAI_AMOUNT_IN, 0].toMemoryArray(),
             DAI_AMOUNT_IN,
             IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
@@ -199,8 +199,8 @@ contract VaultLiquidityWithRatesTest is Test {
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = router.addLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
+            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
+            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
             DAI_AMOUNT_IN,
             IVault.AddLiquidityKind.CUSTOM,
             bytes("")
@@ -227,8 +227,8 @@ contract VaultLiquidityWithRatesTest is Test {
 
         router.addLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
+            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
+            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
             DAI_AMOUNT_IN,
             IVault.AddLiquidityKind.PROPORTIONAL,
             bytes("")
@@ -238,9 +238,9 @@ contract VaultLiquidityWithRatesTest is Test {
 
         (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
             DAI_AMOUNT_IN,
-            [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
+            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
             IVault.RemoveLiquidityKind.PROPORTIONAL,
             bytes("")
         );
@@ -253,7 +253,7 @@ contract VaultLiquidityWithRatesTest is Test {
 
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN);
-        assertEq(amountsOut[1], USDC_AMOUNT_IN);
+        assertEq(amountsOut[1], WSTETH_AMOUNT_IN);
     }
 
     function testRemoveLiquiditySingleTokenExactInWithRate() public {
@@ -266,8 +266,8 @@ contract VaultLiquidityWithRatesTest is Test {
 
         router.addLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
+            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
+            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
             DAI_AMOUNT_IN,
             IVault.AddLiquidityKind.UNBALANCED,
             bytes("")
@@ -277,7 +277,7 @@ contract VaultLiquidityWithRatesTest is Test {
 
         (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
             DAI_AMOUNT_IN,
             [DAI_AMOUNT_IN, 0].toMemoryArray(),
             IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
@@ -314,8 +314,8 @@ contract VaultLiquidityWithRatesTest is Test {
 
         router.addLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
+            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
+            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
             DAI_AMOUNT_IN,
             IVault.AddLiquidityKind.PROPORTIONAL,
             bytes("")
@@ -325,7 +325,7 @@ contract VaultLiquidityWithRatesTest is Test {
 
         (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
             DAI_AMOUNT_IN,
             [DAI_AMOUNT_IN, 0].toMemoryArray(),
             IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
@@ -355,8 +355,8 @@ contract VaultLiquidityWithRatesTest is Test {
 
         router.addLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
+            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
+            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
             DAI_AMOUNT_IN,
             IVault.AddLiquidityKind.UNBALANCED,
             bytes("")
@@ -366,9 +366,9 @@ contract VaultLiquidityWithRatesTest is Test {
 
         (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
             DAI_AMOUNT_IN,
-            [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
+            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
             IVault.RemoveLiquidityKind.CUSTOM,
             bytes("")
         );
@@ -389,7 +389,7 @@ contract VaultLiquidityWithRatesTest is Test {
 
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN);
-        assertEq(amountsOut[1], USDC_AMOUNT_IN);
+        assertEq(amountsOut[1], WSTETH_AMOUNT_IN);
     }
 
     function _mockInitialize(address initializer) internal {
@@ -399,8 +399,8 @@ contract VaultLiquidityWithRatesTest is Test {
         // to comply with the vault's required minimum.
         router.initialize(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
+            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
+            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
             0,
             bytes("")
         );
@@ -410,12 +410,15 @@ contract VaultLiquidityWithRatesTest is Test {
         balances.userTokens = new uint256[](2);
 
         balances.userTokens[0] = DAI.balanceOf(user);
-        balances.userTokens[1] = USDC.balanceOf(user);
+        balances.userTokens[1] = WSTETH.balanceOf(user);
         balances.userBpt = pool.balanceOf(user);
 
         (, uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(pool));
         require(poolBalances[0] == DAI.balanceOf(address(vault)), "DAI pool balance does not match vault balance");
-        require(poolBalances[1] == USDC.balanceOf(address(vault)), "USDC pool balance does not match vault balance");
+        require(
+            poolBalances[1] == WSTETH.balanceOf(address(vault)),
+            "WSTETH pool balance does not match vault balance"
+        );
 
         balances.poolTokens = poolBalances;
     }
