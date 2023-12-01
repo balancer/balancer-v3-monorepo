@@ -19,6 +19,8 @@ contract WeightedPool8020FactoryTest is Test {
     ERC20TestToken tokenA;
     ERC20TestToken tokenB;
 
+    address alice = vm.addr(1);
+
     function setUp() public {
         BasicAuthorizerMock authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
@@ -42,17 +44,48 @@ contract WeightedPool8020FactoryTest is Test {
         assertEq(poolWeights[0], 8e17);
         assertEq(poolWeights[1], 2e17);
         assertEq(pool.symbol(), "Pool8020");
+    }
 
+    function testPoolSalt(bytes32 salt) public {
+        vm.assume(salt > 0);
+
+        WeightedPool pool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokenA, tokenB, bytes32(0)));
         address expectedPoolAddress = factory.getDeploymentAddress(salt);
 
         WeightedPool secondPool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokenA, tokenB, salt));
 
-        poolWeights = pool.getNormalizedWeights();
-        assertEq(poolWeights[0], 8e17);
-        assertEq(poolWeights[1], 2e17);
-        assertEq(pool.symbol(), "Pool8020");
-
         assertFalse(address(pool) == address(secondPool));
         assertEq(address(secondPool), expectedPoolAddress);
+    }
+
+    function testPoolSender(bytes32 salt) public {
+        vm.assume(salt > 0);
+        address expectedPoolAddress = factory.getDeploymentAddress(salt);
+
+        // Different sender should change the address of the pool, given the same salt value
+        vm.prank(alice);
+        WeightedPool pool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokenA, tokenB, salt));
+        assertFalse(address(pool) == expectedPoolAddress);
+
+        vm.prank(alice);
+        address aliceExpectedPoolAddress = factory.getDeploymentAddress(salt);
+        assertTrue(address(pool) == aliceExpectedPoolAddress);
+    }
+
+    function testPoolCrossChainProtection(bytes32 salt, uint16 chainId) public {
+        vm.assume(chainId > 1);
+
+        vm.prank(alice);
+        WeightedPool poolMainnet = WeightedPool(
+            factory.create("Balancer 80/20 Pool", "Pool8020", tokenA, tokenB, salt)
+        );
+
+        vm.chainId(chainId);
+
+        vm.prank(alice);
+        WeightedPool poolL2 = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokenA, tokenB, salt));
+
+        // Same sender and salt, should still be different because of the chainId.
+        assertFalse(address(poolL2) == address(poolMainnet));
     }
 }
