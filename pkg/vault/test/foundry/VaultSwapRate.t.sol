@@ -105,6 +105,25 @@ contract VaultSwapWithRatesTest is Test {
         );
     }
 
+    function testInitializePoolWithRate() public {
+        uint256 snapshot = vm.snapshot();
+
+        initPool();
+
+        uint256 aliceBpt = pool.balanceOf(alice);
+
+        vm.revertTo(snapshot);
+
+        // Initialize again with rate
+        rateProvider.mockRate(MOCK_RATE);
+
+        initPool();
+
+        uint256 aliceBptWithRate = pool.balanceOf(alice);
+
+        assertApproxEqAbs(aliceBptWithRate, FixedPoint.mulDown(aliceBpt, MOCK_RATE), 1e6);
+    }
+
     function testInitialRateProviderState() public {
         (, , , IRateProvider[] memory rateProviders) = vault.getPoolTokenInfo(address(pool));
 
