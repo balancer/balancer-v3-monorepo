@@ -29,43 +29,41 @@ contract PoolDataTest is Test {
     Router router;
     BasicAuthorizerMock authorizer;
     PoolMock pool;
-    ERC20TestToken USDC;
+    ERC20TestToken WSTETH;
     ERC20TestToken DAI;
-    RateProviderMock usdcRateProvider;
+    RateProviderMock wstETHRateProvider;
     RateProviderMock daiRateProvider;
 
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
         router = new Router(IVault(vault), address(0));
-        USDC = new ERC20TestToken("USDC", "USDC", 6);
+        WSTETH = new ERC20TestToken("WSTETH", "WSTETH", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
 
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
-        usdcRateProvider = new RateProviderMock();
+        wstETHRateProvider = new RateProviderMock();
         daiRateProvider = new RateProviderMock();
 
         rateProviders[0] = daiRateProvider;
-        rateProviders[1] = usdcRateProvider;
+        rateProviders[1] = wstETHRateProvider;
 
         pool = new PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [address(DAI), address(WSTETH)].toMemoryArray().asIERC20(),
             rateProviders,
             true
         );
     }
 
-    function testPoolData(uint256 daiRate, uint256 usdcRate, bool roundUp) public {
-        vm.assume(daiRate > 0);
-        vm.assume(usdcRate > 0);
-        vm.assume(daiRate <= 100e18);
-        vm.assume(usdcRate <= 100e18);
+    function testPoolData(uint256 daiRate, uint256 wstETHRate, bool roundUp) public {
+        daiRate = bound(daiRate, 1, 100e18);
+        wstETHRate = bound(wstETHRate, 1, 100e18);
 
         daiRateProvider.mockRate(daiRate);
-        usdcRateProvider.mockRate(usdcRate);
+        wstETHRateProvider.mockRate(wstETHRate);
 
         // `getPoolData` and `getRawBalances` are functions in VaultMock.
 
@@ -75,7 +73,7 @@ contract PoolDataTest is Test {
         uint256[] memory expectedRawBalances = vault.getRawBalances(address(pool));
         uint256[] memory expectedRates = new uint256[](2);
         expectedRates[0] = daiRate;
-        expectedRates[1] = usdcRate;
+        expectedRates[1] = wstETHRate;
 
         uint256 expectedLiveBalance;
 
@@ -100,9 +98,9 @@ contract PoolDataTest is Test {
         }
 
         assertEq(address(data.tokens[0]), address(DAI));
-        assertEq(address(data.tokens[1]), address(USDC));
+        assertEq(address(data.tokens[1]), address(WSTETH));
 
         assertEq(address(data.rateProviders[0]), address(daiRateProvider));
-        assertEq(address(data.rateProviders[1]), address(usdcRateProvider));
+        assertEq(address(data.rateProviders[1]), address(wstETHRateProvider));
     }
 }
