@@ -142,6 +142,49 @@ library BasePoolMath {
     }
 
     /**
+     * @notice Calculates the amount of input token needed to receive an exact amount of pool tokens (BPT)
+     *         in a single-token liquidity addition.
+     * @dev This function is used when a user wants to add liquidity to the pool by specifying the exact amount
+     *      of pool tokens they want to receive, and the function calculates the corresponding amount of the input token.
+     *      It considers the current pool balances, total supply, swap fee percentage, and the desired BPT amount.
+     * @param currentBalances Array of current token balances in the pool, in the same order as registered tokens
+     * @param tokenInIndex Index of the input token for which the amount needs to be calculated
+     * @param exactBptAmountOut Exact amount of pool tokens (BPT) the user wants to receive
+     * @param totalSupply Current total supply of the pool tokens (BPT)
+     * @param swapFeePercentage The swap fee percentage applied to the taxable amount
+     * @param calcBalance A function pointer to the balance calculation function
+     * @return amountInWithFee The amount of input token needed, including the swap fee, to receive the exact BPT amount
+     */
+    function computeAddLiquiditySingleTokenExactOut(
+        uint256[] memory currentBalances,
+        uint256 tokenInIndex,
+        uint256 exactBptAmountOut,
+        uint256 totalSupply,
+        uint256 swapFeePercentage,
+        function(uint256[] memory, uint256, uint256) external view returns (uint256) calcBalance
+    ) internal view returns (uint256 amountInWithFee) {
+        // Calculate the initial amount of the input token needed for the desired amount of BPT out
+        uint256 newBalance = calcBalance(
+            currentBalances,
+            tokenInIndex,
+            (exactBptAmountOut + totalSupply).divDown(totalSupply)
+        );
+        uint256 amountIn = newBalance - currentBalances[tokenInIndex];
+
+        // Calculate the taxable amount, which is the difference between the actual amount in and the non-taxable balance
+        uint256 nonTaxableBalance = ((totalSupply + exactBptAmountOut) * currentBalances[tokenInIndex]).divDown(
+            totalSupply
+        );
+        uint256 taxableAmount = (amountIn + currentBalances[tokenInIndex]) - nonTaxableBalance;
+
+        // Calculate the swap fee based on the taxable amount and the swap fee percentage
+        uint256 fee = taxableAmount / (swapFeePercentage.complement()) - taxableAmount;
+
+        // Return the total amount of input token needed, including the swap fee
+        return amountIn + fee;
+    }
+
+    /**
      * @notice Calculates the amount of pool tokens to burn to receive exact amount out.
      * @param currentBalances Current pool balances, in the same order as the tokens registered in the pool
      * @param tokenOutIndex Index of the token to receive in exchange for pool tokens burned
