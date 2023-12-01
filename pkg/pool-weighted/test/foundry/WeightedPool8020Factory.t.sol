@@ -63,7 +63,17 @@ contract WeightedPool8020FactoryTest is Test {
     function testPoolSalt(bytes32 salt) public {
         vm.assume(salt > 0);
 
-        WeightedPool pool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokenA, tokenB, bytes32(0)));
+        WeightedPool pool = WeightedPool(
+            factory.create(
+                "Balancer 80/20 Pool",
+                "Pool8020",
+                tokenA,
+                tokenB,
+                IRateProvider(address(rateProvider)),
+                IRateProvider(address(0)),
+                bytes32(0)
+            )
+        );
         address expectedPoolAddress = factory.getDeploymentAddress(salt);
 
         WeightedPool secondPool = WeightedPool(
@@ -88,7 +98,17 @@ contract WeightedPool8020FactoryTest is Test {
 
         // Different sender should change the address of the pool, given the same salt value
         vm.prank(alice);
-        WeightedPool pool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokenA, tokenB, salt));
+        WeightedPool pool = WeightedPool(
+            factory.create(
+                "Balancer 80/20 Pool",
+                "Pool8020",
+                tokenA,
+                tokenB,
+                IRateProvider(address(rateProvider)),
+                IRateProvider(address(0)),
+                salt
+            )
+        );
         assertFalse(address(pool) == expectedPoolAddress);
 
         vm.prank(alice);
@@ -101,13 +121,31 @@ contract WeightedPool8020FactoryTest is Test {
 
         vm.prank(alice);
         WeightedPool poolMainnet = WeightedPool(
-            factory.create("Balancer 80/20 Pool", "Pool8020", tokenA, tokenB, salt)
+            factory.create(
+                "Balancer 80/20 Pool",
+                "Pool8020",
+                tokenA,
+                tokenB,
+                IRateProvider(address(rateProvider)),
+                IRateProvider(address(0)),
+                salt
+            )
         );
 
         vm.chainId(chainId);
 
         vm.prank(alice);
-        WeightedPool poolL2 = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokenA, tokenB, salt));
+        WeightedPool poolL2 = WeightedPool(
+            factory.create(
+                "Balancer 80/20 Pool",
+                "Pool8020",
+                tokenA,
+                tokenB,
+                IRateProvider(address(rateProvider)),
+                IRateProvider(address(0)),
+                salt
+            )
+        );
 
         // Same sender and salt, should still be different because of the chainId.
         assertFalse(address(poolL2) == address(poolMainnet));
