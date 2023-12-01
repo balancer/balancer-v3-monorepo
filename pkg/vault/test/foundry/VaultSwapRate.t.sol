@@ -159,7 +159,6 @@ contract VaultSwapWithRatesTest is Test {
         assertEq(balances[0], AMOUNT - rateAdjustedAmount);
         assertEq(balances[1], AMOUNT * 2);
 
-        // vault are adjusted balances
         assertEq(DAI.balanceOf(address(vault)), AMOUNT - rateAdjustedAmount);
         assertEq(USDC.balanceOf(address(vault)), AMOUNT * 2);
     }
