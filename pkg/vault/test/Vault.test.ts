@@ -377,7 +377,7 @@ describe('Vault', function () {
 
     it('computes the scaling factors', async () => {
       // Get them from the pool (mock), using ScalingHelpers
-      const poolScalingFactors = await poolA.getScalingFactors();
+      const poolScalingFactors = await poolA.getDecimalScalingFactors();
       // Get them from the Vault (using PoolConfig)
       const vaultScalingFactors = await vault.getDecimalScalingFactors(poolA);
 
