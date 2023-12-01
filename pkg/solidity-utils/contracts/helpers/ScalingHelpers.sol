@@ -18,6 +18,7 @@ import { InputHelpers } from "./InputHelpers.sol";
  */
 library ScalingHelpers {
     using FixedPoint for *;
+    using ScalingHelpers for uint256;
 
     /***************************************************************************
                                 Single Value Functions
@@ -118,7 +119,7 @@ library ScalingHelpers {
         InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
 
         for (uint256 i = 0; i < length; ++i) {
-            amounts[i] = FixedPoint.mulDown(amounts[i], scalingFactors[i]);
+            amounts[i] = ScalingHelpers.toScaled18RoundDown(amounts[i], scalingFactors[i]);
         }
     }
 
@@ -135,7 +136,7 @@ library ScalingHelpers {
         InputHelpers.ensureInputLengthMatch(length, scalingFactors.length, tokenRates.length);
 
         for (uint256 i = 0; i < length; ++i) {
-            amounts[i] = amounts[i].mulDown(scalingFactors[i]).mulDown(tokenRates[i]);
+            amounts[i] = amounts[i].toScaled18ApplyRateRoundDown(scalingFactors[i], tokenRates[i]);
         }
     }
 
@@ -148,7 +149,7 @@ library ScalingHelpers {
         InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
 
         for (uint256 i = 0; i < length; ++i) {
-            amounts[i] = FixedPoint.mulUp(amounts[i], scalingFactors[i]);
+            amounts[i] = ScalingHelpers.toScaled18RoundUp(amounts[i], scalingFactors[i]);
         }
     }
 
@@ -165,7 +166,7 @@ library ScalingHelpers {
         InputHelpers.ensureInputLengthMatch(length, scalingFactors.length, tokenRates.length);
 
         for (uint256 i = 0; i < length; ++i) {
-            amounts[i] = amounts[i].mulUp(scalingFactors[i]).mulUp(tokenRates[i]);
+            amounts[i] = amounts[i].toScaled18ApplyRateRoundUp(scalingFactors[i], tokenRates[i]);
         }
     }
 
@@ -178,7 +179,7 @@ library ScalingHelpers {
         InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
 
         for (uint256 i = 0; i < length; ++i) {
-            amounts[i] = FixedPoint.divDown(amounts[i], scalingFactors[i]);
+            amounts[i] = ScalingHelpers.toRawRoundDown(amounts[i], scalingFactors[i]);
         }
     }
 
@@ -191,7 +192,7 @@ library ScalingHelpers {
         InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
 
         for (uint256 i = 0; i < length; ++i) {
-            amounts[i] = FixedPoint.divUp(amounts[i], scalingFactors[i]);
+            amounts[i] = ScalingHelpers.toRawRoundUp(amounts[i], scalingFactors[i]);
         }
     }
 
