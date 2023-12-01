@@ -238,7 +238,7 @@ contract VaultLiquidityTest is Test {
 
         Balances memory balancesAfter = _getBalances(alice);
 
-        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, bptAmountIn, amountsOut);
+        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, amountsOut);
 
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN);
@@ -275,7 +275,7 @@ contract VaultLiquidityTest is Test {
 
         Balances memory balancesAfter = _getBalances(alice);
 
-        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, bptAmountIn, amountsOut);
+        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, amountsOut);
 
         // amountsOut are correct (takes out initial liquidity as well)
         assertEq(amountsOut[0], DAI_AMOUNT_IN * 2);
@@ -312,7 +312,7 @@ contract VaultLiquidityTest is Test {
 
         Balances memory balancesAfter = _getBalances(alice);
 
-        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, bptAmountIn, amountsOut);
+        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, amountsOut);
 
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN);
@@ -349,7 +349,7 @@ contract VaultLiquidityTest is Test {
 
         Balances memory balancesAfter = _getBalances(alice);
 
-        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, bptAmountIn, amountsOut);
+        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, amountsOut);
 
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN);
@@ -437,7 +437,6 @@ contract VaultLiquidityTest is Test {
         Balances memory balancesBefore,
         Balances memory balancesAfter,
         uint256 bptAmountIn,
-        uint256 rawBptAmountIn,
         uint256[] memory amountsOut
     ) internal {
         // Assets are transferred back to user
