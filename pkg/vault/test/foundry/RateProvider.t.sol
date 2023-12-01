@@ -17,7 +17,9 @@ contract RateProviderTest is Test {
         rateProvider = new RateProviderMock();
     }
 
-    function testUnderlying(address token) public {
+    function testUnderlying() public {
+        address token = vm.addr(10);
+
         rateProvider.setUnderlyingToken(IERC20(token));
 
         assertEq(address(rateProvider.getUnderlyingToken()), token);
