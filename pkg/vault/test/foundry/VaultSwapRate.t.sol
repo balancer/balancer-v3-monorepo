@@ -136,7 +136,26 @@ contract VaultSwapWithRatesTest is Test {
 
         initPool();
 
-        uint256 rateAdjustedAmount = FixedPoint.divDown(AMOUNT, MOCK_RATE);
+        uint256 rateAdjustedLimit = FixedPoint.divDown(AMOUNT, MOCK_RATE);
+        uint256 rateAdjustedAmount = FixedPoint.mulDown(AMOUNT, MOCK_RATE);
+
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IBasePool.onSwap.selector,
+                IBasePool.SwapParams({
+                    kind: IVault.SwapKind.GIVEN_IN,
+                    tokenIn: IERC20(WSTETH),
+                    tokenOut: IERC20(DAI),
+                    amountGivenScaled18: AMOUNT,
+                    balancesScaled18: [rateAdjustedAmount, AMOUNT].toMemoryArray(),
+                    indexIn: 1,
+                    indexOut: 0,
+                    sender: address(router),
+                    userData: bytes("")
+                })
+            )
+        );
 
         vm.prank(bob);
         router.swap(
@@ -145,22 +164,10 @@ contract VaultSwapWithRatesTest is Test {
             address(WSTETH).asAsset(),
             address(DAI).asAsset(),
             AMOUNT,
-            rateAdjustedAmount, // Adjust limit
+            rateAdjustedLimit,
             type(uint256).max,
             bytes("")
         );
-
-        // assets are transferred to/from Bob
-        assertEq(WSTETH.balanceOf(bob), 0);
-        assertEq(DAI.balanceOf(bob), AMOUNT + rateAdjustedAmount);
-
-        // assets are adjusted in the pool
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], AMOUNT - rateAdjustedAmount);
-        assertEq(balances[1], AMOUNT * 2);
-
-        assertEq(DAI.balanceOf(address(vault)), AMOUNT - rateAdjustedAmount);
-        assertEq(WSTETH.balanceOf(address(vault)), AMOUNT * 2);
     }
 
     function testSwapGivenOutWithRate() public {
@@ -168,7 +175,26 @@ contract VaultSwapWithRatesTest is Test {
 
         initPool();
 
-        uint256 rateAdjustedAmount = FixedPoint.divDown(AMOUNT, MOCK_RATE);
+        uint256 rateAdjustedBalance = FixedPoint.mulDown(AMOUNT, MOCK_RATE);
+        uint256 rateAdjustedAmountGiven = FixedPoint.divDown(AMOUNT, MOCK_RATE);
+
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IBasePool.onSwap.selector,
+                IBasePool.SwapParams({
+                    kind: IVault.SwapKind.GIVEN_OUT,
+                    tokenIn: IERC20(WSTETH),
+                    tokenOut: IERC20(DAI),
+                    amountGivenScaled18: AMOUNT,
+                    balancesScaled18: [rateAdjustedBalance, AMOUNT].toMemoryArray(),
+                    indexIn: 1,
+                    indexOut: 0,
+                    sender: address(router),
+                    userData: bytes("")
+                })
+            )
+        );
 
         vm.prank(bob);
         router.swap(
@@ -176,23 +202,10 @@ contract VaultSwapWithRatesTest is Test {
             address(pool),
             address(WSTETH).asAsset(),
             address(DAI).asAsset(),
-            rateAdjustedAmount,
+            rateAdjustedAmountGiven,
             AMOUNT,
             type(uint256).max,
             bytes("")
         );
-
-        // asssets are transferred to/from Bob
-        assertEq(WSTETH.balanceOf(bob), 0);
-        assertEq(DAI.balanceOf(bob), AMOUNT + rateAdjustedAmount);
-
-        // assets are adjusted in the pool
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], AMOUNT - rateAdjustedAmount);
-        assertEq(balances[1], AMOUNT * 2);
-
-        // vault are adjusted balances
-        assertEq(DAI.balanceOf(address(vault)), AMOUNT - rateAdjustedAmount);
-        assertEq(WSTETH.balanceOf(address(vault)), 2 * AMOUNT);
     }
 }
