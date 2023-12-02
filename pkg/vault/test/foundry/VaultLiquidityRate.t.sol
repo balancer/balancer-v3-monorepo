@@ -7,7 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
@@ -66,7 +66,7 @@ contract VaultLiquidityWithRatesTest is Test {
             vault,
             "ERC20 Pool",
             "ERC20POOL",
-            [address(DAI), address(WSTETH)].toMemoryArray().asIERC20(),
+            [address(WSTETH), address(DAI)].toMemoryArray().asIERC20(),
             rateProviders,
             true,
             365 days,
@@ -110,9 +110,9 @@ contract VaultLiquidityWithRatesTest is Test {
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = router.addLiquidity(
             address(pool),
-            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
-            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
-            DAI_AMOUNT_IN,
+            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
+            [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
+            WSTETH_AMOUNT_IN,
             IVault.AddLiquidityKind.PROPORTIONAL,
             bytes("")
         );
@@ -123,7 +123,7 @@ contract VaultLiquidityWithRatesTest is Test {
         _compareBalancesAddLiquidity(balancesBefore, balancesAfter, amountsIn, bptAmountOut);
 
         // should mint correct amount of BPT tokens
-        assertEq(bptAmountOut, DAI_AMOUNT_IN);
+        assertEq(bptAmountOut, WSTETH_AMOUNT_IN);
     }
 
     function testAddLiquidityUnbalancedWithRate() public {
@@ -132,29 +132,27 @@ contract VaultLiquidityWithRatesTest is Test {
 
         rateProvider.mockRate(MOCK_RATE);
 
+        uint256 rateAdjustedAmount = FixedPoint.mulDown(WSTETH_AMOUNT_IN, MOCK_RATE);
+
         vm.startPrank(alice);
-
-        Balances memory balancesBefore = _getBalances(alice);
-
-        (uint256[] memory amountsIn, uint256 bptAmountOut, ) = router.addLiquidity(
+        vm.expectCall(
             address(pool),
-            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
-            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
-            DAI_AMOUNT_IN,
+            abi.encodeWithSelector(
+                IBasePool.onAddLiquidityUnbalanced.selector,
+                alice,
+                [rateAdjustedAmount, DAI_AMOUNT_IN].toMemoryArray(), // exactAmountsInScaled18
+                [rateAdjustedAmount, DAI_AMOUNT_IN].toMemoryArray() // liveBalancesScaled18
+            )
+        );
+
+        router.addLiquidity(
+            address(pool),
+            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
+            [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
+            WSTETH_AMOUNT_IN,
             IVault.AddLiquidityKind.UNBALANCED,
             bytes("")
         );
-        vm.stopPrank();
-
-        Balances memory balancesAfter = _getBalances(alice);
-
-        _compareBalancesAddLiquidity(balancesBefore, balancesAfter, amountsIn, bptAmountOut);
-
-        // ERC20PoolMock returns amountsIn[0], which is upscaled when calling the pool,
-        // so the BPT amount should go down by the rate (raw balances unchanged)
-
-        // should mint correct amount of BPT tokens
-        assertEq(bptAmountOut, FixedPoint.mulDown(DAI_AMOUNT_IN, MOCK_RATE));
     }
 
     function testAddLiquiditySingleTokenExactOutWithRate() public {
@@ -163,28 +161,28 @@ contract VaultLiquidityWithRatesTest is Test {
 
         rateProvider.mockRate(MOCK_RATE);
 
+        uint256 rateAdjustedAmount = FixedPoint.mulDown(WSTETH_AMOUNT_IN, MOCK_RATE);
+
         vm.startPrank(alice);
-
-        Balances memory balancesBefore = _getBalances(alice);
-
-        (uint256[] memory amountsIn, uint256 bptAmountOut, ) = router.addLiquidity(
+        vm.expectCall(
             address(pool),
-            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
-            [DAI_AMOUNT_IN, 0].toMemoryArray(),
-            DAI_AMOUNT_IN,
+            abi.encodeWithSelector(
+                IBasePool.onAddLiquiditySingleTokenExactOut.selector,
+                alice,
+                0,
+                WSTETH_AMOUNT_IN,
+                [rateAdjustedAmount, DAI_AMOUNT_IN].toMemoryArray() // liveBalancesScaled18
+            )
+        );
+
+        router.addLiquidity(
+            address(pool),
+            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
+            [WSTETH_AMOUNT_IN, 0].toMemoryArray(),
+            WSTETH_AMOUNT_IN,
             IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
             bytes("")
         );
-        vm.stopPrank();
-
-        Balances memory balancesAfter = _getBalances(alice);
-
-        _compareBalancesAddLiquidity(balancesBefore, balancesAfter, amountsIn, bptAmountOut);
-
-        // ERC20PoolMock returns the sender's balance of tokenIn (raw)
-
-        // should mint correct amount of BPT tokens
-        assertEq(bptAmountOut, DAI_AMOUNT_IN);
     }
 
     function testAddLiquidityCustomWithRate() public {
@@ -193,28 +191,29 @@ contract VaultLiquidityWithRatesTest is Test {
 
         rateProvider.mockRate(MOCK_RATE);
 
+        uint256 rateAdjustedAmount = FixedPoint.mulDown(WSTETH_AMOUNT_IN, MOCK_RATE);
+
         vm.startPrank(alice);
-
-        Balances memory balancesBefore = _getBalances(alice);
-
-        (uint256[] memory amountsIn, uint256 bptAmountOut, ) = router.addLiquidity(
+        vm.expectCall(
             address(pool),
-            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
-            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
-            DAI_AMOUNT_IN,
+            abi.encodeWithSelector(
+                IBasePool.onAddLiquidityCustom.selector,
+                alice,
+                [rateAdjustedAmount, DAI_AMOUNT_IN].toMemoryArray(), // maxAmountsIn
+                WSTETH_AMOUNT_IN, // minBptOut
+                [rateAdjustedAmount, DAI_AMOUNT_IN].toMemoryArray(), // liveBalancesScaled18
+                bytes("")
+            )
+        );
+
+        router.addLiquidity(
+            address(pool),
+            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
+            [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
+            WSTETH_AMOUNT_IN,
             IVault.AddLiquidityKind.CUSTOM,
             bytes("")
         );
-        vm.stopPrank();
-
-        Balances memory balancesAfter = _getBalances(alice);
-
-        _compareBalancesAddLiquidity(balancesBefore, balancesAfter, amountsIn, bptAmountOut);
-
-        // ERC20PoolMock returns minBptAmountOut as the amountOut
-
-        // should mint correct amount of BPT tokens
-        assertEq(bptAmountOut, DAI_AMOUNT_IN);
     }
 
     function testRemoveLiquidityProportionalWithRate() public {
@@ -227,9 +226,9 @@ contract VaultLiquidityWithRatesTest is Test {
 
         router.addLiquidity(
             address(pool),
-            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
-            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
-            DAI_AMOUNT_IN,
+            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
+            [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
+            WSTETH_AMOUNT_IN,
             IVault.AddLiquidityKind.PROPORTIONAL,
             bytes("")
         );
@@ -238,9 +237,9 @@ contract VaultLiquidityWithRatesTest is Test {
 
         (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidity(
             address(pool),
-            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
-            DAI_AMOUNT_IN,
-            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
+            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
+            WSTETH_AMOUNT_IN,
+            [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
             IVault.RemoveLiquidityKind.PROPORTIONAL,
             bytes("")
         );
@@ -252,8 +251,8 @@ contract VaultLiquidityWithRatesTest is Test {
         _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, bptAmountIn, amountsOut);
 
         // amountsOut are correct
-        assertEq(amountsOut[0], DAI_AMOUNT_IN);
-        assertEq(amountsOut[1], WSTETH_AMOUNT_IN);
+        assertEq(amountsOut[0], WSTETH_AMOUNT_IN);
+        assertEq(amountsOut[1], DAI_AMOUNT_IN);
     }
 
     function testRemoveLiquiditySingleTokenExactInWithRate() public {
@@ -266,42 +265,34 @@ contract VaultLiquidityWithRatesTest is Test {
 
         router.addLiquidity(
             address(pool),
-            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
-            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
-            DAI_AMOUNT_IN,
-            IVault.AddLiquidityKind.UNBALANCED,
+            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
+            [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
+            WSTETH_AMOUNT_IN,
+            IVault.AddLiquidityKind.PROPORTIONAL,
             bytes("")
         );
 
-        Balances memory balancesBefore = _getBalances(alice);
+        PoolData memory startingBalances = vault.getPoolData(address(pool), Rounding.ROUND_DOWN);
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidity(
+        vm.expectCall(
             address(pool),
-            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
-            DAI_AMOUNT_IN,
-            [DAI_AMOUNT_IN, 0].toMemoryArray(),
+            abi.encodeWithSelector(
+                IBasePool.onRemoveLiquiditySingleTokenExactIn.selector,
+                alice,
+                0, // tokenOutIndex
+                WSTETH_AMOUNT_IN, // exactBptIn
+                [startingBalances.balancesLiveScaled18[0], startingBalances.balancesLiveScaled18[1]].toMemoryArray()
+            )
+        );
+
+        router.removeLiquidity(
+            address(pool),
+            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
+            WSTETH_AMOUNT_IN,
+            [WSTETH_AMOUNT_IN, 0].toMemoryArray(),
             IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
             bytes("")
         );
-
-        vm.stopPrank();
-
-        Balances memory balancesAfter = _getBalances(alice);
-
-        // ERC20PoolMock returns the current (upscaled) balance of tokenOut as amountOut,
-        // so we need to multiply by the rate
-
-        _compareBalancesRemoveLiquidity(
-            balancesBefore,
-            balancesAfter,
-            FixedPoint.mulDown(bptAmountIn, MOCK_RATE),
-            bptAmountIn,
-            amountsOut
-        );
-
-        // amountsOut are correct (takes out initial liquidity as well)
-        assertEq(amountsOut[0], DAI_AMOUNT_IN * 2);
-        assertEq(amountsOut[1], 0);
     }
 
     function testRemoveLiquiditySingleTokenExactOutWithRate() public {
@@ -314,35 +305,36 @@ contract VaultLiquidityWithRatesTest is Test {
 
         router.addLiquidity(
             address(pool),
-            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
-            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
-            DAI_AMOUNT_IN,
+            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
+            [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
+            WSTETH_AMOUNT_IN,
             IVault.AddLiquidityKind.PROPORTIONAL,
             bytes("")
         );
 
-        Balances memory balancesBefore = _getBalances(alice);
+        uint256 rateAdjustedAmountOut = FixedPoint.mulDown(WSTETH_AMOUNT_IN, MOCK_RATE);
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidity(
+        PoolData memory startingBalances = vault.getPoolData(address(pool), Rounding.ROUND_DOWN);
+
+        vm.expectCall(
             address(pool),
-            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
-            DAI_AMOUNT_IN,
-            [DAI_AMOUNT_IN, 0].toMemoryArray(),
+            abi.encodeWithSelector(
+                IBasePool.onRemoveLiquiditySingleTokenExactOut.selector,
+                alice,
+                0, // tokenOutIndex
+                rateAdjustedAmountOut, // exactAmountOut
+                [startingBalances.balancesLiveScaled18[0], startingBalances.balancesLiveScaled18[1]].toMemoryArray()
+            )
+        );
+
+        router.removeLiquidity(
+            address(pool),
+            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
+            WSTETH_AMOUNT_IN,
+            [WSTETH_AMOUNT_IN, 0].toMemoryArray(),
             IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
             bytes("")
         );
-
-        vm.stopPrank();
-
-        Balances memory balancesAfter = _getBalances(alice);
-
-        // ERC20PoolMock returns the (raw) BPT balance of the sender for BPTIn
-
-        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, bptAmountIn, amountsOut);
-
-        // amountsOut are correct
-        assertEq(amountsOut[0], DAI_AMOUNT_IN);
-        assertEq(amountsOut[1], 0);
     }
 
     function testRemoveLiquidityCustomWithRate() public {
@@ -355,41 +347,37 @@ contract VaultLiquidityWithRatesTest is Test {
 
         router.addLiquidity(
             address(pool),
-            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
-            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
-            DAI_AMOUNT_IN,
+            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
+            [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
+            WSTETH_AMOUNT_IN,
             IVault.AddLiquidityKind.UNBALANCED,
             bytes("")
         );
 
-        Balances memory balancesBefore = _getBalances(alice);
+        uint256 rateAdjustedAmountOut = FixedPoint.mulDown(WSTETH_AMOUNT_IN, MOCK_RATE);
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidity(
+        PoolData memory startingBalances = vault.getPoolData(address(pool), Rounding.ROUND_DOWN);
+
+        vm.expectCall(
             address(pool),
-            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
-            DAI_AMOUNT_IN,
-            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
+            abi.encodeWithSelector(
+                IBasePool.onRemoveLiquidityCustom.selector,
+                alice,
+                WSTETH_AMOUNT_IN, // maxBptAmountIn
+                [rateAdjustedAmountOut, DAI_AMOUNT_IN].toMemoryArray(), // minAmountsOut
+                [startingBalances.balancesLiveScaled18[0], startingBalances.balancesLiveScaled18[1]].toMemoryArray(),
+                bytes("")
+            )
+        );
+
+        router.removeLiquidity(
+            address(pool),
+            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
+            WSTETH_AMOUNT_IN,
+            [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
             IVault.RemoveLiquidityKind.CUSTOM,
             bytes("")
         );
-
-        vm.stopPrank();
-
-        Balances memory balancesAfter = _getBalances(alice);
-
-        // ERC20PoolMock returns (upscaled) balances for amountsOut, so need to multiply by the rate.
-
-        _compareBalancesRemoveLiquidity(
-            balancesBefore,
-            balancesAfter,
-            FixedPoint.mulDown(bptAmountIn, MOCK_RATE),
-            bptAmountIn,
-            amountsOut
-        );
-
-        // amountsOut are correct
-        assertEq(amountsOut[0], DAI_AMOUNT_IN);
-        assertEq(amountsOut[1], WSTETH_AMOUNT_IN);
     }
 
     function _mockInitialize(address initializer) internal {
@@ -399,8 +387,8 @@ contract VaultLiquidityWithRatesTest is Test {
         // to comply with the vault's required minimum.
         router.initialize(
             address(pool),
-            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
-            [DAI_AMOUNT_IN, WSTETH_AMOUNT_IN].toMemoryArray(),
+            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
+            [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
             0,
             bytes("")
         );
@@ -409,16 +397,16 @@ contract VaultLiquidityWithRatesTest is Test {
     function _getBalances(address user) internal view returns (Balances memory balances) {
         balances.userTokens = new uint256[](2);
 
-        balances.userTokens[0] = DAI.balanceOf(user);
-        balances.userTokens[1] = WSTETH.balanceOf(user);
+        balances.userTokens[0] = WSTETH.balanceOf(user);
+        balances.userTokens[1] = DAI.balanceOf(user);
         balances.userBpt = pool.balanceOf(user);
 
         (, uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(pool));
-        require(poolBalances[0] == DAI.balanceOf(address(vault)), "DAI pool balance does not match vault balance");
         require(
-            poolBalances[1] == WSTETH.balanceOf(address(vault)),
+            poolBalances[0] == WSTETH.balanceOf(address(vault)),
             "WSTETH pool balance does not match vault balance"
         );
+        require(poolBalances[1] == DAI.balanceOf(address(vault)), "DAI pool balance does not match vault balance");
 
         balances.poolTokens = poolBalances;
     }
