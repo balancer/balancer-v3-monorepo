@@ -38,12 +38,8 @@ contract VaultSwapWithRatesTest is Test {
     ERC20TestToken DAI;
     address alice = vm.addr(1);
     address bob = vm.addr(2);
-    address admin = vm.addr(3);
 
     uint256 constant AMOUNT = 1e3 * 1e18;
-    uint256 constant SWAP_FEE = 1e3 * 1e16; // 1%
-    uint256 constant PROTOCOL_SWAP_FEE = SWAP_FEE / 2;
-
     uint256 constant MOCK_RATE = 2e18;
 
     function setUp() public {
@@ -60,7 +56,7 @@ contract VaultSwapWithRatesTest is Test {
             vault,
             "ERC20 Pool",
             "ERC20POOL",
-            [address(DAI), address(WSTETH)].toMemoryArray().asIERC20(),
+            [address(WSTETH), address(DAI)].toMemoryArray().asIERC20(),
             rateProviders,
             true,
             365 days,
@@ -89,7 +85,6 @@ contract VaultSwapWithRatesTest is Test {
 
         vm.label(alice, "alice");
         vm.label(bob, "bob");
-        vm.label(admin, "admin");
         vm.label(address(WSTETH), "WSTETH");
         vm.label(address(DAI), "DAI");
     }
@@ -98,7 +93,7 @@ contract VaultSwapWithRatesTest is Test {
         vm.prank(alice);
         router.initialize(
             address(pool),
-            [address(DAI), address(WSTETH)].toMemoryArray().asAsset(),
+            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
             [uint256(AMOUNT), uint256(AMOUNT)].toMemoryArray(),
             0,
             bytes("")
@@ -145,8 +140,8 @@ contract VaultSwapWithRatesTest is Test {
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_IN,
-                    tokenIn: IERC20(WSTETH),
-                    tokenOut: IERC20(DAI),
+                    tokenIn: IERC20(DAI),
+                    tokenOut: IERC20(WSTETH),
                     amountGivenScaled18: AMOUNT,
                     balancesScaled18: [rateAdjustedAmount, AMOUNT].toMemoryArray(),
                     indexIn: 1,
@@ -161,8 +156,8 @@ contract VaultSwapWithRatesTest is Test {
         router.swap(
             IVault.SwapKind.GIVEN_IN,
             address(pool),
-            address(WSTETH).asAsset(),
             address(DAI).asAsset(),
+            address(WSTETH).asAsset(),
             AMOUNT,
             rateAdjustedLimit,
             type(uint256).max,
@@ -184,8 +179,8 @@ contract VaultSwapWithRatesTest is Test {
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_OUT,
-                    tokenIn: IERC20(WSTETH),
-                    tokenOut: IERC20(DAI),
+                    tokenIn: IERC20(DAI),
+                    tokenOut: IERC20(WSTETH),
                     amountGivenScaled18: AMOUNT,
                     balancesScaled18: [rateAdjustedBalance, AMOUNT].toMemoryArray(),
                     indexIn: 1,
@@ -200,8 +195,8 @@ contract VaultSwapWithRatesTest is Test {
         router.swap(
             IVault.SwapKind.GIVEN_OUT,
             address(pool),
-            address(WSTETH).asAsset(),
             address(DAI).asAsset(),
+            address(WSTETH).asAsset(),
             rateAdjustedAmountGiven,
             AMOUNT,
             type(uint256).max,
