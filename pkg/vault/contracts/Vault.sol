@@ -522,7 +522,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
         vars.swapFeePercentage = _getSwapFeePercentage(poolData.config);
 
-        if (vars.swapFeePercentage > 0 && params.kind == IVault.SwapKind.GIVEN_OUT) {
+        if (vars.swapFeePercentage > 0 && params.kind == SwapKind.GIVEN_OUT) {
             // Round up to avoid losses during precision loss.
             vars.swapFeeAmountScaled18 =
                 vars.amountGivenScaled18.divUp(vars.swapFeePercentage.complement()) -
@@ -546,7 +546,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             })
         );
 
-        if (vars.swapFeePercentage > 0 && params.kind == IVault.SwapKind.GIVEN_IN) {
+        if (vars.swapFeePercentage > 0 && params.kind == SwapKind.GIVEN_IN) {
             // Swap fee is a percentage of the amountCalculated for the GIVEN_IN swap
             // Round up to avoid losses during precision loss.
             vars.swapFeeAmountScaled18 = vars.amountCalculatedScaled18.mulUp(vars.swapFeePercentage);
