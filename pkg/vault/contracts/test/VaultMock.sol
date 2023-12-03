@@ -5,16 +5,19 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
-import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { PoolConfig, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
+import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 
 contract VaultMock is Vault {
+    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using PoolConfigLib for PoolConfig;
 
     PoolFactoryMock private immutable _poolFactoryMock;
@@ -63,9 +66,12 @@ contract VaultMock is Vault {
 
     // Used for testing the ReentrancyGuard
     function reentrantRegisterPool(address pool, IERC20[] memory tokens) external nonReentrant {
+        IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
+
         this.registerPool(
             pool,
             tokens,
+            rateProviders,
             365 days,
             address(0),
             PoolConfigBits.wrap(0).toPoolConfig().callbacks,
@@ -77,9 +83,12 @@ contract VaultMock is Vault {
     // The Mock pool has an argument for whether or not to register on deployment. To call register pool
     // separately, deploy it with the registration flag false, then call this function.
     function manualRegisterPool(address pool, IERC20[] memory tokens) external whenVaultNotPaused {
+        IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
+
         _poolFactoryMock.registerPool(
             pool,
             tokens,
+            rateProviders,
             address(0),
             PoolConfigBits.wrap(0).toPoolConfig().callbacks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
@@ -92,9 +101,12 @@ contract VaultMock is Vault {
         uint256 timestamp,
         address pauseManager
     ) external whenVaultNotPaused {
+        IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
+
         _poolFactoryMock.registerPoolAtTimestamp(
             pool,
             tokens,
+            rateProviders,
             pauseManager,
             PoolConfigBits.wrap(0).toPoolConfig().callbacks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement,
@@ -102,11 +114,11 @@ contract VaultMock is Vault {
         );
     }
 
-    function getScalingFactors(address pool) external view returns (uint256[] memory) {
+    function getDecimalScalingFactors(address pool) external view returns (uint256[] memory) {
         PoolConfig memory config = _poolConfig[pool].toPoolConfig();
         IERC20[] memory tokens = _getPoolTokens(pool);
 
-        return PoolConfigLib.getScalingFactors(config, tokens.length);
+        return PoolConfigLib.getDecimalScalingFactors(config, tokens.length);
     }
 
     function manualEnableRecoveryMode(address pool) external {
@@ -121,5 +133,20 @@ contract VaultMock is Vault {
 
     function recoveryModeExit(address pool) external view onlyInRecoveryMode(pool) {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function getPoolData(address pool, Rounding roundingDirection) external view returns (PoolData memory) {
+        return _getPoolData(pool, roundingDirection);
+    }
+
+    function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw) {
+        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+
+        uint256 numTokens = poolTokenBalances.length();
+        balancesRaw = new uint256[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; i++) {
+            (, balancesRaw[i]) = poolTokenBalances.unchecked_at(i);
+        }
     }
 }

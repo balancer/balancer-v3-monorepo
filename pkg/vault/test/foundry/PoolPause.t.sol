@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
@@ -35,6 +36,7 @@ contract PoolPauseTest is Test {
     address alice = vm.addr(1);
     address bob = vm.addr(2);
     address admin = vm.addr(3);
+    IRateProvider[] rateProviders = new IRateProvider[](2);
 
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
@@ -42,11 +44,13 @@ contract PoolPauseTest is Test {
         router = new Router(IVault(vault), address(0));
         USDC = new ERC20TestToken("USDC", "USDC", 18);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
+
         pool = new ERC20PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            rateProviders,
             true,
             365 days,
             admin
@@ -58,6 +62,7 @@ contract PoolPauseTest is Test {
             "ERC20 Pool",
             "ERC20POOL",
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            rateProviders,
             true,
             365 days,
             address(0)
@@ -68,6 +73,7 @@ contract PoolPauseTest is Test {
             "ERC20 Pool",
             "ERC20POOL",
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            rateProviders,
             true,
             0,
             address(0)
@@ -78,6 +84,7 @@ contract PoolPauseTest is Test {
             "ERC20 Pool",
             "ERC20POOL",
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            rateProviders,
             true,
             10000 days,
             address(0)
@@ -107,6 +114,7 @@ contract PoolPauseTest is Test {
             "ERC20 Pool",
             "ERC20POOL",
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            rateProviders,
             true,
             maxEndTimeTimestamp + 1,
             address(0)
