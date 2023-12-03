@@ -10,6 +10,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -51,11 +52,14 @@ contract VaultLiquidityTest is Test {
         router = new Router(IVault(vault), address(0));
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
+        IRateProvider[] memory rateProviders = new IRateProvider[](2);
+
         pool = new ERC20PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            rateProviders,
             true,
             365 days,
             address(0)
@@ -383,7 +387,7 @@ contract VaultLiquidityTest is Test {
         balances.userTokens[1] = USDC.balanceOf(user);
         balances.userBpt = pool.balanceOf(user);
 
-        (, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(address(pool));
+        (, uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(pool));
         require(poolBalances[0] == DAI.balanceOf(address(vault)), "DAI pool balance does not match vault balance");
         require(poolBalances[1] == USDC.balanceOf(address(vault)), "USDC pool balance does not match vault balance");
 

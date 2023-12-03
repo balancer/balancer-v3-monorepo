@@ -11,6 +11,7 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -50,11 +51,14 @@ contract VaultSwapTest is Test {
         router = new Router(IVault(vault), address(0));
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
+        IRateProvider[] memory rateProviders = new IRateProvider[](2);
+
         pool = new ERC20PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            rateProviders,
             true,
             365 days,
             address(0)
@@ -179,7 +183,7 @@ contract VaultSwapTest is Test {
         config.callbacks.shouldCallBeforeAddLiquidity = true;
         vault.setConfig(address(pool), config);
 
-        (, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(address(pool));
+        (, uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(pool));
         uint256[] memory maxInputs = _getSuitableMaxInputs(kind);
 
         vm.prank(bob);
@@ -234,7 +238,7 @@ contract VaultSwapTest is Test {
         config.callbacks.shouldCallBeforeRemoveLiquidity = true;
         vault.setConfig(address(pool), config);
 
-        (, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(address(pool));
+        (, uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(pool));
         uint256[] memory minOutputs = _getSuitableMinOutputs(kind);
 
         // Alice has LP tokens from initialization
@@ -289,7 +293,7 @@ contract VaultSwapTest is Test {
         config.callbacks.shouldCallAfterAddLiquidity = true;
         vault.setConfig(address(pool), config);
 
-        (, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(address(pool));
+        (, uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(pool));
         uint256[] memory amountsIn;
         uint256 bptAmountOut;
 
@@ -360,7 +364,7 @@ contract VaultSwapTest is Test {
         uint256 bptBalance = pool.balanceOf(alice);
         // Cut the tail so that there is no precision loss when calculating upscaled amounts out in proportional mode
         bptBalance -= bptBalance % USDC_SCALING;
-        (, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(address(pool));
+        (, uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(pool));
         uint256 bptAmountIn;
         uint256[] memory amountsOut;
 
