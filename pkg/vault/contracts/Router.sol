@@ -151,7 +151,7 @@ contract Router is IRouter, ReentrancyGuard {
             IVault.AddLiquidityParams({
                 pool: params.pool,
                 to: params.sender,
-                maxAmountsIn: params.maxAmountsIn,
+                maxAmountsInScaled18: params.maxAmountsIn,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
                 userData: params.userData
@@ -237,7 +237,7 @@ contract Router is IRouter, ReentrancyGuard {
                 pool: params.pool,
                 from: params.sender,
                 maxBptAmountIn: params.maxBptAmountIn,
-                minAmountsOut: params.minAmountsOut,
+                minAmountsOutScaled18: params.minAmountsOut,
                 kind: params.kind,
                 userData: params.userData
             })
@@ -484,7 +484,7 @@ contract Router is IRouter, ReentrancyGuard {
             IVault.AddLiquidityParams({
                 pool: params.pool,
                 to: params.sender,
-                maxAmountsIn: params.maxAmountsIn,
+                maxAmountsInScaled18: params.maxAmountsIn,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
                 userData: params.userData
@@ -545,7 +545,7 @@ contract Router is IRouter, ReentrancyGuard {
                     pool: params.pool,
                     from: params.sender,
                     maxBptAmountIn: params.maxBptAmountIn,
-                    minAmountsOut: params.minAmountsOut,
+                    minAmountsOutScaled18: params.minAmountsOut,
                     kind: params.kind,
                     userData: params.userData
                 })

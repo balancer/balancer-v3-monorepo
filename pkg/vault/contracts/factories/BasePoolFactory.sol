@@ -49,7 +49,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
 
     /// @inheritdoc IBasePoolFactory
     function getDeploymentAddress(bytes32 salt) external view returns (address) {
-        return CREATE3.getDeployed(salt);
+        return CREATE3.getDeployed(_computeFinalSalt(salt));
     }
 
     /// @inheritdoc IBasePoolFactory
@@ -75,7 +75,11 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         emit PoolCreated(pool);
     }
 
+    function _computeFinalSalt(bytes32 salt) internal view returns (bytes32) {
+        return keccak256(abi.encode(msg.sender, block.chainid, salt));
+    }
+
     function _create(bytes memory constructorArgs, bytes32 salt) internal returns (address) {
-        return CREATE3.deploy(salt, abi.encodePacked(_creationCode, constructorArgs), 0);
+        return CREATE3.deploy(_computeFinalSalt(salt), abi.encodePacked(_creationCode, constructorArgs), 0);
     }
 }

@@ -35,11 +35,17 @@ contract WeightedPool8020Factory is BasePoolFactory {
         string memory symbol,
         IERC20 highWeightToken,
         IERC20 lowWeightToken,
+        IRateProvider highWeightRateProvider,
+        IRateProvider lowWeightRateProvider,
         bytes32 salt
     ) external returns (address pool) {
         IERC20[] memory tokens = new IERC20[](2);
         tokens[0] = highWeightToken;
         tokens[1] = lowWeightToken;
+
+        IRateProvider[] memory rateProviders = new IRateProvider[](2);
+        rateProviders[0] = highWeightRateProvider;
+        rateProviders[1] = lowWeightRateProvider;
 
         uint256[] memory weights = new uint256[](2);
         weights[0] = _EIGHTY;
@@ -56,6 +62,7 @@ contract WeightedPool8020Factory is BasePoolFactory {
         getVault().registerPool(
             pool,
             tokens,
+            rateProviders,
             getNewPoolPauseWindowEndTime(),
             address(0), // no pause manager
             PoolCallbacks({

@@ -122,8 +122,8 @@ contract WeightedPool is BasePool {
      * @dev Get the current invariant.
      * @return The current value of the invariant
      */
-    function getInvariant(uint256[] memory balancesScaled18) public view returns (uint256) {
-        return WeightedMath.calculateInvariant(_getNormalizedWeights(), balancesScaled18);
+    function getInvariant(uint256[] memory balancesLiveScaled18) public view returns (uint256) {
+        return WeightedMath.calculateInvariant(_getNormalizedWeights(), balancesLiveScaled18);
     }
 
     /**

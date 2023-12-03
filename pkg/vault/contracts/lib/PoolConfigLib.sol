@@ -19,9 +19,6 @@ library PoolConfigLib {
     /// @dev Pool does not support adding liquidity proportionally.
     error DoesNotSupportAddLiquidityProportional();
 
-    /// @dev Pool does not support adding liquidity with unbalanced tokens in.
-    error DoesNotSupportAddLiquidityUnbalanced();
-
     /// @dev Pool does not support adding liquidity with a single asset, specifying exact pool tokens out.
     error DoesNotSupportAddLiquiditySingleTokenExactOut();
 
@@ -36,9 +33,6 @@ library PoolConfigLib {
 
     /// @dev Pool does not support removing liquidity with a single asset, specifying exact pool tokens in.
     error DoesNotSupportRemoveLiquiditySingleTokenExactIn();
-
-    /// @dev
-    error DoesNotSupportRemoveLiquiditySingleTokenExactOut();
 
     /// @dev Pool does not support removing liquidity with a customized input.
     error DoesNotSupportRemoveLiquidityCustom();
@@ -268,7 +262,10 @@ library PoolConfigLib {
         return uint256(value).toUint24();
     }
 
-    function getScalingFactors(PoolConfig memory config, uint256 numTokens) internal pure returns (uint256[] memory) {
+    function getDecimalScalingFactors(
+        PoolConfig memory config,
+        uint256 numTokens
+    ) internal pure returns (uint256[] memory) {
         uint256[] memory scalingFactors = new uint256[](numTokens);
 
         bytes32 tokenDecimalDiffs = bytes32(uint256(config.tokenDecimalDiffs));

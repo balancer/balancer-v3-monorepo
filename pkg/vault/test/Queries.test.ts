@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
-import { WETH, MAX_UINT256 } from '@balancer-labs/v3-helpers/src/constants';
+import { WETH, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { Router } from '../typechain-types/contracts/Router';
 import { PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/PoolMock';
@@ -45,7 +45,7 @@ describe('Queries', function () {
     USDC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['USDC', 'USDC', 18] });
 
     pool = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool', 'POOL', [DAI, USDC], true],
+      args: [vaultAddress, 'Pool', 'POOL', [DAI, USDC], [ZERO_ADDRESS, ZERO_ADDRESS], true],
     });
 
     await USDC.mint(alice, USDC_AMOUNT_IN);

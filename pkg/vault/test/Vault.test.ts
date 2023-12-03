@@ -9,12 +9,13 @@ import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
-import { bn } from '@balancer-labs/v3-helpers/src/numbers';
+import { FP_ONE, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { setupEnvironment } from './poolSetup';
 import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
+import { RateProviderMock } from '../typechain-types';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -98,6 +99,7 @@ describe('Vault', function () {
     it('registering a pool emits an event', async () => {
       const currentTime = await currentTimestamp();
       const pauseWindowEndTime = Number(currentTime) + PAUSE_WINDOW_DURATION;
+      const rateProviders = Array(poolBTokens.length).fill(ZERO_ADDRESS);
 
       await expect(await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS))
         .to.emit(vault, 'PoolRegistered')
@@ -105,6 +107,7 @@ describe('Vault', function () {
           poolBAddress,
           await vault.getPoolFactoryMock(),
           poolBTokens,
+          rateProviders,
           pauseWindowEndTime,
           ANY_ADDRESS,
           [false, false, false, false, false],
@@ -200,13 +203,63 @@ describe('Vault', function () {
         .withArgs(false);
     });
 
+    describe('rate providers', () => {
+      let poolC: PoolMock;
+      let rateProviders: string[];
+      let expectedRates: bigint[];
+      let rateProvider: RateProviderMock;
+
+      sharedBeforeEach('deploy pool', async () => {
+        rateProviders = Array(poolATokens.length).fill(ZERO_ADDRESS);
+        rateProvider = await deploy('v3-vault/RateProviderMock');
+        rateProviders[0] = await rateProvider.getAddress();
+        expectedRates = Array(poolATokens.length).fill(FP_ONE);
+
+        poolC = await deploy('v3-vault/PoolMock', {
+          args: [vault, 'Pool C', 'POOLC', poolATokens, rateProviders, true],
+        });
+      });
+
+      it('has rate providers', async () => {
+        const [, , , poolProviders] = await vault.getPoolTokenInfo(poolC);
+        const tokenRates = await vault.getPoolTokenRates(poolC);
+
+        expect(poolProviders).to.deep.equal(rateProviders);
+        expect(tokenRates).to.deep.equal(expectedRates);
+      });
+
+      it('rate providers respond to changing rates', async () => {
+        const newRate = fp(0.5);
+
+        await rateProvider.mockRate(newRate);
+        expectedRates[0] = newRate;
+
+        const tokenRates = await vault.getPoolTokenRates(poolC);
+        expect(tokenRates).to.deep.equal(expectedRates);
+      });
+
+      it('rate providers support underlying tokens', async () => {
+        expect(await rateProvider.getUnderlyingToken()).to.eq(ZERO_ADDRESS);
+
+        await rateProvider.setUnderlyingToken(ANY_ADDRESS);
+        expect(await rateProvider.getUnderlyingToken()).to.eq(ANY_ADDRESS);
+      });
+
+      it('rate providers support exempt flags', async () => {
+        expect(await rateProvider.isExemptFromYieldProtocolFee()).be.false;
+
+        await rateProvider.setYieldExemptFlag(true);
+        expect(await rateProvider.isExemptFromYieldProtocolFee()).to.be.true;
+      });
+    });
+
     describe('pausing pools', () => {
       let pool: PoolMock;
       let poolAddress: string;
 
       sharedBeforeEach('deploy pool', async () => {
         pool = await deploy('v3-vault/PoolMock', {
-          args: [vault, 'Pool X', 'POOLX', poolATokens, true],
+          args: [vault, 'Pool X', 'POOLX', poolATokens, Array(poolATokens.length).fill(ZERO_ADDRESS), true],
         });
         poolAddress = await pool.getAddress();
       });
@@ -324,9 +377,9 @@ describe('Vault', function () {
 
     it('computes the scaling factors', async () => {
       // Get them from the pool (mock), using ScalingHelpers
-      const poolScalingFactors = await poolA.getScalingFactors();
+      const poolScalingFactors = await poolA.getDecimalScalingFactors();
       // Get them from the Vault (using PoolConfig)
-      const vaultScalingFactors = await vault.getScalingFactors(poolA);
+      const vaultScalingFactors = await vault.getDecimalScalingFactors(poolA);
 
       expect(vaultScalingFactors).to.deep.equal(poolScalingFactors);
     });
