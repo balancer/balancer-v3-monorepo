@@ -93,9 +93,10 @@ contract VaultSwapWithRatesTest is Test {
         vm.prank(alice);
         router.initialize(
             address(pool),
-            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
+            [address(WSTETH), address(DAI)].toMemoryArray().asIERC20(),
             [uint256(AMOUNT), uint256(AMOUNT)].toMemoryArray(),
             0,
+            false,
             bytes("")
         );
     }
