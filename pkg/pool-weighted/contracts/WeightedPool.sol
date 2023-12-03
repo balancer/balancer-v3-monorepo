@@ -124,11 +124,15 @@ contract WeightedPool is BasePool {
      * @return The current value of the invariant
      */
     function getInvariant() public view returns (uint256) {
-        // Balances are retrieve raw, and then scaled up below.
-        (, uint256[] memory balancesScaled18, uint256[] memory scalingFactors) = _vault.getPoolTokenInfo(address(this));
-
+        // Balances are retrieved raw, and then scaled up below.
+        (, uint256[] memory balancesScaled18, uint256[] memory decimalScalingFactors, ) = _vault.getPoolTokenInfo(
+            address(this)
+        );
+        uint256[] memory tokenRates = _vault.getPoolTokenRates(address(this));
         uint256[] memory normalizedWeights = _getNormalizedWeights();
-        balancesScaled18.toScaled18RoundDownArray(scalingFactors);
+
+        balancesScaled18.toScaled18RoundDownArray(decimalScalingFactors);
+        balancesScaled18.toScaled18RoundDownArray(tokenRates);
 
         return WeightedMath.calculateInvariant(normalizedWeights, balancesScaled18);
     }

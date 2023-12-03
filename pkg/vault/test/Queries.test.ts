@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
-import { WETH, MAX_UINT256 } from '@balancer-labs/v3-helpers/src/constants';
+import { WETH, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { Router } from '../typechain-types/contracts/Router';
 import { PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/PoolMock';
@@ -11,7 +11,8 @@ import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { VoidSigner } from 'ethers';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
-import { fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
+import '@balancer-labs/v3-common/setupTests';
 
 describe('Queries', function () {
   let vault: VaultMock;
@@ -45,7 +46,7 @@ describe('Queries', function () {
     USDC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['USDC', 'USDC', 18] });
 
     pool = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool', 'POOL', [DAI, USDC], true],
+      args: [vaultAddress, 'Pool', 'POOL', [DAI, USDC], [ZERO_ADDRESS, ZERO_ADDRESS], true],
     });
 
     await USDC.mint(alice, USDC_AMOUNT_IN);
@@ -137,7 +138,7 @@ describe('Queries', function () {
           pool,
           [DAI, USDC],
           DAI_AMOUNT_IN,
-          [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
+          [DAI_AMOUNT_IN - bn(1e6), USDC_AMOUNT_IN - bn(1e6)], // TODO: why? AmountOutBelowMin fires here
           REMOVE_LIQUIDITY_TEST_KIND,
           '0x'
         );

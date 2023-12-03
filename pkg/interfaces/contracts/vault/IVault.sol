@@ -6,6 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
+import { IRateProvider } from "./IRateProvider.sol";
 
 /// @dev Represents a pool's callbacks.
 struct PoolCallbacks {
@@ -39,6 +40,21 @@ struct PoolConfig {
     uint32 pauseWindowEndTime;
     PoolCallbacks callbacks;
     LiquidityManagement liquidityManagement;
+}
+
+struct PoolData {
+    PoolConfig config;
+    IERC20[] tokens;
+    IRateProvider[] rateProviders;
+    uint256[] balancesRaw;
+    uint256[] balancesLiveScaled18;
+    uint256[] tokenRates;
+    uint256[] decimalScalingFactors;
+}
+
+enum Rounding {
+    ROUND_UP,
+    ROUND_DOWN
 }
 
 interface IVault {
@@ -93,6 +109,7 @@ interface IVault {
      * @param pool The pool being registered
      * @param factory The factory creating the pool
      * @param tokens The pool's tokens
+     * @param rateProviders The pool's rate providers (or zero)
      * @param pauseWindowEndTime The pool's pause window end time
      * @param pauseManager The pool's external pause manager (or 0 for governance)
      * @param liquidityManagement Supported liquidity management callback flags
@@ -101,6 +118,7 @@ interface IVault {
         address indexed pool,
         address indexed factory,
         IERC20[] tokens,
+        IRateProvider[] rateProviders,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolCallbacks callbacks,
@@ -138,6 +156,7 @@ interface IVault {
      *
      * @param factory The factory address associated with the pool being registered
      * @param tokens An array of token addresses the pool will manage
+     * @param rateProviders An array of rate providers corresponding to the tokens (or zero for tokens without rates)
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param pauseManager Optional contract the Vault will allow to pause the pool
      * @param config Flags indicating which callbacks the pool supports
@@ -146,6 +165,7 @@ interface IVault {
     function registerPool(
         address factory,
         IERC20[] memory tokens,
+        IRateProvider[] memory rateProviders,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolCallbacks calldata config,
@@ -160,7 +180,7 @@ interface IVault {
      *
      * @param pool Address of the pool to initialize
      * @param to Address that will receive the output BPT
-     * @param tokens tokens involved in the liquidity provision
+     * @param tokens Tokens used to seed the pool (must match the registered tokens)
      * @param exactAmountsIn Exact amounts of input tokens
      * @param minBptAmountOut Minimum amount of output pool tokens
      * @param userData Additional (optional) data for the initialization
@@ -199,15 +219,25 @@ interface IVault {
 
     /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
-     * @dev TODO Add rates when we have them.
      * @return tokens Tokens registered to the pool
      * @return balancesRaw Corresponding raw balances of the tokens
      * @return scalingFactors Corresponding scalingFactors of the tokens
+     * @return rateProviders Corresponding rateProviders of the tokens (or zero for tokens with no rates)
      */
-    function getPoolTokenInfo(address pool) external view returns (IERC20[] memory, uint256[] memory, uint256[] memory);
+    function getPoolTokenInfo(
+        address pool
+    ) external view returns (IERC20[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
 
     /**
-     * @notice Gets the configuration paramters of a pool.
+     * @notice Retrieve the scaling factors from a pool's rate providers.
+     * @dev This is not included in `getPoolTokenInfo` since it makes external calls that might revert,
+     * effectively preventing retrieval of basic pool parameters. Tokens without rate providers will always return
+     * FixedPoint.ONE (1e18).
+     */
+    function getPoolTokenRates(address pool) external view returns (uint256[] memory);
+
+    /**
+     * @notice Gets the configuration parameters of a pool.
      * @param pool Address of the pool
      * @return Pool configuration
      */
@@ -434,27 +464,36 @@ interface IVault {
     error BptAmountBelowMin();
 
     /**
+     * @param pool Address of the pool
+     * @param to Address of user to mint to
+     * @param maxAmountsInRaw Maximum amounts of input tokens
+     * @param maxAmountsInScaled18 Maximum amounts of input tokens (upscaled)
+     * @param minBptAmountOut Output pool token amount
+     * @param kind Type of AddLiquidity operation
+     * @param userData Additional (optional) user data
+     */
+    struct AddLiquidityParams {
+        address pool;
+        address to;
+        uint256[] maxAmountsInRaw;
+        uint256[] maxAmountsInScaled18;
+        uint256 minBptAmountOut;
+        AddLiquidityKind kind;
+        bytes userData;
+    }
+
+    /**
      * @notice Adds liquidity to a pool.
      * @dev Caution should be exercised when adding liquidity because the Vault has the capability
      * to transfer tokens from any user, given that it holds all allowances.
      *
-     * @param pool Address of the pool
-     * @param to  Address of user to mint to
-     * @param maxAmountsIn Maximum amounts of input tokens
-     * @param minBptAmountOut Minimum amount of output pool tokens
-     * @param kind Add liquidity kind
-     * @param userData Additional (optional) user data
+     * @param params See `AddLiquidityParams`
      * @return amountsIn Actual amounts of input assets
      * @return bptAmountOut Output pool token amount
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function addLiquidity(
-        address pool,
-        address to,
-        uint256[] memory maxAmountsIn,
-        uint256 minBptAmountOut,
-        AddLiquidityKind kind,
-        bytes memory userData
+        AddLiquidityParams memory params
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
     /***************************************************************************
@@ -478,28 +517,36 @@ interface IVault {
     error BptAmountAboveMax();
 
     /**
+     * @param pool Address of the pool
+     * @param from Address of user to burn from
+     * @param maxBptAmountIn Maximum amount of input pool tokens
+     * @param minAmountsOutRaw Minimum amounts of output tokens
+     * @param kind Remove liquidity kind
+     * @param userData Optional user data
+     */
+    struct RemoveLiquidityParams {
+        address pool;
+        address from;
+        uint256 maxBptAmountIn;
+        uint256[] minAmountsOutRaw;
+        uint256[] limitsScaled18;
+        RemoveLiquidityKind kind;
+        bytes userData;
+    }
+
+    /**
      * @notice Removes liquidity from a pool.
      * @dev Trusted routers can burn pool tokens belonging to any user and require no prior approval from the user.
      * Untrusted routers require prior approval from the user. This is the only function allowed to call
      * _queryModeBalanceIncrease (and only in a query context).
      *
-     * @param pool Address of the pool
-     * @param from Address of user to burn from
-     * @param maxBptAmountIn Maximum amount of input pool tokens
-     * @param minAmountsOut Minimum amounts of output tokens
-     * @param kind Remove liquidity kind
-     * @param userData Additional (optional) user data
+     * @param params See `RemoveLiquidityParams`
      * @return bptAmountIn Actual amount of BPT burnt
      * @return amountsOut Actual amounts of output assets
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function removeLiquidity(
-        address pool,
-        address from,
-        uint256 maxBptAmountIn,
-        uint256[] memory minAmountsOut,
-        RemoveLiquidityKind kind,
-        bytes memory userData
+        RemoveLiquidityParams memory params
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 
     /**

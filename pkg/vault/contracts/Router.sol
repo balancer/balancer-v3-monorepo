@@ -151,12 +151,15 @@ contract Router is IRouter, ReentrancyGuard {
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
         (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
-            params.pool,
-            params.sender,
-            params.maxAmountsIn,
-            params.minBptAmountOut,
-            params.kind,
-            params.userData
+            IVault.AddLiquidityParams({
+                pool: params.pool,
+                to: params.sender,
+                maxAmountsInRaw: params.maxAmountsIn,
+                maxAmountsInScaled18: params.maxAmountsIn, // Will get overwritten (TODO - inelegant; needed for stack)
+                minBptAmountOut: params.minBptAmountOut,
+                kind: params.kind,
+                userData: params.userData
+            })
         );
 
         uint256 ethAmountIn;
@@ -224,12 +227,15 @@ contract Router is IRouter, ReentrancyGuard {
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
     {
         (bptAmountIn, amountsOut, returnData) = _vault.removeLiquidity(
-            params.pool,
-            params.sender,
-            params.maxBptAmountIn,
-            params.minAmountsOut,
-            params.kind,
-            params.userData
+            IVault.RemoveLiquidityParams({
+                pool: params.pool,
+                from: params.sender,
+                maxBptAmountIn: params.maxBptAmountIn,
+                minAmountsOutRaw: params.minAmountsOut,
+                limitsScaled18: params.minAmountsOut, // will be overwritten (TODO: inelegant; needed for stack)
+                kind: params.kind,
+                userData: params.userData
+            })
         );
 
         uint256 ethAmountOut;
@@ -467,12 +473,15 @@ contract Router is IRouter, ReentrancyGuard {
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
         (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
-            params.pool,
-            params.sender,
-            params.maxAmountsIn,
-            params.minBptAmountOut,
-            params.kind,
-            params.userData
+            IVault.AddLiquidityParams({
+                pool: params.pool,
+                to: params.sender,
+                maxAmountsInRaw: params.maxAmountsIn,
+                maxAmountsInScaled18: params.maxAmountsIn, // Will get overwritten (TODO - inelegant; needed for stack)
+                minBptAmountOut: params.minBptAmountOut,
+                kind: params.kind,
+                userData: params.userData
+            })
         );
     }
 
@@ -525,12 +534,15 @@ contract Router is IRouter, ReentrancyGuard {
     {
         return
             _vault.removeLiquidity(
-                params.pool,
-                params.sender,
-                params.maxBptAmountIn,
-                params.minAmountsOut,
-                params.kind,
-                params.userData
+                IVault.RemoveLiquidityParams({
+                    pool: params.pool,
+                    from: params.sender,
+                    maxBptAmountIn: params.maxBptAmountIn,
+                    minAmountsOutRaw: params.minAmountsOut,
+                    limitsScaled18: params.minAmountsOut, // will be overwritten (TODO: inelegant; needed for stack)
+                    kind: params.kind,
+                    userData: params.userData
+                })
             );
     }
 }
