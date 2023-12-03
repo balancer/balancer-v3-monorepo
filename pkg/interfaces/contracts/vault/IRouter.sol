@@ -270,12 +270,11 @@ interface IRouter {
         bytes calldata userData
     ) external payable returns (uint256 amountCalculated);
 
-
     function removeLiquidityNestedProportional(
         address pool,
         uint256 bptAmountIn,
         IERC20[] memory tokensOut, // these would be the "main" tokens in the nested structure
-        uint256[] memory minAmountsOut  // these would align with the tokens above
+        uint256[] memory minAmountsOut // these would align with the tokens above
     ) external payable returns (uint256[] memory amountsOut);
 
     function addLiquidityNestedUnbalanced(
