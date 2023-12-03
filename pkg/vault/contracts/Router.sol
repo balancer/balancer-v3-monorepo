@@ -557,7 +557,7 @@ contract Router is IRouter, ReentrancyGuard {
         IERC20[] memory parentPoolTokens = _vault.getPoolTokens(pool);
         uint256[] memory zeroMinAmountsOut = new uint256[](parentPoolTokens.length);
 
-        (,uint256[] memory parentAmountsOut,) = _vault.removeLiquidity(
+        (, uint256[] memory parentAmountsOut, ) = _vault.removeLiquidity(
             pool,
             msg.sender,
             bptAmountIn,
@@ -567,14 +567,20 @@ contract Router is IRouter, ReentrancyGuard {
             ""
         );
 
-        _validateAndFillNestedProportionalAmountsOut(tokensOut, minAmountsOut, parentPoolTokens, parentAmountsOut, amountsOut);
+        _validateAndFillNestedProportionalAmountsOut(
+            tokensOut,
+            minAmountsOut,
+            parentPoolTokens,
+            parentAmountsOut,
+            amountsOut
+        );
 
         for (uint i = 0; i < parentPoolTokens.length; i++) {
             if (_vault.isPoolRegistered(address(parentPoolTokens[i]))) {
                 IERC20[] memory nestedPoolTokens = _vault.getPoolTokens(address(parentPoolTokens[i]));
                 zeroMinAmountsOut = new uint256[](nestedPoolTokens.length);
 
-                (,uint256[] memory nestedAmountsOut,) = _vault.removeLiquidity(
+                (, uint256[] memory nestedAmountsOut, ) = _vault.removeLiquidity(
                     address(parentPoolTokens[i]),
                     msg.sender,
                     parentAmountsOut[i],
@@ -597,20 +603,20 @@ contract Router is IRouter, ReentrancyGuard {
 
     function _validateAndFillNestedProportionalAmountsOut(
         IERC20[] memory tokens,
-        uint256[] memory minAmountsOut,
+        uint256[] memory, // minAmountsOut,
         IERC20[] memory poolTokens,
         uint256[] memory poolTokensAmountOut,
         uint256[] memory amountsOut
     ) internal pure {
         for (uint i = 0; i < poolTokens.length; i++) {
-           for (uint j = 0; j < tokens.length; j++) {
+            for (uint j = 0; j < tokens.length; j++) {
                 if (poolTokens[i] == tokens[j]) {
                     //require poolTokensAmountOut[i] >= minAmountsOut[j]
 
                     //mutate the array
                     amountsOut[j] = poolTokensAmountOut[i];
                 }
-            } 
+            }
         }
     }
 
@@ -628,7 +634,7 @@ contract Router is IRouter, ReentrancyGuard {
                 IERC20[] memory nestedPoolTokens = _vault.getPoolTokens(address(parentPoolTokens[i]));
                 uint256[] memory nestedAmountsIn = _getAmountsInForNestedAdd(tokensIn, amountsIn, nestedPoolTokens);
 
-                (,nestedBptAmountOut[i],) = _vault.addLiquidity(
+                (, nestedBptAmountOut[i], ) = _vault.addLiquidity(
                     address(parentPoolTokens[i]),
                     msg.sender,
                     nestedAmountsIn,
@@ -636,7 +642,6 @@ contract Router is IRouter, ReentrancyGuard {
                     IVault.AddLiquidityKind.UNBALANCED,
                     ""
                 );
-
             }
         }
 
@@ -654,7 +659,7 @@ contract Router is IRouter, ReentrancyGuard {
             }
         }
 
-        (,bptAmountOut,) = _vault.addLiquidity(
+        (, bptAmountOut, ) = _vault.addLiquidity(
             pool,
             msg.sender,
             parentAmountsIn,
@@ -672,11 +677,11 @@ contract Router is IRouter, ReentrancyGuard {
         poolAmountsIn = new uint256[](poolTokens.length);
 
         for (uint i = 0; i < poolTokens.length; i++) {
-           for (uint j = 0; j < tokens.length; j++) {
+            for (uint j = 0; j < tokens.length; j++) {
                 if (poolTokens[i] == tokens[j]) {
                     poolAmountsIn[i] = amountsIn[j];
                 }
-            } 
+            }
         }
     }
 }
