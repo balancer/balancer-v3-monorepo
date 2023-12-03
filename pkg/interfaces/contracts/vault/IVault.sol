@@ -463,11 +463,16 @@ interface IVault {
     /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
     error BptAmountBelowMin();
 
+    /// @dev Introduce to avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
+    struct LiquidityLocals {
+        uint256 tokenIndex;
+        uint256[] limitsScaled18;
+    }
+
     /**
      * @param pool Address of the pool
      * @param to Address of user to mint to
      * @param maxAmountsInRaw Maximum amounts of input tokens
-     * @param maxAmountsInScaled18 Maximum amounts of input tokens (upscaled)
      * @param minBptAmountOut Output pool token amount
      * @param kind Type of AddLiquidity operation
      * @param userData Additional (optional) user data
@@ -476,7 +481,6 @@ interface IVault {
         address pool;
         address to;
         uint256[] maxAmountsInRaw;
-        uint256[] maxAmountsInScaled18;
         uint256 minBptAmountOut;
         AddLiquidityKind kind;
         bytes userData;
@@ -493,7 +497,8 @@ interface IVault {
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function addLiquidity(
-        AddLiquidityParams memory params
+        AddLiquidityParams memory params,
+        LiquidityLocals memory vars
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
     /***************************************************************************
@@ -529,7 +534,6 @@ interface IVault {
         address from;
         uint256 maxBptAmountIn;
         uint256[] minAmountsOutRaw;
-        uint256[] limitsScaled18;
         RemoveLiquidityKind kind;
         bytes userData;
     }
@@ -546,7 +550,8 @@ interface IVault {
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function removeLiquidity(
-        RemoveLiquidityParams memory params
+        RemoveLiquidityParams memory params,
+        LiquidityLocals memory vars
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 
     /**

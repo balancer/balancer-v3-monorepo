@@ -1078,7 +1078,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
     /// @inheritdoc IVault
     function addLiquidity(
-        AddLiquidityParams memory params
+        AddLiquidityParams memory params,
+        LiquidityLocals memory vars
     ) external withHandler returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         // Avoid "stack to deep" by inlining modifiers
         _ensureVaultNotPaused();
@@ -1093,7 +1094,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.maxAmountsInRaw.length);
 
         // Amounts are entering pool math, so round down.
-        params.maxAmountsInScaled18 = params.maxAmountsInRaw.copyToScaled18ApplyRateRoundDownArray(
+        vars.limitsScaled18 = params.maxAmountsInRaw.copyToScaled18ApplyRateRoundDownArray(
             poolData.decimalScalingFactors,
             poolData.tokenRates
         );
@@ -1103,7 +1104,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             if (
                 IBasePool(params.pool).onBeforeAddLiquidity(
                     params.to,
-                    params.maxAmountsInScaled18,
+                    vars.limitsScaled18,
                     params.minBptAmountOut,
                     poolData.balancesLiveScaled18,
                     params.userData
@@ -1123,7 +1124,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // Note that poolData is mutated to update the Raw and Live balances, so they are accurate when passed
         // into the AfterAddLiquidity callback.
         uint256[] memory amountsInScaled18;
-        (amountsIn, amountsInScaled18, bptAmountOut, returnData) = _addLiquidity(poolData, params);
+        (amountsIn, amountsInScaled18, bptAmountOut, returnData) = _addLiquidity(poolData, params, vars);
 
         if (poolData.config.callbacks.shouldCallAfterAddLiquidity) {
             if (
@@ -1153,7 +1154,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      */
     function _addLiquidity(
         PoolData memory poolData,
-        AddLiquidityParams memory params
+        AddLiquidityParams memory params,
+        LiquidityLocals memory vars
     )
         internal
         nonReentrant
@@ -1176,7 +1178,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         } else if (params.kind == AddLiquidityKind.UNBALANCED) {
             _poolConfig[params.pool].requireSupportsAddLiquidityUnbalanced();
 
-            amountsInScaled18 = params.maxAmountsInScaled18;
+            amountsInScaled18 = vars.limitsScaled18;
             bptAmountOut = IBasePool(params.pool).onAddLiquidityUnbalanced(
                 params.to,
                 amountsInScaled18,
@@ -1187,20 +1189,21 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
             bptAmountOut = params.minBptAmountOut;
 
-            amountsInScaled18 = params.maxAmountsInScaled18;
-            amountsInScaled18[InputHelpers.getSingleInputIndex(params.maxAmountsInScaled18)] = IBasePool(params.pool)
-                .onAddLiquiditySingleTokenExactOut(
-                    params.to,
-                    InputHelpers.getSingleInputIndex(params.maxAmountsInScaled18),
-                    bptAmountOut,
-                    poolData.balancesLiveScaled18
-                );
+            amountsInScaled18 = vars.limitsScaled18;
+            vars.tokenIndex = InputHelpers.getSingleInputIndex(vars.limitsScaled18);
+
+            amountsInScaled18[vars.tokenIndex] = IBasePool(params.pool).onAddLiquiditySingleTokenExactOut(
+                params.to,
+                vars.tokenIndex,
+                bptAmountOut,
+                poolData.balancesLiveScaled18
+            );
         } else if (params.kind == AddLiquidityKind.CUSTOM) {
             _poolConfig[params.pool].requireSupportsAddLiquidityCustom();
 
             (amountsInScaled18, bptAmountOut, returnData) = IBasePool(params.pool).onAddLiquidityCustom(
                 params.to,
-                params.maxAmountsInScaled18,
+                vars.limitsScaled18,
                 params.minBptAmountOut,
                 poolData.balancesLiveScaled18,
                 params.userData
@@ -1253,7 +1256,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
     /// @inheritdoc IVault
     function removeLiquidity(
-        RemoveLiquidityParams memory params
+        RemoveLiquidityParams memory params,
+        LiquidityLocals memory vars
     )
         external
         withInitializedPool(params.pool)
@@ -1268,7 +1272,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.minAmountsOutRaw.length);
 
         // Amounts are entering pool math; higher amounts would burn more BPT, so round up to favor the pool.
-        params.limitsScaled18 = params.minAmountsOutRaw.copyToScaled18ApplyRateRoundUpArray(
+        vars.limitsScaled18 = params.minAmountsOutRaw.copyToScaled18ApplyRateRoundUpArray(
             poolData.decimalScalingFactors,
             poolData.tokenRates
         );
@@ -1279,7 +1283,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 IBasePool(params.pool).onBeforeRemoveLiquidity(
                     params.from,
                     params.maxBptAmountIn,
-                    params.limitsScaled18,
+                    vars.limitsScaled18,
                     poolData.balancesLiveScaled18,
                     params.userData
                 ) == false
@@ -1297,7 +1301,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // Note that poolData is mutated to update the Raw and Live balances, so they are accurate when passed
         // into the AfterRemoveLiquidity callback.
         uint256[] memory amountsOutScaled18;
-        (bptAmountIn, amountsOutRaw, amountsOutScaled18, returnData) = _removeLiquidity(poolData, params);
+        (bptAmountIn, amountsOutRaw, amountsOutScaled18, returnData) = _removeLiquidity(poolData, params, vars);
 
         if (poolData.config.callbacks.shouldCallAfterRemoveLiquidity) {
             if (
@@ -1359,7 +1363,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      */
     function _removeLiquidity(
         PoolData memory poolData,
-        RemoveLiquidityParams memory params
+        RemoveLiquidityParams memory params,
+        LiquidityLocals memory vars
     )
         internal
         nonReentrant
@@ -1384,23 +1389,25 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
             bptAmountIn = params.maxBptAmountIn;
 
-            amountsOutScaled18 = params.limitsScaled18;
-            amountsOutScaled18[InputHelpers.getSingleInputIndex(params.limitsScaled18)] = IBasePool(params.pool)
-                .onRemoveLiquiditySingleTokenExactIn(
-                    params.from,
-                    InputHelpers.getSingleInputIndex(params.limitsScaled18),
-                    bptAmountIn,
-                    poolData.balancesLiveScaled18
-                );
+            amountsOutScaled18 = vars.limitsScaled18;
+            vars.tokenIndex = InputHelpers.getSingleInputIndex(vars.limitsScaled18);
+
+            amountsOutScaled18[vars.tokenIndex] = IBasePool(params.pool).onRemoveLiquiditySingleTokenExactIn(
+                params.from,
+                vars.tokenIndex,
+                bptAmountIn,
+                poolData.balancesLiveScaled18
+            );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             _poolConfig[params.pool].requireSupportsRemoveLiquiditySingleTokenExactOut();
 
-            amountsOutScaled18 = params.limitsScaled18;
+            amountsOutScaled18 = vars.limitsScaled18;
+            vars.tokenIndex = InputHelpers.getSingleInputIndex(vars.limitsScaled18);
 
             bptAmountIn = IBasePool(params.pool).onRemoveLiquiditySingleTokenExactOut(
                 params.from,
-                InputHelpers.getSingleInputIndex(params.limitsScaled18),
-                amountsOutScaled18[InputHelpers.getSingleInputIndex(params.limitsScaled18)],
+                vars.tokenIndex,
+                amountsOutScaled18[vars.tokenIndex],
                 poolData.balancesLiveScaled18
             );
         } else if (params.kind == RemoveLiquidityKind.CUSTOM) {
@@ -1409,7 +1416,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             (bptAmountIn, amountsOutScaled18, returnData) = IBasePool(params.pool).onRemoveLiquidityCustom(
                 params.from,
                 params.maxBptAmountIn,
-                params.limitsScaled18,
+                vars.limitsScaled18,
                 poolData.balancesLiveScaled18,
                 params.userData
             );

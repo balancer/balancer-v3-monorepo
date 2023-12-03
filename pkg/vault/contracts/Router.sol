@@ -155,11 +155,11 @@ contract Router is IRouter, ReentrancyGuard {
                 pool: params.pool,
                 to: params.sender,
                 maxAmountsInRaw: params.maxAmountsIn,
-                maxAmountsInScaled18: params.maxAmountsIn, // Will get overwritten (TODO - inelegant; needed for stack)
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
                 userData: params.userData
-            })
+            }),
+            IVault.LiquidityLocals({ tokenIndex: 0, limitsScaled18: new uint256[](0) })
         );
 
         uint256 ethAmountIn;
@@ -232,10 +232,10 @@ contract Router is IRouter, ReentrancyGuard {
                 from: params.sender,
                 maxBptAmountIn: params.maxBptAmountIn,
                 minAmountsOutRaw: params.minAmountsOut,
-                limitsScaled18: params.minAmountsOut, // will be overwritten (TODO: inelegant; needed for stack)
                 kind: params.kind,
                 userData: params.userData
-            })
+            }),
+            IVault.LiquidityLocals({ tokenIndex: 0, limitsScaled18: new uint256[](0) })
         );
 
         uint256 ethAmountOut;
@@ -477,11 +477,11 @@ contract Router is IRouter, ReentrancyGuard {
                 pool: params.pool,
                 to: params.sender,
                 maxAmountsInRaw: params.maxAmountsIn,
-                maxAmountsInScaled18: params.maxAmountsIn, // Will get overwritten (TODO - inelegant; needed for stack)
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
                 userData: params.userData
-            })
+            }),
+            IVault.LiquidityLocals({ tokenIndex: 0, limitsScaled18: new uint256[](0) })
         );
     }
 
@@ -539,10 +539,10 @@ contract Router is IRouter, ReentrancyGuard {
                     from: params.sender,
                     maxBptAmountIn: params.maxBptAmountIn,
                     minAmountsOutRaw: params.minAmountsOut,
-                    limitsScaled18: params.minAmountsOut, // will be overwritten (TODO: inelegant; needed for stack)
                     kind: params.kind,
                     userData: params.userData
-                })
+                }),
+                IVault.LiquidityLocals({ tokenIndex: 0, limitsScaled18: new uint256[](0) })
             );
     }
 }
