@@ -29,7 +29,6 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
-import "forge-std/console.sol";
 
 contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
@@ -1268,8 +1267,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         PoolData memory poolData = _getPoolData(params.pool, Rounding.ROUND_DOWN);
         InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.minAmountsOutRaw.length);
 
-        console.log("live[0]=%s; live[1]=%s", poolData.balancesLiveScaled18[0], poolData.balancesLiveScaled18[1]);
-
         // Amounts are entering pool math; higher amounts would burn more BPT, so round up to favor the pool.
         params.limitsScaled18 = params.minAmountsOutRaw.copyToScaled18ApplyRateRoundUpArray(
             poolData.decimalScalingFactors,
@@ -1301,12 +1298,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // into the AfterRemoveLiquidity callback.
         uint256[] memory amountsOutScaled18;
         (bptAmountIn, amountsOutRaw, amountsOutScaled18, returnData) = _removeLiquidity(poolData, params);
-
-        console.log(
-            "After remove: live[0]=%s; live[1]=%s",
-            poolData.balancesLiveScaled18[0],
-            poolData.balancesLiveScaled18[1]
-        );
 
         if (poolData.config.callbacks.shouldCallAfterRemoveLiquidity) {
             if (
@@ -1427,7 +1418,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
 
         if (bptAmountIn > params.maxBptAmountIn) {
-            console.log("Bpt %s < %s max", bptAmountIn, params.maxBptAmountIn);
             revert BptAmountAboveMax();
         }
 
@@ -1436,15 +1426,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
         for (uint256 i = 0; i < numTokens; ++i) {
             // Note that poolData.balancesRaw will also be updated in `_removeLiquidityUpdateAccounting`
-            console.log(
-                "_remove live[%s] before removing [%s]",
-                i,
-                poolData.balancesLiveScaled18[i],
-                amountsOutScaled18[i]
-            );
-
             poolData.balancesLiveScaled18[i] -= amountsOutScaled18[i];
-            console.log("_remove live after: %s", poolData.balancesLiveScaled18[i]);
 
             // amountsOut are amounts exiting the Pool, so we round down.
             amountsOutRaw[i] = amountsOutScaled18[i].toRawUndoRateRoundDown(
