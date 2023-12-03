@@ -543,4 +543,40 @@ contract Router is IRouter, ReentrancyGuard {
                 params.userData
             );
     }
+
+    function swapSingleExactAmountIn(
+        address /* pool */,
+        IERC20 /* tokenIn */,
+        IERC20 /* tokenOut */,
+        uint256 /* amountInExact */,
+        uint256 amountOutMin,
+        bool // wethIsEth
+    ) external payable returns (uint256 amountOut) {
+        return amountOutMin;
+    }
+
+    function swapSingleExactAmountOut(
+        address /* pool */,
+        IERC20 /* tokenIn */,
+        IERC20 /* tokenOut */,
+        uint256 amountInMax,
+        uint256 /* amountOutExact */,
+        bool // wethIsEth
+    ) external payable returns (uint256 amountIn) {
+        return amountInMax;
+    }
+
+    function swapExactAmountIn(
+        SwapPathExactAmountIn[] memory paths,
+        bool // wethIsEth
+    ) external payable returns (uint256[] memory amountsOut) {
+        return new uint256[](paths.length);
+    }
+
+    function swapExactAmountOut(
+        SwapPathExactAmountOut[] memory paths,
+        bool // wethIsEth
+    ) external payable returns (uint256[] memory amountsIn) {
+        return new uint256[](paths.length);
+    }
 }
