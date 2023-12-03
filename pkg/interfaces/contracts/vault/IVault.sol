@@ -6,6 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
+import { IRateProvider } from "./IRateProvider.sol";
 
 /// @dev Represents a pool's callbacks.
 struct PoolCallbacks {
@@ -32,12 +33,28 @@ struct PoolConfig {
     bool isPoolRegistered;
     bool isPoolInitialized;
     bool isPoolPaused;
+    bool isPoolInRecoveryMode;
     bool hasDynamicSwapFee;
     uint64 staticSwapFeePercentage; // stores an 18-decimal FP value (max FixedPoint.ONE)
     uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
     uint32 pauseWindowEndTime;
     PoolCallbacks callbacks;
     LiquidityManagement liquidityManagement;
+}
+
+struct PoolData {
+    PoolConfig config;
+    IERC20[] tokens;
+    IRateProvider[] rateProviders;
+    uint256[] balancesRaw;
+    uint256[] balancesLiveScaled18;
+    uint256[] tokenRates;
+    uint256[] decimalScalingFactors;
+}
+
+enum Rounding {
+    ROUND_UP,
+    ROUND_DOWN
 }
 
 interface IVault {
@@ -92,6 +109,7 @@ interface IVault {
      * @param pool The pool being registered
      * @param factory The factory creating the pool
      * @param tokens The pool's tokens
+     * @param rateProviders The pool's rate providers (or zero)
      * @param pauseWindowEndTime The pool's pause window end time
      * @param pauseManager The pool's external pause manager (or 0 for governance)
      * @param liquidityManagement Supported liquidity management callback flags
@@ -100,6 +118,7 @@ interface IVault {
         address indexed pool,
         address indexed factory,
         IERC20[] tokens,
+        IRateProvider[] rateProviders,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolCallbacks callbacks,
@@ -137,6 +156,7 @@ interface IVault {
      *
      * @param factory The factory address associated with the pool being registered
      * @param tokens An array of token addresses the pool will manage
+     * @param rateProviders An array of rate providers corresponding to the tokens (or zero for tokens without rates)
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param pauseManager Optional contract the Vault will allow to pause the pool
      * @param config Flags indicating which callbacks the pool supports
@@ -145,6 +165,7 @@ interface IVault {
     function registerPool(
         address factory,
         IERC20[] memory tokens,
+        IRateProvider[] memory rateProviders,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolCallbacks calldata config,
@@ -159,7 +180,7 @@ interface IVault {
      *
      * @param pool Address of the pool to initialize
      * @param to Address that will receive the output BPT
-     * @param tokens tokens involved in the liquidity provision
+     * @param tokens Tokens used to seed the pool (must match the registered tokens)
      * @param exactAmountsIn Exact amounts of input tokens
      * @param userData Additional (optional) data for the initialization
      * @return bptAmountOut Output pool token amount
@@ -196,15 +217,25 @@ interface IVault {
 
     /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
-     * @dev TODO Add rates when we have them.
      * @return tokens Tokens registered to the pool
      * @return balancesRaw Corresponding raw balances of the tokens
      * @return scalingFactors Corresponding scalingFactors of the tokens
+     * @return rateProviders Corresponding rateProviders of the tokens (or zero for tokens with no rates)
      */
-    function getPoolTokenInfo(address pool) external view returns (IERC20[] memory, uint256[] memory, uint256[] memory);
+    function getPoolTokenInfo(
+        address pool
+    ) external view returns (IERC20[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
 
     /**
-     * @notice Gets the configuration paramters of a pool.
+     * @notice Retrieve the scaling factors from a pool's rate providers.
+     * @dev This is not included in `getPoolTokenInfo` since it makes external calls that might revert,
+     * effectively preventing retrieval of basic pool parameters. Tokens without rate providers will always return
+     * FixedPoint.ONE (1e18).
+     */
+    function getPoolTokenRates(address pool) external view returns (uint256[] memory);
+
+    /**
+     * @notice Gets the configuration parameters of a pool.
      * @param pool Address of the pool
      * @return Pool configuration
      */
@@ -663,6 +694,50 @@ interface IVault {
      * @return If true, then queries are disabled
      */
     function isQueryDisabled() external view returns (bool);
+
+    /*******************************************************************************
+                                Recovery Mode
+    *******************************************************************************/
+
+    /**
+     * @dev Recovery mode has been enabled or disabled for a pool.
+     * @param pool The pool
+     * @param recoveryMode True if recovery mode was enabled
+     */
+    event PoolRecoveryModeStateChanged(address indexed pool, bool recoveryMode);
+
+    /**
+     * @dev Cannot enable recovery mode when already enabled.
+     * @param pool The pool
+     */
+    error PoolInRecoveryMode(address pool);
+
+    /**
+     * @dev Cannot disable recovery mode when not enabled.
+     * @param pool The pool
+     */
+    error PoolNotInRecoveryMode(address pool);
+
+    /**
+     * @notice Checks whether a pool is in recovery mode.
+     * @param pool Address of the pool to check
+     * @return True if the pool is initialized, false otherwise
+     */
+    function isPoolInRecoveryMode(address pool) external returns (bool);
+
+    /**
+     * @notice Enable recovery mode for a pool.
+     * @dev This is a permissioned function.
+     * @param pool The pool
+     */
+    function enableRecoveryMode(address pool) external;
+
+    /**
+     * @notice Disable recovery mode for a pool.
+     * @dev This is a permissioned function.
+     * @param pool The pool
+     */
+    function disableRecoveryMode(address pool) external;
 
     /*******************************************************************************
                                 Authentication
