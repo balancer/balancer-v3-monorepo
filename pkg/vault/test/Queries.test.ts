@@ -132,20 +132,24 @@ describe('Queries', function () {
     });
 
     it('queries removeLiquidity correctly', async () => {
+      // TODO: we need to add a bit to adjust for precision loss (even with all 18 decimals).
+      // Otherwise, it will now revert with "AmountOutBelowMin" (it's 1e6 wei below DAI_AMOUNT_IN).
+      const AMOUNT_IN = DAI_AMOUNT_IN + bn(1e6);
+
       const { amountsOut, bptAmountIn } = await router
         .connect(zero)
         .queryRemoveLiquidity.staticCall(
           pool,
           [DAI, USDC],
-          DAI_AMOUNT_IN,
-          [DAI_AMOUNT_IN - bn(1e6), USDC_AMOUNT_IN - bn(1e6)], // TODO: why? AmountOutBelowMin fires here
+          AMOUNT_IN,
+          [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
           REMOVE_LIQUIDITY_TEST_KIND,
           '0x'
         );
 
-      expect(amountsOut[0]).to.be.almostEqual(DAI_AMOUNT_IN);
-      expect(amountsOut[1]).to.be.almostEqual(USDC_AMOUNT_IN);
-      expect(bptAmountIn).to.be.almostEqual(DAI_AMOUNT_IN);
+      expect(amountsOut[0]).to.eq(DAI_AMOUNT_IN);
+      expect(amountsOut[1]).to.equal(USDC_AMOUNT_IN);
+      expect(bptAmountIn).to.equal(AMOUNT_IN);
     });
 
     it('reverts if not a static call', async () => {
