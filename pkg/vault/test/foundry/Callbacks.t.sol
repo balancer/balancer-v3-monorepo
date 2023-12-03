@@ -35,12 +35,15 @@ contract VaultSwapTest is Test {
     Router router;
     BasicAuthorizerMock authorizer;
     ERC20PoolMock pool;
+    ERC20PoolMock adaiPool;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
+    ERC20TestToken aDAI;
     address alice = vm.addr(1);
     address bob = vm.addr(2);
 
     uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
+    uint256 constant ADAI_AMOUNT_IN = 1e3 * 1e18;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
     uint256 constant USDC_SCALING = 1e12; // 18 - 6
     uint256 initialBptSupply;
@@ -51,6 +54,7 @@ contract VaultSwapTest is Test {
         router = new Router(IVault(vault), address(0));
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
+        aDAI = new ERC20TestToken("aDAI", "aDAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
 
         pool = new ERC20PoolMock(
@@ -64,20 +68,35 @@ contract VaultSwapTest is Test {
             address(0)
         );
 
+        // Pool with all 18-decimals
+        adaiPool = new ERC20PoolMock(
+            vault,
+            "ERC20 Pool",
+            "ERC20POOL",
+            [address(DAI), address(aDAI)].toMemoryArray().asIERC20(),
+            rateProviders,
+            true,
+            365 days,
+            address(0)
+        );
+
         PoolConfig memory config = vault.getPoolConfig(address(pool));
         config.callbacks.shouldCallAfterSwap = true;
         vault.setConfig(address(pool), config);
 
         USDC.mint(bob, USDC_AMOUNT_IN);
         DAI.mint(bob, DAI_AMOUNT_IN);
+        aDAI.mint(bob, ADAI_AMOUNT_IN);
 
         USDC.mint(alice, USDC_AMOUNT_IN);
-        DAI.mint(alice, DAI_AMOUNT_IN);
+        DAI.mint(alice, DAI_AMOUNT_IN * 2);
+        aDAI.mint(alice, ADAI_AMOUNT_IN);
 
         vm.startPrank(bob);
 
         USDC.approve(address(vault), type(uint256).max);
         DAI.approve(address(vault), type(uint256).max);
+        aDAI.approve(address(vault), type(uint256).max);
 
         vm.stopPrank();
 
@@ -85,6 +104,7 @@ contract VaultSwapTest is Test {
 
         USDC.approve(address(vault), type(uint256).max);
         DAI.approve(address(vault), type(uint256).max);
+        aDAI.approve(address(vault), type(uint256).max);
 
         router.initialize(
             address(pool),
@@ -95,12 +115,21 @@ contract VaultSwapTest is Test {
         );
         initialBptSupply = IERC20(pool).totalSupply();
 
+        router.initialize(
+            address(adaiPool),
+            [address(DAI), address(aDAI)].toMemoryArray().asAsset(),
+            [DAI_AMOUNT_IN, ADAI_AMOUNT_IN].toMemoryArray(),
+            0,
+            bytes("")
+        );
+
         vm.stopPrank();
 
         vm.label(alice, "alice");
         vm.label(bob, "bob");
         vm.label(address(USDC), "USDC");
         vm.label(address(DAI), "DAI");
+        vm.label(address(aDAI), "aDAI");
     }
 
     function testOnAfterSwapCallback() public {
@@ -364,14 +393,12 @@ contract VaultSwapTest is Test {
         IVault.RemoveLiquidityKind kind = IVault.RemoveLiquidityKind(
             bound(kindUint, 0, uint256(type(IVault.RemoveLiquidityKind).max))
         );
-        PoolConfig memory config = vault.getPoolConfig(address(pool));
+        PoolConfig memory config = vault.getPoolConfig(address(adaiPool));
         config.callbacks.shouldCallAfterRemoveLiquidity = true;
-        vault.setConfig(address(pool), config);
+        vault.setConfig(address(adaiPool), config);
 
-        uint256 bptBalance = pool.balanceOf(alice);
-        // Cut the tail so that there is no precision loss when calculating upscaled amounts out in proportional mode
-        bptBalance -= bptBalance % USDC_SCALING;
-        (, uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(pool));
+        uint256 bptBalance = adaiPool.balanceOf(alice);
+        (, uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(adaiPool));
         uint256 bptAmountIn;
         uint256[] memory amountsOut;
 
@@ -380,8 +407,8 @@ contract VaultSwapTest is Test {
         // Alice has LP tokens from initialization
         vm.prank(alice);
         (bptAmountIn, amountsOut, ) = router.removeLiquidity(
-            address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            address(adaiPool),
+            [address(DAI), address(aDAI)].toMemoryArray().asAsset(),
             bptBalance,
             _getSuitableMinOutputs(kind),
             kind,
@@ -389,24 +416,22 @@ contract VaultSwapTest is Test {
         );
         vm.revertTo(snapshot);
 
-        console.log("Expect live[0]: %s - %s = %s", poolBalances[0], amountsOut[0], poolBalances[0] - amountsOut[0]);
-        console.log("Expect live[1]: %s - %s = %s", poolBalances[1], amountsOut[1], poolBalances[1] - amountsOut[1]);
         vm.prank(alice);
         vm.expectCall(
-            address(pool),
+            address(adaiPool),
             abi.encodeWithSelector(
                 IBasePool.onAfterRemoveLiquidity.selector,
                 alice,
                 bptAmountIn,
-                [amountsOut[0], amountsOut[1] * USDC_SCALING].toMemoryArray(),
-                [poolBalances[0] - amountsOut[0], (poolBalances[1] - amountsOut[1]) * USDC_SCALING].toMemoryArray(),
+                [amountsOut[0], amountsOut[1]].toMemoryArray(),
+                [poolBalances[0] - amountsOut[0], poolBalances[1] - amountsOut[1]].toMemoryArray(),
                 bytes("")
             )
         );
         router.removeLiquidity(
-            address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            bptBalance + 1e6,
+            address(adaiPool),
+            [address(DAI), address(aDAI)].toMemoryArray().asAsset(),
+            bptBalance,
             _getSuitableMinOutputs(kind),
             kind,
             bytes("")
