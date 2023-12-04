@@ -125,7 +125,10 @@ library RouterAdaptor {
     }
 
     /// @dev Zero out all components but the first one for `SINGLE_TOKEN_EXACT_OUT`.
-    function adaptMaxAmountsIn(IVault.AddLiquidityKind kind, uint256[] memory maxAmountsIn) internal pure returns (uint256[] memory) {
+    function adaptMaxAmountsIn(
+        IVault.AddLiquidityKind kind,
+        uint256[] memory maxAmountsIn
+    ) internal pure returns (uint256[] memory) {
         if (kind == IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             for (uint256 i = 1; i < maxAmountsIn.length; ++i) {
                 maxAmountsIn[i] = 0;

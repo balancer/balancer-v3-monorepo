@@ -256,6 +256,30 @@ contract RouterTest is Test {
         assertEq(wethPool.balanceOf(alice), bptAmountOut);
     }
 
+    function testInitializeNativeExcessEth() public {
+        uint256 initExcessEth = ETH_AMOUNT_IN + 1 ether;
+        vm.deal(alice, initExcessEth);
+
+        vm.startPrank(alice);
+        uint256 aliceNativeBalanceBefore = address(alice).balance;
+        require(aliceNativeBalanceBefore >= initExcessEth);
+        require(wethPool.balanceOf(alice) == 0);
+
+        bool wethIsEth = true;
+        uint256 bptAmountOut = router.initialize{ value: initExcessEth }(
+            address(wethPool),
+            [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
+            [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
+            INIT_BPT,
+            wethIsEth,
+            bytes("")
+        );
+
+        // WETH was deposited, excess ETH was returned, pool tokens were minted to Alice.
+        assertEq(address(alice).balance, aliceNativeBalanceBefore - ETH_AMOUNT_IN);
+        assertEq(wethPool.balanceOf(alice), bptAmountOut);
+    }
+
     function testAddLiquidityWETHNoBalance() public {
         _initializePool();
 
@@ -335,6 +359,30 @@ contract RouterTest is Test {
         );
 
         // WETH was deposited, pool tokens were minted to Alice.
+        assertEq(address(alice).balance, aliceNativeBalanceBefore - ETH_AMOUNT_IN);
+        assertEq(wethPool.balanceOf(alice), bptAmountOut);
+    }
+
+    function testAddLiquidityNativeExcessEth() public {
+        _initializePool();
+        uint256 ethAmountInExcess = ETH_AMOUNT_IN + 1 ether;
+        vm.deal(alice, ethAmountInExcess);
+        bool wethIsEth = true;
+
+        vm.startPrank(alice);
+        uint256 aliceNativeBalanceBefore = address(alice).balance;
+        require(aliceNativeBalanceBefore >= ethAmountInExcess);
+        require(wethPool.balanceOf(alice) == 0);
+
+        uint256 bptAmountOut = router.addLiquidityUnbalanced{ value: ethAmountInExcess }(
+            address(wethPool),
+            [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
+            MIN_BPT_AMOUNT_OUT,
+            wethIsEth,
+            bytes("")
+        );
+
+        // WETH was deposited, excess was returned, pool tokens were minted to Alice.
         assertEq(address(alice).balance, aliceNativeBalanceBefore - ETH_AMOUNT_IN);
         assertEq(wethPool.balanceOf(alice), bptAmountOut);
     }
