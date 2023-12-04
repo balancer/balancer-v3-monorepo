@@ -25,7 +25,9 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
+import { RouterAdaptor } from "../../contracts/test/RouterAdaptor.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
+import { ForgeQueryHelper } from "./ForgeQueryHelper.sol";
 
 contract RouterTest is Test {
     using AssetHelpers for address;
@@ -33,9 +35,11 @@ contract RouterTest is Test {
     using AssetHelpers for address[];
     using ArrayHelpers for address[2];
     using ArrayHelpers for uint256[2];
+    using RouterAdaptor for IRouter;
+    using ForgeQueryHelper for Vm;
 
     VaultMock vault;
-    Router router;
+    IRouter router;
     BasicAuthorizerMock authorizer;
     ERC20PoolMock pool;
     ERC20PoolMock wethPool;
@@ -48,6 +52,8 @@ contract RouterTest is Test {
     uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
     uint256 constant ETH_AMOUNT_IN = 1e3 ether;
+    uint256 constant INIT_BPT = 1e18;
+    uint256 constant MIN_BPT_AMOUNT_OUT = 1e16;
 
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
@@ -114,7 +120,7 @@ contract RouterTest is Test {
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            0,
+            INIT_BPT,
             false,
             bytes("")
         );
@@ -137,7 +143,7 @@ contract RouterTest is Test {
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            0,
+            INIT_BPT,
             false,
             bytes("")
         );
@@ -180,7 +186,7 @@ contract RouterTest is Test {
             address(wethPool),
             [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
-            0,
+            INIT_BPT,
             ethIsWeth,
             bytes("")
         );
@@ -198,7 +204,7 @@ contract RouterTest is Test {
             address(wethPool),
             [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
-            0,
+            INIT_BPT,
             ethIsWeth,
             bytes("")
         );
@@ -222,7 +228,7 @@ contract RouterTest is Test {
             address(wethPool),
             [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
-            0,
+            INIT_BPT,
             ethIsWeth,
             bytes("")
         );
@@ -230,21 +236,170 @@ contract RouterTest is Test {
 
     function testInitializeNative() public {
         vm.startPrank(alice);
-        require(address(alice).balance >= ETH_AMOUNT_IN);
+        uint256 aliceNativeBalanceBefore = address(alice).balance;
+        require(aliceNativeBalanceBefore >= ETH_AMOUNT_IN);
         require(wethPool.balanceOf(alice) == 0);
 
         bool ethIsWeth = true;
-        router.initialize{ value: ETH_AMOUNT_IN }(
+        uint256 bptAmountOut = router.initialize{ value: ETH_AMOUNT_IN }(
             address(wethPool),
             [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
-            0,
+            INIT_BPT,
             ethIsWeth,
             bytes("")
         );
 
         // WETH was deposited, pool tokens were minted to Alice.
-        assertEq(WETH.balanceOf(alice), 0);
-        assertGt(wethPool.balanceOf(alice), 0);
+        assertEq(address(alice).balance, aliceNativeBalanceBefore - ETH_AMOUNT_IN);
+        assertEq(wethPool.balanceOf(alice), bptAmountOut);
+    }
+
+    /// forge-config: default.fuzz.runs = 32
+    function testAddLiquidityWETHNoBalance(uint8 kindUint) public {
+        IVault.AddLiquidityKind kind = IVault.AddLiquidityKind(
+            bound(kindUint, 0, uint256(type(IVault.AddLiquidityKind).max))
+        );
+        _initializePool();
+        bool ethIsWeth = false;
+
+        (uint256[] memory amountsIn, , ) = vm.staticQueryAddLiquidity(
+            router,
+            address(wethPool),
+            RouterAdaptor.adaptMaxAmountsIn(kind, [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray()),
+            MIN_BPT_AMOUNT_OUT,
+            kind,
+            ""
+        );
+
+        vm.startPrank(alice);
+        require(WETH.balanceOf(alice) == 0);
+
+        // Revert when sending ETH while ethIsWeth is false (caller holds no WETH).
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, alice, 0, amountsIn[0]));
+        router.addLiquidity(
+            address(wethPool),
+            [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
+            MIN_BPT_AMOUNT_OUT,
+            kind,
+            ethIsWeth,
+            bytes(""),
+            0
+        );
+    }
+
+    /// forge-config: default.fuzz.runs = 32
+    function testAddLiquidityWETH(uint8 kindUint) public {
+        IVault.AddLiquidityKind kind = IVault.AddLiquidityKind(
+            bound(kindUint, 0, uint256(type(IVault.AddLiquidityKind).max))
+        );
+        _initializePool();
+        bool ethIsWeth = false;
+
+        (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vm.staticQueryAddLiquidity(
+            router,
+            address(wethPool),
+            RouterAdaptor.adaptMaxAmountsIn(kind, [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray()),
+            MIN_BPT_AMOUNT_OUT,
+            kind,
+            ""
+        );
+
+        vm.startPrank(alice);
+        WETH.deposit{ value: ETH_AMOUNT_IN }();
+        require(WETH.balanceOf(alice) == ETH_AMOUNT_IN);
+        require(wethPool.balanceOf(alice) == 0);
+
+        router.addLiquidity(
+            address(wethPool),
+            [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
+            MIN_BPT_AMOUNT_OUT,
+            kind,
+            ethIsWeth,
+            bytes(""),
+            0
+        );
+
+        // WETH was deposited, pool tokens were minted to Alice.
+        assertEq(WETH.balanceOf(alice), ETH_AMOUNT_IN - amountsIn[0]);
+        assertEq(wethPool.balanceOf(alice), bptAmountOut);
+    }
+
+    /// forge-config: default.fuzz.runs = 32
+    function testAddLiquidityNativeNoBalance(uint8 kindUint) public {
+        IVault.AddLiquidityKind kind = IVault.AddLiquidityKind(
+            bound(kindUint, 0, uint256(type(IVault.AddLiquidityKind).max))
+        );
+        _initializePool();
+        bool ethIsWeth = true;
+
+        vm.startPrank(alice);
+
+        WETH.deposit{ value: ETH_AMOUNT_IN }();
+        require(WETH.balanceOf(alice) == ETH_AMOUNT_IN);
+        require(alice.balance < ETH_AMOUNT_IN);
+        require(wethPool.balanceOf(alice) == 0);
+
+        // Caller does not have enough ETH, even if they hold WETH.
+        vm.expectRevert(abi.encodeWithSelector(IRouter.InsufficientEth.selector));
+        router.addLiquidity(
+            address(wethPool),
+            [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
+            MIN_BPT_AMOUNT_OUT,
+            kind,
+            ethIsWeth,
+            bytes(""),
+            0
+        );
+    }
+
+    /// forge-config: default.fuzz.runs = 32
+    function testAddLiquidityNative(uint8 kindUint) public {
+        IVault.AddLiquidityKind kind = IVault.AddLiquidityKind(
+            bound(kindUint, 0, uint256(type(IVault.AddLiquidityKind).max))
+        );
+        _initializePool();
+        bool ethIsWeth = true;
+
+        (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vm.staticQueryAddLiquidity(
+            router,
+            address(wethPool),
+            RouterAdaptor.adaptMaxAmountsIn(kind, [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray()),
+            MIN_BPT_AMOUNT_OUT,
+            kind,
+            ""
+        );
+
+        vm.startPrank(alice);
+        uint256 aliceNativeBalanceBefore = address(alice).balance;
+        require(aliceNativeBalanceBefore >= ETH_AMOUNT_IN);
+        require(wethPool.balanceOf(alice) == 0);
+
+        router.addLiquidity(
+            address(wethPool),
+            [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
+            MIN_BPT_AMOUNT_OUT,
+            kind,
+            ethIsWeth,
+            bytes(""),
+            ETH_AMOUNT_IN
+        );
+
+        // WETH was deposited, pool tokens were minted to Alice.
+        assertEq(address(alice).balance, aliceNativeBalanceBefore - amountsIn[0]);
+        assertEq(wethPool.balanceOf(alice), bptAmountOut);
+    }
+
+    function _initializePool() internal {
+        vm.prank(bob);
+        bool ethIsWeth = true;
+        router.initialize{ value: ETH_AMOUNT_IN }(
+            address(wethPool),
+            [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
+            [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
+            INIT_BPT,
+            ethIsWeth,
+            bytes("")
+        );
     }
 }

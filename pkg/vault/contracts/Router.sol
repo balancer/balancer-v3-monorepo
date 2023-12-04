@@ -278,10 +278,16 @@ contract Router is IRouter, ReentrancyGuard {
 
             // There can be only one WETH token in the pool
             if (params.wethIsEth && address(token) == address(_weth)) {
+                if (msg.value < amountIn) {
+                    revert InsufficientEth();
+                }
+
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
+                _vault.retrieve(_weth, address(this), amountIn);
+            } else {
+                _vault.retrieve(token, params.sender, amountIn);
             }
-            _vault.retrieve(token, params.sender, amountIn);
         }
 
         // Send remaining ETH to the user
