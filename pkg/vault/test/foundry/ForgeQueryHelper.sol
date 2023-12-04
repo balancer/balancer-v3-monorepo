@@ -8,7 +8,6 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 
 library ForgeQueryHelper {
-
     /**
      * @dev Forge can send transactions from `address(0)`, but doing so mints pool tokens even without pulling tokens
      * from the user.
@@ -30,6 +29,27 @@ library ForgeQueryHelper {
             pool,
             maxAmountsIn,
             minBptAmountOut,
+            kind,
+            userData
+        );
+        vm.revertTo(snapshot);
+    }
+
+    function staticQueryRemoveLiquidity(
+        Vm vm,
+        IRouter router,
+        address pool,
+        uint256 maxBptAmountIn,
+        uint256[] memory minAmountsOut,
+        IVault.RemoveLiquidityKind kind,
+        bytes memory userData
+    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
+        uint256 snapshot = vm.snapshot();
+        vm.prank(address(0), address(0));
+        (bptAmountIn, amountsOut, returnData) = router.queryRemoveLiquidity(
+            pool,
+            maxBptAmountIn,
+            minAmountsOut,
             kind,
             userData
         );

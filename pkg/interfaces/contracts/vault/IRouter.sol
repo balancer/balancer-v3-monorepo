@@ -10,6 +10,9 @@ import { IVault } from "./IVault.sol";
 import { IBasePool } from "./IBasePool.sol";
 
 interface IRouter {
+    /// @dev Incoming ETH transfer from an address that is not WETH.
+    error EthTransfer();
+
     /***************************************************************************
                                Pool Initialization
     ***************************************************************************/
