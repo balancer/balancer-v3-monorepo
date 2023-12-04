@@ -174,9 +174,10 @@ library BasePoolMath {
 
         // Calculate the taxable amount, which is the difference
         // between the actual amount in and the non-taxable balance
-        uint256 nonTaxableBalance = (
-            (totalSupply + exactBptAmountOut).mulUp(currentBalances[tokenInIndex]).divDown(totalSupply)
+        uint256 nonTaxableBalance = (totalSupply + exactBptAmountOut).mulUp(currentBalances[tokenInIndex]).divDown(
+            totalSupply
         );
+
         uint256 taxableAmount = (amountIn + currentBalances[tokenInIndex]) - nonTaxableBalance;
 
         // Calculate the swap fee based on the taxable amount and the swap fee percentage
@@ -203,7 +204,6 @@ library BasePoolMath {
         uint256 swapFeePercentage,
         function(uint256[] memory) external view returns (uint256) calcInvariant
     ) internal view returns (uint256 bptAmountIn) {
-        //tokens_number = len(balances)
         // Determine the number of tokens in the pool.
         uint256 numTokens = currentBalances.length;
 
@@ -233,5 +233,32 @@ library BasePoolMath {
 
         // mulUp/divDown maximize the amount of tokens burned for the security reasons
         return totalSupply.mulUp(currentInvariant - newInvariantWithFees).divDown(currentInvariant);
+    }
+
+    function computeRemoveLiquiditySingleTokenExactIn(
+        uint256[] memory currentBalances,
+        uint256 tokenOutIndex,
+        uint256 exactBptAmountIn,
+        uint256 totalSupply,
+        uint256 swapFeePercentage,
+        function(uint256[] memory, uint256, uint256) external view returns (uint256) calcBalance
+    ) internal view returns (uint256 amountOutWithFee) {
+        uint256 newBalance = calcBalance(
+            currentBalances,
+            tokenOutIndex,
+            (totalSupply - exactBptAmountIn).divDown(totalSupply)
+        );
+
+        uint256 amountOut = currentBalances[tokenOutIndex] - newBalance;
+
+        // Calculate the taxable amount, which is the difference
+        // between the actual amount in and the non-taxable balance
+        uint256 nonTaxableBalance = (totalSupply - exactBptAmountIn).mulUp(currentBalances[tokenOutIndex]).divDown(
+            totalSupply
+        );
+
+        uint256 taxableAmount = nonTaxableBalance - (currentBalances[tokenOutIndex] - amountOut);
+        uint256 fee = taxableAmount.mulUp(swapFeePercentage);
+        return amountOut - fee;
     }
 }
