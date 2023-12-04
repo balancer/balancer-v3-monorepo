@@ -79,6 +79,7 @@ contract RouterTest is Test {
             "ERC20 WETH Pool",
             "ERC20POOL",
             [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
+            rateProviders,
             true,
             365 days,
             address(0)
