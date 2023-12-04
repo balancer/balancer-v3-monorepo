@@ -170,7 +170,13 @@ contract VaultSwapTest is Test {
 
         vm.prank(bob);
         // Doesn't fail, does not call callbacks
-        router.addLiquidity(address(pool), RouterAdaptor.adaptMaxAmountsIn(kind, maxAmountsIn), initialBptSupply, kind, bytes(""));
+        router.addLiquidity(
+            address(pool),
+            RouterAdaptor.adaptMaxAmountsIn(kind, maxAmountsIn),
+            initialBptSupply,
+            kind,
+            bytes("")
+        );
     }
 
     /// forge-config: default.fuzz.runs = 32
@@ -213,7 +219,13 @@ contract VaultSwapTest is Test {
         // Alice has LP tokens from initialization
         vm.prank(alice);
         // Doesn't fail, does not call callbacks
-        router.removeLiquidity(address(pool), bptBalance, RouterAdaptor.adaptMinAmountsOut(kind, minAmountsOut), kind, bytes(""));
+        router.removeLiquidity(
+            address(pool),
+            bptBalance,
+            RouterAdaptor.adaptMinAmountsOut(kind, minAmountsOut),
+            kind,
+            bytes("")
+        );
     }
 
     /// forge-config: default.fuzz.runs = 32
@@ -242,7 +254,13 @@ contract VaultSwapTest is Test {
                 bytes("")
             )
         );
-        router.removeLiquidity(address(pool), bptBalance, RouterAdaptor.adaptMinAmountsOut(kind, minAmountsOut), kind, bytes(""));
+        router.removeLiquidity(
+            address(pool),
+            bptBalance,
+            RouterAdaptor.adaptMinAmountsOut(kind, minAmountsOut),
+            kind,
+            bytes("")
+        );
     }
 
     // After add
@@ -256,7 +274,13 @@ contract VaultSwapTest is Test {
 
         vm.prank(bob);
         // Doesn't fail, does not call callbacks
-        router.addLiquidity(address(pool), RouterAdaptor.adaptMaxAmountsIn(kind, maxAmountsIn), initialBptSupply, kind, bytes(""));
+        router.addLiquidity(
+            address(pool),
+            RouterAdaptor.adaptMaxAmountsIn(kind, maxAmountsIn),
+            initialBptSupply,
+            kind,
+            bytes("")
+        );
     }
 
     /// forge-config: default.fuzz.runs = 32
@@ -296,7 +320,13 @@ contract VaultSwapTest is Test {
                 bytes("")
             )
         );
-        router.addLiquidity(address(pool), RouterAdaptor.adaptMaxAmountsIn(kind, maxAmountsIn), initialBptSupply, kind, bytes(""));
+        router.addLiquidity(
+            address(pool),
+            RouterAdaptor.adaptMaxAmountsIn(kind, maxAmountsIn),
+            initialBptSupply,
+            kind,
+            bytes("")
+        );
     }
 
     // After remove
@@ -312,7 +342,13 @@ contract VaultSwapTest is Test {
         // Alice has LP tokens from initialization
         vm.prank(alice);
         // Doesn't fail, does not call callbacks
-        router.removeLiquidity(address(pool), bptBalance, RouterAdaptor.adaptMinAmountsOut(kind, minAmountsOut), kind, bytes(""));
+        router.removeLiquidity(
+            address(pool),
+            bptBalance,
+            RouterAdaptor.adaptMinAmountsOut(kind, minAmountsOut),
+            kind,
+            bytes("")
+        );
     }
 
     /// forge-config: default.fuzz.runs = 32
@@ -356,6 +392,12 @@ contract VaultSwapTest is Test {
                 bytes("")
             )
         );
-        router.removeLiquidity(address(pool), bptBalance, RouterAdaptor.adaptMinAmountsOut(kind, minAmountsOut), kind, bytes(""));
+        router.removeLiquidity(
+            address(pool),
+            bptBalance,
+            RouterAdaptor.adaptMinAmountsOut(kind, minAmountsOut),
+            kind,
+            bytes("")
+        );
     }
 }
