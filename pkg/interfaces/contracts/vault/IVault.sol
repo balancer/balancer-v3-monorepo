@@ -18,10 +18,7 @@ struct PoolCallbacks {
 }
 
 struct LiquidityManagement {
-    bool supportsAddLiquidityProportional;
-    bool supportsAddLiquiditySingleTokenExactOut;
     bool supportsAddLiquidityCustom;
-    bool supportsRemoveLiquidityProportional;
     bool supportsRemoveLiquidityCustom;
 }
 

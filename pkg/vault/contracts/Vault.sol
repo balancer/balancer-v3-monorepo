@@ -1169,13 +1169,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 IBasePool(params.pool).getInvariant
             );
         } else if (params.kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
-            _poolConfig[params.pool].requireSupportsAddLiquiditySingleTokenExactOut();
-
             bptAmountOut = params.minBptAmountOut;
             uint256 tokenIndex = InputHelpers.getSingleInputIndex(params.maxAmountsInScaled18);
 
             amountsInScaled18 = params.maxAmountsInScaled18;
-            amountsInScaled18[vars.tokenIndex] = BasePoolMath.computeAddLiquiditySingleTokenExactOut(
+            amountsInScaled18[tokenIndex] = BasePoolMath.computeAddLiquiditySingleTokenExactOut(
                 poolData.balancesLiveScaled18,
                 tokenIndex,
                 bptAmountOut,
