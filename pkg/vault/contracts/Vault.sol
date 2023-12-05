@@ -11,7 +11,14 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 // solhint-disable-next-line max-line-length
-import { IVault, PoolConfig, PoolCallbacks, LiquidityManagement, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import {
+    IVault,
+    PoolConfig,
+    PoolCallbacks,
+    LiquidityManagement,
+    PoolData,
+    Rounding
+} from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";

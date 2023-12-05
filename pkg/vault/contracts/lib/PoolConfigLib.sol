@@ -5,7 +5,11 @@ pragma solidity ^0.8.4;
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 // solhint-disable-next-line max-line-length
-import { PoolConfig, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import {
+    PoolConfig,
+    PoolCallbacks,
+    LiquidityManagement
+} from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
