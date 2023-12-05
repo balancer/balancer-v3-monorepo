@@ -73,6 +73,25 @@ library WeightedMath {
         }
     }
 
+    function calculatetBalanceOutGivenInvariant(
+        uint256 currentBalance,
+        uint256 weight,
+        uint256 invariantRatio
+    ) internal pure returns (uint256 invariant) {
+        /******************************************************************************************
+        // calculatetBalanceGivenInvariant                                                       //
+        // o = balanceOut                                                                        //
+        // b = balanceIn                      (1 / w)                                            //
+        // w = weight              o = b * i ^                                                   //
+        // i = invariantRatio                                                                    //
+        ******************************************************************************************/
+
+        // Calculate by how much the token balance has to increase to match the invariantRatio
+        uint256 balanceRatio = invariantRatio.powUp(FixedPoint.ONE.divUp(weight));
+
+        return currentBalance.mulUp(balanceRatio);
+    }
+
     // Computes how many tokens can be taken out of a pool if `amountIn` are sent, given the
     // current balances and weights.
     function calcOutGivenIn(

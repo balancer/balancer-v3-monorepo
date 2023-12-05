@@ -144,8 +144,9 @@ library BasePoolMath {
     /**
      * @notice Calculates the amount of input token needed to receive an exact amount of pool tokens (BPT)
      *         in a single-token liquidity addition.
-     * @dev This function is used when a user wants to add liquidity to the pool by specifying the exact amount
-     *      of pool tokens they want to receive, and the function calculates the corresponding amount of the input token.
+     * @dev This function is used when a user wants to add liquidity to
+            the pool by specifying the exact amount of pool tokens they want to receive,
+            and the function calculates the corresponding amount of the input token.
      *      It considers the current pool balances, total supply, swap fee percentage, and the desired BPT amount.
      * @param currentBalances Array of current token balances in the pool, in the same order as registered tokens
      * @param tokenInIndex Index of the input token for which the amount needs to be calculated
@@ -171,9 +172,10 @@ library BasePoolMath {
         );
         uint256 amountIn = newBalance - currentBalances[tokenInIndex];
 
-        // Calculate the taxable amount, which is the difference between the actual amount in and the non-taxable balance
-        uint256 nonTaxableBalance = ((totalSupply + exactBptAmountOut) * currentBalances[tokenInIndex]).divDown(
-            totalSupply
+        // Calculate the taxable amount, which is the difference
+        // between the actual amount in and the non-taxable balance
+        uint256 nonTaxableBalance = (
+            (totalSupply + exactBptAmountOut).mulUp(currentBalances[tokenInIndex]).divDown(totalSupply)
         );
         uint256 taxableAmount = (amountIn + currentBalances[tokenInIndex]) - nonTaxableBalance;
 

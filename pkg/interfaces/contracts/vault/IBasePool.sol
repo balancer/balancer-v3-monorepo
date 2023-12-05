@@ -45,10 +45,23 @@ interface IBasePool {
     /**
      *  @notice Calculates and returns the pool's invariant.
      *  @dev This function computes the invariant based on current balances
-     *  @param balancesScaled18 Array of current pool balances for each token in the pool, scaled to 18 decimals
+     *  @param balances Array of current pool balances for each token in the pool, scaled to 18 decimals
      *  @return invariant The calculated invariant of the pool, represented as a uint256
      */
-    function getInvariant(uint256[] memory balancesScaled18) external view returns (uint256);
+    function getInvariant(uint256[] memory balances) external view returns (uint256);
+
+    /**
+     *  @notice Calculates and returns the new balance for the applied invariant ratio.
+     *  @dev This function computes the new balance based on the growth or
+     *       contraction of the invariant as a result of single-sided token liquidity operation.
+     *  @param balances Array of current pool balances for each token in the pool, scaled to 18 decimals
+     *  @return newBalance The new balances for token added or removed from the pool
+     */
+    function calcBalance(
+        uint256[] memory balances,
+        uint256 tokenInIndex,
+        uint256 invariantRatio
+    ) external view returns (uint256 newBalance);
 
     /***************************************************************************
                                    Add Liquidity
@@ -70,22 +83,6 @@ interface IBasePool {
         uint256[] memory balancesScaled18,
         bytes memory userData
     ) external returns (bool success);
-
-    /**
-     * @notice Add liquidity to the pool with a single token, specifying exact pool token amount out.
-     * @param sender Address of the sender
-     * @param tokenInIndex Index of the token used to add liquidity, corresponding to the token address in the pool's
-     * registered token array
-     * @param exactBptAmountOut Exact amount of pool tokens to receive
-     * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
-     * @return amountInScaled18 Amount of tokens required as input
-     */
-    function onAddLiquiditySingleTokenExactOut(
-        address sender,
-        uint256 tokenInIndex,
-        uint256 exactBptAmountOut,
-        uint256[] memory balancesScaled18
-    ) external returns (uint256 amountInScaled18);
 
     /**
      * @notice Add liquidity to the pool with a custom handler.

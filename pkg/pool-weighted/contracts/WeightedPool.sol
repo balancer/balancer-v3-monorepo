@@ -126,6 +126,19 @@ contract WeightedPool is BasePool {
         return WeightedMath.calculateInvariant(_getNormalizedWeights(), balancesLiveScaled18);
     }
 
+    function calcBalance(
+        uint256[] memory balances,
+        uint256 tokenInIndex,
+        uint256 invariantRatio
+    ) external view returns (uint256 newBalance) {
+        return
+            WeightedMath.calculatetBalanceOutGivenInvariant(
+                balances[tokenInIndex],
+                _getNormalizedWeights()[tokenInIndex],
+                invariantRatio
+            );
+    }
+
     /**
      * @dev Get the normalized weights.
      * @return An array of normalized weights, corresponding to the pool tokens
@@ -199,24 +212,6 @@ contract WeightedPool is BasePool {
     /***************************************************************************
                                    Add Liquidity
     ***************************************************************************/
-
-    function onAddLiquiditySingleTokenExactOut(
-        address,
-        uint256 tokenInIndex,
-        uint256 exactBptAmountOut,
-        uint256[] memory balancesScaled18
-    ) external view override returns (uint256 amountIn) {
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-
-        return
-            WeightedMath.calcTokenInGivenExactBptOut(
-                balancesScaled18[tokenInIndex],
-                normalizedWeights[tokenInIndex],
-                exactBptAmountOut,
-                totalSupply(),
-                getSwapFeePercentage()
-            );
-    }
 
     /***************************************************************************
                                  Remove Liquidity
