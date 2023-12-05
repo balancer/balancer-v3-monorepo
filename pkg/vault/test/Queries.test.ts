@@ -27,7 +27,7 @@ describe('Queries', function () {
 
   let alice: SignerWithAddress;
 
-  const ADD_LIQUIDITY_TEST_KIND = 1; // UNBALANCED
+  const ADD_LIQUIDITY_TEST_KIND = 0; // UNBALANCED
   const REMOVE_LIQUIDITY_TEST_KIND = 0; // PROPORTIONAL
 
   before('setup signers', async () => {

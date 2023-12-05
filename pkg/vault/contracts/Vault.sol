@@ -1159,16 +1159,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             bytes memory returnData
         )
     {
-        if (params.kind == AddLiquidityKind.PROPORTIONAL) {
-            _poolConfig[params.pool].requireSupportsAddLiquidityProportional();
-
-            bptAmountOut = params.minBptAmountOut;
-            amountsInScaled18 = BasePoolMath.computeProportionalAmountsIn(
-                poolData.balancesLiveScaled18,
-                _totalSupply(params.pool),
-                bptAmountOut
-            );
-        } else if (params.kind == AddLiquidityKind.UNBALANCED) {
+        if (params.kind == AddLiquidityKind.UNBALANCED) {
             amountsInScaled18 = params.maxAmountsInScaled18;
             bptAmountOut = BasePoolMath.computeAddLiquidityUnbalanced(
                 poolData.balancesLiveScaled18,
@@ -1185,7 +1176,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
             amountsInScaled18 = params.maxAmountsInScaled18;
             amountsInScaled18[vars.tokenIndex] = BasePoolMath.computeAddLiquiditySingleTokenExactOut(
-                poolData.balancesLiveScaled18
+                poolData.balancesLiveScaled18,
                 tokenIndex,
                 bptAmountOut,
                 _totalSupply(params.pool),

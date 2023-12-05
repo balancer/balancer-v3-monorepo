@@ -90,32 +90,6 @@ contract VaultLiquidityTest is Test {
         vm.label(address(DAI), "DAI");
     }
 
-    function testAddLiquidityProportional() public {
-        // Use a different account to initialize so that the main LP is clean at the start of the test.
-        _mockInitialize(bob);
-
-        vm.startPrank(alice);
-
-        Balances memory balancesBefore = _getBalances(alice);
-
-        (uint256[] memory amountsIn, uint256 bptAmountOut, ) = router.addLiquidity(
-            address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            DAI_AMOUNT_IN,
-            IVault.AddLiquidityKind.PROPORTIONAL,
-            bytes("")
-        );
-        vm.stopPrank();
-
-        Balances memory balancesAfter = _getBalances(alice);
-
-        _compareBalancesAddLiquidity(balancesBefore, balancesAfter, amountsIn, bptAmountOut);
-
-        // should mint correct amount of BPT tokens
-        assertEq(bptAmountOut, DAI_AMOUNT_IN);
-    }
-
     function testAddLiquidityUnbalanced() public {
         // Use a different account to initialize so that the main LP is clean at the start of the test.
         _mockInitialize(bob);
@@ -219,7 +193,7 @@ contract VaultLiquidityTest is Test {
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             DAI_AMOUNT_IN,
-            IVault.AddLiquidityKind.PROPORTIONAL,
+            IVault.AddLiquidityKind.UNBALANCED,
             bytes("")
         );
 
