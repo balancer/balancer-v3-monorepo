@@ -38,6 +38,8 @@ library EnumerableMap {
     // The original OpenZeppelin implementation uses a generic Map type with bytes32 keys: this was replaced with
     // IERC20ToUint256Map, resulting in more dense bytecode.
 
+    // solhint-disable func-name-mixedcase
+
     struct IERC20ToUint256MapEntry {
         IERC20 key;
         uint256 value;
@@ -96,7 +98,6 @@ library EnumerableMap {
      * within bounds.
      */
     function unchecked_setAt(IERC20ToUint256Map storage map, uint256 index, uint256 value) internal {
-        // solhint-disable-previous-line func-name-mixedcase
         map.entries[index].value = value;
     }
 
@@ -181,7 +182,6 @@ library EnumerableMap {
      * within bounds.
      */
     function unchecked_at(IERC20ToUint256Map storage map, uint256 index) internal view returns (IERC20, uint256) {
-        // solhint-disable-previous-line func-name-mixedcase
         IERC20ToUint256MapEntry storage entry = map.entries[index];
         return (entry.key, entry.value);
     }
@@ -191,7 +191,6 @@ library EnumerableMap {
      * read). O(1).
      */
     function unchecked_valueAt(IERC20ToUint256Map storage map, uint256 index) internal view returns (uint256) {
-        // solhint-disable-previous-line func-name-mixedcase
         return map.entries[index].value;
     }
 
@@ -236,7 +235,6 @@ library EnumerableMap {
      * instead.
      */
     function unchecked_indexOf(IERC20ToUint256Map storage map, IERC20 key) internal view returns (uint256) {
-        // solhint-disable-previous-line func-name-mixedcase
         return map.indexes[key];
     }
 }

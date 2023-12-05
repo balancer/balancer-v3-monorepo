@@ -32,6 +32,8 @@ library EnumerableSet {
     // The original OpenZeppelin implementation uses a generic Set type with bytes32 values: this was replaced with
     // AddressSet, which uses address keys natively, resulting in more dense bytecode.
 
+    // solhint-disable func-name-mixedcase
+
     struct AddressSet {
         // Storage of set values
         address[] _values;
@@ -143,7 +145,6 @@ library EnumerableSet {
      * This function performs one less storage read than {at}, but should only be used when `index` is known to be
      * within bounds.
      */
-    // solhint-disable-next-line func-name-mixedcase
     function unchecked_at(AddressSet storage set, uint256 index) internal view returns (address) {
         return set._values[index];
     }
@@ -169,7 +170,6 @@ library EnumerableSet {
      * within bounds.
      */
     function unchecked_indexOf(AddressSet storage set, address value) internal view returns (uint256) {
-        // solhint-disable-previous-line func-name-mixedcase
         uint256 rawIndex = set._indexes[value];
 
         unchecked {

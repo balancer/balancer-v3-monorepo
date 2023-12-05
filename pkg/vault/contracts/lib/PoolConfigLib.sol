@@ -3,8 +3,6 @@
 pragma solidity ^0.8.4;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-
-// solhint-disable-next-line max-line-length
 import {
     PoolConfig,
     PoolCallbacks,

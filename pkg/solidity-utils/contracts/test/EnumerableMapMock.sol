@@ -6,10 +6,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../openzeppelin/EnumerableMap.sol";
 
-// solhint-disable func-name-mixedcase
-
 contract EnumerableIERC20ToUint256MapMock {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
+
+    // solhint-disable func-name-mixedcase
 
     EnumerableMap.IERC20ToUint256Map private _map;
 
