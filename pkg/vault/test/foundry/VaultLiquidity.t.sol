@@ -277,8 +277,8 @@ contract VaultLiquidityTest is Test {
 
         _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, amountsOut);
 
-        // amountsOut are correct (takes out initial liquidity as well)
-        assertEq(amountsOut[0], DAI_AMOUNT_IN * 2);
+        // amountsOut are correct
+        assertEq(amountsOut[0], DAI_AMOUNT_IN);
         assertEq(amountsOut[1], 0);
     }
 

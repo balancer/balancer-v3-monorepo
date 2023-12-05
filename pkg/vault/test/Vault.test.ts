@@ -111,7 +111,7 @@ describe('Vault', function () {
           pauseWindowEndTime,
           ANY_ADDRESS,
           [false, false, false, false, false],
-          [true, true, true, true, true, true]
+          [true, true, true, true, true]
         );
     });
 

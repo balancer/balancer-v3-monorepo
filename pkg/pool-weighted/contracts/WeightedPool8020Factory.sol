@@ -77,7 +77,6 @@ contract WeightedPool8020Factory is BasePoolFactory {
                 supportsAddLiquiditySingleTokenExactOut: true,
                 supportsAddLiquidityCustom: false,
                 supportsRemoveLiquidityProportional: true,
-                supportsRemoveLiquiditySingleTokenExactIn: true,
                 supportsRemoveLiquidityCustom: false
             })
         );
