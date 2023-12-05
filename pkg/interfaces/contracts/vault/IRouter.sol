@@ -332,7 +332,6 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param exactBptAmountOut Expected exact amount of pool tokens to receive
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for the query
      * @return amountsIn Expected amounts of tokens to add, sorted in token registration order
      */
@@ -340,7 +339,6 @@ interface IRouter {
         address pool,
         uint256[] memory maxAmountsIn,
         uint256 exactBptAmountOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn);
 
@@ -349,7 +347,6 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Expected minimum amount of pool tokens to receive
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for the query
      * @return bptAmountOut Expected amount of pool tokens to receive
      */
@@ -357,7 +354,6 @@ interface IRouter {
         address pool,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256 bptAmountOut);
 
@@ -367,7 +363,6 @@ interface IRouter {
      * @param tokenInIndex Index of the token used to add liquidity in the pool's token array
      * @param maxAmountIn Max amount tokens to be added
      * @param exactBptAmountOut Expected exact amount of pool tokens to receive
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for the query
      * @return amountsIn Expected amounts of tokens to add, sorted in token registration order
      */
@@ -376,7 +371,6 @@ interface IRouter {
         uint256 tokenInIndex,
         uint256 maxAmountIn,
         uint256 exactBptAmountOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn);
 
@@ -385,7 +379,6 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Expected minimum pool tokens to receive
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for the query
      * @return amountsIn Expected amounts of tokens to add, sorted in token registration order
      * @return bptAmountOut Expected amount of pool tokens to receive
@@ -395,7 +388,6 @@ interface IRouter {
         address pool,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
@@ -423,7 +415,6 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact pool tokens provided for the query
      * @param minAmountsOut Expected minimum amounts of tokens to receive, sorted in token registration order
-     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
      * @param userData Additional (optional) data required for the query
      * @return amountsOut Expected amounts of tokens to receive, sorted in token registration order
      */
@@ -431,7 +422,6 @@ interface IRouter {
         address pool,
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsOut);
 
@@ -441,7 +431,6 @@ interface IRouter {
      * @param exactBptAmountIn Exact pool tokens provided for the query
      * @param tokenOutIndex Index of the token used to remove liquidity in the pool's token array
      * @param minAmountOut Expected minimum amount of tokens to receive
-     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
      * @param userData Additional (optional) data required for the query
      * @return amountsOut Expected amounts of tokens to receive, sorted in token registration order
      */
@@ -450,7 +439,6 @@ interface IRouter {
         uint256 exactBptAmountIn,
         uint256 tokenOutIndex,
         uint256 minAmountOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsOut);
 
@@ -460,7 +448,6 @@ interface IRouter {
      * @param maxBptAmountIn Maximum pool tokens provided
      * @param tokenOutIndex Index of the token used to remove liquidity in the pool's token array
      * @param exactAmountOut Expected exact amount of tokens to receive
-     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
      * @param userData Additional (optional) data required for the query
      * @return bptAmountIn Expected amount of pool tokens to burn
      */
@@ -469,7 +456,6 @@ interface IRouter {
         uint256 maxBptAmountIn,
         uint256 tokenOutIndex,
         uint256 exactAmountOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256 bptAmountIn);
 
@@ -478,7 +464,6 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param maxBptAmountIn Pool tokens provided
      * @param minAmountsOut Expected minimum amounts of tokens to receive, sorted in token registration order
-     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
      * @param userData Additional (optional) data required for the query
      * @return bptAmountIn Expected amount of pool tokens to burn
      * @return amountsOut Expected amounts of tokens to receive, sorted in token registration order
@@ -488,7 +473,6 @@ interface IRouter {
         address pool,
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOut,
-        bool wethIsEth,
         bytes memory userData
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 

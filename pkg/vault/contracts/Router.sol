@@ -649,7 +649,6 @@ contract Router is IRouter, ReentrancyGuard {
         address pool,
         uint256[] memory maxAmountsIn,
         uint256 exactBptAmountOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn) {
         (amountsIn, , ) = abi.decode(
@@ -662,7 +661,7 @@ contract Router is IRouter, ReentrancyGuard {
                         maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: IVault.AddLiquidityKind.PROPORTIONAL,
-                        wethIsEth: wethIsEth,
+                        wethIsEth: false,
                         userData: userData
                     })
                 )
@@ -676,7 +675,6 @@ contract Router is IRouter, ReentrancyGuard {
         address pool,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256 bptAmountOut) {
         (, bptAmountOut, ) = abi.decode(
@@ -691,7 +689,7 @@ contract Router is IRouter, ReentrancyGuard {
                         maxAmountsIn: exactAmountsIn,
                         minBptAmountOut: minBptAmountOut,
                         kind: IVault.AddLiquidityKind.UNBALANCED,
-                        wethIsEth: wethIsEth,
+                        wethIsEth: false,
                         userData: userData
                     })
                 )
@@ -706,7 +704,6 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 tokenInIndex,
         uint256 maxAmountIn,
         uint256 exactBptAmountOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn) {
         IERC20[] memory tokens = _vault.getPoolTokens(pool);
@@ -730,7 +727,7 @@ contract Router is IRouter, ReentrancyGuard {
                         maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
-                        wethIsEth: wethIsEth,
+                        wethIsEth: false,
                         userData: userData
                     })
                 )
@@ -744,7 +741,6 @@ contract Router is IRouter, ReentrancyGuard {
         address pool,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         return
@@ -760,7 +756,7 @@ contract Router is IRouter, ReentrancyGuard {
                             maxAmountsIn: maxAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             kind: IVault.AddLiquidityKind.CUSTOM,
-                            wethIsEth: wethIsEth,
+                            wethIsEth: false,
                             userData: userData
                         })
                     )
@@ -831,7 +827,6 @@ contract Router is IRouter, ReentrancyGuard {
         address pool,
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsOut) {
         (, amountsOut, ) = abi.decode(
@@ -846,7 +841,7 @@ contract Router is IRouter, ReentrancyGuard {
                         minAmountsOut: minAmountsOut,
                         maxBptAmountIn: exactBptAmountIn,
                         kind: IVault.RemoveLiquidityKind.PROPORTIONAL,
-                        wethIsEth: wethIsEth,
+                        wethIsEth: false,
                         userData: userData
                     })
                 )
@@ -861,7 +856,6 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 exactBptAmountIn,
         uint256 tokenOutIndex,
         uint256 minAmountOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsOut) {
         IERC20[] memory tokens = _vault.getPoolTokens(pool);
@@ -886,7 +880,7 @@ contract Router is IRouter, ReentrancyGuard {
                         minAmountsOut: minAmountsOut,
                         maxBptAmountIn: exactBptAmountIn,
                         kind: IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
-                        wethIsEth: wethIsEth,
+                        wethIsEth: false,
                         userData: userData
                     })
                 )
@@ -901,7 +895,6 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 maxBptAmountIn,
         uint256 tokenOutIndex,
         uint256 exactAmountOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256 bptAmountIn) {
         IERC20[] memory tokens = _vault.getPoolTokens(pool);
@@ -926,7 +919,7 @@ contract Router is IRouter, ReentrancyGuard {
                         minAmountsOut: minAmountsOut,
                         maxBptAmountIn: maxBptAmountIn,
                         kind: IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
-                        wethIsEth: wethIsEth,
+                        wethIsEth: false,
                         userData: userData
                     })
                 )
@@ -942,7 +935,6 @@ contract Router is IRouter, ReentrancyGuard {
         address pool,
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOut,
-        bool wethIsEth,
         bytes memory userData
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
         return
@@ -958,7 +950,7 @@ contract Router is IRouter, ReentrancyGuard {
                             minAmountsOut: minAmountsOut,
                             maxBptAmountIn: maxBptAmountIn,
                             kind: IVault.RemoveLiquidityKind.CUSTOM,
-                            wethIsEth: wethIsEth,
+                            wethIsEth: false,
                             userData: userData
                         })
                     )
