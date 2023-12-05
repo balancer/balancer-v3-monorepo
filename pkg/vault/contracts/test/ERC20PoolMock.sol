@@ -60,6 +60,14 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         return balances[0] > 0 ? balances[0] : balances[1];
     }
 
+    function calcBalance(
+        uint256[] memory balances,
+        uint256 tokenInIndex,
+        uint256 invariantRatio
+    ) external pure returns (uint256 newBalance) {
+        return balances[tokenInIndex].mulDown(invariantRatio);
+    }
+
     function setFailOnAfterSwapCallback(bool fail) external {
         failOnAfterSwapCallback = fail;
     }
@@ -138,16 +146,6 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         bytes memory
     ) external view override returns (bool) {
         return !failOnAfterRemoveLiquidity;
-    }
-
-    function onAddLiquiditySingleTokenExactOut(
-        address sender,
-        uint256 tokenInIndex,
-        uint256,
-        uint256[] memory
-    ) external view override returns (uint256 amountIn) {
-        IERC20[] memory tokens = getVault().getPoolTokens(address(this));
-        return tokens[tokenInIndex].balanceOf(sender);
     }
 
     function onAddLiquidityCustom(

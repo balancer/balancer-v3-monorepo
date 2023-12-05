@@ -24,7 +24,7 @@ import { Router } from "../../contracts/Router.sol";
 import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
-contract VaultSwapTest is Test {
+contract CallbacksTest is Test {
     using AssetHelpers for address;
     using AssetHelpers for address[];
     using AssetHelpers for address[];
@@ -40,16 +40,16 @@ contract VaultSwapTest is Test {
     address alice = vm.addr(1);
     address bob = vm.addr(2);
 
-    uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
+    uint256 constant MINIMUM_AMOUNT = 1e6;
+    uint256 constant BPT_AMOUNT = 1e3 * 1e18;
+    uint256 constant USDC_AMOUNT_IN = 1e3 * 1e18;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
-    uint256 constant USDC_SCALING = 1e12; // 18 - 6
-    uint256 initialBptSupply;
 
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
         router = new Router(IVault(vault), address(0));
-        USDC = new ERC20TestToken("USDC", "USDC", 6);
+        USDC = new ERC20TestToken("USDC", "USDC", 18);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
 
@@ -71,8 +71,8 @@ contract VaultSwapTest is Test {
         USDC.mint(bob, USDC_AMOUNT_IN);
         DAI.mint(bob, DAI_AMOUNT_IN);
 
-        USDC.mint(alice, USDC_AMOUNT_IN);
-        DAI.mint(alice, DAI_AMOUNT_IN);
+        USDC.mint(alice, USDC_AMOUNT_IN + MINIMUM_AMOUNT);
+        DAI.mint(alice, DAI_AMOUNT_IN + MINIMUM_AMOUNT);
 
         vm.startPrank(bob);
 
@@ -89,11 +89,10 @@ contract VaultSwapTest is Test {
         router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
+            [MINIMUM_AMOUNT, MINIMUM_AMOUNT].toMemoryArray(),
             0,
             bytes("")
         );
-        initialBptSupply = IERC20(pool).totalSupply();
 
         vm.stopPrank();
 
