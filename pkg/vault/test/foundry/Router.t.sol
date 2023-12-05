@@ -25,9 +25,7 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
-import { RouterAdaptor } from "../../contracts/test/RouterAdaptor.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
-import { ForgeQueryHelper } from "./ForgeQueryHelper.sol";
 
 contract RouterTest is Test {
     using AssetHelpers for address;
@@ -35,8 +33,6 @@ contract RouterTest is Test {
     using AssetHelpers for address[];
     using ArrayHelpers for address[2];
     using ArrayHelpers for uint256[2];
-    using RouterAdaptor for IRouter;
-    using ForgeQueryHelper for Vm;
 
     VaultMock vault;
     IRouter router;
