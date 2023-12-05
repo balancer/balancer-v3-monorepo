@@ -235,6 +235,18 @@ library BasePoolMath {
         return totalSupply.mulUp(currentInvariant - newInvariantWithFees).divDown(currentInvariant);
     }
 
+    /**
+     * @notice Calculates the amount of a single token to withdraw for a given amount of BPT to burn.
+     * @dev It computes the output token amount for an exact input of BPT, considering current balances,
+     *      total supply, and swap fees.
+     * @param currentBalances The current token balances in the pool.
+     * @param tokenOutIndex The index of the token to be withdrawn.
+     * @param exactBptAmountIn The exact amount of BPT the user wants to burn.
+     * @param totalSupply The total supply of BPT in the pool.
+     * @param swapFeePercentage The swap fee percentage applied to the taxable amount.
+     * @param calcBalance A function pointer to the balance calculation function.
+     * @return amountOutWithFee The amount of the output token the user receives, accounting for swap fees.
+     */
     function computeRemoveLiquiditySingleTokenExactIn(
         uint256[] memory currentBalances,
         uint256 tokenOutIndex,
@@ -243,22 +255,28 @@ library BasePoolMath {
         uint256 swapFeePercentage,
         function(uint256[] memory, uint256, uint256) external view returns (uint256) calcBalance
     ) internal view returns (uint256 amountOutWithFee) {
+        // Calculate the new balance of the output token after the BPT burn.
         uint256 newBalance = calcBalance(
             currentBalances,
             tokenOutIndex,
             (totalSupply - exactBptAmountIn).divDown(totalSupply)
         );
 
+        // Compute the amount to be withdrawn from the pool.
         uint256 amountOut = currentBalances[tokenOutIndex] - newBalance;
 
-        // Calculate the taxable amount, which is the difference
-        // between the actual amount in and the non-taxable balance
+        // Calculate the non-taxable balance proportionate to the BPT burnt.
         uint256 nonTaxableBalance = (totalSupply - exactBptAmountIn).mulUp(currentBalances[tokenOutIndex]).divDown(
             totalSupply
         );
 
+        // Compute the taxable amount: the difference between the non-taxable balance and actual withdrawal.
         uint256 taxableAmount = nonTaxableBalance - (currentBalances[tokenOutIndex] - amountOut);
+
+        // Calculate the swap fee on the taxable amount.
         uint256 fee = taxableAmount.mulUp(swapFeePercentage);
+
+        // Return the net amount after subtracting the fee.
         return amountOut - fee;
     }
 }
