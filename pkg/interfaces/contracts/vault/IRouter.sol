@@ -392,25 +392,6 @@ interface IRouter {
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
     /**
-     * @notice Queries an addLiquidity operation without actually executing it.
-     * @param pool Address of the liquidity pool
-     * @param maxAmountsIn Expected maximum amounts of tokens to add, sorted in token registration order
-     * @param minBptAmountOut Minimum pool tokens expected
-     * @param kind Add liquidity kind
-     * @param userData Additional (optional) data required for the query
-     * @return amountsIn Expected amounts of tokens to add
-     * @return bptAmountOut Expected pool tokens to receive
-     * @return returnData Arbitrary (optional) data with encoded response from the pool
-     */
-    function queryAddLiquidity(
-        address pool,
-        uint256[] memory maxAmountsIn,
-        uint256 minBptAmountOut,
-        IVault.AddLiquidityKind kind,
-        bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
-
-    /**
      * @notice Queries `removeLiquidityProportional` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact pool tokens provided for the query
@@ -473,25 +454,6 @@ interface IRouter {
         address pool,
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOut,
-        bytes memory userData
-    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
-
-    /**
-     * @notice Queries removeLiquidity operation without actually executing it.
-     * @param pool Address of the liquidity pool
-     * @param maxBptAmountIn Pool tokens provided for the query
-     * @param minAmountsOut Expected minimum amounts of assets to receive, sorted in token registration order
-     * @param kind Remove liquidity kind
-     * @param userData Additional (optional) data required for the query
-     * @return bptAmountIn Expected amount of pool tokens to burn
-     * @return amountsOut Expected amounts of tokens to receive
-     * @return returnData Arbitrary (optional) data with encoded response from the pool
-     */
-    function queryRemoveLiquidity(
-        address pool,
-        uint256 maxBptAmountIn,
-        uint256[] memory minAmountsOut,
-        IVault.RemoveLiquidityKind kind,
         bytes memory userData
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 

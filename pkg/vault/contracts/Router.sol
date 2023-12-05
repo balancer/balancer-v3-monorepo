@@ -765,36 +765,6 @@ contract Router is IRouter, ReentrancyGuard {
             );
     }
 
-    /// @inheritdoc IRouter
-    function queryAddLiquidity(
-        address pool,
-        uint256[] memory maxAmountsIn,
-        uint256 minBptAmountOut,
-        IVault.AddLiquidityKind kind,
-        bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
-        return
-            abi.decode(
-                _vault.quote{ value: msg.value }(
-                    abi.encodeWithSelector(
-                        Router.queryAddLiquidityCallback.selector,
-                        AddLiquidityCallbackParams({
-                            // we use router as a sender to simplify basic query functions
-                            // but it is possible to add liquidity to any recepient
-                            sender: address(this),
-                            pool: pool,
-                            maxAmountsIn: maxAmountsIn,
-                            minBptAmountOut: minBptAmountOut,
-                            kind: kind,
-                            wethIsEth: false,
-                            userData: userData
-                        })
-                    )
-                ),
-                (uint256[], uint256, bytes)
-            );
-    }
-
     /**
      * @notice Callback for add liquidity queries.
      * @dev Can only be called by the Vault.
@@ -950,36 +920,6 @@ contract Router is IRouter, ReentrancyGuard {
                             minAmountsOut: minAmountsOut,
                             maxBptAmountIn: maxBptAmountIn,
                             kind: IVault.RemoveLiquidityKind.CUSTOM,
-                            wethIsEth: false,
-                            userData: userData
-                        })
-                    )
-                ),
-                (uint256, uint256[], bytes)
-            );
-    }
-
-    /// @inheritdoc IRouter
-    function queryRemoveLiquidity(
-        address pool,
-        uint256 maxBptAmountIn,
-        uint256[] memory minAmountsOut,
-        IVault.RemoveLiquidityKind kind,
-        bytes memory userData
-    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
-        return
-            abi.decode(
-                _vault.quote(
-                    abi.encodeWithSelector(
-                        Router.queryRemoveLiquidityCallback.selector,
-                        RemoveLiquidityCallbackParams({
-                            // We use router as a sender to simplify basic query functions
-                            // but it is possible to remove liquidity from any sender
-                            sender: address(this),
-                            pool: pool,
-                            minAmountsOut: minAmountsOut,
-                            maxBptAmountIn: maxBptAmountIn,
-                            kind: kind,
                             wethIsEth: false,
                             userData: userData
                         })
