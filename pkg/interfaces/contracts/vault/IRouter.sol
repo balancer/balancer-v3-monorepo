@@ -63,6 +63,7 @@ interface IRouter {
     /// @dev The amount of ETH paid is insufficient to complete this operation.
     error InsufficientEth();
 
+    /// @dev The given token index is out of range for the pool.
     error InvalidTokenIndex();
 
     /**
