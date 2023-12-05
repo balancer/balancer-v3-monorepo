@@ -52,8 +52,8 @@ contract RouterTest is Test {
     uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
     uint256 constant ETH_AMOUNT_IN = 1e3 ether;
-    uint256 constant INIT_BPT = 1e18;
-    uint256 constant MIN_BPT_AMOUNT_OUT = 1e16;
+    uint256 constant INIT_BPT = 10e18;
+    uint256 constant BPT_AMOUNT_OUT = 1e18;
 
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
@@ -201,7 +201,7 @@ contract RouterTest is Test {
         require(wethPool.balanceOf(alice) == 0);
 
         bool wethIsEth = false;
-        router.initialize(
+        uint256 bptAmountOut = router.initialize(
             address(wethPool),
             [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
@@ -212,7 +212,8 @@ contract RouterTest is Test {
 
         // WETH was deposited, pool tokens were minted to Alice.
         assertEq(WETH.balanceOf(alice), 0);
-        assertGt(wethPool.balanceOf(alice), 0);
+        assertEq(wethPool.balanceOf(alice), bptAmountOut);
+        assertGt(bptAmountOut, 0);
     }
 
     function testInitializeNativeNoBalance() public {
@@ -254,6 +255,7 @@ contract RouterTest is Test {
         // WETH was deposited, pool tokens were minted to Alice.
         assertEq(address(alice).balance, aliceNativeBalanceBefore - ETH_AMOUNT_IN);
         assertEq(wethPool.balanceOf(alice), bptAmountOut);
+        assertGt(bptAmountOut, 0);
     }
 
     function testInitializeNativeExcessEth() public {
@@ -278,6 +280,7 @@ contract RouterTest is Test {
         // WETH was deposited, excess ETH was returned, pool tokens were minted to Alice.
         assertEq(address(alice).balance, aliceNativeBalanceBefore - ETH_AMOUNT_IN);
         assertEq(wethPool.balanceOf(alice), bptAmountOut);
+        assertGt(bptAmountOut, 0);
     }
 
     function testAddLiquidityWETHNoBalance() public {
@@ -288,11 +291,13 @@ contract RouterTest is Test {
         require(WETH.balanceOf(alice) == 0);
 
         // Revert when sending ETH while wethIsEth is false (caller holds no WETH).
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, alice, 0, ETH_AMOUNT_IN));
-        router.addLiquidityUnbalanced(
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, alice, 0, ETH_AMOUNT_IN)
+        );
+        router.addLiquidityCustom(
             address(wethPool),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
-            MIN_BPT_AMOUNT_OUT,
+            BPT_AMOUNT_OUT,
             wethIsEth,
             bytes("")
         );
@@ -307,17 +312,17 @@ contract RouterTest is Test {
         require(WETH.balanceOf(alice) == ETH_AMOUNT_IN);
         require(wethPool.balanceOf(alice) == 0);
 
-        uint256 bptAmountOut = router.addLiquidityUnbalanced(
+        router.addLiquidityCustom(
             address(wethPool),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
-            MIN_BPT_AMOUNT_OUT,
+            BPT_AMOUNT_OUT,
             wethIsEth,
             bytes("")
         );
 
         // WETH was deposited, pool tokens were minted to Alice.
         assertEq(WETH.balanceOf(alice), 0);
-        assertEq(wethPool.balanceOf(alice), bptAmountOut);
+        assertEq(wethPool.balanceOf(alice), BPT_AMOUNT_OUT);
     }
 
     function testAddLiquidityNativeNoBalance() public {
@@ -332,10 +337,10 @@ contract RouterTest is Test {
 
         // Caller does not have enough ETH, even if they hold WETH.
         vm.expectRevert(abi.encodeWithSelector(IRouter.InsufficientEth.selector));
-        router.addLiquidityUnbalanced(
+        router.addLiquidityCustom(
             address(wethPool),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
-            MIN_BPT_AMOUNT_OUT,
+            BPT_AMOUNT_OUT,
             wethIsEth,
             bytes("")
         );
@@ -350,17 +355,17 @@ contract RouterTest is Test {
         require(aliceNativeBalanceBefore >= ETH_AMOUNT_IN);
         require(wethPool.balanceOf(alice) == 0);
 
-        uint256 bptAmountOut = router.addLiquidityUnbalanced{ value: ETH_AMOUNT_IN }(
+        router.addLiquidityCustom{ value: ETH_AMOUNT_IN }(
             address(wethPool),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
-            MIN_BPT_AMOUNT_OUT,
+            BPT_AMOUNT_OUT,
             wethIsEth,
             bytes("")
         );
 
         // WETH was deposited, pool tokens were minted to Alice.
         assertEq(address(alice).balance, aliceNativeBalanceBefore - ETH_AMOUNT_IN);
-        assertEq(wethPool.balanceOf(alice), bptAmountOut);
+        assertEq(wethPool.balanceOf(alice), BPT_AMOUNT_OUT);
     }
 
     function testAddLiquidityNativeExcessEth() public {
@@ -374,17 +379,17 @@ contract RouterTest is Test {
         require(aliceNativeBalanceBefore >= ethAmountInExcess);
         require(wethPool.balanceOf(alice) == 0);
 
-        uint256 bptAmountOut = router.addLiquidityUnbalanced{ value: ethAmountInExcess }(
+        router.addLiquidityCustom{ value: ethAmountInExcess }(
             address(wethPool),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
-            MIN_BPT_AMOUNT_OUT,
+            BPT_AMOUNT_OUT,
             wethIsEth,
             bytes("")
         );
 
         // WETH was deposited, excess was returned, pool tokens were minted to Alice.
         assertEq(address(alice).balance, aliceNativeBalanceBefore - ETH_AMOUNT_IN);
-        assertEq(wethPool.balanceOf(alice), bptAmountOut);
+        assertEq(wethPool.balanceOf(alice), BPT_AMOUNT_OUT);
     }
 
     function testRemoveLiquidityWETH() public {
@@ -392,32 +397,32 @@ contract RouterTest is Test {
         // Make Alice an LP and remove its liquidity position afterwards
         vm.startPrank(alice);
         bool wethIsEth = true;
-        uint256 exactBptAmountOut = ETH_AMOUNT_IN;
+        uint256 exactBptAmount = BPT_AMOUNT_OUT;
 
-        router.addLiquidityProportional{ value: ETH_AMOUNT_IN }(
+        router.addLiquidityCustom{ value: ETH_AMOUNT_IN }(
             address(wethPool),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
-            exactBptAmountOut,
+            exactBptAmount,
             wethIsEth,
             bytes("")
         );
 
         uint256 aliceNativeBalanceBefore = address(alice).balance;
-        require(wethPool.balanceOf(alice) == exactBptAmountOut);
+        require(wethPool.balanceOf(alice) == exactBptAmount);
         require(WETH.balanceOf(alice) == 0);
 
         wethIsEth = false;
-        router.removeLiquidityProportional(
+        router.removeLiquidityCustom(
             address(wethPool),
-            exactBptAmountOut,
-            [uint256(0), uint256(0)].toMemoryArray(),
+            exactBptAmount,
+            [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
             wethIsEth,
             ""
         );
 
         // Liquidity position was removed, Alice gets WETH back
         assertGt(WETH.balanceOf(alice), 0);
-        assertApproxEqAbs(WETH.balanceOf(alice), ETH_AMOUNT_IN, 1); // 1 wei rounding
+        assertEq(WETH.balanceOf(alice), ETH_AMOUNT_IN);
         assertEq(wethPool.balanceOf(alice), 0);
         assertEq(address(alice).balance, aliceNativeBalanceBefore);
     }
@@ -427,23 +432,23 @@ contract RouterTest is Test {
         // Make Alice an LP and remove its liquidity position afterwards
         vm.startPrank(alice);
         bool wethIsEth = true;
-        uint256 exactBptAmountOut = ETH_AMOUNT_IN;
-        router.addLiquidityProportional{ value: ETH_AMOUNT_IN }(
+        uint256 exactBptAmount = BPT_AMOUNT_OUT;
+        router.addLiquidityCustom{ value: ETH_AMOUNT_IN }(
             address(wethPool),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
-            exactBptAmountOut,
+            exactBptAmount,
             wethIsEth,
             bytes("")
         );
 
         uint256 aliceNativeBalanceBefore = address(alice).balance;
-        require(wethPool.balanceOf(alice) == exactBptAmountOut);
+        require(wethPool.balanceOf(alice) == exactBptAmount);
         require(WETH.balanceOf(alice) == 0);
 
-        router.removeLiquidityProportional(
+        router.removeLiquidityCustom(
             address(wethPool),
-            exactBptAmountOut,
-            [uint256(0), uint256(0)].toMemoryArray(),
+            exactBptAmount,
+            [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
             wethIsEth,
             ""
         );
@@ -451,18 +456,17 @@ contract RouterTest is Test {
         // Liquidity position was removed, Alice gets ETH back
         assertEq(WETH.balanceOf(alice), 0);
         assertEq(wethPool.balanceOf(alice), 0);
-        assertApproxEqAbs(address(alice).balance, aliceNativeBalanceBefore + ETH_AMOUNT_IN, 1); // 1 wei rounding
+        assertEq(address(alice).balance, aliceNativeBalanceBefore + ETH_AMOUNT_IN);
     }
 
     function _initializePool() internal returns (uint256 bptAmountOut) {
-        uint256 minBptAmountOut = wethPool.MIN_INIT_BPT();
         vm.prank(bob);
         bool wethIsEth = true;
         bptAmountOut = router.initialize{ value: ETH_AMOUNT_IN }(
             address(wethPool),
             [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
-            [uint256(minBptAmountOut), uint256(minBptAmountOut)].toMemoryArray(),
-            0,
+            [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
+            INIT_BPT,
             wethIsEth,
             bytes("")
         );
