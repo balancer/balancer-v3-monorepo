@@ -7,11 +7,11 @@ import "../Router.sol";
 contract RouterMock is Router {
     constructor(IVault vault, IWETH weth) Router(vault, weth) {}
 
-    function amountGivenToArray(
+    function getSingleInputIndex(
         address pool,
         uint256 tokenIndex,
         uint256 amountGiven
     ) external view returns (uint256[] memory amountsGiven) {
-        return _amountGivenToArray(pool, tokenIndex, amountGiven);
+        return _getSingleInputIndex(pool, tokenIndex, amountGiven);
     }
 }

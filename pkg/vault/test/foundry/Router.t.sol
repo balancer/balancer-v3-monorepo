@@ -458,19 +458,19 @@ contract RouterTest is Test {
         assertEq(address(alice).balance, aliceNativeBalanceBefore + ETH_AMOUNT_IN);
     }
 
-    function testAmountGivenToArray() public {
-        uint256[] memory amountsGiven = routerMock.amountGivenToArray(address(pool), 0, 1234);
+    function testgetSingleInputIndex() public {
+        uint256[] memory amountsGiven = routerMock.getSingleInputIndex(address(pool), 0, 1234);
         assertEq(amountsGiven.length, 2);
         assertEq(amountsGiven[0], 1234);
         assertEq(amountsGiven[1], 0);
 
-        amountsGiven = routerMock.amountGivenToArray(address(pool), 1, 4321);
+        amountsGiven = routerMock.getSingleInputIndex(address(pool), 1, 4321);
         assertEq(amountsGiven.length, 2);
         assertEq(amountsGiven[0], 0);
         assertEq(amountsGiven[1], 4321);
 
         vm.expectRevert(abi.encodeWithSelector(IRouter.InvalidTokenIndex.selector));
-        routerMock.amountGivenToArray(address(pool), 2, DAI_AMOUNT_IN);
+        routerMock.getSingleInputIndex(address(pool), 2, DAI_AMOUNT_IN);
     }
 
     function _initializePool() internal returns (uint256 bptAmountOut) {
