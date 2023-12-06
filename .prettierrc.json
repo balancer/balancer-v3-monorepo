@@ -11,7 +11,8 @@
       "files": "*.sol",
       "options": {
         "singleQuote": false,
-        "tabWidth": 4
+        "tabWidth": 4,
+        "compiler": "0.8.21"
       }
     },
     {
