@@ -164,17 +164,19 @@ library BasePoolMath {
         uint256 swapFeePercentage,
         function(uint256[] memory, uint256, uint256) external view returns (uint256) calcBalance
     ) internal view returns (uint256 amountInWithFee) {
+        // Calculate new supply after minting exactBptAmountOut
+        uint256 newSupply = exactBptAmountOut + totalSupply;
         // Calculate the initial amount of the input token needed for the desired amount of BPT out
         uint256 newBalance = calcBalance(
             currentBalances,
             tokenInIndex,
-            (exactBptAmountOut + totalSupply).divDown(totalSupply)
+            newSupply.divDown(totalSupply)
         );
         uint256 amountIn = newBalance - currentBalances[tokenInIndex];
 
         // Calculate the taxable amount, which is the difference
         // between the actual amount in and the non-taxable balance
-        uint256 nonTaxableBalance = (totalSupply + exactBptAmountOut).mulUp(currentBalances[tokenInIndex]).divDown(
+        uint256 nonTaxableBalance = newSupply.mulUp(currentBalances[tokenInIndex]).divDown(
             totalSupply
         );
 
