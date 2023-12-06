@@ -177,7 +177,7 @@ contract Router is IRouter, ReentrancyGuard {
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn) {
-        uint256[] memory maxAmountsIn = _getSingleInputIndex(pool, tokenInIndex, maxAmountIn);
+        uint256[] memory maxAmountsIn = _getSingleInputArray(pool, tokenInIndex, maxAmountIn);
 
         (amountsIn, , ) = abi.decode(
             _vault.invoke{ value: msg.value }(
@@ -323,7 +323,7 @@ contract Router is IRouter, ReentrancyGuard {
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsOut) {
-        uint256[] memory minAmountsOut = _getSingleInputIndex(pool, tokenOutIndex, minAmountOut);
+        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOutIndex, minAmountOut);
 
         (, amountsOut, ) = abi.decode(
             _vault.invoke(
@@ -353,7 +353,7 @@ contract Router is IRouter, ReentrancyGuard {
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256 bptAmountIn) {
-        uint256[] memory minAmountsOut = _getSingleInputIndex(pool, tokenOutIndex, exactAmountOut);
+        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOutIndex, exactAmountOut);
 
         (bptAmountIn, , ) = abi.decode(
             _vault.invoke(
@@ -683,7 +683,7 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 exactBptAmountOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn) {
-        uint256[] memory maxAmountsIn = _getSingleInputIndex(pool, tokenInIndex, maxAmountIn);
+        uint256[] memory maxAmountsIn = _getSingleInputArray(pool, tokenInIndex, maxAmountIn);
 
         (amountsIn, , ) = abi.decode(
             _vault.quote(
@@ -798,7 +798,7 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 minAmountOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut) {
-        uint256[] memory minAmountsOut = _getSingleInputIndex(pool, tokenOutIndex, minAmountOut);
+        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOutIndex, minAmountOut);
 
         (, amountsOut, ) = abi.decode(
             _vault.quote(
@@ -829,7 +829,7 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 exactAmountOut,
         bytes memory userData
     ) external returns (uint256 bptAmountIn) {
-        uint256[] memory minAmountsOut = _getSingleInputIndex(pool, tokenOutIndex, exactAmountOut);
+        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOutIndex, exactAmountOut);
 
         (bptAmountIn, , ) = abi.decode(
             _vault.quote(
@@ -931,7 +931,7 @@ contract Router is IRouter, ReentrancyGuard {
      * The returned array length matches the number of tokens in the pool.
      * Reverts if the given index is greater than or equal to the pool number of tokens.
      */
-    function _getSingleInputIndex(
+    function _getSingleInputArray(
         address pool,
         uint256 tokenIndex,
         uint256 amountGiven
