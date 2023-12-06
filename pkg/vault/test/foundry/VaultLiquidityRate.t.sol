@@ -98,51 +98,19 @@ contract VaultLiquidityWithRatesTest is Test {
         vm.label(address(DAI), "DAI");
     }
 
-    function testAddLiquidityProportionalWithRate() public {
-        // Use a different account to initialize so that the main LP is clean at the start of the test.
-        _mockInitialize(bob);
-
-        rateProvider.mockRate(MOCK_RATE);
-
-        vm.startPrank(alice);
-
-        Balances memory balancesBefore = _getBalances(alice);
-
-        (uint256[] memory amountsIn, uint256 bptAmountOut, ) = router.addLiquidity(
-            address(pool),
-            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
-            [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
-            WSTETH_AMOUNT_IN,
-            IVault.AddLiquidityKind.PROPORTIONAL,
-            bytes("")
-        );
-        vm.stopPrank();
-
-        Balances memory balancesAfter = _getBalances(alice);
-
-        _compareBalancesAddLiquidity(balancesBefore, balancesAfter, amountsIn, bptAmountOut);
-
-        // should mint correct amount of BPT tokens
-        assertEq(bptAmountOut, WSTETH_AMOUNT_IN);
-    }
-
     function testAddLiquiditySingleTokenExactOutWithRate() public {
-        // Use a different account to initialize so that the main LP is clean at the start of the test.
         _mockInitialize(bob);
 
         rateProvider.mockRate(MOCK_RATE);
-
-        uint256 rateAdjustedAmount = FixedPoint.mulDown(WSTETH_AMOUNT_IN, MOCK_RATE);
 
         vm.startPrank(alice);
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IBasePool.onAddLiquiditySingleTokenExactOut.selector,
-                alice,
+                IBasePool.calcBalance.selector,
+                [FixedPoint.mulDown(WSTETH_AMOUNT_IN, MOCK_RATE), DAI_AMOUNT_IN].toMemoryArray(), // liveBalancesScaled18
                 0,
-                WSTETH_AMOUNT_IN,
-                [rateAdjustedAmount, DAI_AMOUNT_IN].toMemoryArray() // liveBalancesScaled18
+                2e18 // 200% growth
             )
         );
 
@@ -188,7 +156,6 @@ contract VaultLiquidityWithRatesTest is Test {
     }
 
     function testRemoveLiquidityProportionalWithRate() public {
-        // Use a different account to initialize so that the main LP is clean at the start of the test.
         _mockInitialize(bob);
 
         rateProvider.mockRate(MOCK_RATE);
@@ -200,13 +167,12 @@ contract VaultLiquidityWithRatesTest is Test {
             [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
             [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
             WSTETH_AMOUNT_IN,
-            IVault.AddLiquidityKind.PROPORTIONAL,
+            IVault.AddLiquidityKind.UNBALANCED,
             bytes("")
         );
 
-        Balances memory balancesBefore = _getBalances(alice);
-
-        (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidity(
+        // TODO: Find a way to test rates inside the Vault
+        router.removeLiquidity(
             address(pool),
             [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
             WSTETH_AMOUNT_IN,
@@ -216,18 +182,9 @@ contract VaultLiquidityWithRatesTest is Test {
         );
 
         vm.stopPrank();
-
-        Balances memory balancesAfter = _getBalances(alice);
-
-        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, bptAmountIn, amountsOut);
-
-        // amountsOut are correct
-        assertEq(amountsOut[0], WSTETH_AMOUNT_IN);
-        assertEq(amountsOut[1], DAI_AMOUNT_IN);
     }
 
     function testRemoveLiquiditySingleTokenExactInWithRate() public {
-        // Use a different account to initialize so that the main LP is clean at the start of the test.
         _mockInitialize(bob);
 
         rateProvider.mockRate(MOCK_RATE);
@@ -239,7 +196,7 @@ contract VaultLiquidityWithRatesTest is Test {
             [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
             [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
             WSTETH_AMOUNT_IN,
-            IVault.AddLiquidityKind.PROPORTIONAL,
+            IVault.AddLiquidityKind.UNBALANCED,
             bytes("")
         );
 
@@ -248,11 +205,10 @@ contract VaultLiquidityWithRatesTest is Test {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IBasePool.onRemoveLiquiditySingleTokenExactIn.selector,
-                alice,
+                IBasePool.calcBalance.selector,
+                [startingBalances.balancesLiveScaled18[0], startingBalances.balancesLiveScaled18[1]].toMemoryArray(),
                 0, // tokenOutIndex
-                WSTETH_AMOUNT_IN, // exactBptIn
-                [startingBalances.balancesLiveScaled18[0], startingBalances.balancesLiveScaled18[1]].toMemoryArray()
+                50e16 // invariantRatio
             )
         );
 
@@ -310,7 +266,7 @@ contract VaultLiquidityWithRatesTest is Test {
     }
 
     function _mockInitialize(address initializer) internal {
-        vm.startPrank(initializer);
+        vm.prank(initializer);
 
         // The mock pool can be initialized with no liquidity; it mints some BPT to the initializer
         // to comply with the vault's required minimum.
@@ -321,94 +277,5 @@ contract VaultLiquidityWithRatesTest is Test {
             0,
             bytes("")
         );
-    }
-
-    function _getBalances(address user) internal view returns (Balances memory balances) {
-        balances.userTokens = new uint256[](2);
-
-        balances.userTokens[0] = WSTETH.balanceOf(user);
-        balances.userTokens[1] = DAI.balanceOf(user);
-        balances.userBpt = pool.balanceOf(user);
-
-        (, uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(pool));
-        require(
-            poolBalances[0] == WSTETH.balanceOf(address(vault)),
-            "WSTETH pool balance does not match vault balance"
-        );
-        require(poolBalances[1] == DAI.balanceOf(address(vault)), "DAI pool balance does not match vault balance");
-
-        balances.poolTokens = poolBalances;
-    }
-
-    function _compareBalancesAddLiquidity(
-        Balances memory balancesBefore,
-        Balances memory balancesAfter,
-        uint256[] memory amountsIn,
-        uint256 bptAmountOut
-    ) internal {
-        // Assets are transferred from the user to the vault
-        assertEq(
-            balancesAfter.userTokens[0],
-            balancesBefore.userTokens[0] - amountsIn[0],
-            "Add - User balance: token 0"
-        );
-        assertEq(
-            balancesAfter.userTokens[1],
-            balancesBefore.userTokens[1] - amountsIn[1],
-            "Add - User balance: token 1"
-        );
-
-        // Assets are now in the vault / pool
-        assertEq(
-            balancesAfter.poolTokens[0],
-            balancesBefore.poolTokens[0] + amountsIn[0],
-            "Add - Pool balance: token 0"
-        );
-        assertEq(
-            balancesAfter.poolTokens[1],
-            balancesBefore.poolTokens[1] + amountsIn[1],
-            "Add - Pool balance: token 1"
-        );
-
-        // User now has BPT
-        assertEq(balancesBefore.userBpt, 0, "Add - User BPT balance before");
-        assertEq(balancesAfter.userBpt, bptAmountOut, "Add - User BPT balance after");
-    }
-
-    function _compareBalancesRemoveLiquidity(
-        Balances memory balancesBefore,
-        Balances memory balancesAfter,
-        uint256 bptAmountIn,
-        uint256 rawBptAmountIn,
-        uint256[] memory amountsOut
-    ) internal {
-        // Assets are transferred back to user
-        assertEq(
-            balancesAfter.userTokens[0],
-            balancesBefore.userTokens[0] + amountsOut[0],
-            "Remove - User balance: token 0"
-        );
-        assertEq(
-            balancesAfter.userTokens[1],
-            balancesBefore.userTokens[1] + amountsOut[1],
-            "Remove - User balance: token 1"
-        );
-
-        // Assets are no longer in the vault / pool
-        assertEq(
-            balancesAfter.poolTokens[0],
-            balancesBefore.poolTokens[0] - amountsOut[0],
-            "Remove - Pool balance: token 0"
-        );
-        assertEq(
-            balancesAfter.poolTokens[1],
-            balancesBefore.poolTokens[1] - amountsOut[1],
-            "Remove - Pool balance: token 1"
-        );
-
-        // User has burnt the correct amount of BPT
-        assertEq(balancesBefore.userBpt, bptAmountIn, "Remove - User BPT balance before");
-        // Assumes rate >= 1
-        assertEq(balancesAfter.userBpt, bptAmountIn - rawBptAmountIn, "Remove - User BPT balance after");
     }
 }

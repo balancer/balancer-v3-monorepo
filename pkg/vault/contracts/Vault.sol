@@ -1178,7 +1178,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 tokenIndex,
                 bptAmountOut,
                 _totalSupply(params.pool),
-                _getSwapFeePercentage(vars.config),
+                _getSwapFeePercentage(poolData.config),
                 IBasePool(params.pool).calcBalance
             );
         } else if (params.kind == AddLiquidityKind.CUSTOM) {
@@ -1357,12 +1357,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             bptAmountIn = params.maxBptAmountIn;
 
             amountsOutScaled18 = params.minAmountsOutScaled18;
-            upscaledAmountsOut[vars.tokenIndex] = BasePoolMath.computeRemoveLiquiditySingleTokenExactIn(
-                poolData.balancesLiveScaled18
-                InputHelpers.getSingleInputIndex(params.minAmountsOutScaled18),
+            uint256 tokenOutIndex = InputHelpers.getSingleInputIndex(params.minAmountsOutScaled18);
+            amountsOutScaled18[tokenOutIndex] = BasePoolMath.computeRemoveLiquiditySingleTokenExactIn(
+                poolData.balancesLiveScaled18,
+                tokenOutIndex,
                 bptAmountIn,
                 _totalSupply(params.pool),
-                _getSwapFeePercentage(vars.config),
+                _getSwapFeePercentage(poolData.config),
                 IBasePool(params.pool).calcBalance
             );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
