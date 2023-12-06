@@ -181,7 +181,7 @@ library BasePoolMath {
         uint256 taxableAmount = (amountIn + currentBalances[tokenInIndex]) - nonTaxableBalance;
 
         // Calculate the swap fee based on the taxable amount and the swap fee percentage
-        uint256 fee = taxableAmount / (swapFeePercentage.complement()) - taxableAmount;
+        uint256 fee = taxableAmount.divUp(swapFeePercentage.complement()) - taxableAmount;
 
         // Return the total amount of input token needed, including the swap fee
         return amountIn + fee;
