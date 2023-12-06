@@ -94,28 +94,23 @@ contract WeightedPool is BasePool {
 
     function _getNormalizedWeights() internal view virtual returns (uint256[] memory) {
         // solhint-disable
-        uint256 totalTokens = _getTotalTokens();
-        uint256[] memory normalizedWeights = new uint256[](totalTokens);
+        uint256[] memory normalizedWeights = new uint256[](_totalTokens);
 
         // prettier-ignore
         normalizedWeights[0] = _normalizedWeight0;
         normalizedWeights[1] = _normalizedWeight1;
-        if (totalTokens > 2) {
+        if (_totalTokens > 2) {
             normalizedWeights[2] = _normalizedWeight2;
         } else {
             return normalizedWeights;
         }
-        if (totalTokens > 3) {
+        if (_totalTokens > 3) {
             normalizedWeights[3] = _normalizedWeight3;
         } else {
             return normalizedWeights;
         }
 
         return normalizedWeights;
-    }
-
-    function _getTotalTokens() internal view virtual override returns (uint256) {
-        return _totalTokens;
     }
 
     /**

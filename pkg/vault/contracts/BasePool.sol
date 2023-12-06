@@ -20,7 +20,9 @@ abstract contract BasePool is IBasePool, ERC20PoolToken {
         _vault = vault;
     }
 
-    function _getTotalTokens() internal view virtual returns (uint256);
+    /*******************************************************************************
+                                       Fees
+    *******************************************************************************/
 
     /**
      * @notice Return the current value of the swap fee percentage.

@@ -21,7 +21,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
-import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 
@@ -33,7 +33,7 @@ contract VaultSwapWithRatesTest is Test {
     Router router;
     BasicAuthorizerMock authorizer;
     RateProviderMock rateProvider;
-    ERC20PoolMock pool;
+    PoolMock pool;
     ERC20TestToken WSTETH;
     ERC20TestToken DAI;
     address alice = vm.addr(1);
@@ -52,7 +52,7 @@ contract VaultSwapWithRatesTest is Test {
         rateProvider = new RateProviderMock();
         rateProviders[0] = rateProvider;
 
-        pool = new ERC20PoolMock(
+        pool = new PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",

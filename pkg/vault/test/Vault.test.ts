@@ -216,7 +216,7 @@ describe('Vault', function () {
         expectedRates = Array(poolATokens.length).fill(FP_ONE);
 
         poolC = await deploy('v3-vault/PoolMock', {
-          args: [vault, 'Pool C', 'POOLC', poolATokens, rateProviders, true],
+          args: [vault, 'Pool C', 'POOLC', poolATokens, rateProviders, true, 365 * 24 * 3600, ZERO_ADDRESS],
         });
       });
 
@@ -259,7 +259,16 @@ describe('Vault', function () {
 
       sharedBeforeEach('deploy pool', async () => {
         pool = await deploy('v3-vault/PoolMock', {
-          args: [vault, 'Pool X', 'POOLX', poolATokens, Array(poolATokens.length).fill(ZERO_ADDRESS), true],
+          args: [
+            vault,
+            'Pool X',
+            'POOLX',
+            poolATokens,
+            Array(poolATokens.length).fill(ZERO_ADDRESS),
+            true,
+            365 * 24 * 3600,
+            ZERO_ADDRESS,
+          ],
         });
         poolAddress = await pool.getAddress();
       });

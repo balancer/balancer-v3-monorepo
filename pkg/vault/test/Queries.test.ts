@@ -45,7 +45,16 @@ describe('Queries', function () {
     USDC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['USDC', 'USDC', 18] });
 
     pool = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool', 'POOL', [DAI, USDC], [ZERO_ADDRESS, ZERO_ADDRESS], true],
+      args: [
+        vaultAddress,
+        'Pool',
+        'POOL',
+        [DAI, USDC],
+        [ZERO_ADDRESS, ZERO_ADDRESS],
+        true,
+        365 * 24 * 3600,
+        ZERO_ADDRESS,
+      ],
     });
 
     await USDC.mint(alice, USDC_AMOUNT_IN);
