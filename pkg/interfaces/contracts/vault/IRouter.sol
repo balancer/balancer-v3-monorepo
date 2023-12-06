@@ -340,7 +340,7 @@ interface IRouter {
         uint256[] memory maxAmountsIn,
         uint256 exactBptAmountOut,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn);
+    ) external returns (uint256[] memory amountsIn);
 
     /**
      * @notice Queries an `addLiquidityUnbalanced` operation without actually executing it.
@@ -355,7 +355,7 @@ interface IRouter {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external payable returns (uint256 bptAmountOut);
+    ) external returns (uint256 bptAmountOut);
 
     /**
      * @notice Queries an `addLiquiditySingleTokenExactOut` operation without actually executing it.
@@ -372,7 +372,7 @@ interface IRouter {
         uint256 maxAmountIn,
         uint256 exactBptAmountOut,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn);
+    ) external returns (uint256[] memory amountsIn);
 
     /**
      * @notice Adds liquidity to a pool with a custom request.
@@ -389,7 +389,7 @@ interface IRouter {
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
+    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
     /**
      * @notice Queries `removeLiquidityProportional` operation without actually executing it.
@@ -404,7 +404,7 @@ interface IRouter {
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsOut);
+    ) external returns (uint256[] memory amountsOut);
 
     /**
      * @notice Queries `removeLiquiditySingleTokenExactIn` operation without actually executing it.
@@ -421,7 +421,7 @@ interface IRouter {
         uint256 tokenOutIndex,
         uint256 minAmountOut,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsOut);
+    ) external returns (uint256[] memory amountsOut);
 
     /**
      * @notice Queries `removeLiquiditySingleTokenExactOut` operation without actually executing it.
@@ -438,7 +438,7 @@ interface IRouter {
         uint256 tokenOutIndex,
         uint256 exactAmountOut,
         bytes memory userData
-    ) external payable returns (uint256 bptAmountIn);
+    ) external returns (uint256 bptAmountIn);
 
     /**
      * @notice Queries `removeLiquidityCustom` operation without actually executing it.
@@ -474,5 +474,5 @@ interface IRouter {
         Asset assetOut,
         uint256 amountGiven,
         bytes calldata userData
-    ) external payable returns (uint256 amountCalculated);
+    ) external returns (uint256 amountCalculated);
 }

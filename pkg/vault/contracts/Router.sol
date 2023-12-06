@@ -584,10 +584,10 @@ contract Router is IRouter, ReentrancyGuard {
         Asset assetOut,
         uint256 amountGiven,
         bytes calldata userData
-    ) external payable returns (uint256 amountCalculated) {
+    ) external returns (uint256 amountCalculated) {
         return
             abi.decode(
-                _vault.quote{ value: msg.value }(
+                _vault.quote(
                     abi.encodeWithSelector(
                         Router.querySwapCallback.selector,
                         SwapCallbackParams({
@@ -627,9 +627,9 @@ contract Router is IRouter, ReentrancyGuard {
         uint256[] memory maxAmountsIn,
         uint256 exactBptAmountOut,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn) {
+    ) external returns (uint256[] memory amountsIn) {
         (amountsIn, , ) = abi.decode(
-            _vault.quote{ value: msg.value }(
+            _vault.quote(
                 abi.encodeWithSelector(
                     Router.queryAddLiquidityCallback.selector,
                     AddLiquidityCallbackParams({
@@ -653,9 +653,9 @@ contract Router is IRouter, ReentrancyGuard {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external payable returns (uint256 bptAmountOut) {
+    ) external returns (uint256 bptAmountOut) {
         (, bptAmountOut, ) = abi.decode(
-            _vault.quote{ value: msg.value }(
+            _vault.quote(
                 abi.encodeWithSelector(
                     Router.queryAddLiquidityCallback.selector,
                     AddLiquidityCallbackParams({
@@ -682,11 +682,11 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 maxAmountIn,
         uint256 exactBptAmountOut,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn) {
+    ) external returns (uint256[] memory amountsIn) {
         uint256[] memory maxAmountsIn = _getSingleInputIndex(pool, tokenInIndex, maxAmountIn);
 
         (amountsIn, , ) = abi.decode(
-            _vault.quote{ value: msg.value }(
+            _vault.quote(
                 abi.encodeWithSelector(
                     Router.queryAddLiquidityCallback.selector,
                     AddLiquidityCallbackParams({
@@ -712,10 +712,10 @@ contract Router is IRouter, ReentrancyGuard {
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
+    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         return
             abi.decode(
-                _vault.quote{ value: msg.value }(
+                _vault.quote(
                     abi.encodeWithSelector(
                         Router.queryAddLiquidityCallback.selector,
                         AddLiquidityCallbackParams({
@@ -768,7 +768,7 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsOut) {
+    ) external returns (uint256[] memory amountsOut) {
         (, amountsOut, ) = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(
@@ -797,7 +797,7 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 tokenOutIndex,
         uint256 minAmountOut,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsOut) {
+    ) external returns (uint256[] memory amountsOut) {
         uint256[] memory minAmountsOut = _getSingleInputIndex(pool, tokenOutIndex, minAmountOut);
 
         (, amountsOut, ) = abi.decode(
@@ -828,7 +828,7 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 tokenOutIndex,
         uint256 exactAmountOut,
         bytes memory userData
-    ) external payable returns (uint256 bptAmountIn) {
+    ) external returns (uint256 bptAmountIn) {
         uint256[] memory minAmountsOut = _getSingleInputIndex(pool, tokenOutIndex, exactAmountOut);
 
         (bptAmountIn, , ) = abi.decode(
