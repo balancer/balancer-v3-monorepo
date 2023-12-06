@@ -142,22 +142,6 @@ interface IBasePool {
     ) external returns (bool success);
 
     /**
-     * @notice Remove liquidity from the pool, specifying exact input pool token amount in exchange for a single token.
-     * @param sender Address of the sender
-     * @param tokenOutIndex Index of the token to receive in exchange for pool tokens, corresponding to the token
-     * address in the pool's registered token array
-     * @param exactBptAmountIn Exact amount of pool tokens to burn
-     * @param currentBalances Current pool balances, in the same order as the tokens registered in the pool
-     * @return amountOutScaled18 Amount of tokens out
-     */
-    function onRemoveLiquiditySingleTokenExactIn(
-        address sender,
-        uint256 tokenOutIndex,
-        uint256 exactBptAmountIn,
-        uint256[] memory currentBalances
-    ) external returns (uint256 amountOutScaled18);
-
-    /**
      * @notice Remove liquidity from the pool with a custom handler.
      * @param sender Address of the sender
      * @param maxBptAmountIn Maximum amount of input pool tokens

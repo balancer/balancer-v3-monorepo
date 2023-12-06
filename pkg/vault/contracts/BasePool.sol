@@ -100,16 +100,6 @@ abstract contract BasePool is IBasePool, ERC20PoolToken {
     }
 
     /// @inheritdoc IBasePool
-    function onRemoveLiquiditySingleTokenExactIn(
-        address,
-        uint256,
-        uint256,
-        uint256[] memory
-    ) external view virtual returns (uint256) {
-        revert CallbackNotImplemented();
-    }
-
-    /// @inheritdoc IBasePool
     function onRemoveLiquidityCustom(
         address,
         uint256,

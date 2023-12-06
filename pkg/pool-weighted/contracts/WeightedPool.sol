@@ -203,30 +203,4 @@ contract WeightedPool is BasePool {
         // TODO: review the need of this.
         return params.tokenIn != params.tokenOut && amountCalculatedScaled18 > 0;
     }
-
-    /***************************************************************************
-                                   Add Liquidity
-    ***************************************************************************/
-
-    /***************************************************************************
-                                 Remove Liquidity
-    ***************************************************************************/
-
-    function onRemoveLiquiditySingleTokenExactIn(
-        address,
-        uint256 tokenOutIndex,
-        uint256 exactBptAmountIn,
-        uint256[] memory balancesScaled18
-    ) external view override returns (uint256 amountOut) {
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-
-        return
-            WeightedMath.calcTokenOutGivenExactBptIn(
-                balancesScaled18[tokenOutIndex],
-                normalizedWeights[tokenOutIndex],
-                exactBptAmountIn,
-                totalSupply(),
-                getSwapFeePercentage()
-            );
-    }
 }
