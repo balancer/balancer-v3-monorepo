@@ -210,9 +210,7 @@ contract VaultLiquidityTest is Test {
 
         vm.stopPrank();
 
-        Balances memory balancesAfter = _getBalances(alice);
-
-        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, amountsOut);
+        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, amountsOut);
 
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN);
@@ -247,9 +245,7 @@ contract VaultLiquidityTest is Test {
 
         vm.stopPrank();
 
-        Balances memory balancesAfter = _getBalances(alice);
-
-        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, amountsOut);
+        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, amountsOut);
 
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN);
@@ -276,18 +272,16 @@ contract VaultLiquidityTest is Test {
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             DAI_AMOUNT_IN,
-            [uint256(DAI_AMOUNT_IN), 0].toMemoryArray(),
+            [uint256(2 * DAI_AMOUNT_IN), 0].toMemoryArray(),
             IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
             bytes("")
         );
 
         vm.stopPrank();
 
-        Balances memory balancesAfter = _getBalances(alice);
+        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, amountsOut);
 
-        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, amountsOut);
-
-        assertEq(amountsOut[0], DAI_AMOUNT_IN);
+        assertEq(amountsOut[0], 2 * DAI_AMOUNT_IN);
         assertEq(amountsOut[1], 0);
     }
 
@@ -319,9 +313,7 @@ contract VaultLiquidityTest is Test {
 
         vm.stopPrank();
 
-        Balances memory balancesAfter = _getBalances(alice);
-
-        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, amountsOut);
+        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, amountsOut);
 
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN);

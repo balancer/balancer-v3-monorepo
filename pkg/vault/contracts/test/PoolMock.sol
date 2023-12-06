@@ -59,7 +59,12 @@ contract PoolMock is BasePool {
     }
 
     function getInvariant(uint256[] memory balances) external pure returns (uint256) {
-        return balances[0] > 0 ? balances[0] : balances[1];
+        // inv = x + y
+        uint256 invariant;
+        for (uint256 index = 0; index < balances.length; index++) {
+            invariant += balances[index];
+        }
+        return invariant;
     }
 
     function calcBalance(
@@ -67,6 +72,7 @@ contract PoolMock is BasePool {
         uint256 tokenInIndex,
         uint256 invariantRatio
     ) external pure returns (uint256 newBalance) {
+        // inv = x + y
         return balances[tokenInIndex].mulDown(invariantRatio);
     }
 
@@ -94,10 +100,12 @@ contract PoolMock is BasePool {
         _multiplier = newMultiplier;
     }
 
-    function onAfterSwap(
-        IBasePool.AfterSwapParams calldata params,
-        uint256 amountCalculated
-    ) external view override returns (bool success) {
+    function onAfterSwap(IBasePool.AfterSwapParams calldata params, uint256 amountCalculated)
+        external
+        view
+        override
+        returns (bool success)
+    {
         return params.tokenIn != params.tokenOut && amountCalculated > 0 && !failOnAfterSwapCallback;
     }
 
@@ -156,7 +164,16 @@ contract PoolMock is BasePool {
         uint256 minBptAmountOut,
         uint256[] memory,
         bytes memory userData
-    ) external pure override returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
+    )
+        external
+        pure
+        override
+        returns (
+            uint256[] memory amountsIn,
+            uint256 bptAmountOut,
+            bytes memory returnData
+        )
+    {
         amountsIn = maxAmountsIn;
         bptAmountOut = minBptAmountOut;
         returnData = userData;
@@ -177,7 +194,16 @@ contract PoolMock is BasePool {
         uint256[] memory minAmountsOut,
         uint256[] memory,
         bytes memory userData
-    ) external pure override returns (uint256, uint256[] memory, bytes memory) {
+    )
+        external
+        pure
+        override
+        returns (
+            uint256,
+            uint256[] memory,
+            bytes memory
+        )
+    {
         return (maxBptAmountIn, minAmountsOut, userData);
     }
 
