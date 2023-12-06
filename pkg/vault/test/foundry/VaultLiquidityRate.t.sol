@@ -164,7 +164,7 @@ contract VaultLiquidityWithRatesTest is Test {
         );
 
         // TODO: Find a way to test rates inside the Vault
-        uint256[] memory amountsOut = router.removeLiquidityProportional(
+        router.removeLiquidityProportional(
             address(pool),
             WSTETH_AMOUNT_IN,
             [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),

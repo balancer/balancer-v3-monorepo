@@ -167,18 +167,12 @@ library BasePoolMath {
         // Calculate new supply after minting exactBptAmountOut
         uint256 newSupply = exactBptAmountOut + totalSupply;
         // Calculate the initial amount of the input token needed for the desired amount of BPT out
-        uint256 newBalance = calcBalance(
-            currentBalances,
-            tokenInIndex,
-            newSupply.divDown(totalSupply)
-        );
+        uint256 newBalance = calcBalance(currentBalances, tokenInIndex, newSupply.divDown(totalSupply));
         uint256 amountIn = newBalance - currentBalances[tokenInIndex];
 
         // Calculate the taxable amount, which is the difference
         // between the actual amount in and the non-taxable balance
-        uint256 nonTaxableBalance = newSupply.mulUp(currentBalances[tokenInIndex]).divDown(
-            totalSupply
-        );
+        uint256 nonTaxableBalance = newSupply.mulUp(currentBalances[tokenInIndex]).divDown(totalSupply);
 
         uint256 taxableAmount = (amountIn + currentBalances[tokenInIndex]) - nonTaxableBalance;
 
@@ -221,9 +215,9 @@ library BasePoolMath {
         uint256 currentInvariant = calcInvariant(currentBalances);
 
         // Calculate the new invariant ratio by dividing the new invariant by the current invariant.
-        uint256 invariantRatio = calcInvariant(newBalances).divDown(currentInvariant);
+        uint256 invariantRatio = calcInvariant(newBalances).divUp(currentInvariant);
 
-        uint256 taxableAmount = invariantRatio * currentBalances[tokenOutIndex] - newBalances[tokenOutIndex];
+        uint256 taxableAmount = invariantRatio.mulUp(currentBalances[tokenOutIndex]) - newBalances[tokenOutIndex];
 
         uint256 fee = taxableAmount.divUp(swapFeePercentage.complement()) - taxableAmount;
 
@@ -257,20 +251,16 @@ library BasePoolMath {
         uint256 swapFeePercentage,
         function(uint256[] memory, uint256, uint256) external view returns (uint256) calcBalance
     ) internal view returns (uint256 amountOutWithFee) {
+        // Calculate new supply accounting for burning exactBptAmountIn
+        uint256 newSupply = totalSupply - exactBptAmountIn;
         // Calculate the new balance of the output token after the BPT burn.
-        uint256 newBalance = calcBalance(
-            currentBalances,
-            tokenOutIndex,
-            (totalSupply - exactBptAmountIn).divDown(totalSupply)
-        );
+        uint256 newBalance = calcBalance(currentBalances, tokenOutIndex, newSupply.divDown(totalSupply));
 
         // Compute the amount to be withdrawn from the pool.
         uint256 amountOut = currentBalances[tokenOutIndex] - newBalance;
 
         // Calculate the non-taxable balance proportionate to the BPT burnt.
-        uint256 nonTaxableBalance = (totalSupply - exactBptAmountIn).mulUp(currentBalances[tokenOutIndex]).divDown(
-            totalSupply
-        );
+        uint256 nonTaxableBalance = newSupply.mulUp(currentBalances[tokenOutIndex]).divDown(totalSupply);
 
         // Compute the taxable amount: the difference between the non-taxable balance and actual withdrawal.
         uint256 taxableAmount = nonTaxableBalance - (currentBalances[tokenOutIndex] - amountOut);
