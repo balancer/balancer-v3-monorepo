@@ -25,6 +25,7 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
+import { RouterMock } from "../../contracts/test/RouterMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
 contract RouterTest is Test {
@@ -36,6 +37,7 @@ contract RouterTest is Test {
 
     VaultMock vault;
     IRouter router;
+    RouterMock routerMock;
     BasicAuthorizerMock authorizer;
     ERC20PoolMock pool;
     ERC20PoolMock wethPool;
@@ -56,6 +58,7 @@ contract RouterTest is Test {
         vault = new VaultMock(authorizer, 30 days, 90 days);
         WETH = new WETHTestToken();
         router = new Router(IVault(vault), WETH);
+        routerMock = new RouterMock(IVault(vault), WETH);
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
@@ -453,6 +456,21 @@ contract RouterTest is Test {
         assertEq(WETH.balanceOf(alice), 0);
         assertEq(wethPool.balanceOf(alice), 0);
         assertEq(address(alice).balance, aliceNativeBalanceBefore + ETH_AMOUNT_IN);
+    }
+
+    function testAmountGivenToArray() public {
+        uint256[] memory amountsGiven = routerMock.amountGivenToArray(address(pool), 0, ETH_AMOUNT_IN);
+        assertEq(amountsGiven.length, 2);
+        assertEq(amountsGiven[0], ETH_AMOUNT_IN);
+        assertEq(amountsGiven[1], 0);
+
+        amountsGiven = routerMock.amountGivenToArray(address(pool), 1, DAI_AMOUNT_IN);
+        assertEq(amountsGiven.length, 2);
+        assertEq(amountsGiven[0], 0);
+        assertEq(amountsGiven[1], DAI_AMOUNT_IN);
+
+        vm.expectRevert(abi.encodeWithSelector(IRouter.InvalidTokenIndex.selector));
+        routerMock.amountGivenToArray(address(pool), 2, DAI_AMOUNT_IN);
     }
 
     function _initializePool() internal returns (uint256 bptAmountOut) {

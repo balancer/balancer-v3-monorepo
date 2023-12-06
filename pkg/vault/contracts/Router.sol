@@ -177,14 +177,7 @@ contract Router is IRouter, ReentrancyGuard {
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn) {
-        IERC20[] memory tokens = _vault.getPoolTokens(pool);
-
-        if (tokenInIndex >= tokens.length) {
-            revert InvalidTokenIndex();
-        }
-
-        uint256[] memory maxAmountsIn = new uint256[](tokens.length);
-        maxAmountsIn[tokenInIndex] = maxAmountIn;
+        uint256[] memory maxAmountsIn = _amountGivenToArray(pool, tokenInIndex, maxAmountIn);
 
         (amountsIn, , ) = abi.decode(
             _vault.invoke{ value: msg.value }(
@@ -330,15 +323,7 @@ contract Router is IRouter, ReentrancyGuard {
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsOut) {
-        IERC20[] memory tokens = _vault.getPoolTokens(pool);
-        uint256 numTokens = tokens.length;
-
-        if (tokenOutIndex >= numTokens) {
-            revert InvalidTokenIndex();
-        }
-
-        uint256[] memory minAmountsOut = new uint256[](numTokens);
-        minAmountsOut[tokenOutIndex] = minAmountOut;
+        uint256[] memory minAmountsOut = _amountGivenToArray(pool, tokenOutIndex, minAmountOut);
 
         (, amountsOut, ) = abi.decode(
             _vault.invoke(
@@ -368,15 +353,7 @@ contract Router is IRouter, ReentrancyGuard {
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256 bptAmountIn) {
-        IERC20[] memory tokens = _vault.getPoolTokens(pool);
-        uint256 numTokens = tokens.length;
-
-        if (tokenOutIndex >= numTokens) {
-            revert InvalidTokenIndex();
-        }
-
-        uint256[] memory minAmountsOut = new uint256[](numTokens);
-        minAmountsOut[tokenOutIndex] = exactAmountOut;
+        uint256[] memory minAmountsOut = _amountGivenToArray(pool, tokenOutIndex, exactAmountOut);
 
         (bptAmountIn, , ) = abi.decode(
             _vault.invoke(
@@ -706,14 +683,7 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 exactBptAmountOut,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn) {
-        IERC20[] memory tokens = _vault.getPoolTokens(pool);
-
-        if (tokenInIndex >= tokens.length) {
-            revert InvalidTokenIndex();
-        }
-
-        uint256[] memory maxAmountsIn = new uint256[](tokens.length);
-        maxAmountsIn[tokenInIndex] = maxAmountIn;
+        uint256[] memory maxAmountsIn = _amountGivenToArray(pool, tokenInIndex, maxAmountIn);
 
         (amountsIn, , ) = abi.decode(
             _vault.quote{ value: msg.value }(
@@ -828,15 +798,7 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 minAmountOut,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsOut) {
-        IERC20[] memory tokens = _vault.getPoolTokens(pool);
-        uint256 numTokens = tokens.length;
-
-        if (tokenOutIndex >= numTokens) {
-            revert InvalidTokenIndex();
-        }
-
-        uint256[] memory minAmountsOut = new uint256[](numTokens);
-        minAmountsOut[tokenOutIndex] = minAmountOut;
+        uint256[] memory minAmountsOut = _amountGivenToArray(pool, tokenOutIndex, minAmountOut);
 
         (, amountsOut, ) = abi.decode(
             _vault.quote(
@@ -867,15 +829,7 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 exactAmountOut,
         bytes memory userData
     ) external payable returns (uint256 bptAmountIn) {
-        IERC20[] memory tokens = _vault.getPoolTokens(pool);
-        uint256 numTokens = tokens.length;
-
-        if (tokenOutIndex >= numTokens) {
-            revert InvalidTokenIndex();
-        }
-
-        uint256[] memory minAmountsOut = new uint256[](numTokens);
-        minAmountsOut[tokenOutIndex] = exactAmountOut;
+        uint256[] memory minAmountsOut = _amountGivenToArray(pool, tokenOutIndex, exactAmountOut);
 
         (bptAmountIn, , ) = abi.decode(
             _vault.quote(
@@ -970,5 +924,26 @@ contract Router is IRouter, ReentrancyGuard {
         if (msg.sender != address(_weth)) {
             revert EthTransfer();
         }
+    }
+
+    /**
+     * @dev Returns an array with `amountGiven` at `tokenIndex`, and 0 for every other index.
+     * The returned array length matches the number of tokens in the pool.
+     * Reverts if the given index is greater than or equal to the pool number of tokens.
+     */
+    function _amountGivenToArray(
+        address pool,
+        uint256 tokenIndex,
+        uint256 amountGiven
+    ) internal view returns (uint256[] memory amountsGiven) {
+        IERC20[] memory tokens = _vault.getPoolTokens(pool);
+        uint256 numTokens = tokens.length;
+
+        if (tokenIndex >= numTokens) {
+            revert InvalidTokenIndex();
+        }
+
+        amountsGiven = new uint256[](numTokens);
+        amountsGiven[tokenIndex] = amountGiven;
     }
 }
