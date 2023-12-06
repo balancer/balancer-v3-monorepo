@@ -459,15 +459,15 @@ contract RouterTest is Test {
     }
 
     function testAmountGivenToArray() public {
-        uint256[] memory amountsGiven = routerMock.amountGivenToArray(address(pool), 0, ETH_AMOUNT_IN);
+        uint256[] memory amountsGiven = routerMock.amountGivenToArray(address(pool), 0, 1234);
         assertEq(amountsGiven.length, 2);
-        assertEq(amountsGiven[0], ETH_AMOUNT_IN);
+        assertEq(amountsGiven[0], 1234);
         assertEq(amountsGiven[1], 0);
 
-        amountsGiven = routerMock.amountGivenToArray(address(pool), 1, DAI_AMOUNT_IN);
+        amountsGiven = routerMock.amountGivenToArray(address(pool), 1, 4321);
         assertEq(amountsGiven.length, 2);
         assertEq(amountsGiven[0], 0);
-        assertEq(amountsGiven[1], DAI_AMOUNT_IN);
+        assertEq(amountsGiven[1], 4321);
 
         vm.expectRevert(abi.encodeWithSelector(IRouter.InvalidTokenIndex.selector));
         routerMock.amountGivenToArray(address(pool), 2, DAI_AMOUNT_IN);
