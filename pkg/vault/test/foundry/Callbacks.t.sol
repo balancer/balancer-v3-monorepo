@@ -17,11 +17,13 @@ import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
+import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
+import { RouterAdaptor } from "../../contracts/test/RouterAdaptor.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
 contract CallbacksTest is Test {
@@ -30,9 +32,10 @@ contract CallbacksTest is Test {
     using AssetHelpers for address[];
     using ArrayHelpers for address[2];
     using ArrayHelpers for uint256[2];
+    using RouterAdaptor for IRouter;
 
     VaultMock vault;
-    Router router;
+    IRouter router;
     BasicAuthorizerMock authorizer;
     PoolMock pool;
     ERC20TestToken USDC;
@@ -52,8 +55,8 @@ contract CallbacksTest is Test {
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
-        router = new Router(IVault(vault), address(0));
-        USDC = new ERC20TestToken("USDC", "USDC", 18);
+        router = new Router(IVault(vault), new WETHTestToken());
+        USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
 
@@ -95,6 +98,7 @@ contract CallbacksTest is Test {
             [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [MINIMUM_AMOUNT, MINIMUM_AMOUNT].toMemoryArray(),
             0,
+            false,
             bytes("")
         );
 

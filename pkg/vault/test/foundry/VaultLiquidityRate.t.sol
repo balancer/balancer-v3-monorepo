@@ -15,6 +15,7 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
+import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -55,7 +56,7 @@ contract VaultLiquidityWithRatesTest is Test {
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
-        router = new Router(IVault(vault), address(0));
+        router = new Router(IVault(vault), new WETHTestToken());
         WSTETH = new ERC20TestToken("WSTETH", "WSTETH", 18);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
@@ -114,14 +115,7 @@ contract VaultLiquidityWithRatesTest is Test {
             )
         );
 
-        router.addLiquidity(
-            address(pool),
-            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
-            [WSTETH_AMOUNT_IN, 0].toMemoryArray(),
-            WSTETH_AMOUNT_IN,
-            IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
-            bytes("")
-        );
+        router.addLiquiditySingleTokenExactOut(address(pool), 0, WSTETH_AMOUNT_IN, bptAmountOut, false, bytes(""));
     }
 
     function testAddLiquidityCustomWithRate() public {
@@ -145,12 +139,11 @@ contract VaultLiquidityWithRatesTest is Test {
             )
         );
 
-        router.addLiquidity(
+        router.addLiquidityCustom(
             address(pool),
-            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
             [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
             WSTETH_AMOUNT_IN,
-            IVault.AddLiquidityKind.CUSTOM,
+            false,
             bytes("")
         );
     }
@@ -162,22 +155,20 @@ contract VaultLiquidityWithRatesTest is Test {
 
         vm.startPrank(alice);
 
-        router.addLiquidity(
+        router.addLiquidityUnbalanced(
             address(pool),
-            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
             [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
             WSTETH_AMOUNT_IN,
-            IVault.AddLiquidityKind.UNBALANCED,
+            false,
             bytes("")
         );
 
         // TODO: Find a way to test rates inside the Vault
-        router.removeLiquidity(
+        uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(pool),
-            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
             WSTETH_AMOUNT_IN,
             [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
-            IVault.RemoveLiquidityKind.PROPORTIONAL,
+            false,
             bytes("")
         );
 
@@ -191,16 +182,16 @@ contract VaultLiquidityWithRatesTest is Test {
 
         vm.startPrank(alice);
 
-        router.addLiquidity(
+        router.addLiquidityUnbalanced(
             address(pool),
-            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
             [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
             WSTETH_AMOUNT_IN,
-            IVault.AddLiquidityKind.UNBALANCED,
+            false,
             bytes("")
         );
 
         PoolData memory startingBalances = vault.getPoolData(address(pool), Rounding.ROUND_DOWN);
+        uint256 bptAmountIn = WSTETH_AMOUNT_IN;
 
         vm.expectCall(
             address(pool),
@@ -212,14 +203,7 @@ contract VaultLiquidityWithRatesTest is Test {
             )
         );
 
-        router.removeLiquidity(
-            address(pool),
-            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
-            WSTETH_AMOUNT_IN,
-            [WSTETH_AMOUNT_IN, 0].toMemoryArray(),
-            IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
-            bytes("")
-        );
+        router.removeLiquiditySingleTokenExactIn(address(pool), bptAmountIn, 0, WSTETH_AMOUNT_IN, false, bytes(""));
     }
 
     function testRemoveLiquidityCustomWithRate() public {
@@ -230,12 +214,11 @@ contract VaultLiquidityWithRatesTest is Test {
 
         vm.startPrank(alice);
 
-        router.addLiquidity(
+        router.addLiquidityProportional(
             address(pool),
-            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
             [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
             WSTETH_AMOUNT_IN,
-            IVault.AddLiquidityKind.UNBALANCED,
+            false,
             bytes("")
         );
 
@@ -255,12 +238,11 @@ contract VaultLiquidityWithRatesTest is Test {
             )
         );
 
-        router.removeLiquidity(
+        router.removeLiquidityCustom(
             address(pool),
-            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
             WSTETH_AMOUNT_IN,
             [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
-            IVault.RemoveLiquidityKind.CUSTOM,
+            false,
             bytes("")
         );
     }
@@ -272,9 +254,10 @@ contract VaultLiquidityWithRatesTest is Test {
         // to comply with the vault's required minimum.
         router.initialize(
             address(pool),
-            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
+            [address(WSTETH), address(DAI)].toMemoryArray().asIERC20(),
             [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
             0,
+            false,
             bytes("")
         );
     }

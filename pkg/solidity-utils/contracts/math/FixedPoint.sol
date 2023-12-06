@@ -4,13 +4,11 @@ pragma solidity ^0.8.4;
 
 import "./LogExpMath.sol";
 
-/* solhint-disable private-vars-leading-underscore */
-
 library FixedPoint {
     /// @dev Attempted division by zero.
     error ZeroDivision();
 
-    // solhint-disable no-inline-assembly
+    // solhint-disable no-inline-assembly private-vars-leading-underscore
 
     uint256 internal constant ONE = 1e18; // 18 decimal places
     uint256 internal constant TWO = 2 * ONE;

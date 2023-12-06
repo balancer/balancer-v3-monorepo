@@ -2,10 +2,7 @@
 
 pragma solidity ^0.8.4;
 
-// solhint-disable
-
 library ArrayHelpers {
-    // solhint-disable
     function toMemoryArray(address[1] memory array) internal pure returns (address[] memory) {
         address[] memory ret = new address[](1);
         ret[0] = array[0];

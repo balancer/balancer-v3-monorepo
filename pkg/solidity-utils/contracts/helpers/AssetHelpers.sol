@@ -14,6 +14,8 @@ library AssetHelpers {
     using AssetHelpers for *;
     using SafeERC20 for IERC20;
 
+    // solhint-disable no-inline-assembly
+
     /// @dev User did not send enough ETH for a transaction requiring it.
     error InsufficientEth();
 
@@ -59,7 +61,6 @@ library AssetHelpers {
 
     /// @dev Returns addresses as an array IERC20[] memory
     function asIERC20(address[] memory addresses) internal pure returns (IERC20[] memory tokens) {
-        // solhint-disable-next-line no-inline-assembly
         assembly {
             tokens := addresses
         }
@@ -67,7 +68,6 @@ library AssetHelpers {
 
     /// @dev Returns assets as an array of address[] memory
     function asAddress(Asset[] memory assets) internal pure returns (address[] memory addresses) {
-        // solhint-disable-next-line no-inline-assembly
         assembly {
             addresses := assets
         }
@@ -80,7 +80,6 @@ library AssetHelpers {
 
     /// @dev Returns tokens as an array of address[] memory
     function asAddress(IERC20[] memory tokens) internal pure returns (address[] memory addresses) {
-        // solhint-disable-next-line no-inline-assembly
         assembly {
             addresses := tokens
         }
@@ -88,7 +87,6 @@ library AssetHelpers {
 
     /// @dev Returns addresses as an array of Asset[] memory
     function asAsset(address[] memory addresses) internal pure returns (Asset[] memory assets) {
-        // solhint-disable-next-line no-inline-assembly
         assembly {
             assets := addresses
         }
