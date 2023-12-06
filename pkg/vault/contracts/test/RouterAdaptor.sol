@@ -27,16 +27,7 @@ library RouterAdaptor {
         bytes memory userData,
         uint256 value
     ) internal returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
-        if (kind == IVault.AddLiquidityKind.PROPORTIONAL) {
-            bptAmountOut = minBptAmountOut;
-            amountsIn = router.addLiquidityProportional{ value: value }(
-                pool,
-                maxAmountsIn,
-                minBptAmountOut,
-                ethIsWeth,
-                userData
-            );
-        } else if (kind == IVault.AddLiquidityKind.UNBALANCED) {
+        if (kind == IVault.AddLiquidityKind.UNBALANCED) {
             amountsIn = maxAmountsIn;
             bptAmountOut = router.addLiquidityUnbalanced{ value: value }(
                 pool,

@@ -70,7 +70,7 @@ contract RouterTest is Test {
             365 days,
             address(0)
         );
-        wethPool = new ERC20PoolMock(
+        wethPool = new PoolMock(
             vault,
             "ERC20 WETH Pool",
             "ERC20POOL",

@@ -161,13 +161,7 @@ contract WeightedPoolTest is Test {
 
         uint256[] memory amountsIn = [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray();
         vm.prank(bob);
-        uint256 bptAmountOut = router.addLiquidityUnbalanced(
-            address(pool),
-            amountsIn,
-            DAI_AMOUNT,
-            false,
-            bytes("")
-        );
+        uint256 bptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, DAI_AMOUNT, false, bytes(""));
 
         // assets are transferred from Bob
         assertEq(USDC.balanceOf(bob), 0);

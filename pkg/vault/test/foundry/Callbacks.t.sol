@@ -56,7 +56,7 @@ contract CallbacksTest is Test {
         authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
         router = new Router(IVault(vault), new WETHTestToken());
-        USDC = new ERC20TestToken("USDC", "USDC", 6);
+        USDC = new ERC20TestToken("USDC", "USDC", 18);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
 
@@ -95,19 +95,18 @@ contract CallbacksTest is Test {
 
         router.initialize(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [MINIMUM_AMOUNT, MINIMUM_AMOUNT].toMemoryArray(),
             0,
             false,
             bytes("")
         );
 
-        router.addLiquidity(
+        router.addLiquidityUnbalanced(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
             BPT_AMOUNT,
-            IVault.AddLiquidityKind.UNBALANCED,
+            false,
             bytes("")
         );
 
@@ -175,12 +174,11 @@ contract CallbacksTest is Test {
 
         vm.prank(bob);
         // Doesn't fail, does not call callbacks
-        router.addLiquidity(
+        router.addLiquidityUnbalanced(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
             MINIMUM_AMOUNT,
-            IVault.AddLiquidityKind.UNBALANCED,
+            false,
             bytes("")
         );
     }
@@ -202,12 +200,11 @@ contract CallbacksTest is Test {
                 bytes("")
             )
         );
-        router.addLiquidity(
+        router.addLiquidityUnbalanced(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
             BPT_AMOUNT_ROUND_DOWN,
-            IVault.AddLiquidityKind.UNBALANCED,
+            false,
             bytes("")
         );
     }
@@ -218,12 +215,11 @@ contract CallbacksTest is Test {
         pool.setFailOnBeforeRemoveLiquidityCallback(true);
 
         vm.prank(alice);
-        router.removeLiquidity(
+        router.removeLiquidityProportional(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             BPT_AMOUNT,
             [DEFAULT_AMOUNT_ROUND_DOWN, DEFAULT_AMOUNT_ROUND_DOWN].toMemoryArray(),
-            IVault.RemoveLiquidityKind.PROPORTIONAL,
+            false,
             bytes("")
         );
     }
@@ -245,12 +241,11 @@ contract CallbacksTest is Test {
                 bytes("")
             )
         );
-        router.removeLiquidity(
+        router.removeLiquidityProportional(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             BPT_AMOUNT,
             [DEFAULT_AMOUNT_ROUND_DOWN, DEFAULT_AMOUNT_ROUND_DOWN].toMemoryArray(),
-            IVault.RemoveLiquidityKind.PROPORTIONAL,
+            false,
             bytes("")
         );
     }
@@ -262,12 +257,11 @@ contract CallbacksTest is Test {
 
         vm.prank(bob);
         // Doesn't fail, does not call callbacks
-        router.addLiquidity(
+        router.addLiquidityUnbalanced(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
             MINIMUM_AMOUNT,
-            IVault.AddLiquidityKind.UNBALANCED,
+            false,
             bytes("")
         );
     }
@@ -289,12 +283,11 @@ contract CallbacksTest is Test {
                 bytes("")
             )
         );
-        router.addLiquidity(
+        router.addLiquidityUnbalanced(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
             BPT_AMOUNT_ROUND_DOWN,
-            IVault.AddLiquidityKind.UNBALANCED,
+            false,
             bytes("")
         );
     }
@@ -305,12 +298,11 @@ contract CallbacksTest is Test {
         pool.setFailOnAfterRemoveLiquidityCallback(true);
 
         vm.prank(alice);
-        router.removeLiquidity(
+        router.removeLiquidityProportional(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             BPT_AMOUNT,
             [DEFAULT_AMOUNT_ROUND_DOWN, DEFAULT_AMOUNT_ROUND_DOWN].toMemoryArray(),
-            IVault.RemoveLiquidityKind.PROPORTIONAL,
+            false,
             bytes("")
         );
     }
@@ -333,12 +325,11 @@ contract CallbacksTest is Test {
             )
         );
 
-        router.removeLiquidity(
+        router.removeLiquidityProportional(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             BPT_AMOUNT,
             [DEFAULT_AMOUNT_ROUND_DOWN, DEFAULT_AMOUNT_ROUND_DOWN].toMemoryArray(),
-            IVault.RemoveLiquidityKind.PROPORTIONAL,
+            false,
             bytes("")
         );
     }

@@ -115,33 +115,6 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     /// @inheritdoc IRouter
-    function addLiquidityProportional(
-        address pool,
-        uint256[] memory maxAmountsIn,
-        uint256 exactBptAmountOut,
-        bool wethIsEth,
-        bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn) {
-        (amountsIn, , ) = abi.decode(
-            _vault.invoke{ value: msg.value }(
-                abi.encodeWithSelector(
-                    Router.addLiquidityCallback.selector,
-                    AddLiquidityCallbackParams({
-                        sender: msg.sender,
-                        pool: pool,
-                        maxAmountsIn: maxAmountsIn,
-                        minBptAmountOut: exactBptAmountOut,
-                        kind: IVault.AddLiquidityKind.PROPORTIONAL,
-                        wethIsEth: wethIsEth,
-                        userData: userData
-                    })
-                )
-            ),
-            (uint256[], uint256, bytes)
-        );
-    }
-
-    /// @inheritdoc IRouter
     function addLiquidityUnbalanced(
         address pool,
         uint256[] memory exactAmountsIn,

@@ -100,13 +100,7 @@ contract VaultLiquidityTest is Test {
         Balances memory balancesBefore = _getBalances(alice);
         uint256[] memory amountsIn = [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray();
 
-        uint256 bptAmountOut = router.addLiquidityUnbalanced(
-            address(pool),
-            amountsIn,
-            DAI_AMOUNT_IN,
-            false,
-            bytes("")
-        );
+        uint256 bptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, DAI_AMOUNT_IN, false, bytes(""));
         vm.stopPrank();
 
         Balances memory balancesAfter = _getBalances(alice);
@@ -265,7 +259,7 @@ contract VaultLiquidityTest is Test {
         );
 
         Balances memory balancesBefore = _getBalances(alice);
-        uint256[] memory amountsOut = [uint256(DAI_AMOUNT_IN), 0].toMemoryArray();
+        uint256[] memory amountsOut = [DAI_AMOUNT_IN * 2, 0].toMemoryArray();
 
         uint256 bptAmountIn = router.removeLiquiditySingleTokenExactOut(
             address(pool),
@@ -279,9 +273,6 @@ contract VaultLiquidityTest is Test {
         vm.stopPrank();
 
         _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, amountsOut);
-
-        assertEq(amountsOut[0], 2 * DAI_AMOUNT_IN);
-        assertEq(amountsOut[1], 0);
     }
 
     function testRemoveLiquidityCustom() public {

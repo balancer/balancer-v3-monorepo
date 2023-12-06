@@ -93,23 +93,6 @@ interface IRouter {
     error JoinAboveMax(uint256 amount, uint256 limit);
 
     /**
-     * @notice Adds liquidity with proportional token amounts in to a pool, receiving an exact amount of pool tokens.
-     * @param pool Address of the liquidity pool
-     * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
-     * @param exactBptAmountOut Exact amount of pool tokens to be received
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
-     * @param userData Additional (optional) data required for adding liquidity
-     * @return amountsIn Actual amounts of tokens added, sorted in token registration order
-     */
-    function addLiquidityProportional(
-        address pool,
-        uint256[] memory maxAmountsIn,
-        uint256 exactBptAmountOut,
-        bool wethIsEth,
-        bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn);
-
-    /**
      * @notice Adds with arbitrary token amounts in to a pool.
      * @param pool Address of the liquidity pool
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order

@@ -115,7 +115,7 @@ contract VaultLiquidityWithRatesTest is Test {
             )
         );
 
-        router.addLiquiditySingleTokenExactOut(address(pool), 0, WSTETH_AMOUNT_IN, bptAmountOut, false, bytes(""));
+        router.addLiquiditySingleTokenExactOut(address(pool), 0, WSTETH_AMOUNT_IN, DAI_AMOUNT_IN, false, bytes(""));
     }
 
     function testAddLiquidityCustomWithRate() public {
@@ -214,7 +214,7 @@ contract VaultLiquidityWithRatesTest is Test {
 
         vm.startPrank(alice);
 
-        router.addLiquidityProportional(
+        router.addLiquidityUnbalanced(
             address(pool),
             [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
             WSTETH_AMOUNT_IN,
