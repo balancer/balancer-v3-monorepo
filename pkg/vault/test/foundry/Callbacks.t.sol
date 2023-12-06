@@ -17,11 +17,13 @@ import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
+import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
+import { RouterAdaptor } from "../../contracts/test/RouterAdaptor.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
 contract VaultSwapTest is Test {
@@ -30,9 +32,10 @@ contract VaultSwapTest is Test {
     using AssetHelpers for address[];
     using ArrayHelpers for address[2];
     using ArrayHelpers for uint256[2];
+    using RouterAdaptor for IRouter;
 
     VaultMock vault;
-    Router router;
+    IRouter router;
     BasicAuthorizerMock authorizer;
     ERC20PoolMock pool;
     ERC20TestToken USDC;
@@ -44,11 +47,13 @@ contract VaultSwapTest is Test {
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
     uint256 constant USDC_SCALING = 1e12; // 18 - 6
     uint256 initialBptSupply;
+    uint256[] maxAmountsIn = [DAI_AMOUNT_IN, USDC_AMOUNT_IN];
+    uint256[] minAmountsOut = [DAI_AMOUNT_IN / 2, USDC_AMOUNT_IN / 2];
 
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
-        router = new Router(IVault(vault), address(0));
+        router = new Router(IVault(vault), new WETHTestToken());
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
@@ -88,9 +93,10 @@ contract VaultSwapTest is Test {
 
         router.initialize(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
             0,
+            false,
             bytes("")
         );
         initialBptSupply = IERC20(pool).totalSupply();
@@ -166,8 +172,7 @@ contract VaultSwapTest is Test {
         // Doesn't fail, does not call callbacks
         router.addLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            _getSuitableMaxInputs(kind),
+            RouterAdaptor.adaptMaxAmountsIn(kind, maxAmountsIn),
             initialBptSupply,
             kind,
             bytes("")
@@ -184,7 +189,7 @@ contract VaultSwapTest is Test {
         vault.setConfig(address(pool), config);
 
         (, uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(pool));
-        uint256[] memory maxInputs = _getSuitableMaxInputs(kind);
+        uint256[] memory maxInputs = RouterAdaptor.adaptMaxAmountsIn(kind, maxAmountsIn);
 
         vm.prank(bob);
         vm.expectCall(
@@ -198,14 +203,7 @@ contract VaultSwapTest is Test {
                 bytes("")
             )
         );
-        router.addLiquidity(
-            address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            maxInputs,
-            initialBptSupply,
-            kind,
-            bytes("")
-        );
+        router.addLiquidity(address(pool), maxInputs, initialBptSupply, kind, bytes(""));
     }
 
     // Before remove
@@ -223,9 +221,8 @@ contract VaultSwapTest is Test {
         // Doesn't fail, does not call callbacks
         router.removeLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             bptBalance,
-            _getSuitableMinOutputs(kind),
+            RouterAdaptor.adaptMinAmountsOut(kind, minAmountsOut),
             kind,
             bytes("")
         );
@@ -241,7 +238,7 @@ contract VaultSwapTest is Test {
         vault.setConfig(address(pool), config);
 
         (, uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(pool));
-        uint256[] memory minOutputs = _getSuitableMinOutputs(kind);
+        uint256[] memory minOutputs = RouterAdaptor.adaptMinAmountsOut(kind, minAmountsOut);
 
         // Alice has LP tokens from initialization
         uint256 bptBalance = pool.balanceOf(alice);
@@ -259,9 +256,8 @@ contract VaultSwapTest is Test {
         );
         router.removeLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             bptBalance,
-            _getSuitableMinOutputs(kind),
+            RouterAdaptor.adaptMinAmountsOut(kind, minAmountsOut),
             kind,
             bytes("")
         );
@@ -280,8 +276,7 @@ contract VaultSwapTest is Test {
         // Doesn't fail, does not call callbacks
         router.addLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            _getSuitableMaxInputs(kind),
+            RouterAdaptor.adaptMaxAmountsIn(kind, maxAmountsIn),
             initialBptSupply,
             kind,
             bytes("")
@@ -304,10 +299,9 @@ contract VaultSwapTest is Test {
         // Dry run to get actual amounts in and bpt out from the operation
         uint256 snapshot = vm.snapshot();
         vm.prank(bob);
-        (amountsIn, bptAmountOut, ) = router.addLiquidity(
+        (amountsIn, bptAmountOut) = router.addLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            _getSuitableMaxInputs(kind),
+            RouterAdaptor.adaptMaxAmountsIn(kind, maxAmountsIn),
             initialBptSupply,
             kind,
             bytes("")
@@ -328,8 +322,7 @@ contract VaultSwapTest is Test {
         );
         router.addLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            _getSuitableMaxInputs(kind),
+            RouterAdaptor.adaptMaxAmountsIn(kind, maxAmountsIn),
             initialBptSupply,
             kind,
             bytes("")
@@ -351,9 +344,8 @@ contract VaultSwapTest is Test {
         // Doesn't fail, does not call callbacks
         router.removeLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             bptBalance,
-            _getSuitableMinOutputs(kind),
+            RouterAdaptor.adaptMinAmountsOut(kind, minAmountsOut),
             kind,
             bytes("")
         );
@@ -379,11 +371,10 @@ contract VaultSwapTest is Test {
         uint256 snapshot = vm.snapshot();
         // Alice has LP tokens from initialization
         vm.prank(alice);
-        (bptAmountIn, amountsOut, ) = router.removeLiquidity(
+        (bptAmountIn, amountsOut) = router.removeLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             bptBalance,
-            _getSuitableMinOutputs(kind),
+            RouterAdaptor.adaptMinAmountsOut(kind, minAmountsOut),
             kind,
             bytes("")
         );
@@ -403,35 +394,10 @@ contract VaultSwapTest is Test {
         );
         router.removeLiquidity(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             bptBalance,
-            _getSuitableMinOutputs(kind),
+            RouterAdaptor.adaptMinAmountsOut(kind, minAmountsOut),
             kind,
             bytes("")
         );
-    }
-
-    // Helpers
-
-    function _getSuitableMaxInputs(IVault.AddLiquidityKind kind) internal pure returns (uint256[] memory maxInputs) {
-        if (kind == IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
-            maxInputs = [DAI_AMOUNT_IN, uint256(0)].toMemoryArray();
-        } else {
-            maxInputs = [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray();
-        }
-    }
-
-    function _getSuitableMinOutputs(
-        IVault.RemoveLiquidityKind kind
-    ) internal pure returns (uint256[] memory minOutputs) {
-        if (
-            kind == IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN ||
-            kind == IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT
-        ) {
-            minOutputs = [DAI_AMOUNT_IN, uint256(0)].toMemoryArray();
-        } else {
-            // In proportional it's not possible to extract all the tokens given that some BPT is sent to address(0).
-            minOutputs = [DAI_AMOUNT_IN / 10, USDC_AMOUNT_IN / 10].toMemoryArray();
-        }
     }
 }

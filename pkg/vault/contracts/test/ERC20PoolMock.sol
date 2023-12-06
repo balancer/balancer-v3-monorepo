@@ -145,13 +145,12 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
     }
 
     function onAddLiquiditySingleTokenExactOut(
-        address sender,
+        address,
         uint256 tokenInIndex,
-        uint256,
-        uint256[] memory
+        uint256 exactBptAmountOut,
+        uint256[] memory balancesScaled18
     ) external view override returns (uint256 amountIn) {
-        IERC20[] memory tokens = getVault().getPoolTokens(address(this));
-        return tokens[tokenInIndex].balanceOf(sender);
+        return (balancesScaled18[tokenInIndex] * exactBptAmountOut) / totalSupply();
     }
 
     function onAddLiquidityCustom(

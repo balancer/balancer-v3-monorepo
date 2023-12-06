@@ -15,6 +15,7 @@ import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
+import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
@@ -52,7 +53,7 @@ contract WeightedPoolTest is Test {
         vault = new VaultMock(authorizer, 30 days, 90 days);
         factory = new WeightedPoolFactory(vault, 365 days);
 
-        router = new Router(IVault(vault), address(0));
+        router = new Router(IVault(vault), new WETHTestToken());
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IERC20[] memory tokens = [address(DAI), address(USDC)].toMemoryArray().asIERC20();
@@ -111,11 +112,12 @@ contract WeightedPoolTest is Test {
         uint256[] memory amountsIn = [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray();
         uint256 bptAmountOut = router.initialize(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             amountsIn,
             // Initial BPT is invariant * tokens.length
             // Account for the precision less
             DAI_AMOUNT * 2 - DELTA,
+            false,
             bytes("")
         );
 
@@ -148,21 +150,22 @@ contract WeightedPoolTest is Test {
         // init
         router.initialize(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             // Initial BPT is invariant * tokens.length
             // Account for the precision less
             DAI_AMOUNT * 2 - DELTA,
+            false,
             bytes("")
         );
 
+        uint256[] memory amountsIn = [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray();
         vm.prank(bob);
-        (uint256[] memory amountsIn, uint256 bptAmountOut, ) = router.addLiquidity(
+        uint256 bptAmountOut = router.addLiquidityUnbalanced(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
+            amountsIn,
             DAI_AMOUNT,
-            IVault.AddLiquidityKind.UNBALANCED,
+            false,
             bytes("")
         );
 
@@ -193,34 +196,34 @@ contract WeightedPoolTest is Test {
         // init
         router.initialize(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             // Initial BPT is invariant * tokens.length
             // Account for the precision less
             DAI_AMOUNT * 2 - DELTA,
+            false,
             bytes("")
         );
 
         vm.startPrank(bob);
-        router.addLiquidity(
+        router.addLiquidityUnbalanced(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             DAI_AMOUNT,
-            IVault.AddLiquidityKind.UNBALANCED,
+            false,
             bytes("")
         );
 
         pool.approve(address(vault), type(uint256).max);
 
         uint256 bobBptBalance = pool.balanceOf(bob);
+        uint256 bptAmountIn = bobBptBalance;
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidity(
+        uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            bobBptBalance,
+            bptAmountIn,
             [uint256(less(DAI_AMOUNT, 1e4)), uint256(less(USDC_AMOUNT, 1e4))].toMemoryArray(),
-            IVault.RemoveLiquidityKind.PROPORTIONAL,
+            false,
             bytes("")
         );
 
@@ -252,11 +255,12 @@ contract WeightedPoolTest is Test {
         vm.prank(alice);
         router.initialize(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             // Initial BPT is invariant * tokens.length
             // Account for the precision less
             DAI_AMOUNT * 2 - DELTA,
+            false,
             bytes("")
         );
 

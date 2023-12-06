@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
-import { WETH, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { Router } from '../typechain-types/contracts/Router';
 import { PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/PoolMock';
@@ -39,6 +39,7 @@ describe('Queries', function () {
     authorizer = await deploy('v3-solidity-utils/BasicAuthorizerMock');
     vault = await deploy('VaultMock', { args: [authorizer.getAddress(), MONTH * 3, MONTH] });
     const vaultAddress = await vault.getAddress();
+    const WETH = await deploy('v3-solidity-utils/WETHTestToken');
     router = await deploy('Router', { args: [vaultAddress, WETH] });
 
     DAI = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['DAI', 'Token A', 18] });
@@ -54,21 +55,14 @@ describe('Queries', function () {
     await USDC.connect(alice).approve(vault, MAX_UINT256);
     await DAI.connect(alice).approve(vault, MAX_UINT256);
 
-    await router.connect(alice).initialize(await pool.getAddress(), [DAI, USDC], [0, 0], 0, '0x');
+    await router.connect(alice).initialize(await pool.getAddress(), [DAI, USDC], [0, 0], 0, false, '0x');
   });
 
   describe('swap', () => {
     sharedBeforeEach('add liquidity', async () => {
       await router
         .connect(alice)
-        .addLiquidity(
-          await pool.getAddress(),
-          [DAI, USDC],
-          [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
-          0,
-          ADD_LIQUIDITY_TEST_KIND,
-          '0x'
-        );
+        .addLiquidityUnbalanced(await pool.getAddress(), [DAI_AMOUNT_IN, USDC_AMOUNT_IN], 0, false, '0x');
     });
 
     it('queries a swap correctly', async () => {
@@ -92,7 +86,6 @@ describe('Queries', function () {
         .connect(zero)
         .queryAddLiquidity.staticCall(
           pool,
-          [DAI, USDC],
           [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
           DAI_AMOUNT_IN,
           ADD_LIQUIDITY_TEST_KIND,
@@ -106,7 +99,6 @@ describe('Queries', function () {
       await expect(
         router.queryAddLiquidity.staticCall(
           pool,
-          [DAI, USDC],
           [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
           DAI_AMOUNT_IN,
           ADD_LIQUIDITY_TEST_KIND,
@@ -120,14 +112,7 @@ describe('Queries', function () {
     sharedBeforeEach('add liquidity', async () => {
       await router
         .connect(alice)
-        .addLiquidity(
-          await pool.getAddress(),
-          [DAI, USDC],
-          [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
-          DAI_AMOUNT_IN,
-          ADD_LIQUIDITY_TEST_KIND,
-          '0x'
-        );
+        .addLiquidityUnbalanced(await pool.getAddress(), [DAI_AMOUNT_IN, USDC_AMOUNT_IN], DAI_AMOUNT_IN, false, '0x');
     });
 
     it('queries removeLiquidity correctly', async () => {
@@ -135,7 +120,6 @@ describe('Queries', function () {
         .connect(zero)
         .queryRemoveLiquidity.staticCall(
           pool,
-          [DAI, USDC],
           DAI_AMOUNT_IN,
           [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
           REMOVE_LIQUIDITY_TEST_KIND,
@@ -151,7 +135,6 @@ describe('Queries', function () {
       await expect(
         router.queryRemoveLiquidity.staticCall(
           pool,
-          [DAI, USDC],
           DAI_AMOUNT_IN,
           [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
           REMOVE_LIQUIDITY_TEST_KIND,
