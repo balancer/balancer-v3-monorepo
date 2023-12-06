@@ -11,7 +11,6 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
-import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
@@ -25,9 +24,7 @@ import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
 
 contract WeightedPoolTest is Test {
-    using AssetHelpers for *;
-    using ArrayHelpers for address[2];
-    using ArrayHelpers for uint256[2];
+    using ArrayHelpers for *;
 
     VaultMock vault;
     WeightedPoolFactory factory;
@@ -265,14 +262,14 @@ contract WeightedPoolTest is Test {
         );
 
         vm.prank(bob);
-        uint256 amountCalculated = router.swap(
-            IVault.SwapKind.GIVEN_IN,
+        uint256 amountCalculated = router.swapExactIn(
             address(pool),
-            DAI.asAsset(),
-            USDC.asAsset(),
+            DAI,
+            USDC,
             DAI_AMOUNT_IN,
             less(USDC_AMOUNT_OUT, 1e3),
             type(uint256).max,
+            false,
             bytes("")
         );
 

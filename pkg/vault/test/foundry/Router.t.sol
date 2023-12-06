@@ -14,7 +14,6 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
@@ -29,11 +28,7 @@ import { RouterMock } from "../../contracts/test/RouterMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
 contract RouterTest is Test {
-    using AssetHelpers for address;
-    using AssetHelpers for address[];
-    using AssetHelpers for address[];
-    using ArrayHelpers for address[2];
-    using ArrayHelpers for uint256[2];
+    using ArrayHelpers for *;
 
     VaultMock vault;
     IRouter router;
@@ -127,11 +122,10 @@ contract RouterTest is Test {
 
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(EVMCallModeHelpers.NotStaticCall.selector));
-        router.querySwap(
-            IVault.SwapKind.GIVEN_IN,
+        router.querySwapExactIn(
             address(pool),
-            address(USDC).asAsset(),
-            address(DAI).asAsset(),
+            USDC,
+            DAI,
             USDC_AMOUNT_IN,
             bytes("")
         );
@@ -163,11 +157,10 @@ contract RouterTest is Test {
         vm.expectRevert(abi.encodeWithSelector(IVault.QueriesDisabled.selector));
 
         vm.prank(address(0), address(0));
-        router.querySwap(
-            IVault.SwapKind.GIVEN_IN,
+        router.querySwapExactIn(
             address(pool),
-            address(USDC).asAsset(),
-            address(DAI).asAsset(),
+            USDC,
+            DAI,
             USDC_AMOUNT_IN,
             bytes("")
         );

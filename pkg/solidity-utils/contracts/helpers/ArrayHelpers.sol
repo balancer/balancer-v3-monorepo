@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.4;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 library ArrayHelpers {
     function toMemoryArray(address[1] memory array) internal pure returns (address[] memory) {
         address[] memory ret = new address[](1);
@@ -34,6 +36,14 @@ library ArrayHelpers {
         signedValues = new int256[](values.length);
         for (uint256 i = 0; i < values.length; i++) {
             signedValues[i] = positive ? int256(values[i]) : -int256(values[i]);
+        }
+    }
+
+    /// @dev Returns addresses as an array IERC20[] memory
+    function asIERC20(address[] memory addresses) internal pure returns (IERC20[] memory tokens) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            tokens := addresses
         }
     }
 }
