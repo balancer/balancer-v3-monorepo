@@ -633,6 +633,8 @@ contract Router is IRouter, ReentrancyGuard {
                 abi.encodeWithSelector(
                     Router.queryAddLiquidityCallback.selector,
                     AddLiquidityCallbackParams({
+                        // we use router as a sender to simplify basic query functions
+                        // but it is possible to add liquidity to any recipient
                         sender: address(this),
                         pool: pool,
                         maxAmountsIn: maxAmountsIn,
