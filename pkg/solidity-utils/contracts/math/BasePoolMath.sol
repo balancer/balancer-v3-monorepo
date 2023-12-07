@@ -263,7 +263,7 @@ library BasePoolMath {
         uint256 nonTaxableBalance = newSupply.mulUp(currentBalances[tokenOutIndex]).divDown(totalSupply);
 
         // Compute the taxable amount: the difference between the non-taxable balance and actual withdrawal.
-        uint256 taxableAmount = nonTaxableBalance - (currentBalances[tokenOutIndex] - amountOut);
+        uint256 taxableAmount = nonTaxableBalance - newBalance;
 
         // Calculate the swap fee on the taxable amount.
         uint256 fee = taxableAmount.mulUp(swapFeePercentage);
