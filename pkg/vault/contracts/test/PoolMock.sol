@@ -5,6 +5,8 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
+import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
@@ -16,8 +18,10 @@ import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { BasePool } from "../BasePool.sol";
 
-contract PoolMock is BasePool {
+contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, ERC20PoolToken {
     using FixedPoint for uint256;
+
+    IVault internal immutable _vault;
 
     uint256 public constant MIN_INIT_BPT = 1e6;
 
@@ -39,7 +43,8 @@ contract PoolMock is BasePool {
         bool registerPool,
         uint256 pauseWindowDuration,
         address pauseManager
-    ) BasePool(vault, name, symbol) {
+    ) ERC20PoolToken(vault, name, symbol) {
+        _vault = vault;
         if (registerPool) {
             PoolFactoryMock factory = new PoolFactoryMock(vault, pauseWindowDuration);
 
@@ -101,7 +106,7 @@ contract PoolMock is BasePool {
     }
 
     function onAfterSwap(
-        IBasePool.AfterSwapParams calldata params,
+        IPoolCallbacks.AfterSwapParams calldata params,
         uint256 amountCalculated
     ) external view override returns (bool success) {
         return params.tokenIn != params.tokenOut && amountCalculated > 0 && !failOnAfterSwapCallback;
@@ -186,5 +191,9 @@ contract PoolMock is BasePool {
         for (uint256 i = 0; i < tokens.length; i++) {
             scalingFactors[i] = ScalingHelpers.computeScalingFactor(tokens[i]);
         }
+    }
+
+    function getPoolTokens() external view returns (IERC20[] memory tokens) {
+        return _vault.getPoolTokens(address(this));
     }
 }

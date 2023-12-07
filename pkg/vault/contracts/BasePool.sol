@@ -6,36 +6,17 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
+import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 
 import { ERC20PoolToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20PoolToken.sol";
 
 /// @notice Reference implementation for the base layer of a Pool contract.
-abstract contract BasePool is IBasePool, ERC20PoolToken {
+abstract contract BasePool is IBasePool, IPoolCallbacks, IPoolLiquidity, ERC20PoolToken {
     IVault internal immutable _vault;
-
-    uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
-    uint256 private constant _SWAP_FEE_PERCENTAGE = 0;
 
     constructor(IVault vault, string memory name, string memory symbol) ERC20PoolToken(vault, name, symbol) {
         _vault = vault;
-    }
-
-    /*******************************************************************************
-                                       Fees
-    *******************************************************************************/
-
-    /**
-     * @notice Return the current value of the swap fee percentage.
-     *
-     * @return The swap fee percentage
-     */
-    function getSwapFeePercentage() public pure virtual returns (uint256) {
-        return _SWAP_FEE_PERCENTAGE;
-    }
-
-    /// @inheritdoc IBasePool
-    function getPoolTokens() external view returns (IERC20[] memory tokens) {
-        return _vault.getPoolTokens(address(this));
     }
 
     /*******************************************************************************
@@ -51,7 +32,7 @@ abstract contract BasePool is IBasePool, ERC20PoolToken {
                                    Add Liquidity
     ***************************************************************************/
 
-    /// @inheritdoc IBasePool
+    /// @inheritdoc IPoolCallbacks
     function onBeforeAddLiquidity(
         address,
         uint256[] memory,
@@ -62,7 +43,7 @@ abstract contract BasePool is IBasePool, ERC20PoolToken {
         revert CallbackNotImplemented();
     }
 
-    /// @inheritdoc IBasePool
+    /// @inheritdoc IPoolLiquidity
     function onAddLiquidityCustom(
         address,
         uint256[] memory,
@@ -73,7 +54,7 @@ abstract contract BasePool is IBasePool, ERC20PoolToken {
         revert CallbackNotImplemented();
     }
 
-    /// @inheritdoc IBasePool
+    /// @inheritdoc IPoolCallbacks
     function onAfterAddLiquidity(
         address,
         uint256[] memory,
@@ -88,7 +69,7 @@ abstract contract BasePool is IBasePool, ERC20PoolToken {
                                  Remove Liquidity
     ***************************************************************************/
 
-    /// @inheritdoc IBasePool
+    /// @inheritdoc IPoolCallbacks
     function onBeforeRemoveLiquidity(
         address,
         uint256,
@@ -99,7 +80,7 @@ abstract contract BasePool is IBasePool, ERC20PoolToken {
         revert CallbackNotImplemented();
     }
 
-    /// @inheritdoc IBasePool
+    /// @inheritdoc IPoolLiquidity
     function onRemoveLiquidityCustom(
         address,
         uint256,
@@ -110,7 +91,7 @@ abstract contract BasePool is IBasePool, ERC20PoolToken {
         revert CallbackNotImplemented();
     }
 
-    /// @inheritdoc IBasePool
+    /// @inheritdoc IPoolCallbacks
     function onAfterRemoveLiquidity(
         address,
         uint256,
