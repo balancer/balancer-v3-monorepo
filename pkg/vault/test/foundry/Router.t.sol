@@ -25,6 +25,7 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { RouterMock } from "../../contracts/test/RouterMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
 contract RouterTest is Test {
@@ -36,6 +37,7 @@ contract RouterTest is Test {
 
     VaultMock vault;
     IRouter router;
+    RouterMock routerMock;
     BasicAuthorizerMock authorizer;
     PoolMock pool;
     PoolMock wethPool;
@@ -56,6 +58,7 @@ contract RouterTest is Test {
         vault = new VaultMock(authorizer, 30 days, 90 days);
         WETH = new WETHTestToken();
         router = new Router(IVault(vault), WETH);
+        routerMock = new RouterMock(IVault(vault), WETH);
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
@@ -453,6 +456,21 @@ contract RouterTest is Test {
         assertEq(WETH.balanceOf(alice), 0);
         assertEq(wethPool.balanceOf(alice), 0);
         assertEq(address(alice).balance, aliceNativeBalanceBefore + ETH_AMOUNT_IN);
+    }
+
+    function testGetSingleInputArray() public {
+        uint256[] memory amountsGiven = routerMock.getSingleInputArray(address(pool), 0, 1234);
+        assertEq(amountsGiven.length, 2);
+        assertEq(amountsGiven[0], 1234);
+        assertEq(amountsGiven[1], 0);
+
+        amountsGiven = routerMock.getSingleInputArray(address(pool), 1, 4321);
+        assertEq(amountsGiven.length, 2);
+        assertEq(amountsGiven[0], 0);
+        assertEq(amountsGiven[1], 4321);
+
+        vm.expectRevert(abi.encodeWithSelector(IRouter.InvalidTokenIndex.selector));
+        routerMock.getSingleInputArray(address(pool), 2, DAI_AMOUNT_IN);
     }
 
     function _initializePool() internal returns (uint256 bptAmountOut) {
