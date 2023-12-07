@@ -175,12 +175,12 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
     }
 
     function onRemoveLiquiditySingleTokenExactOut(
-        address sender,
+        address,
         uint256,
-        uint256,
+        uint256 exactAmountOutScaled18,
         uint256[] memory
-    ) external view override returns (uint256 bptAmountIn) {
-        return balanceOf(sender);
+    ) external pure override returns (uint256 bptAmountIn) {
+        return exactAmountOutScaled18;
     }
 
     function onRemoveLiquidityCustom(
