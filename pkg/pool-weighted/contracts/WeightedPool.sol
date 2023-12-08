@@ -9,7 +9,7 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IVault, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
-import { BasePool } from "@balancer-labs/v3-vault/contracts/BasePool.sol";
+import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -17,7 +17,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 
 /// @notice Basic Weighted Pool with immutable weights.
-contract WeightedPool is BasePool {
+contract WeightedPool is BalancerPoolToken, IBasePool {
     using FixedPoint for uint256;
     using ScalingHelpers for *;
 
@@ -46,7 +46,7 @@ contract WeightedPool is BasePool {
     /// @dev Indicates that the sum of the pool tokens' weights is not FP 1.
     error NormalizedWeightInvariant();
 
-    constructor(NewPoolParams memory params, IVault vault) BasePool(vault, params.name, params.symbol) {
+    constructor(NewPoolParams memory params, IVault vault) BalancerPoolToken(vault, params.name, params.symbol) {
         uint256 numTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
 
@@ -77,6 +77,11 @@ contract WeightedPool is BasePool {
         _normalizedWeight1 = params.normalizedWeights[1];
         _normalizedWeight2 = numTokens > 2 ? params.normalizedWeights[2] : 0;
         _normalizedWeight3 = numTokens > 3 ? params.normalizedWeights[3] : 0;
+    }
+
+    /// @inheritdoc IBasePool
+    function getPoolTokens() public view returns (IERC20[] memory tokens) {
+        return getVault().getPoolTokens(address(this));
     }
 
     /// @inheritdoc IBasePool

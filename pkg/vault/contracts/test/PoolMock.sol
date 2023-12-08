@@ -6,18 +6,18 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
+import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { ERC20PoolToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20PoolToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
-import { BasePool } from "../BasePool.sol";
+import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 
-contract PoolMock is BasePool {
+contract PoolMock is BalancerPoolToken, IBasePool, IPoolCallbacks, IPoolLiquidity {
     using FixedPoint for uint256;
 
     uint256 public constant MIN_INIT_BPT = 1e6;
@@ -40,7 +40,7 @@ contract PoolMock is BasePool {
         bool registerPool,
         uint256 pauseWindowDuration,
         address pauseManager
-    ) BasePool(vault, name, symbol) {
+    ) BalancerPoolToken(vault, name, symbol) {
         if (registerPool) {
             PoolFactoryMock factory = new PoolFactoryMock(vault, pauseWindowDuration);
 
@@ -66,6 +66,11 @@ contract PoolMock is BasePool {
             invariant += balances[index];
         }
         return invariant;
+    }
+
+    /// @inheritdoc IBasePool
+    function getPoolTokens() public view returns (IERC20[] memory tokens) {
+        return getVault().getPoolTokens(address(this));
     }
 
     function calcBalance(
