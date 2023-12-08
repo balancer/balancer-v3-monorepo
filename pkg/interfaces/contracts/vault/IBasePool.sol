@@ -8,9 +8,6 @@ import { IVault } from "./IVault.sol";
 
 /// @notice Interface for a Base Pool
 interface IBasePool {
-    /// @dev The pool does not implement a callback it was configured with.
-    error CallbackNotImplemented();
-
     /**
      * @notice Gets the tokens registered to a pool.
      * @dev Delegated to the Vault; added here as a convenience, mainly for off-chain processes.
