@@ -7,10 +7,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
-import { ERC20PoolToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20PoolToken.sol";
+import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -18,11 +17,9 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 
 /// @notice Basic Weighted Pool with immutable weights.
-contract WeightedPool is IBasePool, ERC20PoolToken {
+contract WeightedPool is IBasePool, BalancerPoolToken {
     using FixedPoint for uint256;
     using ScalingHelpers for *;
-
-    IVault internal immutable _vault;
 
     uint256 private immutable _totalTokens;
 
@@ -49,8 +46,7 @@ contract WeightedPool is IBasePool, ERC20PoolToken {
     /// @dev Indicates that the sum of the pool tokens' weights is not FP 1.
     error NormalizedWeightInvariant();
 
-    constructor(NewPoolParams memory params, IVault vault) ERC20PoolToken(vault, params.name, params.symbol) {
-        _vault = vault;
+    constructor(NewPoolParams memory params, IVault vault) BalancerPoolToken(vault, params.name, params.symbol) {
         uint256 numTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
 
@@ -84,6 +80,11 @@ contract WeightedPool is IBasePool, ERC20PoolToken {
     }
 
     /// @inheritdoc IBasePool
+    function getPoolTokens() public view returns (IERC20[] memory tokens) {
+        return getVault().getPoolTokens(address(this));
+    }
+
+    /// @inheritdoc IBasePool
     function onInitialize(
         uint256[] memory exactAmountsInScaled18,
         bytes memory
@@ -99,22 +100,20 @@ contract WeightedPool is IBasePool, ERC20PoolToken {
         return bptAmountOut;
     }
 
-    /**
-     * @dev Get the current invariant.
-     * @return The current value of the invariant
-     */
+    /// @inheritdoc IBasePool
     function getInvariant(uint256[] memory balancesLiveScaled18) public view returns (uint256) {
         return WeightedMath.calculateInvariant(_getNormalizedWeights(), balancesLiveScaled18);
     }
 
+    /// @inheritdoc IBasePool
     function calcBalance(
-        uint256[] memory balances,
+        uint256[] memory balancesLiveScaled18,
         uint256 tokenInIndex,
         uint256 invariantRatio
-    ) external view returns (uint256 newBalance) {
+    ) external view returns (uint256) {
         return
-            WeightedMath.calculatetBalanceOutGivenInvariant(
-                balances[tokenInIndex],
+            WeightedMath.calculateBalanceOutGivenInvariant(
+                balancesLiveScaled18[tokenInIndex],
                 _getNormalizedWeights()[tokenInIndex],
                 invariantRatio
             );
@@ -169,17 +168,19 @@ contract WeightedPool is IBasePool, ERC20PoolToken {
     }
 
     function _getNormalizedWeights() internal view virtual returns (uint256[] memory) {
-        uint256[] memory normalizedWeights = new uint256[](_totalTokens);
+        uint256 numTokens = _totalTokens;
+
+        uint256[] memory normalizedWeights = new uint256[](numTokens);
 
         // prettier-ignore
         normalizedWeights[0] = _normalizedWeight0;
         normalizedWeights[1] = _normalizedWeight1;
-        if (_totalTokens > 2) {
+        if (numTokens > 2) {
             normalizedWeights[2] = _normalizedWeight2;
         } else {
             return normalizedWeights;
         }
-        if (_totalTokens > 3) {
+        if (numTokens > 3) {
             normalizedWeights[3] = _normalizedWeight3;
         } else {
             return normalizedWeights;

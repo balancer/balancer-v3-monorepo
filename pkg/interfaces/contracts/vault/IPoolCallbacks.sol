@@ -13,7 +13,7 @@ interface IPoolCallbacks {
     ***************************************************************************/
 
     /**
-     * @notice Optional callback to be executed before `onAddLiquidity...` callbacks are executed.
+     * @notice Optional callback to be executed before adding liquidity.
      * @param sender Address of the sender
      * @param maxAmountsInScaled18 Maximum amounts of input tokens
      * @param minBptAmountOut Minimum amount of output pool tokens
@@ -30,7 +30,7 @@ interface IPoolCallbacks {
     ) external returns (bool success);
 
     /**
-     * @notice Optional callback to be executed after `onAddLiquidity...` callbacks are executed.
+     * @notice Optional callback to be executed after adding liquidity.
      * @param sender Address of the sender
      * @param amountsInScaled18 Actual amounts of tokens added, in the same order as the tokens registered in the pool
      * @param bptAmountOut Amount of pool tokens minted
@@ -51,7 +51,7 @@ interface IPoolCallbacks {
     ***************************************************************************/
 
     /**
-     * @notice Optional callback to be executed before `onRemoveLiquidity...` callbacks are executed.
+     * @notice Optional callback to be executed before removing liquidity.
      * @param sender Address of the sender
      * @param maxBptAmountIn Maximum amount of input pool tokens
      * @param minAmountsOutScaled18 Minimum output amounts, in the same order as the tokens registered in the pool
@@ -68,7 +68,7 @@ interface IPoolCallbacks {
     ) external returns (bool success);
 
     /**
-     * @notice Optional callback to be executed after `onAddLiquidity...` callbacks are executed.
+     * @notice Optional callback to be executed after removing liquidity.
      * @param sender Address of the sender
      * @param bptAmountIn Amount of pool tokens to burn
      * @param amountsOutScaled18 Amount of tokens to receive, in the same order as the tokens registered in the pool

@@ -10,18 +10,15 @@ import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPo
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { ERC20PoolToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20PoolToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
-import { BasePool } from "../BasePool.sol";
+import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 
-contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, ERC20PoolToken {
+contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToken {
     using FixedPoint for uint256;
-
-    IVault internal immutable _vault;
 
     uint256 public constant MIN_INIT_BPT = 1e6;
 
@@ -43,8 +40,7 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, ERC20PoolToken {
         bool registerPool,
         uint256 pauseWindowDuration,
         address pauseManager
-    ) ERC20PoolToken(vault, name, symbol) {
-        _vault = vault;
+    ) BalancerPoolToken(vault, name, symbol) {
         if (registerPool) {
             PoolFactoryMock factory = new PoolFactoryMock(vault, pauseWindowDuration);
 
@@ -70,6 +66,11 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, ERC20PoolToken {
             invariant += balances[index];
         }
         return invariant;
+    }
+
+    /// @inheritdoc IBasePool
+    function getPoolTokens() public view returns (IERC20[] memory tokens) {
+        return getVault().getPoolTokens(address(this));
     }
 
     function calcBalance(
@@ -185,15 +186,11 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, ERC20PoolToken {
 
     /// @dev Even though pools do not handle scaling, we still need this for the tests.
     function getDecimalScalingFactors() external view returns (uint256[] memory scalingFactors) {
-        IERC20[] memory tokens = _vault.getPoolTokens(address(this));
+        IERC20[] memory tokens = getPoolTokens();
         scalingFactors = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; i++) {
             scalingFactors[i] = ScalingHelpers.computeScalingFactor(tokens[i]);
         }
-    }
-
-    function getPoolTokens() external view returns (IERC20[] memory tokens) {
-        return _vault.getPoolTokens(address(this));
     }
 }
