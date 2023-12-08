@@ -122,13 +122,13 @@ library BasePoolMath {
 
         // Loop through each token to apply fees if necessary.
         for (uint256 index = 0; index < currentBalances.length; index++) {
-            // Check if the adjusted balance (after invariant ratio multiplication) is greater than the new balance.
+            // Check if the new balance is greater than the proportional balance.
             // If so, calculate the taxable amount.
-            if (invariantRatio.mulUp(currentBalances[index]) > newBalances[index]) {
-                uint256 taxableAmount = invariantRatio.mulUp(currentBalances[index]) - newBalances[index];
+            if (newBalances[index] > invariantRatio.mulUp(currentBalances[index])) {
+                uint256 taxableAmount = newBalances[index] - invariantRatio.mulUp(currentBalances[index]);
                 // Subtract the fee from the new balance.
                 // We are essentially imposing swap fees on non-proportional incoming amounts.
-                newBalances[index] = newBalances[index] - taxableAmount.divUp(swapFeePercentage);
+                newBalances[index] = newBalances[index] - taxableAmount.mulUp(swapFeePercentage);
             }
         }
 
@@ -206,10 +206,13 @@ library BasePoolMath {
         // Create a new array to hold the updated balances.
         uint256[] memory newBalances = new uint256[](numTokens);
 
-        // Loop through each token, updating the balance with the removed amount.
+        // Copy currentBalances to newBalances
+        // TODO: Optimize with assembly
         for (uint256 index = 0; index < currentBalances.length; index++) {
-            newBalances[index] = currentBalances[index] - (index == tokenOutIndex ? exactAmountOut : 0);
+            newBalances[index] = currentBalances[index];
         }
+        // Update the balance of tokenOutIndex with exactAmountOut.
+        newBalances[tokenOutIndex] = newBalances[tokenOutIndex] - exactAmountOut;
 
         // Calculate the invariant using the current balances.
         uint256 currentInvariant = calcInvariant(currentBalances);
