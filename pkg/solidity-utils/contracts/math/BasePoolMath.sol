@@ -206,10 +206,13 @@ library BasePoolMath {
         // Create a new array to hold the updated balances.
         uint256[] memory newBalances = new uint256[](numTokens);
 
-        // Loop through each token, updating the balance with the removed amount.
+        // Copy currentBalances to newBalances
+        // TODO: Optimize with assembly
         for (uint256 index = 0; index < currentBalances.length; index++) {
-            newBalances[index] = currentBalances[index] - (index == tokenOutIndex ? exactAmountOut : 0);
+            newBalances[index] = currentBalances[index];
         }
+        // Update the balance of tokenOutIndex with exactAmountOut.
+        newBalances[tokenOutIndex] = newBalances[tokenOutIndex] - exactAmountOut;
 
         // Calculate the invariant using the current balances.
         uint256 currentInvariant = calcInvariant(currentBalances);
