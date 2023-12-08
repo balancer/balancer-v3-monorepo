@@ -128,7 +128,7 @@ library BasePoolMath {
                 uint256 taxableAmount = invariantRatio.mulUp(currentBalances[index]) - newBalances[index];
                 // Subtract the fee from the new balance.
                 // We are essentially imposing swap fees on non-proportional incoming amounts.
-                newBalances[index] = newBalances[index] - taxableAmount.divUp(swapFeePercentage);
+                newBalances[index] = newBalances[index] - taxableAmount.mulUp(swapFeePercentage);
             }
         }
 
