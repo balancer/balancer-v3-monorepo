@@ -122,10 +122,10 @@ library BasePoolMath {
 
         // Loop through each token to apply fees if necessary.
         for (uint256 index = 0; index < currentBalances.length; index++) {
-            // Check if the adjusted balance (after invariant ratio multiplication) is greater than the new balance.
+            // Check if the new balance is greater than the proportional balance.
             // If so, calculate the taxable amount.
-            if (invariantRatio.mulUp(currentBalances[index]) > newBalances[index]) {
-                uint256 taxableAmount = invariantRatio.mulUp(currentBalances[index]) - newBalances[index];
+            if (newBalances[index] > invariantRatio.mulUp(currentBalances[index])) {
+                uint256 taxableAmount = newBalances[index] - invariantRatio.mulUp(currentBalances[index]);
                 // Subtract the fee from the new balance.
                 // We are essentially imposing swap fees on non-proportional incoming amounts.
                 newBalances[index] = newBalances[index] - taxableAmount.mulUp(swapFeePercentage);
