@@ -1094,10 +1094,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.maxAmountsIn.length);
 
         // Amounts are entering pool math, so round down.
-        params.maxAmountsIn.toScaled18ApplyRateRoundDownArray(
-            poolData.decimalScalingFactors,
-            poolData.tokenRates
-        );
+        params.maxAmountsIn.toScaled18ApplyRateRoundDownArray(poolData.decimalScalingFactors, poolData.tokenRates);
 
         if (poolData.config.callbacks.shouldCallBeforeAddLiquidity) {
             // TODO: check if `before` needs kind.
@@ -1250,10 +1247,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.minAmountsOut.length);
 
         // Amounts are entering pool math; higher amounts would burn more BPT, so round up to favor the pool.
-        params.minAmountsOut.toScaled18ApplyRateRoundUpArray(
-            poolData.decimalScalingFactors,
-            poolData.tokenRates
-        );
+        params.minAmountsOut.toScaled18ApplyRateRoundUpArray(poolData.decimalScalingFactors, poolData.tokenRates);
 
         if (poolData.config.callbacks.shouldCallBeforeRemoveLiquidity) {
             // TODO: check if `before` callback needs kind.
