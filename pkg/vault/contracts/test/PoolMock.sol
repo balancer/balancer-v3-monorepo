@@ -17,7 +17,7 @@ import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 
-contract PoolMock is BalancerPoolToken, IBasePool, IPoolCallbacks, IPoolLiquidity {
+contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToken {
     using FixedPoint for uint256;
 
     uint256 public constant MIN_INIT_BPT = 1e6;
