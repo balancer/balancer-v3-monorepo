@@ -17,7 +17,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 
 /// @notice Basic Weighted Pool with immutable weights.
-contract WeightedPool is BalancerPoolToken, IBasePool {
+contract WeightedPool is IBasePool, BalancerPoolToken {
     using FixedPoint for uint256;
     using ScalingHelpers for *;
 
