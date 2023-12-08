@@ -5,8 +5,9 @@ pragma solidity ^0.8.4;
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-import { EVMCallModeHelpers } from "../helpers/EVMCallModeHelpers.sol";
-import { ERC20PoolToken } from "./ERC20PoolToken.sol";
+import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
+
+import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 
 /**
  * @notice Store Token data and handle accounting for pool tokens in the Vault.
@@ -89,7 +90,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
         emit Transfer(token, address(0), to, amount);
 
         // We also invoke the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
-        ERC20PoolToken(token).emitTransfer(address(0), to, amount);
+        BalancerPoolToken(token).emitTransfer(address(0), to, amount);
     }
 
     function _mintToAddressZero(address token, uint256 amount) internal {
@@ -102,7 +103,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
         emit Transfer(token, address(0), address(0), amount);
 
         // We also invoke the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
-        ERC20PoolToken(token).emitTransfer(address(0), address(0), amount);
+        BalancerPoolToken(token).emitTransfer(address(0), address(0), amount);
     }
 
     function _burn(address token, address from, uint256 amount) internal {
@@ -124,7 +125,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
         emit Transfer(token, from, address(0), amount);
 
         // We also invoke the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
-        ERC20PoolToken(token).emitTransfer(from, address(0), amount);
+        BalancerPoolToken(token).emitTransfer(from, address(0), amount);
     }
 
     function _transfer(address token, address from, address to, uint256 amount) internal {
@@ -151,7 +152,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
         emit Transfer(token, from, to, amount);
 
         // We also invoke the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
-        ERC20PoolToken(token).emitTransfer(from, to, amount);
+        BalancerPoolToken(token).emitTransfer(from, to, amount);
     }
 
     function _approve(address token, address owner, address spender, uint256 amount) internal {
@@ -167,7 +168,7 @@ abstract contract ERC20MultiToken is IERC20Errors {
 
         emit Approval(token, owner, spender, amount);
         // We also invoke the "approve" event on the pool token to ensure full compliance with ERC20 standards.
-        ERC20PoolToken(token).emitApprove(owner, spender, amount);
+        BalancerPoolToken(token).emitApprove(owner, spender, amount);
     }
 
     function _spendAllowance(address token, address owner, address spender, uint256 amount) internal {

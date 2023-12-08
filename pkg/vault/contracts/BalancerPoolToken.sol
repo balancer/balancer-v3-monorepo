@@ -8,10 +8,10 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 /**
- * @notice A fully ERC20-compatible token, with all the data and implementation delegated to the
- * ERC20Multitoken contract.
+ * @notice A fully ERC20-compatible token to be used as the base contract for Balancer Pools,
+ * with all the data and implementation delegated to the ERC20Multitoken contract.
  */
-contract ERC20PoolToken is IERC20, IERC20Metadata {
+contract BalancerPoolToken is IERC20, IERC20Metadata {
     IVault private immutable _vault;
 
     string private _name;
