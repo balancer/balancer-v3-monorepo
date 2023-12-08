@@ -463,7 +463,7 @@ interface IVault {
     struct AddLiquidityParams {
         address pool;
         address to;
-        uint256[] maxAmountsInScaled18;
+        uint256[] maxAmountsIn;
         uint256 minBptAmountOut;
         AddLiquidityKind kind;
         bytes userData;
@@ -501,7 +501,7 @@ interface IVault {
      * @param pool Address of the pool
      * @param from Address of user to burn from
      * @param maxBptAmountIn Maximum amount of input pool tokens
-     * @param minAmountsOutScaled18 Minimum amounts of output tokens
+     * @param minAmountsOut Minimum amounts of output tokens
      * @param kind Remove liquidity kind
      * @param userData Optional user data
      */
@@ -509,7 +509,7 @@ interface IVault {
         address pool;
         address from;
         uint256 maxBptAmountIn;
-        uint256[] minAmountsOutScaled18;
+        uint256[] minAmountsOut;
         RemoveLiquidityKind kind;
         bytes userData;
     }

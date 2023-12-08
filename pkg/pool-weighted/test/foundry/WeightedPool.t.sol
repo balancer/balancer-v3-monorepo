@@ -30,6 +30,7 @@ contract WeightedPoolTest is Test {
     using ArrayHelpers for uint256[2];
 
     VaultMock vault;
+    BasicAuthorizerMock authorizer;
     WeightedPoolFactory factory;
     Router router;
     WeightedPool pool;
@@ -49,7 +50,7 @@ contract WeightedPoolTest is Test {
     bytes32 constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
     function setUp() public {
-        BasicAuthorizerMock authorizer = new BasicAuthorizerMock();
+        authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
         factory = new WeightedPoolFactory(vault, 365 days);
 
@@ -286,5 +287,30 @@ contract WeightedPoolTest is Test {
 
     function less(uint256 amount, uint256 base) internal pure returns (uint256) {
         return (amount * (base - 1)) / base;
+    }
+
+    function testAddLiquidityUnbalanced() public {
+        vm.prank(alice);
+
+        // init
+        router.initialize(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
+            // Initial BPT is invariant * tokens.length
+            // Account for the precision less
+            DAI_AMOUNT * 2 - DELTA,
+            false,
+            bytes("")
+        );
+
+        authorizer.grantRole(vault.getActionId(IVault.setStaticSwapFeePercentage.selector), alice);
+        vm.prank(alice);
+        vault.setStaticSwapFeePercentage(address(pool), 10e16);
+
+        uint256[] memory amountsIn = [uint256(1e2 * 1e18), uint256(USDC_AMOUNT)].toMemoryArray();
+        vm.prank(bob);
+
+        router.addLiquidityUnbalanced(address(pool), amountsIn, 0, false, bytes(""));
     }
 }
