@@ -74,7 +74,7 @@ contract BalancerPoolToken is IERC20, IERC20Metadata {
 
     /// @inheritdoc IERC20
     function approve(address spender, uint256 amount) public returns (bool) {
-        // Vault will perform the approval and call emitApprove to emit the event from this contract.
+        // Vault will perform the approval and call emitApproval to emit the event from this contract.
         _vault.approve(msg.sender, spender, amount);
         return true;
     }
@@ -90,7 +90,7 @@ contract BalancerPoolToken is IERC20, IERC20Metadata {
     /// are done there. Operations can be initiated from either the token contract or the MultiToken.
     ///
     /// To maintain compliance with the ERC-20 standard, and conform to the expections of off-chain processes,
-    /// the MultiToken calls `emitTransfer` and `emitApprove` during those operations, so that the event is emitted
+    /// the MultiToken calls `emitTransfer` and `emitApproval` during those operations, so that the event is emitted
     /// only from the token contract. These events are NOT defined in the MultiToken contract.
 
     /// @dev Emit the Transfer event. This function can only be called by the MultiToken.
@@ -99,7 +99,7 @@ contract BalancerPoolToken is IERC20, IERC20Metadata {
     }
 
     /// @dev Emit the Approval event. This function can only be called by the MultiToken.
-    function emitApprove(address owner, address spender, uint256 amount) external onlyVault {
+    function emitApproval(address owner, address spender, uint256 amount) external onlyVault {
         emit Approval(owner, spender, amount);
     }
 }

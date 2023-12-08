@@ -209,7 +209,7 @@ describe('BalancerPoolToken', function () {
     });
 
     it('cannot emit approval event except through the Vault', async () => {
-      await expect(poolA.connect(user).emitApprove(user.address, other.address, totalSupply))
+      await expect(poolA.connect(user).emitApproval(user.address, other.address, totalSupply))
         .to.be.revertedWithCustomError(poolA, 'SenderIsNotVault')
         .withArgs(user.address);
     });
