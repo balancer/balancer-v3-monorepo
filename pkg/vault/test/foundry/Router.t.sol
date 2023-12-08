@@ -44,6 +44,7 @@ contract RouterTest is Test {
 
     uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
+    uint256 constant DAI_AMOUNT_OUT = 1e2 * 1e18;
     uint256 constant ETH_AMOUNT_IN = 1e3 ether;
     uint256 constant INIT_BPT = 10e18;
     uint256 constant BPT_AMOUNT_OUT = 1e18;
@@ -449,6 +450,136 @@ contract RouterTest is Test {
         assertEq(WETH.balanceOf(alice), 0);
         assertEq(wethPool.balanceOf(alice), 0);
         assertEq(address(alice).balance, aliceNativeBalanceBefore + ETH_AMOUNT_IN);
+    }
+
+    function testSwapExactInWETH() public {
+        _initializePool();
+        vm.startPrank(alice);
+        WETH.deposit{ value: ETH_AMOUNT_IN }();
+
+        require(WETH.balanceOf(alice) == ETH_AMOUNT_IN);
+        uint256 daiBalanceBefore = DAI.balanceOf(alice);
+        bool wethIsEth = false;
+
+        uint256 outputTokenAmount = router.swapExactIn(
+            address(wethPool),
+            WETH,
+            DAI,
+            ETH_AMOUNT_IN,
+            0,
+            type(uint256).max,
+            wethIsEth,
+            ""
+        );
+
+        assertEq(WETH.balanceOf(alice), 0);
+        assertEq(DAI.balanceOf(alice), daiBalanceBefore + outputTokenAmount);
+    }
+
+    function testSwapExactOutWETH() public {
+        _initializePool();
+        vm.startPrank(alice);
+        WETH.deposit{ value: ETH_AMOUNT_IN }();
+
+        require(WETH.balanceOf(alice) == ETH_AMOUNT_IN);
+        uint256 daiBalanceBefore = DAI.balanceOf(alice);
+        bool wethIsEth = false;
+
+        uint256 outputTokenAmount = router.swapExactOut(
+            address(wethPool),
+            WETH,
+            DAI,
+            DAI_AMOUNT_OUT,
+            type(uint256).max,
+            type(uint256).max,
+            wethIsEth,
+            ""
+        );
+
+        assertEq(WETH.balanceOf(alice), ETH_AMOUNT_IN - outputTokenAmount);
+        assertEq(DAI.balanceOf(alice), daiBalanceBefore + DAI_AMOUNT_OUT);
+    }
+
+    function testSwapExactInNative() public {
+        _initializePool();
+        vm.startPrank(alice);
+
+        require(WETH.balanceOf(alice) == 0);
+        require(alice.balance >= ETH_AMOUNT_IN);
+        uint256 ethBalanceBefore = alice.balance;
+        uint256 daiBalanceBefore = DAI.balanceOf(alice);
+        bool wethIsEth = true;
+
+        router.swapExactIn{ value: ETH_AMOUNT_IN }(
+            address(wethPool),
+            WETH,
+            DAI,
+            ETH_AMOUNT_IN,
+            0,
+            type(uint256).max,
+            wethIsEth,
+            ""
+        );
+
+        assertEq(WETH.balanceOf(alice), 0);
+        assertEq(DAI.balanceOf(alice), daiBalanceBefore + ETH_AMOUNT_IN);
+        assertEq(alice.balance, ethBalanceBefore - ETH_AMOUNT_IN);
+    }
+
+    function testSwapExactOutNative() public {
+        _initializePool();
+        vm.startPrank(alice);
+
+        require(WETH.balanceOf(alice) == 0);
+        require(alice.balance >= ETH_AMOUNT_IN);
+        uint256 daiBalanceBefore = DAI.balanceOf(alice);
+        uint256 ethBalanceBefore = alice.balance;
+        bool wethIsEth = true;
+
+        router.swapExactOut{ value: DAI_AMOUNT_OUT }(
+            address(wethPool),
+            WETH,
+            DAI,
+            DAI_AMOUNT_OUT,
+            type(uint256).max,
+            type(uint256).max,
+            wethIsEth,
+            ""
+        );
+
+        assertEq(WETH.balanceOf(alice), 0);
+        assertEq(DAI.balanceOf(alice), daiBalanceBefore + DAI_AMOUNT_OUT);
+        assertEq(alice.balance, ethBalanceBefore - DAI_AMOUNT_OUT);
+    }
+
+    function testSwapNativeExcessEth() public {
+        _initializePool();
+        uint256 excessEthAmountIn = ETH_AMOUNT_IN + 1 ether;
+        vm.deal(alice, excessEthAmountIn);
+
+        vm.startPrank(alice);
+
+        require(WETH.balanceOf(alice) == 0);
+        require(alice.balance >= ETH_AMOUNT_IN);
+        uint256 ethBalanceBefore = alice.balance;
+        uint256 daiBalanceBefore = DAI.balanceOf(alice);
+        bool wethIsEth = true;
+
+        router.swapExactIn{ value: excessEthAmountIn }(
+            address(wethPool),
+            WETH,
+            DAI,
+            ETH_AMOUNT_IN,
+            0,
+            type(uint256).max,
+            wethIsEth,
+            ""
+        );
+
+        // Only ETH_AMOUNT_IN is sent to the router
+        assertEq(WETH.balanceOf(alice), 0);
+        assertEq(DAI.balanceOf(alice), daiBalanceBefore + ETH_AMOUNT_IN);
+        assertEq(alice.balance, ethBalanceBefore - ETH_AMOUNT_IN);
     }
 
     function testGetSingleInputArray() public {

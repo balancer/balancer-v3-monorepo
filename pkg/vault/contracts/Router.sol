@@ -536,8 +536,10 @@ contract Router is IRouter, ReentrancyGuard {
         IERC20 tokenIn = params.tokenIn;
         IERC20 tokenOut = params.tokenOut;
 
+        uint256 ethAmountIn = 0;
         // If the tokenIn is ETH, then wrap `amountIn` into WETH.
         if (params.wethIsEth && tokenIn == _weth) {
+            ethAmountIn = amountIn;
             // wrap amountIn to WETH
             _weth.deposit{ value: amountIn }();
             // send WETH to Vault
@@ -564,7 +566,7 @@ contract Router is IRouter, ReentrancyGuard {
 
         if (tokenIn == _weth) {
             // Return the rest of ETH to sender
-            returnEth(params.sender, amountIn);
+            returnEth(params.sender, ethAmountIn);
         }
 
         return amountCalculated;
