@@ -73,13 +73,13 @@ library WeightedMath {
         }
     }
 
-    function calculatetBalanceOutGivenInvariant(
+    function calculateBalanceOutGivenInvariant(
         uint256 currentBalance,
         uint256 weight,
         uint256 invariantRatio
     ) internal pure returns (uint256 invariant) {
         /******************************************************************************************
-        // calculatetBalanceGivenInvariant                                                       //
+        // calculateBalanceGivenInvariant                                                       //
         // o = balanceOut                                                                        //
         // b = balanceIn                      (1 / w)                                            //
         // w = weight              o = b * i ^                                                   //

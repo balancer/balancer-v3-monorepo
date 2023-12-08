@@ -8,17 +8,15 @@ import { IVault } from "./IVault.sol";
 
 /// @notice Interface for a Base Pool
 interface IBasePool {
-    /// @dev The caller is not allowed to execute this function; it should be executed by the Vault only.
-    error CallerNotVault();
-
-    /// @dev The pool does not support the given join kind.
-    error UnhandledJoinKind();
-
-    /// @dev The pool does not support the given exit kind.
-    error UnhandledExitKind();
-
     /// @dev The pool does not implement a callback it was configured with.
     error CallbackNotImplemented();
+
+    /**
+     * @notice Gets the tokens registered to a pool.
+     * @dev Delegated to the Vault; added here as a convenience, mainly for off-chain processes.
+     * @return tokens List of tokens in the pool
+     */
+    function getPoolTokens() external view returns (IERC20[] memory tokens);
 
     /***************************************************************************
                                   Initialization
@@ -43,22 +41,23 @@ interface IBasePool {
     ***************************************************************************/
 
     /**
-     *  @notice Calculates and returns the pool's invariant.
-     *  @dev This function computes the invariant based on current balances
-     *  @param balances Array of current pool balances for each token in the pool, scaled to 18 decimals
-     *  @return invariant The calculated invariant of the pool, represented as a uint256
+     * @notice Calculates and returns the pool's invariant.
+     * @dev This function computes the invariant based on current balances
+     * @param balancesLiveScaled18 Array of current pool balances for each token in the pool, scaled to 18 decimals
+     * @return invariant The calculated invariant of the pool, represented as a uint256
      */
-    function getInvariant(uint256[] memory balances) external view returns (uint256);
+    function getInvariant(uint256[] memory balancesLiveScaled18) external view returns (uint256 invariant);
 
     /**
-     *  @notice Calculates and returns the new balance for the applied invariant ratio.
-     *  @dev This function computes the new balance based on the growth or
-     *       contraction of the invariant as a result of single-sided token liquidity operation.
-     *  @param balances Array of current pool balances for each token in the pool, scaled to 18 decimals
-     *  @return newBalance The new balances for token added or removed from the pool
+     * @dev Get the new balance of a token after an operation, given the invariant growth ratio and all other
+     * balances.
+     * @param balancesLiveScaled18 Current live balances (adjusted for decimals, rates, etc.)
+     * @param tokenInIndex The index of the token we're computing the balance for, in token registration order
+     * @param invariantRatio The ratio of the new invariant (after an operation) to the old
+     * @return newBalance The new balance of the selected token, after the operation
      */
     function calcBalance(
-        uint256[] memory balances,
+        uint256[] memory balancesLiveScaled18,
         uint256 tokenInIndex,
         uint256 invariantRatio
     ) external view returns (uint256 newBalance);
@@ -77,6 +76,7 @@ interface IBasePool {
      * @param balancesScaled18 Current pool balances
      * @param indexIn Index of tokenIn
      * @param indexOut Index of tokenOut
+     * @param sender Originator of the swap transaction
      * @param userData Additional (optional) data required for the swap
      */
     struct SwapParams {

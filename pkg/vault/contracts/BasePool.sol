@@ -13,10 +13,13 @@ import { ERC20PoolToken } from "@balancer-labs/v3-solidity-utils/contracts/token
 
 /// @notice Reference implementation for the base layer of a Pool contract.
 abstract contract BasePool is IBasePool, IPoolCallbacks, IPoolLiquidity, ERC20PoolToken {
-    IVault internal immutable _vault;
-
     constructor(IVault vault, string memory name, string memory symbol) ERC20PoolToken(vault, name, symbol) {
-        _vault = vault;
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    /// @inheritdoc IBasePool
+    function getPoolTokens() public view returns (IERC20[] memory tokens) {
+        return getVault().getPoolTokens(address(this));
     }
 
     /*******************************************************************************
@@ -24,7 +27,7 @@ abstract contract BasePool is IBasePool, IPoolCallbacks, IPoolLiquidity, ERC20Po
     *******************************************************************************/
 
     /// @notice Callback performed after a swap. Reverts here if configured but unimplemented.
-    function onAfterSwap(SwapParams calldata, uint256) external view virtual returns (bool) {
+    function onAfterSwap(AfterSwapParams calldata, uint256) external view virtual returns (bool) {
         revert CallbackNotImplemented();
     }
 

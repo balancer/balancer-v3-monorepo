@@ -18,10 +18,8 @@ import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { BasePool } from "../BasePool.sol";
 
-contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, ERC20PoolToken {
+contract PoolMock is BasePool {
     using FixedPoint for uint256;
-
-    IVault internal immutable _vault;
 
     uint256 public constant MIN_INIT_BPT = 1e6;
 
@@ -43,8 +41,7 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, ERC20PoolToken {
         bool registerPool,
         uint256 pauseWindowDuration,
         address pauseManager
-    ) ERC20PoolToken(vault, name, symbol) {
-        _vault = vault;
+    ) BasePool(vault, name, symbol) {
         if (registerPool) {
             PoolFactoryMock factory = new PoolFactoryMock(vault, pauseWindowDuration);
 
@@ -185,15 +182,11 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, ERC20PoolToken {
 
     /// @dev Even though pools do not handle scaling, we still need this for the tests.
     function getDecimalScalingFactors() external view returns (uint256[] memory scalingFactors) {
-        IERC20[] memory tokens = _vault.getPoolTokens(address(this));
+        IERC20[] memory tokens = getPoolTokens();
         scalingFactors = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; i++) {
             scalingFactors[i] = ScalingHelpers.computeScalingFactor(tokens[i]);
         }
-    }
-
-    function getPoolTokens() external view returns (IERC20[] memory tokens) {
-        return _vault.getPoolTokens(address(this));
     }
 }
