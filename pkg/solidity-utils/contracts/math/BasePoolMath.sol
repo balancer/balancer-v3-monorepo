@@ -133,12 +133,12 @@ library BasePoolMath {
         }
 
         // Calculate the new invariant with fees applied.
-        uint256 newInvariantWithFees = calcInvariant(newBalances);
+        uint256 invariantWithFeesApplied = calcInvariant(newBalances);
 
         // Calculate the amount of BPT to mint. This is done by multiplying the
         // total supply with the ratio of the change in invariant.
         //  mulDown/divDown minize amount of pool tokens to mint.
-        return totalSupply.mulDown((newInvariantWithFees - currentInvariant).divDown(currentInvariant));
+        return totalSupply.mulDown((invariantWithFeesApplied - currentInvariant).divDown(currentInvariant));
     }
 
     /**
@@ -228,10 +228,10 @@ library BasePoolMath {
         newBalances[tokenOutIndex] = newBalances[tokenOutIndex] - fee;
 
         // Calculate the new invariant with fees applied.
-        uint256 newInvariantWithFees = calcInvariant(newBalances);
+        uint256 invariantWithFeesApplied = calcInvariant(newBalances);
 
         // mulUp/divDown maximize the amount of tokens burned for the security reasons
-        return totalSupply.mulUp(currentInvariant - newInvariantWithFees).divDown(currentInvariant);
+        return totalSupply.mulUp(currentInvariant - invariantWithFeesApplied).divDown(currentInvariant);
     }
 
     /**
