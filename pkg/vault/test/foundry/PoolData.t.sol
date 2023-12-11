@@ -12,7 +12,6 @@ import { IVault, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contrac
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
-import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -22,8 +21,7 @@ import { Router } from "../../contracts/Router.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 
 contract PoolDataTest is Test {
-    using AssetHelpers for *;
-    using ArrayHelpers for address[2];
+    using ArrayHelpers for *;
     using FixedPoint for uint256;
 
     VaultMock vault;

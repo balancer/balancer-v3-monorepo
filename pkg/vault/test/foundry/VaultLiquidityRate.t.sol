@@ -12,7 +12,6 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
@@ -32,10 +31,7 @@ struct Balances {
 }
 
 contract VaultLiquidityWithRatesTest is Test {
-    using AssetHelpers for address[];
-    using AssetHelpers for address[];
-    using ArrayHelpers for address[2];
-    using ArrayHelpers for uint256[2];
+    using ArrayHelpers for *;
 
     VaultMock vault;
     Router router;
@@ -398,7 +394,7 @@ contract VaultLiquidityWithRatesTest is Test {
         uint256[] memory amountsIn,
         uint256 bptAmountOut
     ) internal {
-        // Assets are transferred from the user to the vault
+        // Tokens are transferred from the user to the vault
         assertEq(
             balancesAfter.userTokens[0],
             balancesBefore.userTokens[0] - amountsIn[0],
@@ -410,7 +406,7 @@ contract VaultLiquidityWithRatesTest is Test {
             "Add - User balance: token 1"
         );
 
-        // Assets are now in the vault / pool
+        // Tokens are now in the vault / pool
         assertEq(
             balancesAfter.poolTokens[0],
             balancesBefore.poolTokens[0] + amountsIn[0],
@@ -434,7 +430,7 @@ contract VaultLiquidityWithRatesTest is Test {
         uint256 rawBptAmountIn,
         uint256[] memory amountsOut
     ) internal {
-        // Assets are transferred back to user
+        // Tokens are transferred back to user
         assertEq(
             balancesAfter.userTokens[0],
             balancesBefore.userTokens[0] + amountsOut[0],
@@ -446,7 +442,7 @@ contract VaultLiquidityWithRatesTest is Test {
             "Remove - User balance: token 1"
         );
 
-        // Assets are no longer in the vault / pool
+        // Tokens are no longer in the vault / pool
         assertEq(
             balancesAfter.poolTokens[0],
             balancesBefore.poolTokens[0] - amountsOut[0],

@@ -13,7 +13,6 @@ import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
@@ -27,11 +26,7 @@ import { RouterAdaptor } from "../../contracts/test/RouterAdaptor.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
 contract VaultSwapTest is Test {
-    using AssetHelpers for address;
-    using AssetHelpers for address[];
-    using AssetHelpers for address[];
-    using ArrayHelpers for address[2];
-    using ArrayHelpers for uint256[2];
+    using ArrayHelpers for *;
     using RouterAdaptor for IRouter;
 
     VaultMock vault;
@@ -130,14 +125,14 @@ contract VaultSwapTest is Test {
                 })
             )
         );
-        router.swap(
-            IVault.SwapKind.GIVEN_IN,
+        router.swapExactIn(
             address(pool),
-            address(USDC).asAsset(),
-            address(DAI).asAsset(),
+            USDC,
+            DAI,
             USDC_AMOUNT_IN,
             0,
             type(uint256).max,
+            false,
             bytes("")
         );
     }
@@ -147,14 +142,14 @@ contract VaultSwapTest is Test {
         pool.setFailOnAfterSwapCallback(true);
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(IVault.CallbackFailed.selector));
-        router.swap(
-            IVault.SwapKind.GIVEN_IN,
+        router.swapExactIn(
             address(pool),
-            address(USDC).asAsset(),
-            address(DAI).asAsset(),
+            USDC,
+            DAI,
             USDC_AMOUNT_IN,
             DAI_AMOUNT_IN,
             type(uint256).max,
+            false,
             bytes("")
         );
     }

@@ -11,7 +11,6 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
-import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
@@ -21,7 +20,6 @@ import { FactoryWidePauseWindow } from "../../contracts/factories/FactoryWidePau
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 
 contract PoolPauseTest is Test {
-    using AssetHelpers for *;
     using ArrayHelpers for *;
 
     VaultMock vault;

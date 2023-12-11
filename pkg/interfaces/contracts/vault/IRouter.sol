@@ -4,8 +4,6 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { Asset } from "../solidity-utils/misc/Asset.sol";
-
 import { IVault } from "./IVault.sol";
 import { IBasePool } from "./IBasePool.sol";
 
@@ -22,7 +20,7 @@ interface IRouter {
      * @param sender Account originating the pool initialization operation
      * @param pool Address of the liquidity pool
      * @param tokens Pool tokens
-     * @param exactAmountsIn Exact amounts of assets to be added, sorted in token registration order
+     * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for initialization
@@ -41,7 +39,7 @@ interface IRouter {
      * @notice Initialize a liquidity pool.
      * @param pool Address of the liquidity pool
      * @param tokens Pool tokens
-     * @param exactAmountsIn Exact amounts of assets to be added, sorted in token registration order
+     * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for initialization
@@ -172,8 +170,7 @@ interface IRouter {
      * @dev Data for the remove liquidity callback.
      * @param sender Account originating the remove liquidity operation
      * @param pool Address of the liquidity pool
-     * @param assets Array of assets to remove
-     * @param minAmountsOut Minimum amounts of assets to be received, sorted in token registration order
+     * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
      * @param maxBptAmountIn Maximum amount of pool tokens provided
      * @param kind Type of exit (e.g., single or multi-token)
      * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
@@ -196,7 +193,7 @@ interface IRouter {
      * @notice Removes liquidity with proportional token amounts from a pool, burning an exact pool token amount.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided
-     * @param minAmountsOut Minimum amounts of assets to be received, sorted in token registration order
+     * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
      * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
      * @param userData Additional (optional) data required for removing liquidity
      * @return amountsOut Actual amounts of tokens received, sorted in token registration order
@@ -251,11 +248,11 @@ interface IRouter {
      * @notice Removes liquidity from a pool with a custom request.
      * @param pool Address of the liquidity pool
      * @param maxBptAmountIn Maximum amount of pool tokens provided
-     * @param minAmountsOut Minimum amounts of assets to be received, sorted in token registration order
+     * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
      * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
      * @param userData Additional (optional) data required for removing liquidity
      * @return bptAmountIn Actual amount of pool tokens burned
-     * @return amountsOut Actual amounts of assets received, sorted in token registration order
+     * @return amountsOut Actual amounts of tokens received, sorted in token registration order
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function removeLiquidityCustom(
@@ -275,22 +272,24 @@ interface IRouter {
      * @param sender Account initiating the swap operation
      * @param kind Type of swap (given in or given out)
      * @param pool Address of the liquidity pool
-     * @param assetIn Asset to be swapped from
-     * @param assetOut Asset to be swapped to
+     * @param tokenIn Token to be swapped from
+     * @param tokenOut Token to be swapped to
      * @param amountGiven Amount given based on kind of the swap (e.g., tokenIn for given in)
      * @param limit Maximum or minimum amount based on the kind of swap (e.g., maxAmountIn for given out)
      * @param deadline Deadline for the swap
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for the swap
      */
     struct SwapCallbackParams {
         address sender;
         IVault.SwapKind kind;
         address pool;
-        Asset assetIn;
-        Asset assetOut;
+        IERC20 tokenIn;
+        IERC20 tokenOut;
         uint256 amountGiven;
         uint256 limit;
         uint256 deadline;
+        bool wethIsEth;
         bytes userData;
     }
 
@@ -301,27 +300,50 @@ interface IRouter {
     error SwapLimit(uint256 amount, uint256 limit);
 
     /**
-     * @notice Executes a swap operation.
-     * @param kind Type of swap (given in or given out)
+     * @notice Executes a swap operation specifying an exact input token amount.
      * @param pool Address of the liquidity pool
-     * @param assetIn Asset to be swapped from
-     * @param assetOut Asset to be swapped to
-     * @param amountGiven Amount given based on kind of the swap (e.g., tokenIn for given in)
+     * @param tokenIn Token to be swapped from
+     * @param tokenOut Token to be swapped to
+     * @param exactAmountIn Exact amounts of input tokens to send
      * @param limit Maximum or minimum amount based on the kind of swap (e.g., maxAmountIn for given out)
      * @param deadline Deadline for the swap
      * @param userData Additional (optional) data required for the swap
-     * @return amountCalculated Amount calculated based on the kind of swap
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @return amountOut Calculated amount of output tokens to be received in exchange for the given input tokens
      */
-    function swap(
-        IVault.SwapKind kind,
+    function swapExactIn(
         address pool,
-        Asset assetIn,
-        Asset assetOut,
-        uint256 amountGiven,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 exactAmountIn,
         uint256 limit,
         uint256 deadline,
+        bool wethIsEth,
         bytes calldata userData
-    ) external payable returns (uint256 amountCalculated);
+    ) external payable returns (uint256 amountOut);
+
+    /**
+     * @notice Executes a swap operation an exact output token amount.
+     * @param pool Address of the liquidity pool
+     * @param tokenIn Token to be swapped from
+     * @param tokenOut Token to be swapped to
+     * @param exactAmountOut Exact amounts of input tokens to receive
+     * @param limit Maximum or minimum amount based on the kind of swap (e.g., maxAmountIn for given out)
+     * @param deadline Deadline for the swap
+     * @param userData Additional (optional) data required for the swap
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @return amountIn Calculated amount of input tokens to be sent in exchange for the requested output tokens
+     */
+    function swapExactOut(
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 exactAmountOut,
+        uint256 limit,
+        uint256 deadline,
+        bool wethIsEth,
+        bytes calldata userData
+    ) external payable returns (uint256 amountIn);
 
     /***************************************************************************
                                      Queries
@@ -458,21 +480,36 @@ interface IRouter {
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 
     /**
-     * @notice Queries a swap operation without actually executing it.
-     * @param kind Type of swap
+     * @notice Queries a swap operation specifying an exact input token amount without actually executing it.
      * @param pool Address of the liquidity pool
-     * @param assetIn Asset to be swapped from
-     * @param assetOut Asset to be swapped to
-     * @param amountGiven Amount given based on kind of the swap
+     * @param tokenIn Token to be swapped from
+     * @param tokenOut Token to be swapped to
+     * @param exactAmountIn Exact amounts of input tokens to send
      * @param userData Additional (optional) data required for the query
-     * @return amountCalculated Amount calculated based on the kind of swap
+     * @return amountOut Calculated amount of output tokens to be received in exchange for the given input tokens
      */
-    function querySwap(
-        IVault.SwapKind kind,
+    function querySwapExactIn(
         address pool,
-        Asset assetIn,
-        Asset assetOut,
-        uint256 amountGiven,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 exactAmountIn,
         bytes calldata userData
-    ) external returns (uint256 amountCalculated);
+    ) external returns (uint256 amountOut);
+
+    /**
+     * @notice Queries a swap operation specifying an exact output token amount without actually executing it.
+     * @param pool Address of the liquidity pool
+     * @param tokenIn Token to be swapped from
+     * @param tokenOut Token to be swapped to
+     * @param exactAmountOut Exact amounts of input tokens to receive
+     * @param userData Additional (optional) data required for the query
+     * @return amountIn Calculated amount of input tokens to be sent in exchange for the requested output tokens
+     */
+    function querySwapExactOut(
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 exactAmountOut,
+        bytes calldata userData
+    ) external returns (uint256 amountIn);
 }
