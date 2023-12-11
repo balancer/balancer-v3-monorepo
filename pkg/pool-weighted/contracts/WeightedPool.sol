@@ -116,7 +116,7 @@ contract WeightedPool is BasePool {
      * @return The current value of the invariant
      */
     function computeInvariant(uint256[] memory balancesLiveScaled18) public view returns (uint256) {
-        return WeightedMath.calculateInvariant(_getNormalizedWeights(), balancesLiveScaled18);
+        return WeightedMath.computeInvariant(_getNormalizedWeights(), balancesLiveScaled18);
     }
 
     function computeBalance(
@@ -125,7 +125,7 @@ contract WeightedPool is BasePool {
         uint256 invariantRatio
     ) external view returns (uint256 newBalance) {
         return
-            WeightedMath.calculatetBalanceOutGivenInvariant(
+            WeightedMath.computeBalanceOutGivenInvariant(
                 balances[tokenInIndex],
                 _getNormalizedWeights()[tokenInIndex],
                 invariantRatio
@@ -150,7 +150,7 @@ contract WeightedPool is BasePool {
         bytes memory
     ) external view onlyVault returns (uint256) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
-        uint256 invariantAfterJoin = WeightedMath.calculateInvariant(normalizedWeights, exactAmountsInScaled18);
+        uint256 invariantAfterJoin = WeightedMath.computeInvariant(normalizedWeights, exactAmountsInScaled18);
 
         // Set the initial pool tokens amount to the value of the invariant times the number of tokens.
         // This makes pool token supply more consistent in Pools with similar compositions
@@ -170,7 +170,7 @@ contract WeightedPool is BasePool {
         uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            uint256 amountOutScaled18 = WeightedMath.calcOutGivenIn(
+            uint256 amountOutScaled18 = WeightedMath.computeOutGivenIn(
                 balanceTokenInScaled18,
                 _getNormalizedWeight(request.tokenIn),
                 balanceTokenOutScaled18,
@@ -180,7 +180,7 @@ contract WeightedPool is BasePool {
 
             return amountOutScaled18;
         } else {
-            uint256 amountInScaled18 = WeightedMath.calcInGivenOut(
+            uint256 amountInScaled18 = WeightedMath.computeInGivenOut(
                 balanceTokenInScaled18,
                 _getNormalizedWeight(request.tokenIn),
                 balanceTokenOutScaled18,
