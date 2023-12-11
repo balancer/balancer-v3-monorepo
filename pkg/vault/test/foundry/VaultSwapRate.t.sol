@@ -12,7 +12,6 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
@@ -27,7 +26,6 @@ import { VaultMock } from "../../contracts/test/VaultMock.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 
 contract VaultSwapWithRatesTest is Test {
-    using AssetHelpers for *;
     using ArrayHelpers for *;
 
     VaultMock vault;
@@ -155,14 +153,14 @@ contract VaultSwapWithRatesTest is Test {
         );
 
         vm.prank(bob);
-        router.swap(
-            IVault.SwapKind.GIVEN_IN,
+        router.swapExactIn(
             address(pool),
-            address(DAI).asAsset(),
-            address(WSTETH).asAsset(),
+            DAI,
+            WSTETH,
             AMOUNT,
             rateAdjustedLimit,
             type(uint256).max,
+            false,
             bytes("")
         );
     }
@@ -194,14 +192,14 @@ contract VaultSwapWithRatesTest is Test {
         );
 
         vm.prank(bob);
-        router.swap(
-            IVault.SwapKind.GIVEN_OUT,
+        router.swapExactOut(
             address(pool),
-            address(DAI).asAsset(),
-            address(WSTETH).asAsset(),
+            DAI,
+            WSTETH,
             rateAdjustedAmountGiven,
             AMOUNT,
             type(uint256).max,
+            false,
             bytes("")
         );
     }

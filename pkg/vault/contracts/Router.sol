@@ -11,10 +11,7 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 
-import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
-
 contract Router is IRouter, ReentrancyGuard {
-    using AssetHelpers for *;
     using Address for address payable;
 
     IVault private immutable _vault;
@@ -111,7 +108,7 @@ contract Router is IRouter, ReentrancyGuard {
         }
 
         // return ETH dust
-        address(params.sender).returnEth(ethAmountIn);
+        returnEth(params.sender, ethAmountIn);
     }
 
     /// @inheritdoc IRouter
@@ -259,7 +256,7 @@ contract Router is IRouter, ReentrancyGuard {
         }
 
         // Send remaining ETH to the user
-        address(params.sender).returnEth(ethAmountIn);
+        returnEth(params.sender, ethAmountIn);
     }
 
     /// @inheritdoc IRouter
@@ -435,14 +432,14 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     /// @inheritdoc IRouter
-    function swap(
-        IVault.SwapKind kind,
+    function swapExactIn(
         address pool,
-        Asset assetIn,
-        Asset assetOut,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
         uint256 amountGiven,
         uint256 limit,
         uint256 deadline,
+        bool wethIsEth,
         bytes calldata userData
     ) external payable returns (uint256) {
         return
@@ -452,13 +449,48 @@ contract Router is IRouter, ReentrancyGuard {
                         Router.swapCallback.selector,
                         SwapCallbackParams({
                             sender: msg.sender,
-                            kind: kind,
+                            kind: IVault.SwapKind.GIVEN_IN,
                             pool: pool,
-                            assetIn: assetIn,
-                            assetOut: assetOut,
+                            tokenIn: tokenIn,
+                            tokenOut: tokenOut,
                             amountGiven: amountGiven,
                             limit: limit,
                             deadline: deadline,
+                            wethIsEth: wethIsEth,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256)
+            );
+    }
+
+    /// @inheritdoc IRouter
+    function swapExactOut(
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 amountGiven,
+        uint256 limit,
+        uint256 deadline,
+        bool wethIsEth,
+        bytes calldata userData
+    ) external payable returns (uint256) {
+        return
+            abi.decode(
+                _vault.invoke{ value: msg.value }(
+                    abi.encodeWithSelector(
+                        Router.swapCallback.selector,
+                        SwapCallbackParams({
+                            sender: msg.sender,
+                            kind: IVault.SwapKind.GIVEN_OUT,
+                            pool: pool,
+                            tokenIn: tokenIn,
+                            tokenOut: tokenOut,
+                            amountGiven: amountGiven,
+                            limit: limit,
+                            deadline: deadline,
+                            wethIsEth: wethIsEth,
                             userData: userData
                         })
                     )
@@ -476,16 +508,15 @@ contract Router is IRouter, ReentrancyGuard {
     function swapCallback(
         SwapCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256) {
-        (
-            uint256 amountCalculated,
-            uint256 amountIn,
-            uint256 amountOut,
-            IERC20 tokenIn,
-            IERC20 tokenOut
-        ) = _swapCallback(params);
+        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapCallback(params);
 
-        // If the assetIn is ETH, then wrap `amountIn` into WETH.
-        if (params.assetIn.isETH()) {
+        IERC20 tokenIn = params.tokenIn;
+        IERC20 tokenOut = params.tokenOut;
+
+        uint256 ethAmountIn = 0;
+        // If the tokenIn is ETH, then wrap `amountIn` into WETH.
+        if (params.wethIsEth && tokenIn == _weth) {
+            ethAmountIn = amountIn;
             // wrap amountIn to WETH
             _weth.deposit{ value: amountIn }();
             // send WETH to Vault
@@ -493,12 +524,12 @@ contract Router is IRouter, ReentrancyGuard {
             // update Vault accounting
             _vault.settle(_weth);
         } else {
-            // Send the assetIn amount to the Vault
+            // Send the tokenIn amount to the Vault
             _vault.retrieve(tokenIn, params.sender, amountIn);
         }
 
-        // If the assetOut is ETH, then unwrap `amountOut` into ETH.
-        if (params.assetOut.isETH()) {
+        // If the tokenOut is ETH, then unwrap `amountOut` into ETH.
+        if (params.wethIsEth && tokenOut == _weth) {
             // Receive the WETH amountOut
             _vault.wire(tokenOut, address(this), amountOut);
             // Withdraw WETH to ETH
@@ -510,9 +541,9 @@ contract Router is IRouter, ReentrancyGuard {
             _vault.wire(tokenOut, params.sender, amountOut);
         }
 
-        if (params.assetIn.isETH()) {
+        if (tokenIn == _weth) {
             // Return the rest of ETH to sender
-            address(params.sender).returnEth(amountIn);
+            returnEth(params.sender, ethAmountIn);
         }
 
         return amountCalculated;
@@ -520,25 +551,19 @@ contract Router is IRouter, ReentrancyGuard {
 
     function _swapCallback(
         SwapCallbackParams calldata params
-    )
-        internal
-        returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut, IERC20 tokenIn, IERC20 tokenOut)
-    {
+    ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > params.deadline) {
             revert SwapDeadline();
         }
 
-        tokenIn = params.assetIn.toIERC20(_weth);
-        tokenOut = params.assetOut.toIERC20(_weth);
-
         (amountCalculated, amountIn, amountOut) = _vault.swap(
             IVault.SwapParams({
                 kind: params.kind,
                 pool: params.pool,
-                tokenIn: tokenIn,
-                tokenOut: tokenOut,
+                tokenIn: params.tokenIn,
+                tokenOut: params.tokenOut,
                 amountGivenRaw: params.amountGiven,
                 userData: params.userData
             })
@@ -554,11 +579,10 @@ contract Router is IRouter, ReentrancyGuard {
     *******************************************************************************/
 
     /// @inheritdoc IRouter
-    function querySwap(
-        IVault.SwapKind kind,
+    function querySwapExactIn(
         address pool,
-        Asset assetIn,
-        Asset assetOut,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
         uint256 amountGiven,
         bytes calldata userData
     ) external returns (uint256 amountCalculated) {
@@ -569,13 +593,45 @@ contract Router is IRouter, ReentrancyGuard {
                         Router.querySwapCallback.selector,
                         SwapCallbackParams({
                             sender: msg.sender,
-                            kind: kind,
+                            kind: IVault.SwapKind.GIVEN_IN,
                             pool: pool,
-                            assetIn: assetIn,
-                            assetOut: assetOut,
+                            tokenIn: tokenIn,
+                            tokenOut: tokenOut,
                             amountGiven: amountGiven,
-                            limit: kind == IVault.SwapKind.GIVEN_IN ? 0 : type(uint256).max,
+                            limit: 0,
                             deadline: type(uint256).max,
+                            wethIsEth: false,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256)
+            );
+    }
+
+    /// @inheritdoc IRouter
+    function querySwapExactOut(
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 amountGiven,
+        bytes calldata userData
+    ) external returns (uint256 amountCalculated) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeWithSelector(
+                        Router.querySwapCallback.selector,
+                        SwapCallbackParams({
+                            sender: msg.sender,
+                            kind: IVault.SwapKind.GIVEN_OUT,
+                            pool: pool,
+                            tokenIn: tokenIn,
+                            tokenOut: tokenOut,
+                            amountGiven: amountGiven,
+                            limit: type(uint256).max,
+                            deadline: type(uint256).max,
+                            wethIsEth: false,
                             userData: userData
                         })
                     )
@@ -593,7 +649,7 @@ contract Router is IRouter, ReentrancyGuard {
     function querySwapCallback(
         SwapCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256) {
-        (uint256 amountCalculated, , , , ) = _swapCallback(params);
+        (uint256 amountCalculated, , ) = _swapCallback(params);
 
         return amountCalculated;
     }
@@ -863,6 +919,26 @@ contract Router is IRouter, ReentrancyGuard {
                     userData: params.userData
                 })
             );
+    }
+
+    /**
+     * @dev Returns excess ETH back to the contract caller, assuming `amountUsed` has been spent. Reverts
+     * if the caller sent less ETH than `amountUsed`.
+     *
+     * Because the caller might not know exactly how much ETH a Vault action will require, they may send extra.
+     * Note that this excess value is returned *to the contract caller* (msg.sender). If caller and e.g. swap sender are
+     * not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
+     * returned ETH.
+     */
+    function returnEth(address sender, uint256 amountUsed) internal {
+        if (msg.value < amountUsed) {
+            revert InsufficientEth();
+        }
+
+        uint256 excess = msg.value - amountUsed;
+        if (excess > 0) {
+            payable(sender).sendValue(excess);
+        }
     }
 
     /**
