@@ -24,7 +24,7 @@ library PoolConfigLib {
     /// @dev Pool does not support adding liquidity with unbalanced tokens in.
     error DoesNotSupportAddLiquidityUnbalanced();
 
-    /// @dev Pool does not support adding liquidity with a single asset, specifying exact pool tokens out.
+    /// @dev Pool does not support adding liquidity with a single token, specifying exact pool tokens out.
     error DoesNotSupportAddLiquiditySingleTokenExactOut();
 
     /// @dev Pool does not support adding liquidity with a customized input.
@@ -36,7 +36,7 @@ library PoolConfigLib {
     /// @dev Pool does not support removing liquidity with unbalanced tokens out.
     error DoesNotSupportRemoveLiquidityUnbalanced();
 
-    /// @dev Pool does not support removing liquidity with a single asset, specifying exact pool tokens in.
+    /// @dev Pool does not support removing liquidity with a single token, specifying exact pool tokens in.
     error DoesNotSupportRemoveLiquiditySingleTokenExactIn();
 
     /// @dev

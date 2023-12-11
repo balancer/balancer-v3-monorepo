@@ -118,15 +118,15 @@ contract WeightedPoolTest is Test {
             bytes("")
         );
 
-        // assets are transferred from Alice
+        // Tokens are transferred from Alice
         assertEq(USDC.balanceOf(alice), 0);
         assertEq(DAI.balanceOf(alice), 0);
 
-        // assets are stored in the Vault
+        // Tokens are stored in the Vault
         assertEq(USDC.balanceOf(address(vault)), USDC_AMOUNT);
         assertEq(DAI.balanceOf(address(vault)), DAI_AMOUNT);
 
-        // assets are deposited to the pool
+        // Tokens are deposited to the pool
         (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], DAI_AMOUNT);
         assertEq(balances[1], USDC_AMOUNT);
@@ -166,15 +166,15 @@ contract WeightedPoolTest is Test {
             bytes("")
         );
 
-        // assets are transferred from Bob
+        // Tokens are transferred from Bob
         assertEq(USDC.balanceOf(bob), 0);
         assertEq(DAI.balanceOf(bob), 0);
 
-        // assets are stored in the Vault
+        // Tokens are stored in the Vault
         assertEq(USDC.balanceOf(address(vault)), USDC_AMOUNT * 2);
         assertEq(DAI.balanceOf(address(vault)), DAI_AMOUNT * 2);
 
-        // assets are deposited to the pool
+        // Tokens are deposited to the pool
         (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], DAI_AMOUNT * 2);
         assertEq(balances[1], USDC_AMOUNT * 2);
@@ -226,15 +226,15 @@ contract WeightedPoolTest is Test {
 
         vm.stopPrank();
 
-        // assets are transferred to Bob
+        // Tokens are transferred to Bob
         assertApproxEqAbs(USDC.balanceOf(bob), USDC_AMOUNT, DELTA);
         assertApproxEqAbs(DAI.balanceOf(bob), DAI_AMOUNT, DELTA);
 
-        // assets are stored in the Vault
+        // Tokens are stored in the Vault
         assertApproxEqAbs(USDC.balanceOf(address(vault)), USDC_AMOUNT, DELTA);
         assertApproxEqAbs(DAI.balanceOf(address(vault)), DAI_AMOUNT, DELTA);
 
-        // assets are deposited to the pool
+        // Tokens are deposited to the pool
         (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
         assertApproxEqAbs(balances[0], DAI_AMOUNT, DELTA);
         assertApproxEqAbs(balances[1], USDC_AMOUNT, DELTA);
@@ -273,15 +273,15 @@ contract WeightedPoolTest is Test {
             bytes("")
         );
 
-        // assets are transferred from Bob
+        // Tokens are transferred from Bob
         assertEq(USDC.balanceOf(bob), USDC_AMOUNT + amountCalculated);
         assertEq(DAI.balanceOf(bob), DAI_AMOUNT - DAI_AMOUNT_IN);
 
-        // assets are stored in the Vault
+        // Tokens are stored in the Vault
         assertEq(USDC.balanceOf(address(vault)), USDC_AMOUNT - amountCalculated);
         assertEq(DAI.balanceOf(address(vault)), DAI_AMOUNT + DAI_AMOUNT_IN);
 
-        // assets are deposited to the pool
+        // Tokens are deposited to the pool
         (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], DAI_AMOUNT + DAI_AMOUNT_IN);
         assertEq(balances[1], USDC_AMOUNT - amountCalculated);

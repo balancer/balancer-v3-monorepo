@@ -83,7 +83,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     uint256 private _nonzeroDeltaCount;
 
     /**
-     * @notice Represents the asset due/owed to each handler.
+     * @notice Represents the token due/owed to each handler.
      * @dev Must all net to zero when the last handler is released.
      */
     mapping(address => mapping(IERC20 => int256)) private _tokenDeltas;
@@ -314,8 +314,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      *
      * @param token   The ERC20 token for which the delta is being accounted.
      * @param delta   The difference in the token balance.
-     *                Positive indicates a debit or a decrease in Vault's assets,
-     *                negative indicates a credit or an increase in Vault's assets.
+     *                Positive indicates a debit or a decrease in Vault's tokens,
+     *                negative indicates a credit or an increase in Vault's tokens.
      * @param handler The handler whose balance difference is being accounted for.
      *                Must be the same as the caller of the function.
      */

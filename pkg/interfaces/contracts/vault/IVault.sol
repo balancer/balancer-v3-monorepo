@@ -468,7 +468,7 @@ interface IVault {
      * @param minBptAmountOut Minimum amount of output pool tokens
      * @param kind Add liquidity kind
      * @param userData Additional (optional) user data
-     * @return amountsIn Actual amounts of input assets
+     * @return amountsIn Actual amounts of input tokens
      * @return bptAmountOut Output pool token amount
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
@@ -508,7 +508,7 @@ interface IVault {
      * @param kind Remove liquidity kind
      * @param userData Additional (optional) user data
      * @return bptAmountIn Actual amount of BPT burnt
-     * @return amountsOut Actual amounts of output assets
+     * @return amountsOut Actual amounts of output tokens
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function removeLiquidity(
