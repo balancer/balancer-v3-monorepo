@@ -100,14 +100,12 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         return bptAmountOut;
     }
 
-    /**
-     * @dev Get the current invariant.
-     * @return The current value of the invariant
-     */
+    /// @inheritdoc IBasePool
     function computeInvariant(uint256[] memory balancesLiveScaled18) public view returns (uint256) {
         return WeightedMath.computeInvariant(_getNormalizedWeights(), balancesLiveScaled18);
     }
 
+    /// @inheritdoc IBasePool
     function computeBalance(
         uint256[] memory balances,
         uint256 tokenInIndex,
