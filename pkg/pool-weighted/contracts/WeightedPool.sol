@@ -113,7 +113,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
     ) external view returns (uint256 newBalance) {
         return
             WeightedMath.computeBalanceOutGivenInvariant(
-                balances[tokenInIndex],
+                balancesLiveScaled18[tokenInIndex],
                 _getNormalizedWeights()[tokenInIndex],
                 invariantRatio
             );
