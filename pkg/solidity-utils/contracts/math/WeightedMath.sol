@@ -79,7 +79,7 @@ library WeightedMath {
         uint256 invariantRatio
     ) internal pure returns (uint256 invariant) {
         /******************************************************************************************
-        // calculatetBalanceGivenInvariant                                                       //
+        // calculateBalanceGivenInvariant                                                       //
         // o = balanceOut                                                                        //
         // b = balanceIn                      (1 / w)                                            //
         // w = weight              o = b * i ^                                                   //

@@ -19,6 +19,8 @@ import {
     Rounding
 } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
+import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
@@ -29,11 +31,11 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
-import { ERC20MultiToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20MultiToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
+import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
 
 contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
@@ -606,8 +608,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
             // if callback is enabled, then update balances
             if (
-                IBasePool(params.pool).onAfterSwap(
-                    IBasePool.AfterSwapParams({
+                IPoolCallbacks(params.pool).onAfterSwap(
+                    IPoolCallbacks.AfterSwapParams({
                         kind: params.kind,
                         tokenIn: params.tokenIn,
                         tokenOut: params.tokenOut,
@@ -1097,7 +1099,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         if (poolData.config.callbacks.shouldCallBeforeAddLiquidity) {
             // TODO: check if `before` needs kind.
             if (
-                IBasePool(params.pool).onBeforeAddLiquidity(
+                IPoolCallbacks(params.pool).onBeforeAddLiquidity(
                     params.to,
                     params.maxAmountsIn,
                     params.minBptAmountOut,
@@ -1123,7 +1125,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
         if (poolData.config.callbacks.shouldCallAfterAddLiquidity) {
             if (
-                IBasePool(params.pool).onAfterAddLiquidity(
+                IPoolCallbacks(params.pool).onAfterAddLiquidity(
                     params.to,
                     amountsInScaled18,
                     bptAmountOut,
@@ -1185,7 +1187,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         } else if (params.kind == AddLiquidityKind.CUSTOM) {
             _poolConfig[params.pool].requireSupportsAddLiquidityCustom();
 
-            (amountsInScaled18, bptAmountOut, returnData) = IBasePool(params.pool).onAddLiquidityCustom(
+            (amountsInScaled18, bptAmountOut, returnData) = IPoolLiquidity(params.pool).onAddLiquidityCustom(
                 params.to,
                 params.maxAmountsIn,
                 params.minBptAmountOut,
@@ -1250,7 +1252,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         if (poolData.config.callbacks.shouldCallBeforeRemoveLiquidity) {
             // TODO: check if `before` callback needs kind.
             if (
-                IBasePool(params.pool).onBeforeRemoveLiquidity(
+                IPoolCallbacks(params.pool).onBeforeRemoveLiquidity(
                     params.from,
                     params.maxBptAmountIn,
                     params.minAmountsOut,
@@ -1275,7 +1277,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
         if (poolData.config.callbacks.shouldCallAfterRemoveLiquidity) {
             if (
-                IBasePool(params.pool).onAfterRemoveLiquidity(
+                IPoolCallbacks(params.pool).onAfterRemoveLiquidity(
                     params.from,
                     bptAmountIn,
                     amountsOutScaled18,
@@ -1376,7 +1378,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == RemoveLiquidityKind.CUSTOM) {
-            (bptAmountIn, amountsOutScaled18, returnData) = IBasePool(params.pool).onRemoveLiquidityCustom(
+            (bptAmountIn, amountsOutScaled18, returnData) = IPoolLiquidity(params.pool).onRemoveLiquidityCustom(
                 params.from,
                 params.maxBptAmountIn,
                 params.minAmountsOut,

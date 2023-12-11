@@ -8,6 +8,7 @@ import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
@@ -187,7 +188,7 @@ contract CallbacksTest is Test {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IBasePool.onBeforeAddLiquidity.selector,
+                IPoolCallbacks.onBeforeAddLiquidity.selector,
                 bob,
                 [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
                 BPT_AMOUNT_ROUND_DOWN,
@@ -228,7 +229,7 @@ contract CallbacksTest is Test {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IBasePool.onBeforeRemoveLiquidity.selector,
+                IPoolCallbacks.onBeforeRemoveLiquidity.selector,
                 alice,
                 BPT_AMOUNT,
                 [DEFAULT_AMOUNT_ROUND_DOWN, DEFAULT_AMOUNT_ROUND_DOWN].toMemoryArray(),
@@ -270,7 +271,7 @@ contract CallbacksTest is Test {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IBasePool.onAfterAddLiquidity.selector,
+                IPoolCallbacks.onAfterAddLiquidity.selector,
                 bob,
                 [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
                 BPT_AMOUNT_ROUND_DOWN,
@@ -311,7 +312,7 @@ contract CallbacksTest is Test {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IBasePool.onAfterRemoveLiquidity.selector,
+                IPoolCallbacks.onAfterRemoveLiquidity.selector,
                 alice,
                 BPT_AMOUNT,
                 [DEFAULT_AMOUNT_ROUND_DOWN, DEFAULT_AMOUNT_ROUND_DOWN].toMemoryArray(),

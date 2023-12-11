@@ -7,10 +7,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
-import { BasePool } from "@balancer-labs/v3-vault/contracts/BasePool.sol";
+import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -18,7 +17,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 
 /// @notice Basic Weighted Pool with immutable weights.
-contract WeightedPool is BasePool {
+contract WeightedPool is IBasePool, BalancerPoolToken {
     using FixedPoint for uint256;
     using ScalingHelpers for *;
 
@@ -47,7 +46,7 @@ contract WeightedPool is BasePool {
     /// @dev Indicates that the sum of the pool tokens' weights is not FP 1.
     error NormalizedWeightInvariant();
 
-    constructor(NewPoolParams memory params, IVault vault) BasePool(vault, params.name, params.symbol) {
+    constructor(NewPoolParams memory params, IVault vault) BalancerPoolToken(vault, params.name, params.symbol) {
         uint256 numTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
 
@@ -80,69 +79,10 @@ contract WeightedPool is BasePool {
         _normalizedWeight3 = numTokens > 3 ? params.normalizedWeights[3] : 0;
     }
 
-    function _getNormalizedWeight(IERC20 token) internal view virtual returns (uint256) {
-        // prettier-ignore
-        if (token == _token0) { return _normalizedWeight0; }
-        else if (token == _token1) { return _normalizedWeight1; }
-        else if (token == _token2) { return _normalizedWeight2; }
-        else if (token == _token3) { return _normalizedWeight3; }
-        else {
-            revert IVault.InvalidToken();
-        }
+    /// @inheritdoc IBasePool
+    function getPoolTokens() public view returns (IERC20[] memory tokens) {
+        return getVault().getPoolTokens(address(this));
     }
-
-    function _getNormalizedWeights() internal view virtual returns (uint256[] memory) {
-        uint256[] memory normalizedWeights = new uint256[](_totalTokens);
-
-        // prettier-ignore
-        normalizedWeights[0] = _normalizedWeight0;
-        normalizedWeights[1] = _normalizedWeight1;
-        if (_totalTokens > 2) {
-            normalizedWeights[2] = _normalizedWeight2;
-        } else {
-            return normalizedWeights;
-        }
-        if (_totalTokens > 3) {
-            normalizedWeights[3] = _normalizedWeight3;
-        } else {
-            return normalizedWeights;
-        }
-
-        return normalizedWeights;
-    }
-
-    /**
-     * @dev Get the current invariant.
-     * @return The current value of the invariant
-     */
-    function computeInvariant(uint256[] memory balancesLiveScaled18) public view returns (uint256) {
-        return WeightedMath.computeInvariant(_getNormalizedWeights(), balancesLiveScaled18);
-    }
-
-    function computeBalance(
-        uint256[] memory balances,
-        uint256 tokenInIndex,
-        uint256 invariantRatio
-    ) external view returns (uint256 newBalance) {
-        return
-            WeightedMath.computeBalanceOutGivenInvariant(
-                balances[tokenInIndex],
-                _getNormalizedWeights()[tokenInIndex],
-                invariantRatio
-            );
-    }
-
-    /**
-     * @dev Get the normalized weights.
-     * @return An array of normalized weights, corresponding to the pool tokens
-     */
-    function getNormalizedWeights() external view returns (uint256[] memory) {
-        return _getNormalizedWeights();
-    }
-
-    /***************************************************************************
-                               Pool Initialization
-    ***************************************************************************/
 
     /// @inheritdoc IBasePool
     function onInitialize(
@@ -160,9 +100,32 @@ contract WeightedPool is BasePool {
         return bptAmountOut;
     }
 
-    /***************************************************************************
-                                       Swaps
-    ***************************************************************************/
+    /// @inheritdoc IBasePool
+    function computeInvariant(uint256[] memory balancesLiveScaled18) public view returns (uint256) {
+        return WeightedMath.computeInvariant(_getNormalizedWeights(), balancesLiveScaled18);
+    }
+
+    /// @inheritdoc IBasePool
+    function computeBalance(
+        uint256[] memory balancesLiveScaled18,
+        uint256 tokenInIndex,
+        uint256 invariantRatio
+    ) external view returns (uint256 newBalance) {
+        return
+            WeightedMath.computeBalanceOutGivenInvariant(
+                balancesLiveScaled18[tokenInIndex],
+                _getNormalizedWeights()[tokenInIndex],
+                invariantRatio
+            );
+    }
+
+    /**
+     * @dev Get the normalized weights.
+     * @return An array of normalized weights, corresponding to the pool tokens
+     */
+    function getNormalizedWeights() external view returns (uint256[] memory) {
+        return _getNormalizedWeights();
+    }
 
     /// @inheritdoc IBasePool
     function onSwap(IBasePool.SwapParams memory request) public view onlyVault returns (uint256) {
@@ -193,12 +156,36 @@ contract WeightedPool is BasePool {
         }
     }
 
-    /// @inheritdoc IBasePool
-    function onAfterSwap(
-        IBasePool.AfterSwapParams calldata params,
-        uint256 amountCalculatedScaled18
-    ) external pure override returns (bool success) {
-        // TODO: review the need of this.
-        return params.tokenIn != params.tokenOut && amountCalculatedScaled18 > 0;
+    function _getNormalizedWeight(IERC20 token) internal view virtual returns (uint256) {
+        // prettier-ignore
+        if (token == _token0) { return _normalizedWeight0; }
+        else if (token == _token1) { return _normalizedWeight1; }
+        else if (token == _token2) { return _normalizedWeight2; }
+        else if (token == _token3) { return _normalizedWeight3; }
+        else {
+            revert IVault.InvalidToken();
+        }
+    }
+
+    function _getNormalizedWeights() internal view virtual returns (uint256[] memory) {
+        uint256 numTokens = _totalTokens;
+
+        uint256[] memory normalizedWeights = new uint256[](numTokens);
+
+        // prettier-ignore
+        normalizedWeights[0] = _normalizedWeight0;
+        normalizedWeights[1] = _normalizedWeight1;
+        if (numTokens > 2) {
+            normalizedWeights[2] = _normalizedWeight2;
+        } else {
+            return normalizedWeights;
+        }
+        if (numTokens > 3) {
+            normalizedWeights[3] = _normalizedWeight3;
+        } else {
+            return normalizedWeights;
+        }
+
+        return normalizedWeights;
     }
 }
