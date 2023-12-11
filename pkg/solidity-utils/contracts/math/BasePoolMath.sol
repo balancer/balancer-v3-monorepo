@@ -105,7 +105,7 @@ library BasePoolMath {
         uint256[] memory exactAmounts,
         uint256 totalSupply,
         uint256 swapFeePercentage,
-        function(uint256[] memory) external view returns (uint256)computeInvariant 
+        function(uint256[] memory) external view returns (uint256) computeInvariant
     ) internal view returns (uint256) {
         // Determine the number of tokens in the pool.
         uint256 numTokens = currentBalances.length;

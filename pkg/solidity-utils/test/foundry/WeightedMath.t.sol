@@ -50,7 +50,13 @@ contract WeightedMathTest is Test {
         uint256 roundedUpAmountGiven = flipBit ? amountGiven + 1 : amountGiven;
         uint256 roundedDownAmountGiven = flipBit ? amountGiven - 1 : amountGiven;
 
-        uint256 roundedUpResult = mock.computeOutGivenIn(balanceIn, weightIn, balanceOut, weightOut, roundedUpAmountGiven);
+        uint256 roundedUpResult = mock.computeOutGivenIn(
+            balanceIn,
+            weightIn,
+            balanceOut,
+            weightOut,
+            roundedUpAmountGiven
+        );
 
         uint256 roundedDownResult = mock.computeOutGivenIn(
             balanceIn,
@@ -87,7 +93,13 @@ contract WeightedMathTest is Test {
         uint256 roundedUpAmountGiven = flipBit ? amountGiven + 1 : amountGiven;
         uint256 roundedDownAmountGiven = flipBit ? amountGiven - 1 : amountGiven;
 
-        uint256 roundedUpResult = mock.computeInGivenOut(balanceIn, weightIn, balanceOut, weightOut, roundedUpAmountGiven);
+        uint256 roundedUpResult = mock.computeInGivenOut(
+            balanceIn,
+            weightIn,
+            balanceOut,
+            weightOut,
+            roundedUpAmountGiven
+        );
 
         uint256 roundedDownResult = mock.computeInGivenOut(
             balanceIn,
@@ -188,7 +200,13 @@ contract WeightedMathTest is Test {
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
         uint256 totalSupply = bound(rawTotalSupply, totalBalance, totalBalance * 100);
 
-        uint256 standardResult = mock.computeBptInGivenExactTokensOut(balances, weights, amountsOut, totalSupply, swapFee);
+        uint256 standardResult = mock.computeBptInGivenExactTokensOut(
+            balances,
+            weights,
+            amountsOut,
+            totalSupply,
+            swapFee
+        );
 
         uint256[] memory roundedUpBalances = new uint256[](2);
         uint256[] memory roundedDownBalances = new uint256[](2);

@@ -33,7 +33,11 @@ contract WordCodecTest is Test {
         assertEq(data & ~mask, bytes32(0));
     }
 
-    function _getAdjustedValues(uint256 input, uint8 bits, uint256 offset) private pure returns (uint256, uint8, uint256) {
+    function _getAdjustedValues(
+        uint256 input,
+        uint8 bits,
+        uint256 offset
+    ) private pure returns (uint256, uint8, uint256) {
         vm.assume(bits > 0);
         vm.assume(input < (1 << (255 - 1)));
 
