@@ -4,7 +4,6 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { IRateProvider } from "./IRateProvider.sol";
 
@@ -475,7 +474,7 @@ interface IVault {
      * to transfer tokens from any user, given that it holds all allowances.
      *
      * @param params Parameters for the add liquidity (see above for struct definition)
-     * @return amountsIn Actual amounts of input assets
+     * @return amountsIn Actual amounts of input tokens
      * @return bptAmountOut Output pool token amount
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
@@ -522,7 +521,7 @@ interface IVault {
      *
      * @param params Parameters for the remove liquidity (see above for struct definition)
      * @return bptAmountIn Actual amount of BPT burnt
-     * @return amountsOut Actual amounts of output assets
+     * @return amountsOut Actual amounts of output tokens
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function removeLiquidity(

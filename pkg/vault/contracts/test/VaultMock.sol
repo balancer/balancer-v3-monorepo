@@ -9,7 +9,6 @@ import { PoolConfig, PoolData, Rounding } from "@balancer-labs/v3-interfaces/con
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";

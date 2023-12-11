@@ -10,7 +10,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
@@ -20,9 +19,8 @@ import { Vault } from "../../contracts/Vault.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
 
-contract BalancerPoolTokenTest is Test {
-    using AssetHelpers for address[];
-    using ArrayHelpers for address[2];
+contract ERC20PoolTokenTest is Test {
+    using ArrayHelpers for *;
 
     VaultMock vault;
     BasicAuthorizerMock authorizer;
