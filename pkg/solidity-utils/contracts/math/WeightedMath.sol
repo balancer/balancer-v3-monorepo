@@ -52,7 +52,7 @@ library WeightedMath {
     // Invariant is used to collect protocol swap fees by comparing its value between two times.
     // So we can round always to the same direction. It is also used to initiate the BPT amount
     // and, because there is a minimum BPT, we round down the invariant.
-    function calculateInvariant(
+    function computeInvariant(
         uint256[] memory normalizedWeights,
         uint256[] memory balances
     ) internal pure returns (uint256 invariant) {
@@ -73,7 +73,7 @@ library WeightedMath {
         }
     }
 
-    function calculateBalanceOutGivenInvariant(
+    function computeBalanceOutGivenInvariant(
         uint256 currentBalance,
         uint256 weight,
         uint256 invariantRatio
@@ -94,7 +94,7 @@ library WeightedMath {
 
     // Computes how many tokens can be taken out of a pool if `amountIn` are sent, given the
     // current balances and weights.
-    function calcOutGivenIn(
+    function computeOutGivenIn(
         uint256 balanceIn,
         uint256 weightIn,
         uint256 balanceOut,
@@ -131,7 +131,7 @@ library WeightedMath {
 
     // Computes how many tokens must be sent to a pool in order to take `amountOut`, given the
     // current balances and weights.
-    function calcInGivenOut(
+    function computeInGivenOut(
         uint256 balanceIn,
         uint256 weightIn,
         uint256 balanceOut,
@@ -169,7 +169,7 @@ library WeightedMath {
         return balanceIn.mulUp(ratio);
     }
 
-    function calcBptOutGivenExactTokensIn(
+    function computeBptOutGivenExactTokensIn(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory amountsIn,
@@ -201,7 +201,7 @@ library WeightedMath {
         return bptOut;
     }
 
-    function calcBptOutGivenExactTokenIn(
+    function computeBptOutGivenExactTokenIn(
         uint256 balance,
         uint256 normalizedWeight,
         uint256 amountIn,
@@ -291,7 +291,7 @@ library WeightedMath {
         }
     }
 
-    function calcTokenInGivenExactBptOut(
+    function computeTokenInGivenExactBptOut(
         uint256 balance,
         uint256 normalizedWeight,
         uint256 bptAmountOut,
@@ -330,7 +330,7 @@ library WeightedMath {
         return nonTaxableAmount + taxableAmountPlusFees;
     }
 
-    function calcBptInGivenExactTokensOut(
+    function computeBptInGivenExactTokensOut(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory amountsOut,
@@ -360,7 +360,7 @@ library WeightedMath {
         return bptTotalSupply.mulUp(invariantRatio.complement());
     }
 
-    function calcBptInGivenExactTokenOut(
+    function computeBptInGivenExactTokenOut(
         uint256 balance,
         uint256 normalizedWeight,
         uint256 amountOut,
@@ -439,7 +439,7 @@ library WeightedMath {
         }
     }
 
-    function calcTokenOutGivenExactBptIn(
+    function computeTokenOutGivenExactBptIn(
         uint256 balance,
         uint256 normalizedWeight,
         uint256 bptAmountIn,
@@ -491,7 +491,7 @@ library WeightedMath {
      * @param totalSupply - the total supply of the Pool's BPT
      * @param normalizedWeight - the normalized weight of the token to be added (normalized relative to final weights)
      */
-    function calcBptOutAddToken(uint256 totalSupply, uint256 normalizedWeight) internal pure returns (uint256) {
+    function computeBptOutAddToken(uint256 totalSupply, uint256 normalizedWeight) internal pure returns (uint256) {
         // The amount of BPT which is equivalent to the token being added may be calculated by the growth in the
         // sum of the token weights, i.e. if we add a token which will make up 50% of the pool then we should receive
         // 50% of the new supply of BPT.

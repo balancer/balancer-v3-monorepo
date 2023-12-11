@@ -38,22 +38,22 @@ interface IBasePool {
     ***************************************************************************/
 
     /**
-     * @notice Calculates and returns the pool's invariant.
+     * @notice Computes and returns the pool's invariant.
      * @dev This function computes the invariant based on current balances
      * @param balancesLiveScaled18 Array of current pool balances for each token in the pool, scaled to 18 decimals
      * @return invariant The calculated invariant of the pool, represented as a uint256
      */
-    function getInvariant(uint256[] memory balancesLiveScaled18) external view returns (uint256 invariant);
+    function computeInvariant(uint256[] memory balancesLiveScaled18) external view returns (uint256 invariant);
 
     /**
-     * @dev Get the new balance of a token after an operation, given the invariant growth ratio and all other
+     * @dev Computes the new balance of a token after an operation, given the invariant growth ratio and all other
      * balances.
      * @param balancesLiveScaled18 Current live balances (adjusted for decimals, rates, etc.)
      * @param tokenInIndex The index of the token we're computing the balance for, in token registration order
      * @param invariantRatio The ratio of the new invariant (after an operation) to the old
      * @return newBalance The new balance of the selected token, after the operation
      */
-    function calcBalance(
+    function computeBalance(
         uint256[] memory balancesLiveScaled18,
         uint256 tokenInIndex,
         uint256 invariantRatio
