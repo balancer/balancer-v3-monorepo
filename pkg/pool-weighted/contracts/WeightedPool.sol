@@ -119,7 +119,6 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
             );
     }
 
-
     /**
      * @dev Get the normalized weights.
      * @return An array of normalized weights, corresponding to the pool tokens
