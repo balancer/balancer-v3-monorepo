@@ -8,7 +8,7 @@ library BasePoolMath {
     using FixedPoint for uint256;
 
     /**
-     * @notice Calculates the proportional amounts of tokens to be deposited into the pool.
+     * @notice Computes the proportional amounts of tokens to be deposited into the pool.
      * @dev This function computes the amount of each token that needs to be deposited
      *      in order to mint a specific amount of pool tokens (BPT)
      *      It ensures that the amounts of tokens deposited are proportional to the current pool balances
@@ -45,7 +45,7 @@ library BasePoolMath {
     }
 
     /**
-     * @notice Calculates the proportional amounts of tokens to be withdrawn from the pool.
+     * @notice Computes the proportional amounts of tokens to be withdrawn from the pool.
      * @dev This function computes the amount of each token that will be withdrawn in exchange
      *      for burning a specific amount of pool tokens (BPT).
      *      It ensures that the amounts of tokens withdrawn are proportional to the current pool balances.
@@ -82,7 +82,7 @@ library BasePoolMath {
     }
 
     /**
-     * @notice Calculates the amount of pool tokens (BPT) to be minted for an unbalanced liquidity addition.
+     * @notice Computes the amount of pool tokens (BPT) to be minted for an unbalanced liquidity addition.
      * @dev This function handles liquidity addition where the proportion of tokens
      *      deposited does not match the current pool composition.
      *      It considers the current balances, exact amounts of tokens to be added, total supply,
@@ -93,7 +93,7 @@ library BasePoolMath {
      * @param exactAmounts Array of exact amounts for each token to be added to the pool
      * @param totalSupply Current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the transaction
-     * @param calcInvariant A function pointer to the invariant calculation function
+     * @param computeInvariant A function pointer to the invariant calculation function
      * @return bptAmountOut The amount of pool tokens (BPT) that will be minted as a result of the liquidity addition
      */
     function computeAddLiquidityUnbalanced(
@@ -101,7 +101,7 @@ library BasePoolMath {
         uint256[] memory exactAmounts,
         uint256 totalSupply,
         uint256 swapFeePercentage,
-        function(uint256[] memory) external view returns (uint256) calcInvariant
+        function(uint256[] memory) external view returns (uint256) computeInvariant
     ) internal view returns (uint256 bptAmountOut) {
         // Determine the number of tokens in the pool.
         uint256 numTokens = currentBalances.length;
@@ -115,10 +115,10 @@ library BasePoolMath {
         }
 
         // Calculate the invariant using the current balances (before the addition).
-        uint256 currentInvariant = calcInvariant(currentBalances);
+        uint256 currentInvariant = computeInvariant(currentBalances);
 
         // Calculate the new invariant ratio by dividing the new invariant by the old invariant.
-        uint256 invariantRatio = calcInvariant(newBalances).divDown(currentInvariant);
+        uint256 invariantRatio = computeInvariant(newBalances).divDown(currentInvariant);
 
         // Loop through each token to apply fees if necessary.
         for (uint256 index = 0; index < currentBalances.length; index++) {
@@ -133,7 +133,7 @@ library BasePoolMath {
         }
 
         // Calculate the new invariant with fees applied.
-        uint256 invariantWithFeesApplied = calcInvariant(newBalances);
+        uint256 invariantWithFeesApplied = computeInvariant(newBalances);
 
         // Calculate the amount of BPT to mint. This is done by multiplying the
         // total supply with the ratio of the change in invariant.
@@ -142,7 +142,7 @@ library BasePoolMath {
     }
 
     /**
-     * @notice Calculates the amount of input token needed to receive an exact amount of pool tokens (BPT)
+     * @notice Computes the amount of input token needed to receive an exact amount of pool tokens (BPT)
      *         in a single-token liquidity addition.
      * @dev This function is used when a user wants to add liquidity to
             the pool by specifying the exact amount of pool tokens they want to receive,
@@ -153,7 +153,7 @@ library BasePoolMath {
      * @param exactBptAmountOut Exact amount of pool tokens (BPT) the user wants to receive
      * @param totalSupply Current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the taxable amount
-     * @param calcBalance A function pointer to the balance calculation function
+     * @param computeBalance A function pointer to the balance calculation function
      * @return amountInWithFee The amount of input token needed, including the swap fee, to receive the exact BPT amount
      */
     function computeAddLiquiditySingleTokenExactOut(
@@ -162,12 +162,12 @@ library BasePoolMath {
         uint256 exactBptAmountOut,
         uint256 totalSupply,
         uint256 swapFeePercentage,
-        function(uint256[] memory, uint256, uint256) external view returns (uint256) calcBalance
+        function(uint256[] memory, uint256, uint256) external view returns (uint256) computeBalance
     ) internal view returns (uint256 amountInWithFee) {
         // Calculate new supply after minting exactBptAmountOut
         uint256 newSupply = exactBptAmountOut + totalSupply;
         // Calculate the initial amount of the input token needed for the desired amount of BPT out
-        uint256 newBalance = calcBalance(currentBalances, tokenInIndex, newSupply.divDown(totalSupply));
+        uint256 newBalance = computeBalance(currentBalances, tokenInIndex, newSupply.divDown(totalSupply));
         uint256 amountIn = newBalance - currentBalances[tokenInIndex];
 
         // Calculate the taxable amount, which is the difference
@@ -184,7 +184,7 @@ library BasePoolMath {
     }
 
     /**
-     * @notice Calculates the amount of pool tokens to burn to receive exact amount out.
+     * @notice Computes the amount of pool tokens to burn to receive exact amount out.
      * @param currentBalances Current pool balances, in the same order as the tokens registered in the pool
      * @param tokenOutIndex Index of the token to receive in exchange for pool tokens burned
      * @param exactAmountOut Exact amount of tokens to receive
@@ -198,7 +198,7 @@ library BasePoolMath {
         uint256 exactAmountOut,
         uint256 totalSupply,
         uint256 swapFeePercentage,
-        function(uint256[] memory) external view returns (uint256) calcInvariant
+        function(uint256[] memory) external view returns (uint256) computeInvariant
     ) internal view returns (uint256 bptAmountIn) {
         // Determine the number of tokens in the pool.
         uint256 numTokens = currentBalances.length;
@@ -215,10 +215,10 @@ library BasePoolMath {
         newBalances[tokenOutIndex] = newBalances[tokenOutIndex] - exactAmountOut;
 
         // Calculate the invariant using the current balances.
-        uint256 currentInvariant = calcInvariant(currentBalances);
+        uint256 currentInvariant = computeInvariant(currentBalances);
 
         // Calculate the new invariant ratio by dividing the new invariant by the current invariant.
-        uint256 invariantRatio = calcInvariant(newBalances).divUp(currentInvariant);
+        uint256 invariantRatio = computeInvariant(newBalances).divUp(currentInvariant);
 
         uint256 taxableAmount = invariantRatio.mulUp(currentBalances[tokenOutIndex]) - newBalances[tokenOutIndex];
 
@@ -228,14 +228,14 @@ library BasePoolMath {
         newBalances[tokenOutIndex] = newBalances[tokenOutIndex] - fee;
 
         // Calculate the new invariant with fees applied.
-        uint256 invariantWithFeesApplied = calcInvariant(newBalances);
+        uint256 invariantWithFeesApplied = computeInvariant(newBalances);
 
         // mulUp/divDown maximize the amount of tokens burned for the security reasons
         return totalSupply.mulUp(currentInvariant - invariantWithFeesApplied).divDown(currentInvariant);
     }
 
     /**
-     * @notice Calculates the amount of a single token to withdraw for a given amount of BPT to burn.
+     * @notice Computes the amount of a single token to withdraw for a given amount of BPT to burn.
      * @dev It computes the output token amount for an exact input of BPT, considering current balances,
      *      total supply, and swap fees.
      * @param currentBalances The current token balances in the pool.
@@ -243,7 +243,7 @@ library BasePoolMath {
      * @param exactBptAmountIn The exact amount of BPT the user wants to burn.
      * @param totalSupply The total supply of BPT in the pool.
      * @param swapFeePercentage The swap fee percentage applied to the taxable amount.
-     * @param calcBalance A function pointer to the balance calculation function.
+     * @param computeBalance A function pointer to the balance calculation function.
      * @return amountOutWithFee The amount of the output token the user receives, accounting for swap fees.
      */
     function computeRemoveLiquiditySingleTokenExactIn(
@@ -252,12 +252,12 @@ library BasePoolMath {
         uint256 exactBptAmountIn,
         uint256 totalSupply,
         uint256 swapFeePercentage,
-        function(uint256[] memory, uint256, uint256) external view returns (uint256) calcBalance
+        function(uint256[] memory, uint256, uint256) external view returns (uint256) computeBalance
     ) internal view returns (uint256 amountOutWithFee) {
         // Calculate new supply accounting for burning exactBptAmountIn
         uint256 newSupply = totalSupply - exactBptAmountIn;
         // Calculate the new balance of the output token after the BPT burn.
-        uint256 newBalance = calcBalance(currentBalances, tokenOutIndex, newSupply.divDown(totalSupply));
+        uint256 newBalance = computeBalance(currentBalances, tokenOutIndex, newSupply.divDown(totalSupply));
 
         // Compute the amount to be withdrawn from the pool.
         uint256 amountOut = currentBalances[tokenOutIndex] - newBalance;

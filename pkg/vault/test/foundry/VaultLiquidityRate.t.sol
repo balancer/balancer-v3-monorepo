@@ -104,7 +104,7 @@ contract VaultLiquidityWithRatesTest is Test {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IBasePool.calcBalance.selector,
+                IBasePool.computeBalance.selector,
                 [FixedPoint.mulDown(WSTETH_AMOUNT_IN, MOCK_RATE), DAI_AMOUNT_IN].toMemoryArray(), // liveBalancesScaled18
                 0,
                 2e18 // 200% growth
@@ -192,7 +192,7 @@ contract VaultLiquidityWithRatesTest is Test {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IBasePool.calcBalance.selector,
+                IBasePool.computeBalance.selector,
                 [startingBalances.balancesLiveScaled18[0], startingBalances.balancesLiveScaled18[1]].toMemoryArray(),
                 0, // tokenOutIndex
                 50e16 // invariantRatio

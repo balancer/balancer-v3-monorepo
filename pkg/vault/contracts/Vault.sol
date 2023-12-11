@@ -1167,7 +1167,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 params.maxAmountsIn,
                 _totalSupply(params.pool),
                 _getSwapFeePercentage(poolData.config),
-                IBasePool(params.pool).getInvariant
+                IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             bptAmountOut = params.minBptAmountOut;
@@ -1180,7 +1180,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 bptAmountOut,
                 _totalSupply(params.pool),
                 _getSwapFeePercentage(poolData.config),
-                IBasePool(params.pool).calcBalance
+                IBasePool(params.pool).computeBalance
             );
         } else if (params.kind == AddLiquidityKind.CUSTOM) {
             _poolConfig[params.pool].requireSupportsAddLiquidityCustom();
@@ -1362,7 +1362,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 bptAmountIn,
                 _totalSupply(params.pool),
                 _getSwapFeePercentage(poolData.config),
-                IBasePool(params.pool).calcBalance
+                IBasePool(params.pool).computeBalance
             );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             amountsOutScaled18 = params.minAmountsOut;
@@ -1373,7 +1373,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 amountsOutScaled18[InputHelpers.getSingleInputIndex(params.minAmountsOut)],
                 _totalSupply(params.pool),
                 _getSwapFeePercentage(poolData.config),
-                IBasePool(params.pool).getInvariant
+                IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == RemoveLiquidityKind.CUSTOM) {
             (bptAmountIn, amountsOutScaled18, returnData) = IBasePool(params.pool).onRemoveLiquidityCustom(

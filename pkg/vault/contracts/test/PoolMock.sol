@@ -58,7 +58,7 @@ contract PoolMock is BasePool {
         return (MIN_INIT_BPT > exactAmountsIn[0] ? MIN_INIT_BPT : exactAmountsIn[0]);
     }
 
-    function getInvariant(uint256[] memory balances) external pure returns (uint256) {
+    function computeInvariant(uint256[] memory balances) external pure returns (uint256) {
         // inv = x + y
         uint256 invariant;
         for (uint256 index = 0; index < balances.length; index++) {
@@ -67,7 +67,7 @@ contract PoolMock is BasePool {
         return invariant;
     }
 
-    function calcBalance(
+    function computeBalance(
         uint256[] memory balances,
         uint256 tokenInIndex,
         uint256 invariantRatio
