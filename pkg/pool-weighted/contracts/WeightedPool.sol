@@ -107,7 +107,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
 
     /// @inheritdoc IBasePool
     function computeBalance(
-        uint256[] memory balances,
+        uint256[] memory balancesLiveScaled18,
         uint256 tokenInIndex,
         uint256 invariantRatio
     ) external view returns (uint256 newBalance) {
