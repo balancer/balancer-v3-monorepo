@@ -1091,17 +1091,17 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // If unbalanced, higher balances = lower invariant ratio with fees.
         // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
         PoolData memory poolData = _getPoolData(params.pool, Rounding.ROUND_UP);
-        InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.maxAmountsIn.length);
+        InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.amountsInScaled18.length);
 
         // Amounts are entering pool math, so round down.
-        params.maxAmountsIn.toScaled18ApplyRateRoundDownArray(poolData.decimalScalingFactors, poolData.tokenRates);
+        params.amountsInScaled18.toScaled18ApplyRateRoundDownArray(poolData.decimalScalingFactors, poolData.tokenRates);
 
         if (poolData.config.callbacks.shouldCallBeforeAddLiquidity) {
             // TODO: check if `before` needs kind.
             if (
                 IPoolCallbacks(params.pool).onBeforeAddLiquidity(
                     params.to,
-                    params.maxAmountsIn,
+                    params.amountsInScaled18,
                     params.minBptAmountOut,
                     poolData.balancesLiveScaled18,
                     params.userData
@@ -1163,19 +1163,19 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         )
     {
         if (params.kind == AddLiquidityKind.UNBALANCED) {
-            amountsInScaled18 = params.maxAmountsIn;
+            amountsInScaled18 = params.amountsInScaled18;
             bptAmountOut = BasePoolMath.computeAddLiquidityUnbalanced(
                 poolData.balancesLiveScaled18,
-                params.maxAmountsIn,
+                params.amountsInScaled18,
                 _totalSupply(params.pool),
                 _getSwapFeePercentage(poolData.config),
                 IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             bptAmountOut = params.minBptAmountOut;
-            uint256 tokenIndex = InputHelpers.getSingleInputIndex(params.maxAmountsIn);
+            uint256 tokenIndex = InputHelpers.getSingleInputIndex(params.amountsInScaled18);
 
-            amountsInScaled18 = params.maxAmountsIn;
+            amountsInScaled18 = params.amountsInScaled18;
             amountsInScaled18[tokenIndex] = BasePoolMath.computeAddLiquiditySingleTokenExactOut(
                 poolData.balancesLiveScaled18,
                 tokenIndex,
@@ -1189,7 +1189,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
             (amountsInScaled18, bptAmountOut, returnData) = IPoolLiquidity(params.pool).onAddLiquidityCustom(
                 params.to,
-                params.maxAmountsIn,
+                params.amountsInScaled18,
                 params.minBptAmountOut,
                 poolData.balancesLiveScaled18,
                 params.userData
