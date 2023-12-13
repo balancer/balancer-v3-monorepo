@@ -1346,6 +1346,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             bytes memory returnData
         )
     {
+        uint256 tokenOutIndex;
+
         if (params.kind == RemoveLiquidityKind.PROPORTIONAL) {
             bptAmountIn = params.maxBptAmountIn;
             amountsOutScaled18 = BasePoolMath.computeProportionalAmountsOut(
@@ -1357,7 +1359,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             bptAmountIn = params.maxBptAmountIn;
 
             amountsOutScaled18 = params.minAmountsOut;
-            uint256 tokenOutIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
+            tokenOutIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
             amountsOutScaled18[tokenOutIndex] = BasePoolMath.computeRemoveLiquiditySingleTokenExactIn(
                 poolData.balancesLiveScaled18,
                 tokenOutIndex,
@@ -1368,11 +1370,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             amountsOutScaled18 = params.minAmountsOut;
+            tokenOutIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
 
             bptAmountIn = BasePoolMath.computeRemoveLiquiditySingleTokenExactOut(
                 poolData.balancesLiveScaled18,
-                InputHelpers.getSingleInputIndex(params.minAmountsOut),
-                amountsOutScaled18[InputHelpers.getSingleInputIndex(params.minAmountsOut)],
+                tokenOutIndex,
+                amountsOutScaled18[tokenOutIndex],
                 _totalSupply(params.pool),
                 _getSwapFeePercentage(poolData.config),
                 IBasePool(params.pool).computeInvariant
