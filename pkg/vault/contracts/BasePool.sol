@@ -37,11 +37,16 @@ abstract contract BasePool is IBasePool, ERC20PoolToken {
     }
 
     /*******************************************************************************
-                                     Callbacks
+                                      Swap
     *******************************************************************************/
 
     /// @notice Callback performed after a swap. Reverts here if configured but unimplemented.
-    function onAfterSwap(SwapParams calldata, uint256) external view virtual returns (bool) {
+    function onBeforeSwap(SwapParams calldata) external view virtual returns (bool) {
+        revert CallbackNotImplemented();
+    }
+
+    /// @notice Callback performed after a swap. Reverts here if configured but unimplemented.
+    function onAfterSwap(AfterSwapParams calldata, uint256) external view virtual returns (bool) {
         revert CallbackNotImplemented();
     }
 

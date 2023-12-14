@@ -266,6 +266,14 @@ interface IBasePool {
     }
 
     /**
+     * @notice Called before a swap to give the Pool an opportunity to perform actions.
+     *
+     * @param params Swap parameters (see above for struct definition)
+     * @return success True if the pool wishes to proceed with settlement
+     */
+    function onBeforeSwap(SwapParams calldata params) external returns (bool success);
+
+    /**
      * @notice Execute a swap in the pool.
      * @param params Swap parameters (see above for struct definition)
      * @return amountCalculatedScaled18 Calculated amount for the swap
@@ -273,7 +281,7 @@ interface IBasePool {
     function onSwap(SwapParams calldata params) external returns (uint256 amountCalculatedScaled18);
 
     /**
-     * @notice Called after a swap to give the Pool an opportunity to perform actions.
+     * @notice Called after a swap to give the Pool an opportunity to perform actions,
      * once the balances have been updated by the swap.
      *
      * @param params Swap parameters (see above for struct definition)
