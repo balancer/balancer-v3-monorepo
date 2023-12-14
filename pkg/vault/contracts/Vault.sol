@@ -545,7 +545,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN);
         }
 
-        (amountCalculated, amountIn, amountOut) = _swap(params, vars.poolSwapParams, vars, poolData, poolBalances);
+        (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData, poolBalances);
 
         if (poolData.config.callbacks.shouldCallAfterSwap) {
             // if callback is enabled, then update balances
@@ -606,7 +606,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     /// @dev Non-reentrant portion of the swap, which calls the main callback and updates accounting.
     function _swap(
         SwapParams memory vaultSwapParams,
-        IBasePool.SwapParams memory poolSwapParams,
         SwapLocals memory vars,
         PoolData memory poolData,
         EnumerableMap.IERC20ToUint256Map storage poolBalances
@@ -615,7 +614,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
         // If it's a GivenIn swap, vars.swapFeeAmountScaled18 will be zero here, and set based on the amountCalculated.
 
-        vars.amountCalculatedScaled18 = IBasePool(vaultSwapParams.pool).onSwap(poolSwapParams);
+        vars.amountCalculatedScaled18 = IBasePool(vaultSwapParams.pool).onSwap(vars.poolSwapParams);
 
         if (vars.swapFeePercentage > 0 && vaultSwapParams.kind == SwapKind.GIVEN_IN) {
             // Swap fee is a percentage of the amountCalculated for the GIVEN_IN swap
