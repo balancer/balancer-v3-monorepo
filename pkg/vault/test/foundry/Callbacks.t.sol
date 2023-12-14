@@ -65,6 +65,7 @@ contract VaultSwapTest is Test {
         );
 
         PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.callbacks.shouldCallBeforeSwap = true;
         config.callbacks.shouldCallAfterSwap = true;
         vault.setConfig(address(pool), config);
 
@@ -104,14 +105,14 @@ contract VaultSwapTest is Test {
         vm.label(address(DAI), "DAI");
     }
 
-    function testOnAfterSwapCallback() public {
+    function testOnBeforeSwapCallback() public {
         // Calls `onSwap` in the pool.
         vm.prank(bob);
         // Balances are scaled to 18 decimals; DAI already has 18.
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IBasePool.onSwap.selector,
+                IBasePool.onBeforeSwap.selector,
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_IN,
                     tokenIn: IERC20(USDC),
@@ -123,6 +124,57 @@ contract VaultSwapTest is Test {
                     sender: address(router),
                     userData: bytes("")
                 })
+            )
+        );
+        router.swapExactIn(
+            address(pool),
+            USDC,
+            DAI,
+            USDC_AMOUNT_IN,
+            0,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+    }
+
+    function testOnBeforeSwapCallbackRevert() public {
+        // should fail
+        pool.setFailOnBeforeSwapCallback(true);
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(IVault.CallbackFailed.selector));
+        router.swapExactIn(
+            address(pool),
+            USDC,
+            DAI,
+            USDC_AMOUNT_IN,
+            DAI_AMOUNT_IN,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+    }
+
+    function testOnAfterSwapCallback() public {
+        // Calls `onSwap` in the pool.
+        vm.prank(bob);
+        // Balances are scaled to 18 decimals; DAI already has 18.
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IBasePool.onAfterSwap.selector,
+                IBasePool.AfterSwapParams({
+                    kind: IVault.SwapKind.GIVEN_IN,
+                    tokenIn: IERC20(USDC),
+                    tokenOut: IERC20(DAI),
+                    amountInScaled18: USDC_AMOUNT_IN * USDC_SCALING,
+                    amountOutScaled18: DAI_AMOUNT_IN,
+                    tokenInBalanceScaled18: DAI_AMOUNT_IN * 2,
+                    tokenOutBalanceScaled18: 0,
+                    sender: address(router),
+                    userData: bytes("")
+                }),
+                DAI_AMOUNT_IN
             )
         );
         router.swapExactIn(
