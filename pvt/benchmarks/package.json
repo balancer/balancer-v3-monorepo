@@ -7,10 +7,16 @@
   "scripts": {
     "measure-deployment": "hardhat run deployment.ts",
     "benchmark": "yarn measure-deployment",
+    "gas": "forge test -vvv --gas-report",
     "lint": "yarn lint:typescript",
     "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
   },
   "devDependencies": {
+    "@balancer-labs/solidity-toolbox": "workspace:*",
+    "@balancer-labs/v3-interfaces": "workspace:*",
+    "@balancer-labs/v3-pool-weighted": "workspace:*",
+    "@balancer-labs/v3-solidity-utils": "workspace:*",
+    "@balancer-labs/v3-vault": "workspace:*",
     "@nomicfoundation/hardhat-ethers": "^3.0.0",
     "@types/lodash": "^4.14.186",
     "@types/node": "^14.14.31",
