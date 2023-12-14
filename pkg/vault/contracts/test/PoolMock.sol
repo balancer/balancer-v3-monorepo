@@ -76,8 +76,16 @@ contract PoolMock is BasePool {
         return !failOnCallback;
     }
 
+    function setFailOnBeforeSwap(bool fail) external {
+        failOnCallback = fail;
+    }
+
     function setFailOnAfterSwap(bool fail) external {
         failOnCallback = fail;
+    }
+
+    function onBeforeSwap(IBasePool.SwapParams calldata params) external view override returns (bool success) {
+        return params.amountGivenScaled18 > 0 && !failOnCallback;
     }
 
     function onAfterSwap(

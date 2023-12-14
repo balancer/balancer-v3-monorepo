@@ -19,6 +19,7 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
 
     uint256 public constant MIN_INIT_BPT = 1e6;
 
+    bool public failOnBeforeSwapCallback;
     bool public failOnAfterSwapCallback;
     bool public failOnBeforeAddLiquidity;
     bool public failOnAfterAddLiquidity;
@@ -56,6 +57,10 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
         return (MIN_INIT_BPT > exactAmountsIn[0] ? MIN_INIT_BPT : exactAmountsIn[0]);
     }
 
+    function setFailOnBeforeSwapCallback(bool fail) external {
+        failOnBeforeSwapCallback = fail;
+    }
+
     function setFailOnAfterSwapCallback(bool fail) external {
         failOnAfterSwapCallback = fail;
     }
@@ -78,6 +83,10 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
 
     function setMultiplier(uint256 newMultiplier) external {
         _multiplier = newMultiplier;
+    }
+
+    function onBeforeSwap(IBasePool.SwapParams calldata params) external view override returns (bool success) {
+        return params.tokenIn != params.tokenOut && params.amountGivenScaled18 > 0 && !failOnBeforeSwapCallback;
     }
 
     function onAfterSwap(
