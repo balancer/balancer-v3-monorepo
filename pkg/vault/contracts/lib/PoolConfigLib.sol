@@ -53,7 +53,8 @@ library PoolConfigLib {
     uint8 public constant POOL_INITIALIZED_OFFSET = POOL_REGISTERED_OFFSET + 1;
     uint8 public constant POOL_PAUSED_OFFSET = POOL_INITIALIZED_OFFSET + 1;
     uint8 public constant DYNAMIC_SWAP_FEE_OFFSET = POOL_PAUSED_OFFSET + 1;
-    uint8 public constant AFTER_SWAP_OFFSET = DYNAMIC_SWAP_FEE_OFFSET + 1;
+    uint8 public constant BEFORE_SWAP_OFFSET = DYNAMIC_SWAP_FEE_OFFSET + 1;
+    uint8 public constant AFTER_SWAP_OFFSET = BEFORE_SWAP_OFFSET + 1;
     uint8 public constant BEFORE_ADD_LIQUIDITY_OFFSET = AFTER_SWAP_OFFSET + 1;
     uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = BEFORE_ADD_LIQUIDITY_OFFSET + 1;
     uint8 public constant BEFORE_REMOVE_LIQUIDITY_OFFSET = AFTER_ADD_LIQUIDITY_OFFSET + 1;
@@ -119,6 +120,10 @@ library PoolConfigLib {
 
     function getPauseWindowEndTime(PoolConfigBits config) internal pure returns (uint32) {
         return PoolConfigBits.unwrap(config).decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH).toUint32();
+    }
+
+    function shouldCallBeforeSwap(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(BEFORE_SWAP_OFFSET);
     }
 
     function shouldCallAfterSwap(PoolConfigBits config) internal pure returns (bool) {
@@ -235,8 +240,14 @@ library PoolConfigLib {
         }
 
         {
+            configBits = configBits.insertBool(config.callbacks.shouldCallBeforeSwap, BEFORE_SWAP_OFFSET).insertBool(
+                config.callbacks.shouldCallAfterSwap,
+                AFTER_SWAP_OFFSET
+            );
+        }
+
+        {
             configBits = configBits
-                .insertBool(config.callbacks.shouldCallAfterSwap, AFTER_SWAP_OFFSET)
                 .insertBool(config.callbacks.shouldCallBeforeAddLiquidity, BEFORE_ADD_LIQUIDITY_OFFSET)
                 .insertBool(config.callbacks.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET)
                 .insertBool(config.callbacks.shouldCallBeforeRemoveLiquidity, BEFORE_REMOVE_LIQUIDITY_OFFSET)
@@ -332,6 +343,7 @@ library PoolConfigLib {
                     shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),
                     shouldCallBeforeRemoveLiquidity: config.shouldCallBeforeRemoveLiquidity(),
                     shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity(),
+                    shouldCallBeforeSwap: config.shouldCallBeforeSwap(),
                     shouldCallAfterSwap: config.shouldCallAfterSwap()
                 }),
                 liquidityManagement: LiquidityManagement({
