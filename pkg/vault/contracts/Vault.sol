@@ -548,7 +548,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData, poolBalances);
 
         if (poolData.config.callbacks.shouldCallAfterSwap) {
-            // if callback is enabled, then update balances
+            // Adjust balances for the AfterSwap callback.
             (uint256 amountInScaled18, uint256 amountOutScaled18) = params.kind == SwapKind.GIVEN_IN
                 ? (vars.amountGivenScaled18, vars.amountCalculatedScaled18)
                 : (vars.amountCalculatedScaled18, vars.amountGivenScaled18);
