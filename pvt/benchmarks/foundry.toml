@@ -1,0 +1,27 @@
+[profile.default]
+src = 'contracts'
+out = 'forge-artifacts'
+libs = ['node_modules']
+test = 'test/foundry'
+cache_path  = 'forge-cache'
+allow_paths = ['../', '../../node_modules/', '../../pkg']
+remappings = [
+    'ds-test/=../../node_modules/forge-std/lib/ds-test/src/',
+    'forge-std/=../../node_modules/forge-std/src/',
+    '@openzeppelin/=../../node_modules/@openzeppelin/',
+    '@balancer-labs/=../../node_modules/@balancer-labs/'
+]
+gas_reports = ["Router", "Vault", "WeightedPool"]
+optimizer = true
+optimizer_runs = 9999
+solc_version = '0.8.21'
+auto_detect_solc = false
+
+[fuzz]
+runs = 10000
+max_test_rejects = 60000
+
+[profile.intense.fuzz]
+verbosity = 3
+runs = 100000
+max_test_rejects = 600000
