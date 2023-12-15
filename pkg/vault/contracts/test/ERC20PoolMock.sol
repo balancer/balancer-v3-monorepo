@@ -86,14 +86,14 @@ contract ERC20PoolMock is ERC20PoolToken, IBasePool {
     }
 
     function onBeforeSwap(IBasePool.SwapParams calldata params) external view override returns (bool success) {
-        return params.tokenIn != params.tokenOut && params.amountGivenScaled18 > 0 && !failOnBeforeSwapCallback;
+        return params.amountGivenScaled18 > 0 && !failOnBeforeSwapCallback;
     }
 
     function onAfterSwap(
-        IBasePool.AfterSwapParams calldata params,
+        IBasePool.AfterSwapParams calldata,
         uint256 amountCalculated
     ) external view override returns (bool success) {
-        return params.tokenIn != params.tokenOut && amountCalculated > 0 && !failOnAfterSwapCallback;
+        return amountCalculated > 0 && !failOnAfterSwapCallback;
     }
 
     function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
