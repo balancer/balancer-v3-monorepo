@@ -11,7 +11,7 @@ remappings = [
     '@openzeppelin/=../../node_modules/@openzeppelin/',
     '@balancer-labs/=../../node_modules/@balancer-labs/'
 ]
-gas_reports = ["Router"]
+gas_reports = ["Router", "Vault", "WeightedPool"]
 optimizer = true
 optimizer_runs = 9999
 solc_version = '0.8.21'
