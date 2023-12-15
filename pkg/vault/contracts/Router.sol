@@ -436,8 +436,8 @@ contract Router is IRouter, ReentrancyGuard {
         address pool,
         IERC20 tokenIn,
         IERC20 tokenOut,
-        uint256 amountGiven,
-        uint256 limit,
+        uint256 exactAmountIn,
+        uint256 minAmountOut,
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
@@ -453,8 +453,8 @@ contract Router is IRouter, ReentrancyGuard {
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
-                            amountGiven: amountGiven,
-                            limit: limit,
+                            amountGiven: exactAmountIn,
+                            limit: minAmountOut,
                             deadline: deadline,
                             wethIsEth: wethIsEth,
                             userData: userData
@@ -470,8 +470,8 @@ contract Router is IRouter, ReentrancyGuard {
         address pool,
         IERC20 tokenIn,
         IERC20 tokenOut,
-        uint256 amountGiven,
-        uint256 limit,
+        uint256 exactAmountOut,
+        uint256 maxAmountIn,
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
@@ -487,8 +487,8 @@ contract Router is IRouter, ReentrancyGuard {
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
-                            amountGiven: amountGiven,
-                            limit: limit,
+                            amountGiven: exactAmountOut,
+                            limit: maxAmountIn,
                             deadline: deadline,
                             wethIsEth: wethIsEth,
                             userData: userData
@@ -583,7 +583,7 @@ contract Router is IRouter, ReentrancyGuard {
         address pool,
         IERC20 tokenIn,
         IERC20 tokenOut,
-        uint256 amountGiven,
+        uint256 exactAmountIn,
         bytes calldata userData
     ) external returns (uint256 amountCalculated) {
         return
@@ -597,7 +597,7 @@ contract Router is IRouter, ReentrancyGuard {
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
-                            amountGiven: amountGiven,
+                            amountGiven: exactAmountIn,
                             limit: 0,
                             deadline: type(uint256).max,
                             wethIsEth: false,
@@ -614,7 +614,7 @@ contract Router is IRouter, ReentrancyGuard {
         address pool,
         IERC20 tokenIn,
         IERC20 tokenOut,
-        uint256 amountGiven,
+        uint256 exactAmountOut,
         bytes calldata userData
     ) external returns (uint256 amountCalculated) {
         return
@@ -628,7 +628,7 @@ contract Router is IRouter, ReentrancyGuard {
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
-                            amountGiven: amountGiven,
+                            amountGiven: exactAmountOut,
                             limit: type(uint256).max,
                             deadline: type(uint256).max,
                             wethIsEth: false,

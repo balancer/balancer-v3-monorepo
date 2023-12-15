@@ -86,6 +86,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v3-benchmarks@workspace:pvt/benchmarks"
   dependencies:
+    "@balancer-labs/solidity-toolbox": "workspace:*"
+    "@balancer-labs/v3-interfaces": "workspace:*"
+    "@balancer-labs/v3-pool-weighted": "workspace:*"
+    "@balancer-labs/v3-solidity-utils": "workspace:*"
+    "@balancer-labs/v3-vault": "workspace:*"
     "@nomicfoundation/hardhat-ethers": "npm:^3.0.0"
     "@types/lodash": "npm:^4.14.186"
     "@types/node": "npm:^14.14.31"
@@ -175,7 +180,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@balancer-labs/v3-pool-weighted@workspace:pkg/pool-weighted":
+"@balancer-labs/v3-pool-weighted@workspace:*, @balancer-labs/v3-pool-weighted@workspace:pkg/pool-weighted":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v3-pool-weighted@workspace:pkg/pool-weighted"
   dependencies:
@@ -226,7 +231,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@balancer-labs/v3-vault@workspace:pkg/vault":
+"@balancer-labs/v3-vault@workspace:*, @balancer-labs/v3-vault@workspace:pkg/vault":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v3-vault@workspace:pkg/vault"
   dependencies:

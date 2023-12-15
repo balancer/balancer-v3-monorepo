@@ -288,7 +288,7 @@ interface IRouter {
      * @param tokenIn Token to be swapped from
      * @param tokenOut Token to be swapped to
      * @param exactAmountIn Exact amounts of input tokens to send
-     * @param limit Maximum or minimum amount based on the kind of swap (e.g., maxAmountIn for given out)
+     * @param minAmountOut Minimum amount of tokens to be received
      * @param deadline Deadline for the swap
      * @param userData Additional (optional) data required for the swap
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
@@ -299,7 +299,7 @@ interface IRouter {
         IERC20 tokenIn,
         IERC20 tokenOut,
         uint256 exactAmountIn,
-        uint256 limit,
+        uint256 minAmountOut,
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
@@ -311,7 +311,7 @@ interface IRouter {
      * @param tokenIn Token to be swapped from
      * @param tokenOut Token to be swapped to
      * @param exactAmountOut Exact amounts of input tokens to receive
-     * @param limit Maximum or minimum amount based on the kind of swap (e.g., maxAmountIn for given out)
+     * @param maxAmountIn Max amount tokens to be sent
      * @param deadline Deadline for the swap
      * @param userData Additional (optional) data required for the swap
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
@@ -322,7 +322,7 @@ interface IRouter {
         IERC20 tokenIn,
         IERC20 tokenOut,
         uint256 exactAmountOut,
-        uint256 limit,
+        uint256 maxAmountIn,
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
