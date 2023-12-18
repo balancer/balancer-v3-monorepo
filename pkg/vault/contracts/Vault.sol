@@ -1094,10 +1094,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.amountsIn.length);
 
         // Amounts are entering pool math, so round down.
-        // Introducing inputAmountsInScaled18 here and passing it through to _addLiquidity is not ideal,
+        // Introducing amountsInScaled18 here and passing it through to _addLiquidity is not ideal,
         // but it avoids the even worse options of mutating amountsIn inside AddLiquidityParams,
         // or cluttering the AddLiquidityParams interface by adding amountsInScaled18.
-        uint256[] memory inputAmountsInScaled18 = params.amountsIn.copyToScaled18ApplyRateRoundDownArray(
+        uint256[] memory amountsInScaled18 = params.amountsIn.copyToScaled18ApplyRateRoundDownArray(
             poolData.decimalScalingFactors,
             poolData.tokenRates
         );
@@ -1107,7 +1107,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             if (
                 IPoolCallbacks(params.pool).onBeforeAddLiquidity(
                     params.to,
-                    inputAmountsInScaled18,
+                    amountsInScaled18,
                     params.minBptAmountOut,
                     poolData.balancesLiveScaled18,
                     params.userData
@@ -1126,14 +1126,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // are computed. This function is non-reentrant, as it performs the accounting updates.
         // Note that poolData is mutated to update the Raw and Live balances, so they are accurate when passed
         // into the AfterAddLiquidity callback.
-        // `amountsInScaled18` will most often be set to `inputAmountsInScaled18`, but in the custom case it could
-        // be different, so we need to pass it back and forth to encapsulate that logic in `_addLiquidity`.
-        uint256[] memory amountsInScaled18;
-        (amountsIn, amountsInScaled18, bptAmountOut, returnData) = _addLiquidity(
-            poolData,
-            params,
-            inputAmountsInScaled18
-        );
+        // `amountsInScaled18` will be overwritten in the custom case, so we need to pass it back and forth to
+        // encapsulate that logic in `_addLiquidity`.
+        (amountsIn, amountsInScaled18, bptAmountOut, returnData) = _addLiquidity(poolData, params, amountsInScaled18);
 
         if (poolData.config.callbacks.shouldCallAfterAddLiquidity) {
             if (
