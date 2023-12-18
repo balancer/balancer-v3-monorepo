@@ -535,6 +535,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
 
         // Create the pool callback params (used for both beforeSwap, if required, and the main swap callbacks).
+        // Function and inclusion in SwapLocals needed to avoid "stack too deep".
         vars.poolSwapParams = _buildSwapCallbackParams(params, vars, poolData);
 
         if (poolData.config.callbacks.shouldCallBeforeSwap) {
@@ -543,6 +544,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             }
 
             _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN);
+            // The call to _buildSwapCallbackParams also modifies poolSwapParams.balancesScaled18.
+            // Set here again explicitly to avoid relying on a side effect.
+            // TODO: ugliness necessitated by the stack issues; revisit on any refactor to see if this can be cleaner.
+            vars.poolSwapParams.balancesScaled18 = poolData.balancesLiveScaled18;
         }
 
         (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData, poolBalances);
