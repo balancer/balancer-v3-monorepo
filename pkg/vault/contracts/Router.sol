@@ -126,7 +126,7 @@ contract Router is IRouter, ReentrancyGuard {
                     AddLiquidityCallbackParams({
                         sender: msg.sender,
                         pool: pool,
-                        amountsInRaw: exactAmountsIn,
+                        amountsIn: exactAmountsIn,
                         minBptAmountOut: minBptAmountOut,
                         kind: IVault.AddLiquidityKind.UNBALANCED,
                         wethIsEth: wethIsEth,
@@ -156,7 +156,7 @@ contract Router is IRouter, ReentrancyGuard {
                     AddLiquidityCallbackParams({
                         sender: msg.sender,
                         pool: pool,
-                        amountsInRaw: maxAmountsIn,
+                        amountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                         wethIsEth: wethIsEth,
@@ -184,7 +184,7 @@ contract Router is IRouter, ReentrancyGuard {
                         AddLiquidityCallbackParams({
                             sender: msg.sender,
                             pool: pool,
-                            amountsInRaw: amountsInRaw,
+                            amountsIn: amountsInRaw,
                             minBptAmountOut: minBptAmountOut,
                             kind: IVault.AddLiquidityKind.CUSTOM,
                             wethIsEth: wethIsEth,
@@ -216,7 +216,7 @@ contract Router is IRouter, ReentrancyGuard {
             IVault.AddLiquidityParams({
                 pool: params.pool,
                 to: params.sender,
-                amountsInRaw: params.amountsInRaw,
+                amountsIn: params.amountsIn,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
                 userData: params.userData
@@ -237,8 +237,8 @@ contract Router is IRouter, ReentrancyGuard {
             uint256 amountIn = amountsIn[i];
 
             // TODO: check amounts in for every type.
-            if (amountIn > params.amountsInRaw[i]) {
-                revert JoinAboveMax(amountIn, params.amountsInRaw[i]);
+            if (amountIn > params.amountsIn[i]) {
+                revert JoinAboveMax(amountIn, params.amountsIn[i]);
             }
 
             // There can be only one WETH token in the pool
@@ -670,7 +670,7 @@ contract Router is IRouter, ReentrancyGuard {
                         // but it is possible to add liquidity to any recipient
                         sender: address(this),
                         pool: pool,
-                        amountsInRaw: exactAmountsIn,
+                        amountsIn: exactAmountsIn,
                         minBptAmountOut: minBptAmountOut,
                         kind: IVault.AddLiquidityKind.UNBALANCED,
                         wethIsEth: false,
@@ -701,7 +701,7 @@ contract Router is IRouter, ReentrancyGuard {
                         // but it is possible to add liquidity to any recipient
                         sender: address(this),
                         pool: pool,
-                        amountsInRaw: maxAmountsIn,
+                        amountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                         wethIsEth: false,
@@ -730,7 +730,7 @@ contract Router is IRouter, ReentrancyGuard {
                             // but it is possible to add liquidity to any recipient
                             sender: address(this),
                             pool: pool,
-                            amountsInRaw: amountsInRaw,
+                            amountsIn: amountsInRaw,
                             minBptAmountOut: minBptAmountOut,
                             kind: IVault.AddLiquidityKind.CUSTOM,
                             wethIsEth: false,
@@ -763,7 +763,7 @@ contract Router is IRouter, ReentrancyGuard {
             IVault.AddLiquidityParams({
                 pool: params.pool,
                 to: params.sender,
-                amountsInRaw: params.amountsInRaw,
+                amountsIn: params.amountsIn,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
                 userData: params.userData

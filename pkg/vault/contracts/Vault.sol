@@ -1091,13 +1091,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // If unbalanced, higher balances = lower invariant ratio with fees.
         // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
         PoolData memory poolData = _getPoolData(params.pool, Rounding.ROUND_UP);
-        InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.amountsInRaw.length);
+        InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.amountsIn.length);
 
         // Amounts are entering pool math, so round down.
         // Introducing inputAmountsInScaled18 here and passing it through to _addLiquidity is not ideal,
-        // but it avoids the even worse options of mutating amountsInRaw inside AddLiquidityParams,
+        // but it avoids the even worse options of mutating amountsIn inside AddLiquidityParams,
         // or cluttering the AddLiquidityParams interface by adding amountsInScaled18.
-        uint256[] memory inputAmountsInScaled18 = params.amountsInRaw.copyToScaled18ApplyRateRoundDownArray(
+        uint256[] memory inputAmountsInScaled18 = params.amountsIn.copyToScaled18ApplyRateRoundDownArray(
             poolData.decimalScalingFactors,
             poolData.tokenRates
         );
@@ -1186,7 +1186,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             );
         } else if (params.kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             bptAmountOut = params.minBptAmountOut;
-            uint256 tokenIndex = InputHelpers.getSingleInputIndex(params.amountsInRaw);
+            uint256 tokenIndex = InputHelpers.getSingleInputIndex(params.amountsIn);
 
             amountsInScaled18 = inputAmountsInScaled18;
             amountsInScaled18[tokenIndex] = BasePoolMath.computeAddLiquiditySingleTokenExactOut(
