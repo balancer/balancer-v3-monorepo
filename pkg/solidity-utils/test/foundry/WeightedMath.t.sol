@@ -27,7 +27,7 @@ contract WeightedMathTest is Test {
         mock = new WeightedMathMock();
     }
 
-    function testCalcOutGivenIn(
+    function testComputeOutGivenIn(
         uint64 rawWeightIn,
         uint256 rawBalanceIn,
         uint256 rawBalanceOut,
@@ -45,14 +45,20 @@ contract WeightedMathTest is Test {
 
         assertEq(weightIn + weightOut, FP_ONE);
 
-        uint256 standardResult = mock.calcOutGivenIn(balanceIn, weightIn, balanceOut, weightOut, amountGiven);
+        uint256 standardResult = mock.computeOutGivenIn(balanceIn, weightIn, balanceOut, weightOut, amountGiven);
 
         uint256 roundedUpAmountGiven = flipBit ? amountGiven + 1 : amountGiven;
         uint256 roundedDownAmountGiven = flipBit ? amountGiven - 1 : amountGiven;
 
-        uint256 roundedUpResult = mock.calcOutGivenIn(balanceIn, weightIn, balanceOut, weightOut, roundedUpAmountGiven);
+        uint256 roundedUpResult = mock.computeOutGivenIn(
+            balanceIn,
+            weightIn,
+            balanceOut,
+            weightOut,
+            roundedUpAmountGiven
+        );
 
-        uint256 roundedDownResult = mock.calcOutGivenIn(
+        uint256 roundedDownResult = mock.computeOutGivenIn(
             balanceIn,
             weightIn,
             balanceOut,
@@ -64,7 +70,7 @@ contract WeightedMathTest is Test {
         assertLe(roundedDownResult, standardResult);
     }
 
-    function testCalcInGivenOut(
+    function testComputeInGivenOut(
         uint64 rawWeightIn,
         uint256 rawBalanceIn,
         uint256 rawBalanceOut,
@@ -82,14 +88,20 @@ contract WeightedMathTest is Test {
 
         assertEq(weightIn + weightOut, FP_ONE);
 
-        uint256 standardResult = mock.calcInGivenOut(balanceIn, weightIn, balanceOut, weightOut, amountGiven);
+        uint256 standardResult = mock.computeInGivenOut(balanceIn, weightIn, balanceOut, weightOut, amountGiven);
 
         uint256 roundedUpAmountGiven = flipBit ? amountGiven + 1 : amountGiven;
         uint256 roundedDownAmountGiven = flipBit ? amountGiven - 1 : amountGiven;
 
-        uint256 roundedUpResult = mock.calcInGivenOut(balanceIn, weightIn, balanceOut, weightOut, roundedUpAmountGiven);
+        uint256 roundedUpResult = mock.computeInGivenOut(
+            balanceIn,
+            weightIn,
+            balanceOut,
+            weightOut,
+            roundedUpAmountGiven
+        );
 
-        uint256 roundedDownResult = mock.calcInGivenOut(
+        uint256 roundedDownResult = mock.computeInGivenOut(
             balanceIn,
             weightIn,
             balanceOut,
@@ -110,7 +122,7 @@ contract WeightedMathTest is Test {
     }
 
     // TODO: Temporarily disable; fails intermittently due to math library precision
-    function skipTestCalcBptOutGivenExactTokensIn(
+    function skipTestComputeBptOutGivenExactTokensIn(
         uint64 rawWeight,
         uint64 rawSwapFee,
         uint256 rawTotalSupply,
@@ -118,7 +130,7 @@ contract WeightedMathTest is Test {
         uint256[2] calldata rawAmountsIn,
         bool flipBit
     ) external {
-        AddLiquidityVars memory vars = _calculateAddLiquidityVars(
+        AddLiquidityVars memory vars = _computeAddLiquidityVars(
             rawWeight,
             rawSwapFee,
             rawTotalSupply,
@@ -126,7 +138,7 @@ contract WeightedMathTest is Test {
             rawAmountsIn
         );
 
-        uint256 standardResult = mock.calcBptOutGivenExactTokensIn(
+        uint256 standardResult = mock.computeBptOutGivenExactTokensIn(
             vars.balances,
             vars.weights,
             vars.amountsIn,
@@ -142,7 +154,7 @@ contract WeightedMathTest is Test {
             roundedDownBalances[i] = flipBit ? vars.balances[i] - 1 : vars.balances[i];
         }
 
-        uint256 roundedUpResult = mock.calcBptOutGivenExactTokensIn(
+        uint256 roundedUpResult = mock.computeBptOutGivenExactTokensIn(
             roundedUpBalances,
             vars.weights,
             vars.amountsIn,
@@ -150,7 +162,7 @@ contract WeightedMathTest is Test {
             vars.swapFee
         );
 
-        uint256 roundedDownResult = mock.calcBptOutGivenExactTokensIn(
+        uint256 roundedDownResult = mock.computeBptOutGivenExactTokensIn(
             roundedDownBalances,
             vars.weights,
             vars.amountsIn,
@@ -162,7 +174,7 @@ contract WeightedMathTest is Test {
         assertGe(roundedDownResult, standardResult);
     }
 
-    function testCalcBptInGivenExactTokensOut(
+    function testComputeBptInGivenExactTokensOut(
         uint64 rawWeight,
         uint64 rawSwapFee,
         uint256 rawTotalSupply,
@@ -188,7 +200,13 @@ contract WeightedMathTest is Test {
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
         uint256 totalSupply = bound(rawTotalSupply, totalBalance, totalBalance * 100);
 
-        uint256 standardResult = mock.calcBptInGivenExactTokensOut(balances, weights, amountsOut, totalSupply, swapFee);
+        uint256 standardResult = mock.computeBptInGivenExactTokensOut(
+            balances,
+            weights,
+            amountsOut,
+            totalSupply,
+            swapFee
+        );
 
         uint256[] memory roundedUpBalances = new uint256[](2);
         uint256[] memory roundedDownBalances = new uint256[](2);
@@ -198,7 +216,7 @@ contract WeightedMathTest is Test {
             roundedDownBalances[i] = flipBit ? balances[i] - 1 : balances[i];
         }
 
-        uint256 roundedUpResult = mock.calcBptInGivenExactTokensOut(
+        uint256 roundedUpResult = mock.computeBptInGivenExactTokensOut(
             roundedUpBalances,
             weights,
             amountsOut,
@@ -206,7 +224,7 @@ contract WeightedMathTest is Test {
             swapFee
         );
 
-        uint256 roundedDownResult = mock.calcBptInGivenExactTokensOut(
+        uint256 roundedDownResult = mock.computeBptInGivenExactTokensOut(
             roundedDownBalances,
             weights,
             amountsOut,
@@ -218,7 +236,7 @@ contract WeightedMathTest is Test {
         assertGe(roundedDownResult, standardResult);
     }
 
-    function _calculateAddLiquidityVars(
+    function _computeAddLiquidityVars(
         uint64 rawWeight,
         uint64 rawSwapFee,
         uint256 rawTotalSupply,

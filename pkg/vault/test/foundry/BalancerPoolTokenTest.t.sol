@@ -10,23 +10,21 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
-import { ERC20PoolToken } from "@balancer-labs/v3-solidity-utils/contracts/token/ERC20PoolToken.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 
-import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
+import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
 
 contract ERC20PoolTokenTest is Test {
-    using AssetHelpers for address[];
-    using ArrayHelpers for address[2];
+    using ArrayHelpers for *;
 
     VaultMock vault;
     BasicAuthorizerMock authorizer;
-    ERC20PoolMock token;
+    PoolMock token;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
 
@@ -37,7 +35,7 @@ contract ERC20PoolTokenTest is Test {
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
 
-        token = new ERC20PoolMock(
+        token = new PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",

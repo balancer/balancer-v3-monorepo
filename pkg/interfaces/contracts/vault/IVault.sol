@@ -4,12 +4,12 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { Asset } from "../solidity-utils/misc/Asset.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { IRateProvider } from "./IRateProvider.sol";
 
 /// @dev Represents a pool's callbacks.
 struct PoolCallbacks {
+    bool shouldCallBeforeSwap;
     bool shouldCallAfterSwap;
     bool shouldCallBeforeAddLiquidity;
     bool shouldCallAfterAddLiquidity;
@@ -18,13 +18,7 @@ struct PoolCallbacks {
 }
 
 struct LiquidityManagement {
-    bool supportsAddLiquidityProportional;
-    bool supportsAddLiquiditySingleTokenExactOut;
-    bool supportsAddLiquidityUnbalanced;
     bool supportsAddLiquidityCustom;
-    bool supportsRemoveLiquidityProportional;
-    bool supportsRemoveLiquiditySingleTokenExactIn;
-    bool supportsRemoveLiquiditySingleTokenExactOut;
     bool supportsRemoveLiquidityCustom;
 }
 
@@ -431,7 +425,6 @@ interface IVault {
     ***************************************************************************/
 
     enum AddLiquidityKind {
-        PROPORTIONAL,
         UNBALANCED,
         SINGLE_TOKEN_EXACT_OUT,
         CUSTOM
@@ -470,17 +463,18 @@ interface IVault {
     }
 
     /**
+     * @dev Data for an add liquidity operation.
      * @param pool Address of the pool
-     * @param to Address of user to mint to
-     * @param maxAmountsInRaw Maximum amounts of input tokens
-     * @param minBptAmountOut Output pool token amount
-     * @param kind Type of AddLiquidity operation
-     * @param userData Additional (optional) user data
+     * @param to  Address of user to mint to
+     * @param amountsIn Amounts of input tokens
+     * @param minBptAmountOut Minimum amount of output pool tokens
+     * @param kind Add liquidity kind
+     * @param userData Optional user data
      */
     struct AddLiquidityParams {
         address pool;
         address to;
-        uint256[] maxAmountsInRaw;
+        uint256[] amountsIn;
         uint256 minBptAmountOut;
         AddLiquidityKind kind;
         bytes userData;
@@ -491,14 +485,13 @@ interface IVault {
      * @dev Caution should be exercised when adding liquidity because the Vault has the capability
      * to transfer tokens from any user, given that it holds all allowances.
      *
-     * @param params See `AddLiquidityParams`
-     * @return amountsIn Actual amounts of input assets
+     * @param params Parameters for the add liquidity (see above for struct definition)
+     * @return amountsIn Actual amounts of input tokens
      * @return bptAmountOut Output pool token amount
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function addLiquidity(
-        AddLiquidityParams memory params,
-        LiquidityLocals memory vars
+        AddLiquidityParams memory params
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
     /***************************************************************************
@@ -525,7 +518,7 @@ interface IVault {
      * @param pool Address of the pool
      * @param from Address of user to burn from
      * @param maxBptAmountIn Maximum amount of input pool tokens
-     * @param minAmountsOutRaw Minimum amounts of output tokens
+     * @param minAmountsOut Minimum amounts of output tokens
      * @param kind Remove liquidity kind
      * @param userData Optional user data
      */
@@ -533,7 +526,7 @@ interface IVault {
         address pool;
         address from;
         uint256 maxBptAmountIn;
-        uint256[] minAmountsOutRaw;
+        uint256[] minAmountsOut;
         RemoveLiquidityKind kind;
         bytes userData;
     }
@@ -544,14 +537,13 @@ interface IVault {
      * Untrusted routers require prior approval from the user. This is the only function allowed to call
      * _queryModeBalanceIncrease (and only in a query context).
      *
-     * @param params See `RemoveLiquidityParams`
+     * @param params Parameters for the remove liquidity (see above for struct definition)
      * @return bptAmountIn Actual amount of BPT burnt
-     * @return amountsOut Actual amounts of output assets
+     * @return amountsOut Actual amounts of output tokens
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function removeLiquidity(
-        RemoveLiquidityParams memory params,
-        LiquidityLocals memory vars
+        RemoveLiquidityParams memory params
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 
     /**

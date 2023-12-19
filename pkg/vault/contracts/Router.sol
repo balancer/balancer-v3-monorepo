@@ -11,10 +11,7 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 
-import { Asset, AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
-
 contract Router is IRouter, ReentrancyGuard {
-    using AssetHelpers for *;
     using Address for address payable;
 
     IVault private immutable _vault;
@@ -29,9 +26,10 @@ contract Router is IRouter, ReentrancyGuard {
         _;
     }
 
-    constructor(IVault vault, address weth) {
+    constructor(IVault vault, IWETH weth) {
         _vault = vault;
-        _weth = IWETH(weth);
+        _weth = weth;
+        weth.approve(address(_vault), type(uint256).max);
     }
 
     /*******************************************************************************
@@ -41,9 +39,10 @@ contract Router is IRouter, ReentrancyGuard {
     /// @inheritdoc IRouter
     function initialize(
         address pool,
-        Asset[] memory assets,
+        IERC20[] memory tokens,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
+        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256 bptAmountOut) {
         return
@@ -54,9 +53,10 @@ contract Router is IRouter, ReentrancyGuard {
                         InitializeCallbackParams({
                             sender: msg.sender,
                             pool: pool,
-                            assets: assets,
+                            tokens: tokens,
                             exactAmountsIn: exactAmountsIn,
                             minBptAmountOut: minBptAmountOut,
+                            wethIsEth: wethIsEth,
                             userData: userData
                         })
                     )
@@ -74,44 +74,103 @@ contract Router is IRouter, ReentrancyGuard {
     function initializeCallback(
         InitializeCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256 bptAmountOut) {
-        IERC20[] memory tokens = params.assets.toIERC20(_weth);
-
         bptAmountOut = _vault.initialize(
             params.pool,
             params.sender,
-            tokens,
+            params.tokens,
             params.exactAmountsIn,
             params.minBptAmountOut,
             params.userData
         );
 
         uint256 ethAmountIn;
-        for (uint256 i = 0; i < params.assets.length; ++i) {
-            // Receive assets from the handler
-            Asset asset = params.assets[i];
+        for (uint256 i = 0; i < params.tokens.length; ++i) {
+            // Receive tokens from the handler
+            IERC20 token = params.tokens[i];
             uint256 amountIn = params.exactAmountsIn[i];
-            IERC20 token = asset.toIERC20(_weth);
 
             // There can be only one WETH token in the pool
-            if (asset.isETH()) {
+            if (params.wethIsEth && address(token) == address(_weth)) {
+                if (msg.value < amountIn) {
+                    revert InsufficientEth();
+                }
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
+                // transfer WETH from the router to the Vault
+                _vault.retrieve(_weth, address(this), amountIn);
+            } else {
+                // transfer tokens from the user to the Vault
+                _vault.retrieve(token, params.sender, amountIn);
             }
-            // transfer tokens from the user to the Vault
-            _vault.retrieve(token, params.sender, amountIn);
         }
 
         // return ETH dust
-        address(params.sender).returnEth(ethAmountIn);
+        returnEth(params.sender, ethAmountIn);
     }
 
     /// @inheritdoc IRouter
-    function addLiquidity(
+    function addLiquidityUnbalanced(
         address pool,
-        Asset[] memory assets,
-        uint256[] memory maxAmountsIn,
+        uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
-        IVault.AddLiquidityKind kind,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256 bptAmountOut) {
+        (, bptAmountOut, ) = abi.decode(
+            _vault.invoke{ value: msg.value }(
+                abi.encodeWithSelector(
+                    Router.addLiquidityCallback.selector,
+                    AddLiquidityCallbackParams({
+                        sender: msg.sender,
+                        pool: pool,
+                        amountsIn: exactAmountsIn,
+                        minBptAmountOut: minBptAmountOut,
+                        kind: IVault.AddLiquidityKind.UNBALANCED,
+                        wethIsEth: wethIsEth,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256[], uint256, bytes)
+        );
+    }
+
+    /// @inheritdoc IRouter
+    function addLiquiditySingleTokenExactOut(
+        address pool,
+        uint256 tokenInIndex,
+        uint256 maxAmountIn,
+        uint256 exactBptAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsIn) {
+        uint256[] memory maxAmountsIn = _getSingleInputArray(pool, tokenInIndex, maxAmountIn);
+
+        (amountsIn, , ) = abi.decode(
+            _vault.invoke{ value: msg.value }(
+                abi.encodeWithSelector(
+                    Router.addLiquidityCallback.selector,
+                    AddLiquidityCallbackParams({
+                        sender: msg.sender,
+                        pool: pool,
+                        amountsIn: maxAmountsIn,
+                        minBptAmountOut: exactBptAmountOut,
+                        kind: IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                        wethIsEth: wethIsEth,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256[], uint256, bytes)
+        );
+    }
+
+    /// @inheritdoc IRouter
+    function addLiquidityCustom(
+        address pool,
+        uint256[] memory inputAmountsIn,
+        uint256 minBptAmountOut,
+        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         return
@@ -122,10 +181,10 @@ contract Router is IRouter, ReentrancyGuard {
                         AddLiquidityCallbackParams({
                             sender: msg.sender,
                             pool: pool,
-                            assets: assets,
-                            maxAmountsIn: maxAmountsIn,
+                            amountsIn: inputAmountsIn,
                             minBptAmountOut: minBptAmountOut,
-                            kind: kind,
+                            kind: IVault.AddLiquidityKind.CUSTOM,
+                            wethIsEth: wethIsEth,
                             userData: userData
                         })
                     )
@@ -137,7 +196,7 @@ contract Router is IRouter, ReentrancyGuard {
     /**
      * @notice Callback for adding liquidity.
      * @dev Can only be called by the Vault.
-     * @param params Add liquiity parameters (see IRouter for struct definition)
+     * @param params Add liquidity parameters (see IRouter for struct definition)
      * @return amountsIn Actual amounts in required for the join
      * @return bptAmountOut BPT amount minted in exchange for the input tokens
      */
@@ -154,40 +213,135 @@ contract Router is IRouter, ReentrancyGuard {
             IVault.AddLiquidityParams({
                 pool: params.pool,
                 to: params.sender,
-                maxAmountsInRaw: params.maxAmountsIn,
+                amountsIn: params.amountsIn,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
                 userData: params.userData
-            }),
-            IVault.LiquidityLocals({ tokenIndex: 0, limitsScaled18: new uint256[](0) })
+            })
         );
 
+        // maxAmountsIn length is checked against tokens length at the vault.
+        IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
+
         uint256 ethAmountIn;
-        for (uint256 i = 0; i < params.assets.length; ++i) {
-            // Receive assets from the handler
-            Asset asset = params.assets[i];
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            // Receive tokens from the handler
+            IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
-            IERC20 token = asset.toIERC20(_weth);
 
             // There can be only one WETH token in the pool
-            if (asset.isETH()) {
+            if (params.wethIsEth && address(token) == address(_weth)) {
+                if (msg.value < amountIn) {
+                    revert InsufficientEth();
+                }
+
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
+                _vault.retrieve(_weth, address(this), amountIn);
+            } else {
+                _vault.retrieve(token, params.sender, amountIn);
             }
-            _vault.retrieve(token, params.sender, amountIn);
         }
 
         // Send remaining ETH to the user
-        address(params.sender).returnEth(ethAmountIn);
+        returnEth(params.sender, ethAmountIn);
     }
 
     /// @inheritdoc IRouter
-    function removeLiquidity(
+    function removeLiquidityProportional(
         address pool,
-        Asset[] memory assets,
+        uint256 exactBptAmountIn,
+        uint256[] memory minAmountsOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsOut) {
+        (, amountsOut, ) = abi.decode(
+            _vault.invoke(
+                abi.encodeWithSelector(
+                    Router.removeLiquidityCallback.selector,
+                    RemoveLiquidityCallbackParams({
+                        sender: msg.sender,
+                        pool: pool,
+                        minAmountsOut: minAmountsOut,
+                        maxBptAmountIn: exactBptAmountIn,
+                        kind: IVault.RemoveLiquidityKind.PROPORTIONAL,
+                        wethIsEth: wethIsEth,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256, uint256[], bytes)
+        );
+    }
+
+    /// @inheritdoc IRouter
+    function removeLiquiditySingleTokenExactIn(
+        address pool,
+        uint256 exactBptAmountIn,
+        uint256 tokenOutIndex,
+        uint256 minAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsOut) {
+        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOutIndex, minAmountOut);
+
+        (, amountsOut, ) = abi.decode(
+            _vault.invoke(
+                abi.encodeWithSelector(
+                    Router.removeLiquidityCallback.selector,
+                    RemoveLiquidityCallbackParams({
+                        sender: msg.sender,
+                        pool: pool,
+                        minAmountsOut: minAmountsOut,
+                        maxBptAmountIn: exactBptAmountIn,
+                        kind: IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
+                        wethIsEth: wethIsEth,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256, uint256[], bytes)
+        );
+    }
+
+    /// @inheritdoc IRouter
+    function removeLiquiditySingleTokenExactOut(
+        address pool,
+        uint256 maxBptAmountIn,
+        uint256 tokenOutIndex,
+        uint256 exactAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256 bptAmountIn) {
+        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOutIndex, exactAmountOut);
+
+        (bptAmountIn, , ) = abi.decode(
+            _vault.invoke(
+                abi.encodeWithSelector(
+                    Router.removeLiquidityCallback.selector,
+                    RemoveLiquidityCallbackParams({
+                        sender: msg.sender,
+                        pool: pool,
+                        minAmountsOut: minAmountsOut,
+                        maxBptAmountIn: maxBptAmountIn,
+                        kind: IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                        wethIsEth: wethIsEth,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256, uint256[], bytes)
+        );
+
+        return bptAmountIn;
+    }
+
+    /// @inheritdoc IRouter
+    function removeLiquidityCustom(
+        address pool,
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOut,
-        IVault.RemoveLiquidityKind kind,
+        bool wethIsEth,
         bytes memory userData
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
         return
@@ -198,10 +352,10 @@ contract Router is IRouter, ReentrancyGuard {
                         RemoveLiquidityCallbackParams({
                             sender: msg.sender,
                             pool: pool,
-                            assets: assets,
                             minAmountsOut: minAmountsOut,
                             maxBptAmountIn: maxBptAmountIn,
-                            kind: kind,
+                            kind: IVault.RemoveLiquidityKind.CUSTOM,
+                            wethIsEth: wethIsEth,
                             userData: userData
                         })
                     )
@@ -213,7 +367,7 @@ contract Router is IRouter, ReentrancyGuard {
     /**
      * @notice Callback for removing liquidity.
      * @dev Can only be called by the Vault.
-     * @param params Remove liquiity parameters (see IRouter for struct definition)
+     * @param params Remove liquidity parameters (see IRouter for struct definition)
      * @return bptAmountIn BPT amount burned for the output tokens
      * @return amountsOut Actual token amounts transferred in exchange for the BPT
      * @return returnData Arbitrary (optional) data with encoded response from the pool
@@ -231,28 +385,29 @@ contract Router is IRouter, ReentrancyGuard {
                 pool: params.pool,
                 from: params.sender,
                 maxBptAmountIn: params.maxBptAmountIn,
-                minAmountsOutRaw: params.minAmountsOut,
+                minAmountsOut: params.minAmountsOut,
                 kind: params.kind,
                 userData: params.userData
-            }),
-            IVault.LiquidityLocals({ tokenIndex: 0, limitsScaled18: new uint256[](0) })
+            })
         );
 
+        // minAmountsOut length is checked against tokens length at the vault.
+        IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
+
         uint256 ethAmountOut;
-        for (uint256 i = 0; i < params.assets.length; ++i) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountOut = amountsOut[i];
-
-            Asset asset = params.assets[i];
-            IERC20 token = asset.toIERC20(_weth);
-
-            // Receive the asset amountOut
-            _vault.wire(token, params.sender, amountOut);
+            IERC20 token = tokens[i];
 
             // There can be only one WETH token in the pool
-            if (asset.isETH()) {
-                // Withdraw WETH to ETH
+            if (params.wethIsEth && address(token) == address(_weth)) {
+                // Wire WETH here and unwrap to native ETH
+                _vault.wire(_weth, address(this), amountOut);
                 _weth.withdraw(amountOut);
                 ethAmountOut = amountOut;
+            } else {
+                // Wire the token to the sender (amountOut)
+                _vault.wire(token, params.sender, amountOut);
             }
         }
 
@@ -261,14 +416,14 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     /// @inheritdoc IRouter
-    function swap(
-        IVault.SwapKind kind,
+    function swapExactIn(
         address pool,
-        Asset assetIn,
-        Asset assetOut,
-        uint256 amountGiven,
-        uint256 limit,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 exactAmountIn,
+        uint256 minAmountOut,
         uint256 deadline,
+        bool wethIsEth,
         bytes calldata userData
     ) external payable returns (uint256) {
         return
@@ -278,13 +433,48 @@ contract Router is IRouter, ReentrancyGuard {
                         Router.swapCallback.selector,
                         SwapCallbackParams({
                             sender: msg.sender,
-                            kind: kind,
+                            kind: IVault.SwapKind.GIVEN_IN,
                             pool: pool,
-                            assetIn: assetIn,
-                            assetOut: assetOut,
-                            amountGiven: amountGiven,
-                            limit: limit,
+                            tokenIn: tokenIn,
+                            tokenOut: tokenOut,
+                            amountGiven: exactAmountIn,
+                            limit: minAmountOut,
                             deadline: deadline,
+                            wethIsEth: wethIsEth,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256)
+            );
+    }
+
+    /// @inheritdoc IRouter
+    function swapExactOut(
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 exactAmountOut,
+        uint256 maxAmountIn,
+        uint256 deadline,
+        bool wethIsEth,
+        bytes calldata userData
+    ) external payable returns (uint256) {
+        return
+            abi.decode(
+                _vault.invoke{ value: msg.value }(
+                    abi.encodeWithSelector(
+                        Router.swapCallback.selector,
+                        SwapCallbackParams({
+                            sender: msg.sender,
+                            kind: IVault.SwapKind.GIVEN_OUT,
+                            pool: pool,
+                            tokenIn: tokenIn,
+                            tokenOut: tokenOut,
+                            amountGiven: exactAmountOut,
+                            limit: maxAmountIn,
+                            deadline: deadline,
+                            wethIsEth: wethIsEth,
                             userData: userData
                         })
                     )
@@ -302,16 +492,15 @@ contract Router is IRouter, ReentrancyGuard {
     function swapCallback(
         SwapCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256) {
-        (
-            uint256 amountCalculated,
-            uint256 amountIn,
-            uint256 amountOut,
-            IERC20 tokenIn,
-            IERC20 tokenOut
-        ) = _swapCallback(params);
+        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapCallback(params);
 
-        // If the assetIn is ETH, then wrap `amountIn` into WETH.
-        if (params.assetIn.isETH()) {
+        IERC20 tokenIn = params.tokenIn;
+        IERC20 tokenOut = params.tokenOut;
+
+        uint256 ethAmountIn = 0;
+        // If the tokenIn is ETH, then wrap `amountIn` into WETH.
+        if (params.wethIsEth && tokenIn == _weth) {
+            ethAmountIn = amountIn;
             // wrap amountIn to WETH
             _weth.deposit{ value: amountIn }();
             // send WETH to Vault
@@ -319,12 +508,12 @@ contract Router is IRouter, ReentrancyGuard {
             // update Vault accounting
             _vault.settle(_weth);
         } else {
-            // Send the assetIn amount to the Vault
+            // Send the tokenIn amount to the Vault
             _vault.retrieve(tokenIn, params.sender, amountIn);
         }
 
-        // If the assetOut is ETH, then unwrap `amountOut` into ETH.
-        if (params.assetOut.isETH()) {
+        // If the tokenOut is ETH, then unwrap `amountOut` into ETH.
+        if (params.wethIsEth && tokenOut == _weth) {
             // Receive the WETH amountOut
             _vault.wire(tokenOut, address(this), amountOut);
             // Withdraw WETH to ETH
@@ -336,9 +525,9 @@ contract Router is IRouter, ReentrancyGuard {
             _vault.wire(tokenOut, params.sender, amountOut);
         }
 
-        if (params.assetIn.isETH()) {
+        if (tokenIn == _weth) {
             // Return the rest of ETH to sender
-            address(params.sender).returnEth(amountIn);
+            returnEth(params.sender, ethAmountIn);
         }
 
         return amountCalculated;
@@ -346,25 +535,19 @@ contract Router is IRouter, ReentrancyGuard {
 
     function _swapCallback(
         SwapCallbackParams calldata params
-    )
-        internal
-        returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut, IERC20 tokenIn, IERC20 tokenOut)
-    {
+    ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > params.deadline) {
             revert SwapDeadline();
         }
 
-        tokenIn = params.assetIn.toIERC20(_weth);
-        tokenOut = params.assetOut.toIERC20(_weth);
-
         (amountCalculated, amountIn, amountOut) = _vault.swap(
             IVault.SwapParams({
                 kind: params.kind,
                 pool: params.pool,
-                tokenIn: tokenIn,
-                tokenOut: tokenOut,
+                tokenIn: params.tokenIn,
+                tokenOut: params.tokenOut,
                 amountGivenRaw: params.amountGiven,
                 userData: params.userData
             })
@@ -380,28 +563,59 @@ contract Router is IRouter, ReentrancyGuard {
     *******************************************************************************/
 
     /// @inheritdoc IRouter
-    function querySwap(
-        IVault.SwapKind kind,
+    function querySwapExactIn(
         address pool,
-        Asset assetIn,
-        Asset assetOut,
-        uint256 amountGiven,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 exactAmountIn,
         bytes calldata userData
-    ) external payable returns (uint256 amountCalculated) {
+    ) external returns (uint256 amountCalculated) {
         return
             abi.decode(
-                _vault.quote{ value: msg.value }(
+                _vault.quote(
                     abi.encodeWithSelector(
                         Router.querySwapCallback.selector,
                         SwapCallbackParams({
                             sender: msg.sender,
-                            kind: kind,
+                            kind: IVault.SwapKind.GIVEN_IN,
                             pool: pool,
-                            assetIn: assetIn,
-                            assetOut: assetOut,
-                            amountGiven: amountGiven,
-                            limit: kind == IVault.SwapKind.GIVEN_IN ? 0 : type(uint256).max,
+                            tokenIn: tokenIn,
+                            tokenOut: tokenOut,
+                            amountGiven: exactAmountIn,
+                            limit: 0,
                             deadline: type(uint256).max,
+                            wethIsEth: false,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256)
+            );
+    }
+
+    /// @inheritdoc IRouter
+    function querySwapExactOut(
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 exactAmountOut,
+        bytes calldata userData
+    ) external returns (uint256 amountCalculated) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeWithSelector(
+                        Router.querySwapCallback.selector,
+                        SwapCallbackParams({
+                            sender: msg.sender,
+                            kind: IVault.SwapKind.GIVEN_OUT,
+                            pool: pool,
+                            tokenIn: tokenIn,
+                            tokenOut: tokenOut,
+                            amountGiven: exactAmountOut,
+                            limit: type(uint256).max,
+                            deadline: type(uint256).max,
+                            wethIsEth: false,
                             userData: userData
                         })
                     )
@@ -419,34 +633,91 @@ contract Router is IRouter, ReentrancyGuard {
     function querySwapCallback(
         SwapCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256) {
-        (uint256 amountCalculated, , , , ) = _swapCallback(params);
+        (uint256 amountCalculated, , ) = _swapCallback(params);
 
         return amountCalculated;
     }
 
     /// @inheritdoc IRouter
-    function queryAddLiquidity(
+    function queryAddLiquidityUnbalanced(
         address pool,
-        Asset[] memory assets,
-        uint256[] memory maxAmountsIn,
+        uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
-        IVault.AddLiquidityKind kind,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
+    ) external returns (uint256 bptAmountOut) {
+        (, bptAmountOut, ) = abi.decode(
+            _vault.quote(
+                abi.encodeWithSelector(
+                    Router.queryAddLiquidityCallback.selector,
+                    AddLiquidityCallbackParams({
+                        // we use router as a sender to simplify basic query functions
+                        // but it is possible to add liquidity to any recipient
+                        sender: address(this),
+                        pool: pool,
+                        amountsIn: exactAmountsIn,
+                        minBptAmountOut: minBptAmountOut,
+                        kind: IVault.AddLiquidityKind.UNBALANCED,
+                        wethIsEth: false,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256[], uint256, bytes)
+        );
+    }
+
+    /// @inheritdoc IRouter
+    function queryAddLiquiditySingleTokenExactOut(
+        address pool,
+        uint256 tokenInIndex,
+        uint256 maxAmountIn,
+        uint256 exactBptAmountOut,
+        bytes memory userData
+    ) external returns (uint256[] memory amountsIn) {
+        uint256[] memory maxAmountsIn = _getSingleInputArray(pool, tokenInIndex, maxAmountIn);
+
+        (amountsIn, , ) = abi.decode(
+            _vault.quote(
+                abi.encodeWithSelector(
+                    Router.queryAddLiquidityCallback.selector,
+                    AddLiquidityCallbackParams({
+                        // we use router as a sender to simplify basic query functions
+                        // but it is possible to add liquidity to any recipient
+                        sender: address(this),
+                        pool: pool,
+                        amountsIn: maxAmountsIn,
+                        minBptAmountOut: exactBptAmountOut,
+                        kind: IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                        wethIsEth: false,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256[], uint256, bytes)
+        );
+    }
+
+    /// @inheritdoc IRouter
+    function queryAddLiquidityCustom(
+        address pool,
+        uint256[] memory inputAmountsIn,
+        uint256 minBptAmountOut,
+        bytes memory userData
+    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         return
             abi.decode(
-                _vault.quote{ value: msg.value }(
+                _vault.quote(
                     abi.encodeWithSelector(
                         Router.queryAddLiquidityCallback.selector,
                         AddLiquidityCallbackParams({
                             // we use router as a sender to simplify basic query functions
-                            // but it is possible to add liquidity to any recepient
+                            // but it is possible to add liquidity to any recipient
                             sender: address(this),
                             pool: pool,
-                            assets: assets,
-                            maxAmountsIn: maxAmountsIn,
+                            amountsIn: inputAmountsIn,
                             minBptAmountOut: minBptAmountOut,
-                            kind: kind,
+                            kind: IVault.AddLiquidityKind.CUSTOM,
+                            wethIsEth: false,
                             userData: userData
                         })
                     )
@@ -458,7 +729,7 @@ contract Router is IRouter, ReentrancyGuard {
     /**
      * @notice Callback for add liquidity queries.
      * @dev Can only be called by the Vault.
-     * @param params Add liquiity parameters (see IRouter for struct definition)
+     * @param params Add liquidity parameters (see IRouter for struct definition)
      * @return amountsIn Actual token amounts in required as inputs
      * @return bptAmountOut Expected pool tokens to be minted
      * @return returnData Arbitrary (optional) data with encoded response from the pool
@@ -476,22 +747,111 @@ contract Router is IRouter, ReentrancyGuard {
             IVault.AddLiquidityParams({
                 pool: params.pool,
                 to: params.sender,
-                maxAmountsInRaw: params.maxAmountsIn,
+                amountsIn: params.amountsIn,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
                 userData: params.userData
-            }),
-            IVault.LiquidityLocals({ tokenIndex: 0, limitsScaled18: new uint256[](0) })
+            })
         );
     }
 
     /// @inheritdoc IRouter
-    function queryRemoveLiquidity(
+    function queryRemoveLiquidityProportional(
         address pool,
-        Asset[] memory assets,
+        uint256 exactBptAmountIn,
+        uint256[] memory minAmountsOut,
+        bytes memory userData
+    ) external returns (uint256[] memory amountsOut) {
+        (, amountsOut, ) = abi.decode(
+            _vault.quote(
+                abi.encodeWithSelector(
+                    Router.queryRemoveLiquidityCallback.selector,
+                    RemoveLiquidityCallbackParams({
+                        // We use router as a sender to simplify basic query functions
+                        // but it is possible to remove liquidity from any sender
+                        sender: address(this),
+                        pool: pool,
+                        minAmountsOut: minAmountsOut,
+                        maxBptAmountIn: exactBptAmountIn,
+                        kind: IVault.RemoveLiquidityKind.PROPORTIONAL,
+                        wethIsEth: false,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256, uint256[], bytes)
+        );
+    }
+
+    /// @inheritdoc IRouter
+    function queryRemoveLiquiditySingleTokenExactIn(
+        address pool,
+        uint256 exactBptAmountIn,
+        uint256 tokenOutIndex,
+        uint256 minAmountOut,
+        bytes memory userData
+    ) external returns (uint256[] memory amountsOut) {
+        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOutIndex, minAmountOut);
+
+        (, amountsOut, ) = abi.decode(
+            _vault.quote(
+                abi.encodeWithSelector(
+                    Router.queryRemoveLiquidityCallback.selector,
+                    RemoveLiquidityCallbackParams({
+                        // We use router as a sender to simplify basic query functions
+                        // but it is possible to remove liquidity from any sender
+                        sender: address(this),
+                        pool: pool,
+                        minAmountsOut: minAmountsOut,
+                        maxBptAmountIn: exactBptAmountIn,
+                        kind: IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
+                        wethIsEth: false,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256, uint256[], bytes)
+        );
+    }
+
+    /// @inheritdoc IRouter
+    function queryRemoveLiquiditySingleTokenExactOut(
+        address pool,
+        uint256 maxBptAmountIn,
+        uint256 tokenOutIndex,
+        uint256 exactAmountOut,
+        bytes memory userData
+    ) external returns (uint256 bptAmountIn) {
+        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOutIndex, exactAmountOut);
+
+        (bptAmountIn, , ) = abi.decode(
+            _vault.quote(
+                abi.encodeWithSelector(
+                    Router.queryRemoveLiquidityCallback.selector,
+                    RemoveLiquidityCallbackParams({
+                        // We use router as a sender to simplify basic query functions
+                        // but it is possible to remove liquidity from any sender
+                        sender: address(this),
+                        pool: pool,
+                        minAmountsOut: minAmountsOut,
+                        maxBptAmountIn: maxBptAmountIn,
+                        kind: IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                        wethIsEth: false,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256, uint256[], bytes)
+        );
+
+        return bptAmountIn;
+    }
+
+    /// @inheritdoc IRouter
+    function queryRemoveLiquidityCustom(
+        address pool,
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOut,
-        IVault.RemoveLiquidityKind kind,
         bytes memory userData
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
         return
@@ -504,10 +864,10 @@ contract Router is IRouter, ReentrancyGuard {
                             // but it is possible to remove liquidity from any sender
                             sender: address(this),
                             pool: pool,
-                            assets: assets,
                             minAmountsOut: minAmountsOut,
                             maxBptAmountIn: maxBptAmountIn,
-                            kind: kind,
+                            kind: IVault.RemoveLiquidityKind.CUSTOM,
+                            wethIsEth: false,
                             userData: userData
                         })
                     )
@@ -519,7 +879,7 @@ contract Router is IRouter, ReentrancyGuard {
     /**
      * @notice Callback for remove liquidity queries.
      * @dev Can only be called by the Vault.
-     * @param params Remove liquiity parameters (see IRouter for struct definition)
+     * @param params Remove liquidity parameters (see IRouter for struct definition)
      * @return bptAmountIn Pool token amount to be burned for the output tokens
      * @return amountsOut Expected token amounts to be transferred to the sender
      * @return returnData Arbitrary (optional) data with encoded response from the pool
@@ -538,11 +898,67 @@ contract Router is IRouter, ReentrancyGuard {
                     pool: params.pool,
                     from: params.sender,
                     maxBptAmountIn: params.maxBptAmountIn,
-                    minAmountsOutRaw: params.minAmountsOut,
+                    minAmountsOut: params.minAmountsOut,
                     kind: params.kind,
                     userData: params.userData
-                }),
-                IVault.LiquidityLocals({ tokenIndex: 0, limitsScaled18: new uint256[](0) })
+                })
             );
+    }
+
+    /**
+     * @dev Returns excess ETH back to the contract caller, assuming `amountUsed` has been spent. Reverts
+     * if the caller sent less ETH than `amountUsed`.
+     *
+     * Because the caller might not know exactly how much ETH a Vault action will require, they may send extra.
+     * Note that this excess value is returned *to the contract caller* (msg.sender). If caller and e.g. swap sender are
+     * not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
+     * returned ETH.
+     */
+    function returnEth(address sender, uint256 amountUsed) internal {
+        if (msg.value < amountUsed) {
+            revert InsufficientEth();
+        }
+
+        uint256 excess = msg.value - amountUsed;
+        if (excess > 0) {
+            payable(sender).sendValue(excess);
+        }
+    }
+
+    /**
+     * @dev Enables the Router to receive ETH. This is required for it to be able to unwrap WETH, which sends ETH to the
+     * caller.
+     *
+     * Any ETH sent to the Router outside of the WETH unwrapping mechanism would be forever locked inside the Router, so
+     * we prevent that from happening. Other mechanisms used to send ETH to the Router (such as being the recipient of
+     * an ETH swap, Pool exit or withdrawal, contract self-destruction, or receiving the block mining reward) will
+     * result in locked funds, but are not otherwise a security or soundness issue. This check only exists as an attempt
+     * to prevent user error.
+     */
+    receive() external payable {
+        if (msg.sender != address(_weth)) {
+            revert EthTransfer();
+        }
+    }
+
+    /**
+     * @dev Returns an array with `amountGiven` at `tokenIndex`, and 0 for every other index.
+     * The returned array length matches the number of tokens in the pool.
+     * Reverts if the given index is greater than or equal to the pool number of tokens.
+     */
+    function _getSingleInputArray(
+        address pool,
+        uint256 tokenIndex,
+        uint256 amountGiven
+    ) internal view returns (uint256[] memory amountsGiven) {
+        IERC20[] memory tokens = _vault.getPoolTokens(pool);
+        uint256 numTokens = tokens.length;
+
+        if (tokenIndex >= numTokens) {
+            revert InvalidTokenIndex();
+        }
+
+        amountsGiven = new uint256[](numTokens);
+        amountsGiven[tokenIndex] = amountGiven;
     }
 }
