@@ -20,7 +20,7 @@ import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/W
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
-import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
 contract VaultSwapTest is Test {
@@ -29,7 +29,7 @@ contract VaultSwapTest is Test {
     VaultMock vault;
     Router router;
     BasicAuthorizerMock authorizer;
-    ERC20PoolMock pool;
+    PoolMock pool;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
     address alice = vm.addr(1);
@@ -48,7 +48,7 @@ contract VaultSwapTest is Test {
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
 
-        pool = new ERC20PoolMock(
+        pool = new PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",

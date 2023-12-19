@@ -68,7 +68,7 @@ interface IRouter {
      * @dev Data for the add liquidity callback.
      * @param sender Account originating the add liquidity operation
      * @param pool Address of the liquidity pool
-     * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
+     * @param amountsIn Amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param kind Type of join (e.g., single or multi-token)
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
@@ -77,7 +77,7 @@ interface IRouter {
     struct AddLiquidityCallbackParams {
         address sender;
         address pool;
-        uint256[] maxAmountsIn;
+        uint256[] amountsIn;
         uint256 minBptAmountOut;
         IVault.AddLiquidityKind kind;
         bool wethIsEth;
@@ -85,27 +85,10 @@ interface IRouter {
     }
 
     /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
-    error BptAmountBelowMin();
+    error BptAmountBelowMin(uint256 amount, uint256 limit);
 
     /// @dev A required amountIn exceeds the maximum limit specified in the join.
-    error JoinAboveMax();
-
-    /**
-     * @notice Adds liquidity with proportional token amounts in to a pool, receiving an exact amount of pool tokens.
-     * @param pool Address of the liquidity pool
-     * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
-     * @param exactBptAmountOut Exact amount of pool tokens to be received
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
-     * @param userData Additional (optional) data required for adding liquidity
-     * @return amountsIn Actual amounts of tokens added, sorted in token registration order
-     */
-    function addLiquidityProportional(
-        address pool,
-        uint256[] memory maxAmountsIn,
-        uint256 exactBptAmountOut,
-        bool wethIsEth,
-        bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn);
+    error JoinAboveMax(uint256 amount, uint256 limit);
 
     /**
      * @notice Adds with arbitrary token amounts in to a pool.
@@ -146,7 +129,7 @@ interface IRouter {
     /**
      * @notice Adds liquidity to a pool with a custom request.
      * @param pool Address of the liquidity pool
-     * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
+     * @param amountsInScaled18 Amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for adding liquidity
@@ -156,7 +139,7 @@ interface IRouter {
      */
     function addLiquidityCustom(
         address pool,
-        uint256[] memory maxAmountsIn,
+        uint256[] memory amountsInScaled18,
         uint256 minBptAmountOut,
         bool wethIsEth,
         bytes memory userData
@@ -350,21 +333,6 @@ interface IRouter {
     ***************************************************************************/
 
     /**
-     * @notice Queries an `addLiquidityProportional` operation without actually executing it.
-     * @param pool Address of the liquidity pool
-     * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
-     * @param exactBptAmountOut Expected exact amount of pool tokens to receive
-     * @param userData Additional (optional) data required for the query
-     * @return amountsIn Expected amounts of tokens to add, sorted in token registration order
-     */
-    function queryAddLiquidityProportional(
-        address pool,
-        uint256[] memory maxAmountsIn,
-        uint256 exactBptAmountOut,
-        bytes memory userData
-    ) external returns (uint256[] memory amountsIn);
-
-    /**
      * @notice Queries an `addLiquidityUnbalanced` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
@@ -399,7 +367,7 @@ interface IRouter {
     /**
      * @notice Adds liquidity to a pool with a custom request.
      * @param pool Address of the liquidity pool
-     * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
+     * @param amountsInScaled18 Amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Expected minimum amount of pool tokens to receive
      * @param userData Additional (optional) data required for the query
      * @return amountsIn Expected amounts of tokens to add, sorted in token registration order
@@ -408,7 +376,7 @@ interface IRouter {
      */
     function queryAddLiquidityCustom(
         address pool,
-        uint256[] memory maxAmountsIn,
+        uint256[] memory amountsInScaled18,
         uint256 minBptAmountOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);

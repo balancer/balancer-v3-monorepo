@@ -13,7 +13,7 @@ import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/
 import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
-import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 import { Router } from "../../contracts/Router.sol";
 import { FactoryWidePauseWindow } from "../../contracts/factories/FactoryWidePauseWindow.sol";
@@ -25,10 +25,10 @@ contract PoolPauseTest is Test {
     VaultMock vault;
     Router router;
     BasicAuthorizerMock authorizer;
-    ERC20PoolMock pool;
-    ERC20PoolMock unmanagedPool;
-    ERC20PoolMock permissionlessPool;
-    ERC20PoolMock infinityPool;
+    PoolMock pool;
+    PoolMock unmanagedPool;
+    PoolMock permissionlessPool;
+    PoolMock infinityPool;
     PoolFactoryMock factory;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
@@ -44,7 +44,7 @@ contract PoolPauseTest is Test {
         USDC = new ERC20TestToken("USDC", "USDC", 18);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
 
-        pool = new ERC20PoolMock(
+        pool = new PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",
@@ -56,7 +56,7 @@ contract PoolPauseTest is Test {
         );
 
         // Pass zero for the pause manager
-        unmanagedPool = new ERC20PoolMock(
+        unmanagedPool = new PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",
@@ -67,7 +67,7 @@ contract PoolPauseTest is Test {
             address(0)
         );
 
-        permissionlessPool = new ERC20PoolMock(
+        permissionlessPool = new PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",
@@ -78,7 +78,7 @@ contract PoolPauseTest is Test {
             address(0)
         );
 
-        infinityPool = new ERC20PoolMock(
+        infinityPool = new PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",
@@ -108,7 +108,7 @@ contract PoolPauseTest is Test {
         uint256 maxEndTimeTimestamp = type(uint32).max - block.timestamp;
 
         vm.expectRevert(FactoryWidePauseWindow.PoolPauseWindowDurationOverflow.selector);
-        new ERC20PoolMock(
+        new PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",

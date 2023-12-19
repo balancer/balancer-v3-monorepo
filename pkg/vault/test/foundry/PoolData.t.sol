@@ -53,7 +53,9 @@ contract PoolDataTest is Test {
             "ERC20POOL",
             [address(DAI), address(WSTETH)].toMemoryArray().asIERC20(),
             rateProviders,
-            true
+            true,
+            365 days,
+            address(0)
         );
     }
 

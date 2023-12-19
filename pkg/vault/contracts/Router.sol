@@ -83,7 +83,7 @@ contract Router is IRouter, ReentrancyGuard {
         );
 
         if (bptAmountOut < params.minBptAmountOut) {
-            revert BptAmountBelowMin();
+            revert BptAmountBelowMin(bptAmountOut, params.minBptAmountOut);
         }
 
         uint256 ethAmountIn;
@@ -112,33 +112,6 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     /// @inheritdoc IRouter
-    function addLiquidityProportional(
-        address pool,
-        uint256[] memory maxAmountsIn,
-        uint256 exactBptAmountOut,
-        bool wethIsEth,
-        bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn) {
-        (amountsIn, , ) = abi.decode(
-            _vault.invoke{ value: msg.value }(
-                abi.encodeWithSelector(
-                    Router.addLiquidityCallback.selector,
-                    AddLiquidityCallbackParams({
-                        sender: msg.sender,
-                        pool: pool,
-                        maxAmountsIn: maxAmountsIn,
-                        minBptAmountOut: exactBptAmountOut,
-                        kind: IVault.AddLiquidityKind.PROPORTIONAL,
-                        wethIsEth: wethIsEth,
-                        userData: userData
-                    })
-                )
-            ),
-            (uint256[], uint256, bytes)
-        );
-    }
-
-    /// @inheritdoc IRouter
     function addLiquidityUnbalanced(
         address pool,
         uint256[] memory exactAmountsIn,
@@ -153,7 +126,7 @@ contract Router is IRouter, ReentrancyGuard {
                     AddLiquidityCallbackParams({
                         sender: msg.sender,
                         pool: pool,
-                        maxAmountsIn: exactAmountsIn,
+                        amountsIn: exactAmountsIn,
                         minBptAmountOut: minBptAmountOut,
                         kind: IVault.AddLiquidityKind.UNBALANCED,
                         wethIsEth: wethIsEth,
@@ -183,7 +156,7 @@ contract Router is IRouter, ReentrancyGuard {
                     AddLiquidityCallbackParams({
                         sender: msg.sender,
                         pool: pool,
-                        maxAmountsIn: maxAmountsIn,
+                        amountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                         wethIsEth: wethIsEth,
@@ -198,7 +171,7 @@ contract Router is IRouter, ReentrancyGuard {
     /// @inheritdoc IRouter
     function addLiquidityCustom(
         address pool,
-        uint256[] memory maxAmountsIn,
+        uint256[] memory inputAmountsIn,
         uint256 minBptAmountOut,
         bool wethIsEth,
         bytes memory userData
@@ -211,7 +184,7 @@ contract Router is IRouter, ReentrancyGuard {
                         AddLiquidityCallbackParams({
                             sender: msg.sender,
                             pool: pool,
-                            maxAmountsIn: maxAmountsIn,
+                            amountsIn: inputAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             kind: IVault.AddLiquidityKind.CUSTOM,
                             wethIsEth: wethIsEth,
@@ -240,19 +213,21 @@ contract Router is IRouter, ReentrancyGuard {
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
         (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
-            params.pool,
-            params.sender,
-            params.maxAmountsIn,
-            params.minBptAmountOut,
-            params.kind,
-            params.userData
+            IVault.AddLiquidityParams({
+                pool: params.pool,
+                to: params.sender,
+                amountsIn: params.amountsIn,
+                minBptAmountOut: params.minBptAmountOut,
+                kind: params.kind,
+                userData: params.userData
+            })
         );
 
         // maxAmountsIn length is checked against tokens length at the vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
         if (bptAmountOut < params.minBptAmountOut) {
-            revert BptAmountBelowMin();
+            revert BptAmountBelowMin(bptAmountOut, params.minBptAmountOut);
         }
 
         uint256 ethAmountIn;
@@ -262,8 +237,8 @@ contract Router is IRouter, ReentrancyGuard {
             uint256 amountIn = amountsIn[i];
 
             // TODO: check amounts in for every type.
-            if (amountIn > params.maxAmountsIn[i]) {
-                revert JoinAboveMax();
+            if (amountIn > params.amountsIn[i]) {
+                revert JoinAboveMax(amountIn, params.amountsIn[i]);
             }
 
             // There can be only one WETH token in the pool
@@ -418,12 +393,14 @@ contract Router is IRouter, ReentrancyGuard {
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
     {
         (bptAmountIn, amountsOut, returnData) = _vault.removeLiquidity(
-            params.pool,
-            params.sender,
-            params.maxBptAmountIn,
-            params.minAmountsOut,
-            params.kind,
-            params.userData
+            IVault.RemoveLiquidityParams({
+                pool: params.pool,
+                from: params.sender,
+                maxBptAmountIn: params.maxBptAmountIn,
+                minAmountsOut: params.minAmountsOut,
+                kind: params.kind,
+                userData: params.userData
+            })
         );
 
         // minAmountsOut length is checked against tokens length at the vault.
@@ -678,34 +655,6 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     /// @inheritdoc IRouter
-    function queryAddLiquidityProportional(
-        address pool,
-        uint256[] memory maxAmountsIn,
-        uint256 exactBptAmountOut,
-        bytes memory userData
-    ) external returns (uint256[] memory amountsIn) {
-        (amountsIn, , ) = abi.decode(
-            _vault.quote(
-                abi.encodeWithSelector(
-                    Router.queryAddLiquidityCallback.selector,
-                    AddLiquidityCallbackParams({
-                        // we use router as a sender to simplify basic query functions
-                        // but it is possible to add liquidity to any recipient
-                        sender: address(this),
-                        pool: pool,
-                        maxAmountsIn: maxAmountsIn,
-                        minBptAmountOut: exactBptAmountOut,
-                        kind: IVault.AddLiquidityKind.PROPORTIONAL,
-                        wethIsEth: false,
-                        userData: userData
-                    })
-                )
-            ),
-            (uint256[], uint256, bytes)
-        );
-    }
-
-    /// @inheritdoc IRouter
     function queryAddLiquidityUnbalanced(
         address pool,
         uint256[] memory exactAmountsIn,
@@ -721,7 +670,7 @@ contract Router is IRouter, ReentrancyGuard {
                         // but it is possible to add liquidity to any recipient
                         sender: address(this),
                         pool: pool,
-                        maxAmountsIn: exactAmountsIn,
+                        amountsIn: exactAmountsIn,
                         minBptAmountOut: minBptAmountOut,
                         kind: IVault.AddLiquidityKind.UNBALANCED,
                         wethIsEth: false,
@@ -752,7 +701,7 @@ contract Router is IRouter, ReentrancyGuard {
                         // but it is possible to add liquidity to any recipient
                         sender: address(this),
                         pool: pool,
-                        maxAmountsIn: maxAmountsIn,
+                        amountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                         wethIsEth: false,
@@ -767,7 +716,7 @@ contract Router is IRouter, ReentrancyGuard {
     /// @inheritdoc IRouter
     function queryAddLiquidityCustom(
         address pool,
-        uint256[] memory maxAmountsIn,
+        uint256[] memory inputAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
@@ -781,7 +730,7 @@ contract Router is IRouter, ReentrancyGuard {
                             // but it is possible to add liquidity to any recipient
                             sender: address(this),
                             pool: pool,
-                            maxAmountsIn: maxAmountsIn,
+                            amountsIn: inputAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             kind: IVault.AddLiquidityKind.CUSTOM,
                             wethIsEth: false,
@@ -811,12 +760,14 @@ contract Router is IRouter, ReentrancyGuard {
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
         (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
-            params.pool,
-            params.sender,
-            params.maxAmountsIn,
-            params.minBptAmountOut,
-            params.kind,
-            params.userData
+            IVault.AddLiquidityParams({
+                pool: params.pool,
+                to: params.sender,
+                amountsIn: params.amountsIn,
+                minBptAmountOut: params.minBptAmountOut,
+                kind: params.kind,
+                userData: params.userData
+            })
         );
     }
 
@@ -959,12 +910,14 @@ contract Router is IRouter, ReentrancyGuard {
     {
         return
             _vault.removeLiquidity(
-                params.pool,
-                params.sender,
-                params.maxBptAmountIn,
-                params.minAmountsOut,
-                params.kind,
-                params.userData
+                IVault.RemoveLiquidityParams({
+                    pool: params.pool,
+                    from: params.sender,
+                    maxBptAmountIn: params.maxBptAmountIn,
+                    minAmountsOut: params.minAmountsOut,
+                    kind: params.kind,
+                    userData: params.userData
+                })
             );
     }
 

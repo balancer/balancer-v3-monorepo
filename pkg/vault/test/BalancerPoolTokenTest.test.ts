@@ -11,7 +11,7 @@ import { setupEnvironment } from './poolSetup';
 import '@balancer-labs/v3-common/setupTests';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 
-describe('ERC20PoolToken', function () {
+describe('BalancerPoolToken', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 9;
 
   let vault: VaultMock;
@@ -209,7 +209,7 @@ describe('ERC20PoolToken', function () {
     });
 
     it('cannot emit approval event except through the Vault', async () => {
-      await expect(poolA.connect(user).emitApprove(user.address, other.address, totalSupply))
+      await expect(poolA.connect(user).emitApproval(user.address, other.address, totalSupply))
         .to.be.revertedWithCustomError(poolA, 'SenderIsNotVault')
         .withArgs(user.address);
     });
