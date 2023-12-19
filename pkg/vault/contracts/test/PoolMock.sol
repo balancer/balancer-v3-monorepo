@@ -22,6 +22,7 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
 
     uint256 public constant MIN_INIT_BPT = 1e6;
 
+    bool public failOnBeforeSwapCallback;
     bool public failOnAfterSwapCallback;
     bool public failOnBeforeAddLiquidity;
     bool public failOnAfterAddLiquidity;
@@ -82,6 +83,10 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
         return balances[tokenInIndex].mulDown(invariantRatio);
     }
 
+    function setFailOnBeforeSwapCallback(bool fail) external {
+        failOnBeforeSwapCallback = fail;
+    }
+
     function setFailOnAfterSwapCallback(bool fail) external {
         failOnAfterSwapCallback = fail;
     }
@@ -106,11 +111,8 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
         _multiplier = newMultiplier;
     }
 
-    function onAfterSwap(
-        IPoolCallbacks.AfterSwapParams calldata params,
-        uint256 amountCalculated
-    ) external view override returns (bool success) {
-        return params.tokenIn != params.tokenOut && amountCalculated > 0 && !failOnAfterSwapCallback;
+    function onBeforeSwap(IBasePool.SwapParams calldata) external view override returns (bool success) {
+        return !failOnBeforeSwapCallback;
     }
 
     function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
@@ -118,6 +120,13 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
             params.kind == IVault.SwapKind.GIVEN_IN
                 ? params.amountGivenScaled18.mulDown(_multiplier)
                 : params.amountGivenScaled18.divDown(_multiplier);
+    }
+
+    function onAfterSwap(
+        IPoolCallbacks.AfterSwapParams calldata,
+        uint256 amountCalculatedScaled18
+    ) external view override returns (bool success) {
+        return amountCalculatedScaled18 > 0 && !failOnAfterSwapCallback;
     }
 
     // Liquidity lifecycle callbacks
