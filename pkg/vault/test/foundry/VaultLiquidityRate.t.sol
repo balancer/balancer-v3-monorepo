@@ -109,7 +109,7 @@ contract VaultLiquidityWithRatesTest is Test {
                 IBasePool.computeBalance.selector,
                 [FixedPoint.mulDown(WSTETH_AMOUNT_IN, MOCK_RATE), DAI_AMOUNT_IN].toMemoryArray(), // liveBalancesScaled18
                 0,
-                2e18 // 200% growth
+                150e16 // 150% growth
             )
         );
 
@@ -164,7 +164,7 @@ contract VaultLiquidityWithRatesTest is Test {
         // TODO: Find a way to test rates inside the Vault
         router.removeLiquidityProportional(
             address(pool),
-            WSTETH_AMOUNT_IN,
+            WSTETH_AMOUNT_IN * 2,
             [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
             false,
             bytes("")
@@ -189,7 +189,7 @@ contract VaultLiquidityWithRatesTest is Test {
         );
 
         PoolData memory startingBalances = vault.getPoolData(address(pool), Rounding.ROUND_DOWN);
-        uint256 bptAmountIn = WSTETH_AMOUNT_IN;
+        uint256 bptAmountIn = WSTETH_AMOUNT_IN * 2;
 
         vm.expectCall(
             address(pool),
@@ -255,8 +255,7 @@ contract VaultLiquidityWithRatesTest is Test {
             [address(WSTETH), address(DAI)].toMemoryArray().asIERC20(),
             [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
             0,
-            false,
-            bytes("")
+            false
         );
     }
 }

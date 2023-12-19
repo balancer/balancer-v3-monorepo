@@ -104,7 +104,7 @@ contract VaultLiquidityTest is Test {
         _compareBalancesAddLiquidity(balancesBefore, balancesAfter, amountsIn, bptAmountOut);
 
         // should mint correct amount of BPT tokens
-        assertEq(bptAmountOut, DAI_AMOUNT_IN);
+        assertEq(bptAmountOut, DAI_AMOUNT_IN * 2, 'Invalid amount of BPT');
     }
 
     function testAddLiquiditySingleTokenExactOut() public {
@@ -187,7 +187,7 @@ contract VaultLiquidityTest is Test {
         );
 
         Balances memory balancesBefore = _getBalances(alice);
-        uint256 bptAmountIn = DAI_AMOUNT_IN;
+        uint256 bptAmountIn = DAI_AMOUNT_IN * 2;
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(pool),
@@ -221,7 +221,7 @@ contract VaultLiquidityTest is Test {
         );
 
         Balances memory balancesBefore = _getBalances(alice);
-        uint256 bptAmountIn = DAI_AMOUNT_IN;
+        uint256 bptAmountIn = DAI_AMOUNT_IN * 2;
 
         uint256[] memory amountsOut = router.removeLiquiditySingleTokenExactIn(
             address(pool),
@@ -289,7 +289,7 @@ contract VaultLiquidityTest is Test {
 
         (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidityCustom(
             address(pool),
-            DAI_AMOUNT_IN,
+            DAI_AMOUNT_IN * 2,
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             false,
             bytes("")
@@ -327,8 +327,7 @@ contract VaultLiquidityTest is Test {
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
             0,
-            false,
-            bytes("")
+            false
         );
     }
 

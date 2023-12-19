@@ -93,8 +93,7 @@ contract VaultSwapTest is Test {
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [uint256(AMOUNT), uint256(AMOUNT)].toMemoryArray(),
             0,
-            false,
-            bytes("")
+            false
         );
     }
 
@@ -117,8 +116,7 @@ contract VaultSwapTest is Test {
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [uint256(AMOUNT), uint256(AMOUNT)].toMemoryArray(),
             0,
-            false,
-            bytes("")
+            false
         );
 
         vault.manualPausePool(address(pool));
