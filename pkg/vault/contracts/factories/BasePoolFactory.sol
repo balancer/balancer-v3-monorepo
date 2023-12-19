@@ -4,9 +4,9 @@ pragma solidity ^0.8.4;
 
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-
-// solhint-disable-next-line max-line-length
-import { SingletonAuthentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
+import {
+    SingletonAuthentication
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
 import { FactoryWidePauseWindow } from "./FactoryWidePauseWindow.sol";

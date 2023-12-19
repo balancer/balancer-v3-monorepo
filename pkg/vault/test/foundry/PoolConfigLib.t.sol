@@ -7,7 +7,7 @@ import "forge-std/Test.sol";
 import { PoolConfig, PoolConfigBits, PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 
 contract PoolConfigLibTest is Test {
-    uint256 private constant CONFIG_MSB = 137;
+    uint256 private constant CONFIG_MSB = 132;
 
     function testToAndFromConfigBits(uint256 rawConfigInt) public {
         rawConfigInt = bound(rawConfigInt, 0, uint256(1 << CONFIG_MSB));

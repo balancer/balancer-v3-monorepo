@@ -12,14 +12,14 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
+import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
-import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
 struct Balances {
@@ -29,15 +29,12 @@ struct Balances {
 }
 
 contract VaultLiquidityTest is Test {
-    using AssetHelpers for address[];
-    using AssetHelpers for address[];
-    using ArrayHelpers for address[2];
-    using ArrayHelpers for uint256[2];
+    using ArrayHelpers for *;
 
     VaultMock vault;
     Router router;
     BasicAuthorizerMock authorizer;
-    ERC20PoolMock pool;
+    PoolMock pool;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
     address alice = vm.addr(1);
@@ -49,12 +46,12 @@ contract VaultLiquidityTest is Test {
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
-        router = new Router(IVault(vault), address(0));
+        router = new Router(IVault(vault), new WETHTestToken());
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
 
-        pool = new ERC20PoolMock(
+        pool = new PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",
@@ -90,32 +87,6 @@ contract VaultLiquidityTest is Test {
         vm.label(address(DAI), "DAI");
     }
 
-    function testAddLiquidityProportional() public {
-        // Use a different account to initialize so that the main LP is clean at the start of the test.
-        _mockInitialize(bob);
-
-        vm.startPrank(alice);
-
-        Balances memory balancesBefore = _getBalances(alice);
-
-        (uint256[] memory amountsIn, uint256 bptAmountOut, ) = router.addLiquidity(
-            address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            DAI_AMOUNT_IN,
-            IVault.AddLiquidityKind.PROPORTIONAL,
-            bytes("")
-        );
-        vm.stopPrank();
-
-        Balances memory balancesAfter = _getBalances(alice);
-
-        _compareBalancesAddLiquidity(balancesBefore, balancesAfter, amountsIn, bptAmountOut);
-
-        // should mint correct amount of BPT tokens
-        assertEq(bptAmountOut, DAI_AMOUNT_IN);
-    }
-
     function testAddLiquidityUnbalanced() public {
         // Use a different account to initialize so that the main LP is clean at the start of the test.
         _mockInitialize(bob);
@@ -123,15 +94,9 @@ contract VaultLiquidityTest is Test {
         vm.startPrank(alice);
 
         Balances memory balancesBefore = _getBalances(alice);
+        uint256[] memory amountsIn = [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray();
 
-        (uint256[] memory amountsIn, uint256 bptAmountOut, ) = router.addLiquidity(
-            address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            DAI_AMOUNT_IN,
-            IVault.AddLiquidityKind.UNBALANCED,
-            bytes("")
-        );
+        uint256 bptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, DAI_AMOUNT_IN, false, bytes(""));
         vm.stopPrank();
 
         Balances memory balancesAfter = _getBalances(alice);
@@ -149,13 +114,14 @@ contract VaultLiquidityTest is Test {
         vm.startPrank(alice);
 
         Balances memory balancesBefore = _getBalances(alice);
+        uint256 bptAmountOut = DAI_AMOUNT_IN;
 
-        (uint256[] memory amountsIn, uint256 bptAmountOut, ) = router.addLiquidity(
+        uint256[] memory amountsIn = router.addLiquiditySingleTokenExactOut(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT_IN), 0].toMemoryArray(),
+            0,
             DAI_AMOUNT_IN,
-            IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+            bptAmountOut,
+            false,
             bytes("")
         );
         vm.stopPrank();
@@ -176,12 +142,11 @@ contract VaultLiquidityTest is Test {
 
         Balances memory balancesBefore = _getBalances(alice);
 
-        (uint256[] memory amountsIn, uint256 bptAmountOut, ) = router.addLiquidity(
+        (uint256[] memory amountsIn, uint256 bptAmountOut, ) = router.addLiquidityCustom(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             DAI_AMOUNT_IN,
-            IVault.AddLiquidityKind.CUSTOM,
+            false,
             bytes("")
         );
         vm.stopPrank();
@@ -198,12 +163,11 @@ contract VaultLiquidityTest is Test {
         vm.startPrank(alice);
 
         vm.expectRevert(abi.encodeWithSelector(IVault.PoolNotInitialized.selector, address(pool)));
-        router.addLiquidity(
+        router.addLiquidityUnbalanced(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             DAI_AMOUNT_IN,
-            IVault.AddLiquidityKind.UNBALANCED,
+            false,
             bytes("")
         );
     }
@@ -214,31 +178,28 @@ contract VaultLiquidityTest is Test {
 
         vm.startPrank(alice);
 
-        router.addLiquidity(
+        router.addLiquidityUnbalanced(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             DAI_AMOUNT_IN,
-            IVault.AddLiquidityKind.PROPORTIONAL,
+            false,
             bytes("")
         );
 
         Balances memory balancesBefore = _getBalances(alice);
+        uint256 bptAmountIn = DAI_AMOUNT_IN;
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidity(
+        uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            DAI_AMOUNT_IN,
+            bptAmountIn,
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            IVault.RemoveLiquidityKind.PROPORTIONAL,
+            false,
             bytes("")
         );
 
         vm.stopPrank();
 
-        Balances memory balancesAfter = _getBalances(alice);
-
-        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, amountsOut);
+        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, amountsOut);
 
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN);
@@ -251,72 +212,63 @@ contract VaultLiquidityTest is Test {
 
         vm.startPrank(alice);
 
-        router.addLiquidity(
+        router.addLiquidityUnbalanced(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             DAI_AMOUNT_IN,
-            IVault.AddLiquidityKind.UNBALANCED,
+            false,
             bytes("")
         );
 
         Balances memory balancesBefore = _getBalances(alice);
+        uint256 bptAmountIn = DAI_AMOUNT_IN;
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidity(
+        uint256[] memory amountsOut = router.removeLiquiditySingleTokenExactIn(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            bptAmountIn,
+            0,
             DAI_AMOUNT_IN,
-            [uint256(DAI_AMOUNT_IN), 0].toMemoryArray(),
-            IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
+            false,
             bytes("")
         );
 
         vm.stopPrank();
 
-        Balances memory balancesAfter = _getBalances(alice);
-
-        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, amountsOut);
-
-        // amountsOut are correct (takes out initial liquidity as well)
-        assertEq(amountsOut[0], DAI_AMOUNT_IN * 2);
-        assertEq(amountsOut[1], 0);
-    }
-
-    function testRemoveLiquiditySingleTokenExactOut() public {
-        // Use a different account to initialize so that the main LP is clean at the start of the test.
-        _mockInitialize(bob);
-
-        vm.startPrank(alice);
-
-        router.addLiquidity(
-            address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            DAI_AMOUNT_IN,
-            IVault.AddLiquidityKind.UNBALANCED,
-            bytes("")
-        );
-
-        Balances memory balancesBefore = _getBalances(alice);
-
-        (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidity(
-            address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
-            DAI_AMOUNT_IN,
-            [uint256(DAI_AMOUNT_IN), 0].toMemoryArray(),
-            IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
-            bytes("")
-        );
-
-        vm.stopPrank();
-
-        Balances memory balancesAfter = _getBalances(alice);
-
-        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, amountsOut);
+        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, amountsOut);
 
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN);
         assertEq(amountsOut[1], 0);
+    }
+
+    function testRemoveLiquiditySingleTokenExactOut() public {
+        _mockInitialize(bob);
+
+        vm.startPrank(alice);
+
+        router.addLiquidityUnbalanced(
+            address(pool),
+            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
+            DAI_AMOUNT_IN,
+            false,
+            bytes("")
+        );
+
+        Balances memory balancesBefore = _getBalances(alice);
+        uint256[] memory amountsOut = [DAI_AMOUNT_IN * 2, 0].toMemoryArray();
+
+        uint256 bptAmountIn = router.removeLiquiditySingleTokenExactOut(
+            address(pool),
+            DAI_AMOUNT_IN,
+            0,
+            uint256(2 * DAI_AMOUNT_IN),
+            false,
+            bytes("")
+        );
+
+        vm.stopPrank();
+
+        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, amountsOut);
     }
 
     function testRemoveLiquidityCustom() public {
@@ -325,31 +277,27 @@ contract VaultLiquidityTest is Test {
 
         vm.startPrank(alice);
 
-        router.addLiquidity(
+        router.addLiquidityUnbalanced(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             DAI_AMOUNT_IN,
-            IVault.AddLiquidityKind.UNBALANCED,
+            false,
             bytes("")
         );
 
         Balances memory balancesBefore = _getBalances(alice);
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidity(
+        (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidityCustom(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             DAI_AMOUNT_IN,
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            IVault.RemoveLiquidityKind.CUSTOM,
+            false,
             bytes("")
         );
 
         vm.stopPrank();
 
-        Balances memory balancesAfter = _getBalances(alice);
-
-        _compareBalancesRemoveLiquidity(balancesBefore, balancesAfter, bptAmountIn, amountsOut);
+        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, amountsOut);
 
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN);
@@ -360,12 +308,11 @@ contract VaultLiquidityTest is Test {
         vm.startPrank(alice);
 
         vm.expectRevert(abi.encodeWithSelector(IVault.PoolNotInitialized.selector, address(pool)));
-        router.removeLiquidity(
+        router.removeLiquidityProportional(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
             DAI_AMOUNT_IN,
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            IVault.RemoveLiquidityKind.PROPORTIONAL,
+            false,
             bytes("")
         );
     }
@@ -377,9 +324,10 @@ contract VaultLiquidityTest is Test {
         // to comply with the vault's required minimum.
         router.initialize(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asAsset(),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
             0,
+            false,
             bytes("")
         );
     }
@@ -404,7 +352,7 @@ contract VaultLiquidityTest is Test {
         uint256[] memory amountsIn,
         uint256 bptAmountOut
     ) internal {
-        // Assets are transferred from the user to the vault
+        // Tokens are transferred from the user to the vault
         assertEq(
             balancesAfter.userTokens[0],
             balancesBefore.userTokens[0] - amountsIn[0],
@@ -416,7 +364,7 @@ contract VaultLiquidityTest is Test {
             "Add - User balance: token 1"
         );
 
-        // Assets are now in the vault / pool
+        // Tokens are now in the vault / pool
         assertEq(
             balancesAfter.poolTokens[0],
             balancesBefore.poolTokens[0] + amountsIn[0],
@@ -439,7 +387,7 @@ contract VaultLiquidityTest is Test {
         uint256 bptAmountIn,
         uint256[] memory amountsOut
     ) internal {
-        // Assets are transferred back to user
+        // Tokens are transferred back to user
         assertEq(
             balancesAfter.userTokens[0],
             balancesBefore.userTokens[0] + amountsOut[0],
@@ -451,7 +399,7 @@ contract VaultLiquidityTest is Test {
             "Remove - User balance: token 1"
         );
 
-        // Assets are no longer in the vault / pool
+        // Tokens are no longer in the vault / pool
         assertEq(
             balancesAfter.poolTokens[0],
             balancesBefore.poolTokens[0] - amountsOut[0],
