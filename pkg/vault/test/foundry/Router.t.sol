@@ -23,7 +23,7 @@ import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/h
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
-import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { RouterMock } from "../../contracts/test/RouterMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
@@ -34,8 +34,8 @@ contract RouterTest is Test {
     IRouter router;
     RouterMock routerMock;
     BasicAuthorizerMock authorizer;
-    ERC20PoolMock pool;
-    ERC20PoolMock wethPool;
+    PoolMock pool;
+    PoolMock wethPool;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
     WETHTestToken WETH;
@@ -59,7 +59,7 @@ contract RouterTest is Test {
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
 
-        pool = new ERC20PoolMock(
+        pool = new PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",
@@ -69,7 +69,7 @@ contract RouterTest is Test {
             365 days,
             address(0)
         );
-        wethPool = new ERC20PoolMock(
+        wethPool = new PoolMock(
             vault,
             "ERC20 WETH Pool",
             "ERC20POOL",

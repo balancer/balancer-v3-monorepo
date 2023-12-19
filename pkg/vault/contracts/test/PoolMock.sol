@@ -4,26 +4,33 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
+import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
+import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
-import { BasePool } from "../BasePool.sol";
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
+import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 
-contract PoolMock is BasePool {
+contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToken {
     using FixedPoint for uint256;
 
     uint256 public constant MIN_INIT_BPT = 1e6;
 
-    bool public failOnCallback;
+    bool public failOnBeforeSwapCallback;
+    bool public failOnAfterSwapCallback;
+    bool public failOnBeforeAddLiquidity;
+    bool public failOnAfterAddLiquidity;
+    bool public failOnBeforeRemoveLiquidity;
+    bool public failOnAfterRemoveLiquidity;
 
-    bytes32 private constant _ALL_BITS_SET = bytes32(type(uint256).max);
-    uint256 private immutable _numTokens;
+    // Amounts in are multiplied by the multiplier, amounts out are divided by it
+    uint256 private _multiplier = FixedPoint.ONE;
 
     constructor(
         IVault vault,
@@ -31,29 +38,117 @@ contract PoolMock is BasePool {
         string memory symbol,
         IERC20[] memory tokens,
         IRateProvider[] memory rateProviders,
-        bool registerPool
-    ) BasePool(vault, name, symbol) {
+        bool registerPool,
+        uint256 pauseWindowDuration,
+        address pauseManager
+    ) BalancerPoolToken(vault, name, symbol) {
         if (registerPool) {
-            PoolFactoryMock factory = new PoolFactoryMock(vault, 365 days);
+            PoolFactoryMock factory = new PoolFactoryMock(vault, pauseWindowDuration);
 
             factory.registerPool(
                 address(this),
                 tokens,
                 rateProviders,
-                address(0),
+                pauseManager,
                 PoolConfigBits.wrap(0).toPoolConfig().callbacks,
-                PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
+                PoolConfigBits.wrap(bytes32(type(uint256).max)).toPoolConfig().liquidityManagement
             );
         }
-
-        _numTokens = tokens.length;
     }
 
-    function onInitialize(
-        uint256[] memory exactAmountsInScaled18,
+    function onInitialize(uint256[] memory exactAmountsIn, bytes memory) external pure override returns (uint256) {
+        return (MIN_INIT_BPT > exactAmountsIn[0] ? MIN_INIT_BPT : exactAmountsIn[0]);
+    }
+
+    function computeInvariant(uint256[] memory balances) external pure returns (uint256) {
+        // inv = x + y
+        uint256 invariant;
+        for (uint256 index = 0; index < balances.length; index++) {
+            invariant += balances[index];
+        }
+        return invariant;
+    }
+
+    /// @inheritdoc IBasePool
+    function getPoolTokens() public view returns (IERC20[] memory tokens) {
+        return getVault().getPoolTokens(address(this));
+    }
+
+    function computeBalance(
+        uint256[] memory balances,
+        uint256 tokenInIndex,
+        uint256 invariantRatio
+    ) external pure returns (uint256 newBalance) {
+        // inv = x + y
+        return balances[tokenInIndex].mulDown(invariantRatio);
+    }
+
+    function setFailOnBeforeSwapCallback(bool fail) external {
+        failOnBeforeSwapCallback = fail;
+    }
+
+    function setFailOnAfterSwapCallback(bool fail) external {
+        failOnAfterSwapCallback = fail;
+    }
+
+    function setFailOnBeforeAddLiquidityCallback(bool fail) external {
+        failOnBeforeAddLiquidity = fail;
+    }
+
+    function setFailOnAfterAddLiquidityCallback(bool fail) external {
+        failOnAfterAddLiquidity = fail;
+    }
+
+    function setFailOnBeforeRemoveLiquidityCallback(bool fail) external {
+        failOnBeforeRemoveLiquidity = fail;
+    }
+
+    function setFailOnAfterRemoveLiquidityCallback(bool fail) external {
+        failOnAfterRemoveLiquidity = fail;
+    }
+
+    function setMultiplier(uint256 newMultiplier) external {
+        _multiplier = newMultiplier;
+    }
+
+    function onBeforeSwap(IBasePool.SwapParams calldata) external view override returns (bool success) {
+        return !failOnBeforeSwapCallback;
+    }
+
+    function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
+        return
+            params.kind == IVault.SwapKind.GIVEN_IN
+                ? params.amountGivenScaled18.mulDown(_multiplier)
+                : params.amountGivenScaled18.divDown(_multiplier);
+    }
+
+    function onAfterSwap(
+        IPoolCallbacks.AfterSwapParams calldata,
+        uint256 amountCalculatedScaled18
+    ) external view override returns (bool success) {
+        return amountCalculatedScaled18 > 0 && !failOnAfterSwapCallback;
+    }
+
+    // Liquidity lifecycle callbacks
+
+    function onBeforeAddLiquidity(
+        address,
+        uint256[] memory,
+        uint256,
+        uint256[] memory,
         bytes memory
-    ) external view onlyVault returns (uint256) {
-        return (MIN_INIT_BPT > exactAmountsInScaled18[0] ? MIN_INIT_BPT : exactAmountsInScaled18[0]);
+    ) external view override returns (bool) {
+        return !failOnBeforeAddLiquidity;
+    }
+
+    function onBeforeRemoveLiquidity(
+        address,
+        uint256,
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
+    ) external view override returns (bool) {
+        return !failOnBeforeRemoveLiquidity;
     }
 
     function onAfterAddLiquidity(
@@ -63,7 +158,7 @@ contract PoolMock is BasePool {
         uint256[] memory,
         bytes memory
     ) external view override returns (bool) {
-        return !failOnCallback;
+        return !failOnAfterAddLiquidity;
     }
 
     function onAfterRemoveLiquidity(
@@ -73,118 +168,38 @@ contract PoolMock is BasePool {
         uint256[] memory,
         bytes memory
     ) external view override returns (bool) {
-        return !failOnCallback;
+        return !failOnAfterRemoveLiquidity;
     }
 
-    function setFailOnBeforeSwap(bool fail) external {
-        failOnCallback = fail;
+    function onAddLiquidityCustom(
+        address,
+        uint256[] memory maxAmountsIn,
+        uint256 minBptAmountOut,
+        uint256[] memory,
+        bytes memory userData
+    ) external pure override returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
+        amountsIn = maxAmountsIn;
+        bptAmountOut = minBptAmountOut;
+        returnData = userData;
     }
 
-    function setFailOnAfterSwap(bool fail) external {
-        failOnCallback = fail;
-    }
-
-    function onBeforeSwap(IBasePool.SwapParams calldata) external view override returns (bool success) {
-        return !failOnCallback;
-    }
-
-    function onAfterSwap(
-        IBasePool.AfterSwapParams calldata,
-        uint256 amountCalculatedScaled18
-    ) external view override returns (bool success) {
-        return amountCalculatedScaled18 > 0 && !failOnCallback;
-    }
-
-    function onSwap(IBasePool.SwapParams calldata params) external pure override returns (uint256 amountCalculated) {
-        return params.amountGivenScaled18;
-    }
-
-    function _getTotalTokens() internal view virtual override returns (uint256) {
-        return _numTokens;
+    function onRemoveLiquidityCustom(
+        address,
+        uint256 maxBptAmountIn,
+        uint256[] memory minAmountsOut,
+        uint256[] memory,
+        bytes memory userData
+    ) external pure override returns (uint256, uint256[] memory, bytes memory) {
+        return (maxBptAmountIn, minAmountsOut, userData);
     }
 
     /// @dev Even though pools do not handle scaling, we still need this for the tests.
     function getDecimalScalingFactors() external view returns (uint256[] memory scalingFactors) {
-        IERC20[] memory tokens = _vault.getPoolTokens(address(this));
+        IERC20[] memory tokens = getPoolTokens();
         scalingFactors = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; i++) {
             scalingFactors[i] = ScalingHelpers.computeScalingFactor(tokens[i]);
         }
-    }
-
-    function onBeforeAddLiquidity(
-        address,
-        uint256[] memory,
-        uint256,
-        uint256[] memory,
-        bytes memory
-    ) external pure override returns (bool) {
-        return true;
-    }
-
-    function onAddLiquidityUnbalanced(
-        address,
-        uint256[] memory exactAmountsIn,
-        uint256[] memory
-    ) external pure override returns (uint256) {
-        return exactAmountsIn[0];
-    }
-
-    function onAddLiquiditySingleTokenExactOut(
-        address,
-        uint256,
-        uint256,
-        uint256[] memory
-    ) external pure override returns (uint256) {
-        revert CallbackNotImplemented();
-    }
-
-    function onAddLiquidityCustom(
-        address,
-        uint256[] memory,
-        uint256,
-        uint256[] memory,
-        bytes memory
-    ) external pure override returns (uint256[] memory, uint256, bytes memory) {
-        revert CallbackNotImplemented();
-    }
-
-    function onBeforeRemoveLiquidity(
-        address,
-        uint256,
-        uint256[] memory,
-        uint256[] memory,
-        bytes memory
-    ) external pure override returns (bool) {
-        return true;
-    }
-
-    function onRemoveLiquiditySingleTokenExactIn(
-        address,
-        uint256,
-        uint256,
-        uint256[] memory
-    ) external pure override returns (uint256) {
-        revert CallbackNotImplemented();
-    }
-
-    function onRemoveLiquiditySingleTokenExactOut(
-        address,
-        uint256,
-        uint256,
-        uint256[] memory
-    ) external pure override returns (uint256) {
-        revert CallbackNotImplemented();
-    }
-
-    function onRemoveLiquidityCustom(
-        address,
-        uint256,
-        uint256[] memory,
-        uint256[] memory,
-        bytes memory
-    ) external pure override returns (uint256, uint256[] memory, bytes memory) {
-        revert CallbackNotImplemented();
     }
 }

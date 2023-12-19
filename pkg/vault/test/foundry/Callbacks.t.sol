@@ -8,6 +8,7 @@ import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
@@ -18,12 +19,12 @@ import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 
-import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 import { RouterAdaptor } from "../../contracts/test/RouterAdaptor.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 contract VaultSwapTest is Test {
     using ArrayHelpers for *;
@@ -32,7 +33,7 @@ contract VaultSwapTest is Test {
     VaultMock vault;
     IRouter router;
     BasicAuthorizerMock authorizer;
-    ERC20PoolMock pool;
+    PoolMock pool;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
     address alice = vm.addr(1);
@@ -53,7 +54,7 @@ contract VaultSwapTest is Test {
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
 
-        pool = new ERC20PoolMock(
+        pool = new PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",
@@ -112,7 +113,7 @@ contract VaultSwapTest is Test {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IBasePool.onBeforeSwap.selector,
+                IPoolCallbacks.onBeforeSwap.selector,
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_IN,
                     tokenIn: IERC20(USDC),
@@ -162,8 +163,8 @@ contract VaultSwapTest is Test {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IBasePool.onAfterSwap.selector,
-                IBasePool.AfterSwapParams({
+                IPoolCallbacks.onAfterSwap.selector,
+                IPoolCallbacks.AfterSwapParams({
                     kind: IVault.SwapKind.GIVEN_IN,
                     tokenIn: IERC20(USDC),
                     tokenOut: IERC20(DAI),
@@ -242,7 +243,7 @@ contract VaultSwapTest is Test {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IBasePool.onBeforeAddLiquidity.selector,
+                IPoolCallbacks.onBeforeAddLiquidity.selector,
                 bob,
                 [maxInputs[0], maxInputs[1] * USDC_SCALING].toMemoryArray(),
                 initialBptSupply,
@@ -293,7 +294,7 @@ contract VaultSwapTest is Test {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IBasePool.onBeforeRemoveLiquidity.selector,
+                IPoolCallbacks.onBeforeRemoveLiquidity.selector,
                 alice,
                 bptBalance,
                 [minOutputs[0], minOutputs[1] * USDC_SCALING].toMemoryArray(),
@@ -359,7 +360,7 @@ contract VaultSwapTest is Test {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IBasePool.onAfterAddLiquidity.selector,
+                IPoolCallbacks.onAfterAddLiquidity.selector,
                 bob,
                 [amountsIn[0], amountsIn[1] * USDC_SCALING].toMemoryArray(),
                 bptAmountOut,
@@ -431,7 +432,7 @@ contract VaultSwapTest is Test {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IBasePool.onAfterRemoveLiquidity.selector,
+                IPoolCallbacks.onAfterRemoveLiquidity.selector,
                 alice,
                 bptAmountIn,
                 [amountsOut[0], amountsOut[1] * USDC_SCALING].toMemoryArray(),
