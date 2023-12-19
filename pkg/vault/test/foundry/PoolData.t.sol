@@ -11,7 +11,7 @@ import { IVault, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contrac
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
-import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
+import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -21,8 +21,7 @@ import { Router } from "../../contracts/Router.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 
 contract PoolDataTest is Test {
-    using AssetHelpers for *;
-    using ArrayHelpers for address[2];
+    using ArrayHelpers for *;
     using FixedPoint for uint256;
 
     VaultMock vault;
@@ -37,7 +36,7 @@ contract PoolDataTest is Test {
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
-        router = new Router(IVault(vault), address(0));
+        router = new Router(IVault(vault), new WETHTestToken());
         WSTETH = new ERC20TestToken("WSTETH", "WSTETH", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
 
@@ -54,7 +53,9 @@ contract PoolDataTest is Test {
             "ERC20POOL",
             [address(DAI), address(WSTETH)].toMemoryArray().asIERC20(),
             rateProviders,
-            true
+            true,
+            365 days,
+            address(0)
         );
     }
 

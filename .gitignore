@@ -36,3 +36,6 @@ coverage.json
 
 # Slither
 slither/
+
+# Jupyter
+.ipynb_checkpoints/

@@ -12,28 +12,27 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { AssetHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/AssetHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
+import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
-import { ERC20PoolMock } from "../../contracts/test/ERC20PoolMock.sol";
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 
 contract VaultSwapWithRatesTest is Test {
-    using AssetHelpers for *;
     using ArrayHelpers for *;
 
     VaultMock vault;
     Router router;
     BasicAuthorizerMock authorizer;
     RateProviderMock rateProvider;
-    ERC20PoolMock pool;
+    PoolMock pool;
     ERC20TestToken WSTETH;
     ERC20TestToken DAI;
     address alice = vm.addr(1);
@@ -45,14 +44,14 @@ contract VaultSwapWithRatesTest is Test {
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
-        router = new Router(IVault(vault), address(0));
+        router = new Router(IVault(vault), new WETHTestToken());
         WSTETH = new ERC20TestToken("WSTETH", "WSTETH", 18);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProvider = new RateProviderMock();
         rateProviders[0] = rateProvider;
 
-        pool = new ERC20PoolMock(
+        pool = new PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",
@@ -93,9 +92,10 @@ contract VaultSwapWithRatesTest is Test {
         vm.prank(alice);
         router.initialize(
             address(pool),
-            [address(WSTETH), address(DAI)].toMemoryArray().asAsset(),
+            [address(WSTETH), address(DAI)].toMemoryArray().asIERC20(),
             [uint256(AMOUNT), uint256(AMOUNT)].toMemoryArray(),
             0,
+            false,
             bytes("")
         );
     }
@@ -153,14 +153,14 @@ contract VaultSwapWithRatesTest is Test {
         );
 
         vm.prank(bob);
-        router.swap(
-            IVault.SwapKind.GIVEN_IN,
+        router.swapExactIn(
             address(pool),
-            address(DAI).asAsset(),
-            address(WSTETH).asAsset(),
+            DAI,
+            WSTETH,
             AMOUNT,
             rateAdjustedLimit,
             type(uint256).max,
+            false,
             bytes("")
         );
     }
@@ -192,14 +192,14 @@ contract VaultSwapWithRatesTest is Test {
         );
 
         vm.prank(bob);
-        router.swap(
-            IVault.SwapKind.GIVEN_OUT,
+        router.swapExactOut(
             address(pool),
-            address(DAI).asAsset(),
-            address(WSTETH).asAsset(),
+            DAI,
+            WSTETH,
             rateAdjustedAmountGiven,
             AMOUNT,
             type(uint256).max,
+            false,
             bytes("")
         );
     }

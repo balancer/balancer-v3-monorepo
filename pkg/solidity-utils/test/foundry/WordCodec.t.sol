@@ -16,11 +16,7 @@ contract WordCodecTest is Test {
         assertEq(decoded, input);
     }
 
-    function testEncodeUintMultiBits(
-        uint256 input,
-        uint8 bits,
-        uint256 offset
-    ) external {
+    function testEncodeUintMultiBits(uint256 input, uint8 bits, uint256 offset) external {
         (input, bits, offset) = _getAdjustedValues(input, bits, offset);
 
         bytes32 data = WordCodec.encodeUint(input, offset, bits);
@@ -29,11 +25,7 @@ contract WordCodecTest is Test {
         assertEq(decoded, input);
     }
 
-    function testEncodeUintOtherBitsFree(
-        uint256 input,
-        uint8 bits,
-        uint256 offset
-    ) external {
+    function testEncodeUintOtherBitsFree(uint256 input, uint8 bits, uint256 offset) external {
         (input, bits, offset) = _getAdjustedValues(input, bits, offset);
 
         bytes32 data = WordCodec.encodeUint(input, offset, bits);
@@ -45,14 +37,7 @@ contract WordCodecTest is Test {
         uint256 input,
         uint8 bits,
         uint256 offset
-    )
-        private
-        returns (
-            uint256,
-            uint8,
-            uint256
-        )
-    {
+    ) private pure returns (uint256, uint8, uint256) {
         vm.assume(bits > 0);
         vm.assume(input < (1 << (255 - 1)));
 
@@ -66,12 +51,7 @@ contract WordCodecTest is Test {
         return (input, bits, offset);
     }
 
-    function testInsertUint(
-        bytes32 word,
-        uint256 value,
-        uint256 offset,
-        uint256 bitLength
-    ) external {
+    function testInsertUint(bytes32 word, uint256 value, uint256 offset, uint256 bitLength) external {
         if (offset >= 256 || !(bitLength >= 1 && bitLength <= Math.min(255, 256 - offset))) {
             vm.expectRevert(WordCodec.OutOfBounds.selector);
             WordCodec.insertUint(word, value, offset, bitLength);
@@ -89,12 +69,7 @@ contract WordCodecTest is Test {
         }
     }
 
-    function testInsertInt(
-        bytes32 word,
-        int256 value,
-        uint256 offset,
-        uint256 bitLength
-    ) external {
+    function testInsertInt(bytes32 word, int256 value, uint256 offset, uint256 bitLength) external {
         if (offset >= 256 || !(bitLength >= 1 && bitLength <= Math.min(255, 256 - offset))) {
             vm.expectRevert(WordCodec.OutOfBounds.selector);
             WordCodec.insertInt(word, value, offset, bitLength);
@@ -113,11 +88,7 @@ contract WordCodecTest is Test {
         }
     }
 
-    function testInsertBool(
-        bytes32 word,
-        bool value,
-        uint256 offset
-    ) external {
+    function testInsertBool(bytes32 word, bool value, uint256 offset) external {
         bytes32 clearedWord = bytes32(uint256(word) & ~(1 << offset));
         bytes32 referenceInsertBool = clearedWord | bytes32(uint256(value ? 1 : 0) << offset);
 
@@ -126,11 +97,7 @@ contract WordCodecTest is Test {
         assertEq(insertBool, referenceInsertBool);
     }
 
-    function testDecodeUint(
-        bytes32 word,
-        uint256 offset,
-        uint256 bitLength
-    ) external {
+    function testDecodeUint(bytes32 word, uint256 offset, uint256 bitLength) external {
         vm.assume(bitLength > 0 && bitLength < 256);
         uint256 referenceDecodeUint = uint256(word >> offset) & ((1 << bitLength) - 1);
         uint256 decodeUint = WordCodec.decodeUint(word, offset, bitLength);
@@ -138,11 +105,7 @@ contract WordCodecTest is Test {
         assertEq(decodeUint, referenceDecodeUint);
     }
 
-    function testDecodeInt(
-        bytes32 word,
-        uint256 offset,
-        uint256 bitLength
-    ) external {
+    function testDecodeInt(bytes32 word, uint256 offset, uint256 bitLength) external {
         vm.assume(bitLength > 0 && bitLength < 256);
         int256 maxInt = int256((1 << (bitLength - 1)) - 1);
         uint256 mask = (1 << bitLength) - 1;
