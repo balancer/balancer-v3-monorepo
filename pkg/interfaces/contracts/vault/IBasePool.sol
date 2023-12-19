@@ -16,24 +16,6 @@ interface IBasePool {
     function getPoolTokens() external view returns (IERC20[] memory tokens);
 
     /***************************************************************************
-                                  Initialization
-    ***************************************************************************/
-
-    /**
-     * @notice Initialize pool with seed funds.
-     * @dev The vault enforces that this callback will only be called once.
-     * `exactAmountsIn` have been decimal scaled by the Vault, and are given here as 18-decimal floating point values.
-     *
-     * @param exactAmountsIn Exact amounts of tokens to be added
-     * @param userData Additional (optional) data provided by the user
-     * @return bptAmountOut Amount of pool tokens minted
-     */
-    function onInitialize(
-        uint256[] memory exactAmountsIn,
-        bytes memory userData
-    ) external returns (uint256 bptAmountOut);
-
-    /***************************************************************************
                                    Invariant
     ***************************************************************************/
 

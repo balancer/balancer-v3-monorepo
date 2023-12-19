@@ -42,8 +42,7 @@ contract Router is IRouter, ReentrancyGuard {
         IERC20[] memory tokens,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
-        bool wethIsEth,
-        bytes memory userData
+        bool wethIsEth
     ) external payable returns (uint256 bptAmountOut) {
         return
             abi.decode(
@@ -56,8 +55,7 @@ contract Router is IRouter, ReentrancyGuard {
                             tokens: tokens,
                             exactAmountsIn: exactAmountsIn,
                             minBptAmountOut: minBptAmountOut,
-                            wethIsEth: wethIsEth,
-                            userData: userData
+                            wethIsEth: wethIsEth
                         })
                     )
                 ),
@@ -78,8 +76,7 @@ contract Router is IRouter, ReentrancyGuard {
             params.pool,
             params.sender,
             params.tokens,
-            params.exactAmountsIn,
-            params.userData
+            params.exactAmountsIn
         );
 
         if (bptAmountOut < params.minBptAmountOut) {
@@ -412,7 +409,7 @@ contract Router is IRouter, ReentrancyGuard {
             IERC20 token = tokens[i];
 
             if (amountOut < params.minAmountsOut[i]) {
-                revert ExitBelowMin();
+                revert ExitBelowMin(amountOut, params.minAmountsOut[i]);
             }
 
             // There can be only one WETH token in the pool

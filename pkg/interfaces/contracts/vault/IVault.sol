@@ -88,8 +88,8 @@ interface IVault {
      */
     error TokenAlreadyRegistered(IERC20 token);
 
-    /// @dev The BPT amount involved in the operation is below the absolute minimum.
-    error BptAmountBelowAbsoluteMin();
+    /// @dev The total supply of a pool token can't be lower than the absolute minimum.
+    error TotalSupplyTooLow(uint256 amount);
 
     /// @dev The token count is below the minimum allowed.
     error MinTokens();
@@ -175,15 +175,13 @@ interface IVault {
      * @param to Address that will receive the output BPT
      * @param tokens Tokens used to seed the pool (must match the registered tokens)
      * @param exactAmountsIn Exact amounts of input tokens
-     * @param userData Additional (optional) data for the initialization
      * @return bptAmountOut Output pool token amount
      */
     function initialize(
         address pool,
         address to,
         IERC20[] memory tokens,
-        uint256[] memory exactAmountsIn,
-        bytes memory userData
+        uint256[] memory exactAmountsIn
     ) external returns (uint256 bptAmountOut);
 
     /**

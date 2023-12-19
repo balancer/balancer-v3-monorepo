@@ -55,10 +55,6 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
         }
     }
 
-    function onInitialize(uint256[] memory exactAmountsIn, bytes memory) external pure override returns (uint256) {
-        return (MIN_INIT_BPT > exactAmountsIn[0] ? MIN_INIT_BPT : exactAmountsIn[0]);
-    }
-
     function computeInvariant(uint256[] memory balances) external pure returns (uint256) {
         // inv = x + y
         uint256 invariant;

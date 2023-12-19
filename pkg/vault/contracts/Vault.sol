@@ -1016,8 +1016,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         address pool,
         address to,
         IERC20[] memory tokens,
-        uint256[] memory exactAmountsIn,
-        bytes memory userData
+        uint256[] memory exactAmountsIn
     )
         external
         withHandler
@@ -1054,23 +1053,21 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         poolData.config.isPoolInitialized = true;
         _poolConfig[pool] = poolData.config.fromPoolConfig();
 
-        // Finally, call pool hook. Doing this at the end also means we do not need to downscale exact amounts in.
+        // Finally, compute the invariant with exactAmountsIn which result in an initial amount of BPT to mint.
+        // Doing this at the end also means we do not need to downscale exact amounts in.
         // Amounts are entering pool math, so round down. A lower invariant after the join means less bptOut,
         // favoring the pool.
         exactAmountsIn.toScaled18ApplyRateRoundDownArray(poolData.decimalScalingFactors, poolData.tokenRates);
 
-        bptAmountOut = IBasePool(pool).onInitialize(exactAmountsIn, userData);
+        bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsIn);
 
         if (bptAmountOut < _MINIMUM_BPT) {
-            revert BptAmountBelowAbsoluteMin();
+            revert TotalSupplyTooLow(bptAmountOut);
         }
 
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
-        // At this point we know that bptAmountOut >= _MINIMUM_BPT, so this will not revert.
-        bptAmountOut -= _MINIMUM_BPT;
         _mint(address(pool), to, bptAmountOut);
-        _mintToAddressZero(address(pool), _MINIMUM_BPT);
 
         // Emit an event to log the pool initialization
         emit PoolInitialized(pool);

@@ -3,6 +3,7 @@
 pragma solidity ^0.8.4;
 
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
@@ -14,8 +15,11 @@ import { BalancerPoolToken } from "../BalancerPoolToken.sol";
  * @dev The ERC20MultiToken is an ERC20-focused multi-token implementation that is fully compatible
  * with the ERC20 API on the token side. It also allows for the minting and burning of tokens on the multi-token side.
  */
-abstract contract ERC20MultiToken is IERC20Errors {
+abstract contract ERC20MultiToken is IERC20Errors, IVault {
     using Address for address;
+
+    // Minimum total supply amount.
+    uint256 private constant _MINIMUM_TOTAL_SUPPLY = 1e6;
 
     /**
      * @notice Pool tokens are moved from one account (`from`) to another (`to`). Note that `value` may be zero.
@@ -81,29 +85,21 @@ abstract contract ERC20MultiToken is IERC20Errors {
             revert ERC20InvalidReceiver(to);
         }
 
-        _totalSupplyOf[token] += amount;
+        uint256 newTotalSupply = _totalSupplyOf[token] + amount;
         unchecked {
             // Overflow not possible: balance + amount is at most totalSupply + amount, which is checked above.
             _balances[token][to] += amount;
         }
 
+        if (newTotalSupply < _MINIMUM_TOTAL_SUPPLY) {
+            revert TotalSupplyTooLow(newTotalSupply);
+        }
+        _totalSupplyOf[token] = newTotalSupply;
+
         emit Transfer(token, address(0), to, amount);
 
         // We also invoke the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
         BalancerPoolToken(token).emitTransfer(address(0), to, amount);
-    }
-
-    function _mintToAddressZero(address token, uint256 amount) internal {
-        _totalSupplyOf[token] += amount;
-        unchecked {
-            // Overflow not possible: balance + amount is at most totalSupply + amount, which is checked above.
-            _balances[token][address(0)] += amount;
-        }
-
-        emit Transfer(token, address(0), address(0), amount);
-
-        // We also invoke the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
-        BalancerPoolToken(token).emitTransfer(address(0), address(0), amount);
     }
 
     function _burn(address token, address from, uint256 amount) internal {
@@ -116,11 +112,14 @@ abstract contract ERC20MultiToken is IERC20Errors {
             revert ERC20InsufficientBalance(from, accountBalance, amount);
         }
 
-        unchecked {
-            _balances[token][from] = accountBalance - amount;
-            // Overflow not possible: amount <= accountBalance <= totalSupply.
-            _totalSupplyOf[token] -= amount;
+        _balances[token][from] = accountBalance - amount;
+        uint256 newTotalSupply = _totalSupplyOf[token] - amount;
+
+        if (newTotalSupply < _MINIMUM_TOTAL_SUPPLY) {
+            revert TotalSupplyTooLow(newTotalSupply);
         }
+
+        _totalSupplyOf[token] = newTotalSupply;
 
         emit Transfer(token, from, address(0), amount);
 
