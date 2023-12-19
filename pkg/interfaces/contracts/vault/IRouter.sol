@@ -482,7 +482,6 @@ interface IRouter {
         bytes calldata userData
     ) external returns (uint256 amountIn);
 
-
     /***************************************************************************
                                 WIP Swap interfaces
     ***************************************************************************/
