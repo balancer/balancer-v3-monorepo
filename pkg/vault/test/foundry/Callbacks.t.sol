@@ -68,6 +68,7 @@ contract CallbacksTest is Test {
         );
 
         PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.callbacks.shouldCallBeforeSwap = true;
         config.callbacks.shouldCallAfterSwap = true;
         vault.setConfig(address(pool), config);
 
@@ -112,6 +113,55 @@ contract CallbacksTest is Test {
         vm.label(bob, "bob");
         vm.label(address(USDC), "USDC");
         vm.label(address(DAI), "DAI");
+    }
+
+    function testOnBeforeSwapCallback() public {
+        vm.prank(bob);
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IBasePool.onSwap.selector,
+                IBasePool.SwapParams({
+                    kind: IVault.SwapKind.GIVEN_IN,
+                    tokenIn: IERC20(USDC),
+                    tokenOut: IERC20(DAI),
+                    amountGivenScaled18: DEFAULT_AMOUNT,
+                    balancesScaled18: [DEFAULT_AMOUNT + MINIMUM_AMOUNT, DEFAULT_AMOUNT + MINIMUM_AMOUNT]
+                        .toMemoryArray(),
+                    indexIn: 1,
+                    indexOut: 0,
+                    sender: address(router),
+                    userData: bytes("")
+                })
+            )
+        );
+        router.swapExactIn(
+            address(pool),
+            USDC,
+            DAI,
+            DEFAULT_AMOUNT,
+            0,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+    }
+
+    function testOnBeforeSwapCallbackRevert() public {
+        // should fail
+        pool.setFailOnBeforeSwapCallback(true);
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(IVault.CallbackFailed.selector));
+        router.swapExactIn(
+            address(pool),
+            USDC,
+            DAI,
+            DEFAULT_AMOUNT,
+            DEFAULT_AMOUNT,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
     }
 
     function testOnAfterSwapCallback() public {
