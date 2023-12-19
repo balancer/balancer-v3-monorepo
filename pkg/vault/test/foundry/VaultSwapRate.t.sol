@@ -109,7 +109,7 @@ contract VaultSwapWithRatesTest is Test {
         uint256 aliceBptWithRate = pool.balanceOf(alice);
 
         // mock pool invariant is just a sum of all balances
-        assertEq(aliceBptWithRate, AMOUNT + AMOUNT.mulDown(MOCK_RATE), 'Invalid amount of BPT');
+        assertEq(aliceBptWithRate, AMOUNT + AMOUNT.mulDown(MOCK_RATE), "Invalid amount of BPT");
     }
 
     function testInitialRateProviderState() public {
@@ -146,16 +146,7 @@ contract VaultSwapWithRatesTest is Test {
         );
 
         vm.prank(bob);
-        router.swapExactIn(
-            address(pool),
-            DAI,
-            WSTETH,
-            AMOUNT,
-            rateAdjustedLimit,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
+        router.swapExactIn(address(pool), DAI, WSTETH, AMOUNT, rateAdjustedLimit, type(uint256).max, false, bytes(""));
     }
 
     function testSwapGivenOutWithRate() public {

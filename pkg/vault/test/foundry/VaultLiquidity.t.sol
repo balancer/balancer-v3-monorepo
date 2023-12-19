@@ -104,7 +104,7 @@ contract VaultLiquidityTest is Test {
         _compareBalancesAddLiquidity(balancesBefore, balancesAfter, amountsIn, bptAmountOut);
 
         // should mint correct amount of BPT tokens
-        assertEq(bptAmountOut, DAI_AMOUNT_IN * 2, 'Invalid amount of BPT');
+        assertEq(bptAmountOut, DAI_AMOUNT_IN * 2, "Invalid amount of BPT");
     }
 
     function testAddLiquiditySingleTokenExactOut() public {

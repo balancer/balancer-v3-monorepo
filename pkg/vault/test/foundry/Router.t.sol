@@ -122,13 +122,7 @@ contract RouterTest is Test {
 
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(EVMCallModeHelpers.NotStaticCall.selector));
-        router.querySwapExactIn(
-            address(pool),
-            USDC,
-            DAI,
-            USDC_AMOUNT_IN,
-            bytes("")
-        );
+        router.querySwapExactIn(address(pool), USDC, DAI, USDC_AMOUNT_IN, bytes(""));
     }
 
     function testDisableQueries() public {
@@ -156,13 +150,7 @@ contract RouterTest is Test {
         vm.expectRevert(abi.encodeWithSelector(IVault.QueriesDisabled.selector));
 
         vm.prank(address(0), address(0));
-        router.querySwapExactIn(
-            address(pool),
-            USDC,
-            DAI,
-            USDC_AMOUNT_IN,
-            bytes("")
-        );
+        router.querySwapExactIn(address(pool), USDC, DAI, USDC_AMOUNT_IN, bytes(""));
     }
 
     function testInitializeWETHNoBalance() public {

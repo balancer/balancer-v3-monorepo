@@ -102,7 +102,7 @@ contract CallbacksTest is Test {
             bytes("")
         );
 
-        console2.log('total:', pool.totalSupply());
+        console2.log("total:", pool.totalSupply());
 
         vm.stopPrank();
 
@@ -123,8 +123,7 @@ contract CallbacksTest is Test {
                     tokenIn: IERC20(USDC),
                     tokenOut: IERC20(DAI),
                     amountGivenScaled18: DEFAULT_AMOUNT,
-                    balancesScaled18: [2 * DEFAULT_AMOUNT , 2 * DEFAULT_AMOUNT]
-                        .toMemoryArray(),
+                    balancesScaled18: [2 * DEFAULT_AMOUNT, 2 * DEFAULT_AMOUNT].toMemoryArray(),
                     indexIn: 1,
                     indexOut: 0,
                     sender: address(router),
@@ -132,16 +131,7 @@ contract CallbacksTest is Test {
                 })
             )
         );
-        router.swapExactIn(
-            address(pool),
-            USDC,
-            DAI,
-            DEFAULT_AMOUNT,
-            0,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
+        router.swapExactIn(address(pool), USDC, DAI, DEFAULT_AMOUNT, 0, type(uint256).max, false, bytes(""));
     }
 
     function testOnAfterSwapCallbackRevert() public {
@@ -231,7 +221,7 @@ contract CallbacksTest is Test {
                 alice,
                 BPT_AMOUNT,
                 [DEFAULT_AMOUNT_ROUND_DOWN, DEFAULT_AMOUNT_ROUND_DOWN].toMemoryArray(),
-                [2 * DEFAULT_AMOUNT , 2 * DEFAULT_AMOUNT].toMemoryArray(),
+                [2 * DEFAULT_AMOUNT, 2 * DEFAULT_AMOUNT].toMemoryArray(),
                 bytes("")
             )
         );
@@ -273,7 +263,7 @@ contract CallbacksTest is Test {
                 bob,
                 [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
                 BPT_AMOUNT,
-                [3 * DEFAULT_AMOUNT , 3 * DEFAULT_AMOUNT].toMemoryArray(),
+                [3 * DEFAULT_AMOUNT, 3 * DEFAULT_AMOUNT].toMemoryArray(),
                 bytes("")
             )
         );

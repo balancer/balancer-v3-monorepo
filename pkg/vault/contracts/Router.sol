@@ -72,12 +72,7 @@ contract Router is IRouter, ReentrancyGuard {
     function initializeCallback(
         InitializeCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256 bptAmountOut) {
-        bptAmountOut = _vault.initialize(
-            params.pool,
-            params.sender,
-            params.tokens,
-            params.exactAmountsIn
-        );
+        bptAmountOut = _vault.initialize(params.pool, params.sender, params.tokens, params.exactAmountsIn);
 
         if (bptAmountOut < params.minBptAmountOut) {
             revert BptAmountBelowMin(bptAmountOut, params.minBptAmountOut);
