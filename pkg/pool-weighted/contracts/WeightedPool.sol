@@ -85,22 +85,6 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
     }
 
     /// @inheritdoc IBasePool
-    function onInitialize(
-        uint256[] memory exactAmountsInScaled18,
-        bytes memory
-    ) external view onlyVault returns (uint256) {
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-        uint256 invariantAfterJoin = WeightedMath.computeInvariant(normalizedWeights, exactAmountsInScaled18);
-
-        // Set the initial pool tokens amount to the value of the invariant times the number of tokens.
-        // This makes pool token supply more consistent in Pools with similar compositions
-        // but different number of tokens.
-        uint256 bptAmountOut = invariantAfterJoin * exactAmountsInScaled18.length;
-
-        return bptAmountOut;
-    }
-
-    /// @inheritdoc IBasePool
     function computeInvariant(uint256[] memory balancesLiveScaled18) public view returns (uint256) {
         return WeightedMath.computeInvariant(_getNormalizedWeights(), balancesLiveScaled18);
     }

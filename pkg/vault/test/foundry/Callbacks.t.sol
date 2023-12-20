@@ -102,8 +102,6 @@ contract CallbacksTest is Test {
             bytes("")
         );
 
-        console2.log("total:", pool.totalSupply());
-
         vm.stopPrank();
 
         vm.label(alice, "alice");

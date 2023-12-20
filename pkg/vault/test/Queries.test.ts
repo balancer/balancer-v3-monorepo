@@ -24,7 +24,7 @@ describe('Queries', function () {
 
   const DAI_AMOUNT_IN = fp(1000);
   const USDC_AMOUNT_IN = fp(1000);
-  const BPT_AMOUNT = fp(1000);
+  const BPT_AMOUNT = fp(2000);
 
   let alice: SignerWithAddress;
 
@@ -56,15 +56,15 @@ describe('Queries', function () {
       ],
     });
 
-    await USDC.mint(alice, USDC_AMOUNT_IN);
-    await DAI.mint(alice, DAI_AMOUNT_IN);
+    await USDC.mint(alice, 2n * USDC_AMOUNT_IN);
+    await DAI.mint(alice, 2n * DAI_AMOUNT_IN);
 
     await USDC.connect(alice).approve(vault, MAX_UINT256);
     await DAI.connect(alice).approve(vault, MAX_UINT256);
 
     // The mock pool can be initialized with no liquidity; it mints some BPT to the initializer
     // to comply with the vault's required minimum.
-    await router.connect(alice).initialize(pool, [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], 0, false, '0x');
+    await router.connect(alice).initialize(pool, [DAI, USDC], [2n * DAI_AMOUNT_IN, 2n * USDC_AMOUNT_IN], 0, false);
   });
 
   // TODO: query a pool that has an actual invariant (introduced in #145)
