@@ -88,9 +88,6 @@ interface IVault {
      */
     error TokenAlreadyRegistered(IERC20 token);
 
-    /// @dev The total supply of a pool token can't be lower than the absolute minimum.
-    error TotalSupplyTooLow(uint256 amount);
-
     /// @dev The token count is below the minimum allowed.
     error MinTokens();
 

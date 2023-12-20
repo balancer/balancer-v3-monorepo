@@ -49,9 +49,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     using PoolConfigLib for PoolCallbacks;
     using ScalingHelpers for *;
 
-    // Minimum BPT amount minted upon initialization.
-    uint256 private constant _MINIMUM_BPT = 1e6;
-
     // Pools can have two, three, or four tokens.
     uint256 private constant _MIN_TOKENS = 2;
     // This maximum token count is also hard-coded in `PoolConfigLib`.
@@ -1060,10 +1057,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         exactAmountsIn.toScaled18ApplyRateRoundDownArray(poolData.decimalScalingFactors, poolData.tokenRates);
 
         bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsIn);
-
-        if (bptAmountOut < _MINIMUM_BPT) {
-            revert TotalSupplyTooLow(bptAmountOut);
-        }
 
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.

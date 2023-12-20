@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
 
+import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -63,7 +64,7 @@ contract BalancerPoolTokenTest is Test {
     }
 
     function testMintMinimum() public {
-        vm.expectRevert(abi.encodeWithSelector(IVault.TotalSupplyTooLow.selector, 1));
+        vm.expectRevert(abi.encodeWithSelector(IERC20MultiToken.TotalSupplyTooLow.selector, 1, 1e6));
         vault.mintERC20(address(token), address(0xBEEF), 1);
     }
 
@@ -77,7 +78,7 @@ contract BalancerPoolTokenTest is Test {
     function testBurnMinimum() public {
         vault.mintERC20(address(token), address(0xBEEF), AMOUNT);
 
-        vm.expectRevert(abi.encodeWithSelector(IVault.TotalSupplyTooLow.selector, 0));
+        vm.expectRevert(abi.encodeWithSelector(IERC20MultiToken.TotalSupplyTooLow.selector, 0, 1e6));
         vault.burnERC20(address(token), address(0xBEEF), AMOUNT);
     }
 
