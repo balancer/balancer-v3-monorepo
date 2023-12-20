@@ -1306,7 +1306,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.minAmountsOut.length);
 
         // Amounts are entering pool math; higher amounts would burn more BPT, so round up to favor the pool.
-        params.minAmountsOut.toScaled18ApplyRateRoundUpArray(poolData.decimalScalingFactors, poolData.tokenRates);
+        // Do not mutate minAmountsOut, so that we can directly compare the raw limits later, without potentially
+        // losing precision by scaling up and then down.
+        uint256[] memory minAmountsOutScaled18 = params.minAmountsOut.copyToScaled18ApplyRateRoundUpArray(
+            poolData.decimalScalingFactors,
+            poolData.tokenRates
+        );
 
         if (poolData.config.callbacks.shouldCallBeforeRemoveLiquidity) {
             // TODO: check if `before` callback needs kind.
@@ -1314,7 +1319,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 IPoolCallbacks(params.pool).onBeforeRemoveLiquidity(
                     params.from,
                     params.maxBptAmountIn,
-                    params.minAmountsOut,
+                    minAmountsOutScaled18,
                     poolData.balancesLiveScaled18,
                     params.userData
                 ) == false
@@ -1332,7 +1337,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // Note that poolData is mutated to update the Raw and Live balances, so they are accurate when passed
         // into the AfterRemoveLiquidity callback.
         uint256[] memory amountsOutScaled18;
-        (bptAmountIn, amountsOut, amountsOutScaled18, returnData) = _removeLiquidity(poolData, params);
+        (bptAmountIn, amountsOut, amountsOutScaled18, returnData) = _removeLiquidity(
+            poolData,
+            params,
+            minAmountsOutScaled18
+        );
 
         if (poolData.config.callbacks.shouldCallAfterRemoveLiquidity) {
             if (
@@ -1394,7 +1403,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      */
     function _removeLiquidity(
         PoolData memory poolData,
-        RemoveLiquidityParams memory params
+        RemoveLiquidityParams memory params,
+        uint256[] memory minAmountsOutScaled18
     )
         internal
         nonReentrant
@@ -1417,7 +1427,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN) {
             bptAmountIn = params.maxBptAmountIn;
 
-            amountsOutScaled18 = params.minAmountsOut;
+            amountsOutScaled18 = minAmountsOutScaled18;
             tokenOutIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
             amountsOutScaled18[tokenOutIndex] = BasePoolMath.computeRemoveLiquiditySingleTokenExactIn(
                 poolData.balancesLiveScaled18,
@@ -1428,7 +1438,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 IBasePool(params.pool).computeBalance
             );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
-            amountsOutScaled18 = params.minAmountsOut;
+            amountsOutScaled18 = minAmountsOutScaled18;
             tokenOutIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
 
             bptAmountIn = BasePoolMath.computeRemoveLiquiditySingleTokenExactOut(
@@ -1443,7 +1453,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             (bptAmountIn, amountsOutScaled18, returnData) = IPoolLiquidity(params.pool).onRemoveLiquidityCustom(
                 params.from,
                 params.maxBptAmountIn,
-                params.minAmountsOut,
+                minAmountsOutScaled18,
                 poolData.balancesLiveScaled18,
                 params.userData
             );
@@ -1457,7 +1467,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
         uint256 numTokens = poolData.tokens.length;
         amountsOutRaw = new uint256[](numTokens);
-        uint256[] memory minAmountsOutRaw = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
             // Note that poolData.balancesRaw will also be updated in `_removeLiquidityUpdateAccounting`
@@ -1469,12 +1478,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 poolData.tokenRates[i]
             );
 
-            minAmountsOutRaw[i] = params.minAmountsOut[i].toRawUndoRateRoundDown(
-                poolData.decimalScalingFactors[i],
-                poolData.tokenRates[i]
-            );
-
-            if (amountsOutRaw[i] < minAmountsOutRaw[i]) {
+            if (amountsOutRaw[i] < params.minAmountsOut[i]) {
                 revert AmountOutBelowMin(poolData.tokens[i]);
             }
         }
