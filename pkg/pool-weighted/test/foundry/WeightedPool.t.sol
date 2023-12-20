@@ -257,7 +257,7 @@ contract WeightedPoolTest is Test {
         );
 
         vm.prank(bob);
-        uint256 amountCalculated = router.swapExactIn(
+        uint256 amountCalculated = router.swapSingleTokenExactIn(
             address(pool),
             DAI,
             USDC,

@@ -123,7 +123,7 @@ contract RouterTest is Test {
 
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(EVMCallModeHelpers.NotStaticCall.selector));
-        router.querySwapExactIn(
+        router.querySwapSingleTokenExactIn(
             address(pool),
             USDC,
             DAI,
@@ -158,7 +158,7 @@ contract RouterTest is Test {
         vm.expectRevert(abi.encodeWithSelector(IVault.QueriesDisabled.selector));
 
         vm.prank(address(0), address(0));
-        router.querySwapExactIn(
+        router.querySwapSingleTokenExactIn(
             address(pool),
             USDC,
             DAI,
@@ -461,7 +461,7 @@ contract RouterTest is Test {
         uint256 daiBalanceBefore = DAI.balanceOf(alice);
         bool wethIsEth = false;
 
-        uint256 outputTokenAmount = router.swapExactIn(
+        uint256 outputTokenAmount = router.swapSingleTokenExactIn(
             address(wethPool),
             WETH,
             DAI,
@@ -485,7 +485,7 @@ contract RouterTest is Test {
         uint256 daiBalanceBefore = DAI.balanceOf(alice);
         bool wethIsEth = false;
 
-        uint256 outputTokenAmount = router.swapExactOut(
+        uint256 outputTokenAmount = router.swapSingleTokenExactOut(
             address(wethPool),
             WETH,
             DAI,
@@ -510,7 +510,7 @@ contract RouterTest is Test {
         uint256 daiBalanceBefore = DAI.balanceOf(alice);
         bool wethIsEth = true;
 
-        router.swapExactIn{ value: ETH_AMOUNT_IN }(
+        router.swapSingleTokenExactIn{ value: ETH_AMOUNT_IN }(
             address(wethPool),
             WETH,
             DAI,
@@ -536,7 +536,7 @@ contract RouterTest is Test {
         uint256 ethBalanceBefore = alice.balance;
         bool wethIsEth = true;
 
-        router.swapExactOut{ value: DAI_AMOUNT_OUT }(
+        router.swapSingleTokenExactOut{ value: DAI_AMOUNT_OUT }(
             address(wethPool),
             WETH,
             DAI,
@@ -565,7 +565,7 @@ contract RouterTest is Test {
         uint256 daiBalanceBefore = DAI.balanceOf(alice);
         bool wethIsEth = true;
 
-        router.swapExactIn{ value: excessEthAmountIn }(
+        router.swapSingleTokenExactIn{ value: excessEthAmountIn }(
             address(wethPool),
             WETH,
             DAI,

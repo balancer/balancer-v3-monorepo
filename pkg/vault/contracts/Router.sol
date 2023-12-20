@@ -432,7 +432,7 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     /// @inheritdoc IRouter
-    function swapExactIn(
+    function swapSingleTokenExactIn(
         address pool,
         IERC20 tokenIn,
         IERC20 tokenOut,
@@ -446,8 +446,8 @@ contract Router is IRouter, ReentrancyGuard {
             abi.decode(
                 _vault.invoke{ value: msg.value }(
                     abi.encodeWithSelector(
-                        Router.swapCallback.selector,
-                        SwapCallbackParams({
+                        Router.swapSingleTokenCallback.selector,
+                        SwapSingleTokenCallbackParams({
                             sender: msg.sender,
                             kind: IVault.SwapKind.GIVEN_IN,
                             pool: pool,
@@ -466,7 +466,7 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     /// @inheritdoc IRouter
-    function swapExactOut(
+    function swapSingleTokenExactOut(
         address pool,
         IERC20 tokenIn,
         IERC20 tokenOut,
@@ -480,8 +480,8 @@ contract Router is IRouter, ReentrancyGuard {
             abi.decode(
                 _vault.invoke{ value: msg.value }(
                     abi.encodeWithSelector(
-                        Router.swapCallback.selector,
-                        SwapCallbackParams({
+                        Router.swapSingleTokenCallback.selector,
+                        SwapSingleTokenCallbackParams({
                             sender: msg.sender,
                             kind: IVault.SwapKind.GIVEN_OUT,
                             pool: pool,
@@ -499,14 +499,66 @@ contract Router is IRouter, ReentrancyGuard {
             );
     }
 
+    /// @inheritdoc IRouter
+    function swapExactIn(
+        SwapPathExactAmountIn[] memory paths,
+        uint256 deadline,
+        bool wethIsEth,
+        bytes calldata userData
+    ) external payable returns (uint256[] memory amountsOut) {
+        return
+            abi.decode(
+                _vault.invoke{ value: msg.value }(
+                    abi.encodeWithSelector(
+                        Router.swapCallback.selector,
+                        SwapCallbackParams({
+                            sender: msg.sender,
+                            kind: IVault.SwapKind.GIVEN_IN,
+                            paths: _convertSwapPaths(paths),
+                            deadline: deadline,
+                            wethIsEth: wethIsEth,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256[])
+            );
+    }
+
+    /// @inheritdoc IRouter
+    function swapExactOut(
+        SwapPathExactAmountOut[] memory paths,
+        uint256 deadline,
+        bool wethIsEth,
+        bytes calldata userData
+    ) external payable returns (uint256[] memory amountsIn) {
+        return
+            abi.decode(
+                _vault.invoke{ value: msg.value }(
+                    abi.encodeWithSelector(
+                        Router.swapCallback.selector,
+                        SwapCallbackParams({
+                            sender: msg.sender,
+                            kind: IVault.SwapKind.GIVEN_IN,
+                            paths: _convertSwapPaths(paths),
+                            deadline: deadline,
+                            wethIsEth: wethIsEth,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256[])
+            );
+    }
+
     /**
      * @notice Callback for swaps.
      * @dev Can only be called by the Vault. Also handles native ETH.
      * @param params Swap parameters (see IRouter for struct definition)
      * @return Token amount calculated by the pool math (e.g., amountOut for a given in swap)
      */
-    function swapCallback(
-        SwapCallbackParams calldata params
+    function swapSingleTokenCallback(
+        SwapSingleTokenCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256) {
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapCallback(params);
 
@@ -549,8 +601,12 @@ contract Router is IRouter, ReentrancyGuard {
         return amountCalculated;
     }
 
-    function _swapCallback(
+    function swapCallback(
         SwapCallbackParams calldata params
+    ) external payable nonReentrant onlyVault returns (uint256[] memory) {}
+
+    function _swapCallback(
+        SwapSingleTokenCallbackParams calldata params
     ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
@@ -579,7 +635,7 @@ contract Router is IRouter, ReentrancyGuard {
     *******************************************************************************/
 
     /// @inheritdoc IRouter
-    function querySwapExactIn(
+    function querySwapSingleTokenExactIn(
         address pool,
         IERC20 tokenIn,
         IERC20 tokenOut,
@@ -591,7 +647,7 @@ contract Router is IRouter, ReentrancyGuard {
                 _vault.quote(
                     abi.encodeWithSelector(
                         Router.querySwapCallback.selector,
-                        SwapCallbackParams({
+                        SwapSingleTokenCallbackParams({
                             sender: msg.sender,
                             kind: IVault.SwapKind.GIVEN_IN,
                             pool: pool,
@@ -610,7 +666,7 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     /// @inheritdoc IRouter
-    function querySwapExactOut(
+    function querySwapSingleTokenExactOut(
         address pool,
         IERC20 tokenIn,
         IERC20 tokenOut,
@@ -622,7 +678,7 @@ contract Router is IRouter, ReentrancyGuard {
                 _vault.quote(
                     abi.encodeWithSelector(
                         Router.querySwapCallback.selector,
-                        SwapCallbackParams({
+                        SwapSingleTokenCallbackParams({
                             sender: msg.sender,
                             kind: IVault.SwapKind.GIVEN_OUT,
                             pool: pool,
@@ -647,7 +703,7 @@ contract Router is IRouter, ReentrancyGuard {
      * @return Token amount calculated by the pool math (e.g., amountOut for a given in swap)
      */
     function querySwapCallback(
-        SwapCallbackParams calldata params
+        SwapSingleTokenCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256) {
         (uint256 amountCalculated, , ) = _swapCallback(params);
 
@@ -976,5 +1032,21 @@ contract Router is IRouter, ReentrancyGuard {
 
         amountsGiven = new uint256[](numTokens);
         amountsGiven[tokenIndex] = amountGiven;
+    }
+
+    function _convertSwapPaths(
+        SwapPathExactAmountIn[] memory pathsExactAmountIn
+    ) internal pure returns (SwapPath[] memory paths) {
+        assembly {
+            paths := pathsExactAmountIn
+        }
+    }
+
+    function _convertSwapPaths(
+        SwapPathExactAmountOut[] memory pathsExactAmountOut
+    ) internal pure returns (SwapPath[] memory paths) {
+        assembly {
+            paths := pathsExactAmountOut
+        }
     }
 }

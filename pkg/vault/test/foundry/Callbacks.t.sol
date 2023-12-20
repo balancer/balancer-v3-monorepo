@@ -135,7 +135,7 @@ contract CallbacksTest is Test {
                 })
             )
         );
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(pool),
             USDC,
             DAI,
@@ -152,7 +152,7 @@ contract CallbacksTest is Test {
         pool.setFailOnBeforeSwapCallback(true);
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(IVault.CallbackFailed.selector));
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(pool),
             USDC,
             DAI,
@@ -184,7 +184,7 @@ contract CallbacksTest is Test {
                 })
             )
         );
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(pool),
             USDC,
             DAI,
@@ -201,7 +201,7 @@ contract CallbacksTest is Test {
         pool.setFailOnAfterSwapCallback(true);
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(IVault.CallbackFailed.selector));
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(pool),
             USDC,
             DAI,

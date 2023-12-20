@@ -153,7 +153,7 @@ contract VaultSwapWithRatesTest is Test {
         );
 
         vm.prank(bob);
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(pool),
             DAI,
             WSTETH,
@@ -192,7 +192,7 @@ contract VaultSwapWithRatesTest is Test {
         );
 
         vm.prank(bob);
-        router.swapExactOut(
+        router.swapSingleTokenExactOut(
             address(pool),
             DAI,
             WSTETH,

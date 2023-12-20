@@ -126,7 +126,7 @@ contract VaultSwapTest is Test {
         vm.expectRevert(abi.encodeWithSelector(IVault.PoolPaused.selector, address(pool)));
 
         vm.prank(bob);
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(pool),
             USDC,
             DAI,
@@ -140,7 +140,7 @@ contract VaultSwapTest is Test {
 
     function testSwapNotInitialized() public {
         vm.expectRevert(abi.encodeWithSelector(IVault.PoolNotInitialized.selector, address(pool)));
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(pool),
             USDC,
             DAI,
@@ -156,7 +156,7 @@ contract VaultSwapTest is Test {
         initPool();
 
         vm.prank(bob);
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(pool),
             USDC,
             DAI,
@@ -184,7 +184,7 @@ contract VaultSwapTest is Test {
         initPool();
 
         vm.prank(bob);
-        router.swapExactOut(
+        router.swapSingleTokenExactOut(
             address(pool),
             USDC,
             DAI,
@@ -219,7 +219,7 @@ contract VaultSwapTest is Test {
         uint256 bobDaiBeforeSwap = DAI.balanceOf(bob);
 
         vm.prank(bob);
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(pool),
             USDC,
             DAI,
@@ -255,7 +255,7 @@ contract VaultSwapTest is Test {
         uint256 bobDaiBeforeSwap = DAI.balanceOf(bob);
 
         vm.prank(bob);
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(pool),
             USDC,
             DAI,
@@ -293,7 +293,7 @@ contract VaultSwapTest is Test {
         uint256 bobDaiBeforeSwap = DAI.balanceOf(bob);
 
         vm.prank(bob);
-        router.swapExactOut(
+        router.swapSingleTokenExactOut(
             address(pool),
             USDC,
             DAI,
@@ -329,7 +329,7 @@ contract VaultSwapTest is Test {
         uint256 bobDaiBeforeSwap = DAI.balanceOf(bob);
 
         vm.prank(bob);
-        router.swapExactOut(
+        router.swapSingleTokenExactOut(
             address(pool),
             USDC,
             DAI,
@@ -368,7 +368,7 @@ contract VaultSwapTest is Test {
         uint256 bobDaiBeforeSwap = DAI.balanceOf(bob);
 
         vm.prank(bob);
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(pool),
             USDC,
             DAI,
@@ -380,7 +380,7 @@ contract VaultSwapTest is Test {
         );
 
         vm.prank(bob);
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(pool),
             USDC,
             DAI,
@@ -416,7 +416,7 @@ contract VaultSwapTest is Test {
         setProtocolSwapFeePercentage();
 
         vm.prank(bob);
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(pool),
             USDC,
             DAI,

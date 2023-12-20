@@ -6,6 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "./IVault.sol";
 import { IBasePool } from "./IBasePool.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IRouter {
     /// @dev Incoming ETH transfer from an address that is not WETH.
@@ -250,6 +251,38 @@ interface IRouter {
                                        Swaps
     ***************************************************************************/
 
+    struct SwapPathStep {
+        address pool;
+        IERC20 tokenOut;
+    }
+
+    struct SwapPathExactAmountIn {
+        IERC20 tokenIn;
+        // for each step:
+        // if tokenIn == pool use removeLiquidity SINGLE_TOKEN_EXACT_IN
+        // if tokenOut == pool use addLiquidity UNBALANCED
+        SwapPathStep[] steps;
+        uint256 exactAmountIn;
+        uint256 minAmountOut;
+    }
+
+    struct SwapPathExactAmountOut {
+        IERC20 tokenIn;
+        // for each step:
+        // if tokenIn == pool use removeLiquidity SINGLE_TOKEN_EXACT_OUT
+        // if tokenOut == pool use addLiquidity SINGLE_TOKEN_EXACT_OUT
+        SwapPathStep[] steps;
+        uint256 maxAmountIn;
+        uint256 exactAmountOut;
+    }
+
+    struct SwapPath {
+        IERC20 tokenIn;
+        SwapPathStep[] steps;
+        uint256 amountGiven;
+        uint256 limit;
+    }
+
     /**
      * @dev Data for the swap callback.
      * @param sender Account initiating the swap operation
@@ -263,7 +296,7 @@ interface IRouter {
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for the swap
      */
-    struct SwapCallbackParams {
+    struct SwapSingleTokenCallbackParams {
         address sender;
         IVault.SwapKind kind;
         address pool;
@@ -271,6 +304,15 @@ interface IRouter {
         IERC20 tokenOut;
         uint256 amountGiven;
         uint256 limit;
+        uint256 deadline;
+        bool wethIsEth;
+        bytes userData;
+    }
+
+    struct SwapCallbackParams {
+        address sender;
+        IVault.SwapKind kind;
+        SwapPath[] paths;
         uint256 deadline;
         bool wethIsEth;
         bytes userData;
@@ -294,7 +336,7 @@ interface IRouter {
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @return amountOut Calculated amount of output tokens to be received in exchange for the given input tokens
      */
-    function swapExactIn(
+    function swapSingleTokenExactIn(
         address pool,
         IERC20 tokenIn,
         IERC20 tokenOut,
@@ -306,7 +348,7 @@ interface IRouter {
     ) external payable returns (uint256 amountOut);
 
     /**
-     * @notice Executes a swap operation an exact output token amount.
+     * @notice Executes a swap operation specifying an exact output token amount.
      * @param pool Address of the liquidity pool
      * @param tokenIn Token to be swapped from
      * @param tokenOut Token to be swapped to
@@ -317,7 +359,7 @@ interface IRouter {
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @return amountIn Calculated amount of input tokens to be sent in exchange for the requested output tokens
      */
-    function swapExactOut(
+    function swapSingleTokenExactOut(
         address pool,
         IERC20 tokenIn,
         IERC20 tokenOut,
@@ -327,6 +369,36 @@ interface IRouter {
         bool wethIsEth,
         bytes calldata userData
     ) external payable returns (uint256 amountIn);
+
+    /**
+     * @notice Executes a swap operation involving multiplepaths and / or steps, specifying exact input token amounts.
+     * @param paths Swap paths from token in to token out, specifying exact amounts in.
+     * @param deadline Deadline for the swap
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @param userData Additional (optional) data required for the swap
+     * @return amountsOut Calculated amounts of output tokens corresponding to the last step of each input path
+     */
+    function swapExactIn(
+        SwapPathExactAmountIn[] memory paths,
+        uint256 deadline,
+        bool wethIsEth,
+        bytes calldata userData
+    ) external payable returns (uint256[] memory amountsOut);
+
+    /**
+     * @notice Executes a swap operation involving multiplepaths and / or steps, specifying exact output token amounts.
+     * @param paths Swap paths from token in to token out, specifying exact amounts in.
+     * @param deadline Deadline for the swap
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @param userData Additional (optional) data required for the swap
+     * @return amountsIn Calculated amounts of input tokens corresponding to the last step of each input path
+     */
+    function swapExactOut(
+        SwapPathExactAmountOut[] memory paths,
+        uint256 deadline,
+        bool wethIsEth,
+        bytes calldata userData
+    ) external payable returns (uint256[] memory amountsIn);
 
     /***************************************************************************
                                      Queries
@@ -456,7 +528,7 @@ interface IRouter {
      * @param userData Additional (optional) data required for the query
      * @return amountOut Calculated amount of output tokens to be received in exchange for the given input tokens
      */
-    function querySwapExactIn(
+    function querySwapSingleTokenExactIn(
         address pool,
         IERC20 tokenIn,
         IERC20 tokenOut,
@@ -473,7 +545,7 @@ interface IRouter {
      * @param userData Additional (optional) data required for the query
      * @return amountIn Calculated amount of input tokens to be sent in exchange for the requested output tokens
      */
-    function querySwapExactOut(
+    function querySwapSingleTokenExactOut(
         address pool,
         IERC20 tokenIn,
         IERC20 tokenOut,
