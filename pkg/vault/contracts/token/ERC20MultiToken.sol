@@ -112,7 +112,9 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
             revert ERC20InsufficientBalance(from, accountBalance, amount);
         }
 
-        _balances[token][from] = accountBalance - amount;
+        unchecked {
+            _balances[token][from] = accountBalance - amount;
+        }
         uint256 newTotalSupply = _totalSupplyOf[token] - amount;
 
         if (newTotalSupply < _MINIMUM_TOTAL_SUPPLY) {
