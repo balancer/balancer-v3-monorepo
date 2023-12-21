@@ -5,6 +5,7 @@ pragma solidity ^0.8.4;
 import "forge-std/Test.sol";
 
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
+import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 abstract contract BaseTest is Test {
@@ -23,18 +24,21 @@ abstract contract BaseTest is Test {
 
     ERC20TestToken internal dai;
     ERC20TestToken internal usdc;
+    WETHTestToken internal weth;
 
     function setUp() public virtual {
         // Deploy the base test contracts.
         dai = createERC20("DAI", 18);
         usdc = createERC20("USDC", 18);
+        weth = new WETHTestToken();
+        vm.label(address(weth), 'WETH');
 
         // Create users for testing.
-        admin = createUser("Admin");
-        lp = createUser("LP");
-        alice = createUser("Alice");
-        bob = createUser("Bob");
-        hacker = createUser("Hacker");
+        admin = createUser("admin");
+        lp = createUser("lp");
+        alice = createUser("alice");
+        bob = createUser("bob");
+        hacker = createUser("hacker");
     }
 
     /// @dev Creates an ERC20 test token, labels its address.
@@ -49,6 +53,8 @@ abstract contract BaseTest is Test {
         vm.label(user, name);
         vm.deal(user, 100 ether);
         deal(address(dai), user, 1_000_000e18);
+        deal(address(usdc), user, 1_000_000e18);
+        deal(address(weth), user, 1_000_000e18);
         return user;
     }
 }
