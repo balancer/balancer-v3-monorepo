@@ -19,6 +19,7 @@ import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/
 import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
+import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
@@ -583,18 +584,18 @@ contract RouterTest is Test {
     }
 
     function testGetSingleInputArray() public {
-        uint256[] memory amountsGiven = routerMock.getSingleInputArray(address(pool), 0, 1234);
+        uint256[] memory amountsGiven = routerMock.getSingleInputArray(address(pool), DAI, 1234);
         assertEq(amountsGiven.length, 2);
         assertEq(amountsGiven[0], 1234);
         assertEq(amountsGiven[1], 0);
 
-        amountsGiven = routerMock.getSingleInputArray(address(pool), 1, 4321);
+        amountsGiven = routerMock.getSingleInputArray(address(pool), USDC, 4321);
         assertEq(amountsGiven.length, 2);
         assertEq(amountsGiven[0], 0);
         assertEq(amountsGiven[1], 4321);
 
-        vm.expectRevert(abi.encodeWithSelector(IRouter.InvalidTokenIndex.selector));
-        routerMock.getSingleInputArray(address(pool), 2, DAI_AMOUNT_IN);
+        vm.expectRevert(abi.encodeWithSelector(EnumerableMap.KeyNotFound.selector));
+        routerMock.getSingleInputArray(address(pool), WETH, DAI_AMOUNT_IN);
     }
 
     function _initializePool() internal returns (uint256 bptAmountOut) {

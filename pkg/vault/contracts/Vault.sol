@@ -734,6 +734,15 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     }
 
     /// @inheritdoc IVault
+    function getPoolTokensNumberAndIndex(
+        address pool,
+        IERC20 token
+    ) external view withRegisteredPool(pool) returns (uint256, uint256) {
+        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+        return (poolTokenBalances.length(), poolTokenBalances.indexOf(token));
+    }
+
+    /// @inheritdoc IVault
     function getPoolTokenInfo(
         address pool
     )
