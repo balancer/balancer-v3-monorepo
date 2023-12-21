@@ -12,9 +12,9 @@ import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { BaseTest } from "solidity-utils/test/foundry/utils/BaseTest.t.sol";
 
-import { VaultMock } from "../../../contracts/test/VaultMock.sol";
-import { Router } from "../../../contracts/Router.sol";
-import { PoolMock } from "../../../contracts/test/PoolMock.sol";
+import { VaultMock } from "../../contracts/test/VaultMock.sol";
+import { Router } from "../../contracts/Router.sol";
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 abstract contract VaultBaseTest is BaseTest {
     using ArrayHelpers for *;

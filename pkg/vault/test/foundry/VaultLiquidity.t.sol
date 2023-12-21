@@ -21,7 +21,7 @@ import { Router } from "../../contracts/Router.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
-import { VaultBaseTest } from "./utils/VaultBaseTest.sol";
+import { VaultBaseTest } from "./VaultBaseTest.sol";
 
 struct Balances {
     uint256[] userTokens;
