@@ -23,12 +23,10 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
-import { RouterAdaptor } from "../../contracts/test/RouterAdaptor.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
 contract CallbacksTest is Test {
     using ArrayHelpers for *;
-    using RouterAdaptor for IRouter;
 
     VaultMock vault;
     IRouter router;
@@ -123,8 +121,6 @@ contract CallbacksTest is Test {
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_IN,
-                    tokenIn: IERC20(USDC),
-                    tokenOut: IERC20(DAI),
                     amountGivenScaled18: DEFAULT_AMOUNT,
                     balancesScaled18: [DEFAULT_AMOUNT + MINIMUM_AMOUNT, DEFAULT_AMOUNT + MINIMUM_AMOUNT]
                         .toMemoryArray(),
@@ -172,8 +168,6 @@ contract CallbacksTest is Test {
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_IN,
-                    tokenIn: IERC20(USDC),
-                    tokenOut: IERC20(DAI),
                     amountGivenScaled18: DEFAULT_AMOUNT,
                     balancesScaled18: [DEFAULT_AMOUNT + MINIMUM_AMOUNT, DEFAULT_AMOUNT + MINIMUM_AMOUNT]
                         .toMemoryArray(),

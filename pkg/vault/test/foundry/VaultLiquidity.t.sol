@@ -118,7 +118,7 @@ contract VaultLiquidityTest is Test {
 
         uint256[] memory amountsIn = router.addLiquiditySingleTokenExactOut(
             address(pool),
-            0,
+            DAI,
             DAI_AMOUNT_IN,
             bptAmountOut,
             false,
@@ -226,7 +226,7 @@ contract VaultLiquidityTest is Test {
         uint256[] memory amountsOut = router.removeLiquiditySingleTokenExactIn(
             address(pool),
             bptAmountIn,
-            0,
+            DAI,
             DAI_AMOUNT_IN,
             false,
             bytes("")
@@ -260,7 +260,7 @@ contract VaultLiquidityTest is Test {
         uint256 bptAmountIn = router.removeLiquiditySingleTokenExactOut(
             address(pool),
             DAI_AMOUNT_IN,
-            0,
+            DAI,
             uint256(2 * DAI_AMOUNT_IN),
             false,
             bytes("")

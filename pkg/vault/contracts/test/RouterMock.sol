@@ -9,9 +9,9 @@ contract RouterMock is Router {
 
     function getSingleInputArray(
         address pool,
-        uint256 tokenIndex,
+        IERC20 token,
         uint256 amountGiven
     ) external view returns (uint256[] memory amountsGiven) {
-        return _getSingleInputArray(pool, tokenIndex, amountGiven);
+        return _getSingleInputArray(pool, token, amountGiven);
     }
 }
