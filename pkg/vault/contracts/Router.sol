@@ -138,13 +138,13 @@ contract Router is IRouter, ReentrancyGuard {
     /// @inheritdoc IRouter
     function addLiquiditySingleTokenExactOut(
         address pool,
-        uint256 tokenInIndex,
+        IERC20 tokenIn,
         uint256 maxAmountIn,
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn) {
-        uint256[] memory maxAmountsIn = _getSingleInputArray(pool, tokenInIndex, maxAmountIn);
+        uint256[] memory maxAmountsIn = _getSingleInputArray(pool, tokenIn, maxAmountIn);
 
         (amountsIn, , ) = abi.decode(
             _vault.invoke{ value: msg.value }(
@@ -278,12 +278,12 @@ contract Router is IRouter, ReentrancyGuard {
     function removeLiquiditySingleTokenExactIn(
         address pool,
         uint256 exactBptAmountIn,
-        uint256 tokenOutIndex,
+        IERC20 tokenOut,
         uint256 minAmountOut,
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsOut) {
-        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOutIndex, minAmountOut);
+        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOut, minAmountOut);
 
         (, amountsOut, ) = abi.decode(
             _vault.invoke(
@@ -308,12 +308,12 @@ contract Router is IRouter, ReentrancyGuard {
     function removeLiquiditySingleTokenExactOut(
         address pool,
         uint256 maxBptAmountIn,
-        uint256 tokenOutIndex,
+        IERC20 tokenOut,
         uint256 exactAmountOut,
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256 bptAmountIn) {
-        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOutIndex, exactAmountOut);
+        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOut, exactAmountOut);
 
         (bptAmountIn, , ) = abi.decode(
             _vault.invoke(
@@ -669,12 +669,12 @@ contract Router is IRouter, ReentrancyGuard {
     /// @inheritdoc IRouter
     function queryAddLiquiditySingleTokenExactOut(
         address pool,
-        uint256 tokenInIndex,
+        IERC20 tokenIn,
         uint256 maxAmountIn,
         uint256 exactBptAmountOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn) {
-        uint256[] memory maxAmountsIn = _getSingleInputArray(pool, tokenInIndex, maxAmountIn);
+        uint256[] memory maxAmountsIn = _getSingleInputArray(pool, tokenIn, maxAmountIn);
 
         (amountsIn, , ) = abi.decode(
             _vault.quote(
@@ -787,11 +787,11 @@ contract Router is IRouter, ReentrancyGuard {
     function queryRemoveLiquiditySingleTokenExactIn(
         address pool,
         uint256 exactBptAmountIn,
-        uint256 tokenOutIndex,
+        IERC20 tokenOut,
         uint256 minAmountOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut) {
-        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOutIndex, minAmountOut);
+        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOut, minAmountOut);
 
         (, amountsOut, ) = abi.decode(
             _vault.quote(
@@ -818,11 +818,11 @@ contract Router is IRouter, ReentrancyGuard {
     function queryRemoveLiquiditySingleTokenExactOut(
         address pool,
         uint256 maxBptAmountIn,
-        uint256 tokenOutIndex,
+        IERC20 tokenOut,
         uint256 exactAmountOut,
         bytes memory userData
     ) external returns (uint256 bptAmountIn) {
-        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOutIndex, exactAmountOut);
+        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOut, exactAmountOut);
 
         (bptAmountIn, , ) = abi.decode(
             _vault.quote(
@@ -948,16 +948,10 @@ contract Router is IRouter, ReentrancyGuard {
      */
     function _getSingleInputArray(
         address pool,
-        uint256 tokenIndex,
+        IERC20 token,
         uint256 amountGiven
     ) internal view returns (uint256[] memory amountsGiven) {
-        IERC20[] memory tokens = _vault.getPoolTokens(pool);
-        uint256 numTokens = tokens.length;
-
-        if (tokenIndex >= numTokens) {
-            revert InvalidTokenIndex();
-        }
-
+        (uint256 numTokens, uint256 tokenIndex) = _vault.getPoolTokenCountAndIndexOfToken(pool, token);
         amountsGiven = new uint256[](numTokens);
         amountsGiven[tokenIndex] = amountGiven;
     }
