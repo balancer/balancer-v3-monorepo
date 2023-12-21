@@ -745,7 +745,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
 
         unchecked {
-            return (tokenCount, index - 1 );
+            return (tokenCount, index - 1);
         }
     }
 
