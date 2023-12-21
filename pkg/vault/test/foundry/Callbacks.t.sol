@@ -121,8 +121,6 @@ contract CallbacksTest is Test {
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_IN,
-                    tokenIn: IERC20(USDC),
-                    tokenOut: IERC20(DAI),
                     amountGivenScaled18: DEFAULT_AMOUNT,
                     balancesScaled18: [DEFAULT_AMOUNT + MINIMUM_AMOUNT, DEFAULT_AMOUNT + MINIMUM_AMOUNT]
                         .toMemoryArray(),
@@ -170,8 +168,6 @@ contract CallbacksTest is Test {
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_IN,
-                    tokenIn: IERC20(USDC),
-                    tokenOut: IERC20(DAI),
                     amountGivenScaled18: DEFAULT_AMOUNT,
                     balancesScaled18: [DEFAULT_AMOUNT + MINIMUM_AMOUNT, DEFAULT_AMOUNT + MINIMUM_AMOUNT]
                         .toMemoryArray(),

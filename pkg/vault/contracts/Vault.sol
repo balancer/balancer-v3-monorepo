@@ -599,8 +599,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         return
             IBasePool.SwapParams({
                 kind: params.kind,
-                tokenIn: params.tokenIn,
-                tokenOut: params.tokenOut,
                 amountGivenScaled18: vars.amountGivenScaled18 + vars.swapFeeAmountScaled18,
                 balancesScaled18: poolData.balancesLiveScaled18,
                 indexIn: vars.indexIn,
