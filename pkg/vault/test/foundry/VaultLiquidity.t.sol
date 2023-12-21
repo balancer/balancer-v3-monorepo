@@ -21,7 +21,7 @@ import { Router } from "../../contracts/Router.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
-import { VaultBaseTest } from "./VaultBaseTest.sol";
+import { VaultUtils } from "./utils/VaultUtils.sol";
 
 struct Balances {
     uint256[] userTokens;
@@ -29,15 +29,14 @@ struct Balances {
     uint256[] poolTokens;
 }
 
-contract VaultLiquidityTest is VaultBaseTest {
+contract VaultLiquidityTest is VaultUtils {
     using ArrayHelpers for *;
 
     function setUp() public virtual override {
-        VaultBaseTest.setUp();
+        VaultUtils.setUp();
     }
 
     function testAddLiquidityUnbalanced() public {
-
         vm.startPrank(alice);
 
         Balances memory balancesBefore = _getBalances(alice);
@@ -55,7 +54,6 @@ contract VaultLiquidityTest is VaultBaseTest {
     }
 
     function testAddLiquiditySingleTokenExactOut() public {
-
         vm.startPrank(alice);
 
         Balances memory balancesBefore = _getBalances(alice);
@@ -80,7 +78,6 @@ contract VaultLiquidityTest is VaultBaseTest {
     }
 
     function testAddLiquidityCustom() public {
-
         vm.startPrank(alice);
 
         Balances memory balancesBefore = _getBalances(alice);
@@ -128,7 +125,6 @@ contract VaultLiquidityTest is VaultBaseTest {
     }
 
     function testRemoveLiquidityProportional() public {
-
         vm.startPrank(alice);
 
         router.addLiquidityUnbalanced(
@@ -160,7 +156,6 @@ contract VaultLiquidityTest is VaultBaseTest {
     }
 
     function testRemoveLiquiditySingleTokenExactIn() public {
-
         vm.startPrank(alice);
 
         router.addLiquidityUnbalanced(
@@ -193,7 +188,6 @@ contract VaultLiquidityTest is VaultBaseTest {
     }
 
     function testRemoveLiquiditySingleTokenExactOut() public {
-
         vm.startPrank(alice);
 
         router.addLiquidityUnbalanced(
@@ -222,7 +216,6 @@ contract VaultLiquidityTest is VaultBaseTest {
     }
 
     function testRemoveLiquidityCustom() public {
-
         vm.startPrank(alice);
 
         router.addLiquidityUnbalanced(

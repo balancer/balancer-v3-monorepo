@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -22,16 +23,25 @@ abstract contract BaseTest is Test {
     // Malicious user.
     address payable hacker;
 
+    // ERC20 tokens used for tests.
     ERC20TestToken internal dai;
     ERC20TestToken internal usdc;
     WETHTestToken internal weth;
+
+    // List of all ERC20 tokens
+    IERC20[] internal tokens;
 
     function setUp() public virtual {
         // Deploy the base test contracts.
         dai = createERC20("DAI", 18);
         usdc = createERC20("USDC", 18);
         weth = new WETHTestToken();
-        vm.label(address(weth), 'WETH');
+        vm.label(address(weth), "WETH");
+
+        // Fill the token list.
+        tokens.push(dai);
+        tokens.push(usdc);
+        tokens.push(weth);
 
         // Create users for testing.
         admin = createUser("admin");

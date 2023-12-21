@@ -12,11 +12,11 @@ import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { BaseTest } from "solidity-utils/test/foundry/utils/BaseTest.t.sol";
 
-import { VaultMock } from "../../contracts/test/VaultMock.sol";
-import { Router } from "../../contracts/Router.sol";
-import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { VaultMock } from "../../../contracts/test/VaultMock.sol";
+import { Router } from "../../../contracts/Router.sol";
+import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 
-abstract contract VaultBaseTest is BaseTest {
+abstract contract VaultUtils is BaseTest {
     using ArrayHelpers for *;
     // Vault mock.
     VaultMock internal vault;
@@ -71,11 +71,10 @@ abstract contract VaultBaseTest is BaseTest {
     function approveVault(address user) internal {
         vm.startPrank(user);
 
-        usdc.approve(address(vault), type(uint256).max);
-        dai.approve(address(vault), type(uint256).max);
-        weth.approve(address(vault), type(uint256).max);
+        for (uint256 index = 0; index < tokens.length; index++) {
+            tokens[index].approve(address(vault), type(uint256).max);
+        }
 
         vm.stopPrank();
-
     }
 }
