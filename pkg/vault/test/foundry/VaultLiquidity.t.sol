@@ -22,13 +22,15 @@ import { Router } from "../../contracts/Router.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
+import { VaultBaseTest } from "./utils/VaultBaseTest.sol";
+
 struct Balances {
     uint256[] userTokens;
     uint256 userBpt;
     uint256[] poolTokens;
 }
 
-contract VaultLiquidityTest is Test {
+contract VaultLiquidityTest is VaultBaseTest {
     using ArrayHelpers for *;
 
     VaultMock vault;
@@ -37,13 +39,12 @@ contract VaultLiquidityTest is Test {
     PoolMock pool;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
-    address alice = vm.addr(1);
-    address bob = vm.addr(2);
 
     uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
 
-    function setUp() public {
+    function setUp() public virtual override {
+        VaultBaseTest.setUp();
         authorizer = new BasicAuthorizerMock();
         vault = new VaultMock(authorizer, 30 days, 90 days);
         router = new Router(IVault(vault), new WETHTestToken());
