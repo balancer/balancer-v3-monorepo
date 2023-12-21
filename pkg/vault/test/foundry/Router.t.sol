@@ -19,7 +19,6 @@ import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/
 import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
-import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
@@ -594,7 +593,7 @@ contract RouterTest is Test {
         assertEq(amountsGiven[0], 0);
         assertEq(amountsGiven[1], 4321);
 
-        vm.expectRevert(abi.encodeWithSelector(EnumerableMap.KeyNotFound.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVault.TokenNotRegistered.selector));
         routerMock.getSingleInputArray(address(pool), WETH, DAI_AMOUNT_IN);
     }
 

@@ -967,7 +967,7 @@ contract Router is IRouter, ReentrancyGuard {
         IERC20 token,
         uint256 amountGiven
     ) internal view returns (uint256[] memory amountsGiven) {
-        (uint256 numTokens, uint256 tokenIndex) = _vault.getPoolTokensNumberAndIndex(pool, token);
+        (uint256 numTokens, uint256 tokenIndex) = _vault.getPoolTokenCountAndIndexOfToken(pool, token);
         amountsGiven = new uint256[](numTokens);
         amountsGiven[tokenIndex] = amountGiven;
     }
