@@ -48,6 +48,8 @@ contract WeightedPool8020FactoryTest is Test {
                 "Pool8020",
                 tokenA,
                 tokenB,
+                IVault.TokenType.STANDARD,
+                IVault.TokenType.STANDARD,
                 IRateProvider(address(0)),
                 IRateProvider(address(0)),
                 bytes32(0)
@@ -69,6 +71,8 @@ contract WeightedPool8020FactoryTest is Test {
                 "Pool8020",
                 tokenA,
                 tokenB,
+                IVault.TokenType.STANDARD,
+                IVault.TokenType.STANDARD,
                 IRateProvider(address(rateProvider)),
                 IRateProvider(address(0)),
                 bytes32(0)
@@ -82,6 +86,8 @@ contract WeightedPool8020FactoryTest is Test {
                 "Pool8020",
                 tokenA,
                 tokenB,
+                IVault.TokenType.STANDARD,
+                IVault.TokenType.STANDARD,
                 IRateProvider(address(rateProvider)),
                 IRateProvider(address(0)),
                 salt
@@ -104,6 +110,8 @@ contract WeightedPool8020FactoryTest is Test {
                 "Pool8020",
                 tokenA,
                 tokenB,
+                IVault.TokenType.STANDARD,
+                IVault.TokenType.STANDARD,
                 IRateProvider(address(rateProvider)),
                 IRateProvider(address(0)),
                 salt
@@ -126,6 +134,8 @@ contract WeightedPool8020FactoryTest is Test {
                 "Pool8020",
                 tokenA,
                 tokenB,
+                IVault.TokenType.STANDARD,
+                IVault.TokenType.STANDARD,
                 IRateProvider(address(rateProvider)),
                 IRateProvider(address(0)),
                 salt
@@ -141,6 +151,8 @@ contract WeightedPool8020FactoryTest is Test {
                 "Pool8020",
                 tokenA,
                 tokenB,
+                IVault.TokenType.STANDARD,
+                IVault.TokenType.STANDARD,
                 IRateProvider(address(rateProvider)),
                 IRateProvider(address(0)),
                 salt

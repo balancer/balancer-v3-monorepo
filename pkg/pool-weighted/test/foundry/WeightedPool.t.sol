@@ -54,15 +54,15 @@ contract WeightedPoolTest is Test {
         router = new Router(IVault(vault), new WETHTestToken());
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
-        IERC20[] memory tokens = [address(DAI), address(USDC)].toMemoryArray().asIERC20();
-        IRateProvider[] memory rateProviders = new IRateProvider[](2);
+        IVault.TokenConfig[] memory tokens = new IVault.TokenConfig[](2);
+        tokens[0].token = IERC20(DAI);
+        tokens[1].token = IERC20(USDC);
 
         pool = WeightedPool(
             factory.create(
                 "ERC20 Pool",
                 "ERC20POOL",
                 tokens,
-                rateProviders,
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                 ZERO_BYTES32
             )
