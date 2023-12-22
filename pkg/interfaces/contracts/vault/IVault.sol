@@ -98,6 +98,12 @@ interface IVault {
     /// @dev The token count is above the maximum allowed.
     error MaxTokens();
 
+    /// @dev The token type given in a TokenConfig during pool registration is invalid.
+    error InvalidTokenType();
+
+    /// @dev The data in a TokenConfig struct is inconsistent or unsupported.
+    error InvalidTokenConfiguration();
+
     /**
      * @notice A Pool was registered by calling `registerPool`.
      * @param pool The pool being registered
@@ -135,6 +141,37 @@ interface IVault {
     event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
 
     /**
+     * @dev Token types supported by the Vault. In general, pools may contain any combination of these tokens.
+     * STANDARD tokens (e.g., BAL, WETH) have no rate provider.
+     * WITH_RATE tokens (e.g., wstETH) require rates but cannot be directly wrapped or unwrapped.
+     * In the case of wstETH, this is because the underlying stETH token is rebasing, and such tokens are unsupported
+     * by the Vault.
+     * ERC4626 tokens (e.g., waDAI) have rates, and can be directly wrapped and unwrapped. The token must conform to
+     * a subset of IERC4626, and functions as its own rate provider. To the outside world (e.g., callers of
+     * `getPoolTokens`), the pool will appear to contain the underlying base token (DAI, for waDAI), though the
+     * wrapped token will be registered and stored in the pool's balance in the Vault.
+     */
+    enum TokenType { 
+        STANDARD,
+        WITH_RATE,
+        ERC4626
+    }
+
+    /**
+     * @dev Encapsulate the data required for the Vault to support a token of the given type.
+     * For STANDARD or ERC4626 tokens, the rate provider address will be 0.
+     *
+     * @param token The token address
+     * @param tokenType The token type (see the enum for supported types)
+     * @param rateProvider The rate provider for a token (see further documentation above)
+     */
+    struct TokenConfig {
+        IERC20 token;
+        TokenType tokenType;
+        IRateProvider rateProvider;
+    }
+
+    /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
      * @dev A pool can opt-out of pausing by providing a zero value for the pause window, or allow pausing indefinitely
      * by providing a large value. (Pool pause windows are not limited by the Vault maximums.) The vault defines an
@@ -149,8 +186,7 @@ interface IVault {
      * authorizer.
      *
      * @param factory The factory address associated with the pool being registered
-     * @param tokens An array of token addresses the pool will manage
-     * @param rateProviders An array of rate providers corresponding to the tokens (or zero for tokens without rates)
+     * @param tokens An array of descriptors for the tokens the pool will manage
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param pauseManager Optional contract the Vault will allow to pause the pool
      * @param config Flags indicating which callbacks the pool supports
@@ -158,8 +194,7 @@ interface IVault {
      */
     function registerPool(
         address factory,
-        IERC20[] memory tokens,
-        IRateProvider[] memory rateProviders,
+        TokenConfig[] memory tokens,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolCallbacks calldata config,

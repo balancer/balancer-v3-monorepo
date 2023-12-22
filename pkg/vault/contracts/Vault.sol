@@ -688,22 +688,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     /// @inheritdoc IVault
     function registerPool(
         address pool,
-        IERC20[] memory tokens,
-        IRateProvider[] memory rateProviders,
+        TokenConfig[] memory tokens,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolCallbacks calldata poolCallbacks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused {
-        _registerPool(
-            pool,
-            tokens,
-            rateProviders,
-            pauseWindowEndTime,
-            pauseManager,
-            poolCallbacks,
-            liquidityManagement
-        );
+        _registerPool(pool, tokens, pauseWindowEndTime, pauseManager, poolCallbacks, liquidityManagement);
     }
 
     /// @inheritdoc IVault
@@ -785,6 +776,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
     }
 
+    // Hello "stack too deep" my old friend
+    struct RegistrationLocals {
+        uint8[] tokenDecimalDiffs;
+        IERC20[] registeredTokens;
+        IRateProvider[] rateProviders;
+    }
+
     /**
      * @dev The function will register the pool, setting its tokens with an initial balance of zero.
      * The function also checks for valid token addresses and ensures that the pool and tokens aren't
@@ -794,8 +792,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      */
     function _registerPool(
         address pool,
-        IERC20[] memory tokens,
-        IRateProvider[] memory rateProviders,
+        TokenConfig[] memory tokens,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolCallbacks memory callbackConfig,
@@ -815,13 +812,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             revert MaxTokens();
         }
 
-        // Retrieve or create the pool's token balances mapping
+        // Retrieve or create the pool's token balances mapping.
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
-
-        uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
+        RegistrationLocals memory vars = _initRegistrationLocals(numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            IERC20 token = tokens[i];
+            TokenConfig memory tokenData = tokens[i];
+            IERC20 token = tokenData.token;
 
             // Ensure that the token address is valid
             if (token == IERC20(address(0))) {
@@ -829,16 +826,34 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             }
 
             // Register the token with an initial balance of zero.
+            // Ensure the token isn't already registered for the pool.
             // Note: EnumerableMaps require an explicit initial value when creating a key-value pair.
-            bool added = poolTokenBalances.set(token, 0);
-
-            // Ensure the token isn't already registered for the pool
-            if (!added) {
+            if (poolTokenBalances.set(token, 0) == false) {
                 revert TokenAlreadyRegistered(token);
             }
 
-            tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
-            _poolRateProviders[pool][token] = rateProviders[i];
+            bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
+            vars.registeredTokens[i] = token;
+
+            if (tokenData.tokenType == TokenType.STANDARD) {
+                if (hasRateProvider) {
+                    revert InvalidTokenConfiguration();
+                }
+            } else if (tokenData.tokenType == TokenType.WITH_RATE) {
+                if (hasRateProvider == false) {
+                    revert InvalidTokenConfiguration();
+                }
+
+                vars.rateProviders[i] = tokenData.rateProvider;
+                _poolRateProviders[pool][token] = tokenData.rateProvider;
+            } else if (tokenData.tokenType == TokenType.ERC4626) {
+                // TODO implement in later phases.
+                revert InvalidTokenType();
+            } else {
+                revert InvalidTokenType();
+            }
+
+            vars.tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
         }
 
         // Store the pause manager. A zero address means default to the authorizer.
@@ -850,7 +865,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         config.isPoolRegistered = true;
         config.callbacks = callbackConfig;
         config.liquidityManagement = liquidityManagement;
-        config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
+        config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(vars.tokenDecimalDiffs);
         config.pauseWindowEndTime = pauseWindowEndTime.toUint32();
         _poolConfig[pool] = config.fromPoolConfig();
 
@@ -858,13 +873,19 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         emit PoolRegistered(
             pool,
             msg.sender,
-            tokens,
-            rateProviders,
+            vars.registeredTokens,
+            vars.rateProviders,
             pauseWindowEndTime,
             pauseManager,
             callbackConfig,
             liquidityManagement
         );
+    }
+
+    function _initRegistrationLocals(uint256 numTokens) private pure returns (RegistrationLocals memory vars) {
+        vars.tokenDecimalDiffs = new uint8[](numTokens);
+        vars.registeredTokens = new IERC20[](numTokens);
+        vars.rateProviders = new IRateProvider[](numTokens);
     }
 
     /// @dev See `isPoolRegistered`

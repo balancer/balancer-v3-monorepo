@@ -65,12 +65,15 @@ contract VaultMock is Vault {
 
     // Used for testing the ReentrancyGuard
     function reentrantRegisterPool(address pool, IERC20[] memory tokens) external nonReentrant {
-        IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
+        TokenConfig[] memory tokenData = new TokenConfig[](tokens.length);
+        // Assume standard tokens (enum value = 0)
+        for (uint256 i = 0; i < tokens.length; i++) {
+            tokenData[i].token = tokens[i];
+        }
 
         this.registerPool(
             pool,
-            tokens,
-            rateProviders,
+            tokenData,
             365 days,
             address(0),
             PoolConfigBits.wrap(0).toPoolConfig().callbacks,
