@@ -853,7 +853,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 _poolRateProviders[pool][token] = tokenData.rateProvider;
             } else if (tokenData.tokenType == TokenType.ERC4626) {
                 // TODO implement in later phases.
-                revert InvalidTokenType();
+                revert InvalidTokenConfiguration();
             } else {
                 revert InvalidTokenType();
             }
@@ -971,7 +971,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 tokenRates[i] = poolRateProviders[token].getRate();
             } else {
                 // TODO implement ERC4626 at a later stage.
-                revert InvalidTokenType();
+                revert InvalidTokenConfiguration();
             }
         }
     }
@@ -1015,7 +1015,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 poolData.tokenRates[i] = poolRateProviders[token].getRate();
             } else {
                 // TODO implement ERC4626 at a later stage.
-                revert InvalidTokenType();
+                revert InvalidTokenConfiguration();
             }
 
             poolData.balancesLiveScaled18[i] = roundingDirection == Rounding.ROUND_UP
@@ -1086,7 +1086,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 poolData.tokenRates[i] = poolData.rateProviders[i].getRate();
             } else {
                 // TODO implement ERC4626 at a later stage. Not coming from user input, so can only be these three.
-                revert InvalidTokenType();
+                revert InvalidTokenConfiguration();
             }
 
             //TODO: remove pending yield fee using live balance mechanism
