@@ -152,7 +152,7 @@ interface IVault {
      * `getPoolTokens`), the pool will appear to contain the underlying base token (DAI, for waDAI), though the
      * wrapped token will be registered and stored in the pool's balance in the Vault.
      */
-    enum TokenType { 
+    enum TokenType {
         STANDARD,
         WITH_RATE,
         ERC4626
@@ -268,7 +268,10 @@ interface IVault {
      */
     function getPoolTokenInfo(
         address pool
-    ) external view returns (IERC20[] memory, TokenType[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
+    )
+        external
+        view
+        returns (IERC20[] memory, TokenType[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
 
     /**
      * @notice Retrieve the scaling factors from a pool's rate providers.
