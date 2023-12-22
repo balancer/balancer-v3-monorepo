@@ -172,7 +172,7 @@ contract VaultSwapTest is Test {
         assertEq(DAI.balanceOf(bob), 2 * AMOUNT);
 
         // Tokens are adjusted in the pool
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], 0);
         assertEq(balances[1], AMOUNT * 2);
 
@@ -200,7 +200,7 @@ contract VaultSwapTest is Test {
         assertEq(DAI.balanceOf(bob), 2 * AMOUNT);
 
         // Tokens are adjusted in the pool
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], 0);
         assertEq(balances[1], AMOUNT * 2);
 
@@ -235,7 +235,7 @@ contract VaultSwapTest is Test {
         assertEq(DAI.balanceOf(bob), bobDaiBeforeSwap + AMOUNT - SWAP_FEE);
 
         // Tokens are adjusted in the pool
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], SWAP_FEE);
         assertEq(balances[1], 2 * AMOUNT);
 
@@ -271,7 +271,7 @@ contract VaultSwapTest is Test {
         assertEq(USDC.balanceOf(bob), bobUsdcBeforeSwap - AMOUNT);
 
         // Tokens are adjusted in the pool: DAI out, USDC in
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], SWAP_FEE - PROTOCOL_SWAP_FEE);
         assertEq(balances[1], 2 * AMOUNT);
 
@@ -309,7 +309,7 @@ contract VaultSwapTest is Test {
         assertEq(DAI.balanceOf(bob), bobDaiBeforeSwap + AMOUNT - SWAP_FEE);
 
         // Tokens are adjusted in the pool
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], SWAP_FEE);
         assertEq(balances[1], 2 * AMOUNT);
 
@@ -345,7 +345,7 @@ contract VaultSwapTest is Test {
         assertEq(DAI.balanceOf(bob), bobDaiBeforeSwap + AMOUNT - SWAP_FEE);
 
         // Tokens are adjusted in the pool
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], SWAP_FEE - PROTOCOL_SWAP_FEE);
         assertEq(balances[1], 2 * AMOUNT);
 
@@ -396,7 +396,7 @@ contract VaultSwapTest is Test {
         assertEq(DAI.balanceOf(bob), bobDaiBeforeSwap + AMOUNT - SWAP_FEE);
 
         // Tokens are adjusted in the pool
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], SWAP_FEE - PROTOCOL_SWAP_FEE);
         assertEq(balances[1], 2 * AMOUNT);
 

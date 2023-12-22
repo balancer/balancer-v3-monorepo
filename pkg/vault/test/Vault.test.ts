@@ -221,7 +221,7 @@ describe('Vault', function () {
       });
 
       it('has rate providers', async () => {
-        const [, , , poolProviders] = await vault.getPoolTokenInfo(poolC);
+        const [, , , , poolProviders] = await vault.getPoolTokenInfo(poolC);
         const tokenRates = await vault.getPoolTokenRates(poolC);
 
         expect(poolProviders).to.deep.equal(rateProviders);

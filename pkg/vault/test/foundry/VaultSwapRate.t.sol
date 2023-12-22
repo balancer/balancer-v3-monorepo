@@ -120,7 +120,7 @@ contract VaultSwapWithRatesTest is Test {
     }
 
     function testInitialRateProviderState() public {
-        (, , , IRateProvider[] memory rateProviders) = vault.getPoolTokenInfo(address(pool));
+        (, , , , IRateProvider[] memory rateProviders) = vault.getPoolTokenInfo(address(pool));
 
         assertEq(address(rateProviders[0]), address(rateProvider));
         assertEq(address(rateProviders[1]), address(0));

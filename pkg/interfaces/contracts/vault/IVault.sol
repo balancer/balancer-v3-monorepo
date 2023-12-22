@@ -39,6 +39,7 @@ struct PoolConfig {
 struct PoolData {
     PoolConfig config;
     IERC20[] tokens;
+    IVault.TokenType[] tokenTypes;
     IRateProvider[] rateProviders;
     uint256[] balancesRaw;
     uint256[] balancesLiveScaled18;
@@ -257,13 +258,14 @@ interface IVault {
     /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
      * @return tokens Tokens registered to the pool
+     * @return tokenTypes The types of all registered tokens
      * @return balancesRaw Corresponding raw balances of the tokens
      * @return scalingFactors Corresponding scalingFactors of the tokens
      * @return rateProviders Corresponding rateProviders of the tokens (or zero for tokens with no rates)
      */
     function getPoolTokenInfo(
         address pool
-    ) external view returns (IERC20[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
+    ) external view returns (IERC20[] memory, TokenType[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
 
     /**
      * @notice Retrieve the scaling factors from a pool's rate providers.
