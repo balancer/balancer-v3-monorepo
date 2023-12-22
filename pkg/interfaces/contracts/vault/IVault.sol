@@ -161,15 +161,18 @@ interface IVault {
     /**
      * @dev Encapsulate the data required for the Vault to support a token of the given type.
      * For STANDARD or ERC4626 tokens, the rate provider address will be 0.
+     * TODO: use exempt flag.
      *
      * @param token The token address
      * @param tokenType The token type (see the enum for supported types)
      * @param rateProvider The rate provider for a token (see further documentation above)
+     * @param yieldFeeExempt Flag indicating whether yield fees should be charged on this token
      */
     struct TokenConfig {
         IERC20 token;
         TokenType tokenType;
         IRateProvider rateProvider;
+        bool yieldFeeExempt;
     }
 
     /**
