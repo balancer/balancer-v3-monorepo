@@ -26,8 +26,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
     ) external {
         _vault.registerPool(
             pool,
-            tokens,
-            rateProviders,
+            _buildTokenConfig(tokens, rateProviders),
             getNewPoolPauseWindowEndTime(),
             pauseManager,
             poolCallbacks,
@@ -45,6 +44,28 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         LiquidityManagement calldata liquidityManagement,
         uint256 timestamp
     ) external {
-        _vault.registerPool(pool, tokens, rateProviders, timestamp, pauseManager, poolCallbacks, liquidityManagement);
+        _vault.registerPool(
+            pool,
+            _buildTokenConfig(tokens, rateProviders),
+            timestamp,
+            pauseManager,
+            poolCallbacks,
+            liquidityManagement
+        );
+    }
+
+    function _buildTokenConfig(
+        IERC20[] memory tokens,
+        IRateProvider[] memory rateProviders
+    ) private pure returns (IVault.TokenConfig[] memory tokenData) {
+        tokenData = new IVault.TokenConfig[](tokens.length);
+        // Assume standard tokens
+        for (uint256 i = 0; i < tokens.length; i++) {
+            tokenData[i].token = tokens[i];
+            tokenData[i].rateProvider = rateProviders[i];
+            tokenData[i].tokenType = rateProviders[i] == IRateProvider(address(0))
+                ? IVault.TokenType.STANDARD
+                : IVault.TokenType.WITH_RATE;
+        }
     }
 }

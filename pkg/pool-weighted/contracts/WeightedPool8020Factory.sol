@@ -28,6 +28,10 @@ contract WeightedPool8020Factory is BasePoolFactory {
      * @param symbol Symbol of the pool
      * @param highWeightToken The 80% token
      * @param lowWeightToken The 20% token
+     * @param highWeightTokenType The 80% token's type
+     * @param lowWeightTokenType The 20% token's type
+     * @param highWeightRateProvider The 80% token's rate provider
+     * @param lowWeightRateProvider The 20% token's rate provider
      * @param salt Value passed to create3, used to create the address
      */
     function create(
@@ -35,17 +39,19 @@ contract WeightedPool8020Factory is BasePoolFactory {
         string memory symbol,
         IERC20 highWeightToken,
         IERC20 lowWeightToken,
+        IVault.TokenType highWeightTokenType,
+        IVault.TokenType lowWeightTokenType,
         IRateProvider highWeightRateProvider,
         IRateProvider lowWeightRateProvider,
         bytes32 salt
     ) external returns (address pool) {
-        IERC20[] memory tokens = new IERC20[](2);
-        tokens[0] = highWeightToken;
-        tokens[1] = lowWeightToken;
-
-        IRateProvider[] memory rateProviders = new IRateProvider[](2);
-        rateProviders[0] = highWeightRateProvider;
-        rateProviders[1] = lowWeightRateProvider;
+        IVault.TokenConfig[] memory tokens = new IVault.TokenConfig[](2);
+        tokens[0].token = highWeightToken;
+        tokens[0].tokenType = highWeightTokenType;
+        tokens[0].rateProvider = highWeightRateProvider;
+        tokens[1].token = lowWeightToken;
+        tokens[1].tokenType = lowWeightTokenType;
+        tokens[1].rateProvider = lowWeightRateProvider;
 
         uint256[] memory weights = new uint256[](2);
         weights[0] = _EIGHTY;
@@ -53,7 +59,12 @@ contract WeightedPool8020Factory is BasePoolFactory {
 
         pool = _create(
             abi.encode(
-                WeightedPool.NewPoolParams({ name: name, symbol: symbol, tokens: tokens, normalizedWeights: weights }),
+                WeightedPool.NewPoolParams({
+                    name: name,
+                    symbol: symbol,
+                    tokens: _extractTokensFromTokenConfig(tokens),
+                    normalizedWeights: weights
+                }),
                 getVault()
             ),
             salt
@@ -62,7 +73,6 @@ contract WeightedPool8020Factory is BasePoolFactory {
         getVault().registerPool(
             pool,
             tokens,
-            rateProviders,
             getNewPoolPauseWindowEndTime(),
             address(0), // no pause manager
             PoolCallbacks({
