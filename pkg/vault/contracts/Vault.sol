@@ -75,6 +75,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     // Pool -> (token -> address): Pool's Rate providers.
     mapping(address => mapping(IERC20 => IRateProvider)) private _poolRateProviders;
 
+    // Pool -> (token -> TokenType): The token type of each Pool's tokens.
+    mapping(address => mapping(IERC20 => IVault.TokenType)) private _poolTokenTypes;
+
     /// @notice List of handlers. It is non-empty only during `invoke` calls.
     address[] private _handlers;
 
@@ -834,6 +837,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
             vars.registeredTokens[i] = token;
+            _poolTokenTypes[pool][token] = tokenData.tokenType;
 
             if (tokenData.tokenType == TokenType.STANDARD) {
                 if (hasRateProvider) {
