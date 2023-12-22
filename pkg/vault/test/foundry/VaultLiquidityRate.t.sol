@@ -113,7 +113,7 @@ contract VaultLiquidityWithRatesTest is Test {
             )
         );
 
-        router.addLiquiditySingleTokenExactOut(address(pool), 0, WSTETH_AMOUNT_IN, DAI_AMOUNT_IN, false, bytes(""));
+        router.addLiquiditySingleTokenExactOut(address(pool), WSTETH, WSTETH_AMOUNT_IN, DAI_AMOUNT_IN, false, bytes(""));
     }
 
     function testAddLiquidityCustomWithRate() public {
@@ -201,7 +201,7 @@ contract VaultLiquidityWithRatesTest is Test {
             )
         );
 
-        router.removeLiquiditySingleTokenExactIn(address(pool), bptAmountIn, 0, WSTETH_AMOUNT_IN, false, bytes(""));
+        router.removeLiquiditySingleTokenExactIn(address(pool), bptAmountIn, WSTETH, WSTETH_AMOUNT_IN, false, bytes(""));
     }
 
     function testRemoveLiquidityCustomWithRate() public {
