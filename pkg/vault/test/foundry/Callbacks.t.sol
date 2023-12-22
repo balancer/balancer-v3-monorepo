@@ -91,7 +91,8 @@ contract CallbacksTest is Test {
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
             0,
-            false
+            false,
+            bytes("")
         );
 
         router.addLiquidityUnbalanced(

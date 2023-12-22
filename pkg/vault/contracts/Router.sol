@@ -42,7 +42,8 @@ contract Router is IRouter, ReentrancyGuard {
         IERC20[] memory tokens,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
-        bool wethIsEth
+        bool wethIsEth,
+        bytes memory userData
     ) external payable returns (uint256 bptAmountOut) {
         return
             abi.decode(
@@ -55,7 +56,8 @@ contract Router is IRouter, ReentrancyGuard {
                             tokens: tokens,
                             exactAmountsIn: exactAmountsIn,
                             minBptAmountOut: minBptAmountOut,
-                            wethIsEth: wethIsEth
+                            wethIsEth: wethIsEth,
+                            userData: userData
                         })
                     )
                 ),
@@ -72,7 +74,13 @@ contract Router is IRouter, ReentrancyGuard {
     function initializeCallback(
         InitializeCallbackParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256 bptAmountOut) {
-        bptAmountOut = _vault.initialize(params.pool, params.sender, params.tokens, params.exactAmountsIn);
+        bptAmountOut = _vault.initialize(
+            params.pool,
+            params.sender,
+            params.tokens,
+            params.exactAmountsIn,
+            params.userData
+        );
 
         if (bptAmountOut < params.minBptAmountOut) {
             revert BptAmountBelowMin(bptAmountOut, params.minBptAmountOut);

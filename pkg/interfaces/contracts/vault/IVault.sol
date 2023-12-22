@@ -9,6 +9,8 @@ import { IRateProvider } from "./IRateProvider.sol";
 
 /// @dev Represents a pool's callbacks.
 struct PoolCallbacks {
+    bool shouldCallBeforeInitialize;
+    bool shouldCallAfterInitialize;
     bool shouldCallAfterSwap;
     bool shouldCallBeforeAddLiquidity;
     bool shouldCallAfterAddLiquidity;
@@ -172,13 +174,15 @@ interface IVault {
      * @param to Address that will receive the output BPT
      * @param tokens Tokens used to seed the pool (must match the registered tokens)
      * @param exactAmountsIn Exact amounts of input tokens
+     * @param userData Additional (optional) data required for adding liquidity
      * @return bptAmountOut Output pool token amount
      */
     function initialize(
         address pool,
         address to,
         IERC20[] memory tokens,
-        uint256[] memory exactAmountsIn
+        uint256[] memory exactAmountsIn,
+        bytes memory userData
     ) external returns (uint256 bptAmountOut);
 
     /**

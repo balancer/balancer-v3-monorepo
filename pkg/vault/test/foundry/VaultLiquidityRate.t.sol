@@ -255,7 +255,8 @@ contract VaultLiquidityWithRatesTest is Test {
             [address(WSTETH), address(DAI)].toMemoryArray().asIERC20(),
             [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
             0,
-            false
+            false,
+            bytes("")
         );
     }
 }

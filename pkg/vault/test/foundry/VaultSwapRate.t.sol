@@ -96,7 +96,8 @@ contract VaultSwapWithRatesTest is Test {
             [address(WSTETH), address(DAI)].toMemoryArray().asIERC20(),
             [uint256(AMOUNT), uint256(AMOUNT)].toMemoryArray(),
             0,
-            false
+            false,
+            bytes("")
         );
     }
 

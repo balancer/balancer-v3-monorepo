@@ -19,6 +19,7 @@ import {
     Rounding
 } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IPoolInitializer } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolInitializer.sol";
 import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
@@ -1013,7 +1014,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         address pool,
         address to,
         IERC20[] memory tokens,
-        uint256[] memory exactAmountsIn
+        uint256[] memory exactAmountsIn,
+        bytes memory userData
     )
         external
         withHandler
@@ -1056,7 +1058,17 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // favoring the pool.
         exactAmountsIn.toScaled18ApplyRateRoundDownArray(poolData.decimalScalingFactors, poolData.tokenRates);
 
+        if (poolData.config.callbacks.shouldCallBeforeInitialize) {
+            if (IPoolInitializer(pool).onBeforeInitialize(exactAmountsIn, userData) == false) {
+                revert CallbackFailed();
+            }
+        }
         bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsIn);
+        if (poolData.config.callbacks.shouldCallAfterInitialize) {
+            if (IPoolInitializer(pool).onAfterInitialize(exactAmountsIn, bptAmountOut, userData) == false) {
+                revert CallbackFailed();
+            }
+        }
 
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
