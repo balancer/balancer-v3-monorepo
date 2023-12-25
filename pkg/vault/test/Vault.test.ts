@@ -97,9 +97,17 @@ describe('Vault', function () {
     });
 
     it('registering a pool emits an event', async () => {
+      enum TOKEN_TYPE {
+        STANDARD = 0,
+        WITH_RATE,
+        ERC4626
+      };
+
       const currentTime = await currentTimestamp();
       const pauseWindowEndTime = Number(currentTime) + PAUSE_WINDOW_DURATION;
       const rateProviders = Array(poolBTokens.length).fill(ZERO_ADDRESS);
+      const poolTypes = Array(poolBTokens.length).fill(TOKEN_TYPE.STANDARD);
+      const feeExemptFlags = Array(poolBTokens.length).fill(false);
 
       await expect(await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS))
         .to.emit(vault, 'PoolRegistered')
@@ -107,7 +115,9 @@ describe('Vault', function () {
           poolBAddress,
           await vault.getPoolFactoryMock(),
           poolBTokens,
+          poolTypes,
           rateProviders,
+          feeExemptFlags,
           pauseWindowEndTime,
           ANY_ADDRESS,
           [false, false, false, false, false, false],
