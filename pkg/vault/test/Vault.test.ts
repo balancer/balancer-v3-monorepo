@@ -100,8 +100,8 @@ describe('Vault', function () {
       enum TOKEN_TYPE {
         STANDARD = 0,
         WITH_RATE,
-        ERC4626
-      };
+        ERC4626,
+      }
 
       const currentTime = await currentTimestamp();
       const pauseWindowEndTime = Number(currentTime) + PAUSE_WINDOW_DURATION;
