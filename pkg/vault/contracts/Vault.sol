@@ -57,10 +57,14 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     // This maximum token count is also hard-coded in `PoolConfigLib`.
     uint256 private constant _MAX_TOKENS = 4;
 
-    // 1e18 corresponds to a 100% fee.
+    // Maximum protocol swap fee percentage. 1e18 corresponds to a 100% fee.
     uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
 
-    // 1e18 corresponds to a 100% fee.
+    // Maximum protocol swap fee percentage.
+    // TODO Optimize storage; could pack fees into one slot (potentially a single vaultConfig slot).
+    uint256 private constant _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 20e16; // 20%
+
+    // Maximum pool swap fee percentage.
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
     // Registry of pool configs.
@@ -101,8 +105,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     // TODO consider using uint64 and packing with other things (when we have other things).
     uint256 private _protocolSwapFeePercentage;
 
-    // Token -> fee: Protocol's swap fees accumulated in the Vault for harvest.
-    mapping(IERC20 => uint256) private _protocolSwapFees;
+    // Protocol yield fee - charged on all pool operations.
+    uint256 private _protocolYieldFeePercentage;
+
+    // Token -> fee: Protocol fees (from both swap and yield) accumulated in the Vault for harvest.
+    mapping(IERC20 => uint256) private _protocolFees;
 
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer private _authorizer;
@@ -658,7 +665,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                     poolData.tokenRates[vars.indexOut]
                 );
 
-            _protocolSwapFees[vaultSwapParams.tokenOut] += vars.protocolSwapFeeAmountRaw;
+            _protocolFees[vaultSwapParams.tokenOut] += vars.protocolSwapFeeAmountRaw;
         }
 
         // Use `unchecked_setAt` to save storage reads.
@@ -1677,20 +1684,34 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     }
 
     /// @inheritdoc IVault
-    function getProtocolSwapFee(address token) external view returns (uint256) {
-        return _protocolSwapFees[IERC20(token)];
+    function setProtocolYieldFeePercentage(uint256 newProtocolYieldFeePercentage) external authenticate {
+        if (newProtocolYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
+            revert ProtocolYieldFeePercentageTooHigh();
+        }
+        _protocolYieldFeePercentage = newProtocolYieldFeePercentage;
+        emit ProtocolYieldFeePercentageChanged(newProtocolYieldFeePercentage);
+    }
+
+    /// @inheritdoc IVault
+    function getProtocolYieldFeePercentage() external view returns (uint256) {
+        return _protocolYieldFeePercentage;
+    }
+
+    /// @inheritdoc IVault
+    function getProtocolFees(address token) external view returns (uint256) {
+        return _protocolFees[IERC20(token)];
     }
 
     /// @inheritdoc IVault
     function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant {
         for (uint256 index = 0; index < tokens.length; index++) {
             IERC20 token = tokens[index];
-            uint256 amount = _protocolSwapFees[token];
+            uint256 amount = _protocolFees[token];
             // checks
             if (amount > 0) {
                 // effects
                 // set fees to zero for the token
-                _protocolSwapFees[token] = 0;
+                _protocolFees[token] = 0;
                 // interactions
                 token.safeTransfer(msg.sender, amount);
                 // emit an event

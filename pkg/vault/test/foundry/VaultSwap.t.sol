@@ -276,7 +276,7 @@ contract VaultSwapTest is Test {
         assertEq(balances[1], 2 * AMOUNT);
 
         // protocol fees are accrued
-        assertEq(PROTOCOL_SWAP_FEE, vault.getProtocolSwapFee(address(DAI)));
+        assertEq(PROTOCOL_SWAP_FEE, vault.getProtocolFees(address(DAI)));
 
         // vault are adjusted balances
         assertEq(DAI.balanceOf(address(vault)), SWAP_FEE);
@@ -350,7 +350,7 @@ contract VaultSwapTest is Test {
         assertEq(balances[1], 2 * AMOUNT);
 
         // protocol fees are accrued
-        assertEq(PROTOCOL_SWAP_FEE, vault.getProtocolSwapFee(address(DAI)));
+        assertEq(PROTOCOL_SWAP_FEE, vault.getProtocolFees(address(DAI)));
 
         // vault are adjusted balances
         assertEq(DAI.balanceOf(address(vault)), SWAP_FEE);
@@ -401,7 +401,7 @@ contract VaultSwapTest is Test {
         assertEq(balances[1], 2 * AMOUNT);
 
         // protocol fees are accrued
-        assertEq(PROTOCOL_SWAP_FEE, vault.getProtocolSwapFee(address(DAI)));
+        assertEq(PROTOCOL_SWAP_FEE, vault.getProtocolFees(address(DAI)));
 
         // vault are adjusted balances
         assertEq(DAI.balanceOf(address(vault)), SWAP_FEE);
@@ -432,7 +432,7 @@ contract VaultSwapTest is Test {
         vault.collectProtocolFees([address(DAI)].toMemoryArray().asIERC20());
 
         // protocol fees are zero
-        assertEq(0, vault.getProtocolSwapFee(address(DAI)));
+        assertEq(0, vault.getProtocolFees(address(DAI)));
 
         // alice received protocol fees
         assertEq(DAI.balanceOf(admin), (PROTOCOL_SWAP_FEE));

@@ -664,14 +664,11 @@ interface IVault {
     /// @dev Error raised when the protocol swap fee percentage exceeds the maximum allowed value.
     error ProtocolSwapFeePercentageTooHigh();
 
+    /// @dev Error raised when the protocol yield fee percentage exceeds the maximum allowed value.
+    error ProtocolYieldFeePercentageTooHigh();
+
     /// @dev Error raised when the swap fee percentage exceeds the maximum allowed value.
     error SwapFeePercentageTooHigh();
-
-    /**
-     * @notice Sets a new swap fee percentage for the protocol.
-     * @param newSwapFeePercentage The new swap fee percentage to be set
-     */
-    function setProtocolSwapFeePercentage(uint256 newSwapFeePercentage) external;
 
     /**
      * @notice Emitted when the protocol swap fee percentage is updated.
@@ -680,17 +677,41 @@ interface IVault {
     event ProtocolSwapFeePercentageChanged(uint256 indexed swapFeePercentage);
 
     /**
+     * @notice Emitted when the protocol yield fee percentage is updated.
+     * @param yieldFeePercentage The updated protocol yield fee percentage
+     */
+    event ProtocolYieldFeePercentageChanged(uint256 indexed yieldFeePercentage);
+
+    /**
+     * @notice Sets a new swap fee percentage for the protocol.
+     * @param newSwapFeePercentage The new swap fee percentage to be set
+     */
+    function setProtocolSwapFeePercentage(uint256 newSwapFeePercentage) external;
+
+    /**
      * @notice Retrieves the current protocol swap fee percentage.
      * @return The current protocol swap fee percentage
      */
     function getProtocolSwapFeePercentage() external view returns (uint256);
 
     /**
-     * @notice Returns the accumulated swap fee in `token` collected by the protocol.
+     * @notice Sets a new yield fee percentage for the protocol.
+     * @param newYieldFeePercentage The new yield fee percentage to be set
+     */
+    function setProtocolYieldFeePercentage(uint256 newYieldFeePercentage) external;
+
+    /**
+     * @notice Retrieves the current protocol yield fee percentage.
+     * @return The current protocol yield fee percentage
+     */
+    function getProtocolYieldFeePercentage() external view returns (uint256);
+
+    /**
+     * @notice Returns the accumulated swap and yield fees in `token` collected by the protocol.
      * @param token The address of the token in which fees have been accumulated
      * @return The total amount of fees accumulated in the specified token
      */
-    function getProtocolSwapFee(address token) external view returns (uint256);
+    function getProtocolFees(address token) external view returns (uint256);
 
     /**
      * @notice Collects accumulated protocol fees for the specified array of tokens.
