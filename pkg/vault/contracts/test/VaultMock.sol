@@ -151,4 +151,15 @@ contract VaultMock is Vault {
             (, balancesRaw[i]) = poolTokenBalances.unchecked_at(i);
         }
     }
+
+    function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances) {
+        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _lastLivePoolTokenBalances[pool];
+
+        uint256 numTokens = poolTokenBalances.length();
+        lastLiveBalances = new uint256[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; i++) {
+            (, lastLiveBalances[i]) = poolTokenBalances.unchecked_at(i);
+        }
+    }
 }

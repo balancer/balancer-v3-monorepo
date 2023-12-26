@@ -97,6 +97,17 @@ contract VaultLiquidityWithRatesTest is Test {
         vm.label(address(DAI), "DAI");
     }
 
+    function testLastLiveBalanceInitialization() public {
+        rateProvider.mockRate(MOCK_RATE);
+        _mockInitialize(bob);
+
+        uint256[] memory rawBalances = vault.getRawBalances(address(pool));
+        uint256[] memory liveBalances = vault.getLastLiveBalances(address(pool));
+
+        assertEq(FixedPoint.mulDown(rawBalances[0], MOCK_RATE), liveBalances[0]);
+        assertEq(rawBalances[1], liveBalances[1]);
+    }
+
     function testAddLiquiditySingleTokenExactOutWithRate() public {
         _mockInitialize(bob);
 

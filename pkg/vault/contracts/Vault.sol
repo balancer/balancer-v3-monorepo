@@ -73,8 +73,14 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     // Store pool pause managers.
     mapping(address => address) internal _poolPauseManagers;
 
-    // Pool -> (token -> balance): Pool's ERC20 tokens balances stored at the Vault.
+    // Pool -> (token -> balance): Pool's ERC20 token balances stored at the Vault.
+    // Note that these are stored as "raw" values, in native decimal format.
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolTokenBalances;
+
+    // Pool -> (token -> balance): Pool's last live balances, used for yield fee computation
+    // Note that since these have rates applied, they are stored as "scaled" 18-decimal FP values.
+    // TODO - storage will be optimized later (e.g., both balances can be stored in 128 bits each)
+    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _lastLivePoolTokenBalances;
 
     // Pool -> (token -> TokenType): The token type of each Pool's tokens.
     mapping(address => mapping(IERC20 => IVault.TokenConfig)) private _poolTokenConfig;
@@ -786,6 +792,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
     // Hello "stack too deep" my old friend
     struct RegistrationLocals {
+        uint256 numTokens;
         uint8[] tokenDecimalDiffs;
         IERC20[] registeredTokens;
         IRateProvider[] rateProviders;
@@ -813,20 +820,20 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             revert PoolAlreadyRegistered(pool);
         }
 
-        uint256 numTokens = tokens.length;
+        RegistrationLocals memory vars = _initRegistrationLocals(tokens.length);
 
-        if (numTokens < _MIN_TOKENS) {
+        if (vars.numTokens < _MIN_TOKENS) {
             revert MinTokens();
         }
-        if (numTokens > _MAX_TOKENS) {
+        if (vars.numTokens > _MAX_TOKENS) {
             revert MaxTokens();
         }
 
         // Retrieve or create the pool's token balances mapping.
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
-        RegistrationLocals memory vars = _initRegistrationLocals(numTokens);
+        EnumerableMap.IERC20ToUint256Map storage lastLivePoolTokenBalances = _lastLivePoolTokenBalances[pool];
 
-        for (uint256 i = 0; i < numTokens; ++i) {
+        for (uint256 i = 0; i < vars.numTokens; ++i) {
             TokenConfig memory tokenData = tokens[i];
             IERC20 token = tokenData.token;
 
@@ -841,6 +848,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             if (poolTokenBalances.set(token, 0) == false) {
                 revert TokenAlreadyRegistered(token);
             }
+            lastLivePoolTokenBalances.set(token, 0);
 
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
             vars.registeredTokens[i] = token;
@@ -897,6 +905,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     }
 
     function _initRegistrationLocals(uint256 numTokens) private pure returns (RegistrationLocals memory vars) {
+        vars.numTokens = numTokens;
         vars.tokenDecimalDiffs = new uint8[](numTokens);
         vars.registeredTokens = new IERC20[](numTokens);
         vars.rateProviders = new IRateProvider[](numTokens);
@@ -1167,6 +1176,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // Amounts are entering pool math, so round down. A lower invariant after the join means less bptOut,
         // favoring the pool.
         exactAmountsIn.toScaled18ApplyRateRoundDownArray(poolData.decimalScalingFactors, poolData.tokenRates);
+        // Initialize live balances, incorporating the current rate.
+        _setLastLivePoolBalances(pool, exactAmountsIn);
 
         bptAmountOut = IBasePool(pool).onInitialize(exactAmountsIn, userData);
 
@@ -1597,6 +1608,21 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             // Since we assume all newBalances are properly ordered, we can simply use `unchecked_setAt`
             // to avoid one less storage read per token.
             poolBalances.unchecked_setAt(i, newBalances[i]);
+        }
+    }
+
+    /**
+     * @dev Sets the live balances of a Pool's tokens to `newBalances`.
+     *
+     * WARNING: this assumes `newBalances` has the same length and order as the Pool's tokens.
+     */
+    function _setLastLivePoolBalances(address pool, uint256[] memory newBalances) internal {
+        EnumerableMap.IERC20ToUint256Map storage liveBalances = _lastLivePoolTokenBalances[pool];
+
+        for (uint256 i = 0; i < newBalances.length; ++i) {
+            // Since we assume all newBalances are properly ordered, we can simply use `unchecked_setAt`
+            // to avoid one less storage read per token.
+            liveBalances.unchecked_setAt(i, newBalances[i]);
         }
     }
 
