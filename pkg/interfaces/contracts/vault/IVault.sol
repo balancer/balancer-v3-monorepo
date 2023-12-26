@@ -36,11 +36,43 @@ struct PoolConfig {
     LiquidityManagement liquidityManagement;
 }
 
+/**
+ * @dev Token types supported by the Vault. In general, pools may contain any combination of these tokens.
+ * STANDARD tokens (e.g., BAL, WETH) have no rate provider.
+ * WITH_RATE tokens (e.g., wstETH) require rates but cannot be directly wrapped or unwrapped.
+ * In the case of wstETH, this is because the underlying stETH token is rebasing, and such tokens are unsupported
+ * by the Vault.
+ * ERC4626 tokens (e.g., waDAI) have rates, and can be directly wrapped and unwrapped. The token must conform to
+ * a subset of IERC4626, and functions as its own rate provider. To the outside world (e.g., callers of
+ * `getPoolTokens`), the pool will appear to contain the underlying base token (DAI, for waDAI), though the
+ * wrapped token will be registered and stored in the pool's balance in the Vault.
+ */
+enum TokenType {
+    STANDARD,
+    WITH_RATE,
+    ERC4626
+}
+
+/**
+ * @dev Encapsulate the data required for the Vault to support a token of the given type.
+ * For STANDARD or ERC4626 tokens, the rate provider address will be 0.
+ * TODO: use exempt flag.
+ *
+ * @param token The token address
+ * @param tokenType The token type (see the enum for supported types)
+ * @param rateProvider The rate provider for a token (see further documentation above)
+ * @param yieldFeeExempt Flag indicating whether yield fees should be charged on this token
+ */
+struct TokenConfig {
+    IERC20 token;
+    TokenType tokenType;
+    IRateProvider rateProvider;
+    bool yieldFeeExempt;
+}
+
 struct PoolData {
-    PoolConfig config;
-    IERC20[] tokens;
-    IVault.TokenType[] tokenTypes;
-    IRateProvider[] rateProviders;
+    PoolConfig poolConfig;
+    TokenConfig[] tokenConfig;
     uint256[] balancesRaw;
     uint256[] balancesLiveScaled18;
     uint256[] tokenRates;
@@ -142,40 +174,6 @@ interface IVault {
      * @param deltas The amount each token changed
      */
     event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
-
-    /**
-     * @dev Token types supported by the Vault. In general, pools may contain any combination of these tokens.
-     * STANDARD tokens (e.g., BAL, WETH) have no rate provider.
-     * WITH_RATE tokens (e.g., wstETH) require rates but cannot be directly wrapped or unwrapped.
-     * In the case of wstETH, this is because the underlying stETH token is rebasing, and such tokens are unsupported
-     * by the Vault.
-     * ERC4626 tokens (e.g., waDAI) have rates, and can be directly wrapped and unwrapped. The token must conform to
-     * a subset of IERC4626, and functions as its own rate provider. To the outside world (e.g., callers of
-     * `getPoolTokens`), the pool will appear to contain the underlying base token (DAI, for waDAI), though the
-     * wrapped token will be registered and stored in the pool's balance in the Vault.
-     */
-    enum TokenType {
-        STANDARD,
-        WITH_RATE,
-        ERC4626
-    }
-
-    /**
-     * @dev Encapsulate the data required for the Vault to support a token of the given type.
-     * For STANDARD or ERC4626 tokens, the rate provider address will be 0.
-     * TODO: use exempt flag.
-     *
-     * @param token The token address
-     * @param tokenType The token type (see the enum for supported types)
-     * @param rateProvider The rate provider for a token (see further documentation above)
-     * @param yieldFeeExempt Flag indicating whether yield fees should be charged on this token
-     */
-    struct TokenConfig {
-        IERC20 token;
-        TokenType tokenType;
-        IRateProvider rateProvider;
-        bool yieldFeeExempt;
-    }
 
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.

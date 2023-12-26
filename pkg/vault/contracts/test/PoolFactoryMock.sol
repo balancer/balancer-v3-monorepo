@@ -4,7 +4,13 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import {
+    IVault,
+    TokenConfig,
+    TokenType,
+    PoolCallbacks,
+    LiquidityManagement
+} from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { FactoryWidePauseWindow } from "../factories/FactoryWidePauseWindow.sol";
@@ -57,15 +63,15 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
     function _buildTokenConfig(
         IERC20[] memory tokens,
         IRateProvider[] memory rateProviders
-    ) private pure returns (IVault.TokenConfig[] memory tokenData) {
-        tokenData = new IVault.TokenConfig[](tokens.length);
+    ) private pure returns (TokenConfig[] memory tokenData) {
+        tokenData = new TokenConfig[](tokens.length);
         // Assume standard tokens
         for (uint256 i = 0; i < tokens.length; i++) {
             tokenData[i].token = tokens[i];
             tokenData[i].rateProvider = rateProviders[i];
             tokenData[i].tokenType = rateProviders[i] == IRateProvider(address(0))
-                ? IVault.TokenType.STANDARD
-                : IVault.TokenType.WITH_RATE;
+                ? TokenType.STANDARD
+                : TokenType.WITH_RATE;
         }
     }
 }

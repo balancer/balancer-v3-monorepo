@@ -99,10 +99,10 @@ contract PoolDataTest is Test {
             assertEq(data.balancesLiveScaled18[i], expectedLiveBalance);
         }
 
-        assertEq(address(data.tokens[0]), address(DAI));
-        assertEq(address(data.tokens[1]), address(WSTETH));
+        assertEq(address(data.tokenConfig[0].token), address(DAI));
+        assertEq(address(data.tokenConfig[1].token), address(WSTETH));
 
-        assertEq(address(data.rateProviders[0]), address(daiRateProvider));
-        assertEq(address(data.rateProviders[1]), address(wstETHRateProvider));
+        assertEq(address(data.tokenConfig[0].rateProvider), address(daiRateProvider));
+        assertEq(address(data.tokenConfig[1].rateProvider), address(wstETHRateProvider));
     }
 }
