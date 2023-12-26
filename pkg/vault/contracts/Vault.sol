@@ -72,7 +72,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     // Pool -> (token -> balance): Pool's ERC20 tokens balances stored at the Vault.
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolTokenBalances;
 
-    // Pool -> (token -> TokenType): The token type of each Pool's tokens.
+    // Pool -> (token -> TokenConfig): The token configuration of each Pool's tokens.
     mapping(address => mapping(IERC20 => IVault.TokenConfig)) private _poolTokenConfig;
 
     /// @notice List of handlers. It is non-empty only during `invoke` calls.
