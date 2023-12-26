@@ -504,7 +504,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             revert CannotSwapSameToken();
         }
 
-        PoolData memory poolData = _getPoolData(params.pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _computePoolData(params.pool, Rounding.ROUND_DOWN);
         EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolTokenBalances[params.pool];
         SwapLocals memory vars;
 
@@ -770,7 +770,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             IRateProvider[] memory rateProviders
         )
     {
-        // Do not use _getPoolData, which makes external calls and could fail.
+        // Do not use _computePoolData, which makes external calls and could fail.
         TokenConfig[] memory tokenConfig;
         (tokenConfig, balancesRaw, decimalScalingFactors, ) = _getPoolTokenInfo(pool);
 
@@ -1086,7 +1086,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
     }
 
-    function _getPoolData(address pool, Rounding roundingDirection) internal view returns (PoolData memory poolData) {
+    /**
+     * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
+     * This function modifies protocol fees and last live balance storage.
+     */
+    function _computePoolData(address pool, Rounding roundingDirection) internal returns (PoolData memory poolData) {
         (
             poolData.tokenConfig,
             poolData.balancesRaw,
@@ -1094,6 +1098,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             poolData.poolConfig
         ) = _getPoolTokenInfo(pool);
 
+        EnumerableMap.IERC20ToUint256Map storage lastLiveBalances = _lastLivePoolTokenBalances[pool];
         uint256 numTokens = poolData.tokenConfig.length;
 
         // Initialize arrays to store balances and rates based on the number of tokens in the pool.
@@ -1103,27 +1108,82 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
         for (uint256 i = 0; i < numTokens; ++i) {
             TokenType tokenType = poolData.tokenConfig[i].tokenType;
+            // Initialize by token type: ERC4626 always pay yield fees.
+            bool subjectToYieldProtocolFees = tokenType == TokenType.ERC4626;
 
             if (tokenType == TokenType.STANDARD) {
                 poolData.tokenRates[i] = FixedPoint.ONE;
             } else if (tokenType == TokenType.WITH_RATE) {
                 poolData.tokenRates[i] = poolData.tokenConfig[i].rateProvider.getRate();
+                // Tokens with rates pay yield fees unless exempt.
+                subjectToYieldProtocolFees = poolData.tokenConfig[i].yieldFeeExempt == false;
             } else {
                 // TODO implement ERC4626 at a later stage. Not coming from user input, so can only be these three.
                 revert InvalidTokenConfiguration();
             }
 
-            //TODO: remove pending yield fee using live balance mechanism
-            poolData.balancesLiveScaled18[i] = roundingDirection == Rounding.ROUND_UP
-                ? poolData.balancesRaw[i].toScaled18ApplyRateRoundUp(
-                    poolData.decimalScalingFactors[i],
-                    poolData.tokenRates[i]
-                )
-                : poolData.balancesRaw[i].toScaled18ApplyRateRoundDown(
-                    poolData.decimalScalingFactors[i],
-                    poolData.tokenRates[i]
-                );
+            _setLiveBalanceFromRawForToken(poolData, roundingDirection, i);
+
+            // Check for yield protocol fees after initialization
+            if (subjectToYieldProtocolFees && poolData.poolConfig.isPoolInitialized) {
+                IERC20 token = poolData.tokenConfig[i].token;
+                uint256 yieldFeePercentage = _protocolYieldFeePercentage;
+                if (yieldFeePercentage > 0) {
+                    uint256 yieldFeeAmountRaw = _computeYieldProtocolFeesDue(
+                        poolData,
+                        lastLiveBalances.unchecked_valueAt(i),
+                        i,
+                        yieldFeePercentage
+                    );
+
+                    if (yieldFeeAmountRaw > 0) {
+                        // Charge protocol fee
+                        // TODO: We're doing accounting outside the reentrancy guard. Need to refactor this.
+                        _protocolFees[token] += yieldFeeAmountRaw;
+
+                        // Adjust raw and live balances
+                        poolData.balancesRaw[i] -= yieldFeeAmountRaw;
+                        _setLiveBalanceFromRawForToken(poolData, roundingDirection, i);
+                    }
+                }
+            }
+
+            // Update last live balance
+            // TODO: We're doing accounting outside the reentrancy guard. Need to refactor this.
+            lastLiveBalances.unchecked_setAt(i, poolData.balancesLiveScaled18[i]);
         }
+    }
+
+    function _computeYieldProtocolFeesDue(
+        PoolData memory poolData,
+        uint256 lastLiveBalance,
+        uint256 tokenIndex,
+        uint256 yieldFeePercentage
+    ) internal pure returns (uint256 feeAmountRaw) {
+        uint256 liveBalanceDiff = poolData.balancesLiveScaled18[tokenIndex] - lastLiveBalance;
+
+        if (liveBalanceDiff > 0) {
+            feeAmountRaw = liveBalanceDiff.mulDown(yieldFeePercentage).toRawUndoRateRoundDown(
+                poolData.decimalScalingFactors[tokenIndex],
+                poolData.tokenRates[tokenIndex]
+            );
+        }
+    }
+
+    function _setLiveBalanceFromRawForToken(
+        PoolData memory poolData,
+        Rounding roundingDirection,
+        uint256 tokenIndex
+    ) private pure {
+        poolData.balancesLiveScaled18[tokenIndex] = roundingDirection == Rounding.ROUND_UP
+            ? poolData.balancesRaw[tokenIndex].toScaled18ApplyRateRoundUp(
+                poolData.decimalScalingFactors[tokenIndex],
+                poolData.tokenRates[tokenIndex]
+            )
+            : poolData.balancesRaw[tokenIndex].toScaled18ApplyRateRoundDown(
+                poolData.decimalScalingFactors[tokenIndex],
+                poolData.tokenRates[tokenIndex]
+            );
     }
 
     /*******************************************************************************
@@ -1151,7 +1211,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         whenPoolNotPaused(pool)
         returns (uint256 bptAmountOut)
     {
-        PoolData memory poolData = _getPoolData(pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _computePoolData(pool, Rounding.ROUND_DOWN);
 
         if (poolData.poolConfig.isPoolInitialized) {
             revert PoolAlreadyInitialized(pool);
@@ -1218,7 +1278,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // If proportional, higher balances = higher proportional amountsIn, favoring the pool.
         // If unbalanced, higher balances = lower invariant ratio with fees.
         // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
-        PoolData memory poolData = _getPoolData(params.pool, Rounding.ROUND_UP);
+        PoolData memory poolData = _computePoolData(params.pool, Rounding.ROUND_UP);
         InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.amountsIn.length);
 
         // Amounts are entering pool math, so round down.
@@ -1383,7 +1443,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // If proportional, lower balances = lower proportional amountsOut, favoring the pool.
         // If unbalanced, lower balances = lower invariant ratio without fees.
         // bptIn = supply * (1 - ratio), so lower ratio = more bptIn, favoring the pool.
-        PoolData memory poolData = _getPoolData(params.pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _computePoolData(params.pool, Rounding.ROUND_DOWN);
         InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.minAmountsOut.length);
 
         // Amounts are entering pool math; higher amounts would burn more BPT, so round up to favor the pool.

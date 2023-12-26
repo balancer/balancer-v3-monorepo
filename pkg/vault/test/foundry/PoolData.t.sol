@@ -66,9 +66,9 @@ contract PoolDataTest is Test {
         daiRateProvider.mockRate(daiRate);
         wstETHRateProvider.mockRate(wstETHRate);
 
-        // `getPoolData` and `getRawBalances` are functions in VaultMock.
+        // `computePoolData` and `getRawBalances` are functions in VaultMock.
 
-        PoolData memory data = vault.getPoolData(address(pool), roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN);
+        PoolData memory data = vault.computePoolData(address(pool), roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN);
 
         // Compute decimal scaling factors from the tokens, in the mock.
         uint256[] memory expectedScalingFactors = pool.getDecimalScalingFactors();

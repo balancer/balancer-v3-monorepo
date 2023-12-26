@@ -137,8 +137,8 @@ contract VaultMock is Vault {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function getPoolData(address pool, Rounding roundingDirection) external view returns (PoolData memory) {
-        return _getPoolData(pool, roundingDirection);
+    function computePoolData(address pool, Rounding roundingDirection) external returns (PoolData memory) {
+        return _computePoolData(pool, roundingDirection);
     }
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw) {
