@@ -11,13 +11,18 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 
+import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
+
 contract Router is IRouter, ReentrancyGuard {
     using Address for address payable;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     IVault private immutable _vault;
 
     // solhint-disable-next-line var-name-mixedcase
     IWETH private immutable _weth;
+
+    EnumerableSet.AddressSet private _currentSwapTokens;
 
     modifier onlyVault() {
         if (msg.sender != address(_vault)) {
@@ -147,7 +152,7 @@ contract Router is IRouter, ReentrancyGuard {
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn) {
-        uint256[] memory maxAmountsIn = _getSingleInputArray(pool, tokenIn, maxAmountIn);
+        (uint256[] memory maxAmountsIn, ) = _getSingleInputArrayAndTokenIndex(pool, tokenIn, maxAmountIn);
 
         (amountsIn, , ) = abi.decode(
             _vault.invoke{ value: msg.value }(
@@ -295,7 +300,7 @@ contract Router is IRouter, ReentrancyGuard {
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsOut) {
-        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOut, minAmountOut);
+        (uint256[] memory minAmountsOut, ) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, minAmountOut);
 
         (, amountsOut, ) = abi.decode(
             _vault.invoke(
@@ -325,7 +330,7 @@ contract Router is IRouter, ReentrancyGuard {
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256 bptAmountIn) {
-        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOut, exactAmountOut);
+        (uint256[] memory minAmountsOut, ) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, exactAmountOut);
 
         (bptAmountIn, , ) = abi.decode(
             _vault.invoke(
@@ -510,11 +515,10 @@ contract Router is IRouter, ReentrancyGuard {
             abi.decode(
                 _vault.invoke{ value: msg.value }(
                     abi.encodeWithSelector(
-                        Router.swapCallback.selector,
-                        SwapCallbackParams({
+                        Router.swapExactInCallback.selector,
+                        SwapExactInCallbackParams({
                             sender: msg.sender,
-                            kind: IVault.SwapKind.GIVEN_IN,
-                            paths: _convertSwapPaths(paths),
+                            paths: paths,
                             deadline: deadline,
                             wethIsEth: wethIsEth,
                             userData: userData
@@ -536,11 +540,10 @@ contract Router is IRouter, ReentrancyGuard {
             abi.decode(
                 _vault.invoke{ value: msg.value }(
                     abi.encodeWithSelector(
-                        Router.swapCallback.selector,
-                        SwapCallbackParams({
+                        Router.swapExactOutCallback.selector,
+                        SwapExactOutCallbackParams({
                             sender: msg.sender,
-                            kind: IVault.SwapKind.GIVEN_IN,
-                            paths: _convertSwapPaths(paths),
+                            paths: paths,
                             deadline: deadline,
                             wethIsEth: wethIsEth,
                             userData: userData
@@ -601,9 +604,129 @@ contract Router is IRouter, ReentrancyGuard {
         return amountCalculated;
     }
 
-    function swapCallback(
-        SwapCallbackParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256[] memory) {}
+    function swapExactInCallback(
+        SwapExactInCallbackParams calldata params
+    ) external payable nonReentrant onlyVault returns (uint256[] memory pathAmountsOut) {
+        pathAmountsOut = new uint256[](params.paths.length);
+
+        for (uint256 i = 0; i < params.paths.length; ++i) {
+            SwapPathExactAmountIn memory path = params.paths[i];
+            uint256 exactAmountIn = path.exactAmountIn;
+
+            for (uint256 j = 0; j < path.steps.length; ++j) {
+                uint256 minAmountOut;
+                bool isLastStep = (j == path.steps.length - 1);
+
+                // minAmountOut only applies to the last step.
+                if (isLastStep) {
+                    minAmountOut = path.minAmountOut;
+                } else {
+                    minAmountOut = 0;
+                }
+
+                SwapPathStep memory step = path.steps[j];
+
+                if (address(path.tokenIn) == step.pool) {
+                    // Token in is BPT: remove liquidity - Single token exact in
+                    (uint256[] memory minAmountsOut, uint256 index) = _getSingleInputArrayAndTokenIndex(
+                        step.pool,
+                        step.tokenOut,
+                        minAmountOut
+                    );
+
+                    (, uint256[] memory amountsOut, ) = _vault.removeLiquidity(
+                        IVault.RemoveLiquidityParams({
+                            pool: step.pool,
+                            from: params.sender,
+                            maxBptAmountIn: exactAmountIn,
+                            minAmountsOut: minAmountsOut,
+                            kind: IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
+                            userData: params.userData
+                        })
+                    );
+
+                    if (isLastStep) {
+                        pathAmountsOut[i] = amountsOut[index];
+                    } else {
+                        // Input for the next step is output of current step.
+                        exactAmountIn = amountsOut[index];
+                        // The token in for the next step is the token out of the current step.
+                        path.tokenIn = step.tokenOut;
+                    }
+                } else if (address(step.tokenOut) == step.pool) {
+                    // Token out is BPT: add liquidity - Single token exact in (unbalanced)
+                    (uint256[] memory exactAmountsIn, ) = _getSingleInputArrayAndTokenIndex(
+                        step.pool,
+                        path.tokenIn,
+                        exactAmountIn
+                    );
+
+                    (, uint256 bptAmountOut, ) = _vault.addLiquidity(
+                        IVault.AddLiquidityParams({
+                            pool: step.pool,
+                            to: params.sender,
+                            amountsIn: exactAmountsIn,
+                            minBptAmountOut: minAmountOut,
+                            kind: IVault.AddLiquidityKind.UNBALANCED,
+                            userData: params.userData
+                        })
+                    );
+
+                    if (isLastStep) {
+                        pathAmountsOut[i] = bptAmountOut;
+                    } else {
+                        // Input for the next step is output of current step.
+                        exactAmountIn = bptAmountOut;
+                        // The token in for the next step is the token out of the current step.
+                        path.tokenIn = step.tokenOut;
+                    }
+                } else {
+                    // No BPT involved in the operation: regular swap exact in
+                    (, ,uint256 amountOut) = _vault.swap(
+                        IVault.SwapParams({
+                            kind: IVault.SwapKind.GIVEN_IN,
+                            pool: step.pool,
+                            tokenIn: path.tokenIn,
+                            tokenOut: step.tokenOut,
+                            amountGivenRaw: exactAmountIn,
+                            userData: params.userData
+                        })
+                    );
+
+                    if (isLastStep) {
+                        pathAmountsOut[i] = amountOut;
+                    } else {
+                        // Input for the next step is output of current step.
+                        exactAmountIn = amountOut;
+                        // The token in for the next step is the token out of the current step.
+                        path.tokenIn = step.tokenOut;
+                    }
+                }
+            }
+        }
+    }
+
+    function swapExactOutCallback(
+        SwapExactOutCallbackParams calldata params
+    ) external payable nonReentrant onlyVault returns (uint256[] memory pathAmountsIn) {
+        pathAmountsIn = new uint256[](params.paths.length);
+
+        for (uint256 i = 0; i < params.paths.length; ++i) {
+            SwapPathExactAmountOut memory path = params.paths[i];
+
+            for (uint256 j = 0; j < path.steps.length; ++j) {
+                SwapPathStep memory step = path.steps[j];
+
+                if (address(path.tokenIn) == step.pool) {
+                    // Remove liquidity - Single token exact out
+                } else if (address(step.tokenOut) == step.pool) {
+                    // Add liquidity - Single token exact out
+                } else {
+                    // Regular swap exact out
+                }
+            }
+        }
+    }
 
     function _swapCallback(
         SwapSingleTokenCallbackParams calldata params
@@ -746,7 +869,7 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 exactBptAmountOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn) {
-        uint256[] memory maxAmountsIn = _getSingleInputArray(pool, tokenIn, maxAmountIn);
+        (uint256[] memory maxAmountsIn, ) = _getSingleInputArrayAndTokenIndex(pool, tokenIn, maxAmountIn);
 
         (amountsIn, , ) = abi.decode(
             _vault.quote(
@@ -863,7 +986,7 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 minAmountOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut) {
-        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOut, minAmountOut);
+        (uint256[] memory minAmountsOut, ) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, minAmountOut);
 
         (, amountsOut, ) = abi.decode(
             _vault.quote(
@@ -894,7 +1017,7 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 exactAmountOut,
         bytes memory userData
     ) external returns (uint256 bptAmountIn) {
-        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOut, exactAmountOut);
+        (uint256[] memory minAmountsOut, ) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, exactAmountOut);
 
         (bptAmountIn, , ) = abi.decode(
             _vault.quote(
@@ -1018,29 +1141,14 @@ contract Router is IRouter, ReentrancyGuard {
      * The returned array length matches the number of tokens in the pool.
      * Reverts if the given index is greater than or equal to the pool number of tokens.
      */
-    function _getSingleInputArray(
+    function _getSingleInputArrayAndTokenIndex(
         address pool,
         IERC20 token,
         uint256 amountGiven
-    ) internal view returns (uint256[] memory amountsGiven) {
-        (uint256 numTokens, uint256 tokenIndex) = _vault.getPoolTokenCountAndIndexOfToken(pool, token);
+    ) internal view returns (uint256[] memory amountsGiven, uint256 tokenIndex) {
+        uint256 numTokens;
+        (numTokens, tokenIndex) = _vault.getPoolTokenCountAndIndexOfToken(pool, token);
         amountsGiven = new uint256[](numTokens);
         amountsGiven[tokenIndex] = amountGiven;
-    }
-
-    function _convertSwapPaths(
-        SwapPathExactAmountIn[] memory pathsExactAmountIn
-    ) internal pure returns (SwapPath[] memory paths) {
-        assembly {
-            paths := pathsExactAmountIn
-        }
-    }
-
-    function _convertSwapPaths(
-        SwapPathExactAmountOut[] memory pathsExactAmountOut
-    ) internal pure returns (SwapPath[] memory paths) {
-        assembly {
-            paths := pathsExactAmountOut
-        }
     }
 }

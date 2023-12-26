@@ -273,13 +273,6 @@ interface IRouter {
         uint256 exactAmountOut;
     }
 
-    struct SwapPath {
-        IERC20 tokenIn;
-        SwapPathStep[] steps;
-        uint256 amountGiven;
-        uint256 limit;
-    }
-
     /**
      * @dev Data for the swap callback.
      * @param sender Account initiating the swap operation
@@ -306,10 +299,17 @@ interface IRouter {
         bytes userData;
     }
 
-    struct SwapCallbackParams {
+    struct SwapExactInCallbackParams {
         address sender;
-        IVault.SwapKind kind;
-        SwapPath[] paths;
+        SwapPathExactAmountIn[] paths;
+        uint256 deadline;
+        bool wethIsEth;
+        bytes userData;
+    }
+
+    struct SwapExactOutCallbackParams {
+        address sender;
+        SwapPathExactAmountOut[] paths;
         uint256 deadline;
         bool wethIsEth;
         bytes userData;
