@@ -590,18 +590,17 @@ contract Router is IRouter, ReentrancyGuard {
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
             SwapPathExactAmountIn memory path = params.paths[i];
-            // This variable shall be updated at the end of each step to be used as input of the next one.
-            // The first value corresponds to the given amount in for the current path.
-            // The token in also has to be updated at the end of each step. But considering that `path.tokenIn` is only
-            // used at the beginning of the iteration, we can overwrite it to save one stack slot.
+            // These two variables shall be updated at the end of each step to be used as inputs of the next one.
+            // The initial values are the given token and amount in for the current path.
             uint256 exactAmountIn = path.exactAmountIn;
+            IERC20 tokenIn = path.tokenIn;
 
             // TODO: this should be transient.
             // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses in
             // a set with unique addresses that can be iterated later on.
             // For example, if all paths share the same token in, the set will end up with only one entry.
-            _currentSwapTokensIn.add(address(path.tokenIn));
-            _currentSwapTokensInAmounts[address(path.tokenIn)] += path.exactAmountIn;
+            _currentSwapTokensIn.add(address(tokenIn));
+            _currentSwapTokensInAmounts[address(tokenIn)] += path.exactAmountIn;
 
             for (uint256 j = 0; j < path.steps.length; ++j) {
                 bool isLastStep = (j == path.steps.length - 1);
@@ -616,20 +615,21 @@ contract Router is IRouter, ReentrancyGuard {
 
                 SwapPathStep memory step = path.steps[j];
 
-                if (address(path.tokenIn) == step.pool) {
+                if (address(tokenIn) == step.pool) {
                     // Token in is BPT: remove liquidity - Single token exact in
-                    (uint256[] memory minAmountsOut, uint256 index) = _getSingleInputArrayAndTokenIndex(
+                    (uint256[] memory amountsOut, uint256 index) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
                         step.tokenOut,
                         minAmountOut
                     );
 
-                    (, uint256[] memory amountsOut, ) = _vault.removeLiquidity(
+                    // Reusing `amountsOut` as input argument and function output to prevent stack too deep error.
+                    (, amountsOut, ) = _vault.removeLiquidity(
                         IVault.RemoveLiquidityParams({
                             pool: step.pool,
                             from: params.sender,
                             maxBptAmountIn: exactAmountIn,
-                            minAmountsOut: minAmountsOut,
+                            minAmountsOut: amountsOut,
                             kind: IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
                             userData: params.userData
                         })
@@ -645,13 +645,13 @@ contract Router is IRouter, ReentrancyGuard {
                         // Input for the next step is output of current step.
                         exactAmountIn = amountsOut[index];
                         // The token in for the next step is the token out of the current step.
-                        path.tokenIn = step.tokenOut;
+                        tokenIn = step.tokenOut;
                     }
                 } else if (address(step.tokenOut) == step.pool) {
                     // Token out is BPT: add liquidity - Single token exact in (unbalanced)
                     (uint256[] memory exactAmountsIn, ) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
-                        path.tokenIn,
+                        tokenIn,
                         exactAmountIn
                     );
 
@@ -676,7 +676,7 @@ contract Router is IRouter, ReentrancyGuard {
                         // Input for the next step is output of current step.
                         exactAmountIn = bptAmountOut;
                         // The token in for the next step is the token out of the current step.
-                        path.tokenIn = step.tokenOut;
+                        tokenIn = step.tokenOut;
                     }
                 } else {
                     // No BPT involved in the operation: regular swap exact in
@@ -684,7 +684,7 @@ contract Router is IRouter, ReentrancyGuard {
                         IVault.SwapParams({
                             kind: IVault.SwapKind.GIVEN_IN,
                             pool: step.pool,
-                            tokenIn: path.tokenIn,
+                            tokenIn: tokenIn,
                             tokenOut: step.tokenOut,
                             amountGivenRaw: exactAmountIn,
                             userData: params.userData
@@ -701,7 +701,7 @@ contract Router is IRouter, ReentrancyGuard {
                         // Input for the next step is output of current step.
                         exactAmountIn = amountOut;
                         // The token in for the next step is the token out of the current step.
-                        path.tokenIn = step.tokenOut;
+                        tokenIn = step.tokenOut;
                     }
                 }
             }
