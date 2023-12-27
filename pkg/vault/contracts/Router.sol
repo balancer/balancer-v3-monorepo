@@ -22,7 +22,11 @@ contract Router is IRouter, ReentrancyGuard {
     // solhint-disable-next-line var-name-mixedcase
     IWETH private immutable _weth;
 
-    EnumerableSet.AddressSet private _currentSwapTokens;
+    // Transient storage
+    EnumerableSet.AddressSet private _currentSwapTokensIn;
+    EnumerableSet.AddressSet private _currentSwapTokensOut;
+    mapping(address => uint256) _currentSwapTokensInAmounts;
+    mapping(address => uint256) _currentSwapTokensOutAmounts;
 
     modifier onlyVault() {
         if (msg.sender != address(_vault)) {
@@ -566,35 +570,10 @@ contract Router is IRouter, ReentrancyGuard {
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapCallback(params);
 
         IERC20 tokenIn = params.tokenIn;
-        IERC20 tokenOut = params.tokenOut;
+        bool wethIsEth = params.wethIsEth;
 
-        uint256 ethAmountIn = 0;
-        // If the tokenIn is ETH, then wrap `amountIn` into WETH.
-        if (params.wethIsEth && tokenIn == _weth) {
-            ethAmountIn = amountIn;
-            // wrap amountIn to WETH
-            _weth.deposit{ value: amountIn }();
-            // send WETH to Vault
-            _weth.transfer(address(_vault), amountIn);
-            // update Vault accounting
-            _vault.settle(_weth);
-        } else {
-            // Send the tokenIn amount to the Vault
-            _vault.retrieve(tokenIn, params.sender, amountIn);
-        }
-
-        // If the tokenOut is ETH, then unwrap `amountOut` into ETH.
-        if (params.wethIsEth && tokenOut == _weth) {
-            // Receive the WETH amountOut
-            _vault.wire(tokenOut, address(this), amountOut);
-            // Withdraw WETH to ETH
-            _weth.withdraw(amountOut);
-            // Send ETH to sender
-            payable(params.sender).sendValue(amountOut);
-        } else {
-            // Receive the tokenOut amountOut
-            _vault.wire(tokenOut, params.sender, amountOut);
-        }
+        uint256 ethAmountIn = _retrieveTokenIn(params.sender, tokenIn, amountIn, wethIsEth);
+        _wireTokenOut(params.sender, params.tokenOut, amountOut, wethIsEth);
 
         if (tokenIn == _weth) {
             // Return the rest of ETH to sender
@@ -611,11 +590,22 @@ contract Router is IRouter, ReentrancyGuard {
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
             SwapPathExactAmountIn memory path = params.paths[i];
+            // This variable shall be updated at the end of each step to be used as input of the next one.
+            // The first value corresponds to the given amount in for the current path.
+            // The token in also has to be updated at the end of each step. But considering that `path.tokenIn` is only
+            // used at the beginning of the iteration, we can overwrite it to save one stack slot.
             uint256 exactAmountIn = path.exactAmountIn;
 
+            // TODO: this should be transient.
+            // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses in
+            // a set with unique addresses that can be iterated later on.
+            // For example, if all paths share the same token in, the set will end up with only one entry.
+            _currentSwapTokensIn.add(address(path.tokenIn));
+            _currentSwapTokensInAmounts[address(path.tokenIn)] += path.exactAmountIn;
+
             for (uint256 j = 0; j < path.steps.length; ++j) {
-                uint256 minAmountOut;
                 bool isLastStep = (j == path.steps.length - 1);
+                uint256 minAmountOut;
 
                 // minAmountOut only applies to the last step.
                 if (isLastStep) {
@@ -646,7 +636,11 @@ contract Router is IRouter, ReentrancyGuard {
                     );
 
                     if (isLastStep) {
+                        // The amount out for the last step of the path should be recorded for the return value, and the
+                        // amount for the token should be sent back to the sender later on.
                         pathAmountsOut[i] = amountsOut[index];
+                        _currentSwapTokensOut.add(address(step.tokenOut));
+                        _currentSwapTokensOutAmounts[address(step.tokenOut)] += amountsOut[index];
                     } else {
                         // Input for the next step is output of current step.
                         exactAmountIn = amountsOut[index];
@@ -673,7 +667,11 @@ contract Router is IRouter, ReentrancyGuard {
                     );
 
                     if (isLastStep) {
+                        // The amount out for the last step of the path should be recorded for the return value, and the
+                        // amount for the token should be sent back to the sender later on.
                         pathAmountsOut[i] = bptAmountOut;
+                        _currentSwapTokensOut.add(address(step.tokenOut));
+                        _currentSwapTokensOutAmounts[address(step.tokenOut)] += bptAmountOut;
                     } else {
                         // Input for the next step is output of current step.
                         exactAmountIn = bptAmountOut;
@@ -682,7 +680,7 @@ contract Router is IRouter, ReentrancyGuard {
                     }
                 } else {
                     // No BPT involved in the operation: regular swap exact in
-                    (, ,uint256 amountOut) = _vault.swap(
+                    (, , uint256 amountOut) = _vault.swap(
                         IVault.SwapParams({
                             kind: IVault.SwapKind.GIVEN_IN,
                             pool: step.pool,
@@ -694,7 +692,11 @@ contract Router is IRouter, ReentrancyGuard {
                     );
 
                     if (isLastStep) {
+                        // The amount out for the last step of the path should be recorded for the return value, and the
+                        // amount for the token should be sent back to the sender later on.
                         pathAmountsOut[i] = amountOut;
+                        _currentSwapTokensOut.add(address(step.tokenOut));
+                        _currentSwapTokensOutAmounts[address(step.tokenOut)] += amountOut;
                     } else {
                         // Input for the next step is output of current step.
                         exactAmountIn = amountOut;
@@ -704,6 +706,8 @@ contract Router is IRouter, ReentrancyGuard {
                 }
             }
         }
+
+        _settlePaths(params.sender, params.wethIsEth);
     }
 
     function swapExactOutCallback(
@@ -713,19 +717,129 @@ contract Router is IRouter, ReentrancyGuard {
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
             SwapPathExactAmountOut memory path = params.paths[i];
+            // This variable shall be updated at the end of each step to be used as input of the next one.
+            // The first value corresponds to the given amount out for the current path.
+            uint256 exactAmountOut = path.exactAmountOut;
 
-            for (uint256 j = 0; j < path.steps.length; ++j) {
+            // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses in
+            // a set with unique addresses that can be iterated later on.
+            // For example, if all paths share the same token in, the set will end up with only one entry.
+            // Since the path is 'given out', the output of the operation specified by the last step in each path will
+            // be added to calculate the amounts in for each token.
+            // TODO: this should be transient
+            _currentSwapTokensIn.add(address(path.tokenIn));
+
+            // Backwards iteration: the exact amount out applies to the last step, so we cannot iterate from first to
+            // last. The calculated input of step (j) is the exact amount out for step (j - 1).
+            for (uint256 j = path.steps.length - 1; j >= 0; --j) {
                 SwapPathStep memory step = path.steps[j];
+                bool isLastStep = (j == 0);
 
-                if (address(path.tokenIn) == step.pool) {
-                    // Remove liquidity - Single token exact out
+                // These two variables are set at the beginning of the iteration and are used as inputs for
+                // the operation described by the step.
+                uint256 maxAmountIn;
+                IERC20 tokenIn;
+
+                // Stack too deep
+                {
+                    bool isFirstStep = (j == path.steps.length - 1);
+
+                    if (isFirstStep) {
+                        // The first step in the iteration is the last one in the given array of steps, and it
+                        // specifies the output token for the step as well as the exact amount out for that token.
+                        // Output amounts are stored to wire them later on.
+                        // TODO: This should be transient.
+                        _currentSwapTokensOut.add(address(step.tokenOut));
+                        _currentSwapTokensOutAmounts[address(step.tokenOut)] += exactAmountOut;
+                    } else if (isLastStep) {
+                        // In backwards order, the last step is the first one in the given path.
+                        // The given token in and max amount in apply for this step.
+                        maxAmountIn = path.maxAmountIn;
+                        tokenIn = path.tokenIn;
+                    } else {
+                        // For every other intermediate step, no maximum input applies.
+                        // The input token for this step is the output token of the previous given step.
+                        maxAmountIn = type(uint256).max;
+                        tokenIn = path.steps[j - 1].tokenOut;
+                    }
+                }
+
+                if (address(tokenIn) == step.pool) {
+                    // Token in is BPT: remove liquidity - Single token exact out
+                    (uint256[] memory exactAmountsOut, ) = _getSingleInputArrayAndTokenIndex(
+                        step.pool,
+                        step.tokenOut,
+                        exactAmountOut
+                    );
+
+                    (uint256 bptAmountIn, , ) = _vault.removeLiquidity(
+                        IVault.RemoveLiquidityParams({
+                            pool: step.pool,
+                            from: params.sender,
+                            maxBptAmountIn: maxAmountIn,
+                            minAmountsOut: exactAmountsOut,
+                            kind: IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                            userData: params.userData
+                        })
+                    );
+
+                    if (isLastStep) {
+                        pathAmountsIn[i] = bptAmountIn;
+                        _currentSwapTokensInAmounts[address(tokenIn)] += bptAmountIn;
+                    } else {
+                        // Output for the step (j - 1) is the input of step (j).
+                        exactAmountOut = bptAmountIn;
+                    }
                 } else if (address(step.tokenOut) == step.pool) {
-                    // Add liquidity - Single token exact out
+                    // Token out is BPT: add liquidity - Single token exact out
+                    (uint256[] memory amountsIn, uint256 index) = _getSingleInputArrayAndTokenIndex(
+                        step.pool,
+                        tokenIn,
+                        maxAmountIn
+                    );
+
+                    // Reusing `amountsIn` as input argument and function output to prevent stack too deep error.
+                    (amountsIn, , ) = _vault.addLiquidity(
+                        IVault.AddLiquidityParams({
+                            pool: step.pool,
+                            to: params.sender,
+                            amountsIn: amountsIn,
+                            minBptAmountOut: exactAmountOut,
+                            kind: IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                            userData: params.userData
+                        })
+                    );
+
+                    if (isLastStep) {
+                        pathAmountsIn[i] = amountsIn[index];
+                        _currentSwapTokensInAmounts[address(tokenIn)] += amountsIn[index];
+                    } else {
+                        exactAmountOut = amountsIn[index];
+                    }
                 } else {
-                    // Regular swap exact out
+                    // No BPT involved in the operation: regular swap exact out
+                    (, uint256 amountIn, ) = _vault.swap(
+                        IVault.SwapParams({
+                            kind: IVault.SwapKind.GIVEN_OUT,
+                            pool: step.pool,
+                            tokenIn: tokenIn,
+                            tokenOut: step.tokenOut,
+                            amountGivenRaw: exactAmountOut,
+                            userData: params.userData
+                        })
+                    );
+
+                    if (isLastStep) {
+                        pathAmountsIn[i] = amountIn;
+                        _currentSwapTokensInAmounts[address(tokenIn)] += amountIn;
+                    } else {
+                        exactAmountOut = amountIn;
+                    }
                 }
             }
         }
+
+        _settlePaths(params.sender, params.wethIsEth);
     }
 
     function _swapCallback(
@@ -1150,5 +1264,71 @@ contract Router is IRouter, ReentrancyGuard {
         (numTokens, tokenIndex) = _vault.getPoolTokenCountAndIndexOfToken(pool, token);
         amountsGiven = new uint256[](numTokens);
         amountsGiven[tokenIndex] = amountGiven;
+    }
+
+    function _retrieveTokenIn(
+        address sender,
+        IERC20 tokenIn,
+        uint256 amountIn,
+        bool wethIsEth
+    ) internal returns (uint256 ethAmountIn) {
+        // If the tokenIn is ETH, then wrap `amountIn` into WETH.
+        if (wethIsEth && tokenIn == _weth) {
+            ethAmountIn = amountIn;
+            // wrap amountIn to WETH
+            _weth.deposit{ value: amountIn }();
+            // send WETH to Vault
+            _weth.transfer(address(_vault), amountIn);
+            // update Vault accounting
+            _vault.settle(_weth);
+        } else {
+            // Send the tokenIn amount to the Vault
+            _vault.retrieve(tokenIn, sender, amountIn);
+        }
+    }
+
+    function _wireTokenOut(address sender, IERC20 tokenOut, uint256 amountOut, bool wethIsEth) internal {
+        // If the tokenOut is ETH, then unwrap `amountOut` into ETH.
+        if (wethIsEth && tokenOut == _weth) {
+            // Receive the WETH amountOut
+            _vault.wire(tokenOut, address(this), amountOut);
+            // Withdraw WETH to ETH
+            _weth.withdraw(amountOut);
+            // Send ETH to sender
+            payable(sender).sendValue(amountOut);
+        } else {
+            // Receive the tokenOut amountOut
+            _vault.wire(tokenOut, sender, amountOut);
+        }
+    }
+
+    function _settlePaths(address sender, bool wethIsEth) internal {
+        uint256 numTokensIn = _currentSwapTokensIn.length();
+        uint256 numTokensOut = _currentSwapTokensOut.length();
+        uint256 ethAmountIn = 0;
+
+        // Iterate backwards, from the last element to 0 (included).
+        // Removing the last element from a set is cheaper than removing the first one.
+        // TODO: If clearing out the set and the mapping is not required, this can be replaced with a forward iteration.
+        for (uint256 i = numTokensIn - 1; i >= 0; --i) {
+            address tokenIn = _currentSwapTokensIn.unchecked_at(i);
+            ethAmountIn += _retrieveTokenIn(sender, IERC20(tokenIn), _currentSwapTokensInAmounts[tokenIn], wethIsEth);
+
+            // TODO: This should be transient. It shouldn't need to be cleared out.
+            _currentSwapTokensIn.remove(tokenIn);
+            _currentSwapTokensInAmounts[tokenIn] = 0;
+        }
+
+        for (uint256 i = numTokensOut - 1; i >= 0; --i) {
+            address tokenOut = _currentSwapTokensOut.unchecked_at(i);
+            _wireTokenOut(sender, IERC20(tokenOut), _currentSwapTokensOutAmounts[tokenOut], wethIsEth);
+
+            // TODO: This should be transient. It shouldn't need to be cleared out.
+            _currentSwapTokensOut.remove(tokenOut);
+            _currentSwapTokensOutAmounts[tokenOut] = 0;
+        }
+
+        // Return the rest of ETH to sender
+        returnEth(sender, ethAmountIn);
     }
 }

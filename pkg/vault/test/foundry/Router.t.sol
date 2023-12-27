@@ -583,18 +583,22 @@ contract RouterTest is Test {
     }
 
     function testGetSingleInputArray() public {
-        uint256[] memory amountsGiven = routerMock.getSingleInputArray(address(pool), DAI, 1234);
+        uint256[] memory amountsGiven;
+        uint256 index;
+        (amountsGiven, index) = routerMock.getSingleInputArrayAndTokenIndex(address(pool), DAI, 1234);
         assertEq(amountsGiven.length, 2);
         assertEq(amountsGiven[0], 1234);
         assertEq(amountsGiven[1], 0);
+        assertEq(index, 0);
 
-        amountsGiven = routerMock.getSingleInputArray(address(pool), USDC, 4321);
+        (amountsGiven, index) = routerMock.getSingleInputArrayAndTokenIndex(address(pool), USDC, 4321);
         assertEq(amountsGiven.length, 2);
         assertEq(amountsGiven[0], 0);
         assertEq(amountsGiven[1], 4321);
+        assertEq(index, 1);
 
         vm.expectRevert(abi.encodeWithSelector(IVault.TokenNotRegistered.selector));
-        routerMock.getSingleInputArray(address(pool), WETH, DAI_AMOUNT_IN);
+        routerMock.getSingleInputArrayAndTokenIndex(address(pool), WETH, DAI_AMOUNT_IN);
     }
 
     function _initializePool() internal returns (uint256 bptAmountOut) {
