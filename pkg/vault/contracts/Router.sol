@@ -731,8 +731,8 @@ contract Router is IRouter, ReentrancyGuard {
 
             // Backwards iteration: the exact amount out applies to the last step, so we cannot iterate from first to
             // last. The calculated input of step (j) is the exact amount out for step (j - 1).
-            for (uint256 j = path.steps.length - 1; j >= 0; --j) {
-                SwapPathStep memory step = path.steps[j];
+            for (int256 j = int256(path.steps.length - 1); j >= 0; --j) {
+                SwapPathStep memory step = path.steps[uint256(j)];
                 bool isLastStep = (j == 0);
 
                 // These two variables are set at the beginning of the iteration and are used as inputs for
@@ -742,7 +742,7 @@ contract Router is IRouter, ReentrancyGuard {
 
                 // Stack too deep
                 {
-                    bool isFirstStep = (j == path.steps.length - 1);
+                    bool isFirstStep = (uint256(j) == path.steps.length - 1);
 
                     if (isFirstStep) {
                         // The first step in the iteration is the last one in the given array of steps, and it
@@ -760,7 +760,7 @@ contract Router is IRouter, ReentrancyGuard {
                         // For every other intermediate step, no maximum input applies.
                         // The input token for this step is the output token of the previous given step.
                         maxAmountIn = type(uint256).max;
-                        tokenIn = path.steps[j - 1].tokenOut;
+                        tokenIn = path.steps[uint256(j - 1)].tokenOut;
                     }
                 }
 
@@ -1310,8 +1310,8 @@ contract Router is IRouter, ReentrancyGuard {
         // Iterate backwards, from the last element to 0 (included).
         // Removing the last element from a set is cheaper than removing the first one.
         // TODO: If clearing out the set and the mapping is not required, this can be replaced with a forward iteration.
-        for (uint256 i = numTokensIn - 1; i >= 0; --i) {
-            address tokenIn = _currentSwapTokensIn.unchecked_at(i);
+        for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
+            address tokenIn = _currentSwapTokensIn.unchecked_at(uint256(i));
             ethAmountIn += _retrieveTokenIn(sender, IERC20(tokenIn), _currentSwapTokensInAmounts[tokenIn], wethIsEth);
 
             // TODO: This should be transient. It shouldn't need to be cleared out.
@@ -1319,8 +1319,8 @@ contract Router is IRouter, ReentrancyGuard {
             _currentSwapTokensInAmounts[tokenIn] = 0;
         }
 
-        for (uint256 i = numTokensOut - 1; i >= 0; --i) {
-            address tokenOut = _currentSwapTokensOut.unchecked_at(i);
+        for (int256 i = int256(numTokensOut - 1); i >= 0; --i) {
+            address tokenOut = _currentSwapTokensOut.unchecked_at(uint256(i));
             _wireTokenOut(sender, IERC20(tokenOut), _currentSwapTokensOutAmounts[tokenOut], wethIsEth);
 
             // TODO: This should be transient. It shouldn't need to be cleared out.
