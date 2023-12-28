@@ -172,6 +172,40 @@ contract VaultLiquidityTest is Test {
         );
     }
 
+    function testAddLiquidityBptAmountOutBelowMin() public {
+        // Use a different account to initialize so that the main LP is clean at the start of the test.
+        _mockInitialize(bob);
+
+        vm.startPrank(alice);
+
+        vm.expectRevert(abi.encodeWithSelector(IVault.BptAmountOutBelowMin.selector));
+        router.addLiquidityUnbalanced(
+            address(pool),
+            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
+            DAI_AMOUNT_IN + 1,
+            false,
+            bytes("")
+        );
+    }
+
+    function testAddLiquidityAmountInAboveMax() public {
+        // Use a different account to initialize so that the main LP is clean at the start of the test.
+        _mockInitialize(bob);
+        uint256 bptAmountOut = DAI_AMOUNT_IN;
+
+        vm.startPrank(alice);
+
+        vm.expectRevert(abi.encodeWithSelector(IVault.AmountInAboveMax.selector, address(DAI)));
+        router.addLiquiditySingleTokenExactOut(
+            address(pool),
+            DAI,
+            DAI_AMOUNT_IN - 1,
+            bptAmountOut,
+            false,
+            bytes("")
+        );
+    }
+
     function testRemoveLiquidityProportional() public {
         // Use a different account to initialize so that the main LP is clean at the start of the test.
         _mockInitialize(bob);
@@ -312,6 +346,37 @@ contract VaultLiquidityTest is Test {
             address(pool),
             DAI_AMOUNT_IN,
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+    }
+
+    function testRemoveLiquidityAmountOutBelowMin() public {
+        _mockInitialize(bob);
+
+        vm.startPrank(bob);
+
+        vm.expectRevert(abi.encodeWithSelector(IVault.AmountOutBelowMin.selector, address(DAI)));
+        router.removeLiquidityProportional(
+            address(pool),
+            DAI_AMOUNT_IN,
+            [uint256(DAI_AMOUNT_IN + 1), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+    }
+
+    function testRemoveLiquidityBptInAboveMax() public {
+        _mockInitialize(bob);
+
+        vm.startPrank(bob);
+
+        vm.expectRevert(abi.encodeWithSelector(IVault.BptAmountInAboveMax.selector));
+        router.removeLiquiditySingleTokenExactOut(
+            address(pool),
+            DAI_AMOUNT_IN / 2 - 1, // Exit with only one token, so the expected BPT amount in is 1/2 of the total.
+            DAI,
+            uint256(DAI_AMOUNT_IN),
             false,
             bytes("")
         );

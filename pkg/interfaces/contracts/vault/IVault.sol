@@ -464,7 +464,7 @@ interface IVault {
     error AmountInAboveMax(IERC20 token);
 
     /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
-    error BptAmountBelowMin();
+    error BptAmountOutBelowMin();
 
     /// @dev Introduce to avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
     struct LiquidityLocals {
@@ -522,7 +522,7 @@ interface IVault {
     error AmountOutBelowMin(IERC20 token);
 
     /// @dev The required BPT amount in exceeds the maximum limit specified for the operation.
-    error BptAmountAboveMax();
+    error BptAmountInAboveMax();
 
     /**
      * @param pool Address of the pool

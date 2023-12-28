@@ -13,7 +13,6 @@ import { VoidSigner } from 'ethers';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 
-
 describe('Queries', function () {
   let vault: VaultMock;
   let router: Router;

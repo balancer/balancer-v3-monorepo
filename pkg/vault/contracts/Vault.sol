@@ -1123,7 +1123,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         bptAmountOut -= _MINIMUM_BPT;
 
         if (bptAmountOut < minBptAmountOut) {
-            revert BptAmountBelowMin();
+            revert BptAmountOutBelowMin();
         }
 
         _mint(address(pool), to, bptAmountOut);
@@ -1265,7 +1265,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
         // At this point we have the calculated BPT amount.
         if (bptAmountOut < params.minBptAmountOut) {
-            revert BptAmountBelowMin();
+            revert BptAmountOutBelowMin();
         }
 
         // TODO: enforce min and max.
@@ -1478,7 +1478,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
 
         if (bptAmountIn > params.maxBptAmountIn) {
-            revert BptAmountAboveMax();
+            revert BptAmountInAboveMax();
         }
 
         uint256 numTokens = poolData.tokens.length;
