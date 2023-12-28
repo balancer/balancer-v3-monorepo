@@ -12,7 +12,7 @@ import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/sign
 import { VoidSigner } from 'ethers';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { fp } from '@balancer-labs/v3-helpers/src/numbers';
-import '@balancer-labs/v3-common/setupTests';
+
 
 describe('Queries', function () {
   let vault: VaultMock;

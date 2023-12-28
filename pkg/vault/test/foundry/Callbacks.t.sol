@@ -32,10 +32,8 @@ contract CallbacksTest is Test {
     IRouter router;
     BasicAuthorizerMock authorizer;
     PoolMock pool;
-    PoolMock adaiPool;
     ERC20TestToken USDC;
     ERC20TestToken DAI;
-    ERC20TestToken aDAI;
     address alice = vm.addr(1);
     address bob = vm.addr(2);
 
@@ -54,7 +52,6 @@ contract CallbacksTest is Test {
         router = new Router(IVault(vault), new WETHTestToken());
         USDC = new ERC20TestToken("USDC", "USDC", 18);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
-        aDAI = new ERC20TestToken("aDAI", "aDAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
 
         pool = new PoolMock(
@@ -68,18 +65,6 @@ contract CallbacksTest is Test {
             address(0)
         );
 
-        // Pool with all 18-decimals
-        adaiPool = new PoolMock(
-            vault,
-            "ERC20 Pool",
-            "ERC20POOL",
-            [address(DAI), address(aDAI)].toMemoryArray().asIERC20(),
-            rateProviders,
-            true,
-            365 days,
-            address(0)
-        );
-
         PoolConfig memory config = vault.getPoolConfig(address(pool));
         config.callbacks.shouldCallBeforeSwap = true;
         config.callbacks.shouldCallAfterSwap = true;
@@ -87,17 +72,14 @@ contract CallbacksTest is Test {
 
         USDC.mint(bob, DEFAULT_AMOUNT);
         DAI.mint(bob, DEFAULT_AMOUNT);
-        aDAI.mint(bob, DEFAULT_AMOUNT);
 
         USDC.mint(alice, DEFAULT_AMOUNT + MINIMUM_AMOUNT);
-        DAI.mint(alice, DEFAULT_AMOUNT + MINIMUM_AMOUNT * 2);
-        aDAI.mint(alice, DEFAULT_AMOUNT + MINIMUM_AMOUNT);
+        DAI.mint(alice, DEFAULT_AMOUNT + MINIMUM_AMOUNT);
 
         vm.startPrank(bob);
 
         USDC.approve(address(vault), type(uint256).max);
         DAI.approve(address(vault), type(uint256).max);
-        aDAI.approve(address(vault), type(uint256).max);
 
         vm.stopPrank();
 
@@ -105,7 +87,6 @@ contract CallbacksTest is Test {
 
         USDC.approve(address(vault), type(uint256).max);
         DAI.approve(address(vault), type(uint256).max);
-        aDAI.approve(address(vault), type(uint256).max);
 
         router.initialize(
             address(pool),
@@ -124,22 +105,12 @@ contract CallbacksTest is Test {
             bytes("")
         );
 
-        router.initialize(
-            address(adaiPool),
-            [address(DAI), address(aDAI)].toMemoryArray().asIERC20(),
-            [MINIMUM_AMOUNT, MINIMUM_AMOUNT].toMemoryArray(),
-            0,
-            false,
-            bytes("")
-        );
-
         vm.stopPrank();
 
         vm.label(alice, "alice");
         vm.label(bob, "bob");
         vm.label(address(USDC), "USDC");
         vm.label(address(DAI), "DAI");
-        vm.label(address(aDAI), "aDAI");
     }
 
     function testOnBeforeSwapCallback() public {
@@ -381,43 +352,25 @@ contract CallbacksTest is Test {
         config.callbacks.shouldCallAfterRemoveLiquidity = true;
         vault.setConfig(address(pool), config);
 
-        uint256 bptBalance = pool.balanceOf(alice);
-        (, uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(pool));
-        uint256 bptAmountIn = bptBalance;
-        uint256[] memory amountsOut;
-
-        // Dry run to get actual amounts out and bpt in from the operation
-        uint256 snapshot = vm.snapshot();
-        // Alice has LP tokens from initialization
-        vm.prank(alice);
-        amountsOut = router.removeLiquidityProportional(
-            address(pool),
-            bptBalance,
-            [DEFAULT_AMOUNT_ROUND_DOWN, DEFAULT_AMOUNT_ROUND_DOWN].toMemoryArray(),
-            false,
-            bytes("")
-        );
-        vm.revertTo(snapshot);
-
         vm.prank(alice);
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
                 IPoolCallbacks.onAfterRemoveLiquidity.selector,
                 alice,
-                bptAmountIn,
-                [amountsOut[0], amountsOut[1]].toMemoryArray(),
-                [poolBalances[0] - amountsOut[0], poolBalances[1] - amountsOut[1]].toMemoryArray(),
+                BPT_AMOUNT,
+                [DEFAULT_AMOUNT_ROUND_DOWN, DEFAULT_AMOUNT_ROUND_DOWN].toMemoryArray(),
+                [MINIMUM_AMOUNT_ROUND_UP, MINIMUM_AMOUNT_ROUND_UP].toMemoryArray(),
                 bytes("")
             )
         );
+
         router.removeLiquidityProportional(
             address(pool),
-            bptBalance,
+            BPT_AMOUNT,
             [DEFAULT_AMOUNT_ROUND_DOWN, DEFAULT_AMOUNT_ROUND_DOWN].toMemoryArray(),
             false,
             bytes("")
         );
     }
-
 }
