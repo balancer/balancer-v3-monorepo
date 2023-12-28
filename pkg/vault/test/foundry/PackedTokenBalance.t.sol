@@ -47,4 +47,20 @@ contract PackedTokenBalanceTest is Test {
         assertEq(newRecoveredRaw, recoveredRaw);
         assertEq(newRecoveredLive, newBalanceValue);
     }
+
+    function testOverflow(bytes32 balance, uint128 validBalanceValue, uint256 overMaxBalanceValue) public {
+        overMaxBalanceValue = bound(overMaxBalanceValue, uint256(2**(128)), type(uint256).max);
+
+        vm.expectRevert(PackedTokenBalance.BalanceOverflow.selector);
+        PackedTokenBalance.toPackedBalance(validBalanceValue, overMaxBalanceValue);
+
+        vm.expectRevert(PackedTokenBalance.BalanceOverflow.selector);
+        PackedTokenBalance.toPackedBalance(overMaxBalanceValue, validBalanceValue);
+
+        vm.expectRevert(PackedTokenBalance.BalanceOverflow.selector);
+        PackedTokenBalance.setRawBalance(balance, overMaxBalanceValue);
+
+        vm.expectRevert(PackedTokenBalance.BalanceOverflow.selector);
+        PackedTokenBalance.setLastLiveBalanceScaled18(balance, overMaxBalanceValue);
+    }
 }
