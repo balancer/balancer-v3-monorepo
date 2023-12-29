@@ -1101,7 +1101,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      * This function modifies protocol fees and last live balance storage. Since it modifies storage and makes
      * external calls, it must be nonReentrant.
      */
-    function _computePoolData(address pool, Rounding roundingDirection) internal returns (PoolData memory poolData) {
+    function _computePoolData(
+        address pool,
+        Rounding roundingDirection
+    ) internal nonReentrant returns (PoolData memory poolData) {
         (
             poolData.tokenConfig,
             poolData.balancesRaw,
@@ -1214,14 +1217,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         IERC20[] memory tokens,
         uint256[] memory exactAmountsIn,
         bytes memory userData
-    )
-        external
-        withHandler
-        nonReentrant
-        withRegisteredPool(pool)
-        whenPoolNotPaused(pool)
-        returns (uint256 bptAmountOut)
-    {
+    ) external withHandler withRegisteredPool(pool) whenPoolNotPaused(pool) returns (uint256) {
         PoolData memory poolData = _computePoolData(pool, Rounding.ROUND_DOWN);
 
         if (poolData.poolConfig.isPoolInitialized) {
@@ -1258,6 +1254,15 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // Initialize live balances, incorporating the current rate.
         _setLastLivePoolBalances(pool, exactAmountsIn);
 
+        return _initialize(pool, to, exactAmountsIn, userData);
+    }
+
+    function _initialize(
+        address pool,
+        address to,
+        uint256[] memory exactAmountsIn,
+        bytes memory userData
+    ) private nonReentrant returns (uint256 bptAmountOut) {
         bptAmountOut = IBasePool(pool).onInitialize(exactAmountsIn, userData);
 
         if (bptAmountOut < _MINIMUM_BPT) {
