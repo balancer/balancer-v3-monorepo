@@ -4,7 +4,7 @@ pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
@@ -48,8 +48,8 @@ contract WeightedPool8020FactoryTest is Test {
                 "Pool8020",
                 tokenA,
                 tokenB,
-                IVault.TokenType.STANDARD,
-                IVault.TokenType.STANDARD,
+                TokenType.STANDARD,
+                TokenType.STANDARD,
                 IRateProvider(address(0)),
                 IRateProvider(address(0)),
                 bytes32(0)
@@ -71,8 +71,8 @@ contract WeightedPool8020FactoryTest is Test {
                 "Pool8020",
                 tokenA,
                 tokenB,
-                IVault.TokenType.STANDARD,
-                IVault.TokenType.STANDARD,
+                TokenType.STANDARD,
+                TokenType.STANDARD,
                 IRateProvider(address(rateProvider)),
                 IRateProvider(address(0)),
                 bytes32(0)
@@ -86,8 +86,8 @@ contract WeightedPool8020FactoryTest is Test {
                 "Pool8020",
                 tokenA,
                 tokenB,
-                IVault.TokenType.STANDARD,
-                IVault.TokenType.STANDARD,
+                TokenType.STANDARD,
+                TokenType.STANDARD,
                 IRateProvider(address(rateProvider)),
                 IRateProvider(address(0)),
                 salt
@@ -110,8 +110,8 @@ contract WeightedPool8020FactoryTest is Test {
                 "Pool8020",
                 tokenA,
                 tokenB,
-                IVault.TokenType.STANDARD,
-                IVault.TokenType.STANDARD,
+                TokenType.STANDARD,
+                TokenType.STANDARD,
                 IRateProvider(address(rateProvider)),
                 IRateProvider(address(0)),
                 salt
@@ -134,8 +134,8 @@ contract WeightedPool8020FactoryTest is Test {
                 "Pool8020",
                 tokenA,
                 tokenB,
-                IVault.TokenType.STANDARD,
-                IVault.TokenType.STANDARD,
+                TokenType.STANDARD,
+                TokenType.STANDARD,
                 IRateProvider(address(rateProvider)),
                 IRateProvider(address(0)),
                 salt
@@ -151,8 +151,8 @@ contract WeightedPool8020FactoryTest is Test {
                 "Pool8020",
                 tokenA,
                 tokenB,
-                IVault.TokenType.STANDARD,
-                IVault.TokenType.STANDARD,
+                TokenType.STANDARD,
+                TokenType.STANDARD,
                 IRateProvider(address(rateProvider)),
                 IRateProvider(address(0)),
                 salt

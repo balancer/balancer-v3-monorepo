@@ -14,6 +14,8 @@ import {
     IVault,
     PoolConfig,
     PoolCallbacks,
+    TokenType,
+    TokenConfig,
     LiquidityManagement,
     PoolData,
     Rounding
@@ -73,7 +75,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolTokenBalances;
 
     // Pool -> (token -> TokenConfig): The token configuration of each Pool's tokens.
-    mapping(address => mapping(IERC20 => IVault.TokenConfig)) private _poolTokenConfig;
+    mapping(address => mapping(IERC20 => TokenConfig)) private _poolTokenConfig;
 
     /// @notice List of handlers. It is non-empty only during `invoke` calls.
     address[] private _handlers;
@@ -782,7 +784,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         uint8[] tokenDecimalDiffs;
         IERC20[] registeredTokens;
         IRateProvider[] rateProviders;
-        IVault.TokenType[] tokenTypes;
+        TokenType[] tokenTypes;
         bool[] yieldFeeExemptFlags;
     }
 
@@ -893,7 +895,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         vars.tokenDecimalDiffs = new uint8[](numTokens);
         vars.registeredTokens = new IERC20[](numTokens);
         vars.rateProviders = new IRateProvider[](numTokens);
-        vars.tokenTypes = new IVault.TokenType[](numTokens);
+        vars.tokenTypes = new TokenType[](numTokens);
         vars.yieldFeeExemptFlags = new bool[](numTokens);
     }
 

@@ -5,7 +5,7 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
-import { PoolConfig, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { TokenConfig, PoolConfig, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
