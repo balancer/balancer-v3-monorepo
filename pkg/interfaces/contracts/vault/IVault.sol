@@ -70,6 +70,10 @@ struct TokenConfig {
     bool yieldFeeExempt;
 }
 
+/**
+ * @dev Encapsulate the static (e.g., tokens, callback flags) and dynamic (e.g., balances, rates) information
+ * about a pool.
+ */
 struct PoolData {
     PoolConfig poolConfig;
     TokenConfig[] tokenConfig;

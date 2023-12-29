@@ -7,8 +7,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
     IVault,
     TokenConfig,
-    LiquidityManagement,
-    PoolCallbacks
+    PoolCallbacks,
+    LiquidityManagement
 } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
