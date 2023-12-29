@@ -504,7 +504,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             revert CannotSwapSameToken();
         }
 
+        // Fill in the PoolData structure, writing to the raw and last live balance storage, as well as protocol fees
+        // storage, if yield fees are due. Since the swap callbacks are reentrant and could do anything, including
+        // change these balances, we cannot simply store the pending yield fees (and balance changes) in the poolData
+        // struct, to be settled in non-reentrant _swap with the rest of the accounting.
         PoolData memory poolData = _computePoolData(params.pool, Rounding.ROUND_DOWN);
+        // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
         EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolTokenBalances[params.pool];
         SwapLocals memory vars;
 
@@ -525,10 +530,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             vars.indexOut -= 1;
         }
 
-        // We know from the above checks that `i` is a valid token index and can use `unchecked_valueAt`
-        // to save storage reads.
-        vars.tokenInBalance = poolBalances.unchecked_valueAt(vars.indexIn);
-        vars.tokenOutBalance = poolBalances.unchecked_valueAt(vars.indexOut);
+        // poolData struct has current raw balances (possibly adjusted for yield fees in `_computePoolData`).
+        vars.tokenInBalance = poolData.balancesRaw[vars.indexIn];
+        vars.tokenOutBalance = poolData.balancesRaw[vars.indexOut];
 
         // If the amountGiven is entering the pool math (GivenIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
@@ -567,6 +571,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             vars.poolSwapParams.balancesScaled18 = poolData.balancesLiveScaled18;
         }
 
+        // Non-reentrant call that updates accounting.
         (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData, poolBalances);
 
         if (poolData.poolConfig.callbacks.shouldCallAfterSwap) {
@@ -674,6 +679,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 );
 
             _protocolFees[vaultSwapParams.tokenOut] += vars.protocolSwapFeeAmountRaw;
+            emit ProtocolSwapFeeCharged(
+                vaultSwapParams.pool,
+                address(vaultSwapParams.tokenOut),
+                vars.protocolSwapFeeAmountRaw
+            );
         }
 
         // Use `unchecked_setAt` to save storage reads.
@@ -1014,7 +1024,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      * @notice Fetches the balances for a given pool, with decimal and rate scaling factors applied.
      * @dev Utilizes an enumerable map to obtain pool tokens and raw balances.
      * The function is structured to minimize storage reads by leveraging the `unchecked_at` method.
-     * It is typically called before or after liquidity operations.
+     * It is typically called after a reentrant callback (e.g., a "before" liquidity operation callback),
+     * to refresh the poolData struct with any balances (or rates) that might have changed.
      *
      * @param pool The address of the pool
      * @param poolData The corresponding poolData to be read and updated
@@ -1044,7 +1055,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             if (tokenType == TokenType.STANDARD) {
                 poolData.tokenRates[i] = FixedPoint.ONE;
             } else if (tokenType == TokenType.WITH_RATE) {
-                // TODO Adjust for protocol fees?
                 poolData.tokenRates[i] = poolTokenConfig[token].rateProvider.getRate();
             } else {
                 // TODO implement ERC4626 at a later stage.
@@ -1088,7 +1098,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
     /**
      * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
-     * This function modifies protocol fees and last live balance storage.
+     * This function modifies protocol fees and last live balance storage. Since it modifies storage and makes
+     * external calls, it must be nonReentrant.
      */
     function _computePoolData(address pool, Rounding roundingDirection) internal returns (PoolData memory poolData) {
         (
@@ -1099,12 +1110,14 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         ) = _getPoolTokenInfo(pool);
 
         EnumerableMap.IERC20ToUint256Map storage lastLiveBalances = _lastLivePoolTokenBalances[pool];
+        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
         uint256 numTokens = poolData.tokenConfig.length;
 
         // Initialize arrays to store balances and rates based on the number of tokens in the pool.
         // Will be read raw, then upscaled and rounded as directed.
         poolData.balancesLiveScaled18 = new uint256[](numTokens);
         poolData.tokenRates = new uint256[](numTokens);
+        uint256 yieldFeePercentage = _protocolYieldFeePercentage;
 
         for (uint256 i = 0; i < numTokens; ++i) {
             TokenType tokenType = poolData.tokenConfig[i].tokenType;
@@ -1127,7 +1140,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             // Check for yield protocol fees after initialization
             if (subjectToYieldProtocolFees && poolData.poolConfig.isPoolInitialized) {
                 IERC20 token = poolData.tokenConfig[i].token;
-                uint256 yieldFeePercentage = _protocolYieldFeePercentage;
                 if (yieldFeePercentage > 0) {
                     uint256 yieldFeeAmountRaw = _computeYieldProtocolFeesDue(
                         poolData,
@@ -1137,20 +1149,19 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                     );
 
                     if (yieldFeeAmountRaw > 0) {
-                        // Charge protocol fee
-                        // TODO: We're doing accounting outside the reentrancy guard. Need to refactor this.
+                        // Charge protocol fee.
                         _protocolFees[token] += yieldFeeAmountRaw;
+                        emit ProtocolYieldFeeCharged(pool, address(token), yieldFeeAmountRaw);
 
-                        // Adjust raw and live balances
+                        // Adjust raw and live balances.
                         poolData.balancesRaw[i] -= yieldFeeAmountRaw;
+                        poolTokenBalances.unchecked_setAt(i, poolData.balancesRaw[i]);
                         _setLiveBalanceFromRawForToken(poolData, roundingDirection, i);
                     }
                 }
+                // Update last live balance
+                lastLiveBalances.unchecked_setAt(i, poolData.balancesLiveScaled18[i]);
             }
-
-            // Update last live balance
-            // TODO: We're doing accounting outside the reentrancy guard. Need to refactor this.
-            lastLiveBalances.unchecked_setAt(i, poolData.balancesLiveScaled18[i]);
         }
     }
 

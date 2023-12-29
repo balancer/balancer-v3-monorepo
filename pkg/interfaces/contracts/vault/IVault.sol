@@ -681,6 +681,32 @@ interface IVault {
     event ProtocolYieldFeePercentageChanged(uint256 indexed yieldFeePercentage);
 
     /**
+     * @notice Emitted when a protocol swap fee is incurred.
+     * @dev This is included for traceability of fees to pools. Pending protocol fees on both swap and yield are
+     * combined. It is an invariant of the system that the total amounts for each token reported here and by
+     * `ProtocolYieldFeeCharged`, summed over all pools, should equal the total collected for the token reported by
+     * `ProtocolFeeCollected` when `collectProtocolFees` is called.
+     * 
+     * @param pool The pool associated with this charge
+     * @param token The token whose protocol fee balance increased
+     * @param amount The amount of the protocol fee
+     */
+    event ProtocolSwapFeeCharged(address indexed pool, address indexed token, uint256 amount);
+    
+    /**
+     * @notice Emitted when a protocol swap fee is incurred.
+     * @dev This is included for traceability of fees to pools. Pending protocol fees on both swap and yield are
+     * combined. It is an invariant of the system that the total amounts for each token reported here and by
+     * `ProtocolSwapFeeCharged`, summed over all pools, should equal the total collected for the token reported by
+     * `ProtocolFeeCollected` when `collectProtocolFees` is called.
+     * 
+     * @param pool The pool associated with this charge
+     * @param token The token whose protocol fee balance increased
+     * @param amount The amount of the protocol fee
+     */
+    event ProtocolYieldFeeCharged(address indexed pool, address indexed token, uint256 amount);
+
+    /**
      * @notice Sets a new swap fee percentage for the protocol.
      * @param newSwapFeePercentage The new swap fee percentage to be set
      */
