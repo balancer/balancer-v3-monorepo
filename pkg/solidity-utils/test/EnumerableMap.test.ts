@@ -301,9 +301,9 @@ describe('EnumerableMap', () => {
         '0x638141Eb8905D9A55D81610f45bC2B47120059e7',
         '0x7571A57e94F046725612f786Aa9bf44ce6b56894',
       ];
-  
+
       const values = [42n, 1337n, 9999n];
-  
+
       shouldBehaveLikeMap('IERC20ToUint256', keys, values);
     });
 
@@ -313,7 +313,7 @@ describe('EnumerableMap', () => {
         '0x638141Eb8905D9A55D81610f45bC2B47120059e7',
         '0x7571A57e94F046725612f786Aa9bf44ce6b56894',
       ];
-  
+
       const values = [
         '0x41b1a0649752af1b28b3dc29a1556eee781e4a4c3a1f7f53f90fa834de098c4d',
         '0x435cd288e3694b535549c3af56ad805c149f92961bf84a1c647f7d86fc2431b4',

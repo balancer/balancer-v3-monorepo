@@ -70,11 +70,7 @@ library EnumerableMap {
      * Returns true if the key was added to the map, that is if it was not
      * already present.
      */
-    function set(
-        IERC20ToBytes32Map storage map,
-        IERC20 key,
-        bytes32 value
-    ) internal returns (bool) {
+    function set(IERC20ToBytes32Map storage map, IERC20 key, bytes32 value) internal returns (bool) {
         // We read and store the key's index to prevent multiple reads from the same storage slot
         uint256 keyIndex = map.indexes[key];
         unchecked {
@@ -102,11 +98,7 @@ library EnumerableMap {
      * This function performs one less storage read than {set}, but it should only be used when `index` is known to be
      * within bounds.
      */
-    function unchecked_setAt(
-        IERC20ToBytes32Map storage map,
-        uint256 index,
-        bytes32 value
-    ) internal {
+    function unchecked_setAt(IERC20ToBytes32Map storage map, uint256 index, bytes32 value) internal {
         map.entries[index].value = value;
     }
 
@@ -215,10 +207,7 @@ library EnumerableMap {
      *
      * - `key` must be in the map. Reverts with `errorCode` otherwise.
      */
-    function get(
-        IERC20ToBytes32Map storage map,
-        IERC20 key
-    ) internal view returns (bytes32) {
+    function get(IERC20ToBytes32Map storage map, IERC20 key) internal view returns (bytes32) {
         uint256 index = map.indexes[key];
         if (index == 0) {
             revert KeyNotFound();
@@ -236,10 +225,7 @@ library EnumerableMap {
      *
      * - `key` must be in the map.
      */
-    function indexOf(
-        IERC20ToBytes32Map storage map,
-        IERC20 key
-    ) internal view returns (uint256) {
+    function indexOf(IERC20ToBytes32Map storage map, IERC20 key) internal view returns (uint256) {
         uint256 uncheckedIndex = unchecked_indexOf(map, key);
         if (uncheckedIndex == 0) {
             revert KeyNotFound();
