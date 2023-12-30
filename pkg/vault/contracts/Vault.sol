@@ -833,7 +833,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         IRateProvider[] rateProviders;
         TokenType[] tokenTypes;
         bool[] yieldFeeExemptFlags;
-        bool hasERC4626Tokens;
+        IERC20[] tempRegisteredTokens;
+        uint256 numTempTokens;
     }
 
     /**
@@ -868,8 +869,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // Retrieve or create the pool's token balances mapping.
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
         RegistrationLocals memory vars = _initRegistrationLocals(numTokens);
+        uint256 i;
 
-        for (uint256 i = 0; i < numTokens; ++i) {
+        for (i = 0; i < numTokens; ++i) {
             TokenConfig memory tokenData = tokens[i];
             IERC20 token = tokenData.token;
 
@@ -902,8 +904,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
                 vars.rateProviders[i] = tokenData.rateProvider;
             } else if (tokenData.tokenType == TokenType.ERC4626) {
-                vars.hasERC4626Tokens = true;
-
                 // Ensure there is a token for this buffer.
                 if (!_wrappedTokenBuffers.contains(address(token))) {
                     revert WrappedTokenBufferNotRegistered();
@@ -913,8 +913,22 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                     revert InvalidTokenConfiguration();
                 }
 
-                // Overwrite for event
-                vars.registeredTokens[i] = _wrappedTokenBufferBaseTokens[token];
+                // Replace the token actually registered with the underlying token, for the event.
+                // Also temporarily register the token in order to detect duplicates. Since ERC4626
+                // tokens appear to the outside as their underlying (e.g., waDAI would appear as DAI),
+                // a DAI/waDAI pool would look like DAI/DAI, which we disallow with this check).
+                IERC20 underlyingToken = _wrappedTokenBufferBaseTokens[token];
+                vars.registeredTokens[i] = underlyingToken;
+                if (poolTokenBalances.set(underlyingToken, 0)) {
+                    // Store it to remove later, so that we don't actually include the underlying tokens
+                    // in the pool.
+                    vars.tempRegisteredTokens[vars.numTempTokens] = underlyingToken;
+                    vars.numTempTokens++;
+                } else {
+                    // Depending on the token order (i.e., if the wrapped token comes first), it's possible
+                    // for an ambiguous token to revert above with TokenAlreadyRegistered.
+                    revert AmbiguousPoolToken(address(underlyingToken));
+                }
             } else {
                 revert InvalidTokenType();
             }
@@ -922,11 +936,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             vars.tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
         }
 
-        if (vars.hasERC4626Tokens) {
-            // Ensure the underlying tokens of any ERC4626 wrapped tokens don't conflict with other registered tokens,
-            // or each other. Otherwise the poolBalances set initialization prevents registering pools with duplicate
-            // standard or rate-bearing tokens.
-            _ensureUniqueTokens(pool);
+        // Remove any temporarily registered tokens.
+        for (i = 0; i < vars.numTempTokens; i++) {
+            poolTokenBalances.remove(vars.tempRegisteredTokens[i]);
         }
 
         // Store the pause manager. A zero address means default to the authorizer.
@@ -963,31 +975,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         vars.rateProviders = new IRateProvider[](numTokens);
         vars.tokenTypes = new TokenType[](numTokens);
         vars.yieldFeeExemptFlags = new bool[](numTokens);
-    }
-
-    // Used locally in `_registerPool` to ensure uniqueness of tokens, given that ERC4626 tokens will be resolved
-    // to their base tokens, which could potentially conflict with standard tokens. ERC4626 tokens could also
-    // conflict with each other; e.g., waDAI and cDAI.
-    mapping(IERC20 => bool) private _resolvedTokens;
-
-    function _ensureUniqueTokens(address pool) private {
-        IERC20[] memory tokens = _getPoolTokens(pool);
-        uint256 numTokens = tokens.length;
-        uint256 i;
-
-        for (i = 0; i < numTokens; i++) {
-            IERC20 token = tokens[i];
-
-            if (_resolvedTokens[token]) {
-                revert AmbiguousPoolToken(address(token));
-            }
-            _resolvedTokens[token] = true;
-        }
-
-        // Clean up mapping.
-        for (i = 0; i < numTokens; i++) {
-            _resolvedTokens[tokens[i]] = false;
-        }
+        vars.tempRegisteredTokens = new IERC20[](numTokens);
     }
 
     /// @dev See `isPoolRegistered`
