@@ -126,7 +126,10 @@ interface IVault {
      * @dev A token was already registered (i.e., it is a duplicate in the pool).
      * @param token The duplicate token
      */
-    error TokenAlreadyRegistered(IERC20 token);
+    error TokenAlreadyRegistered(address token);
+
+    /// @dev An ERC4626 token's underlying base token conflicts was already registered.
+    error AmbiguousPoolToken(address token);
 
     /// @dev The BPT amount involved in the operation is below the absolute minimum.
     error BptAmountBelowAbsoluteMin();

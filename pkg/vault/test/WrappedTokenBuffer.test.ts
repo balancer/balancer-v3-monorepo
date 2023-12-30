@@ -10,15 +10,25 @@ import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { WrappedTokenMock } from '../typechain-types/contracts/test/WrappedTokenMock';
 import { FP_ONE, bn } from '@balancer-labs/v3-helpers/src/numbers';
+import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { PoolCallbacksStruct, TokenConfigStruct, LiquidityManagementStruct } from '../typechain-types/contracts/Vault';
 
 describe('Vault - Wrapped Token Buffers', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
 
+  enum TokenType {
+    STANDARD = 0,
+    WITH_RATE,
+    ERC4626,
+  }
+
   let vault: VaultMock;
   let authorizer: BasicAuthorizerMock;
   let underlyingToken: ERC20TestToken;
   let wrappedToken: WrappedTokenMock;
+
+  let tokenA: ERC20TestToken;
 
   let alice: SignerWithAddress;
 
@@ -34,6 +44,8 @@ describe('Vault - Wrapped Token Buffers', function () {
 
     underlyingToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Standard', 'BASE', 6] });
     wrappedToken = await deploy('WrappedTokenMock', { args: [underlyingToken, 'ERC4626', 'WRAPPED', 8] });
+
+    tokenA = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });
   });
 
   describe('buffer registration', () => {
@@ -80,6 +92,125 @@ describe('Vault - Wrapped Token Buffers', function () {
           vault,
           'WrappedTokenBufferAlreadyRegistered'
         );
+      });
+    });
+  });
+
+  describe('pool registration', () => {
+    sharedBeforeEach('grant permission', async () => {
+      const registerBufferAction = await actionId(vault, 'registerBuffer');
+
+      await authorizer.grantRole(registerBufferAction, alice.address);
+    });
+
+    const liquidityManagement: LiquidityManagementStruct = {
+      supportsAddLiquidityCustom: false,
+      supportsRemoveLiquidityCustom: false,
+    };
+
+    const poolCallbacks: PoolCallbacksStruct = {
+      shouldCallBeforeSwap: false,
+      shouldCallAfterSwap: false,
+      shouldCallBeforeAddLiquidity: false,
+      shouldCallAfterAddLiquidity: false,
+      shouldCallBeforeRemoveLiquidity: false,
+      shouldCallAfterRemoveLiquidity: false,
+    };
+
+    context('invalid configuration', () => {
+      it('cannot register an ERC4626 without a buffer', async () => {
+        const tokens: TokenConfigStruct[] = [
+          { token: tokenA, tokenType: TokenType.STANDARD, rateProvider: ZERO_ADDRESS, yieldFeeExempt: false },
+          { token: wrappedToken, tokenType: TokenType.ERC4626, rateProvider: ZERO_ADDRESS, yieldFeeExempt: false },
+        ];
+
+        await expect(
+          vault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement)
+        ).to.be.revertedWithCustomError(vault, 'WrappedTokenBufferNotRegistered');
+      });
+
+      it('cannot register ERC4626 with an external rate provider', async () => {
+        const tokens: TokenConfigStruct[] = [
+          { token: tokenA, tokenType: TokenType.STANDARD, rateProvider: ZERO_ADDRESS, yieldFeeExempt: false },
+          { token: wrappedToken, tokenType: TokenType.ERC4626, rateProvider: ANY_ADDRESS, yieldFeeExempt: false },
+        ];
+        vault.connect(alice).registerBuffer(wrappedToken);
+
+        await expect(
+          vault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement)
+        ).to.be.revertedWithCustomError(vault, 'InvalidTokenConfiguration');
+      });
+
+      it('cannot register ERC4626 yield exempt', async () => {
+        const tokens: TokenConfigStruct[] = [
+          { token: tokenA, tokenType: TokenType.STANDARD, rateProvider: ZERO_ADDRESS, yieldFeeExempt: false },
+          { token: wrappedToken, tokenType: TokenType.ERC4626, rateProvider: ZERO_ADDRESS, yieldFeeExempt: true },
+        ];
+        vault.connect(alice).registerBuffer(wrappedToken);
+
+        await expect(
+          vault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement)
+        ).to.be.revertedWithCustomError(vault, 'InvalidTokenConfiguration');
+      });
+
+      it('cannot register a pool with duplicate Standard/ERC4626 underlying tokens', async () => {
+        // This would look to the outside like underlying/underlying
+        const tokens: TokenConfigStruct[] = [
+          { token: underlyingToken, tokenType: TokenType.STANDARD, rateProvider: ZERO_ADDRESS, yieldFeeExempt: false },
+          { token: wrappedToken, tokenType: TokenType.ERC4626, rateProvider: ZERO_ADDRESS, yieldFeeExempt: false },
+        ];
+        vault.connect(alice).registerBuffer(wrappedToken);
+
+        await expect(vault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement))
+          .to.be.revertedWithCustomError(vault, 'AmbiguousPoolToken')
+          .withArgs(await underlyingToken.getAddress());
+      });
+    });
+
+    context('valid configuration', () => {
+      let tokenAAddress: string;
+      let underlyingAddress: string;
+      let tokens: TokenConfigStruct[];
+
+      sharedBeforeEach('set addresses', async () => {
+        tokenAAddress = await tokenA.getAddress();
+        underlyingAddress = await underlyingToken.getAddress();
+
+        tokens = [
+          { token: tokenA, tokenType: TokenType.STANDARD, rateProvider: ZERO_ADDRESS, yieldFeeExempt: false },
+          { token: wrappedToken, tokenType: TokenType.ERC4626, rateProvider: ZERO_ADDRESS, yieldFeeExempt: false },
+        ];
+      });
+
+      it('exposes underlying tokens for ERC4626', async () => {
+        vault.connect(alice).registerBuffer(wrappedToken);
+        await vault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement);
+
+        const poolTokens = await vault.getPoolTokens(ANY_ADDRESS);
+        expect(poolTokens).to.deep.equal([tokenAAddress, underlyingAddress]);
+      });
+
+      it('registering a pool emits an event with resolved tokens', async () => {
+        vault.connect(alice).registerBuffer(wrappedToken);
+
+        expect(
+          await vault
+            .connect(alice)
+            .registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement)
+        )
+          .to.emit(vault, 'PoolRegistered')
+          .withArgs(
+            ANY_ADDRESS,
+            await alice.getAddress(),
+            [tokenAAddress, underlyingAddress],
+            [TokenType.STANDARD, TokenType.ERC4626],
+            [ZERO_ADDRESS, ZERO_ADDRESS],
+            [false, false],
+            MONTH,
+            ZERO_ADDRESS,
+            [false, false, false, false, false, false],
+            [false, false]
+          );
       });
     });
   });

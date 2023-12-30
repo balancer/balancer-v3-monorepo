@@ -129,6 +129,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     bool private _vaultPaused;
 
     EnumerableSet.AddressSet private _wrappedTokenBuffers;
+    // For convenience, store the underlying token for each buffer in `_wrappedTokenBuffers`
+    mapping(IERC20 => IERC20) private _wrappedTokenBufferBaseTokens;
 
     // Decimal difference used for wrapped token rate computation.
     EnumerableMap.IERC20ToUint256Map private _bufferRateScalingFactors;
@@ -451,6 +453,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
 
         _wrappedTokenBuffers.add(wrappedToken);
+        _wrappedTokenBufferBaseTokens[IERC20(wrappedToken)] = IERC20(asset);
 
         // Compute the decimal difference (used for yield token rate computation).
         _bufferRateScalingFactors.set(
@@ -830,6 +833,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         IRateProvider[] rateProviders;
         TokenType[] tokenTypes;
         bool[] yieldFeeExemptFlags;
+        bool hasERC4626Tokens;
     }
 
     /**
@@ -878,7 +882,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             // Ensure the token isn't already registered for the pool.
             // Note: EnumerableMaps require an explicit initial value when creating a key-value pair.
             if (poolTokenBalances.set(token, 0) == false) {
-                revert TokenAlreadyRegistered(token);
+                revert TokenAlreadyRegistered(address(token));
             }
 
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
@@ -898,13 +902,31 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
                 vars.rateProviders[i] = tokenData.rateProvider;
             } else if (tokenData.tokenType == TokenType.ERC4626) {
-                // TODO implement in later phases.
-                revert InvalidTokenConfiguration();
+                vars.hasERC4626Tokens = true;
+
+                // Ensure there is a token for this buffer.
+                if (!_wrappedTokenBuffers.contains(address(token))) {
+                    revert WrappedTokenBufferNotRegistered();
+                }
+                // ERC4626 tokens cannot have external rate providers, or be fee exempt.
+                if (hasRateProvider || tokenData.yieldFeeExempt) {
+                    revert InvalidTokenConfiguration();
+                }
+
+                // Overwrite for event
+                vars.registeredTokens[i] = _wrappedTokenBufferBaseTokens[token];
             } else {
                 revert InvalidTokenType();
             }
 
             vars.tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
+        }
+
+        if (vars.hasERC4626Tokens) {
+            // Ensure the underlying tokens of any ERC4626 wrapped tokens don't conflict with other registered tokens,
+            // or each other. Otherwise the poolBalances set initialization prevents registering pools with duplicate
+            // standard or rate-bearing tokens.
+            _ensureUniqueTokens(pool);
         }
 
         // Store the pause manager. A zero address means default to the authorizer.
@@ -943,6 +965,31 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         vars.yieldFeeExemptFlags = new bool[](numTokens);
     }
 
+    // Used locally in `_registerPool` to ensure uniqueness of tokens, given that ERC4626 tokens will be resolved
+    // to their base tokens, which could potentially conflict with standard tokens. ERC4626 tokens could also
+    // conflict with each other; e.g., waDAI and cDAI.
+    mapping(IERC20 => bool) private _resolvedTokens;
+
+    function _ensureUniqueTokens(address pool) private {
+        IERC20[] memory tokens = _getPoolTokens(pool);
+        uint256 numTokens = tokens.length;
+        uint256 i;
+
+        for (i = 0; i < numTokens; i++) {
+            IERC20 token = tokens[i];
+
+            if (_resolvedTokens[token]) {
+                revert AmbiguousPoolToken(address(token));
+            }
+            _resolvedTokens[token] = true;
+        }
+
+        // Clean up mapping.
+        for (i = 0; i < numTokens; i++) {
+            _resolvedTokens[tokens[i]] = false;
+        }
+    }
+
     /// @dev See `isPoolRegistered`
     function _isPoolRegistered(address pool) internal view returns (bool) {
         return _poolConfig[pool].isPoolRegistered();
@@ -975,6 +1022,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      * @notice Fetches the tokens and their corresponding balances for a given pool.
      * @dev Utilizes an enumerable map to obtain pool token balances.
      * The function is structured to minimize storage reads by leveraging the `unchecked_at` method.
+     * If the token type is ERC4626, it returns the underlying token address.
      *
      * @param pool The address of the pool for which tokens and balances are to be fetched.
      * @return tokens An array of token addresses.
@@ -982,6 +1030,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     function _getPoolTokens(address pool) internal view returns (IERC20[] memory tokens) {
         // Retrieve the mapping of tokens and their balances for the specified pool.
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(IERC20 => TokenConfig) storage poolTokenConfig = _poolTokenConfig[pool];
 
         // Initialize arrays to store tokens based on the number of tokens in the pool.
         tokens = new IERC20[](poolTokenBalances.length());
@@ -991,6 +1040,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
             (tokens[i], ) = poolTokenBalances.unchecked_at(i);
+
+            if (poolTokenConfig[tokens[i]].tokenType == TokenType.ERC4626) {
+                // Overwrite the wrapped token and return the underlying.
+                tokens[i] = _wrappedTokenBufferBaseTokens[tokens[i]];
+            }
         }
     }
 
