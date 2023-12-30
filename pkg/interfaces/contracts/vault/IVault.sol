@@ -143,6 +143,19 @@ interface IVault {
     /// @dev The data in a TokenConfig struct is inconsistent or unsupported.
     error InvalidTokenConfiguration();
 
+    /// @dev A referenced token buffer has not been registered.
+    error WrappedTokenBufferNotRegistered();
+
+    /// @dev A token buffer can only be registered once.
+    error WrappedTokenBufferAlreadyRegistered();
+
+    /**
+     * @dev Emitted on creation of a new wrapped token buffer.
+     * @param underlyingToken The base ERC20 token
+     * @param wrappedToken THe wrapped ERC4626 token
+     */
+    event WrappedTokenBufferRegistered(address indexed underlyingToken, address indexed wrappedToken);
+
     /**
      * @notice A Pool was registered by calling `registerPool`.
      * @param pool The pool being registered
@@ -180,6 +193,25 @@ interface IVault {
      * @param deltas The amount each token changed
      */
     event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
+
+    /**
+     * @notice Register a wrapped token buffer.
+     * @dev We are assuming wrapped token addresses are unique (i.e., they are not upgradeable in place,
+     * which would be insecure for depositors). Each wrapped token therefore unique describes a buffer,
+     * since the underlying token is specified by IERC4626, and it is its own rate provider.
+     * This is a permissioned function.
+     *
+     * @param wrappedToken The wrapped token associated with the new buffer.
+     */
+    function registerBuffer(address wrappedToken) external;
+
+    /**
+     * @notice Get the current rate of a wrapped token buffer.
+     * @dev Reverts if the buffer does not exist.
+     * @param wrappedToken The IERC4626 wrapped token
+     * @return rate The current rate
+     */
+    function getWrappedTokenBufferRate(address wrappedToken) external view returns (uint256);
 
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.

@@ -9,6 +9,7 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import {
     IVault,
@@ -32,6 +33,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
@@ -41,6 +43,7 @@ import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
 
 contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
+    using EnumerableSet for EnumerableSet.AddressSet;
     using InputHelpers for uint256;
     using FixedPoint for *;
     using ArrayHelpers for uint256[];
@@ -124,6 +127,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     uint256 internal immutable _vaultBufferPeriodDuration;
 
     bool private _vaultPaused;
+
+    EnumerableSet.AddressSet private _wrappedTokenBuffers;
+
+    // Decimal difference used for wrapped token rate computation.
+    EnumerableMap.IERC20ToUint256Map private _bufferRateScalingFactors;
 
     /// @dev Modifier to make a function callable only when the Vault is not paused.
     modifier whenVaultNotPaused() {
@@ -426,6 +434,42 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         _spendAllowance(msg.sender, from, spender, amount);
         _transfer(msg.sender, from, to, amount);
         return true;
+    }
+
+    /*******************************************************************************
+                                    Pool Tokens
+    *******************************************************************************/
+
+    /// @inheritdoc IVault
+    function registerBuffer(address wrappedToken) external authenticate {
+        // Cast types for clarity.
+        IERC4626 yieldToken = IERC4626(wrappedToken);
+        address asset = yieldToken.asset();
+
+        if (_wrappedTokenBuffers.contains(wrappedToken)) {
+            revert WrappedTokenBufferAlreadyRegistered();
+        }
+
+        _wrappedTokenBuffers.add(wrappedToken);
+
+        // Compute the decimal difference (used for yield token rate computation).
+        _bufferRateScalingFactors.set(
+            yieldToken,
+            10 ** (18 + yieldToken.decimals() - IERC20Metadata(asset).decimals())
+        );
+
+        emit WrappedTokenBufferRegistered(asset, wrappedToken);
+    }
+
+    /// @inheritdoc IVault
+    function getWrappedTokenBufferRate(address wrappedToken) public view returns (uint256) {
+        if (!_wrappedTokenBuffers.contains(wrappedToken)) {
+            revert WrappedTokenBufferNotRegistered();
+        }
+
+        IERC4626 yieldToken = IERC4626(wrappedToken);
+
+        return yieldToken.convertToAssets(_bufferRateScalingFactors.get(yieldToken));
     }
 
     /*******************************************************************************
