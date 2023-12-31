@@ -9,7 +9,7 @@ import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/sign
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { WrappedTokenMock } from '../typechain-types/contracts/test/WrappedTokenMock';
-import { FP_ONE, bn } from '@balancer-labs/v3-helpers/src/numbers';
+import { FP_ONE, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { PoolCallbacksStruct, TokenConfigStruct, LiquidityManagementStruct } from '../typechain-types/contracts/Vault';
 
@@ -211,6 +211,124 @@ describe('Vault - Wrapped Token Buffers', function () {
             [false, false, false, false, false, false],
             [false, false]
           );
+      });
+    });
+  });
+
+  describe('buffer operations', () => {
+    const AMOUNT = fp(1000);
+
+    sharedBeforeEach('grant permission', async () => {
+      const registerBufferAction = await actionId(vault, 'registerBuffer');
+
+      await authorizer.grantRole(registerBufferAction, alice.address);
+    });
+
+    context('invalid input', () => {
+      it('cannot deposit to unregistered buffer', async () => {
+        await expect(vault.depositToBuffer(wrappedToken, AMOUNT, AMOUNT)).to.be.revertedWithCustomError(
+          vault,
+          'WrappedTokenBufferNotRegistered'
+        );
+      });
+
+      it('cannot deposit without permission', async () => {
+        await vault.connect(alice).registerBuffer(wrappedToken);
+
+        await expect(vault.depositToBuffer(wrappedToken, AMOUNT, AMOUNT)).to.be.revertedWithCustomError(
+          vault,
+          'SenderNotAllowed'
+        );
+      });
+
+      it('cannot check shares in non-existent buffer', async () => {
+        await expect(vault.getBufferShares(wrappedToken)).to.be.revertedWithCustomError(
+          vault,
+          'WrappedTokenBufferNotRegistered'
+        );
+      });
+
+      it('cannot check total supply of a non-existent buffer', async () => {
+        await expect(vault.getTotalSupplyOfBuffer(wrappedToken)).to.be.revertedWithCustomError(
+          vault,
+          'WrappedTokenBufferNotRegistered'
+        );
+      });
+
+      it('cannot withdraw from non-existent buffer', async () => {
+        await expect(vault.withdrawFromBuffer(wrappedToken, AMOUNT, AMOUNT)).to.be.revertedWithCustomError(
+          vault,
+          'WrappedTokenBufferNotRegistered'
+        );
+      });
+
+      it('cannot withdraw without shares', async () => {
+        await vault.connect(alice).registerBuffer(wrappedToken);
+
+        await expect(vault.withdrawFromBuffer(wrappedToken, AMOUNT, AMOUNT)).to.be.revertedWithCustomError(
+          vault,
+          'InsufficientSharesForBufferWithdrawal'
+        );
+      });
+    });
+
+    context('buffer deposits', async () => {
+      sharedBeforeEach('register buffer and grant permission', async () => {
+        await vault.connect(alice).registerBuffer(wrappedToken);
+        const depositAction = await actionId(vault, 'depositToBuffer');
+
+        await authorizer.grantRole(depositAction, alice.address);
+
+        await baseToken.mint(alice, AMOUNT);
+        await baseToken.connect(alice).approve(vault, AMOUNT);
+
+        await wrappedToken.mint(AMOUNT, alice);
+        await wrappedToken.connect(alice).approve(vault, AMOUNT);
+      });
+
+      it('initial shares are 0', async () => {
+        expect(await vault.getBufferShares(wrappedToken)).to.be.zero;
+      });
+
+      it('initial supply is 0', async () => {
+        expect(await vault.getTotalSupplyOfBuffer(wrappedToken)).to.be.zero;
+      });
+
+      it('can deposit to a buffer', async () => {
+        // Tokens should be there
+        expect(await baseToken.balanceOf(alice)).to.eq(AMOUNT);
+        expect(await wrappedToken.balanceOf(alice)).to.eq(AMOUNT);
+
+        await vault.connect(alice).depositToBuffer(wrappedToken, AMOUNT, AMOUNT);
+
+        // total supply should be non-zero after depositing
+        expect(await vault.getTotalSupplyOfBuffer(wrappedToken)).to.eq(AMOUNT * 2n);
+
+        // alice should have shares after depositing
+        expect(await vault.connect(alice).getBufferShares(wrappedToken)).to.eq(AMOUNT * 2n);
+
+        // Tokens should be gone
+        expect(await baseToken.balanceOf(alice)).to.be.zero;
+        expect(await wrappedToken.balanceOf(alice)).to.be.zero;
+      });
+
+      it('can withdraw from a buffer', async () => {
+        await vault.connect(alice).depositToBuffer(wrappedToken, AMOUNT, AMOUNT);
+
+        // alice should have shares after depositing
+        expect(await vault.connect(alice).getBufferShares(wrappedToken)).to.eq(AMOUNT * 2n);
+
+        await vault.connect(alice).withdrawFromBuffer(wrappedToken, AMOUNT, AMOUNT);
+
+        // shares should now be zero
+        expect(await vault.connect(alice).getBufferShares(wrappedToken)).to.be.zero;
+
+        // total supply should now be zero
+        expect(await vault.getTotalSupplyOfBuffer(wrappedToken)).to.be.zero;
+
+        // Tokens should be restored
+        expect(await baseToken.balanceOf(alice)).to.eq(AMOUNT);
+        expect(await wrappedToken.balanceOf(alice)).to.eq(AMOUNT);
       });
     });
   });
