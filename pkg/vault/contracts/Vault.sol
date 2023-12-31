@@ -49,6 +49,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     using ArrayHelpers for uint256[];
     using Address for *;
     using SafeERC20 for IERC20;
+    using SafeERC20 for IERC4626;
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
     using PoolConfigLib for PoolCallbacks;

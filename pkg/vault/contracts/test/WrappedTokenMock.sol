@@ -4,26 +4,28 @@ pragma solidity ^0.8.4;
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-contract WrappedTokenMock is IERC4626 {
+contract WrappedTokenMock is IERC4626, ERC20 {
     using FixedPoint for uint256;
 
     address private immutable _baseToken;
     uint256 private immutable _decimalDiff;
 
-    string private _name;
-    string private _symbol;
     uint8 private _decimals;
     uint256 private _totalAssets;
     uint256 private _totalSupply;
 
-    constructor(address baseToken, string memory tokenName, string memory tokenSymbol, uint8 tokenDecimals) {
+    constructor(
+        address baseToken,
+        string memory tokenName,
+        string memory tokenSymbol,
+        uint8 tokenDecimals
+    ) ERC20(tokenName, tokenSymbol) {
         _baseToken = baseToken;
-
-        _name = tokenName;
-        _symbol = tokenSymbol;
         _decimals = tokenDecimals;
 
         _decimalDiff = 10 ** (18 + tokenDecimals - IERC20Metadata(baseToken).decimals());
@@ -37,29 +39,11 @@ contract WrappedTokenMock is IERC4626 {
         _totalAssets = newTotalAssets;
     }
 
-    function totalSupply() external view override returns (uint256) {
+    function totalSupply() public view override(IERC20, ERC20) returns (uint256) {
         return _totalSupply;
     }
 
-    function balanceOf(address account) external view override returns (uint256) {}
-
-    function transfer(address to, uint256 value) external override returns (bool) {}
-
-    function allowance(address owner, address spender) external view override returns (uint256) {}
-
-    function approve(address spender, uint256 value) external override returns (bool) {}
-
-    function transferFrom(address from, address to, uint256 value) external override returns (bool) {}
-
-    function name() external view override returns (string memory) {
-        return _name;
-    }
-
-    function symbol() external view override returns (string memory) {
-        return _symbol;
-    }
-
-    function decimals() external view override returns (uint8) {
+    function decimals() public view override(ERC20, IERC20Metadata) returns (uint8) {
         return _decimals;
     }
 
@@ -89,7 +73,10 @@ contract WrappedTokenMock is IERC4626 {
 
     function previewMint(uint256 shares) external view override returns (uint256 assets) {}
 
-    function mint(uint256 shares, address receiver) external override returns (uint256 assets) {}
+    function mint(uint256 shares, address receiver) external override returns (uint256 assets) {
+        _mint(receiver, shares);
+        assets = shares;
+    }
 
     function maxWithdraw(address owner) external view override returns (uint256 maxAssets) {}
 
