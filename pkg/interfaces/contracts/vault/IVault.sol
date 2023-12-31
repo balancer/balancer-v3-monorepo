@@ -235,7 +235,6 @@ interface IVault {
      */
     function getWrappedTokenBufferRate(address wrappedToken) external view returns (uint256);
 
-
     /**
      * @notice Deposit base and wrapped tokens to an internal ERC4626 token buffer.
      * @param wrappedToken The wrapped buffer token
@@ -255,6 +254,13 @@ interface IVault {
      * @return sharesAmount The total shares controlled by the caller
      */
     function getBufferShares(address wrappedToken) external view returns (uint256);
+
+    /**
+     * @notice Get the total supply for a given buffer.
+     * @param wrappedToken The wrapped token identifying the buffer
+     * @return totalSupply The current total supply of the buffer (i.e., total shares of virtual BPT)
+     */
+    function getTotalSupplyOfBuffer(address wrappedToken) external view returns (uint256);
 
     /**
      * @notice Withdraw shares in an ERC4626 token buffer.

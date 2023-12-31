@@ -474,6 +474,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             10 ** (18 + yieldToken.decimals() - IERC20Metadata(asset).decimals())
         );
 
+        // Initialize the total supply.
+        _bufferTotalSupply.set(IERC20(wrappedToken), 0);
+
         emit WrappedTokenBufferRegistered(asset, wrappedToken);
     }
 
@@ -519,7 +522,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             EnumerableMap.IERC20ToUint256Map storage bufferShares = _bufferDepositorShares[IERC20(wrappedToken)];
 
             // Looks weird, but done to leverage map data structure.
-            uint256 currentShares = bufferShares.get(IERC20(msg.sender));
+            uint256 depositorIndex = bufferShares.unchecked_indexOf(IERC20(msg.sender));
+
+            // If the index is 0, this is a new depositor. Otherwise, adjust the map index to zero-based.
+            uint256 currentShares = depositorIndex == 0 ? 0 : bufferShares.unchecked_valueAt(depositorIndex - 1);
+
             bufferShares.set(IERC20(msg.sender), currentShares + sharesAmountOut);
 
             emit TokensDepositedToBuffer(wrappedToken, baseAmountIn, wrappedAmountIn);
@@ -530,7 +537,17 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     function getBufferShares(address wrappedToken) external view withRegisteredBuffer(wrappedToken) returns (uint256) {
         EnumerableMap.IERC20ToUint256Map storage bufferShares = _bufferDepositorShares[IERC20(wrappedToken)];
 
-        return bufferShares.get(IERC20(msg.sender));
+        // Return 0 if the caller is unknown. Otherwise, adjust the map index to zero-based.
+        uint256 depositorIndex = bufferShares.unchecked_indexOf(IERC20(msg.sender));
+
+        return depositorIndex == 0 ? 0 : bufferShares.unchecked_valueAt(depositorIndex - 1);
+    }
+
+    /// @inheritdoc IVault
+    function getTotalSupplyOfBuffer(
+        address wrappedToken
+    ) external view withRegisteredBuffer(wrappedToken) returns (uint256) {
+        return _bufferTotalSupply.get(IERC20(wrappedToken));
     }
 
     /// @inheritdoc IVault
@@ -548,7 +565,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
         if (sharesAmountIn > 0) {
             EnumerableMap.IERC20ToUint256Map storage bufferShares = _bufferDepositorShares[IERC20(wrappedToken)];
-            uint256 currentShares = bufferShares.get(IERC20(msg.sender));
+            uint256 depositorIndex = bufferShares.unchecked_indexOf(IERC20(msg.sender));
+
+            uint256 currentShares = depositorIndex == 0 ? 0 : bufferShares.unchecked_valueAt(depositorIndex - 1);
             if (sharesAmountIn > currentShares) {
                 revert InsufficientSharesForBufferWithdrawal();
             }
