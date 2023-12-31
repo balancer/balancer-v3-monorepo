@@ -40,7 +40,7 @@ struct PoolConfig {
  * @dev Token types supported by the Vault. In general, pools may contain any combination of these tokens.
  * STANDARD tokens (e.g., BAL, WETH) have no rate provider.
  * WITH_RATE tokens (e.g., wstETH) require rates but cannot be directly wrapped or unwrapped.
- * In the case of wstETH, this is because the underlying stETH token is rebasing, and such tokens are unsupported
+ * In the case of wstETH, this is because the base stETH token is rebasing, and such tokens are unsupported
  * by the Vault.
  * ERC4626 tokens (e.g., waDAI) have rates, and can be directly wrapped and unwrapped. The token must conform to
  * a subset of IERC4626, and functions as its own rate provider. To the outside world (e.g., callers of
@@ -157,26 +157,26 @@ interface IVault {
 
     /**
      * @dev Emitted on creation of a new wrapped token buffer.
-     * @param underlyingToken The base ERC20 token
+     * @param baseToken The base ERC20 token
      * @param wrappedToken THe wrapped ERC4626 token
      */
-    event WrappedTokenBufferRegistered(address indexed underlyingToken, address indexed wrappedToken);
+    event WrappedTokenBufferRegistered(address indexed baseToken, address indexed wrappedToken);
 
     /**
      * @dev Record a deposit to an ERC4626 buffer.
      * @param wrappedToken The wrapped token, identifying the buffer
-     * @param underlyingAmountIn The amount of underlying tokens deposited
+     * @param baseAmountIn The amount of base tokens deposited
      * @param wrappedAmountIn The amount of wrapped tokens deposited
      */
-    event TokensDepositedToBuffer(address indexed wrappedToken, uint256 underlyingAmountIn, uint256 wrappedAmountIn);
+    event TokensDepositedToBuffer(address indexed wrappedToken, uint256 baseAmountIn, uint256 wrappedAmountIn);
 
     /**
      * @dev Record a withdrawal from an ERC4626 buffer.
      * @param wrappedToken The wrapped token, identifying the buffer
-     * @param underlyingAmountOut The amount of underlying tokens deposited
+     * @param baseAmountOut The amount of base tokens deposited
      * @param wrappedAmountOut The amount of wrapped tokens deposited
      */
-    event TokensWithdrawnFromBuffer(address indexed wrappedToken, uint256 underlyingAmountOut, uint256 wrappedAmountOut);
+    event TokensWithdrawnFromBuffer(address indexed wrappedToken, uint256 baseAmountOut, uint256 wrappedAmountOut);
 
     /**
      * @notice A Pool was registered by calling `registerPool`.
@@ -220,7 +220,7 @@ interface IVault {
      * @notice Register a wrapped token buffer.
      * @dev We are assuming wrapped token addresses are unique (i.e., they are not upgradeable in place,
      * which would be insecure for depositors). Each wrapped token therefore unique describes a buffer,
-     * since the underlying token is specified by IERC4626, and it is its own rate provider.
+     * since the base token is specified by IERC4626, and it is its own rate provider.
      * This is a permissioned function.
      *
      * @param wrappedToken The wrapped token associated with the new buffer.
@@ -237,15 +237,15 @@ interface IVault {
 
 
     /**
-     * @notice Deposit underlying and wrapped tokens to an internal ERC4626 token buffer.
+     * @notice Deposit base and wrapped tokens to an internal ERC4626 token buffer.
      * @param wrappedToken The wrapped buffer token
-     * @param underlyingAmountIn The amount of underlying tokens (e.g., DAI for waDAI)
+     * @param baseAmountIn The amount of base tokens (e.g., DAI for waDAI)
      * @param wrappedAmountIn The amount of wrapped tokens
      * @return sharesAmountOut The number of "shares" assigned as a result of this deposit.
      */
     function depositToBuffer(
         address wrappedToken,
-        uint256 underlyingAmountIn,
+        uint256 baseAmountIn,
         uint256 wrappedAmountIn
     ) external returns (uint256 sharesAmountOut);
 
@@ -259,13 +259,13 @@ interface IVault {
     /**
      * @notice Withdraw shares in an ERC4626 token buffer.
      * @param wrappedToken The wrapped token specifying the buffer
-     * @param underlyingAmountOut The amount of underlying tokens to withdraw (e.g., DAI for waDAI)
+     * @param baseAmountOut The amount of base tokens to withdraw (e.g., DAI for waDAI)
      * @param wrappedAmountOut The amount of wrapped tokens to withdraw
      * @return sharesAmountIn The amount of shares "burned" in exchange for the tokens.
      */
     function withdrawFromBuffer(
         address wrappedToken,
-        uint256 underlyingAmountOut,
+        uint256 baseAmountOut,
         uint256 wrappedAmountOut
     ) external returns (uint256 sharesAmountIn);
 

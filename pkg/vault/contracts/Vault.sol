@@ -131,7 +131,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     // ERC4626 wrapped token buffers
 
     EnumerableSet.AddressSet private _wrappedTokenBuffers;
-    // For convenience, store the underlying token for each buffer in `_wrappedTokenBuffers`
+
+    // For convenience, store the base token for each buffer in `_wrappedTokenBuffers`
     mapping(IERC20 => IERC20) private _wrappedTokenBufferBaseTokens;
 
     mapping(IERC20 => EnumerableMap.IERC20ToUint256Map) private _bufferDepositorShares;
@@ -142,7 +143,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     // Record the total supply of each buffer (adjusted by deposits/withdrawals from buffers)
     EnumerableMap.IERC20ToUint256Map private _bufferTotalSupply;
 
-    // TODO: (buffer -> balances) - Encoded balances for each buffer (packed underlying + wrapped).
+    // TODO: (buffer -> balances) - Encoded balances for each buffer (packed base + wrapped).
     // EnumerableMap.IERC20ToBytes32Map private _wrappedTokenBufferBalances;
 
     /// @dev Modifier to make a function callable only when the Vault is not paused.
@@ -493,20 +494,20 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     /// @inheritdoc IVault
     function depositToBuffer(
         address wrappedToken,
-        uint256 underlyingAmountIn,
+        uint256 baseAmountIn,
         uint256 wrappedAmountIn
     ) external withRegisteredBuffer(wrappedToken) nonReentrant authenticate returns (uint256 sharesAmountOut) {
         // Pretend the buffer is a two-token pool. Pull the tokens, then compute and assign the virtual BPT.
         // TODO: Do we need minSharesAmountOut? Maybe not as this isn't a real pool with retail trades?
 
-        // Pull in the underlying and wrapped tokens (depositor must have approved the Vault).
-        IERC20 underlyingToken = _wrappedTokenBufferBaseTokens[IERC20(wrappedToken)];
-        underlyingToken.safeTransferFrom(msg.sender, address(this), underlyingAmountIn);
+        // Pull in the base and wrapped tokens (depositor must have approved the Vault).
+        IERC20 baseToken = _wrappedTokenBufferBaseTokens[IERC20(wrappedToken)];
+        baseToken.safeTransferFrom(msg.sender, address(this), baseAmountIn);
         IERC20(wrappedToken).safeTransferFrom(msg.sender, address(this), wrappedAmountIn);
 
         // TODO: This will be something like StableMath._calcBptOutGivenExactTokensIn. As a placeholder,
         // just use the sum.
-        sharesAmountOut = underlyingAmountIn + wrappedAmountIn;
+        sharesAmountOut = baseAmountIn + wrappedAmountIn;
         if (sharesAmountOut > 0) {
             // TODO: Update _wrappedTokenBufferBalances - infrastructure in another PR.
 
@@ -521,7 +522,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             uint256 currentShares = bufferShares.get(IERC20(msg.sender));
             bufferShares.set(IERC20(msg.sender), currentShares + sharesAmountOut);
 
-            emit TokensDepositedToBuffer(wrappedToken, underlyingAmountIn, wrappedAmountIn);
+            emit TokensDepositedToBuffer(wrappedToken, baseAmountIn, wrappedAmountIn);
         }
     }
 
@@ -535,7 +536,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     /// @inheritdoc IVault
     function withdrawFromBuffer(
         address wrappedToken,
-        uint256 underlyingAmountOut,
+        uint256 baseAmountOut,
         uint256 wrappedAmountOut
     ) external withRegisteredBuffer(wrappedToken) nonReentrant returns (uint256 sharesAmountIn) {
         // Pretend the buffer is a two-token pool. Compute the sharesAmountIn (virtual BPT) corresponding to the given
@@ -543,7 +544,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // TODO: Should we support this, or only proportional? As with deposit, do we need a maxSharesAmountIn?
 
         // This will be something like StableMath._calcBptInGivenExactTokensOut. As a placeholder, just use the sum.
-        sharesAmountIn = underlyingAmountOut + wrappedAmountOut;
+        sharesAmountIn = baseAmountOut + wrappedAmountOut;
 
         if (sharesAmountIn > 0) {
             EnumerableMap.IERC20ToUint256Map storage bufferShares = _bufferDepositorShares[IERC20(wrappedToken)];
@@ -556,17 +557,17 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             bufferShares.set(IERC20(msg.sender), currentShares - sharesAmountIn);
 
             // TODO: Update _wrappedTokenBufferBalances - infrastructure in another PR.
-            
+
             // Reduce the buffer's total supply
             uint256 currentTotalSupply = _bufferTotalSupply.get(IERC20(wrappedToken));
             _bufferTotalSupply.set(IERC20(wrappedToken), currentTotalSupply - sharesAmountIn);
 
             // Send the tokens.
-            IERC20 underlyingToken = _wrappedTokenBufferBaseTokens[IERC20(wrappedToken)];
-            underlyingToken.safeTransfer(msg.sender, underlyingAmountOut);
+            IERC20 baseToken = _wrappedTokenBufferBaseTokens[IERC20(wrappedToken)];
+            baseToken.safeTransfer(msg.sender, baseAmountOut);
             IERC20(wrappedToken).safeTransfer(msg.sender, wrappedAmountOut);
 
-            emit TokensWithdrawnFromBuffer(wrappedToken, underlyingAmountOut, wrappedAmountOut);
+            emit TokensWithdrawnFromBuffer(wrappedToken, baseAmountOut, wrappedAmountOut);
         }
     }
 
@@ -576,15 +577,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     }
 
     // TODO: verify swap functions are internal (used by rebalance)
-    function swapUnderlyingToWrapped(
-        address wrappedToken,
-        uint256 amountIn
-    ) internal withRegisteredBuffer(wrappedToken) {}
+    function _swapbaseToWrapped(address wrappedToken, uint256 amountIn) internal withRegisteredBuffer(wrappedToken) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
-    function swapWrappedToUnderlying(
-        address wrappedToken,
-        uint256 amountIn
-    ) internal withRegisteredBuffer(wrappedToken) {}
+    function _swapWrappedTobase(address wrappedToken, uint256 amountIn) internal withRegisteredBuffer(wrappedToken) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function _ensureRegisteredBuffer(address wrappedToken) private view {
         if (!_wrappedTokenBuffers.contains(wrappedToken)) {
@@ -1030,21 +1029,21 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                     revert InvalidTokenConfiguration();
                 }
 
-                // Replace the token actually registered with the underlying token, for the event.
+                // Replace the token actually registered with the base token, for the event.
                 // Also temporarily register the token in order to detect duplicates. Since ERC4626
-                // tokens appear to the outside as their underlying (e.g., waDAI would appear as DAI),
+                // tokens appear to the outside as their base (e.g., waDAI would appear as DAI),
                 // a DAI/waDAI pool would look like DAI/DAI, which we disallow with this check).
-                IERC20 underlyingToken = _wrappedTokenBufferBaseTokens[token];
-                vars.registeredTokens[i] = underlyingToken;
-                if (poolTokenBalances.set(underlyingToken, 0)) {
-                    // Store it to remove later, so that we don't actually include the underlying tokens
+                IERC20 baseToken = _wrappedTokenBufferBaseTokens[token];
+                vars.registeredTokens[i] = baseToken;
+                if (poolTokenBalances.set(baseToken, 0)) {
+                    // Store it to remove later, so that we don't actually include the base tokens
                     // in the pool.
-                    vars.tempRegisteredTokens[vars.numTempTokens] = underlyingToken;
+                    vars.tempRegisteredTokens[vars.numTempTokens] = baseToken;
                     vars.numTempTokens++;
                 } else {
                     // Depending on the token order (i.e., if the wrapped token comes first), it's possible
                     // for an ambiguous token to revert above with TokenAlreadyRegistered.
-                    revert AmbiguousPoolToken(address(underlyingToken));
+                    revert AmbiguousPoolToken(address(baseToken));
                 }
             } else {
                 revert InvalidTokenType();
@@ -1127,7 +1126,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      * @notice Fetches the tokens and their corresponding balances for a given pool.
      * @dev Utilizes an enumerable map to obtain pool token balances.
      * The function is structured to minimize storage reads by leveraging the `unchecked_at` method.
-     * If the token type is ERC4626, it returns the underlying token address.
+     * If the token type is ERC4626, it returns the base token address.
      *
      * @param pool The address of the pool for which tokens and balances are to be fetched.
      * @return tokens An array of token addresses.
@@ -1147,7 +1146,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             (tokens[i], ) = poolTokenBalances.unchecked_at(i);
 
             if (poolTokenConfig[tokens[i]].tokenType == TokenType.ERC4626) {
-                // Overwrite the wrapped token and return the underlying.
+                // Overwrite the wrapped token and return the base.
                 tokens[i] = _wrappedTokenBufferBaseTokens[tokens[i]];
             }
         }

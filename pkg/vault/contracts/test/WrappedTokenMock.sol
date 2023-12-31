@@ -19,14 +19,14 @@ contract WrappedTokenMock is IERC4626 {
     uint256 private _totalAssets;
     uint256 private _totalSupply;
 
-    constructor(address underlyingToken, string memory tokenName, string memory tokenSymbol, uint8 tokenDecimals) {
-        _baseToken = underlyingToken;
+    constructor(address baseToken, string memory tokenName, string memory tokenSymbol, uint8 tokenDecimals) {
+        _baseToken = baseToken;
 
         _name = tokenName;
         _symbol = tokenSymbol;
         _decimals = tokenDecimals;
 
-        _decimalDiff = 10 ** (18 + tokenDecimals - IERC20Metadata(underlyingToken).decimals());
+        _decimalDiff = 10 ** (18 + tokenDecimals - IERC20Metadata(baseToken).decimals());
     }
 
     function setTotalSupply(uint256 newTotalSupply) external {

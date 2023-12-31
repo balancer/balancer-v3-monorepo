@@ -25,7 +25,7 @@ describe('Vault - Wrapped Token Buffers', function () {
 
   let vault: VaultMock;
   let authorizer: BasicAuthorizerMock;
-  let underlyingToken: ERC20TestToken;
+  let baseToken: ERC20TestToken;
   let wrappedToken: WrappedTokenMock;
 
   let tokenA: ERC20TestToken;
@@ -42,8 +42,8 @@ describe('Vault - Wrapped Token Buffers', function () {
       args: [authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
     });
 
-    underlyingToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Standard', 'BASE', 6] });
-    wrappedToken = await deploy('WrappedTokenMock', { args: [underlyingToken, 'ERC4626', 'WRAPPED', 8] });
+    baseToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Standard', 'BASE', 6] });
+    wrappedToken = await deploy('WrappedTokenMock', { args: [baseToken, 'ERC4626', 'WRAPPED', 8] });
 
     tokenA = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });
   });
@@ -82,7 +82,7 @@ describe('Vault - Wrapped Token Buffers', function () {
       it('buffer registration emits an event', async () => {
         expect(await vault.connect(alice).registerBuffer(wrappedToken))
           .to.emit(vault, 'WrappedTokenBufferRegistered')
-          .withArgs(underlyingToken, wrappedToken);
+          .withArgs(baseToken, wrappedToken);
       });
 
       it('cannot register a buffer twice', async () => {
@@ -153,28 +153,28 @@ describe('Vault - Wrapped Token Buffers', function () {
         ).to.be.revertedWithCustomError(vault, 'InvalidTokenConfiguration');
       });
 
-      it('cannot register a pool with duplicate Standard/ERC4626 underlying tokens', async () => {
-        // This would look to the outside like underlying/underlying
+      it('cannot register a pool with duplicate Standard/ERC4626 base tokens', async () => {
+        // This would look to the outside like base/base
         const tokens: TokenConfigStruct[] = [
-          { token: underlyingToken, tokenType: TokenType.STANDARD, rateProvider: ZERO_ADDRESS, yieldFeeExempt: false },
+          { token: baseToken, tokenType: TokenType.STANDARD, rateProvider: ZERO_ADDRESS, yieldFeeExempt: false },
           { token: wrappedToken, tokenType: TokenType.ERC4626, rateProvider: ZERO_ADDRESS, yieldFeeExempt: false },
         ];
         vault.connect(alice).registerBuffer(wrappedToken);
 
         await expect(vault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement))
           .to.be.revertedWithCustomError(vault, 'AmbiguousPoolToken')
-          .withArgs(await underlyingToken.getAddress());
+          .withArgs(await baseToken.getAddress());
       });
     });
 
     context('valid configuration', () => {
       let tokenAAddress: string;
-      let underlyingAddress: string;
+      let baseAddress: string;
       let tokens: TokenConfigStruct[];
 
       sharedBeforeEach('set addresses', async () => {
         tokenAAddress = await tokenA.getAddress();
-        underlyingAddress = await underlyingToken.getAddress();
+        baseAddress = await baseToken.getAddress();
 
         tokens = [
           { token: tokenA, tokenType: TokenType.STANDARD, rateProvider: ZERO_ADDRESS, yieldFeeExempt: false },
@@ -182,12 +182,12 @@ describe('Vault - Wrapped Token Buffers', function () {
         ];
       });
 
-      it('exposes underlying tokens for ERC4626', async () => {
+      it('exposes base tokens for ERC4626', async () => {
         vault.connect(alice).registerBuffer(wrappedToken);
         await vault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement);
 
         const poolTokens = await vault.getPoolTokens(ANY_ADDRESS);
-        expect(poolTokens).to.deep.equal([tokenAAddress, underlyingAddress]);
+        expect(poolTokens).to.deep.equal([tokenAAddress, baseAddress]);
       });
 
       it('registering a pool emits an event with resolved tokens', async () => {
@@ -202,7 +202,7 @@ describe('Vault - Wrapped Token Buffers', function () {
           .withArgs(
             ANY_ADDRESS,
             await alice.getAddress(),
-            [tokenAAddress, underlyingAddress],
+            [tokenAAddress, baseAddress],
             [TokenType.STANDARD, TokenType.ERC4626],
             [ZERO_ADDRESS, ZERO_ADDRESS],
             [false, false],
