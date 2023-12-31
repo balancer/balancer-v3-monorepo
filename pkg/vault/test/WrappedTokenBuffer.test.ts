@@ -312,6 +312,12 @@ describe('Vault - Wrapped Token Buffers', function () {
         expect(await wrappedToken.balanceOf(alice)).to.be.zero;
       });
 
+      it('depositing emits an event', async () => {
+        expect(await vault.connect(alice).depositToBuffer(wrappedToken, AMOUNT, AMOUNT))
+          .to.emit(vault, 'TokensDepositedToBuffer')
+          .withArgs(baseToken, wrappedToken, AMOUNT, AMOUNT);
+      });
+
       it('can withdraw from a buffer', async () => {
         await vault.connect(alice).depositToBuffer(wrappedToken, AMOUNT, AMOUNT);
 
@@ -329,6 +335,14 @@ describe('Vault - Wrapped Token Buffers', function () {
         // Tokens should be restored
         expect(await baseToken.balanceOf(alice)).to.eq(AMOUNT);
         expect(await wrappedToken.balanceOf(alice)).to.eq(AMOUNT);
+      });
+
+      it('withdrawing emits an event', async () => {
+        await vault.connect(alice).depositToBuffer(wrappedToken, AMOUNT, AMOUNT);
+
+        expect(await vault.connect(alice).withdrawFromBuffer(wrappedToken, AMOUNT, AMOUNT))
+          .to.emit(vault, 'TokensWithdrawnFromBuffer')
+          .withArgs(baseToken, wrappedToken, AMOUNT, AMOUNT);
       });
     });
   });

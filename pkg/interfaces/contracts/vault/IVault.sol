@@ -164,19 +164,21 @@ interface IVault {
 
     /**
      * @dev Record a deposit to an ERC4626 buffer.
+     * @param baseToken The base token corresponding to the buffer
      * @param wrappedToken The wrapped token, identifying the buffer
      * @param baseAmountIn The amount of base tokens deposited
      * @param wrappedAmountIn The amount of wrapped tokens deposited
      */
-    event TokensDepositedToBuffer(address indexed wrappedToken, uint256 baseAmountIn, uint256 wrappedAmountIn);
+    event TokensDepositedToBuffer(address indexed baseToken, address indexed wrappedToken, uint256 baseAmountIn, uint256 wrappedAmountIn);
 
     /**
      * @dev Record a withdrawal from an ERC4626 buffer.
+     * @param baseToken The base token corresponding to the buffer
      * @param wrappedToken The wrapped token, identifying the buffer
      * @param baseAmountOut The amount of base tokens deposited
      * @param wrappedAmountOut The amount of wrapped tokens deposited
      */
-    event TokensWithdrawnFromBuffer(address indexed wrappedToken, uint256 baseAmountOut, uint256 wrappedAmountOut);
+    event TokensWithdrawnFromBuffer(address indexed baseToken,address indexed wrappedToken, uint256 baseAmountOut, uint256 wrappedAmountOut);
 
     /**
      * @notice A Pool was registered by calling `registerPool`.

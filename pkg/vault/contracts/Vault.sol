@@ -530,7 +530,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
             bufferShares.set(IERC20(msg.sender), currentShares + sharesAmountOut);
 
-            emit TokensDepositedToBuffer(wrappedToken, baseAmountIn, wrappedAmountIn);
+            emit TokensDepositedToBuffer(address(baseToken), wrappedToken, baseAmountIn, wrappedAmountIn);
         }
     }
 
@@ -587,7 +587,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             baseToken.safeTransfer(msg.sender, baseAmountOut);
             IERC20(wrappedToken).safeTransfer(msg.sender, wrappedAmountOut);
 
-            emit TokensWithdrawnFromBuffer(wrappedToken, baseAmountOut, wrappedAmountOut);
+            emit TokensWithdrawnFromBuffer(address(baseToken), wrappedToken, baseAmountOut, wrappedAmountOut);
         }
     }
 
