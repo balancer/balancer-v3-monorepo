@@ -128,12 +128,22 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
     bool private _vaultPaused;
 
+    // ERC4626 wrapped token buffers
+
     EnumerableSet.AddressSet private _wrappedTokenBuffers;
     // For convenience, store the underlying token for each buffer in `_wrappedTokenBuffers`
     mapping(IERC20 => IERC20) private _wrappedTokenBufferBaseTokens;
 
+    mapping(IERC20 => EnumerableMap.IERC20ToUint256Map) private _bufferDepositorShares;
+
     // Decimal difference used for wrapped token rate computation.
     EnumerableMap.IERC20ToUint256Map private _bufferRateScalingFactors;
+
+    // Record the total supply of each buffer (adjusted by deposits/withdrawals from buffers)
+    EnumerableMap.IERC20ToUint256Map private _bufferTotalSupply;
+
+    // TODO: (buffer -> balances) - Encoded balances for each buffer (packed underlying + wrapped).
+    // EnumerableMap.IERC20ToBytes32Map private _wrappedTokenBufferBalances;
 
     /// @dev Modifier to make a function callable only when the Vault is not paused.
     modifier whenVaultNotPaused() {
@@ -439,8 +449,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     }
 
     /*******************************************************************************
-                                    Pool Tokens
+                              ERC4626 Buffer Operations
     *******************************************************************************/
+
+    // TODO: probably want to move this all to its own abstract contract with storage/library pattern.
 
     /// @inheritdoc IVault
     function registerBuffer(address wrappedToken) external authenticate {
@@ -464,15 +476,120 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         emit WrappedTokenBufferRegistered(asset, wrappedToken);
     }
 
-    /// @inheritdoc IVault
-    function getWrappedTokenBufferRate(address wrappedToken) public view returns (uint256) {
-        if (!_wrappedTokenBuffers.contains(wrappedToken)) {
-            revert WrappedTokenBufferNotRegistered();
-        }
+    modifier withRegisteredBuffer(address wrappedToken) {
+        _ensureRegisteredBuffer(wrappedToken);
+        _;
+    }
 
+    /// @inheritdoc IVault
+    function getWrappedTokenBufferRate(
+        address wrappedToken
+    ) public view withRegisteredBuffer(wrappedToken) returns (uint256) {
         IERC4626 yieldToken = IERC4626(wrappedToken);
 
         return yieldToken.convertToAssets(_bufferRateScalingFactors.get(yieldToken));
+    }
+
+    /// @inheritdoc IVault
+    function depositToBuffer(
+        address wrappedToken,
+        uint256 underlyingAmountIn,
+        uint256 wrappedAmountIn
+    ) external withRegisteredBuffer(wrappedToken) nonReentrant authenticate returns (uint256 sharesAmountOut) {
+        // Pretend the buffer is a two-token pool. Pull the tokens, then compute and assign the virtual BPT.
+        // TODO: Do we need minSharesAmountOut? Maybe not as this isn't a real pool with retail trades?
+
+        // Pull in the underlying and wrapped tokens (depositor must have approved the Vault).
+        IERC20 underlyingToken = _wrappedTokenBufferBaseTokens[IERC20(wrappedToken)];
+        underlyingToken.safeTransferFrom(msg.sender, address(this), underlyingAmountIn);
+        IERC20(wrappedToken).safeTransferFrom(msg.sender, address(this), wrappedAmountIn);
+
+        // TODO: This will be something like StableMath._calcBptOutGivenExactTokensIn. As a placeholder,
+        // just use the sum.
+        sharesAmountOut = underlyingAmountIn + wrappedAmountIn;
+        if (sharesAmountOut > 0) {
+            // TODO: Update _wrappedTokenBufferBalances - infrastructure in another PR.
+
+            // Increase the total supply of the buffer.
+            uint256 currentTotalSupply = _bufferTotalSupply.get(IERC20(wrappedToken));
+            _bufferTotalSupply.set(IERC20(wrappedToken), currentTotalSupply + sharesAmountOut);
+
+            // Set this depositor's shares.
+            EnumerableMap.IERC20ToUint256Map storage bufferShares = _bufferDepositorShares[IERC20(wrappedToken)];
+
+            // Looks weird, but done to leverage map data structure.
+            uint256 currentShares = bufferShares.get(IERC20(msg.sender));
+            bufferShares.set(IERC20(msg.sender), currentShares + sharesAmountOut);
+
+            emit TokensDepositedToBuffer(wrappedToken, underlyingAmountIn, wrappedAmountIn);
+        }
+    }
+
+    /// @inheritdoc IVault
+    function getBufferShares(address wrappedToken) external view withRegisteredBuffer(wrappedToken) returns (uint256) {
+        EnumerableMap.IERC20ToUint256Map storage bufferShares = _bufferDepositorShares[IERC20(wrappedToken)];
+
+        return bufferShares.get(IERC20(msg.sender));
+    }
+
+    /// @inheritdoc IVault
+    function withdrawFromBuffer(
+        address wrappedToken,
+        uint256 underlyingAmountOut,
+        uint256 wrappedAmountOut
+    ) external withRegisteredBuffer(wrappedToken) nonReentrant returns (uint256 sharesAmountIn) {
+        // Pretend the buffer is a two-token pool. Compute the sharesAmountIn (virtual BPT) corresponding to the given
+        // amounts, deduct it from the sender, then withdraw the tokens.
+        // TODO: Should we support this, or only proportional? As with deposit, do we need a maxSharesAmountIn?
+
+        // This will be something like StableMath._calcBptInGivenExactTokensOut. As a placeholder, just use the sum.
+        sharesAmountIn = underlyingAmountOut + wrappedAmountOut;
+
+        if (sharesAmountIn > 0) {
+            EnumerableMap.IERC20ToUint256Map storage bufferShares = _bufferDepositorShares[IERC20(wrappedToken)];
+            uint256 currentShares = bufferShares.get(IERC20(msg.sender));
+            if (sharesAmountIn > currentShares) {
+                revert InsufficientSharesForBufferWithdrawal();
+            }
+
+            // Reduce the caller's share balance (i.e., "burn" the virtual BPT).
+            bufferShares.set(IERC20(msg.sender), currentShares - sharesAmountIn);
+
+            // TODO: Update _wrappedTokenBufferBalances - infrastructure in another PR.
+            
+            // Reduce the buffer's total supply
+            uint256 currentTotalSupply = _bufferTotalSupply.get(IERC20(wrappedToken));
+            _bufferTotalSupply.set(IERC20(wrappedToken), currentTotalSupply - sharesAmountIn);
+
+            // Send the tokens.
+            IERC20 underlyingToken = _wrappedTokenBufferBaseTokens[IERC20(wrappedToken)];
+            underlyingToken.safeTransfer(msg.sender, underlyingAmountOut);
+            IERC20(wrappedToken).safeTransfer(msg.sender, wrappedAmountOut);
+
+            emit TokensWithdrawnFromBuffer(wrappedToken, underlyingAmountOut, wrappedAmountOut);
+        }
+    }
+
+    /// @inheritdoc IVault
+    function rebalanceBuffer(address wrappedToken) external withRegisteredBuffer(wrappedToken) authenticate {
+        // TODO: Implementation. Do we want to return anything? Surely an event.
+    }
+
+    // TODO: verify swap functions are internal (used by rebalance)
+    function swapUnderlyingToWrapped(
+        address wrappedToken,
+        uint256 amountIn
+    ) internal withRegisteredBuffer(wrappedToken) {}
+
+    function swapWrappedToUnderlying(
+        address wrappedToken,
+        uint256 amountIn
+    ) internal withRegisteredBuffer(wrappedToken) {}
+
+    function _ensureRegisteredBuffer(address wrappedToken) private view {
+        if (!_wrappedTokenBuffers.contains(wrappedToken)) {
+            revert WrappedTokenBufferNotRegistered();
+        }
     }
 
     /*******************************************************************************

@@ -152,12 +152,31 @@ interface IVault {
     /// @dev A token buffer can only be registered once.
     error WrappedTokenBufferAlreadyRegistered();
 
+    /// @dev Caller has insufficient shares to make a withdrawal.
+    error InsufficientSharesForBufferWithdrawal();
+
     /**
      * @dev Emitted on creation of a new wrapped token buffer.
      * @param underlyingToken The base ERC20 token
      * @param wrappedToken THe wrapped ERC4626 token
      */
     event WrappedTokenBufferRegistered(address indexed underlyingToken, address indexed wrappedToken);
+
+    /**
+     * @dev Record a deposit to an ERC4626 buffer.
+     * @param wrappedToken The wrapped token, identifying the buffer
+     * @param underlyingAmountIn The amount of underlying tokens deposited
+     * @param wrappedAmountIn The amount of wrapped tokens deposited
+     */
+    event TokensDepositedToBuffer(address indexed wrappedToken, uint256 underlyingAmountIn, uint256 wrappedAmountIn);
+
+    /**
+     * @dev Record a withdrawal from an ERC4626 buffer.
+     * @param wrappedToken The wrapped token, identifying the buffer
+     * @param underlyingAmountOut The amount of underlying tokens deposited
+     * @param wrappedAmountOut The amount of wrapped tokens deposited
+     */
+    event TokensWithdrawnFromBuffer(address indexed wrappedToken, uint256 underlyingAmountOut, uint256 wrappedAmountOut);
 
     /**
      * @notice A Pool was registered by calling `registerPool`.
@@ -215,6 +234,46 @@ interface IVault {
      * @return rate The current rate
      */
     function getWrappedTokenBufferRate(address wrappedToken) external view returns (uint256);
+
+
+    /**
+     * @notice Deposit underlying and wrapped tokens to an internal ERC4626 token buffer.
+     * @param wrappedToken The wrapped buffer token
+     * @param underlyingAmountIn The amount of underlying tokens (e.g., DAI for waDAI)
+     * @param wrappedAmountIn The amount of wrapped tokens
+     * @return sharesAmountOut The number of "shares" assigned as a result of this deposit.
+     */
+    function depositToBuffer(
+        address wrappedToken,
+        uint256 underlyingAmountIn,
+        uint256 wrappedAmountIn
+    ) external returns (uint256 sharesAmountOut);
+
+    /**
+     * @notice Get the number of shares (i.e., virtual BPT) held by a depositor in an ERC4626 buffer.
+     * @param wrappedToken The wrapped token identifying the buffer
+     * @return sharesAmount The total shares controlled by the caller
+     */
+    function getBufferShares(address wrappedToken) external view returns (uint256);
+
+    /**
+     * @notice Withdraw shares in an ERC4626 token buffer.
+     * @param wrappedToken The wrapped token specifying the buffer
+     * @param underlyingAmountOut The amount of underlying tokens to withdraw (e.g., DAI for waDAI)
+     * @param wrappedAmountOut The amount of wrapped tokens to withdraw
+     * @return sharesAmountIn The amount of shares "burned" in exchange for the tokens.
+     */
+    function withdrawFromBuffer(
+        address wrappedToken,
+        uint256 underlyingAmountOut,
+        uint256 wrappedAmountOut
+    ) external returns (uint256 sharesAmountIn);
+
+    /**
+     * @notice Rebalance an ERC4626 buffer.
+     * @param wrappedToken The wrapped token identifying the buffer
+     */
+    function rebalanceBuffer(address wrappedToken) external;
 
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
