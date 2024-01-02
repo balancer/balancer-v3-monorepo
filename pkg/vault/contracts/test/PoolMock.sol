@@ -25,6 +25,7 @@ contract PoolMock is IBasePool, IPoolInitializer, IPoolCallbacks, IPoolLiquidity
 
     bool public failOnAfterInitialize;
     bool public failOnBeforeInitialize;
+    bool public failOnBeforeSwapCallback;
     bool public failOnAfterSwapCallback;
     bool public failOnBeforeAddLiquidity;
     bool public failOnAfterAddLiquidity;
@@ -89,6 +90,10 @@ contract PoolMock is IBasePool, IPoolInitializer, IPoolCallbacks, IPoolLiquidity
         failOnBeforeInitialize = fail;
     }
 
+    function setFailOnBeforeSwapCallback(bool fail) external {
+        failOnBeforeSwapCallback = fail;
+    }
+
     function setFailOnAfterSwapCallback(bool fail) external {
         failOnAfterSwapCallback = fail;
     }
@@ -125,6 +130,10 @@ contract PoolMock is IBasePool, IPoolInitializer, IPoolCallbacks, IPoolLiquidity
         return !failOnAfterInitialize;
     }
 
+    function onBeforeSwap(IBasePool.SwapParams calldata) external view override returns (bool success) {
+        return !failOnBeforeSwapCallback;
+    }
+
     function onAfterSwap(
         IPoolCallbacks.AfterSwapParams calldata params,
         uint256 amountCalculated
@@ -137,6 +146,13 @@ contract PoolMock is IBasePool, IPoolInitializer, IPoolCallbacks, IPoolLiquidity
             params.kind == IVault.SwapKind.GIVEN_IN
                 ? params.amountGivenScaled18.mulDown(_multiplier)
                 : params.amountGivenScaled18.divDown(_multiplier);
+    }
+
+    function onAfterSwap(
+        IPoolCallbacks.AfterSwapParams calldata,
+        uint256 amountCalculatedScaled18
+    ) external view override returns (bool success) {
+        return amountCalculatedScaled18 > 0 && !failOnAfterSwapCallback;
     }
 
     // Liquidity lifecycle callbacks

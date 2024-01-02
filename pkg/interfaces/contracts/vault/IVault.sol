@@ -11,6 +11,7 @@ import { IRateProvider } from "./IRateProvider.sol";
 struct PoolCallbacks {
     bool shouldCallBeforeInitialize;
     bool shouldCallAfterInitialize;
+    bool shouldCallBeforeSwap;
     bool shouldCallAfterSwap;
     bool shouldCallBeforeAddLiquidity;
     bool shouldCallAfterAddLiquidity;
@@ -206,6 +207,16 @@ interface IVault {
      * @return tokens List of tokens in the pool
      */
     function getPoolTokens(address pool) external view returns (IERC20[] memory);
+
+    /**
+     * @notice Gets the index of a token in a given pool.
+     * @dev Reverts if the pool is not registered, or if the token does not belong to the pool.
+     * @param pool Address of the pool
+     * @param token Address of the token
+     * @return tokenCount Number of tokens in the pool
+     * @return index Index corresponding to the given token in the pool's token list
+     */
+    function getPoolTokenCountAndIndexOfToken(address pool, IERC20 token) external view returns (uint256, uint256);
 
     /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
@@ -452,8 +463,8 @@ interface IVault {
     /**
      * @dev Data for an add liquidity operation.
      * @param pool Address of the pool
-     * @param to  Address of user to mint to
-     * @param amountsIn Amounts of input tokens
+     * @param to Address of user to mint to
+     * @param maxAmountsIn Maximum amounts of input tokens
      * @param minBptAmountOut Minimum amount of output pool tokens
      * @param kind Add liquidity kind
      * @param userData Optional user data
@@ -461,7 +472,7 @@ interface IVault {
     struct AddLiquidityParams {
         address pool;
         address to;
-        uint256[] amountsIn;
+        uint256[] maxAmountsIn;
         uint256 minBptAmountOut;
         AddLiquidityKind kind;
         bytes userData;

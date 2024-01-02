@@ -126,7 +126,7 @@ contract Router is IRouter, ReentrancyGuard {
                     AddLiquidityCallbackParams({
                         sender: msg.sender,
                         pool: pool,
-                        amountsIn: exactAmountsIn,
+                        maxAmountsIn: exactAmountsIn,
                         minBptAmountOut: minBptAmountOut,
                         kind: IVault.AddLiquidityKind.UNBALANCED,
                         wethIsEth: wethIsEth,
@@ -141,13 +141,13 @@ contract Router is IRouter, ReentrancyGuard {
     /// @inheritdoc IRouter
     function addLiquiditySingleTokenExactOut(
         address pool,
-        uint256 tokenInIndex,
+        IERC20 tokenIn,
         uint256 maxAmountIn,
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn) {
-        uint256[] memory maxAmountsIn = _getSingleInputArray(pool, tokenInIndex, maxAmountIn);
+        uint256[] memory maxAmountsIn = _getSingleInputArray(pool, tokenIn, maxAmountIn);
 
         (amountsIn, , ) = abi.decode(
             _vault.invoke{ value: msg.value }(
@@ -156,7 +156,7 @@ contract Router is IRouter, ReentrancyGuard {
                     AddLiquidityCallbackParams({
                         sender: msg.sender,
                         pool: pool,
-                        amountsIn: maxAmountsIn,
+                        maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                         wethIsEth: wethIsEth,
@@ -184,7 +184,7 @@ contract Router is IRouter, ReentrancyGuard {
                         AddLiquidityCallbackParams({
                             sender: msg.sender,
                             pool: pool,
-                            amountsIn: inputAmountsIn,
+                            maxAmountsIn: inputAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             kind: IVault.AddLiquidityKind.CUSTOM,
                             wethIsEth: wethIsEth,
@@ -216,7 +216,7 @@ contract Router is IRouter, ReentrancyGuard {
             IVault.AddLiquidityParams({
                 pool: params.pool,
                 to: params.sender,
-                amountsIn: params.amountsIn,
+                maxAmountsIn: params.maxAmountsIn,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
                 userData: params.userData
@@ -237,8 +237,8 @@ contract Router is IRouter, ReentrancyGuard {
             uint256 amountIn = amountsIn[i];
 
             // TODO: check amounts in for every type.
-            if (amountIn > params.amountsIn[i]) {
-                revert JoinAboveMax(amountIn, params.amountsIn[i]);
+            if (amountIn > params.maxAmountsIn[i]) {
+                revert JoinAboveMax(amountIn, params.maxAmountsIn[i]);
             }
 
             // There can be only one WETH token in the pool
@@ -290,12 +290,12 @@ contract Router is IRouter, ReentrancyGuard {
     function removeLiquiditySingleTokenExactIn(
         address pool,
         uint256 exactBptAmountIn,
-        uint256 tokenOutIndex,
+        IERC20 tokenOut,
         uint256 minAmountOut,
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsOut) {
-        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOutIndex, minAmountOut);
+        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOut, minAmountOut);
 
         (, amountsOut, ) = abi.decode(
             _vault.invoke(
@@ -320,12 +320,12 @@ contract Router is IRouter, ReentrancyGuard {
     function removeLiquiditySingleTokenExactOut(
         address pool,
         uint256 maxBptAmountIn,
-        uint256 tokenOutIndex,
+        IERC20 tokenOut,
         uint256 exactAmountOut,
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256 bptAmountIn) {
-        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOutIndex, exactAmountOut);
+        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOut, exactAmountOut);
 
         (bptAmountIn, , ) = abi.decode(
             _vault.invoke(
@@ -670,7 +670,7 @@ contract Router is IRouter, ReentrancyGuard {
                         // but it is possible to add liquidity to any recipient
                         sender: address(this),
                         pool: pool,
-                        amountsIn: exactAmountsIn,
+                        maxAmountsIn: exactAmountsIn,
                         minBptAmountOut: minBptAmountOut,
                         kind: IVault.AddLiquidityKind.UNBALANCED,
                         wethIsEth: false,
@@ -685,12 +685,12 @@ contract Router is IRouter, ReentrancyGuard {
     /// @inheritdoc IRouter
     function queryAddLiquiditySingleTokenExactOut(
         address pool,
-        uint256 tokenInIndex,
+        IERC20 tokenIn,
         uint256 maxAmountIn,
         uint256 exactBptAmountOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn) {
-        uint256[] memory maxAmountsIn = _getSingleInputArray(pool, tokenInIndex, maxAmountIn);
+        uint256[] memory maxAmountsIn = _getSingleInputArray(pool, tokenIn, maxAmountIn);
 
         (amountsIn, , ) = abi.decode(
             _vault.quote(
@@ -701,7 +701,7 @@ contract Router is IRouter, ReentrancyGuard {
                         // but it is possible to add liquidity to any recipient
                         sender: address(this),
                         pool: pool,
-                        amountsIn: maxAmountsIn,
+                        maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                         wethIsEth: false,
@@ -730,7 +730,7 @@ contract Router is IRouter, ReentrancyGuard {
                             // but it is possible to add liquidity to any recipient
                             sender: address(this),
                             pool: pool,
-                            amountsIn: inputAmountsIn,
+                            maxAmountsIn: inputAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             kind: IVault.AddLiquidityKind.CUSTOM,
                             wethIsEth: false,
@@ -763,7 +763,7 @@ contract Router is IRouter, ReentrancyGuard {
             IVault.AddLiquidityParams({
                 pool: params.pool,
                 to: params.sender,
-                amountsIn: params.amountsIn,
+                maxAmountsIn: params.maxAmountsIn,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
                 userData: params.userData
@@ -803,11 +803,11 @@ contract Router is IRouter, ReentrancyGuard {
     function queryRemoveLiquiditySingleTokenExactIn(
         address pool,
         uint256 exactBptAmountIn,
-        uint256 tokenOutIndex,
+        IERC20 tokenOut,
         uint256 minAmountOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut) {
-        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOutIndex, minAmountOut);
+        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOut, minAmountOut);
 
         (, amountsOut, ) = abi.decode(
             _vault.quote(
@@ -834,11 +834,11 @@ contract Router is IRouter, ReentrancyGuard {
     function queryRemoveLiquiditySingleTokenExactOut(
         address pool,
         uint256 maxBptAmountIn,
-        uint256 tokenOutIndex,
+        IERC20 tokenOut,
         uint256 exactAmountOut,
         bytes memory userData
     ) external returns (uint256 bptAmountIn) {
-        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOutIndex, exactAmountOut);
+        uint256[] memory minAmountsOut = _getSingleInputArray(pool, tokenOut, exactAmountOut);
 
         (bptAmountIn, , ) = abi.decode(
             _vault.quote(
@@ -964,16 +964,10 @@ contract Router is IRouter, ReentrancyGuard {
      */
     function _getSingleInputArray(
         address pool,
-        uint256 tokenIndex,
+        IERC20 token,
         uint256 amountGiven
     ) internal view returns (uint256[] memory amountsGiven) {
-        IERC20[] memory tokens = _vault.getPoolTokens(pool);
-        uint256 numTokens = tokens.length;
-
-        if (tokenIndex >= numTokens) {
-            revert InvalidTokenIndex();
-        }
-
+        (uint256 numTokens, uint256 tokenIndex) = _vault.getPoolTokenCountAndIndexOfToken(pool, token);
         amountsGiven = new uint256[](numTokens);
         amountsGiven[tokenIndex] = amountGiven;
     }

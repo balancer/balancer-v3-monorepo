@@ -23,12 +23,10 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
-import { RouterAdaptor } from "../../contracts/test/RouterAdaptor.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
 contract CallbacksTest is Test {
     using ArrayHelpers for *;
-    using RouterAdaptor for IRouter;
 
     VaultMock vault;
     IRouter router;
@@ -65,6 +63,7 @@ contract CallbacksTest is Test {
         );
 
         PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.callbacks.shouldCallBeforeSwap = true;
         config.callbacks.shouldCallAfterSwap = true;
         vault.setConfig(address(pool), config);
 
@@ -111,6 +110,53 @@ contract CallbacksTest is Test {
         vm.label(address(DAI), "DAI");
     }
 
+    function testOnBeforeSwapCallback() public {
+        vm.prank(bob);
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IBasePool.onSwap.selector,
+                IBasePool.SwapParams({
+                    kind: IVault.SwapKind.GIVEN_IN,
+                    amountGivenScaled18: DEFAULT_AMOUNT,
+                    balancesScaled18: [DEFAULT_AMOUNT + MINIMUM_AMOUNT, DEFAULT_AMOUNT + MINIMUM_AMOUNT]
+                        .toMemoryArray(),
+                    indexIn: 1,
+                    indexOut: 0,
+                    sender: address(router),
+                    userData: bytes("")
+                })
+            )
+        );
+        router.swapExactIn(
+            address(pool),
+            USDC,
+            DAI,
+            DEFAULT_AMOUNT,
+            0,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+    }
+
+    function testOnBeforeSwapCallbackRevert() public {
+        // should fail
+        pool.setFailOnBeforeSwapCallback(true);
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(IVault.CallbackFailed.selector));
+        router.swapExactIn(
+            address(pool),
+            USDC,
+            DAI,
+            DEFAULT_AMOUNT,
+            DEFAULT_AMOUNT,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+    }
+
     function testOnAfterSwapCallback() public {
         vm.prank(bob);
         vm.expectCall(
@@ -119,8 +165,6 @@ contract CallbacksTest is Test {
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_IN,
-                    tokenIn: IERC20(USDC),
-                    tokenOut: IERC20(DAI),
                     amountGivenScaled18: DEFAULT_AMOUNT,
                     balancesScaled18: [2 * DEFAULT_AMOUNT, 2 * DEFAULT_AMOUNT].toMemoryArray(),
                     indexIn: 1,

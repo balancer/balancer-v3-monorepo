@@ -70,6 +70,7 @@ contract WeightedPool8020Factory is BasePoolFactory {
                 shouldCallAfterAddLiquidity: false,
                 shouldCallBeforeRemoveLiquidity: false,
                 shouldCallAfterRemoveLiquidity: false,
+                shouldCallBeforeSwap: false,
                 shouldCallAfterSwap: false
             }),
             LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false })

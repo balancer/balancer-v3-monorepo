@@ -49,8 +49,6 @@ interface IBasePool {
      * @dev Data for a swap operation.
      * @param kind Type of swap (given in or given out)
      * @param pool Address of the liquidity pool
-     * @param tokenIn Token to be swapped from (entering the Vault)
-     * @param tokenOut Token to be swapped to (leaving the Vault)
      * @param amountGivenScaled18 Amount given based on kind of the swap (e.g., tokenIn for given in)
      * @param balancesScaled18 Current pool balances
      * @param indexIn Index of tokenIn
@@ -60,8 +58,6 @@ interface IBasePool {
      */
     struct SwapParams {
         IVault.SwapKind kind;
-        IERC20 tokenIn;
-        IERC20 tokenOut;
         uint256 amountGivenScaled18;
         uint256[] balancesScaled18;
         uint256 indexIn;

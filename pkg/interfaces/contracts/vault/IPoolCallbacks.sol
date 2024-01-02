@@ -5,6 +5,7 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "./IVault.sol";
+import { IBasePool } from "./IBasePool.sol";
 
 /// @notice Interface for pool callbacks
 interface IPoolCallbacks {
@@ -111,6 +112,14 @@ interface IPoolCallbacks {
         address sender;
         bytes userData;
     }
+
+    /**
+     * @notice Called before a swap to give the Pool an opportunity to perform actions.
+     *
+     * @param params Swap parameters (see IBasePool.SwapParams for struct definition)
+     * @return success True if the pool wishes to proceed with settlement
+     */
+    function onBeforeSwap(IBasePool.SwapParams calldata params) external returns (bool success);
 
     /**
      * @notice Called after a swap to give the Pool an opportunity to perform actions.

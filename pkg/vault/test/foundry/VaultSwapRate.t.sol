@@ -134,8 +134,6 @@ contract VaultSwapWithRatesTest is Test {
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_IN,
-                    tokenIn: IERC20(DAI),
-                    tokenOut: IERC20(WSTETH),
                     amountGivenScaled18: AMOUNT,
                     balancesScaled18: [rateAdjustedAmount, AMOUNT].toMemoryArray(),
                     indexIn: 1,
@@ -164,8 +162,6 @@ contract VaultSwapWithRatesTest is Test {
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_OUT,
-                    tokenIn: IERC20(DAI),
-                    tokenOut: IERC20(WSTETH),
                     amountGivenScaled18: AMOUNT,
                     balancesScaled18: [rateAdjustedBalance, AMOUNT].toMemoryArray(),
                     indexIn: 1,
