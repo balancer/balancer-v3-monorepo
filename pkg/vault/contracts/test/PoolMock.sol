@@ -5,6 +5,7 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IPoolInitializer } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolInitializer.sol";
 import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -17,11 +18,13 @@ import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 
-contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToken {
+contract PoolMock is IBasePool, IPoolInitializer, IPoolCallbacks, IPoolLiquidity, BalancerPoolToken {
     using FixedPoint for uint256;
 
     uint256 public constant MIN_INIT_BPT = 1e6;
 
+    bool public failOnAfterInitialize;
+    bool public failOnBeforeInitialize;
     bool public failOnAfterSwapCallback;
     bool public failOnBeforeAddLiquidity;
     bool public failOnAfterAddLiquidity;
@@ -78,6 +81,14 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
         return balances[tokenInIndex].mulDown(invariantRatio);
     }
 
+    function setFailOnAfterInitializeCallback(bool fail) external {
+        failOnAfterInitialize = fail;
+    }
+
+    function setFailOnBeforeInitializeCallback(bool fail) external {
+        failOnBeforeInitialize = fail;
+    }
+
     function setFailOnAfterSwapCallback(bool fail) external {
         failOnAfterSwapCallback = fail;
     }
@@ -100,6 +111,18 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
 
     function setMultiplier(uint256 newMultiplier) external {
         _multiplier = newMultiplier;
+    }
+
+    function onBeforeInitialize(uint256[] memory exactAmountsIn, bytes memory userData) external returns (bool) {
+        return !failOnBeforeInitialize;
+    }
+
+    function onAfterInitialize(
+        uint256[] memory exactAmountsIn,
+        uint256 bptAmountOut,
+        bytes memory userData
+    ) external returns (bool) {
+        return !failOnAfterInitialize;
     }
 
     function onAfterSwap(
