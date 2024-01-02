@@ -115,12 +115,11 @@ contract CallbacksTest is Test {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IBasePool.onSwap.selector,
+                IPoolCallbacks.onBeforeSwap.selector,
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_IN,
                     amountGivenScaled18: DEFAULT_AMOUNT,
-                    balancesScaled18: [DEFAULT_AMOUNT + MINIMUM_AMOUNT, DEFAULT_AMOUNT + MINIMUM_AMOUNT]
-                        .toMemoryArray(),
+                    balancesScaled18: [2 * DEFAULT_AMOUNT, 2 * DEFAULT_AMOUNT].toMemoryArray(),
                     indexIn: 1,
                     indexOut: 0,
                     sender: address(router),
@@ -128,16 +127,7 @@ contract CallbacksTest is Test {
                 })
             )
         );
-        router.swapExactIn(
-            address(pool),
-            USDC,
-            DAI,
-            DEFAULT_AMOUNT,
-            0,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
+        router.swapExactIn(address(pool), USDC, DAI, DEFAULT_AMOUNT, 0, type(uint256).max, false, bytes(""));
     }
 
     function testOnBeforeSwapCallbackRevert() public {

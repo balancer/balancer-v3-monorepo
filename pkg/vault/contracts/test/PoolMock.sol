@@ -134,13 +134,6 @@ contract PoolMock is IBasePool, IPoolInitializer, IPoolCallbacks, IPoolLiquidity
         return !failOnBeforeSwapCallback;
     }
 
-    function onAfterSwap(
-        IPoolCallbacks.AfterSwapParams calldata params,
-        uint256 amountCalculated
-    ) external view override returns (bool success) {
-        return params.tokenIn != params.tokenOut && amountCalculated > 0 && !failOnAfterSwapCallback;
-    }
-
     function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
         return
             params.kind == IVault.SwapKind.GIVEN_IN
