@@ -220,7 +220,12 @@ describe('EnumerableMap', () => {
       it('does not revert when accessing indexes outside of the map', async () => {
         const length = await map.length();
 
-        expect(await map.unchecked_valueAt(length)).not.to.be.reverted;
+        // The normal await expect(fn) pattern doesn't work here, because it's a view function (with no receipt)
+        // that returns a bytes32, which hardhat interprets as a "TransactionResponse" and tries to parse as a
+        // receipt. It fails with "receipt should not be null."
+        // Good enough to simply call the function, as in the 'unchecked_at' test above.
+        // await expect(map.unchecked_valueAt(length)).not.to.be.reverted;
+        await map.unchecked_valueAt(length);
       });
     });
 
