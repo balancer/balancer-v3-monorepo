@@ -24,6 +24,9 @@ contract WeightedPool8020Factory is BasePoolFactory {
     uint256 private constant _EIGHTY = 8e17; // 80%
     uint256 private constant _TWENTY = 2e17; // 20%
 
+    /// @dev By definition, this factory can only create two-token pools.
+    error NotTwoTokens();
+
     constructor(
         IVault vault,
         uint256 pauseWindowDuration
@@ -33,34 +36,21 @@ contract WeightedPool8020Factory is BasePoolFactory {
 
     /**
      * @notice Deploys a new `WeightedPool`.
+     * @dev It assumes the 80% weight token is first in the array.
      * @param name Name of the pool
      * @param symbol Symbol of the pool
-     * @param highWeightToken The 80% token
-     * @param lowWeightToken The 20% token
-     * @param highWeightTokenType The 80% token's type
-     * @param lowWeightTokenType The 20% token's type
-     * @param highWeightRateProvider The 80% token's rate provider
-     * @param lowWeightRateProvider The 20% token's rate provider
+     * @param tokens The token configuration of the pool: must be two-token
      * @param salt Value passed to create3, used to create the address
      */
     function create(
         string memory name,
         string memory symbol,
-        IERC20 highWeightToken,
-        IERC20 lowWeightToken,
-        TokenType highWeightTokenType,
-        TokenType lowWeightTokenType,
-        IRateProvider highWeightRateProvider,
-        IRateProvider lowWeightRateProvider,
+        TokenConfig[] memory tokens,
         bytes32 salt
     ) external returns (address pool) {
-        TokenConfig[] memory tokens = new TokenConfig[](2);
-        tokens[0].token = highWeightToken;
-        tokens[0].tokenType = highWeightTokenType;
-        tokens[0].rateProvider = highWeightRateProvider;
-        tokens[1].token = lowWeightToken;
-        tokens[1].tokenType = lowWeightTokenType;
-        tokens[1].rateProvider = lowWeightRateProvider;
+        if (tokens.length != 2) {
+            revert NotTwoTokens();
+        }
 
         uint256[] memory weights = new uint256[](2);
         weights[0] = _EIGHTY;
