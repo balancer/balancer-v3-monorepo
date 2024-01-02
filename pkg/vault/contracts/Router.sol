@@ -1068,7 +1068,7 @@ contract Router is IRouter, ReentrancyGuard {
                     IVault.AddLiquidityParams({
                         pool: address(parentPoolTokens[i]),
                         to: msg.sender,
-                        amountsIn: nestedAmountsIn,
+                        maxAmountsIn: nestedAmountsIn,
                         minBptAmountOut: 0, // we set our limits on the bpt out for the parent pool
                         kind: IVault.AddLiquidityKind.UNBALANCED,
                         userData: ""
@@ -1095,7 +1095,7 @@ contract Router is IRouter, ReentrancyGuard {
             IVault.AddLiquidityParams({
                 pool: pool,
                 to: msg.sender,
-                amountsIn: parentAmountsIn,
+                maxAmountsIn: parentAmountsIn,
                 minBptAmountOut: minBptAmountOut,
                 kind: IVault.AddLiquidityKind.UNBALANCED,
                 userData: ""
