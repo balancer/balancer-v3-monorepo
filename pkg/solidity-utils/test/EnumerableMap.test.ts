@@ -220,7 +220,12 @@ describe('EnumerableMap', () => {
       it('does not revert when accessing indexes outside of the map', async () => {
         const length = await map.length();
 
-        await expect(await map.unchecked_valueAt(length)).not.to.be.reverted;
+        // The normal await expect(fn) pattern doesn't work here, because it's a view function (with no receipt)
+        // that returns a bytes32, which hardhat interprets as a "TransactionResponse" and tries to parse as a
+        // receipt. It fails with "receipt should not be null."
+        // Good enough to simply call the function, as in the 'unchecked_at' test above.
+        // await expect(map.unchecked_valueAt(length)).not.to.be.reverted;
+        await map.unchecked_valueAt(length);
       });
     });
 
@@ -294,15 +299,33 @@ describe('EnumerableMap', () => {
     });
   }
 
-  describe('EnumerableIERC20ToUint256Map', () => {
-    const keys = [
-      '0x8B40ECf815AC8d53aB4AD2a00248DE77296344Db',
-      '0x638141Eb8905D9A55D81610f45bC2B47120059e7',
-      '0x7571A57e94F046725612f786Aa9bf44ce6b56894',
-    ];
+  describe('EnumerableMap types', () => {
+    describe('EnumerableIERC20ToUint256Map', () => {
+      const keys = [
+        '0x8B40ECf815AC8d53aB4AD2a00248DE77296344Db',
+        '0x638141Eb8905D9A55D81610f45bC2B47120059e7',
+        '0x7571A57e94F046725612f786Aa9bf44ce6b56894',
+      ];
 
-    const values = [42n, 1337n, 9999n];
+      const values = [42n, 1337n, 9999n];
 
-    shouldBehaveLikeMap('IERC20ToUint256', keys, values);
+      shouldBehaveLikeMap('IERC20ToUint256', keys, values);
+    });
+
+    describe('EnumerableIERC20ToBytes32Map', () => {
+      const keys = [
+        '0x8B40ECf815AC8d53aB4AD2a00248DE77296344Db',
+        '0x638141Eb8905D9A55D81610f45bC2B47120059e7',
+        '0x7571A57e94F046725612f786Aa9bf44ce6b56894',
+      ];
+
+      const values = [
+        '0x41b1a0649752af1b28b3dc29a1556eee781e4a4c3a1f7f53f90fa834de098c4d',
+        '0x435cd288e3694b535549c3af56ad805c149f92961bf84a1c647f7d86fc2431b4',
+        '0xf2d05ec5c5729fb559780c70a93ca7b4ee2ca37f64e62fa31046b324f60d9447',
+      ];
+
+      shouldBehaveLikeMap('IERC20ToBytes32', keys, values);
+    });
   });
 });
