@@ -66,6 +66,7 @@ contract InitializerTest is Test {
         );
 
         PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.callbacks.shouldCallBeforeInitialize = true;
         config.callbacks.shouldCallAfterInitialize = true;
         vault.setConfig(address(pool), config);
 
@@ -95,6 +96,60 @@ contract InitializerTest is Test {
         vm.label(address(DAI), "DAI");
     }
 
+    function testNoRevertWithZeroConfig() public {
+        PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.callbacks.shouldCallBeforeInitialize = false;
+        config.callbacks.shouldCallAfterInitialize = false;
+        vault.setConfig(address(pool), config);
+
+        pool.setFailOnBeforeInitializeCallback(true);
+        pool.setFailOnAfterInitializeCallback(true);
+
+        vm.prank(bob);
+        router.initialize(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
+            0,
+            false,
+            bytes("0xff")
+        );
+    }
+
+    function testOnBeforeInitializeCallback() public {
+        vm.prank(bob);
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IPoolInitializer.onBeforeInitialize.selector,
+                [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
+                bytes("0xff")
+            )
+        );
+        router.initialize(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
+            0,
+            false,
+            bytes("0xff")
+        );
+    }
+
+    function testOnBeforeInitializeCallbackRevert() public {
+        pool.setFailOnBeforeInitializeCallback(true);
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(IVault.CallbackFailed.selector));
+        router.initialize(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
+            0,
+            false,
+            bytes("0xff")
+        );
+    }
+
     function testOnAfterInitializeCallback() public {
         vm.prank(bob);
         vm.expectCall(
@@ -117,7 +172,6 @@ contract InitializerTest is Test {
     }
 
     function testOnAfterInitializeCallbackRevert() public {
-        // should fail
         pool.setFailOnAfterInitializeCallback(true);
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(IVault.CallbackFailed.selector));
