@@ -123,7 +123,7 @@ contract Router is IRouter, ReentrancyGuard {
                     AddLiquidityCallbackParams({
                         sender: msg.sender,
                         pool: pool,
-                        amountsIn: exactAmountsIn,
+                        maxAmountsIn: exactAmountsIn,
                         minBptAmountOut: minBptAmountOut,
                         kind: IVault.AddLiquidityKind.UNBALANCED,
                         wethIsEth: wethIsEth,
@@ -153,7 +153,7 @@ contract Router is IRouter, ReentrancyGuard {
                     AddLiquidityCallbackParams({
                         sender: msg.sender,
                         pool: pool,
-                        amountsIn: maxAmountsIn,
+                        maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                         wethIsEth: wethIsEth,
@@ -181,7 +181,7 @@ contract Router is IRouter, ReentrancyGuard {
                         AddLiquidityCallbackParams({
                             sender: msg.sender,
                             pool: pool,
-                            amountsIn: inputAmountsIn,
+                            maxAmountsIn: inputAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             kind: IVault.AddLiquidityKind.CUSTOM,
                             wethIsEth: wethIsEth,
@@ -213,7 +213,7 @@ contract Router is IRouter, ReentrancyGuard {
             IVault.AddLiquidityParams({
                 pool: params.pool,
                 to: params.sender,
-                amountsIn: params.amountsIn,
+                maxAmountsIn: params.maxAmountsIn,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
                 userData: params.userData
@@ -654,7 +654,7 @@ contract Router is IRouter, ReentrancyGuard {
                         // but it is possible to add liquidity to any recipient
                         sender: address(this),
                         pool: pool,
-                        amountsIn: exactAmountsIn,
+                        maxAmountsIn: exactAmountsIn,
                         minBptAmountOut: minBptAmountOut,
                         kind: IVault.AddLiquidityKind.UNBALANCED,
                         wethIsEth: false,
@@ -685,7 +685,7 @@ contract Router is IRouter, ReentrancyGuard {
                         // but it is possible to add liquidity to any recipient
                         sender: address(this),
                         pool: pool,
-                        amountsIn: maxAmountsIn,
+                        maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                         wethIsEth: false,
@@ -714,7 +714,7 @@ contract Router is IRouter, ReentrancyGuard {
                             // but it is possible to add liquidity to any recipient
                             sender: address(this),
                             pool: pool,
-                            amountsIn: inputAmountsIn,
+                            maxAmountsIn: inputAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             kind: IVault.AddLiquidityKind.CUSTOM,
                             wethIsEth: false,
@@ -747,7 +747,7 @@ contract Router is IRouter, ReentrancyGuard {
             IVault.AddLiquidityParams({
                 pool: params.pool,
                 to: params.sender,
-                amountsIn: params.amountsIn,
+                maxAmountsIn: params.maxAmountsIn,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
                 userData: params.userData

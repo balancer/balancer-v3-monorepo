@@ -475,8 +475,8 @@ interface IVault {
     /**
      * @dev Data for an add liquidity operation.
      * @param pool Address of the pool
-     * @param to  Address of user to mint to
-     * @param amountsIn Amounts of input tokens
+     * @param to Address of user to mint to
+     * @param maxAmountsIn Maximum amounts of input tokens
      * @param minBptAmountOut Minimum amount of output pool tokens
      * @param kind Add liquidity kind
      * @param userData Optional user data
@@ -484,7 +484,7 @@ interface IVault {
     struct AddLiquidityParams {
         address pool;
         address to;
-        uint256[] amountsIn;
+        uint256[] maxAmountsIn;
         uint256 minBptAmountOut;
         AddLiquidityKind kind;
         bytes userData;
