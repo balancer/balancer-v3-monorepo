@@ -225,9 +225,15 @@ interface IVault {
      * @return scalingFactors Corresponding scalingFactors of the tokens
      * @return rateProviders Corresponding rateProviders of the tokens (or zero for tokens with no rates)
      */
-    function getPoolTokenInfo(
-        address pool
-    ) external view returns (IERC20[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
+    function getPoolTokenInfo(address pool)
+        external
+        view
+        returns (
+            IERC20[] memory,
+            uint256[] memory,
+            uint256[] memory,
+            IRateProvider[] memory
+        );
 
     /**
      * @notice Retrieve the scaling factors from a pool's rate providers.
@@ -283,7 +289,11 @@ interface IVault {
      * @param spender Spender's address
      * @return Amount of tokens the spender is allowed to spend
      */
-    function allowance(address token, address owner, address spender) external view returns (uint256);
+    function allowance(
+        address token,
+        address owner,
+        address spender
+    ) external view returns (uint256);
 
     /**
      * @notice Transfers pool token from owner to a recipient.
@@ -295,7 +305,11 @@ interface IVault {
      * @param amount Amount of tokens to transfer
      * @return True if successful, false otherwise
      */
-    function transfer(address owner, address to, uint256 amount) external returns (bool);
+    function transfer(
+        address owner,
+        address to,
+        uint256 amount
+    ) external returns (bool);
 
     /**
      * @notice Transfers pool token from a sender to a recipient using an allowance.
@@ -308,7 +322,12 @@ interface IVault {
      * @param amount Amount of tokens to transfer
      * @return True if successful, false otherwise
      */
-    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
+    function transferFrom(
+        address spender,
+        address from,
+        address to,
+        uint256 amount
+    ) external returns (bool);
 
     /**
      * @notice Approves a spender to spend pool tokens on behalf of sender.
@@ -320,7 +339,11 @@ interface IVault {
      * @param amount Amount of tokens to approve
      * @return True if successful, false otherwise
      */
-    function approve(address owner, address spender, uint256 amount) external returns (bool);
+    function approve(
+        address owner,
+        address spender,
+        uint256 amount
+    ) external returns (bool);
 
     /*******************************************************************************
                               Transient Accounting
@@ -382,7 +405,11 @@ interface IVault {
      * @param to Recipient's address
      * @param amount Amount of tokens to send
      */
-    function wire(IERC20 token, address to, uint256 amount) external;
+    function wire(
+        IERC20 token,
+        address to,
+        uint256 amount
+    ) external;
 
     /**
      * @notice Retrieves tokens from a sender.
@@ -393,7 +420,11 @@ interface IVault {
      * @param from Sender's address
      * @param amount Amount of tokens to retrieve
      */
-    function retrieve(IERC20 token, address from, uint256 amount) external;
+    function retrieve(
+        IERC20 token,
+        address from,
+        uint256 amount
+    ) external;
 
     /**
      * @notice Returns the address at the specified index of the _handlers array.
@@ -488,9 +519,13 @@ interface IVault {
      * @return bptAmountOut Output pool token amount
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
-    function addLiquidity(
-        AddLiquidityParams memory params
-    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
+    function addLiquidity(AddLiquidityParams memory params)
+        external
+        returns (
+            uint256[] memory amountsIn,
+            uint256 bptAmountOut,
+            bytes memory returnData
+        );
 
     /***************************************************************************
                                  Remove Liquidity
@@ -529,14 +564,22 @@ interface IVault {
      * Untrusted routers require prior approval from the user. This is the only function allowed to call
      * _queryModeBalanceIncrease (and only in a query context).
      *
+     * Set maxBptAmountIn to type(uint256).max to remove entire `from` pool
+     * token balance. If this action depletes the last liquidity in the pool,
+     * only balanceOf(from) - _MINIMUM_TOTAL_SUPPLY will be burned.
+     *
      * @param params Parameters for the remove liquidity (see above for struct definition)
      * @return bptAmountIn Actual amount of BPT burnt
      * @return amountsOut Actual amounts of output tokens
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
-    function removeLiquidity(
-        RemoveLiquidityParams memory params
-    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
+    function removeLiquidity(RemoveLiquidityParams memory params)
+        external
+        returns (
+            uint256 bptAmountIn,
+            uint256[] memory amountsOut,
+            bytes memory returnData
+        );
 
     /**
      * @notice Remove liquidity from a pool specifying exact pool tokens in, with proportional token amounts out.
@@ -607,9 +650,13 @@ interface IVault {
      * @return amountInRaw Amount of input tokens for the swap
      * @return amountOutRaw Amount of output tokens from the swap
      */
-    function swap(
-        SwapParams memory params
-    ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
+    function swap(SwapParams memory params)
+        external
+        returns (
+            uint256 amountCalculatedRaw,
+            uint256 amountInRaw,
+            uint256 amountOutRaw
+        );
 
     /*******************************************************************************
                                    Fees
@@ -847,7 +894,14 @@ interface IVault {
      * @return vaultPauseWindowEndTime The timestamp of the end of the Vault's pause window
      * @return vaultBufferPeriodEndTime The timestamp of the end of the Vault's buffer period
      */
-    function getVaultPausedState() external view returns (bool, uint256, uint256);
+    function getVaultPausedState()
+        external
+        view
+        returns (
+            bool,
+            uint256,
+            uint256
+        );
 
     /**
      * @notice Pause the Vault: an emergency action which disables all operational state-changing functions.
@@ -880,7 +934,15 @@ interface IVault {
      * @return poolBufferPeriodEndTime The timestamp after which the Pool unpauses itself (if paused)
      * @return pauseManager The pause manager, or the zero address
      */
-    function getPoolPausedState(address pool) external view returns (bool, uint256, uint256, address);
+    function getPoolPausedState(address pool)
+        external
+        view
+        returns (
+            bool,
+            uint256,
+            uint256,
+            address
+        );
 
     /**
      * @notice Pause the Pool: an emergency action which disables all pool functions.

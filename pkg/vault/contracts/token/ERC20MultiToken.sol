@@ -19,7 +19,7 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
     using Address for address;
 
     // Minimum total supply amount.
-    uint256 private constant _MINIMUM_TOTAL_SUPPLY = 1e6;
+    uint256 internal constant _MINIMUM_TOTAL_SUPPLY = 1e6;
 
     /**
      * @notice Pool tokens are moved from one account (`from`) to another (`to`). Note that `value` may be zero.
