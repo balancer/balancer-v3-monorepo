@@ -23,7 +23,7 @@ interface IRouter {
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
-     * @param userData Additional (optional) data required for adding liquidity
+     * @param userData Additional (optional) data required for adding initial liquidity
      */
     struct InitializeCallbackParams {
         address sender;
