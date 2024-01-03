@@ -154,7 +154,8 @@ interface IPoolCallbacks {
      * @param amountCalculatedScaled18 Token amount calculated by the swap
      * @return success True if the pool wishes to proceed with settlement
      */
-    function onAfterSwap(AfterSwapParams calldata params, uint256 amountCalculatedScaled18)
-        external
-        returns (bool success);
+    function onAfterSwap(
+        AfterSwapParams calldata params,
+        uint256 amountCalculatedScaled18
+    ) external returns (bool success);
 }
