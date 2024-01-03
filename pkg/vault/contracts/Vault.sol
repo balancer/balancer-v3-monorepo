@@ -1103,7 +1103,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         poolData.config.isPoolInitialized = true;
         _poolConfig[pool] = poolData.config.fromPoolConfig();
 
-        // Finally, compute the invariant with exactAmountsIn which result in an initial amount of BPT to mint.
+        // Finally, compute the initial amount of BPT to mint, which is simply the invariant after adding exactAmountsIn.
         // Doing this at the end also means we do not need to downscale exact amounts in.
         // Amounts are entering pool math, so round down. A lower invariant after the join means less bptOut,
         // favoring the pool.
