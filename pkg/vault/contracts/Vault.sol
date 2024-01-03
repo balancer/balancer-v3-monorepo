@@ -1314,11 +1314,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // Amounts are entering pool math; higher amounts would burn more BPT, so round up to favor the pool.
         params.minAmountsOut.toScaled18ApplyRateRoundUpArray(poolData.decimalScalingFactors, poolData.tokenRates);
 
-        // If burning `maxBptAmountIn` results in `totalSupply` being less than `_MINIMUM_TOTAL_SUPPLY`,
-        // then reduce `maxBptAmountIn` by `_MINIMUM_TOTAL_SUPPLY - (totalSupply - maxBptAmountIn)`.
-        uint256 totalSupplyMinusBptAmountIn = _totalSupply(params.pool) - params.maxBptAmountIn;
-        if (totalSupplyMinusBptAmountIn < _MINIMUM_TOTAL_SUPPLY) {
-            params.maxBptAmountIn -= _MINIMUM_TOTAL_SUPPLY - totalSupplyMinusBptAmountIn;
+        // Subtraction should never revert, as it's an invariant that the totalSupply >= _MINIMUM_TOTAL_SUPPLY
+        uint256 supplyAvailableToWithdraw = _totalSupply(params.pool) - _MINIMUM_TOTAL_SUPPLY;
+        if (params.maxBptAmountIn > supplyAvailableToWithdraw) {
+            params.maxBptAmountIn = supplyAvailableToWithdraw;
         }
 
         if (poolData.config.callbacks.shouldCallBeforeRemoveLiquidity) {
