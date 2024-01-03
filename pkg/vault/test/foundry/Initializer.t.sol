@@ -8,7 +8,6 @@ import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IPoolInitializer } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolInitializer.sol";
 import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -119,7 +118,7 @@ contract InitializerTest is Test {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IPoolInitializer.onBeforeInitialize.selector,
+                IPoolCallbacks.onBeforeInitialize.selector,
                 [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
                 bytes("0xff")
             )
@@ -153,7 +152,7 @@ contract InitializerTest is Test {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IPoolInitializer.onAfterInitialize.selector,
+                IPoolCallbacks.onAfterInitialize.selector,
                 [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
                 2 * DEFAULT_AMOUNT,
                 bytes("0xff")

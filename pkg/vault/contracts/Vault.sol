@@ -19,7 +19,6 @@ import {
     Rounding
 } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IPoolInitializer } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolInitializer.sol";
 import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
@@ -1110,13 +1109,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         exactAmountsIn.toScaled18ApplyRateRoundDownArray(poolData.decimalScalingFactors, poolData.tokenRates);
 
         if (poolData.config.callbacks.shouldCallBeforeInitialize) {
-            if (IPoolInitializer(pool).onBeforeInitialize(exactAmountsIn, userData) == false) {
+            if (IPoolCallbacks(pool).onBeforeInitialize(exactAmountsIn, userData) == false) {
                 revert CallbackFailed();
             }
         }
         bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsIn);
         if (poolData.config.callbacks.shouldCallAfterInitialize) {
-            if (IPoolInitializer(pool).onAfterInitialize(exactAmountsIn, bptAmountOut, userData) == false) {
+            if (IPoolCallbacks(pool).onAfterInitialize(exactAmountsIn, bptAmountOut, userData) == false) {
                 revert CallbackFailed();
             }
         }
