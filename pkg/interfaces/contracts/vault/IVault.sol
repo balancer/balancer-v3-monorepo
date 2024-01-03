@@ -175,7 +175,7 @@ interface IVault {
      * @param to Address that will receive the output BPT
      * @param tokens Tokens used to seed the pool (must match the registered tokens)
      * @param exactAmountsIn Exact amounts of input tokens
-     * @param userData Additional (optional) data required for adding liquidity
+     * @param userData Additional (optional) data required for adding initial liquidity
      * @return bptAmountOut Output pool token amount
      */
     function initialize(
