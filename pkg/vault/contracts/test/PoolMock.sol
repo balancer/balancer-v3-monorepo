@@ -118,15 +118,11 @@ contract PoolMock is IBasePool, IPoolInitializer, IPoolCallbacks, IPoolLiquidity
         _multiplier = newMultiplier;
     }
 
-    function onBeforeInitialize(uint256[] memory exactAmountsIn, bytes memory userData) external returns (bool) {
+    function onBeforeInitialize(uint256[] memory, bytes memory) external view returns (bool) {
         return !failOnBeforeInitialize;
     }
 
-    function onAfterInitialize(
-        uint256[] memory exactAmountsIn,
-        uint256 bptAmountOut,
-        bytes memory userData
-    ) external returns (bool) {
+    function onAfterInitialize(uint256[] memory, uint256, bytes memory) external view returns (bool) {
         return !failOnAfterInitialize;
     }
 

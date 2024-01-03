@@ -64,7 +64,7 @@ describe('Queries', function () {
 
     // The mock pool can be initialized with no liquidity; it mints some BPT to the initializer
     // to comply with the vault's required minimum.
-    await router.connect(alice).initialize(pool, [DAI, USDC], [2n * DAI_AMOUNT_IN, 2n * USDC_AMOUNT_IN], 0, false);
+    await router.connect(alice).initialize(pool, [DAI, USDC], [2n * DAI_AMOUNT_IN, 2n * USDC_AMOUNT_IN], 0, false, '0x');
   });
 
   // TODO: query a pool that has an actual invariant (introduced in #145)
