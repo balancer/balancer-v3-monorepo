@@ -114,7 +114,8 @@ contract WeightedPoolTest is Test {
             amountsIn,
             // Account for the precision less
             DAI_AMOUNT - DELTA,
-            false
+            false,
+            bytes("")
         );
 
         // Tokens are transferred from Alice
@@ -150,7 +151,8 @@ contract WeightedPoolTest is Test {
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             // Account for the precision less
             DAI_AMOUNT - DELTA,
-            false
+            false,
+            bytes("")
         );
 
         uint256[] memory amountsIn = [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray();
@@ -194,7 +196,8 @@ contract WeightedPoolTest is Test {
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             // Account for the precision less
             DAI_AMOUNT - DELTA,
-            false
+            false,
+            bytes("")
         );
 
         vm.startPrank(bob);
@@ -251,7 +254,8 @@ contract WeightedPoolTest is Test {
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             // Account for the precision less
             DAI_AMOUNT - DELTA,
-            false
+            false,
+            bytes("")
         );
 
         vm.prank(bob);
@@ -294,7 +298,8 @@ contract WeightedPoolTest is Test {
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             // Account for the precision less
             DAI_AMOUNT - DELTA,
-            false
+            false,
+            bytes("")
         );
 
         authorizer.grantRole(vault.getActionId(IVault.setStaticSwapFeePercentage.selector), alice);
