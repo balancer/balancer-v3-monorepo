@@ -57,12 +57,6 @@ interface IVault {
     *******************************************************************************/
 
     /**
-     * @dev A pool has already been registered. `registerPool` may only be called once.
-     * @param pool The already registered pool
-     */
-    error PoolAlreadyRegistered(address pool);
-
-    /**
      * @dev A pool has already been initialized. `initialize` may only be called once.
      * @param pool The already initialized pool
      */
@@ -80,44 +74,8 @@ interface IVault {
      */
     error PoolNotInitialized(address pool);
 
-    /// @dev Invalid tokens (e.g., zero) cannot be registered.
-    error InvalidToken();
-
-    /**
-     * @dev A token was already registered (i.e., it is a duplicate in the pool).
-     * @param token The duplicate token
-     */
-    error TokenAlreadyRegistered(IERC20 token);
-
     /// @dev The BPT amount involved in the operation is below the absolute minimum.
     error BptAmountBelowAbsoluteMin();
-
-    /// @dev The token count is below the minimum allowed.
-    error MinTokens();
-
-    /// @dev The token count is above the maximum allowed.
-    error MaxTokens();
-
-    /**
-     * @notice A Pool was registered by calling `registerPool`.
-     * @param pool The pool being registered
-     * @param factory The factory creating the pool
-     * @param tokens The pool's tokens
-     * @param rateProviders The pool's rate providers (or zero)
-     * @param pauseWindowEndTime The pool's pause window end time
-     * @param pauseManager The pool's external pause manager (or 0 for governance)
-     * @param liquidityManagement Supported liquidity management callback flags
-     */
-    event PoolRegistered(
-        address indexed pool,
-        address indexed factory,
-        IERC20[] tokens,
-        IRateProvider[] rateProviders,
-        uint256 pauseWindowEndTime,
-        address pauseManager,
-        PoolCallbacks callbacks,
-        LiquidityManagement liquidityManagement
-    );
 
     /**
      * @notice A Pool was initialized by calling `initialize`.

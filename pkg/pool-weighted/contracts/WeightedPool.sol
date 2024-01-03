@@ -14,6 +14,8 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 /// @notice Basic Weighted Pool with immutable weights.
 contract WeightedPool is IBasePool, BalancerPoolToken {
+    error InvalidTokenIndex(uint256 index);
+
     uint256 private immutable _totalTokens;
 
     IERC20 internal immutable _token0;
@@ -156,7 +158,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         else if (tokenIndex == 2) { return _normalizedWeight2; }
         else if (tokenIndex == 3) { return _normalizedWeight3; }
         else {
-            revert IVault.InvalidToken();
+            revert InvalidTokenIndex(tokenIndex);
         }
     }
 
