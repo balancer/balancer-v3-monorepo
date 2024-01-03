@@ -529,10 +529,6 @@ interface IVault {
      * Untrusted routers require prior approval from the user. This is the only function allowed to call
      * _queryModeBalanceIncrease (and only in a query context).
      *
-     * Set maxBptAmountIn to type(uint256).max to remove entire `from` pool
-     * token balance. If this action depletes the last liquidity in the pool,
-     * only balanceOf(from) - _MINIMUM_TOTAL_SUPPLY will be burned.
-     *
      * @param params Parameters for the remove liquidity (see above for struct definition)
      * @return bptAmountIn Actual amount of BPT burnt
      * @return amountsOut Actual amounts of output tokens

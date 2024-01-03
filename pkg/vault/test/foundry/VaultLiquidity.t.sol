@@ -184,9 +184,8 @@ contract VaultLiquidityTest is Test {
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(pool),
-            type(uint256).max,
-            [uint256(DAI_AMOUNT_IN - MINIMUM_TOTAL_SUPPLY), uint256(USDC_AMOUNT_IN - MINIMUM_TOTAL_SUPPLY)]
-                .toMemoryArray(),
+            bptAmountIn,
+            [uint256(DAI_AMOUNT_IN - MINIMUM_TOTAL_SUPPLY / 2), uint256(USDC_AMOUNT_IN - 1)].toMemoryArray(),
             false,
             bytes("")
         );
@@ -204,40 +203,6 @@ contract VaultLiquidityTest is Test {
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN - MINIMUM_TOTAL_SUPPLY / 2);
         assertEq(amountsOut[1], USDC_AMOUNT_IN - 1);
-    }
-
-    function testRemoveLiquidityEntireBalance() public {
-        // Use a different account to initialize so that the main LP is clean at the start of the test.
-        _mockInitialize(bob);
-
-        vm.startPrank(alice);
-
-        router.addLiquidityUnbalanced(
-            address(pool),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            DAI_AMOUNT_IN,
-            false,
-            bytes("")
-        );
-
-        Balances memory balancesBefore = _getBalances(alice);
-        uint256 bptAmountIn = DAI_AMOUNT_IN * 2;
-
-        uint256[] memory amountsOut = router.removeLiquidityProportional(
-            address(pool),
-            type(uint256).max,
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            false,
-            bytes("")
-        );
-
-        vm.stopPrank();
-
-        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, 0, amountsOut);
-
-        // amountsOut are correct
-        assertEq(amountsOut[0], DAI_AMOUNT_IN);
-        assertEq(amountsOut[1], USDC_AMOUNT_IN);
     }
 
     function testRemoveLiquidityProportional() public {
