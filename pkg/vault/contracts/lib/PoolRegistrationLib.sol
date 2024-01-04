@@ -45,27 +45,6 @@ library PoolRegistrationLib {
      */
     error TokenAlreadyRegistered(IERC20 token);
 
-    /**
-     * @notice A Pool was registered by calling `registerPool`.
-     * @param pool The pool being registered
-     * @param factory The factory creating the pool
-     * @param tokens The pool's tokens
-     * @param rateProviders The pool's rate providers (or zero)
-     * @param pauseWindowEndTime The pool's pause window end time
-     * @param pauseManager The pool's external pause manager (or 0 for governance)
-     * @param liquidityManagement Supported liquidity management callback flags
-     */
-    event PoolRegistered(
-        address indexed pool,
-        address indexed factory,
-        IERC20[] tokens,
-        IRateProvider[] rateProviders,
-        uint256 pauseWindowEndTime,
-        address pauseManager,
-        PoolCallbacks callbacks,
-        LiquidityManagement liquidityManagement
-    );
-
     // Pools can have two, three, or four tokens.
     uint256 internal constant MIN_TOKENS = 2;
     // This maximum token count is also hard-coded in `PoolConfigLib`.
@@ -136,18 +115,6 @@ library PoolRegistrationLib {
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = pauseWindowEndTime.toUint32();
         poolConfig[pool] = config.fromPoolConfig();
-
-        // Emit an event to log the pool registration (pass msg.sender as the factory argument)
-        emit PoolRegistered(
-            pool,
-            msg.sender,
-            tokens,
-            rateProviders,
-            pauseWindowEndTime,
-            pauseManager,
-            callbackConfig,
-            liquidityManagement
-        );
     }
 
     /// @dev See `isPoolRegistered`
