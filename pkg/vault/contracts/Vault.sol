@@ -1122,6 +1122,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
+        // Minting will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
         _mint(address(pool), to, bptAmountOut);
 
         // Emit an event to log the pool initialization
@@ -1527,6 +1528,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
         // When removing liquidity, we must burn tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
+        // Burning will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
         _burn(address(pool), from, bptAmountIn);
 
         emit PoolBalanceChanged(
