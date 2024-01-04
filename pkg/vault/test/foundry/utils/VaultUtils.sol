@@ -79,4 +79,17 @@ abstract contract VaultUtils is BaseTest {
         vm.stopPrank();
     }
 
+    function createPool() internal returns (PoolMock) {
+        return
+            pool = new PoolMock(
+                vault,
+                "ERC20 Pool",
+                "ERC20POOL",
+                [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+                new IRateProvider[](2),
+                true,
+                365 days,
+                address(0)
+            );
+    }
 }

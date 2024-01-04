@@ -36,6 +36,8 @@ contract VaultLiquidityTest is VaultUtils {
         VaultUtils.setUp();
     }
 
+    /// Add
+
     function addLiquidityUnbalanced() public returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
@@ -89,8 +91,6 @@ contract VaultLiquidityTest is VaultUtils {
     }
 
     function testAddLiquidityNotInitialized() public {
-        vm.startPrank(alice);
-
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         pool = new PoolMock(
             vault,
@@ -113,151 +113,110 @@ contract VaultLiquidityTest is VaultUtils {
         );
     }
 
-    //    function testRemoveLiquidityProportional() public {
-    //        vm.startPrank(alice);
-    //
-    //        router.addLiquidityUnbalanced(
-    //            address(pool),
-    //            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
-    //            defaultAmount,
-    //            false,
-    //            bytes("")
-    //        );
-    //
-    //        Balances memory balancesBefore = _getBalances(alice);
-    //        uint256 bptAmountIn = defaultAmount * 2;
-    //
-    //        uint256[] memory amountsOut = router.removeLiquidityProportional(
-    //            address(pool),
-    //            bptAmountIn,
-    //            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
-    //            false,
-    //            bytes("")
-    //        );
-    //
-    //        vm.stopPrank();
-    //
-    //        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, amountsOut);
-    //
-    //        // amountsOut are correct
-    //        assertEq(amountsOut[0], defaultAmount);
-    //        assertEq(amountsOut[1], defaultAmount);
-    //    }
-    //
-    //    function testRemoveLiquiditySingleTokenExactIn() public {
-    //        vm.startPrank(alice);
-    //
-    //        router.addLiquidityUnbalanced(
-    //            address(pool),
-    //            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
-    //            defaultAmount,
-    //            false,
-    //            bytes("")
-    //        );
-    //
-    //        Balances memory balancesBefore = _getBalances(alice);
-    //        uint256 bptAmountIn = defaultAmount * 2;
-    //
-    //        uint256[] memory amountsOut = router.removeLiquiditySingleTokenExactIn(
-    //            address(pool),
-    //            bptAmountIn,
-    //            0,
-    //            defaultAmount,
-    //            false,
-    //            bytes("")
-    //        );
-    //
-    //        vm.stopPrank();
-    //
-    //        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, amountsOut);
-    //
-    //        // amountsOut are correct
-    //        assertEq(amountsOut[0], defaultAmount);
-    //        assertEq(amountsOut[1], 0);
-    //    }
-    //
-    //    function testRemoveLiquiditySingleTokenExactOut() public {
-    //        vm.startPrank(alice);
-    //
-    //        router.addLiquidityUnbalanced(
-    //            address(pool),
-    //            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
-    //            defaultAmount,
-    //            false,
-    //            bytes("")
-    //        );
-    //
-    //        Balances memory balancesBefore = _getBalances(alice);
-    //        uint256[] memory amountsOut = [defaultAmount * 2, 0].toMemoryArray();
-    //
-    //        uint256 bptAmountIn = router.removeLiquiditySingleTokenExactOut(
-    //            address(pool),
-    //            defaultAmount,
-    //            0,
-    //            uint256(2 * defaultAmount),
-    //            false,
-    //            bytes("")
-    //        );
-    //
-    //        vm.stopPrank();
-    //
-    //        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, amountsOut);
-    //    }
-    //
-    //    function testRemoveLiquidityCustom() public {
-    //        vm.startPrank(alice);
-    //
-    //        router.addLiquidityUnbalanced(
-    //            address(pool),
-    //            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
-    //            defaultAmount,
-    //            false,
-    //            bytes("")
-    //        );
-    //
-    //        Balances memory balancesBefore = _getBalances(alice);
-    //
-    //        (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidityCustom(
-    //            address(pool),
-    //            defaultAmount * 2,
-    //            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
-    //            false,
-    //            bytes("")
-    //        );
-    //
-    //        vm.stopPrank();
-    //
-    //        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, amountsOut);
-    //
-    //        // amountsOut are correct
-    //        assertEq(amountsOut[0], defaultAmount);
-    //        assertEq(amountsOut[1], defaultAmount);
-    //    }
-    //
-    //    function testRemoveLiquidityNotInitialized() public {
-    //        vm.startPrank(alice);
-    //
-    //        IRateProvider[] memory rateProviders = new IRateProvider[](2);
-    //        pool = new PoolMock(
-    //            vault,
-    //            "ERC20 Pool",
-    //            "ERC20POOL",
-    //            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-    //            rateProviders,
-    //            true,
-    //            365 days,
-    //            address(0)
-    //        );
-    //
-    //        vm.expectRevert(abi.encodeWithSelector(IVault.PoolNotInitialized.selector, address(pool)));
-    //        router.removeLiquidityProportional(
-    //            address(pool),
-    //            defaultAmount,
-    //            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
-    //            false,
-    //            bytes("")
-    //        );
-    //    }
+    /// Remove
+
+    function removeLiquidityProportional() public returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
+        bptAmountIn = defaultAmount * 2;
+
+        amountsOut = router.removeLiquidityProportional(
+            address(pool),
+            bptAmountIn,
+            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+
+        // amountsOut are correct
+        assertEq(amountsOut[0], defaultAmount);
+        assertEq(amountsOut[1], defaultAmount);
+    }
+
+    function testRemoveLiquidityProportional() public {
+        assertRemoveLiquidity(removeLiquidityProportional);
+    }
+
+    function removeLiquiditySingleTokenExactIn() public returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
+        bptAmountIn = defaultAmount * 2;
+
+        amountsOut = router.removeLiquiditySingleTokenExactIn(
+            address(pool),
+            bptAmountIn,
+            0,
+            defaultAmount,
+            false,
+            bytes("")
+        );
+
+        // amountsOut are correct
+        assertEq(amountsOut[0], defaultAmount);
+        assertEq(amountsOut[1], 0);
+    }
+
+    function testRemoveLiquiditySingleTokenExactIn() public {
+        assertRemoveLiquidity(removeLiquiditySingleTokenExactIn);
+    }
+
+    function removeLiquiditySingleTokenExactOut() public returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
+        amountsOut = [defaultAmount * 2, 0].toMemoryArray();
+
+        bptAmountIn = router.removeLiquiditySingleTokenExactOut(
+            address(pool),
+            defaultAmount,
+            0,
+            uint256(2 * defaultAmount),
+            false,
+            bytes("")
+        );
+    }
+
+    function testRemoveLiquiditySingleTokenExactOut() public {
+        assertRemoveLiquidity(removeLiquiditySingleTokenExactOut);
+    }
+
+    function removeLiquidityCustom() public returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
+        (bptAmountIn, amountsOut, ) = router.removeLiquidityCustom(
+            address(pool),
+            defaultAmount * 2,
+            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+
+        // amountsOut are correct
+        assertEq(amountsOut[0], defaultAmount);
+        assertEq(amountsOut[1], defaultAmount);
+    }
+
+    function testRemoveLiquidityCustom() public {
+        assertRemoveLiquidity(removeLiquidityCustom);
+    }
+
+    function testRemoveLiquidityNotInitialized() public {
+        vm.startPrank(alice);
+
+        IRateProvider[] memory rateProviders = new IRateProvider[](2);
+        pool = new PoolMock(
+            vault,
+            "ERC20 Pool",
+            "ERC20POOL",
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            rateProviders,
+            true,
+            365 days,
+            address(0)
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(IVault.PoolNotInitialized.selector, address(pool)));
+        router.removeLiquidityProportional(
+            address(pool),
+            defaultAmount,
+            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+    }
+
+    // Utils
 
     function getBalances(address user) internal view returns (Balances memory balances) {
         balances.userTokens = new uint256[](2);
@@ -306,12 +265,25 @@ contract VaultLiquidityTest is VaultUtils {
         assertEq(balancesAfter.userBpt, bptAmountOut, "Add - User BPT balance after");
     }
 
-    function assertRemoveLiquidity(
-        Balances memory balancesBefore,
-        Balances memory balancesAfter,
-        uint256 bptAmountIn,
-        uint256[] memory amountsOut
-    ) internal {
+    function assertRemoveLiquidity(function() returns (uint256[] memory, uint256) testFunc) internal {
+        vm.startPrank(alice);
+
+        router.addLiquidityUnbalanced(
+            address(pool),
+            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
+            defaultAmount,
+            false,
+            bytes("")
+        );
+
+        Balances memory balancesBefore = getBalances(alice);
+
+        (uint256[] memory amountsOut, uint256 bptAmountIn) = testFunc();
+
+        vm.stopPrank();
+
+        Balances memory balancesAfter = getBalances(alice);
+
         // Tokens are transferred back to user
         assertEq(
             balancesAfter.userTokens[0],
