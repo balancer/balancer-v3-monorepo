@@ -70,7 +70,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolTokenBalances;
 
     // Pool -> (token -> address): Pool's Rate providers.
-    mapping(address => mapping(IERC20 => IRateProvider)) private _poolRateProviders;
+    mapping(address => mapping(IERC20 => IRateProvider)) internal _poolRateProviders;
 
     /// @notice List of handlers. It is non-empty only during `invoke` calls.
     address[] private _handlers;

@@ -27,6 +27,7 @@ abstract contract BaseTest is Test {
     ERC20TestToken internal dai;
     ERC20TestToken internal usdc;
     WETHTestToken internal weth;
+    ERC20TestToken internal wsteth;
 
     // List of all ERC20 tokens
     IERC20[] internal tokens;
@@ -35,6 +36,7 @@ abstract contract BaseTest is Test {
         // Deploy the base test contracts.
         dai = createERC20("DAI", 18);
         usdc = createERC20("USDC", 18);
+        wsteth = createERC20("WSTETH", 18);
         weth = new WETHTestToken();
         vm.label(address(weth), "WETH");
 
@@ -42,6 +44,7 @@ abstract contract BaseTest is Test {
         tokens.push(dai);
         tokens.push(usdc);
         tokens.push(weth);
+        tokens.push(wsteth);
 
         // Create users for testing.
         admin = createUser("admin");
@@ -62,9 +65,11 @@ abstract contract BaseTest is Test {
         address payable user = payable(makeAddr(name));
         vm.label(user, name);
         vm.deal(user, 100 ether);
-        deal(address(dai), user, 1_000_000e18);
-        deal(address(usdc), user, 1_000_000e18);
-        deal(address(weth), user, 1_000_000e18);
+
+        for (uint256 index = 0; index < tokens.length; index++) {
+            deal(address(tokens[index]), user, 1_000_000e18);
+        }
+
         return user;
     }
 }
