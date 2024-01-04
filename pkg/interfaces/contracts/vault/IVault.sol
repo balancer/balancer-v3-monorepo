@@ -167,10 +167,6 @@ interface IVault {
 
     /**
      * @notice Initializes a registered pool by adding liquidity; mints BPT tokens for the first time in exchange.
-     * @dev The initial liquidity should make the pool mint at least `_MINIMUM_BPT` tokens, otherwise the
-     * initialization will fail. Besides the BPT minted to the given target address (`to`), `_MINIMUM_BPT` tokens are
-     * minted to address(0).
-     *
      * @param pool Address of the pool to initialize
      * @param to Address that will receive the output BPT
      * @param tokens Tokens used to seed the pool (must match the registered tokens)
