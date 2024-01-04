@@ -26,88 +26,18 @@ import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 import { RouterAdaptor } from "../../contracts/test/RouterAdaptor.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
-contract CallbacksTest is Test {
+import { VaultUtils } from "./utils/VaultUtils.sol";
+
+contract CallbacksTest is VaultUtils {
     using ArrayHelpers for *;
     using RouterAdaptor for IRouter;
 
-    VaultMock vault;
-    IRouter router;
-    BasicAuthorizerMock authorizer;
-    PoolMock pool;
-    ERC20TestToken USDC;
-    ERC20TestToken DAI;
-    address alice = vm.addr(1);
-    address bob = vm.addr(2);
-
-    uint256 constant BPT_AMOUNT = 2e3 * 1e18;
-    uint256 constant BPT_AMOUNT_ROUND_DOWN = BPT_AMOUNT - 1;
-    uint256 constant DEFAULT_AMOUNT = 1e3 * 1e18;
-    uint256 constant DEFAULT_AMOUNT_ROUND_UP = DEFAULT_AMOUNT + 1;
-    uint256 constant DEFAULT_AMOUNT_ROUND_DOWN = DEFAULT_AMOUNT - 1;
-
-    function setUp() public {
-        authorizer = new BasicAuthorizerMock();
-        vault = new VaultMock(authorizer, 30 days, 90 days);
-        router = new Router(IVault(vault), new WETHTestToken());
-        USDC = new ERC20TestToken("USDC", "USDC", 18);
-        DAI = new ERC20TestToken("DAI", "DAI", 18);
-        IRateProvider[] memory rateProviders = new IRateProvider[](2);
-
-        pool = new PoolMock(
-            vault,
-            "ERC20 Pool",
-            "ERC20POOL",
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
-            rateProviders,
-            true,
-            365 days,
-            address(0)
-        );
+    function setUp() public virtual override {
+        VaultUtils.setUp();
 
         PoolConfig memory config = vault.getPoolConfig(address(pool));
         config.callbacks.shouldCallAfterSwap = true;
         vault.setConfig(address(pool), config);
-
-        USDC.mint(bob, DEFAULT_AMOUNT);
-        DAI.mint(bob, DEFAULT_AMOUNT);
-
-        USDC.mint(alice, 2 * DEFAULT_AMOUNT);
-        DAI.mint(alice, 2 * DEFAULT_AMOUNT);
-
-        vm.startPrank(bob);
-
-        USDC.approve(address(vault), type(uint256).max);
-        DAI.approve(address(vault), type(uint256).max);
-
-        vm.stopPrank();
-
-        vm.startPrank(alice);
-
-        USDC.approve(address(vault), type(uint256).max);
-        DAI.approve(address(vault), type(uint256).max);
-
-        router.initialize(
-            address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
-            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
-            0,
-            false
-        );
-
-        router.addLiquidityUnbalanced(
-            address(pool),
-            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
-            0,
-            false,
-            bytes("")
-        );
-
-        vm.stopPrank();
-
-        vm.label(alice, "alice");
-        vm.label(bob, "bob");
-        vm.label(address(USDC), "USDC");
-        vm.label(address(DAI), "DAI");
     }
 
     function testOnAfterSwapCallback() public {
@@ -118,10 +48,10 @@ contract CallbacksTest is Test {
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_IN,
-                    tokenIn: IERC20(USDC),
-                    tokenOut: IERC20(DAI),
-                    amountGivenScaled18: DEFAULT_AMOUNT,
-                    balancesScaled18: [2 * DEFAULT_AMOUNT, 2 * DEFAULT_AMOUNT].toMemoryArray(),
+                    tokenIn: IERC20(usdc),
+                    tokenOut: IERC20(dai),
+                    amountGivenScaled18: defaultAmount,
+                    balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
                     indexIn: 1,
                     indexOut: 0,
                     sender: address(router),
@@ -129,7 +59,7 @@ contract CallbacksTest is Test {
                 })
             )
         );
-        router.swapExactIn(address(pool), USDC, DAI, DEFAULT_AMOUNT, 0, type(uint256).max, false, bytes(""));
+        router.swapExactIn(address(pool), usdc, dai, defaultAmount, 0, type(uint256).max, false, bytes(""));
     }
 
     function testOnAfterSwapCallbackRevert() public {
@@ -137,16 +67,7 @@ contract CallbacksTest is Test {
         pool.setFailOnAfterSwapCallback(true);
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(IVault.CallbackFailed.selector));
-        router.swapExactIn(
-            address(pool),
-            USDC,
-            DAI,
-            DEFAULT_AMOUNT,
-            DEFAULT_AMOUNT,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
+        router.swapExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
     }
 
     // Before add
@@ -158,8 +79,8 @@ contract CallbacksTest is Test {
         // Doesn't fail, does not call callbacks
         router.addLiquidityUnbalanced(
             address(pool),
-            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
-            BPT_AMOUNT,
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmount,
             false,
             bytes("")
         );
@@ -176,16 +97,16 @@ contract CallbacksTest is Test {
             abi.encodeWithSelector(
                 IPoolCallbacks.onBeforeAddLiquidity.selector,
                 bob,
-                [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
-                BPT_AMOUNT_ROUND_DOWN,
-                [2 * DEFAULT_AMOUNT, 2 * DEFAULT_AMOUNT].toMemoryArray(),
+                [defaultAmount, defaultAmount].toMemoryArray(),
+                bptAmountRoundDown,
+                [defaultAmount, defaultAmount].toMemoryArray(),
                 bytes("")
             )
         );
         router.addLiquidityUnbalanced(
             address(pool),
-            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
-            BPT_AMOUNT_ROUND_DOWN,
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmountRoundDown,
             false,
             bytes("")
         );
@@ -197,10 +118,19 @@ contract CallbacksTest is Test {
         pool.setFailOnBeforeRemoveLiquidityCallback(true);
 
         vm.prank(alice);
+        router.addLiquidityUnbalanced(
+            address(pool),
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmount,
+            false,
+            bytes("")
+        );
+
+        vm.prank(alice);
         router.removeLiquidityProportional(
             address(pool),
-            BPT_AMOUNT,
-            [DEFAULT_AMOUNT_ROUND_DOWN, DEFAULT_AMOUNT_ROUND_DOWN].toMemoryArray(),
+            bptAmount,
+            [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
             bytes("")
         );
@@ -212,21 +142,30 @@ contract CallbacksTest is Test {
         vault.setConfig(address(pool), config);
 
         vm.prank(alice);
+        router.addLiquidityUnbalanced(
+            address(pool),
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmount,
+            false,
+            bytes("")
+        );
+
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
                 IPoolCallbacks.onBeforeRemoveLiquidity.selector,
                 alice,
-                BPT_AMOUNT,
-                [DEFAULT_AMOUNT_ROUND_DOWN, DEFAULT_AMOUNT_ROUND_DOWN].toMemoryArray(),
-                [2 * DEFAULT_AMOUNT, 2 * DEFAULT_AMOUNT].toMemoryArray(),
+                bptAmount,
+                [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
+                [2 * defaultAmount, 2 * defaultAmount].toMemoryArray(),
                 bytes("")
             )
         );
+        vm.prank(alice);
         router.removeLiquidityProportional(
             address(pool),
-            BPT_AMOUNT,
-            [DEFAULT_AMOUNT_ROUND_DOWN, DEFAULT_AMOUNT_ROUND_DOWN].toMemoryArray(),
+            bptAmount,
+            [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
             bytes("")
         );
@@ -241,8 +180,8 @@ contract CallbacksTest is Test {
         // Doesn't fail, does not call callbacks
         router.addLiquidityUnbalanced(
             address(pool),
-            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
-            BPT_AMOUNT,
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmount,
             false,
             bytes("")
         );
@@ -259,16 +198,16 @@ contract CallbacksTest is Test {
             abi.encodeWithSelector(
                 IPoolCallbacks.onAfterAddLiquidity.selector,
                 bob,
-                [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
-                BPT_AMOUNT,
-                [3 * DEFAULT_AMOUNT, 3 * DEFAULT_AMOUNT].toMemoryArray(),
+                [defaultAmount, defaultAmount].toMemoryArray(),
+                bptAmount,
+                [2 * defaultAmount, 2 * defaultAmount].toMemoryArray(),
                 bytes("")
             )
         );
         router.addLiquidityUnbalanced(
             address(pool),
-            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
-            BPT_AMOUNT_ROUND_DOWN,
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmountRoundDown,
             false,
             bytes("")
         );
@@ -280,10 +219,19 @@ contract CallbacksTest is Test {
         pool.setFailOnAfterRemoveLiquidityCallback(true);
 
         vm.prank(alice);
+        router.addLiquidityUnbalanced(
+            address(pool),
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmount,
+            false,
+            bytes("")
+        );
+
+        vm.prank(alice);
         router.removeLiquidityProportional(
             address(pool),
-            BPT_AMOUNT,
-            [DEFAULT_AMOUNT_ROUND_DOWN, DEFAULT_AMOUNT_ROUND_DOWN].toMemoryArray(),
+            bptAmount,
+            [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
             bytes("")
         );
@@ -295,22 +243,31 @@ contract CallbacksTest is Test {
         vault.setConfig(address(pool), config);
 
         vm.prank(alice);
+        router.addLiquidityUnbalanced(
+            address(pool),
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmount,
+            false,
+            bytes("")
+        );
+
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
                 IPoolCallbacks.onAfterRemoveLiquidity.selector,
                 alice,
-                BPT_AMOUNT,
-                [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
-                [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
+                bptAmount,
+                [defaultAmount, defaultAmount].toMemoryArray(),
+                [defaultAmount, defaultAmount].toMemoryArray(),
                 bytes("")
             )
         );
 
+        vm.prank(alice);
         router.removeLiquidityProportional(
             address(pool),
-            BPT_AMOUNT,
-            [DEFAULT_AMOUNT_ROUND_DOWN, DEFAULT_AMOUNT_ROUND_DOWN].toMemoryArray(),
+            bptAmount,
+            [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
             bytes("")
         );

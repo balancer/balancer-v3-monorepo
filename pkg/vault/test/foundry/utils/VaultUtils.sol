@@ -35,6 +35,14 @@ abstract contract VaultUtils is BaseTest {
 
     // Default amount to use in tests for user operations.
     uint256 internal defaultAmount = 1e3 * 1e18;
+    // Default amount round up.
+    uint256 internal defaultAmountRoundUp = defaultAmount + 1;
+    // Default amount round down.
+    uint256 internal defaultAmountRoundDown = defaultAmount - 1;
+    // Default amount of BPT to use in tests for user operations.
+    uint256 internal bptAmount = 2e3 * 1e18;
+    // Default amount of BPT round down.
+    uint256 internal bptAmountRoundDown = bptAmount - 1;
     // Amount to use to init the mock pool.
     uint256 internal poolInitAmount = 1e3 * 1e18;
     // Default rate for the rate provider mock.
