@@ -91,7 +91,6 @@ contract VaultLiquidityTest is VaultUtils {
     }
 
     function testAddLiquidityNotInitialized() public {
-        IRateProvider[] memory rateProviders = new IRateProvider[](2);
         pool = createPool();
 
         vm.expectRevert(abi.encodeWithSelector(IVault.PoolNotInitialized.selector, address(pool)));
@@ -185,7 +184,6 @@ contract VaultLiquidityTest is VaultUtils {
     function testRemoveLiquidityNotInitialized() public {
         vm.startPrank(alice);
 
-        IRateProvider[] memory rateProviders = new IRateProvider[](2);
         pool = createPool();
 
         vm.expectRevert(abi.encodeWithSelector(IVault.PoolNotInitialized.selector, address(pool)));
