@@ -18,6 +18,7 @@ import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 
 abstract contract VaultUtils is BaseTest {
     using ArrayHelpers for *;
+
     // Vault mock.
     VaultMock internal vault;
     // Router for the vault
@@ -28,9 +29,9 @@ abstract contract VaultUtils is BaseTest {
     PoolMock internal pool;
 
     // Default amount to use in tests for user operations.
-    uint256 defaultAmount = 1e3 * 1e18;
+    uint256 internal defaultAmount = 1e3 * 1e18;
     // Amount to use to init the mock pool.
-    uint256 poolInitAmount = 1e3 * 1e18;
+    uint256 internal poolInitAmount = 1e3 * 1e18;
 
     function setUp() public virtual override {
         BaseTest.setUp();
@@ -77,4 +78,5 @@ abstract contract VaultUtils is BaseTest {
 
         vm.stopPrank();
     }
+
 }
