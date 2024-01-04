@@ -41,16 +41,7 @@ abstract contract VaultUtils is BaseTest {
         router = new Router(IVault(vault), weth);
 
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
-        pool = new PoolMock(
-            vault,
-            "ERC20 Pool",
-            "ERC20POOL",
-            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-            rateProviders,
-            true,
-            365 days,
-            address(0)
-        );
+        pool = createPool();
 
         // Approve vault allowances
         approveVault(admin);

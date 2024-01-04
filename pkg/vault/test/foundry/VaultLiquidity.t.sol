@@ -92,16 +92,7 @@ contract VaultLiquidityTest is VaultUtils {
 
     function testAddLiquidityNotInitialized() public {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
-        pool = new PoolMock(
-            vault,
-            "ERC20 Pool",
-            "ERC20POOL",
-            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-            rateProviders,
-            true,
-            365 days,
-            address(0)
-        );
+        pool = createPool();
 
         vm.expectRevert(abi.encodeWithSelector(IVault.PoolNotInitialized.selector, address(pool)));
         router.addLiquidityUnbalanced(
@@ -195,16 +186,7 @@ contract VaultLiquidityTest is VaultUtils {
         vm.startPrank(alice);
 
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
-        pool = new PoolMock(
-            vault,
-            "ERC20 Pool",
-            "ERC20POOL",
-            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-            rateProviders,
-            true,
-            365 days,
-            address(0)
-        );
+        pool = createPool();
 
         vm.expectRevert(abi.encodeWithSelector(IVault.PoolNotInitialized.selector, address(pool)));
         router.removeLiquidityProportional(
