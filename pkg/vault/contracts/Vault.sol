@@ -1120,10 +1120,16 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             }
         }
 
+        if (bptAmountOut < _MINIMUM_TOTAL_SUPPLY) {
+            revert BptAmountBelowAbsoluteMin();
+        }
+        // At this point we know that bptAmountOut >= _MINIMUM_TOTAL_SUPPLY, so this will not revert.
+        bptAmountOut -= _MINIMUM_TOTAL_SUPPLY;
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
         // Minting will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
         _mint(address(pool), to, bptAmountOut);
+        _mintToAddressZero(address(pool), _MINIMUM_TOTAL_SUPPLY);
 
         // Emit an event to log the pool initialization
         emit PoolInitialized(pool);

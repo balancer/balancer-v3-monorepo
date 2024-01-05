@@ -102,6 +102,14 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
         BalancerPoolToken(token).emitTransfer(address(0), to, amount);
     }
 
+    function _mintToAddressZero(address token, uint256 amount) internal {
+        _totalSupplyOf[token] += amount;
+        unchecked {
+            // Overflow not possible: balance + amount is at most totalSupply + amount, which is checked above.
+            _balances[token][address(0)] += amount;
+        }
+    }
+
     function _burn(address token, address from, uint256 amount) internal {
         if (from == address(0)) {
             revert ERC20InvalidSender(from);

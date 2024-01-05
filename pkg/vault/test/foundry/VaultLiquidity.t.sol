@@ -174,13 +174,12 @@ contract VaultLiquidityTest is Test {
     }
 
     function testRemoveLiquidityMinimumTotalSupply() public {
-        // Use a different account to initialize so that the main LP is clean at the start of the test.
         _mockInitialize(bob);
 
         vm.startPrank(bob);
 
         Balances memory balancesBefore = _getBalances(bob);
-        uint256 bptAmountIn = DAI_AMOUNT_IN * 2;
+        uint256 bptAmountIn = pool.balanceOf(bob);
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(pool),
@@ -196,7 +195,7 @@ contract VaultLiquidityTest is Test {
             balancesBefore,
             _getBalances(bob),
             bptAmountIn,
-            MINIMUM_TOTAL_SUPPLY,
+            0,
             amountsOut
         );
 

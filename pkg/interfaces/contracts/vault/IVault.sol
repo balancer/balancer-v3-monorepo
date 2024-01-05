@@ -91,6 +91,10 @@ interface IVault {
      */
     error TokenAlreadyRegistered(IERC20 token);
 
+    /// @dev The BPT amount involved in the operation is below the absolute minimum.	
+    error BptAmountBelowAbsoluteMin();	
+
+
     /// @dev The token count is below the minimum allowed.
     error MinTokens();
 
