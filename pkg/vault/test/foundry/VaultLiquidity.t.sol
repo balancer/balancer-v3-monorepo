@@ -191,13 +191,7 @@ contract VaultLiquidityTest is Test {
 
         vm.stopPrank();
 
-        _compareBalancesRemoveLiquidity(
-            balancesBefore,
-            _getBalances(bob),
-            bptAmountIn,
-            0,
-            amountsOut
-        );
+        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(bob), bptAmountIn, 0, amountsOut);
 
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN - MINIMUM_TOTAL_SUPPLY / 2);
