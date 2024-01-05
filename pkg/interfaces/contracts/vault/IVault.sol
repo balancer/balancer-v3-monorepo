@@ -339,6 +339,9 @@ interface IVault {
     /// @dev A transient accounting operation completed with outstanding token balances.
     error BalanceNotSettled();
 
+    /// @dev Withdrawals are prohibited if there are any outstanding debts.
+    error DebtsNotSettled();
+
     /**
      * @dev In transient accounting, a handler is attempting to execute an operation out of order.
      * The caller address should equal the handler.

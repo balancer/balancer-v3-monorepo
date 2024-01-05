@@ -125,6 +125,7 @@ contract RouterTest is Test {
 
         FlashLoanRouter flashLoanRouter = new FlashLoanRouter(vault);
 
+        vm.expectRevert(abi.encodeWithSelector(IVault.DebtsNotSettled.selector));
         flashLoanRouter.flashloan(DAI, 1e18);
     }
 

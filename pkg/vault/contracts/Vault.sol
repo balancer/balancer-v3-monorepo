@@ -85,6 +85,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     uint256 private _nonZeroTransientBalancesCount;
 
     /**
+     * @notice The total number of nonzero transient balances in debt.
+     * @dev This is utilized to prevent the withdrawal of funds from the vault while
+     * the user still has outstanding debts. It also disables external flash-loans.
+     */
+    uint256 private _nonZeroDebtTransientBalancesCount;
+
+    /**
      * @notice Represents the token due/owed to each handler.
      * @dev Must all net to zero when the last handler is released.
      */
@@ -237,6 +244,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     function wire(IERC20 token, address to, uint256 amount) public nonReentrant withHandler {
         // effects
         _takeDebt(token, amount, msg.sender);
+        // Following fund withdrawal from the Vault, there must be no outstanding debts.
+        if (_nonZeroDebtTransientBalancesCount > 0) {
+            revert DebtsNotSettled();
+        }
         _tokenReserves[token] -= amount;
         // interactions
         token.safeTransfer(to, amount);
@@ -347,6 +358,14 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             else if (transientBalance == 0) {
                 _nonZeroTransientBalancesCount++;
             }
+        }
+
+        if (transientBalance <= 0 && newTransientBalance > 0) {
+            // Increment the count of balances in debt.
+            _nonZeroDebtTransientBalancesCount++;
+        } else if (transientBalance > 0 && newTransientBalance <= 0) {
+            // Decrement the count of balances in debt.
+            _nonZeroDebtTransientBalancesCount--;
         }
 
         // Update the delta for this token and handler.
