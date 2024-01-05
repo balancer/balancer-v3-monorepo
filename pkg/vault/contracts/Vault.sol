@@ -779,15 +779,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
     }
 
-    // Hello "stack too deep" my old friend
-    struct RegistrationLocals {
-        uint8[] tokenDecimalDiffs;
-        IERC20[] registeredTokens;
-        IRateProvider[] rateProviders;
-        TokenType[] tokenTypes;
-        bool[] yieldFeeExemptFlags;
-    }
-
     /**
      * @dev The function will register the pool, setting its tokens with an initial balance of zero.
      * The function also checks for valid token addresses and ensures that the pool and tokens aren't
@@ -797,7 +788,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      */
     function _registerPool(
         address pool,
-        TokenConfig[] memory tokens,
+        TokenConfig[] memory tokenConfig,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolCallbacks memory callbackConfig,
@@ -808,7 +799,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             revert PoolAlreadyRegistered(pool);
         }
 
-        uint256 numTokens = tokens.length;
+        uint256 numTokens = tokenConfig.length;
 
         if (numTokens < _MIN_TOKENS) {
             revert MinTokens();
@@ -819,10 +810,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
         // Retrieve or create the pool's token balances mapping.
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
-        RegistrationLocals memory vars = _initRegistrationLocals(numTokens);
+        uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            TokenConfig memory tokenData = tokens[i];
+            TokenConfig memory tokenData = tokenConfig[i];
             IERC20 token = tokenData.token;
 
             // Ensure that the token address is valid
@@ -838,9 +829,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             }
 
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
-            vars.registeredTokens[i] = token;
-            vars.tokenTypes[i] = tokenData.tokenType;
-            vars.yieldFeeExemptFlags[i] = tokenData.yieldFeeExempt;
             _poolTokenConfig[pool][token] = tokenData;
 
             if (tokenData.tokenType == TokenType.STANDARD) {
@@ -851,8 +839,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 if (hasRateProvider == false) {
                     revert InvalidTokenConfiguration();
                 }
-
-                vars.rateProviders[i] = tokenData.rateProvider;
             } else if (tokenData.tokenType == TokenType.ERC4626) {
                 // TODO implement in later phases.
                 revert InvalidTokenConfiguration();
@@ -860,7 +846,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 revert InvalidTokenType();
             }
 
-            vars.tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
+            tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
         }
 
         // Store the pause manager. A zero address means default to the authorizer.
@@ -872,7 +858,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         config.isPoolRegistered = true;
         config.callbacks = callbackConfig;
         config.liquidityManagement = liquidityManagement;
-        config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(vars.tokenDecimalDiffs);
+        config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = pauseWindowEndTime.toUint32();
         _poolConfig[pool] = config.fromPoolConfig();
 
@@ -880,23 +866,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         emit PoolRegistered(
             pool,
             msg.sender,
-            vars.registeredTokens,
-            vars.tokenTypes,
-            vars.rateProviders,
-            vars.yieldFeeExemptFlags,
+            tokenConfig,
             pauseWindowEndTime,
             pauseManager,
             callbackConfig,
             liquidityManagement
         );
-    }
-
-    function _initRegistrationLocals(uint256 numTokens) private pure returns (RegistrationLocals memory vars) {
-        vars.tokenDecimalDiffs = new uint8[](numTokens);
-        vars.registeredTokens = new IERC20[](numTokens);
-        vars.rateProviders = new IRateProvider[](numTokens);
-        vars.tokenTypes = new TokenType[](numTokens);
-        vars.yieldFeeExemptFlags = new bool[](numTokens);
     }
 
     /// @dev See `isPoolRegistered`
