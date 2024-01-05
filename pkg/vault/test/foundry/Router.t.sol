@@ -21,6 +21,7 @@ import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { FlashLoanRouter } from "../../contracts/test/FlashLoanRouter.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
@@ -110,6 +111,23 @@ contract RouterTest is Test {
         vm.label(address(DAI), "DAI");
     }
 
+    function testFlashLoanRevert() public {
+        // Add some funds to the Vault
+        vm.prank(alice);
+        router.initialize(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
+            INIT_BPT,
+            false,
+            bytes("")
+        );
+
+        FlashLoanRouter flashLoanRouter = new FlashLoanRouter(vault);
+
+        flashLoanRouter.flashloan(DAI, 1e18);
+    }
+
     function testQuerySwap() public {
         vm.prank(alice);
         router.initialize(
@@ -123,13 +141,7 @@ contract RouterTest is Test {
 
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(EVMCallModeHelpers.NotStaticCall.selector));
-        router.querySwapExactIn(
-            address(pool),
-            USDC,
-            DAI,
-            USDC_AMOUNT_IN,
-            bytes("")
-        );
+        router.querySwapExactIn(address(pool), USDC, DAI, USDC_AMOUNT_IN, bytes(""));
     }
 
     function testDisableQueries() public {
@@ -158,13 +170,7 @@ contract RouterTest is Test {
         vm.expectRevert(abi.encodeWithSelector(IVault.QueriesDisabled.selector));
 
         vm.prank(address(0), address(0));
-        router.querySwapExactIn(
-            address(pool),
-            USDC,
-            DAI,
-            USDC_AMOUNT_IN,
-            bytes("")
-        );
+        router.querySwapExactIn(address(pool), USDC, DAI, USDC_AMOUNT_IN, bytes(""));
     }
 
     function testInitializeWETHNoBalance() public {
