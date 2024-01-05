@@ -20,26 +20,20 @@ import { VaultMock } from "../../contracts/test/VaultMock.sol";
 import { Router } from "../../contracts/Router.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 
-contract PoolDataTest is Test {
+import { VaultUtils } from "./utils/VaultUtils.sol";
+
+contract PoolDataTest is VaultUtils {
     using ArrayHelpers for *;
     using FixedPoint for uint256;
 
-    VaultMock vault;
-    Router router;
-    BasicAuthorizerMock authorizer;
-    PoolMock pool;
-    ERC20TestToken WSTETH;
-    ERC20TestToken DAI;
     RateProviderMock wstETHRateProvider;
     RateProviderMock daiRateProvider;
 
-    function setUp() public {
-        authorizer = new BasicAuthorizerMock();
-        vault = new VaultMock(authorizer, 30 days, 90 days);
-        router = new Router(IVault(vault), new WETHTestToken());
-        WSTETH = new ERC20TestToken("WSTETH", "WSTETH", 6);
-        DAI = new ERC20TestToken("DAI", "DAI", 18);
+    function setUp() public virtual override {
+        VaultUtils.setUp();
+    }
 
+    function createPool() internal override returns (PoolMock) {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         wstETHRateProvider = new RateProviderMock();
         daiRateProvider = new RateProviderMock();
@@ -47,16 +41,17 @@ contract PoolDataTest is Test {
         rateProviders[0] = daiRateProvider;
         rateProviders[1] = wstETHRateProvider;
 
-        pool = new PoolMock(
-            vault,
-            "ERC20 Pool",
-            "ERC20POOL",
-            [address(DAI), address(WSTETH)].toMemoryArray().asIERC20(),
-            rateProviders,
-            true,
-            365 days,
-            address(0)
-        );
+        return
+            new PoolMock(
+                vault,
+                "ERC20 Pool",
+                "ERC20POOL",
+                [address(dai), address(wsteth)].toMemoryArray().asIERC20(),
+                rateProviders,
+                true,
+                365 days,
+                address(0)
+            );
     }
 
     function testPoolData(uint256 daiRate, uint256 wstETHRate, bool roundUp) public {
@@ -99,8 +94,8 @@ contract PoolDataTest is Test {
             assertEq(data.balancesLiveScaled18[i], expectedLiveBalance);
         }
 
-        assertEq(address(data.tokens[0]), address(DAI));
-        assertEq(address(data.tokens[1]), address(WSTETH));
+        assertEq(address(data.tokens[0]), address(dai));
+        assertEq(address(data.tokens[1]), address(wsteth));
 
         assertEq(address(data.rateProviders[0]), address(daiRateProvider));
         assertEq(address(data.rateProviders[1]), address(wstETHRateProvider));
