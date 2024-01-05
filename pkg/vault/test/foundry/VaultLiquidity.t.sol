@@ -196,7 +196,7 @@ contract VaultLiquidityTest is VaultUtils {
         );
     }
 
-    // Utils
+    /// Utils
 
     function getBalances(address user) internal view returns (Balances memory balances) {
         balances.userTokens = new uint256[](2);
