@@ -336,7 +336,7 @@ interface IVault {
     /// @dev The BPT amount requested from removing liquidity is above the maximum specified for the operation.
     error BptAmountAboveMax();
 
-    /// @dev A transient accounting operation completed with outstanding token deltas.
+    /// @dev A transient accounting operation completed with outstanding token balances.
     error BalanceNotSettled();
 
     /**
@@ -371,7 +371,7 @@ interface IVault {
     function invoke(bytes calldata data) external payable returns (bytes memory result);
 
     /**
-     * @notice Settles deltas for a token.
+     * @notice Credits direct deposits to the Vault at the transient balance.
      * @param token Token's address
      * @return paid Amount paid during settlement
      */
@@ -410,19 +410,19 @@ interface IVault {
     function getHandlersCount() external view returns (uint256);
 
     /**
-     *  @notice Returns the count of non-zero deltas.
-     *  @return The current value of _nonzeroDeltaCount
+     *  @notice Returns the count of non-zero transient balances.
+     *  @return The current value of_nonZeroTransientBalancesCount 
      */
-    function getNonzeroDeltaCount() external view returns (uint256);
+    function getNonZeroTransientBalancesCount() external view returns (uint256);
 
     /**
-     * @notice Retrieves the token delta for a specific user and token.
-     * @dev This function allows reading the value from the `_tokenDeltas` mapping.
-     * @param user The address of the user for whom the delta is being fetched
-     * @param token The token for which the delta is being fetched
-     * @return The delta of the specified token for the specified user
+     * @notice Retrieves the transient balance for a specific user and token.
+     * @dev This function allows reading the value from the `_transientBalances` mapping.
+     * @param user The address of the user for whom the transient balance is being fetched
+     * @param token The token for which the transient balance is being fetched
+     * @return The transient balance of the specified token for the specified user
      */
-    function getTokenDelta(address user, IERC20 token) external view returns (int256);
+    function getTransientBalance(address user, IERC20 token) external view returns (int256);
 
     /**
      * @notice Retrieves the reserve of a given token.

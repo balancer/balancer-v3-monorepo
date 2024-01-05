@@ -79,16 +79,16 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     address[] private _handlers;
 
     /**
-     * @notice The total number of nonzero deltas over all active + completed lockers.
+     * @notice The total number of nonzero transient balances over all active + completed lockers.
      * @dev It is non-zero only during `invoke` calls.
      */
-    uint256 private _nonzeroDeltaCount;
+    uint256 private _nonZeroTransientBalancesCount;
 
     /**
      * @notice Represents the token due/owed to each handler.
      * @dev Must all net to zero when the last handler is released.
      */
-    mapping(address => mapping(IERC20 => int256)) private _tokenDeltas;
+    mapping(address => mapping(IERC20 => int256)) private _transientBalances;
 
     /**
      * @notice Represents the total reserve of each ERC20 token.
@@ -162,13 +162,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     *******************************************************************************/
 
     /**
-     * @dev This modifier is used for functions that temporarily modify the `_tokenDeltas`
+     * @dev This modifier is used for functions that temporarily modify the `_transientBalances`
      * of the Vault but expect to revert or settle balances by the end of their execution.
      * It works by tracking the handlers involved in the execution and ensures that the
      * balances are properly settled by the time the last handler is executed.
      *
      * This is useful for functions like `invoke`, which performs arbitrary external calls:
-     * we can keep track of temporary deltas changes, and make sure they are settled by the
+     * we can keep track of transient changes, and make sure they are settled by the
      * time the external call is complete.
      */
     modifier transient() {
@@ -181,13 +181,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // Check if it's the last handler
         if (_handlers.length == 1) {
             // Ensure all balances are settled
-            if (_nonzeroDeltaCount != 0) revert BalanceNotSettled();
+            if (_nonZeroTransientBalancesCount != 0) revert BalanceNotSettled();
 
             // Reset the handlers list
             delete _handlers;
 
             // Reset the counter
-            delete _nonzeroDeltaCount;
+            delete _nonZeroTransientBalancesCount;
         } else {
             // If it's not the last handler, simply remove it from the list
             _handlers.pop();
@@ -265,13 +265,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     }
 
     /// @inheritdoc IVault
-    function getNonzeroDeltaCount() external view returns (uint256) {
-        return _nonzeroDeltaCount;
+    function getNonZeroTransientBalancesCount() external view returns (uint256) {
+        return _nonZeroTransientBalancesCount;
     }
 
     /// @inheritdoc IVault
-    function getTokenDelta(address user, IERC20 token) external view returns (int256) {
-        return _tokenDeltas[user][token];
+    function getTransientBalance(address user, IERC20 token) external view returns (int256) {
+        return _transientBalances[user][token];
     }
 
     /// @inheritdoc IVault
@@ -296,7 +296,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      * @param handler The account responsible for the debt.
      */
     function _takeDebt(IERC20 token, uint256 debt, address handler) internal {
-        _accountDelta(token, debt.toInt256(), handler);
+        _accountTransientBalanceDelta(token, debt.toInt256(), handler);
     }
 
     /**
@@ -306,22 +306,22 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      * @param handler The account credited with the amount.
      */
     function _supplyCredit(IERC20 token, uint256 credit, address handler) internal {
-        _accountDelta(token, -credit.toInt256(), handler);
+        _accountTransientBalanceDelta(token, -credit.toInt256(), handler);
     }
 
     /**
-     * @dev Accounts the delta for the given handler and token.
-     * Positive delta represents debt, while negative delta represents surplus.
+     * @dev Accounts the transient balance change for the given handler and token.
+     * Positive balance change represents debt, while negative balance change represents surplus.
      * The function ensures that only the specified handler can update its respective delta.
      *
-     * @param token   The ERC20 token for which the delta is being accounted.
+     * @param token   The ERC20 token for which the balance delta is being accounted.
      * @param delta   The difference in the token balance.
      *                Positive indicates a debit or a decrease in Vault's tokens,
      *                negative indicates a credit or an increase in Vault's tokens.
      * @param handler The handler whose balance difference is being accounted for.
      *                Must be the same as the caller of the function.
      */
-    function _accountDelta(IERC20 token, int256 delta, address handler) internal {
+    function _accountTransientBalanceDelta(IERC20 token, int256 delta, address handler) internal {
         // If the delta is zero, there's nothing to account for.
         if (delta == 0) return;
 
@@ -331,26 +331,26 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
 
         // Get the current recorded delta for this token and handler.
-        int256 current = _tokenDeltas[handler][token];
+        int256 transientBalance = _transientBalances[handler][token];
 
         // Calculate the new delta after accounting for the change.
-        int256 next = current + delta;
+        int256 newTransientBalance = transientBalance + delta;
 
         unchecked {
-            // If the resultant delta becomes zero after this operation,
-            // decrease the count of non-zero deltas.
-            if (next == 0) {
-                _nonzeroDeltaCount--;
+            // If the resultant transient balance becomes zero after this operation,
+            // decrease the count of non-zero transient balances.
+            if (newTransientBalance == 0) {
+                _nonZeroTransientBalancesCount--;
             }
-            // If there was no previous delta (i.e., it was zero) and now we have one,
-            // increase the count of non-zero deltas.
-            else if (current == 0) {
-                _nonzeroDeltaCount++;
+            // If there was no previous transient balance (i.e., it was zero) and now we have one,
+            // increase the count of non-zero transient balances.
+            else if (transientBalance == 0) {
+                _nonZeroTransientBalancesCount++;
             }
         }
 
         // Update the delta for this token and handler.
-        _tokenDeltas[handler][token] = next;
+        _transientBalances[handler][token] = newTransientBalance;
     }
 
     /*******************************************************************************
