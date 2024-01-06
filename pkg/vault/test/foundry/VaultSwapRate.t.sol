@@ -151,16 +151,7 @@ contract VaultSwapWithRatesTest is Test {
         );
 
         vm.prank(bob);
-        router.swapExactIn(
-            address(pool),
-            DAI,
-            WSTETH,
-            AMOUNT,
-            rateAdjustedLimit,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
+        router.swapExactIn(address(pool), DAI, WSTETH, AMOUNT, rateAdjustedLimit, type(uint256).max, false, bytes(""));
     }
 
     function testSwapGivenOutWithRate() public {

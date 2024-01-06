@@ -414,7 +414,7 @@ interface IVault {
 
     /**
      *  @notice Returns the count of non-zero transient balances.
-     *  @return The current value of_nonZeroTransientBalancesCount 
+     *  @return The current value of_nonZeroTransientBalancesCount
      */
     function getNonZeroTransientBalancesCount() external view returns (uint256);
 

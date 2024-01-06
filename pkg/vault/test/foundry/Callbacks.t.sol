@@ -131,16 +131,7 @@ contract CallbacksTest is Test {
                 })
             )
         );
-        router.swapExactIn(
-            address(pool),
-            USDC,
-            DAI,
-            DEFAULT_AMOUNT,
-            0,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
+        router.swapExactIn(address(pool), USDC, DAI, DEFAULT_AMOUNT, 0, type(uint256).max, false, bytes(""));
     }
 
     function testOnBeforeSwapCallbackRevert() public {
@@ -178,16 +169,7 @@ contract CallbacksTest is Test {
                 })
             )
         );
-        router.swapExactIn(
-            address(pool),
-            USDC,
-            DAI,
-            DEFAULT_AMOUNT,
-            0,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
+        router.swapExactIn(address(pool), USDC, DAI, DEFAULT_AMOUNT, 0, type(uint256).max, false, bytes(""));
     }
 
     function testOnAfterSwapCallbackRevert() public {
