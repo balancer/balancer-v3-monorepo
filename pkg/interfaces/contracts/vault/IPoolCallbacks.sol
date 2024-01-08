@@ -10,6 +10,31 @@ import { IBasePool } from "./IBasePool.sol";
 /// @notice Interface for pool callbacks
 interface IPoolCallbacks {
     /***************************************************************************
+                                   Initialize
+    ***************************************************************************/
+
+    /**
+     * @notice Optional callback to be executed before pool initialization.
+     * @param exactAmountsIn Exact amounts of input tokens
+     * @param userData Optional, arbitrary data with the encoded request
+     * @return success True if the pool wishes to proceed with initialization
+     */
+    function onBeforeInitialize(uint256[] memory exactAmountsIn, bytes memory userData) external returns (bool);
+
+    /**
+     * @notice Optional callback to be executed after pool initialization.
+     * @param exactAmountsIn Exact amounts of input tokens
+     * @param bptAmountOut Amount of pool tokens minted during initialization
+     * @param userData Optional, arbitrary data with the encoded request
+     * @return success True if the pool wishes to proceed with initialization
+     */
+    function onAfterInitialize(
+        uint256[] memory exactAmountsIn,
+        uint256 bptAmountOut,
+        bytes memory userData
+    ) external returns (bool);
+
+    /***************************************************************************
                                    Add Liquidity
     ***************************************************************************/
 
