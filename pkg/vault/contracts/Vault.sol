@@ -53,9 +53,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     using PoolConfigLib for PoolCallbacks;
     using ScalingHelpers for *;
 
-    // Minimum BPT amount minted upon initialization.
-    uint256 private constant _MINIMUM_BPT = 1e6;
-
     // Pools can have two, three, or four tokens.
     uint256 private constant _MIN_TOKENS = 2;
     // This maximum token count is also hard-coded in `PoolConfigLib`.
@@ -817,16 +814,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
     }
 
-    // Hello "stack too deep" my old friend
-    struct RegistrationLocals {
-        uint256 numTokens;
-        uint8[] tokenDecimalDiffs;
-        IERC20[] registeredTokens;
-        IRateProvider[] rateProviders;
-        TokenType[] tokenTypes;
-        bool[] yieldFeeExemptFlags;
-    }
-
     /**
      * @dev The function will register the pool, setting its tokens with an initial balance of zero.
      * The function also checks for valid token addresses and ensures that the pool and tokens aren't
@@ -836,7 +823,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      */
     function _registerPool(
         address pool,
-        TokenConfig[] memory tokens,
+        TokenConfig[] memory tokenConfig,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolCallbacks memory callbackConfig,
@@ -847,21 +834,20 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             revert PoolAlreadyRegistered(pool);
         }
 
-        RegistrationLocals memory vars = _initRegistrationLocals(tokens.length);
-
-        if (vars.numTokens < _MIN_TOKENS) {
+        // No room on the stack for a `numTokens` variable; have to use tokenConfig.length.
+        if (tokenConfig.length < _MIN_TOKENS) {
             revert MinTokens();
         }
-        if (vars.numTokens > _MAX_TOKENS) {
+        if (tokenConfig.length > _MAX_TOKENS) {
             revert MaxTokens();
         }
 
         // Retrieve or create the pool's token balances mapping.
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
-        EnumerableMap.IERC20ToUint256Map storage lastLivePoolTokenBalances = _lastLivePoolTokenBalances[pool];
+        uint8[] memory tokenDecimalDiffs = new uint8[](tokenConfig.length);
 
-        for (uint256 i = 0; i < vars.numTokens; ++i) {
-            TokenConfig memory tokenData = tokens[i];
+        for (uint256 i = 0; i < tokenConfig.length; ++i) {
+            TokenConfig memory tokenData = tokenConfig[i];
             IERC20 token = tokenData.token;
 
             // Ensure that the token address is valid
@@ -875,12 +861,9 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             if (poolTokenBalances.set(token, 0) == false) {
                 revert TokenAlreadyRegistered(token);
             }
-            lastLivePoolTokenBalances.set(token, 0);
+            _lastLivePoolTokenBalances[pool].set(token, 0);
 
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
-            vars.registeredTokens[i] = token;
-            vars.tokenTypes[i] = tokenData.tokenType;
-            vars.yieldFeeExemptFlags[i] = tokenData.yieldFeeExempt;
             _poolTokenConfig[pool][token] = tokenData;
 
             if (tokenData.tokenType == TokenType.STANDARD) {
@@ -891,8 +874,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 if (hasRateProvider == false) {
                     revert InvalidTokenConfiguration();
                 }
-
-                vars.rateProviders[i] = tokenData.rateProvider;
             } else if (tokenData.tokenType == TokenType.ERC4626) {
                 // TODO implement in later phases.
                 revert InvalidTokenConfiguration();
@@ -900,7 +881,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 revert InvalidTokenType();
             }
 
-            vars.tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
+            tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
         }
 
         // Store the pause manager. A zero address means default to the authorizer.
@@ -912,7 +893,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         config.isPoolRegistered = true;
         config.callbacks = callbackConfig;
         config.liquidityManagement = liquidityManagement;
-        config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(vars.tokenDecimalDiffs);
+        config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = pauseWindowEndTime.toUint32();
         _poolConfig[pool] = config.fromPoolConfig();
 
@@ -920,24 +901,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         emit PoolRegistered(
             pool,
             msg.sender,
-            vars.registeredTokens,
-            vars.tokenTypes,
-            vars.rateProviders,
-            vars.yieldFeeExemptFlags,
+            tokenConfig,
             pauseWindowEndTime,
             pauseManager,
             callbackConfig,
             liquidityManagement
         );
-    }
-
-    function _initRegistrationLocals(uint256 numTokens) private pure returns (RegistrationLocals memory vars) {
-        vars.numTokens = numTokens;
-        vars.tokenDecimalDiffs = new uint8[](numTokens);
-        vars.registeredTokens = new IERC20[](numTokens);
-        vars.rateProviders = new IRateProvider[](numTokens);
-        vars.tokenTypes = new TokenType[](numTokens);
-        vars.yieldFeeExemptFlags = new bool[](numTokens);
     }
 
     /// @dev See `isPoolRegistered`
@@ -1219,7 +1188,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         IERC20[] memory tokens,
         uint256[] memory exactAmountsIn,
         bytes memory userData
-    ) external withHandler withRegisteredPool(pool) whenPoolNotPaused(pool) returns (uint256) {
+    ) external withHandler withRegisteredPool(pool) whenPoolNotPaused(pool) returns (uint256 bptAmountOut) {
         PoolData memory poolData = _computePoolData(pool, Rounding.ROUND_DOWN);
 
         if (poolData.poolConfig.isPoolInitialized) {
@@ -1249,34 +1218,35 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         poolData.poolConfig.isPoolInitialized = true;
         _poolConfig[pool] = poolData.poolConfig.fromPoolConfig();
 
-        // Finally, call pool hook. Doing this at the end also means we do not need to downscale exact amounts in.
+        // Finally, compute the initial amount of BPT to mint, which is simply the invariant after adding exactAmountsIn.
+        // Doing this at the end also means we do not need to downscale exact amounts in.
         // Amounts are entering pool math, so round down. A lower invariant after the join means less bptOut,
         // favoring the pool.
         exactAmountsIn.toScaled18ApplyRateRoundDownArray(poolData.decimalScalingFactors, poolData.tokenRates);
         // Initialize live balances, incorporating the current rate.
         _setLastLivePoolBalances(pool, exactAmountsIn);
 
-        return _initialize(pool, to, exactAmountsIn, userData);
-    }
-
-    function _initialize(
-        address pool,
-        address to,
-        uint256[] memory exactAmountsIn,
-        bytes memory userData
-    ) private nonReentrant returns (uint256 bptAmountOut) {
-        bptAmountOut = IBasePool(pool).onInitialize(exactAmountsIn, userData);
-
-        if (bptAmountOut < _MINIMUM_BPT) {
-            revert BptAmountBelowAbsoluteMin();
+        if (poolData.poolConfig.callbacks.shouldCallBeforeInitialize) {
+            if (IPoolCallbacks(pool).onBeforeInitialize(exactAmountsIn, userData) == false) {
+                revert CallbackFailed();
+            }
+        }
+        bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsIn);
+        if (poolData.poolConfig.callbacks.shouldCallAfterInitialize) {
+            if (IPoolCallbacks(pool).onAfterInitialize(exactAmountsIn, bptAmountOut, userData) == false) {
+                revert CallbackFailed();
+            }
         }
 
+        _ensureMinimumTotalSupply(bptAmountOut);
+
+        // At this point we know that bptAmountOut >= _MINIMUM_TOTAL_SUPPLY, so this will not revert.
+        bptAmountOut -= _MINIMUM_TOTAL_SUPPLY;
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
-        // At this point we know that bptAmountOut >= _MINIMUM_BPT, so this will not revert.
-        bptAmountOut -= _MINIMUM_BPT;
+        // Minting will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
+        _mintMinimumSupplyReserve(address(pool));
         _mint(address(pool), to, bptAmountOut);
-        _mintToAddressZero(address(pool), _MINIMUM_BPT);
 
         // Emit an event to log the pool initialization
         emit PoolInitialized(pool);
@@ -1681,6 +1651,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
         // When removing liquidity, we must burn tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
+        // Burning will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
         _burn(address(pool), from, bptAmountIn);
 
         emit PoolBalanceChanged(

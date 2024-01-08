@@ -39,16 +39,16 @@ contract WeightedPool8020Factory is BasePoolFactory {
      * @dev It assumes the 80% weight token is first in the array.
      * @param name Name of the pool
      * @param symbol Symbol of the pool
-     * @param tokens The token configuration of the pool: must be two-token
+     * @param tokenConfig The token configuration of the pool: must be two-token
      * @param salt Value passed to create3, used to create the address
      */
     function create(
         string memory name,
         string memory symbol,
-        TokenConfig[] memory tokens,
+        TokenConfig[] memory tokenConfig,
         bytes32 salt
     ) external returns (address pool) {
-        if (tokens.length != 2) {
+        if (tokenConfig.length != 2) {
             revert NotTwoTokens();
         }
 
@@ -61,7 +61,7 @@ contract WeightedPool8020Factory is BasePoolFactory {
                 WeightedPool.NewPoolParams({
                     name: name,
                     symbol: symbol,
-                    tokens: _extractTokensFromTokenConfig(tokens),
+                    tokens: _extractTokensFromTokenConfig(tokenConfig),
                     normalizedWeights: weights
                 }),
                 getVault()
@@ -71,10 +71,12 @@ contract WeightedPool8020Factory is BasePoolFactory {
 
         getVault().registerPool(
             pool,
-            tokens,
+            tokenConfig,
             getNewPoolPauseWindowEndTime(),
             address(0), // no pause manager
             PoolCallbacks({
+                shouldCallBeforeInitialize: false,
+                shouldCallAfterInitialize: false,
                 shouldCallBeforeAddLiquidity: false,
                 shouldCallAfterAddLiquidity: false,
                 shouldCallBeforeRemoveLiquidity: false,

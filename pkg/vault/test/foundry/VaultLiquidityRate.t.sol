@@ -120,11 +120,18 @@ contract VaultLiquidityWithRatesTest is Test {
                 IBasePool.computeBalance.selector,
                 [FixedPoint.mulDown(WSTETH_AMOUNT_IN, MOCK_RATE), DAI_AMOUNT_IN].toMemoryArray(), // liveBalancesScaled18
                 0,
-                2e18 // 200% growth
+                150e16 // 150% growth
             )
         );
 
-        router.addLiquiditySingleTokenExactOut(address(pool), WSTETH, WSTETH_AMOUNT_IN, DAI_AMOUNT_IN, false, bytes(""));
+        router.addLiquiditySingleTokenExactOut(
+            address(pool),
+            WSTETH,
+            WSTETH_AMOUNT_IN,
+            DAI_AMOUNT_IN,
+            false,
+            bytes("")
+        );
     }
 
     function testAddLiquidityCustomWithRate() public {
@@ -175,7 +182,7 @@ contract VaultLiquidityWithRatesTest is Test {
         // TODO: Find a way to test rates inside the Vault
         router.removeLiquidityProportional(
             address(pool),
-            WSTETH_AMOUNT_IN,
+            WSTETH_AMOUNT_IN * 2,
             [WSTETH_AMOUNT_IN, DAI_AMOUNT_IN].toMemoryArray(),
             false,
             bytes("")
@@ -200,7 +207,7 @@ contract VaultLiquidityWithRatesTest is Test {
         );
 
         PoolData memory startingBalances = vault.computePoolData(address(pool), Rounding.ROUND_DOWN);
-        uint256 bptAmountIn = WSTETH_AMOUNT_IN;
+        uint256 bptAmountIn = WSTETH_AMOUNT_IN * 2;
 
         vm.expectCall(
             address(pool),
@@ -212,7 +219,14 @@ contract VaultLiquidityWithRatesTest is Test {
             )
         );
 
-        router.removeLiquiditySingleTokenExactIn(address(pool), bptAmountIn, WSTETH, WSTETH_AMOUNT_IN, false, bytes(""));
+        router.removeLiquiditySingleTokenExactIn(
+            address(pool),
+            bptAmountIn,
+            WSTETH,
+            WSTETH_AMOUNT_IN,
+            false,
+            bytes("")
+        );
     }
 
     function testRemoveLiquidityCustomWithRate() public {
