@@ -156,27 +156,9 @@ contract WeightedPoolSwaps is Test {
 
         vm.startPrank(bob);
         for (uint256 i = 0; i < SWAP_TIMES; ++i) {
-            uint256 amountOut = router.swapExactIn(
-                pool,
-                DAI,
-                WSTETH,
-                amountIn,
-                0,
-                type(uint256).max,
-                false,
-                bytes("")
-            );
+            uint256 amountOut = router.swapExactIn(pool, DAI, WSTETH, amountIn, 0, type(uint256).max, false, bytes(""));
 
-            router.swapExactIn(
-                pool,
-                WSTETH,
-                DAI,
-                amountOut,
-                0,
-                type(uint256).max,
-                false,
-                bytes("")
-            );
+            router.swapExactIn(pool, WSTETH, DAI, amountOut, 0, type(uint256).max, false, bytes(""));
         }
         vm.stopPrank();
     }
@@ -197,16 +179,7 @@ contract WeightedPoolSwaps is Test {
                 bytes("")
             );
 
-            router.swapExactOut(
-                pool,
-                WSTETH,
-                DAI,
-                amountIn,
-                type(uint256).max,
-                type(uint256).max,
-                false,
-                bytes("")
-            );
+            router.swapExactOut(pool, WSTETH, DAI, amountIn, type(uint256).max, type(uint256).max, false, bytes(""));
         }
         vm.stopPrank();
     }

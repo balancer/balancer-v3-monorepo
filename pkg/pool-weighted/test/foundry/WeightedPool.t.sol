@@ -112,9 +112,8 @@ contract WeightedPoolTest is Test {
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             amountsIn,
-            // Initial BPT is invariant * tokens.length
             // Account for the precision less
-            DAI_AMOUNT * 2 - DELTA,
+            DAI_AMOUNT - DELTA,
             false,
             bytes("")
         );
@@ -139,7 +138,7 @@ contract WeightedPoolTest is Test {
         // should mint correct amount of BPT tokens
         // Account for the precision less
         assertApproxEqAbs(pool.balanceOf(alice), bptAmountOut, DELTA);
-        assertApproxEqAbs(bptAmountOut, DAI_AMOUNT * 2, DELTA);
+        assertApproxEqAbs(bptAmountOut, DAI_AMOUNT, DELTA);
     }
 
     function testAddLiquidity() public {
@@ -150,16 +149,21 @@ contract WeightedPoolTest is Test {
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
-            // Initial BPT is invariant * tokens.length
             // Account for the precision less
-            DAI_AMOUNT * 2 - DELTA,
+            DAI_AMOUNT - DELTA,
             false,
             bytes("")
         );
 
         uint256[] memory amountsIn = [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray();
         vm.prank(bob);
-        uint256 bptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, DAI_AMOUNT, false, bytes(""));
+        uint256 bptAmountOut = router.addLiquidityUnbalanced(
+            address(pool),
+            amountsIn,
+            DAI_AMOUNT - DELTA,
+            false,
+            bytes("")
+        );
 
         // Tokens are transferred from Bob
         assertEq(USDC.balanceOf(bob), 0);
@@ -180,7 +184,7 @@ contract WeightedPoolTest is Test {
 
         // should mint correct amount of BPT tokens
         assertApproxEqAbs(pool.balanceOf(bob), bptAmountOut, DELTA);
-        assertApproxEqAbs(bptAmountOut, DAI_AMOUNT * 2, DELTA);
+        assertApproxEqAbs(bptAmountOut, DAI_AMOUNT, DELTA);
     }
 
     function testRemoveLiquidity() public {
@@ -190,9 +194,8 @@ contract WeightedPoolTest is Test {
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
-            // Initial BPT is invariant * tokens.length
             // Account for the precision less
-            DAI_AMOUNT * 2 - DELTA,
+            DAI_AMOUNT - DELTA,
             false,
             bytes("")
         );
@@ -201,7 +204,7 @@ contract WeightedPoolTest is Test {
         router.addLiquidityUnbalanced(
             address(pool),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
-            DAI_AMOUNT,
+            DAI_AMOUNT - DELTA,
             false,
             bytes("")
         );
@@ -249,9 +252,8 @@ contract WeightedPoolTest is Test {
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
-            // Initial BPT is invariant * tokens.length
             // Account for the precision less
-            DAI_AMOUNT * 2 - DELTA,
+            DAI_AMOUNT - DELTA,
             false,
             bytes("")
         );
@@ -294,9 +296,8 @@ contract WeightedPoolTest is Test {
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
-            // Initial BPT is invariant * tokens.length
             // Account for the precision less
-            DAI_AMOUNT * 2 - DELTA,
+            DAI_AMOUNT - DELTA,
             false,
             bytes("")
         );

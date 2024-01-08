@@ -37,10 +37,7 @@ contract CallbacksTest is Test {
     address alice = vm.addr(1);
     address bob = vm.addr(2);
 
-    uint256 constant MINIMUM_AMOUNT = 1e6;
-    uint256 constant MINIMUM_AMOUNT_ROUND_UP = 1e6 + 1;
-
-    uint256 constant BPT_AMOUNT = 1e3 * 1e18;
+    uint256 constant BPT_AMOUNT = 2e3 * 1e18;
     uint256 constant BPT_AMOUNT_ROUND_DOWN = BPT_AMOUNT - 1;
     uint256 constant DEFAULT_AMOUNT = 1e3 * 1e18;
     uint256 constant DEFAULT_AMOUNT_ROUND_UP = DEFAULT_AMOUNT + 1;
@@ -73,8 +70,8 @@ contract CallbacksTest is Test {
         USDC.mint(bob, DEFAULT_AMOUNT);
         DAI.mint(bob, DEFAULT_AMOUNT);
 
-        USDC.mint(alice, DEFAULT_AMOUNT + MINIMUM_AMOUNT);
-        DAI.mint(alice, DEFAULT_AMOUNT + MINIMUM_AMOUNT);
+        USDC.mint(alice, 2 * DEFAULT_AMOUNT);
+        DAI.mint(alice, 2 * DEFAULT_AMOUNT);
 
         vm.startPrank(bob);
 
@@ -91,7 +88,7 @@ contract CallbacksTest is Test {
         router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
-            [MINIMUM_AMOUNT, MINIMUM_AMOUNT].toMemoryArray(),
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
             0,
             false,
             bytes("")
@@ -100,7 +97,7 @@ contract CallbacksTest is Test {
         router.addLiquidityUnbalanced(
             address(pool),
             [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
-            BPT_AMOUNT,
+            0,
             false,
             bytes("")
         );
@@ -118,12 +115,11 @@ contract CallbacksTest is Test {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IBasePool.onSwap.selector,
+                IPoolCallbacks.onBeforeSwap.selector,
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_IN,
                     amountGivenScaled18: DEFAULT_AMOUNT,
-                    balancesScaled18: [DEFAULT_AMOUNT + MINIMUM_AMOUNT, DEFAULT_AMOUNT + MINIMUM_AMOUNT]
-                        .toMemoryArray(),
+                    balancesScaled18: [2 * DEFAULT_AMOUNT, 2 * DEFAULT_AMOUNT].toMemoryArray(),
                     indexIn: 1,
                     indexOut: 0,
                     sender: address(router),
@@ -169,8 +165,7 @@ contract CallbacksTest is Test {
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_IN,
                     amountGivenScaled18: DEFAULT_AMOUNT,
-                    balancesScaled18: [DEFAULT_AMOUNT + MINIMUM_AMOUNT, DEFAULT_AMOUNT + MINIMUM_AMOUNT]
-                        .toMemoryArray(),
+                    balancesScaled18: [2 * DEFAULT_AMOUNT, 2 * DEFAULT_AMOUNT].toMemoryArray(),
                     indexIn: 1,
                     indexOut: 0,
                     sender: address(router),
@@ -217,7 +212,7 @@ contract CallbacksTest is Test {
         router.addLiquidityUnbalanced(
             address(pool),
             [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
-            MINIMUM_AMOUNT,
+            BPT_AMOUNT,
             false,
             bytes("")
         );
@@ -236,7 +231,7 @@ contract CallbacksTest is Test {
                 bob,
                 [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
                 BPT_AMOUNT_ROUND_DOWN,
-                [DEFAULT_AMOUNT + MINIMUM_AMOUNT, DEFAULT_AMOUNT + MINIMUM_AMOUNT].toMemoryArray(),
+                [2 * DEFAULT_AMOUNT, 2 * DEFAULT_AMOUNT].toMemoryArray(),
                 bytes("")
             )
         );
@@ -277,7 +272,7 @@ contract CallbacksTest is Test {
                 alice,
                 BPT_AMOUNT,
                 [DEFAULT_AMOUNT_ROUND_DOWN, DEFAULT_AMOUNT_ROUND_DOWN].toMemoryArray(),
-                [DEFAULT_AMOUNT + MINIMUM_AMOUNT, DEFAULT_AMOUNT + MINIMUM_AMOUNT].toMemoryArray(),
+                [2 * DEFAULT_AMOUNT, 2 * DEFAULT_AMOUNT].toMemoryArray(),
                 bytes("")
             )
         );
@@ -300,7 +295,7 @@ contract CallbacksTest is Test {
         router.addLiquidityUnbalanced(
             address(pool),
             [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
-            MINIMUM_AMOUNT,
+            BPT_AMOUNT,
             false,
             bytes("")
         );
@@ -318,8 +313,8 @@ contract CallbacksTest is Test {
                 IPoolCallbacks.onAfterAddLiquidity.selector,
                 bob,
                 [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
-                BPT_AMOUNT_ROUND_DOWN,
-                [2 * DEFAULT_AMOUNT + MINIMUM_AMOUNT, 2 * DEFAULT_AMOUNT + MINIMUM_AMOUNT].toMemoryArray(),
+                BPT_AMOUNT,
+                [3 * DEFAULT_AMOUNT, 3 * DEFAULT_AMOUNT].toMemoryArray(),
                 bytes("")
             )
         );
@@ -359,8 +354,8 @@ contract CallbacksTest is Test {
                 IPoolCallbacks.onAfterRemoveLiquidity.selector,
                 alice,
                 BPT_AMOUNT,
-                [DEFAULT_AMOUNT_ROUND_DOWN, DEFAULT_AMOUNT_ROUND_DOWN].toMemoryArray(),
-                [MINIMUM_AMOUNT_ROUND_UP, MINIMUM_AMOUNT_ROUND_UP].toMemoryArray(),
+                [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
+                [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
                 bytes("")
             )
         );
