@@ -9,6 +9,8 @@ import { IRateProvider } from "./IRateProvider.sol";
 
 /// @dev Represents a pool's callbacks.
 struct PoolCallbacks {
+    bool shouldCallBeforeInitialize;
+    bool shouldCallAfterInitialize;
     bool shouldCallBeforeSwap;
     bool shouldCallAfterSwap;
     bool shouldCallBeforeAddLiquidity;
@@ -131,9 +133,6 @@ interface IVault {
     /// @dev An ERC4626 token's underlying base token conflicts was already registered.
     error AmbiguousPoolToken(address token);
 
-    /// @dev The BPT amount involved in the operation is below the absolute minimum.
-    error BptAmountBelowAbsoluteMin();
-
     /// @dev The token count is below the minimum allowed.
     error MinTokens();
 
@@ -194,19 +193,16 @@ interface IVault {
      * @notice A Pool was registered by calling `registerPool`.
      * @param pool The pool being registered
      * @param factory The factory creating the pool
-     * @param tokens The pool's tokens
-     * @param rateProviders The pool's rate providers (or zero)
+     * @param tokenConfig The pool's tokens
      * @param pauseWindowEndTime The pool's pause window end time
      * @param pauseManager The pool's external pause manager (or 0 for governance)
+     * @param callbacks Supported pool callbacks
      * @param liquidityManagement Supported liquidity management callback flags
      */
     event PoolRegistered(
         address indexed pool,
         address indexed factory,
-        IERC20[] tokens,
-        TokenType[] tokenTypes,
-        IRateProvider[] rateProviders,
-        bool[] yieldFeeExemptFlags,
+        TokenConfig[] tokenConfig,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolCallbacks callbacks,
@@ -325,15 +321,11 @@ interface IVault {
 
     /**
      * @notice Initializes a registered pool by adding liquidity; mints BPT tokens for the first time in exchange.
-     * @dev The initial liquidity should make the pool mint at least `_MINIMUM_BPT` tokens, otherwise the
-     * initialization will fail. Besides the BPT minted to the given target address (`to`), `_MINIMUM_BPT` tokens are
-     * minted to address(0).
-     *
      * @param pool Address of the pool to initialize
      * @param to Address that will receive the output BPT
      * @param tokens Tokens used to seed the pool (must match the registered tokens)
      * @param exactAmountsIn Exact amounts of input tokens
-     * @param userData Additional (optional) data for the initialization
+     * @param userData Additional (optional) data required for adding initial liquidity
      * @return bptAmountOut Output pool token amount
      */
     function initialize(

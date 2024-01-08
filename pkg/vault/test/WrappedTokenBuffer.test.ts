@@ -109,6 +109,8 @@ describe('Vault - Wrapped Token Buffers', function () {
     };
 
     const poolCallbacks: PoolCallbacksStruct = {
+      shouldCallBeforeInitialize: false,
+      shouldCallAfterInitialize: false,
       shouldCallBeforeSwap: false,
       shouldCallAfterSwap: false,
       shouldCallBeforeAddLiquidity: false,

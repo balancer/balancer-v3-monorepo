@@ -64,6 +64,8 @@ contract WeightedPoolFactory is BasePoolFactory {
             getNewPoolPauseWindowEndTime(),
             address(0), // no pause manager
             PoolCallbacks({
+                shouldCallBeforeInitialize: false,
+                shouldCallAfterInitialize: false,
                 shouldCallBeforeAddLiquidity: false,
                 shouldCallAfterAddLiquidity: false,
                 shouldCallBeforeRemoveLiquidity: false,

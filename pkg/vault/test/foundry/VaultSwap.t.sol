@@ -126,46 +126,19 @@ contract VaultSwapTest is Test {
         vm.expectRevert(abi.encodeWithSelector(IVault.PoolPaused.selector, address(pool)));
 
         vm.prank(bob);
-        router.swapExactIn(
-            address(pool),
-            USDC,
-            DAI,
-            AMOUNT,
-            AMOUNT,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
+        router.swapExactIn(address(pool), USDC, DAI, AMOUNT, AMOUNT, type(uint256).max, false, bytes(""));
     }
 
     function testSwapNotInitialized() public {
         vm.expectRevert(abi.encodeWithSelector(IVault.PoolNotInitialized.selector, address(pool)));
-        router.swapExactIn(
-            address(pool),
-            USDC,
-            DAI,
-            AMOUNT,
-            AMOUNT,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
+        router.swapExactIn(address(pool), USDC, DAI, AMOUNT, AMOUNT, type(uint256).max, false, bytes(""));
     }
 
     function testSwapGivenIn() public {
         initPool();
 
         vm.prank(bob);
-        router.swapExactIn(
-            address(pool),
-            USDC,
-            DAI,
-            AMOUNT,
-            AMOUNT,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
+        router.swapExactIn(address(pool), USDC, DAI, AMOUNT, AMOUNT, type(uint256).max, false, bytes(""));
 
         // Tokens are transferred to/from Bob
         assertEq(USDC.balanceOf(bob), 0);
@@ -184,16 +157,7 @@ contract VaultSwapTest is Test {
         initPool();
 
         vm.prank(bob);
-        router.swapExactOut(
-            address(pool),
-            USDC,
-            DAI,
-            AMOUNT,
-            AMOUNT,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
+        router.swapExactOut(address(pool), USDC, DAI, AMOUNT, AMOUNT, type(uint256).max, false, bytes(""));
 
         // asssets are transferred to/from Bob
         assertEq(USDC.balanceOf(bob), 0);
@@ -219,16 +183,7 @@ contract VaultSwapTest is Test {
         uint256 bobDaiBeforeSwap = DAI.balanceOf(bob);
 
         vm.prank(bob);
-        router.swapExactIn(
-            address(pool),
-            USDC,
-            DAI,
-            AMOUNT,
-            AMOUNT - SWAP_FEE,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
+        router.swapExactIn(address(pool), USDC, DAI, AMOUNT, AMOUNT - SWAP_FEE, type(uint256).max, false, bytes(""));
 
         // asssets are transferred to/from Bob
         assertEq(USDC.balanceOf(bob), bobUsdcBeforeSwap - AMOUNT);
@@ -255,16 +210,7 @@ contract VaultSwapTest is Test {
         uint256 bobDaiBeforeSwap = DAI.balanceOf(bob);
 
         vm.prank(bob);
-        router.swapExactIn(
-            address(pool),
-            USDC,
-            DAI,
-            AMOUNT,
-            AMOUNT - SWAP_FEE,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
+        router.swapExactIn(address(pool), USDC, DAI, AMOUNT, AMOUNT - SWAP_FEE, type(uint256).max, false, bytes(""));
 
         // asssets are transferred to/from Bob: USDC in, DAI out
         assertEq(DAI.balanceOf(bob), bobDaiBeforeSwap + AMOUNT - SWAP_FEE);
@@ -293,16 +239,7 @@ contract VaultSwapTest is Test {
         uint256 bobDaiBeforeSwap = DAI.balanceOf(bob);
 
         vm.prank(bob);
-        router.swapExactOut(
-            address(pool),
-            USDC,
-            DAI,
-            AMOUNT - SWAP_FEE,
-            AMOUNT,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
+        router.swapExactOut(address(pool), USDC, DAI, AMOUNT - SWAP_FEE, AMOUNT, type(uint256).max, false, bytes(""));
 
         // asssets are transferred to/from Bob
         assertEq(USDC.balanceOf(bob), bobUsdcBeforeSwap - AMOUNT);
@@ -329,16 +266,7 @@ contract VaultSwapTest is Test {
         uint256 bobDaiBeforeSwap = DAI.balanceOf(bob);
 
         vm.prank(bob);
-        router.swapExactOut(
-            address(pool),
-            USDC,
-            DAI,
-            AMOUNT - SWAP_FEE,
-            AMOUNT,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
+        router.swapExactOut(address(pool), USDC, DAI, AMOUNT - SWAP_FEE, AMOUNT, type(uint256).max, false, bytes(""));
 
         // asssets are transferred to/from Bob
         assertEq(USDC.balanceOf(bob), bobUsdcBeforeSwap - AMOUNT);
@@ -416,16 +344,7 @@ contract VaultSwapTest is Test {
         setProtocolSwapFeePercentage();
 
         vm.prank(bob);
-        router.swapExactIn(
-            address(pool),
-            USDC,
-            DAI,
-            AMOUNT,
-            AMOUNT - SWAP_FEE,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
+        router.swapExactIn(address(pool), USDC, DAI, AMOUNT, AMOUNT - SWAP_FEE, type(uint256).max, false, bytes(""));
 
         authorizer.grantRole(vault.getActionId(IVault.collectProtocolFees.selector), admin);
         vm.prank(admin);
