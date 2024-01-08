@@ -328,13 +328,7 @@ contract VaultLiquidityTest is Test {
 
         vm.stopPrank();
 
-        _compareBalancesRemoveLiquidity(
-            balancesBefore,
-            _getBalances(alice),
-            2 * bptAmountIn,
-            bptAmountIn,
-            amountsOut
-        );
+        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), 2 * bptAmountIn, bptAmountIn, amountsOut);
     }
 
     function testRemoveLiquidityCustom() public {
