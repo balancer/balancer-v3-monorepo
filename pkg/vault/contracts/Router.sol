@@ -412,7 +412,7 @@ contract Router is IRouter, ReentrancyGuard {
             IERC20 token = tokens[i];
 
             if (amountOut < params.minAmountsOut[i]) {
-                revert ExitBelowMin();
+                revert ExitBelowMin(amountOut, params.minAmountsOut[i]);
             }
 
             // There can be only one WETH token in the pool

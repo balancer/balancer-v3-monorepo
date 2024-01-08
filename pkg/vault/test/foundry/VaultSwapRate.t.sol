@@ -27,6 +27,7 @@ import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 
 contract VaultSwapWithRatesTest is Test {
     using ArrayHelpers for *;
+    using FixedPoint for *;
 
     VaultMock vault;
     Router router;
@@ -101,14 +102,6 @@ contract VaultSwapWithRatesTest is Test {
     }
 
     function testInitializePoolWithRate() public {
-        uint256 snapshot = vm.snapshot();
-
-        initPool();
-
-        uint256 aliceBpt = pool.balanceOf(alice);
-
-        vm.revertTo(snapshot);
-
         // Initialize again with rate
         rateProvider.mockRate(MOCK_RATE);
 
@@ -116,7 +109,8 @@ contract VaultSwapWithRatesTest is Test {
 
         uint256 aliceBptWithRate = pool.balanceOf(alice);
 
-        assertApproxEqAbs(aliceBptWithRate, FixedPoint.mulDown(aliceBpt, MOCK_RATE), 1e6);
+        // mock pool invariant is just a sum of all balances
+        assertEq(aliceBptWithRate, AMOUNT + AMOUNT.mulDown(MOCK_RATE) - 1e6, "Invalid amount of BPT");
     }
 
     function testInitialRateProviderState() public {
@@ -131,8 +125,8 @@ contract VaultSwapWithRatesTest is Test {
 
         initPool();
 
-        uint256 rateAdjustedLimit = FixedPoint.divDown(AMOUNT, MOCK_RATE);
-        uint256 rateAdjustedAmount = FixedPoint.mulDown(AMOUNT, MOCK_RATE);
+        uint256 rateAdjustedLimit = AMOUNT.divDown(MOCK_RATE);
+        uint256 rateAdjustedAmount = AMOUNT.mulDown(MOCK_RATE);
 
         vm.expectCall(
             address(pool),
@@ -151,16 +145,7 @@ contract VaultSwapWithRatesTest is Test {
         );
 
         vm.prank(bob);
-        router.swapExactIn(
-            address(pool),
-            DAI,
-            WSTETH,
-            AMOUNT,
-            rateAdjustedLimit,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
+        router.swapExactIn(address(pool), DAI, WSTETH, AMOUNT, rateAdjustedLimit, type(uint256).max, false, bytes(""));
     }
 
     function testSwapGivenOutWithRate() public {
@@ -168,8 +153,8 @@ contract VaultSwapWithRatesTest is Test {
 
         initPool();
 
-        uint256 rateAdjustedBalance = FixedPoint.mulDown(AMOUNT, MOCK_RATE);
-        uint256 rateAdjustedAmountGiven = FixedPoint.divDown(AMOUNT, MOCK_RATE);
+        uint256 rateAdjustedBalance = AMOUNT.mulDown(MOCK_RATE);
+        uint256 rateAdjustedAmountGiven = AMOUNT.divDown(MOCK_RATE);
 
         vm.expectCall(
             address(pool),
