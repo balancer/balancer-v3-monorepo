@@ -88,6 +88,38 @@ contract VaultLiquidityTest is Test {
         vm.label(address(DAI), "DAI");
     }
 
+    function testInitialize() public {
+        vm.startPrank(alice);
+
+        uint256 bptAmountOut = router.initialize(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
+            0,
+            false,
+            bytes("")
+        );
+
+        // should mint correct amount of BPT tokens
+        assertEq(bptAmountOut, DAI_AMOUNT_IN * 2 - 1e6, "Invalid amount of BPT");
+    }
+
+    function testInitializeBptAmountOutBelowMin() public {
+        vm.startPrank(alice);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IVault.BptAmountOutBelowMin.selector, 2 * DAI_AMOUNT_IN - 1e6, 2 * DAI_AMOUNT_IN)
+        );
+        router.initialize(
+            address(pool),
+            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [DAI_AMOUNT_IN, USDC_AMOUNT_IN].toMemoryArray(),
+            2 * DAI_AMOUNT_IN,
+            false,
+            bytes("")
+        );
+    }
+
     function testAddLiquidityUnbalanced() public {
         // Use a different account to initialize so that the main LP is clean at the start of the test.
         _mockInitialize(bob);

@@ -1131,6 +1131,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         _mintMinimumSupplyReserve(address(pool));
         _mint(address(pool), to, bptAmountOut);
 
+        // At this point we have the calculated BPT amount.
+        if (bptAmountOut < minBptAmountOut) {
+            revert BptAmountOutBelowMin(bptAmountOut, minBptAmountOut);
+        }
+
         // Emit an event to log the pool initialization
         emit PoolInitialized(pool);
     }
