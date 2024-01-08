@@ -40,7 +40,7 @@ contract PackedTokenBalanceTest is Test {
 
         // Set new live balance (should not change raw).
         newBalance = PackedTokenBalance.setLastLiveBalanceScaled18(balance, newBalanceValue);
-        
+
         newRecoveredRaw = PackedTokenBalance.getRawBalance(newBalance);
         newRecoveredLive = PackedTokenBalance.getLastLiveBalanceScaled18(newBalance);
 
@@ -49,7 +49,7 @@ contract PackedTokenBalanceTest is Test {
     }
 
     function testOverflow(bytes32 balance, uint128 validBalanceValue, uint256 overMaxBalanceValue) public {
-        overMaxBalanceValue = bound(overMaxBalanceValue, uint256(2**(128)), type(uint256).max);
+        overMaxBalanceValue = bound(overMaxBalanceValue, uint256(2 ** (128)), type(uint256).max);
 
         vm.expectRevert(PackedTokenBalance.BalanceOverflow.selector);
         PackedTokenBalance.toPackedBalance(validBalanceValue, overMaxBalanceValue);

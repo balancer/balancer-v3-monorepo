@@ -49,9 +49,6 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     using PoolConfigLib for PoolCallbacks;
     using ScalingHelpers for *;
 
-    // Minimum BPT amount minted upon initialization.
-    uint256 private constant _MINIMUM_BPT = 1e6;
-
     // Pools can have two, three, or four tokens.
     uint256 private constant _MIN_TOKENS = 2;
     // This maximum token count is also hard-coded in `PoolConfigLib`.
@@ -1105,23 +1102,33 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         poolData.config.isPoolInitialized = true;
         _poolConfig[pool] = poolData.config.fromPoolConfig();
 
-        // Finally, call pool hook. Doing this at the end also means we do not need to downscale exact amounts in.
+        // Finally, compute the initial amount of BPT to mint, which is simply the invariant after adding exactAmountsIn.
+        // Doing this at the end also means we do not need to downscale exact amounts in.
         // Amounts are entering pool math, so round down. A lower invariant after the join means less bptOut,
         // favoring the pool.
         exactAmountsIn.toScaled18ApplyRateRoundDownArray(poolData.decimalScalingFactors, poolData.tokenRates);
 
-        bptAmountOut = IBasePool(pool).onInitialize(exactAmountsIn, userData);
-
-        if (bptAmountOut < _MINIMUM_BPT) {
-            revert BptAmountBelowAbsoluteMin();
+        if (poolData.config.callbacks.shouldCallBeforeInitialize) {
+            if (IPoolCallbacks(pool).onBeforeInitialize(exactAmountsIn, userData) == false) {
+                revert CallbackFailed();
+            }
+        }
+        bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsIn);
+        if (poolData.config.callbacks.shouldCallAfterInitialize) {
+            if (IPoolCallbacks(pool).onAfterInitialize(exactAmountsIn, bptAmountOut, userData) == false) {
+                revert CallbackFailed();
+            }
         }
 
+        _ensureMinimumTotalSupply(bptAmountOut);
+
+        // At this point we know that bptAmountOut >= _MINIMUM_TOTAL_SUPPLY, so this will not revert.
+        bptAmountOut -= _MINIMUM_TOTAL_SUPPLY;
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
-        // At this point we know that bptAmountOut >= _MINIMUM_BPT, so this will not revert.
-        bptAmountOut -= _MINIMUM_BPT;
+        // Minting will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
+        _mintMinimumSupplyReserve(address(pool));
         _mint(address(pool), to, bptAmountOut);
-        _mintToAddressZero(address(pool), _MINIMUM_BPT);
 
         // Emit an event to log the pool initialization
         emit PoolInitialized(pool);
@@ -1520,6 +1527,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
         // When removing liquidity, we must burn tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
+        // Burning will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
         _burn(address(pool), from, bptAmountIn);
 
         emit PoolBalanceChanged(
