@@ -22,6 +22,8 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
 
     uint256 public constant MIN_INIT_BPT = 1e6;
 
+    bool public failOnAfterInitialize;
+    bool public failOnBeforeInitialize;
     bool public failOnBeforeSwapCallback;
     bool public failOnAfterSwapCallback;
     bool public failOnBeforeAddLiquidity;
@@ -56,10 +58,6 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
         }
     }
 
-    function onInitialize(uint256[] memory exactAmountsIn, bytes memory) external pure override returns (uint256) {
-        return (MIN_INIT_BPT > exactAmountsIn[0] ? MIN_INIT_BPT : exactAmountsIn[0]);
-    }
-
     function computeInvariant(uint256[] memory balances) external pure returns (uint256) {
         // inv = x + y
         uint256 invariant;
@@ -81,6 +79,14 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
     ) external pure returns (uint256 newBalance) {
         // inv = x + y
         return balances[tokenInIndex].mulDown(invariantRatio);
+    }
+
+    function setFailOnAfterInitializeCallback(bool fail) external {
+        failOnAfterInitialize = fail;
+    }
+
+    function setFailOnBeforeInitializeCallback(bool fail) external {
+        failOnBeforeInitialize = fail;
     }
 
     function setFailOnBeforeSwapCallback(bool fail) external {
@@ -109,6 +115,14 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
 
     function setMultiplier(uint256 newMultiplier) external {
         _multiplier = newMultiplier;
+    }
+
+    function onBeforeInitialize(uint256[] memory, bytes memory) external view returns (bool) {
+        return !failOnBeforeInitialize;
+    }
+
+    function onAfterInitialize(uint256[] memory, uint256, bytes memory) external view returns (bool) {
+        return !failOnAfterInitialize;
     }
 
     function onBeforeSwap(IBasePool.SwapParams calldata) external view override returns (bool success) {
