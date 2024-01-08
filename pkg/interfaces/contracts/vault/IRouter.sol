@@ -23,7 +23,7 @@ interface IRouter {
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
-     * @param userData Additional (optional) data required for initialization
+     * @param userData Additional (optional) data required for adding initial liquidity
      */
     struct InitializeCallbackParams {
         address sender;
@@ -42,7 +42,7 @@ interface IRouter {
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
-     * @param userData Additional (optional) data required for initialization
+     * @param userData Additional (optional) data required for adding initial liquidity
      * @return bptAmountOut Actual amount of pool tokens minted in exchange for initial liquidity
      */
     function initialize(
@@ -167,7 +167,7 @@ interface IRouter {
     }
 
     /// @dev The actual bptAmountOut is below the minimum limit specified in the exit.
-    error ExitBelowMin();
+    error ExitBelowMin(uint256 amount, uint256 limit);
 
     /**
      * @notice Removes liquidity with proportional token amounts from a pool, burning an exact pool token amount.

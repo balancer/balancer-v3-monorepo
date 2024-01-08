@@ -42,6 +42,7 @@ contract VaultLiquidityTest is Test {
 
     uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
+    uint256 constant MINIMUM_TOTAL_SUPPLY = 1e6;
 
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
@@ -104,7 +105,7 @@ contract VaultLiquidityTest is Test {
         _compareBalancesAddLiquidity(balancesBefore, balancesAfter, amountsIn, bptAmountOut);
 
         // should mint correct amount of BPT tokens
-        assertEq(bptAmountOut, DAI_AMOUNT_IN);
+        assertEq(bptAmountOut, DAI_AMOUNT_IN * 2, "Invalid amount of BPT");
     }
 
     function testAddLiquiditySingleTokenExactOut() public {
@@ -172,6 +173,31 @@ contract VaultLiquidityTest is Test {
         );
     }
 
+    function testRemoveLiquidityMinimumTotalSupply() public {
+        _mockInitialize(bob);
+
+        vm.startPrank(bob);
+
+        Balances memory balancesBefore = _getBalances(bob);
+        uint256 bptAmountIn = pool.balanceOf(bob);
+
+        uint256[] memory amountsOut = router.removeLiquidityProportional(
+            address(pool),
+            bptAmountIn,
+            [uint256(DAI_AMOUNT_IN - MINIMUM_TOTAL_SUPPLY / 2), uint256(USDC_AMOUNT_IN - 1)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+
+        vm.stopPrank();
+
+        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(bob), bptAmountIn, 0, amountsOut);
+
+        // amountsOut are correct
+        assertEq(amountsOut[0], DAI_AMOUNT_IN - MINIMUM_TOTAL_SUPPLY / 2);
+        assertEq(amountsOut[1], USDC_AMOUNT_IN - 1);
+    }
+
     function testRemoveLiquidityProportional() public {
         // Use a different account to initialize so that the main LP is clean at the start of the test.
         _mockInitialize(bob);
@@ -187,7 +213,7 @@ contract VaultLiquidityTest is Test {
         );
 
         Balances memory balancesBefore = _getBalances(alice);
-        uint256 bptAmountIn = DAI_AMOUNT_IN;
+        uint256 bptAmountIn = DAI_AMOUNT_IN * 2;
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(pool),
@@ -199,7 +225,7 @@ contract VaultLiquidityTest is Test {
 
         vm.stopPrank();
 
-        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, amountsOut);
+        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, 0, amountsOut);
 
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN);
@@ -221,7 +247,7 @@ contract VaultLiquidityTest is Test {
         );
 
         Balances memory balancesBefore = _getBalances(alice);
-        uint256 bptAmountIn = DAI_AMOUNT_IN;
+        uint256 bptAmountIn = DAI_AMOUNT_IN * 2;
 
         uint256[] memory amountsOut = router.removeLiquiditySingleTokenExactIn(
             address(pool),
@@ -234,7 +260,7 @@ contract VaultLiquidityTest is Test {
 
         vm.stopPrank();
 
-        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, amountsOut);
+        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, 0, amountsOut);
 
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN);
@@ -268,7 +294,7 @@ contract VaultLiquidityTest is Test {
 
         vm.stopPrank();
 
-        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, amountsOut);
+        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, 0, amountsOut);
     }
 
     function testRemoveLiquidityCustom() public {
@@ -289,7 +315,7 @@ contract VaultLiquidityTest is Test {
 
         (uint256 bptAmountIn, uint256[] memory amountsOut, ) = router.removeLiquidityCustom(
             address(pool),
-            DAI_AMOUNT_IN,
+            DAI_AMOUNT_IN * 2,
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             false,
             bytes("")
@@ -297,7 +323,7 @@ contract VaultLiquidityTest is Test {
 
         vm.stopPrank();
 
-        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, amountsOut);
+        _compareBalancesRemoveLiquidity(balancesBefore, _getBalances(alice), bptAmountIn, 0, amountsOut);
 
         // amountsOut are correct
         assertEq(amountsOut[0], DAI_AMOUNT_IN);
@@ -385,6 +411,7 @@ contract VaultLiquidityTest is Test {
         Balances memory balancesBefore,
         Balances memory balancesAfter,
         uint256 bptAmountIn,
+        uint256 bptAmountAfter,
         uint256[] memory amountsOut
     ) internal {
         // Tokens are transferred back to user
@@ -413,6 +440,6 @@ contract VaultLiquidityTest is Test {
 
         // User has burnt the correct amount of BPT
         assertEq(balancesBefore.userBpt, bptAmountIn, "Remove - User BPT balance before");
-        assertEq(balancesAfter.userBpt, 0, "Remove - User BPT balance after");
+        assertEq(balancesAfter.userBpt, bptAmountAfter, "Remove - User BPT balance after");
     }
 }

@@ -122,7 +122,7 @@ describe('Vault', function () {
           tokenConfig,
           pauseWindowEndTime,
           ANY_ADDRESS,
-          [false, false, false, false, false, false],
+          [false, false, false, false, false, false, false, false],
           [true, true]
         );*/
 

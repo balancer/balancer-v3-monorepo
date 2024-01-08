@@ -9,6 +9,8 @@ import { IRateProvider } from "./IRateProvider.sol";
 
 /// @dev Represents a pool's callbacks.
 struct PoolCallbacks {
+    bool shouldCallBeforeInitialize;
+    bool shouldCallAfterInitialize;
     bool shouldCallBeforeSwap;
     bool shouldCallAfterSwap;
     bool shouldCallBeforeAddLiquidity;
@@ -128,9 +130,6 @@ interface IVault {
      */
     error TokenAlreadyRegistered(IERC20 token);
 
-    /// @dev The BPT amount involved in the operation is below the absolute minimum.
-    error BptAmountBelowAbsoluteMin();
-
     /// @dev The token count is below the minimum allowed.
     error MinTokens();
 
@@ -210,15 +209,11 @@ interface IVault {
 
     /**
      * @notice Initializes a registered pool by adding liquidity; mints BPT tokens for the first time in exchange.
-     * @dev The initial liquidity should make the pool mint at least `_MINIMUM_BPT` tokens, otherwise the
-     * initialization will fail. Besides the BPT minted to the given target address (`to`), `_MINIMUM_BPT` tokens are
-     * minted to address(0).
-     *
      * @param pool Address of the pool to initialize
      * @param to Address that will receive the output BPT
      * @param tokens Tokens used to seed the pool (must match the registered tokens)
      * @param exactAmountsIn Exact amounts of input tokens
-     * @param userData Additional (optional) data for the initialization
+     * @param userData Additional (optional) data required for adding initial liquidity
      * @return bptAmountOut Output pool token amount
      */
     function initialize(
