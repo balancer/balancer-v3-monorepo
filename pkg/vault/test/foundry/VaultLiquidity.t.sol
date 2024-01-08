@@ -179,7 +179,9 @@ contract VaultLiquidityTest is Test {
 
         vm.startPrank(alice);
 
-        vm.expectRevert(abi.encodeWithSelector(IVault.BptAmountOutBelowMin.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(IVault.BptAmountOutBelowMin.selector, 2 * DAI_AMOUNT_IN, 2 * DAI_AMOUNT_IN + 1)
+        );
         router.addLiquidityUnbalanced(
             address(pool),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
@@ -196,7 +198,9 @@ contract VaultLiquidityTest is Test {
 
         vm.startPrank(alice);
 
-        vm.expectRevert(abi.encodeWithSelector(IVault.AmountInAboveMax.selector, address(DAI)));
+        vm.expectRevert(
+            abi.encodeWithSelector(IVault.AmountInAboveMax.selector, address(DAI), DAI_AMOUNT_IN, DAI_AMOUNT_IN - 1)
+        );
         router.addLiquiditySingleTokenExactOut(
             address(pool),
             DAI,
@@ -382,10 +386,17 @@ contract VaultLiquidityTest is Test {
 
         vm.startPrank(bob);
 
-        vm.expectRevert(abi.encodeWithSelector(IVault.AmountOutBelowMin.selector, address(DAI)));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVault.AmountOutBelowMin.selector,
+                address(DAI),
+                DAI_AMOUNT_IN,
+                DAI_AMOUNT_IN + 1
+            )
+        );
         router.removeLiquidityProportional(
             address(pool),
-            DAI_AMOUNT_IN,
+            2 * DAI_AMOUNT_IN,
             [uint256(DAI_AMOUNT_IN + 1), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             false,
             bytes("")

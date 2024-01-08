@@ -456,10 +456,10 @@ interface IVault {
     error TokenNotRegistered();
 
     /// @dev A required amountIn exceeds the maximum limit specified for the operation.
-    error AmountInAboveMax(IERC20 token);
+    error AmountInAboveMax(IERC20 token, uint256 amount, uint256 limit);
 
     /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
-    error BptAmountOutBelowMin();
+    error BptAmountOutBelowMin(uint256 amount, uint256 limit);
 
     /// @dev Introduce to avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
     struct LiquidityLocals {
@@ -514,7 +514,7 @@ interface IVault {
     error InvalidRemoveLiquidityKind();
 
     /// @dev The actual amount out is below the minimum limit specified for the operation.
-    error AmountOutBelowMin(IERC20 token);
+    error AmountOutBelowMin(IERC20 token, uint256 amount, uint256 limit);
 
     /// @dev The required BPT amount in exceeds the maximum limit specified for the operation.
     error BptAmountInAboveMax(uint256 amount, uint256 limit);
