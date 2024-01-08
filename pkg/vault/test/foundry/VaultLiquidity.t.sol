@@ -440,6 +440,6 @@ contract VaultLiquidityTest is Test {
 
         // User has burnt the correct amount of BPT
         assertEq(balancesBefore.userBpt, bptAmountIn, "Remove - User BPT balance before");
-        assertEq(balancesAfter.userBpt, btpAmountAfter, "Remove - User BPT balance after");
+        assertEq(balancesAfter.userBpt, bptAmountAfter, "Remove - User BPT balance after");
     }
 }
