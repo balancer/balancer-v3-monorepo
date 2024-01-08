@@ -29,8 +29,8 @@ contract VaultSwapTest is VaultUtils {
     using ArrayHelpers for *;
 
     PoolMock internal noInitPool;
-    uint256 internal swapFee = 1e3 * 1e16; // 1%
-    uint256 internal protocolSwapFee = swapFee / 2;
+    uint256 internal swapFee = defaultAmount / 100; // 1%
+    uint256 internal protocolSwapFee = swapFee / 2; // 50%
 
     function setUp() public virtual override {
         VaultUtils.setUp();
@@ -78,24 +78,21 @@ contract VaultSwapTest is VaultUtils {
     }
 
     function testSwapGivenIn() public {
-        vm.prank(bob);
+        assertSwap(swapGivenIn);
+    }
+
+    function swapGivenIn() public returns (uint256 fee, uint256 protocolFee) {
+        vm.prank(alice);
         router.swapExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
-
-        // Tokens are transferred to/from Bob
-        assertEq(usdc.balanceOf(bob), 0);
-        assertEq(dai.balanceOf(bob), 2 * defaultAmount);
-
-        // Tokens are adjusted in the pool
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], 0);
-        assertEq(balances[1], defaultAmount * 2);
-
-        assertEq(dai.balanceOf(address(vault)), 0);
-        assertEq(usdc.balanceOf(address(vault)), 2 * defaultAmount);
+        return (0, 0);
     }
 
     function testSwapGivenOut() public {
-        vm.prank(bob);
+        assertSwap(swapGivenOut);
+    }
+
+    function swapGivenOut() public returns (uint256 fee, uint256 protocolFee) {
+        vm.prank(alice);
         router.swapExactOut(
             address(pool),
             usdc,
@@ -106,30 +103,17 @@ contract VaultSwapTest is VaultUtils {
             false,
             bytes("")
         );
-
-        // asssets are transferred to/from Bob
-        assertEq(usdc.balanceOf(bob), 0);
-        assertEq(dai.balanceOf(bob), 2 * defaultAmount);
-
-        // Tokens are adjusted in the pool
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], 0);
-        assertEq(balances[1], defaultAmount * 2);
-
-        // vault are adjusted balances
-        assertEq(dai.balanceOf(address(vault)), 0);
-        assertEq(usdc.balanceOf(address(vault)), 2 * defaultAmount);
+        return (0, 0);
     }
 
     function testSwapFeeGivenIn() public {
-        usdc.mint(bob, defaultAmount);
+        assertSwap(swapFeeGivenIn);
+    }
 
+    function swapFeeGivenIn() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage();
 
-        uint256 bobUsdcBeforeSwap = usdc.balanceOf(bob);
-        uint256 bobDaiBeforeSwap = dai.balanceOf(bob);
-
-        vm.prank(bob);
+        vm.prank(alice);
         router.swapExactIn(
             address(pool),
             usdc,
@@ -141,30 +125,18 @@ contract VaultSwapTest is VaultUtils {
             bytes("")
         );
 
-        // asssets are transferred to/from Bob
-        assertEq(usdc.balanceOf(bob), bobUsdcBeforeSwap - defaultAmount);
-        assertEq(dai.balanceOf(bob), bobDaiBeforeSwap + defaultAmount - swapFee);
-
-        // Tokens are adjusted in the pool
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], swapFee);
-        assertEq(balances[1], 2 * defaultAmount);
-
-        // vault are adjusted balances
-        assertEq(dai.balanceOf(address(vault)), swapFee);
-        assertEq(usdc.balanceOf(address(vault)), 2 * defaultAmount);
+        return (swapFee, 0);
     }
 
     function testProtocolSwapFeeGivenIn() public {
-        usdc.mint(bob, defaultAmount);
+        assertSwap(protocolSwapFeeGivenIn);
+    }
 
+    function protocolSwapFeeGivenIn() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage();
         setProtocolSwapFeePercentage();
 
-        uint256 bobUsdcBeforeSwap = usdc.balanceOf(bob);
-        uint256 bobDaiBeforeSwap = dai.balanceOf(bob);
-
-        vm.prank(bob);
+        vm.prank(alice);
         router.swapExactIn(
             address(pool),
             usdc,
@@ -176,32 +148,17 @@ contract VaultSwapTest is VaultUtils {
             bytes("")
         );
 
-        // asssets are transferred to/from Bob: usdc in, dai out
-        assertEq(dai.balanceOf(bob), bobDaiBeforeSwap + defaultAmount - swapFee);
-        assertEq(usdc.balanceOf(bob), bobUsdcBeforeSwap - defaultAmount);
-
-        // Tokens are adjusted in the pool: dai out, usdc in
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], swapFee - protocolSwapFee);
-        assertEq(balances[1], 2 * defaultAmount);
-
-        // protocol fees are accrued
-        assertEq(protocolSwapFee, vault.getProtocolSwapFee(address(dai)));
-
-        // vault are adjusted balances
-        assertEq(dai.balanceOf(address(vault)), swapFee);
-        assertEq(usdc.balanceOf(address(vault)), 2 * defaultAmount);
+        return (swapFee, protocolSwapFee);
     }
 
     function testSwapFeeGivenOut() public {
-        usdc.mint(bob, defaultAmount);
+        assertSwap(swapFeeGivenOut);
+    }
 
+    function swapFeeGivenOut() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage();
 
-        uint256 bobUsdcBeforeSwap = usdc.balanceOf(bob);
-        uint256 bobDaiBeforeSwap = dai.balanceOf(bob);
-
-        vm.prank(bob);
+        vm.prank(alice);
         router.swapExactOut(
             address(pool),
             usdc,
@@ -213,30 +170,18 @@ contract VaultSwapTest is VaultUtils {
             bytes("")
         );
 
-        // asssets are transferred to/from Bob
-        assertEq(usdc.balanceOf(bob), bobUsdcBeforeSwap - defaultAmount);
-        assertEq(dai.balanceOf(bob), bobDaiBeforeSwap + defaultAmount - swapFee);
-
-        // Tokens are adjusted in the pool
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], swapFee);
-        assertEq(balances[1], 2 * defaultAmount);
-
-        // vault are adjusted balances
-        assertEq(dai.balanceOf(address(vault)), swapFee);
-        assertEq(usdc.balanceOf(address(vault)), 2 * defaultAmount);
+        return (swapFee, 0);
     }
 
     function testProtocolSwapFeeGivenOut() public {
-        usdc.mint(bob, defaultAmount);
+        assertSwap(protocolSwapFeeGivenOut);
+    }
 
+    function protocolSwapFeeGivenOut() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage();
         setProtocolSwapFeePercentage();
 
-        uint256 bobUsdcBeforeSwap = usdc.balanceOf(bob);
-        uint256 bobDaiBeforeSwap = dai.balanceOf(bob);
-
-        vm.prank(bob);
+        vm.prank(alice);
         router.swapExactOut(
             address(pool),
             usdc,
@@ -248,33 +193,18 @@ contract VaultSwapTest is VaultUtils {
             bytes("")
         );
 
-        // asssets are transferred to/from Bob
-        assertEq(usdc.balanceOf(bob), bobUsdcBeforeSwap - defaultAmount);
-        assertEq(dai.balanceOf(bob), bobDaiBeforeSwap + defaultAmount - swapFee);
-
-        // Tokens are adjusted in the pool
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], swapFee - protocolSwapFee);
-        assertEq(balances[1], 2 * defaultAmount);
-
-        // protocol fees are accrued
-        assertEq(protocolSwapFee, vault.getProtocolSwapFee(address(dai)));
-
-        // vault are adjusted balances
-        assertEq(dai.balanceOf(address(vault)), swapFee);
-        assertEq(usdc.balanceOf(address(vault)), 2 * defaultAmount);
+        return (swapFee, protocolSwapFee);
     }
 
     function testProtocolSwapFeeAccumulation() public {
-        usdc.mint(bob, defaultAmount);
+        assertSwap(protocolSwapFeeAccumulation);
+    }
 
+    function protocolSwapFeeAccumulation() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage();
         setProtocolSwapFeePercentage();
 
-        uint256 bobUsdcBeforeSwap = usdc.balanceOf(bob);
-        uint256 bobDaiBeforeSwap = dai.balanceOf(bob);
-
-        vm.prank(bob);
+        vm.prank(alice);
         router.swapExactIn(
             address(pool),
             usdc,
@@ -286,7 +216,7 @@ contract VaultSwapTest is VaultUtils {
             bytes("")
         );
 
-        vm.prank(bob);
+        vm.prank(alice);
         router.swapExactIn(
             address(pool),
             usdc,
@@ -298,21 +228,7 @@ contract VaultSwapTest is VaultUtils {
             bytes("")
         );
 
-        // asssets are transferred to/from Bob
-        assertEq(usdc.balanceOf(bob), bobUsdcBeforeSwap - defaultAmount);
-        assertEq(dai.balanceOf(bob), bobDaiBeforeSwap + defaultAmount - swapFee);
-
-        // Tokens are adjusted in the pool
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], swapFee - protocolSwapFee);
-        assertEq(balances[1], 2 * defaultAmount);
-
-        // protocol fees are accrued
-        assertEq(protocolSwapFee, vault.getProtocolSwapFee(address(dai)));
-
-        // vault are adjusted balances
-        assertEq(dai.balanceOf(address(vault)), swapFee);
-        assertEq(usdc.balanceOf(address(vault)), 2 * defaultAmount);
+        return (swapFee, protocolSwapFee);
     }
 
     function testCollectProtocolFees() public {
@@ -338,34 +254,34 @@ contract VaultSwapTest is VaultUtils {
         vault.collectProtocolFees([address(dai)].toMemoryArray().asIERC20());
 
         // protocol fees are zero
-        assertEq(0, vault.getProtocolSwapFee(address(dai)));
+        assertEq(0, vault.getProtocolSwapFee(address(dai)), "Protocol fees are not zero");
 
         // alice received protocol fees
-        assertEq(dai.balanceOf(admin), (protocolSwapFee));
+        assertEq(dai.balanceOf(admin) - defaultBalance, (protocolSwapFee), "Protocol fees not collected");
     }
 
     /// Utils
 
-    function assertSwap(function() testFunc) internal {
+    function assertSwap(function() returns (uint256, uint256) testFunc) internal {
         uint256 usdcBeforeSwap = usdc.balanceOf(alice);
         uint256 daiBeforeSwap = dai.balanceOf(alice);
 
-        testFunc();
+        (uint256 fee, uint256 protocolFee) = testFunc();
 
         // asssets are transferred to/from user
         assertEq(usdc.balanceOf(alice), usdcBeforeSwap - defaultAmount, "Swap: User's USDC balance is wrong");
-        assertEq(dai.balanceOf(alice), daiBeforeSwap + defaultAmount - swapFee, "Swap: User's DAI balance is wrong");
+        assertEq(dai.balanceOf(alice), daiBeforeSwap + defaultAmount - fee, "Swap: User's DAI balance is wrong");
 
         // Tokens are adjusted in the pool
         (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], swapFee - protocolSwapFee, "Swap: Pool's [0] balance is wrong");
+        assertEq(balances[0], fee - protocolFee, "Swap: Pool's [0] balance is wrong");
         assertEq(balances[1], 2 * defaultAmount, "Swap: Pool's [1] balance is wrong");
 
         // protocol fees are accrued
-        assertEq(protocolSwapFee, vault.getProtocolSwapFee(address(dai)), "Swap: Protocol's fee amount is wrong");
+        assertEq(protocolFee, vault.getProtocolSwapFee(address(dai)), "Swap: Protocol's fee amount is wrong");
 
         // vault are adjusted balances
-        assertEq(dai.balanceOf(address(vault)), swapFee, "Swap: Vault's DAI balance is wrong");
+        assertEq(dai.balanceOf(address(vault)), fee, "Swap: Vault's DAI balance is wrong");
         assertEq(usdc.balanceOf(address(vault)), 2 * defaultAmount, "Swap: Vault's USDC balance is wrong");
     }
 }

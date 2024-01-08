@@ -32,7 +32,13 @@ abstract contract BaseTest is Test {
     // List of all ERC20 tokens
     IERC20[] internal tokens;
 
+    // Default balance for accounts
+    uint256 internal defaultBalance;
+
     function setUp() public virtual {
+        // Set default balance to 1mil
+        defaultBalance = 1e6 * 1e18;
+
         // Deploy the base test contracts.
         dai = createERC20("DAI", 18);
         usdc = createERC20("USDC", 18);
@@ -64,10 +70,10 @@ abstract contract BaseTest is Test {
     function createUser(string memory name) internal returns (address payable) {
         address payable user = payable(makeAddr(name));
         vm.label(user, name);
-        vm.deal(user, 100 ether);
+        vm.deal(user, defaultBalance);
 
         for (uint256 index = 0; index < tokens.length; index++) {
-            deal(address(tokens[index]), user, 1_000_000e18);
+            deal(address(tokens[index]), user, defaultBalance);
         }
 
         return user;
