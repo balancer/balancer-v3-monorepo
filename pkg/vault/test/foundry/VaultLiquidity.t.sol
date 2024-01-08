@@ -387,12 +387,7 @@ contract VaultLiquidityTest is Test {
         vm.startPrank(bob);
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IVault.AmountOutBelowMin.selector,
-                address(DAI),
-                DAI_AMOUNT_IN,
-                DAI_AMOUNT_IN + 1
-            )
+            abi.encodeWithSelector(IVault.AmountOutBelowMin.selector, address(DAI), DAI_AMOUNT_IN, DAI_AMOUNT_IN + 1)
         );
         router.removeLiquidityProportional(
             address(pool),
