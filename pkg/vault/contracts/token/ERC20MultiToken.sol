@@ -91,15 +91,20 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
             _balances[token][to] += amount;
         }
 
-        if (newTotalSupply < _MINIMUM_TOTAL_SUPPLY) {
-            revert TotalSupplyTooLow(newTotalSupply, _MINIMUM_TOTAL_SUPPLY);
-        }
+        _ensureMinimumTotalSupply(newTotalSupply);
+
         _totalSupplyOf[token] = newTotalSupply;
 
         emit Transfer(token, address(0), to, amount);
 
         // We also invoke the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
         BalancerPoolToken(token).emitTransfer(address(0), to, amount);
+    }
+
+    function _ensureMinimumTotalSupply(uint256 newTotalSupply) internal pure {
+        if (newTotalSupply < _MINIMUM_TOTAL_SUPPLY) {
+            revert TotalSupplyTooLow(newTotalSupply, _MINIMUM_TOTAL_SUPPLY);
+        }
     }
 
     function _mintMinimumSupplyReserve(address token) internal {
@@ -129,9 +134,7 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
         }
         uint256 newTotalSupply = _totalSupplyOf[token] - amount;
 
-        if (newTotalSupply < _MINIMUM_TOTAL_SUPPLY) {
-            revert TotalSupplyTooLow(newTotalSupply, _MINIMUM_TOTAL_SUPPLY);
-        }
+        _ensureMinimumTotalSupply(newTotalSupply);
 
         _totalSupplyOf[token] = newTotalSupply;
 

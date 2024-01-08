@@ -157,7 +157,7 @@ contract RouterTest is Test {
     }
 
     function testInitializeBelowMinimum() public {
-        vm.expectRevert(abi.encodeWithSelector(IVault.BptAmountBelowAbsoluteMin.selector));
+        vm.expectRevert(abi.encodeWithSelector(IERC20MultiToken.TotalSupplyTooLow.selector, 0, 1e6));
         router.initialize(
             address(wethPool),
             [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
