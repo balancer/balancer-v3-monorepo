@@ -411,7 +411,7 @@ contract VaultLiquidityTest is Test {
         Balances memory balancesBefore,
         Balances memory balancesAfter,
         uint256 bptAmountIn,
-        uint256 btpAmountAfter,
+        uint256 bptAmountAfter,
         uint256[] memory amountsOut
     ) internal {
         // Tokens are transferred back to user
