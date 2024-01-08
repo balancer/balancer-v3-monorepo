@@ -81,12 +81,6 @@ interface IRouter {
         bytes userData;
     }
 
-    /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
-    error BptAmountBelowMin(uint256 amount, uint256 limit);
-
-    /// @dev A required amountIn exceeds the maximum limit specified in the join.
-    error JoinAboveMax(uint256 amount, uint256 limit);
-
     /**
      * @notice Adds with arbitrary token amounts in to a pool.
      * @param pool Address of the liquidity pool

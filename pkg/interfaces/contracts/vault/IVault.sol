@@ -213,6 +213,7 @@ interface IVault {
      * @param to Address that will receive the output BPT
      * @param tokens Tokens used to seed the pool (must match the registered tokens)
      * @param exactAmountsIn Exact amounts of input tokens
+     * @param minBptAmountOut Minimum amount of output pool tokens
      * @param userData Additional (optional) data required for adding initial liquidity
      * @return bptAmountOut Output pool token amount
      */
@@ -221,6 +222,7 @@ interface IVault {
         address to,
         IERC20[] memory tokens,
         uint256[] memory exactAmountsIn,
+        uint256 minBptAmountOut,
         bytes memory userData
     ) external returns (uint256 bptAmountOut);
 
@@ -374,9 +376,6 @@ interface IVault {
      */
     error SenderIsNotVault(address sender);
 
-    /// @dev The BPT amount requested from removing liquidity is above the maximum specified for the operation.
-    error BptAmountAboveMax();
-
     /// @dev A transient accounting operation completed with outstanding token deltas.
     error BalanceNotSettled();
 
@@ -502,6 +501,18 @@ interface IVault {
     /// @dev The user attempted to swap a token not in the pool.
     error TokenNotRegistered();
 
+    /// @dev A required amountIn exceeds the maximum limit specified for the operation.
+    error AmountInAboveMax(IERC20 token, uint256 amount, uint256 limit);
+
+    /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
+    error BptAmountOutBelowMin(uint256 amount, uint256 limit);
+
+    /// @dev Introduce to avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
+    struct LiquidityLocals {
+        uint256 tokenIndex;
+        uint256[] limitsScaled18;
+    }
+
     /**
      * @dev Data for an add liquidity operation.
      * @param pool Address of the pool
@@ -547,6 +558,12 @@ interface IVault {
 
     /// @dev Remove liquidity kind not supported.
     error InvalidRemoveLiquidityKind();
+
+    /// @dev The actual amount out is below the minimum limit specified for the operation.
+    error AmountOutBelowMin(IERC20 token, uint256 amount, uint256 limit);
+
+    /// @dev The required BPT amount in exceeds the maximum limit specified for the operation.
+    error BptAmountInAboveMax(uint256 amount, uint256 limit);
 
     /**
      * @param pool Address of the pool

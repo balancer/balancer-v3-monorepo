@@ -79,12 +79,9 @@ contract Router is IRouter, ReentrancyGuard {
             params.sender,
             params.tokens,
             params.exactAmountsIn,
+            params.minBptAmountOut,
             params.userData
         );
-
-        if (bptAmountOut < params.minBptAmountOut) {
-            revert BptAmountBelowMin(bptAmountOut, params.minBptAmountOut);
-        }
 
         uint256 ethAmountIn;
         for (uint256 i = 0; i < params.tokens.length; ++i) {
@@ -226,20 +223,11 @@ contract Router is IRouter, ReentrancyGuard {
         // maxAmountsIn length is checked against tokens length at the vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
-        if (bptAmountOut < params.minBptAmountOut) {
-            revert BptAmountBelowMin(bptAmountOut, params.minBptAmountOut);
-        }
-
         uint256 ethAmountIn;
         for (uint256 i = 0; i < tokens.length; ++i) {
             // Receive tokens from the handler
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
-
-            // TODO: check amounts in for every type.
-            if (amountIn > params.maxAmountsIn[i]) {
-                revert JoinAboveMax(amountIn, params.maxAmountsIn[i]);
-            }
 
             // There can be only one WETH token in the pool
             if (params.wethIsEth && address(token) == address(_weth)) {
