@@ -8,14 +8,9 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
-import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
-import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
-import { VaultMock } from "../../contracts/test/VaultMock.sol";
-import { Router } from "../../contracts/Router.sol";
 import { FactoryWidePauseWindow } from "../../contracts/factories/FactoryWidePauseWindow.sol";
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 
