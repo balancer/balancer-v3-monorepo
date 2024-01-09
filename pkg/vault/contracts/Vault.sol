@@ -47,7 +47,6 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
     using SafeERC20 for IERC20;
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
-    using PoolConfigLib for PoolCallbacks;
     using ScalingHelpers for *;
 
     /// @dev Modifier to make a function callable only when the Vault is not paused.
