@@ -25,91 +25,38 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 
-contract VaultSwapWithRatesTest is Test {
+import { VaultUtils } from "./utils/VaultUtils.sol";
+
+contract VaultSwapWithRatesTest is VaultUtils {
     using ArrayHelpers for *;
     using FixedPoint for *;
 
-    VaultMock vault;
-    Router router;
-    BasicAuthorizerMock authorizer;
-    RateProviderMock rateProvider;
-    PoolMock pool;
-    ERC20TestToken WSTETH;
-    ERC20TestToken DAI;
-    address alice = vm.addr(1);
-    address bob = vm.addr(2);
+    function setUp() public virtual override {
+        VaultUtils.setUp();
+    }
 
-    uint256 constant AMOUNT = 1e3 * 1e18;
-    uint256 constant MOCK_RATE = 2e18;
-
-    function setUp() public {
-        authorizer = new BasicAuthorizerMock();
-        vault = new VaultMock(authorizer, 30 days, 90 days);
-        router = new Router(IVault(vault), new WETHTestToken());
-        WSTETH = new ERC20TestToken("WSTETH", "WSTETH", 18);
-        DAI = new ERC20TestToken("DAI", "DAI", 18);
+    function createPool() internal override returns (PoolMock) {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProvider = new RateProviderMock();
         rateProviders[0] = rateProvider;
+        rateProvider.mockRate(mockRate);
 
-        pool = new PoolMock(
-            vault,
-            "ERC20 Pool",
-            "ERC20POOL",
-            [address(WSTETH), address(DAI)].toMemoryArray().asIERC20(),
-            rateProviders,
-            true,
-            365 days,
-            address(0)
-        );
-
-        WSTETH.mint(bob, AMOUNT);
-        DAI.mint(bob, AMOUNT);
-
-        WSTETH.mint(alice, AMOUNT);
-        DAI.mint(alice, AMOUNT);
-
-        vm.startPrank(bob);
-
-        WSTETH.approve(address(vault), type(uint256).max);
-        DAI.approve(address(vault), type(uint256).max);
-
-        vm.stopPrank();
-
-        vm.startPrank(alice);
-
-        WSTETH.approve(address(vault), type(uint256).max);
-        DAI.approve(address(vault), type(uint256).max);
-
-        vm.stopPrank();
-
-        vm.label(alice, "alice");
-        vm.label(bob, "bob");
-        vm.label(address(WSTETH), "WSTETH");
-        vm.label(address(DAI), "DAI");
-    }
-
-    function initPool() public {
-        vm.prank(alice);
-        router.initialize(
-            address(pool),
-            [address(WSTETH), address(DAI)].toMemoryArray().asIERC20(),
-            [uint256(AMOUNT), uint256(AMOUNT)].toMemoryArray(),
-            0,
-            false
-        );
+        return
+            new PoolMock(
+                vault,
+                "ERC20 Pool",
+                "ERC20POOL",
+                [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
+                rateProviders,
+                true,
+                365 days,
+                address(0)
+            );
     }
 
     function testInitializePoolWithRate() public {
-        // Initialize again with rate
-        rateProvider.mockRate(MOCK_RATE);
-
-        initPool();
-
-        uint256 aliceBptWithRate = pool.balanceOf(alice);
-
         // mock pool invariant is just a sum of all balances
-        assertEq(aliceBptWithRate, AMOUNT + AMOUNT.mulDown(MOCK_RATE), "Invalid amount of BPT");
+        assertEq(pool.balanceOf(lp), defaultAmount + defaultAmount.mulDown(mockRate), "Invalid amount of BPT");
     }
 
     function testInitialRateProviderState() public {
@@ -120,12 +67,8 @@ contract VaultSwapWithRatesTest is Test {
     }
 
     function testSwapGivenInWithRate() public {
-        rateProvider.mockRate(MOCK_RATE);
-
-        initPool();
-
-        uint256 rateAdjustedLimit = AMOUNT.divDown(MOCK_RATE);
-        uint256 rateAdjustedAmount = AMOUNT.mulDown(MOCK_RATE);
+        uint256 rateAdjustedLimit = defaultAmount.divDown(mockRate);
+        uint256 rateAdjustedAmount = defaultAmount.mulDown(mockRate);
 
         vm.expectCall(
             address(pool),
@@ -133,10 +76,10 @@ contract VaultSwapWithRatesTest is Test {
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_IN,
-                    tokenIn: IERC20(DAI),
-                    tokenOut: IERC20(WSTETH),
-                    amountGivenScaled18: AMOUNT,
-                    balancesScaled18: [rateAdjustedAmount, AMOUNT].toMemoryArray(),
+                    tokenIn: IERC20(dai),
+                    tokenOut: IERC20(wsteth),
+                    amountGivenScaled18: defaultAmount,
+                    balancesScaled18: [rateAdjustedAmount, defaultAmount].toMemoryArray(),
                     indexIn: 1,
                     indexOut: 0,
                     sender: address(router),
@@ -146,16 +89,12 @@ contract VaultSwapWithRatesTest is Test {
         );
 
         vm.prank(bob);
-        router.swapExactIn(address(pool), DAI, WSTETH, AMOUNT, rateAdjustedLimit, type(uint256).max, false, bytes(""));
+        router.swapExactIn(address(pool), dai, wsteth, defaultAmount, rateAdjustedLimit, type(uint256).max, false, bytes(""));
     }
 
     function testSwapGivenOutWithRate() public {
-        rateProvider.mockRate(MOCK_RATE);
-
-        initPool();
-
-        uint256 rateAdjustedBalance = AMOUNT.mulDown(MOCK_RATE);
-        uint256 rateAdjustedAmountGiven = AMOUNT.divDown(MOCK_RATE);
+        uint256 rateAdjustedBalance = defaultAmount.mulDown(mockRate);
+        uint256 rateAdjustedAmountGiven = defaultAmount.divDown(mockRate);
 
         vm.expectCall(
             address(pool),
@@ -163,10 +102,10 @@ contract VaultSwapWithRatesTest is Test {
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_OUT,
-                    tokenIn: IERC20(DAI),
-                    tokenOut: IERC20(WSTETH),
-                    amountGivenScaled18: AMOUNT,
-                    balancesScaled18: [rateAdjustedBalance, AMOUNT].toMemoryArray(),
+                    tokenIn: IERC20(dai),
+                    tokenOut: IERC20(wsteth),
+                    amountGivenScaled18: defaultAmount,
+                    balancesScaled18: [rateAdjustedBalance, defaultAmount].toMemoryArray(),
                     indexIn: 1,
                     indexOut: 0,
                     sender: address(router),
@@ -178,10 +117,10 @@ contract VaultSwapWithRatesTest is Test {
         vm.prank(bob);
         router.swapExactOut(
             address(pool),
-            DAI,
-            WSTETH,
+            dai,
+            wsteth,
             rateAdjustedAmountGiven,
-            AMOUNT,
+            defaultAmount,
             type(uint256).max,
             false,
             bytes("")
