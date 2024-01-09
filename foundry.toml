@@ -6,6 +6,7 @@ test = 'test/foundry'
 cache_path  = 'forge-cache'
 allow_paths = ['../', '../../node_modules/']
 remappings = [
+    'vault/=../vault/',
     'solidity-utils/=../solidity-utils/',
     'ds-test/=../../node_modules/forge-std/lib/ds-test/src/',
     'forge-std/=../../node_modules/forge-std/src/',
