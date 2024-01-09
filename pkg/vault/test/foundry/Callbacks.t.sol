@@ -23,14 +23,12 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
 import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
-import { RouterAdaptor } from "../../contracts/test/RouterAdaptor.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
 import { VaultUtils } from "./utils/VaultUtils.sol";
 
 contract CallbacksTest is VaultUtils {
     using ArrayHelpers for *;
-    using RouterAdaptor for IRouter;
 
     function setUp() public virtual override {
         VaultUtils.setUp();
@@ -48,8 +46,6 @@ contract CallbacksTest is VaultUtils {
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_IN,
-                    tokenIn: IERC20(usdc),
-                    tokenOut: IERC20(dai),
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
                     indexIn: 1,

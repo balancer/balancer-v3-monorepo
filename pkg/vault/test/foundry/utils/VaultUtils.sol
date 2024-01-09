@@ -80,7 +80,7 @@ abstract contract VaultUtils is BaseTest {
     function initPool() internal virtual {
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
         vm.prank(lp);
-        router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false);
+        router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
     }
 
     function createPool() internal virtual returns (address) {

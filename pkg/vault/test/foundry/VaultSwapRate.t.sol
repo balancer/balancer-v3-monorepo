@@ -56,7 +56,7 @@ contract VaultSwapWithRatesTest is VaultUtils {
 
     function testInitializePoolWithRate() public {
         // mock pool invariant is just a sum of all balances
-        assertEq(PoolMock(pool).balanceOf(lp), defaultAmount + defaultAmount.mulDown(mockRate), "Invalid amount of BPT");
+        assertEq(PoolMock(pool).balanceOf(lp), defaultAmount + defaultAmount.mulDown(mockRate) - 1e6, "Invalid amount of BPT");
     }
 
     function testInitialRateProviderState() public {
@@ -76,8 +76,6 @@ contract VaultSwapWithRatesTest is VaultUtils {
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_IN,
-                    tokenIn: IERC20(dai),
-                    tokenOut: IERC20(wsteth),
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: [rateAdjustedAmount, defaultAmount].toMemoryArray(),
                     indexIn: 1,
@@ -102,8 +100,6 @@ contract VaultSwapWithRatesTest is VaultUtils {
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
                     kind: IVault.SwapKind.GIVEN_OUT,
-                    tokenIn: IERC20(dai),
-                    tokenOut: IERC20(wsteth),
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: [rateAdjustedBalance, defaultAmount].toMemoryArray(),
                     indexIn: 1,

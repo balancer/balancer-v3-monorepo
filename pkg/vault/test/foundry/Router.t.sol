@@ -118,7 +118,8 @@ contract RouterTest is Test {
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             INIT_BPT,
-            false
+            false,
+            bytes("")
         );
 
         vm.prank(bob);
@@ -133,7 +134,8 @@ contract RouterTest is Test {
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
             [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
             INIT_BPT,
-            false
+            false,
+            bytes("")
         );
 
         vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
@@ -180,7 +182,8 @@ contract RouterTest is Test {
             [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
             INIT_BPT,
-            wethIsEth
+            wethIsEth,
+            bytes("")
         );
     }
 
@@ -197,7 +200,8 @@ contract RouterTest is Test {
             [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
             INIT_BPT,
-            wethIsEth
+            wethIsEth,
+            bytes("")
         );
 
         // WETH was deposited, pool tokens were minted to Alice.
@@ -221,7 +225,8 @@ contract RouterTest is Test {
             [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
             INIT_BPT,
-            wethIsEth
+            wethIsEth,
+            bytes("")
         );
     }
 
@@ -237,7 +242,8 @@ contract RouterTest is Test {
             [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
             INIT_BPT,
-            wethIsEth
+            wethIsEth,
+            bytes("")
         );
 
         // WETH was deposited, pool tokens were minted to Alice.
@@ -261,7 +267,8 @@ contract RouterTest is Test {
             [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
             INIT_BPT,
-            wethIsEth
+            wethIsEth,
+            bytes("")
         );
 
         // WETH was deposited, excess ETH was returned, pool tokens were minted to Alice.
@@ -599,7 +606,8 @@ contract RouterTest is Test {
             [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
             INIT_BPT,
-            wethIsEth
+            wethIsEth,
+            bytes("")
         );
     }
 }

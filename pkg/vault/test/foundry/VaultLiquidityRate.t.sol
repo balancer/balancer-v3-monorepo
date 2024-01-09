@@ -117,8 +117,6 @@ contract VaultLiquidityWithRatesTest is VaultUtils {
             address(pool),
             defaultAmount * 2,
             [defaultAmount, defaultAmount].toMemoryArray(),
-            defaultAmount * 2,
-            [defaultAmount, defaultAmount].toMemoryArray(),
             false,
             bytes("")
         );

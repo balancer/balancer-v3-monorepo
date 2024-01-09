@@ -57,7 +57,7 @@ contract VaultLiquidityTest is VaultUtils {
         vm.prank(alice);
         amountsIn = router.addLiquiditySingleTokenExactOut(
             address(pool),
-            0,
+            dai,
             defaultAmount,
             bptAmountOut,
             false,
@@ -131,7 +131,7 @@ contract VaultLiquidityTest is VaultUtils {
         amountsOut = router.removeLiquiditySingleTokenExactIn(
             address(pool),
             bptAmountIn,
-            0,
+            dai,
             defaultAmount,
             false,
             bytes("")
@@ -151,8 +151,8 @@ contract VaultLiquidityTest is VaultUtils {
 
         bptAmountIn = router.removeLiquiditySingleTokenExactOut(
             address(pool),
-            defaultAmount,
-            0,
+            2 * defaultAmount,
+            dai,
             uint256(2 * defaultAmount),
             false,
             bytes("")
