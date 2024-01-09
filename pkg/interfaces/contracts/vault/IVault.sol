@@ -9,6 +9,9 @@ import { IRateProvider } from "./IRateProvider.sol";
 
 /// @dev Represents a pool's callbacks.
 struct PoolCallbacks {
+    bool shouldCallBeforeInitialize;
+    bool shouldCallAfterInitialize;
+    bool shouldCallBeforeSwap;
     bool shouldCallAfterSwap;
     bool shouldCallBeforeAddLiquidity;
     bool shouldCallAfterAddLiquidity;
@@ -164,21 +167,21 @@ interface IVault {
 
     /**
      * @notice Initializes a registered pool by adding liquidity; mints BPT tokens for the first time in exchange.
-     * @dev The initial liquidity should make the pool mint at least `_MINIMUM_BPT` tokens, otherwise the
-     * initialization will fail. Besides the BPT minted to the given target address (`to`), `_MINIMUM_BPT` tokens are
-     * minted to address(0).
-     *
      * @param pool Address of the pool to initialize
      * @param to Address that will receive the output BPT
      * @param tokens Tokens used to seed the pool (must match the registered tokens)
      * @param exactAmountsIn Exact amounts of input tokens
+     * @param minBptAmountOut Minimum amount of output pool tokens
+     * @param userData Additional (optional) data required for adding initial liquidity
      * @return bptAmountOut Output pool token amount
      */
     function initialize(
         address pool,
         address to,
         IERC20[] memory tokens,
-        uint256[] memory exactAmountsIn
+        uint256[] memory exactAmountsIn,
+        uint256 minBptAmountOut,
+        bytes memory userData
     ) external returns (uint256 bptAmountOut);
 
     /**
@@ -202,6 +205,16 @@ interface IVault {
      * @return tokens List of tokens in the pool
      */
     function getPoolTokens(address pool) external view returns (IERC20[] memory);
+
+    /**
+     * @notice Gets the index of a token in a given pool.
+     * @dev Reverts if the pool is not registered, or if the token does not belong to the pool.
+     * @param pool Address of the pool
+     * @param token Address of the token
+     * @return tokenCount Number of tokens in the pool
+     * @return index Index corresponding to the given token in the pool's token list
+     */
+    function getPoolTokenCountAndIndexOfToken(address pool, IERC20 token) external view returns (uint256, uint256);
 
     /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
@@ -316,9 +329,6 @@ interface IVault {
      * @param sender The account attempting to call a permissioned function
      */
     error SenderIsNotVault(address sender);
-
-    /// @dev The BPT amount requested from removing liquidity is above the maximum specified for the operation.
-    error BptAmountAboveMax();
 
     /// @dev A transient accounting operation completed with outstanding token deltas.
     error BalanceNotSettled();
@@ -445,11 +455,23 @@ interface IVault {
     /// @dev The user attempted to swap a token not in the pool.
     error TokenNotRegistered();
 
+    /// @dev A required amountIn exceeds the maximum limit specified for the operation.
+    error AmountInAboveMax(IERC20 token, uint256 amount, uint256 limit);
+
+    /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
+    error BptAmountOutBelowMin(uint256 amount, uint256 limit);
+
+    /// @dev Introduce to avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
+    struct LiquidityLocals {
+        uint256 tokenIndex;
+        uint256[] limitsScaled18;
+    }
+
     /**
      * @dev Data for an add liquidity operation.
      * @param pool Address of the pool
-     * @param to  Address of user to mint to
-     * @param amountsIn Amounts of input tokens
+     * @param to Address of user to mint to
+     * @param maxAmountsIn Maximum amounts of input tokens
      * @param minBptAmountOut Minimum amount of output pool tokens
      * @param kind Add liquidity kind
      * @param userData Optional user data
@@ -457,7 +479,7 @@ interface IVault {
     struct AddLiquidityParams {
         address pool;
         address to;
-        uint256[] amountsIn;
+        uint256[] maxAmountsIn;
         uint256 minBptAmountOut;
         AddLiquidityKind kind;
         bytes userData;
@@ -490,6 +512,12 @@ interface IVault {
 
     /// @dev Remove liquidity kind not supported.
     error InvalidRemoveLiquidityKind();
+
+    /// @dev The actual amount out is below the minimum limit specified for the operation.
+    error AmountOutBelowMin(IERC20 token, uint256 amount, uint256 limit);
+
+    /// @dev The required BPT amount in exceeds the maximum limit specified for the operation.
+    error BptAmountInAboveMax(uint256 amount, uint256 limit);
 
     /**
      * @param pool Address of the pool

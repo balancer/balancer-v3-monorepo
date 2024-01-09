@@ -19,7 +19,7 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
     using Address for address;
 
     // Minimum total supply amount.
-    uint256 private constant _MINIMUM_TOTAL_SUPPLY = 1e6;
+    uint256 internal constant _MINIMUM_TOTAL_SUPPLY = 1e6;
 
     /**
      * @notice Pool tokens are moved from one account (`from`) to another (`to`). Note that `value` may be zero.
@@ -91,15 +91,32 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
             _balances[token][to] += amount;
         }
 
-        if (newTotalSupply < _MINIMUM_TOTAL_SUPPLY) {
-            revert TotalSupplyTooLow(newTotalSupply, _MINIMUM_TOTAL_SUPPLY);
-        }
+        _ensureMinimumTotalSupply(newTotalSupply);
+
         _totalSupplyOf[token] = newTotalSupply;
 
         emit Transfer(token, address(0), to, amount);
 
         // We also invoke the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
         BalancerPoolToken(token).emitTransfer(address(0), to, amount);
+    }
+
+    function _ensureMinimumTotalSupply(uint256 newTotalSupply) internal pure {
+        if (newTotalSupply < _MINIMUM_TOTAL_SUPPLY) {
+            revert TotalSupplyTooLow(newTotalSupply, _MINIMUM_TOTAL_SUPPLY);
+        }
+    }
+
+    function _mintMinimumSupplyReserve(address token) internal {
+        _totalSupplyOf[token] += _MINIMUM_TOTAL_SUPPLY;
+        unchecked {
+            // Overflow not possible: balance + amount is at most totalSupply + amount, which is checked above.
+            _balances[token][address(0)] += _MINIMUM_TOTAL_SUPPLY;
+        }
+        emit Transfer(token, address(0), address(0), _MINIMUM_TOTAL_SUPPLY);
+
+        // We also invoke the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
+        BalancerPoolToken(token).emitTransfer(address(0), address(0), _MINIMUM_TOTAL_SUPPLY);
     }
 
     function _burn(address token, address from, uint256 amount) internal {
@@ -117,9 +134,7 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
         }
         uint256 newTotalSupply = _totalSupplyOf[token] - amount;
 
-        if (newTotalSupply < _MINIMUM_TOTAL_SUPPLY) {
-            revert TotalSupplyTooLow(newTotalSupply, _MINIMUM_TOTAL_SUPPLY);
-        }
+        _ensureMinimumTotalSupply(newTotalSupply);
 
         _totalSupplyOf[token] = newTotalSupply;
 

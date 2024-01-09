@@ -32,12 +32,15 @@ library PoolConfigLib {
     uint8 public constant POOL_INITIALIZED_OFFSET = POOL_REGISTERED_OFFSET + 1;
     uint8 public constant POOL_PAUSED_OFFSET = POOL_INITIALIZED_OFFSET + 1;
     uint8 public constant DYNAMIC_SWAP_FEE_OFFSET = POOL_PAUSED_OFFSET + 1;
-    uint8 public constant AFTER_SWAP_OFFSET = DYNAMIC_SWAP_FEE_OFFSET + 1;
+    uint8 public constant BEFORE_SWAP_OFFSET = DYNAMIC_SWAP_FEE_OFFSET + 1;
+    uint8 public constant AFTER_SWAP_OFFSET = BEFORE_SWAP_OFFSET + 1;
     uint8 public constant BEFORE_ADD_LIQUIDITY_OFFSET = AFTER_SWAP_OFFSET + 1;
     uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = BEFORE_ADD_LIQUIDITY_OFFSET + 1;
     uint8 public constant BEFORE_REMOVE_LIQUIDITY_OFFSET = AFTER_ADD_LIQUIDITY_OFFSET + 1;
     uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = BEFORE_REMOVE_LIQUIDITY_OFFSET + 1;
-    uint8 public constant POOL_RECOVERY_MODE_OFFSET = AFTER_REMOVE_LIQUIDITY_OFFSET + 1;
+    uint8 public constant BEFORE_INITIALIZE_OFFSET = AFTER_REMOVE_LIQUIDITY_OFFSET + 1;
+    uint8 public constant AFTER_INITIALIZE_OFFSET = BEFORE_INITIALIZE_OFFSET + 1;
+    uint8 public constant POOL_RECOVERY_MODE_OFFSET = AFTER_INITIALIZE_OFFSET + 1;
 
     // Supported liquidity API bit offsets
     uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = POOL_RECOVERY_MODE_OFFSET + 1;
@@ -93,6 +96,10 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH).toUint32();
     }
 
+    function shouldCallBeforeSwap(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(BEFORE_SWAP_OFFSET);
+    }
+
     function shouldCallAfterSwap(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(AFTER_SWAP_OFFSET);
     }
@@ -111,6 +118,14 @@ library PoolConfigLib {
 
     function shouldCallAfterRemoveLiquidity(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(AFTER_REMOVE_LIQUIDITY_OFFSET);
+    }
+
+    function shouldCallBeforeInitialize(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(BEFORE_INITIALIZE_OFFSET);
+    }
+
+    function shouldCallAfterInitialize(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(AFTER_INITIALIZE_OFFSET);
     }
 
     function supportsAddLiquidityCustom(PoolConfigBits config) internal pure returns (bool) {
@@ -147,8 +162,14 @@ library PoolConfigLib {
         }
 
         {
+            configBits = configBits.insertBool(config.callbacks.shouldCallBeforeSwap, BEFORE_SWAP_OFFSET).insertBool(
+                config.callbacks.shouldCallAfterSwap,
+                AFTER_SWAP_OFFSET
+            );
+        }
+
+        {
             configBits = configBits
-                .insertBool(config.callbacks.shouldCallAfterSwap, AFTER_SWAP_OFFSET)
                 .insertBool(config.callbacks.shouldCallBeforeAddLiquidity, BEFORE_ADD_LIQUIDITY_OFFSET)
                 .insertBool(config.callbacks.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET)
                 .insertBool(config.callbacks.shouldCallBeforeRemoveLiquidity, BEFORE_REMOVE_LIQUIDITY_OFFSET)
@@ -157,6 +178,8 @@ library PoolConfigLib {
 
         {
             configBits = configBits
+                .insertBool(config.callbacks.shouldCallBeforeInitialize, BEFORE_INITIALIZE_OFFSET)
+                .insertBool(config.callbacks.shouldCallAfterInitialize, AFTER_INITIALIZE_OFFSET)
                 .insertBool(config.liquidityManagement.supportsAddLiquidityCustom, ADD_LIQUIDITY_CUSTOM_OFFSET)
                 .insertBool(config.liquidityManagement.supportsRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET);
         }
@@ -215,10 +238,13 @@ library PoolConfigLib {
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 pauseWindowEndTime: config.getPauseWindowEndTime(),
                 callbacks: PoolCallbacks({
+                    shouldCallBeforeInitialize: config.shouldCallBeforeInitialize(),
+                    shouldCallAfterInitialize: config.shouldCallAfterInitialize(),
                     shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),
                     shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),
                     shouldCallBeforeRemoveLiquidity: config.shouldCallBeforeRemoveLiquidity(),
                     shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity(),
+                    shouldCallBeforeSwap: config.shouldCallBeforeSwap(),
                     shouldCallAfterSwap: config.shouldCallAfterSwap()
                 }),
                 liquidityManagement: LiquidityManagement({
