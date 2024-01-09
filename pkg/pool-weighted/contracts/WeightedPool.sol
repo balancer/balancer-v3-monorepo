@@ -4,23 +4,16 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IVault, PoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import { PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 
 /// @notice Basic Weighted Pool with immutable weights.
 contract WeightedPool is IBasePool, BalancerPoolToken {
-    using FixedPoint for uint256;
-    using ScalingHelpers for *;
-
     uint256 private immutable _totalTokens;
 
     IERC20 internal immutable _token0;
@@ -119,9 +112,9 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             uint256 amountOutScaled18 = WeightedMath.computeOutGivenIn(
                 balanceTokenInScaled18,
-                _getNormalizedWeight(request.tokenIn),
+                _getNormalizedWeight(request.indexIn),
                 balanceTokenOutScaled18,
-                _getNormalizedWeight(request.tokenOut),
+                _getNormalizedWeight(request.indexOut),
                 request.amountGivenScaled18
             );
 
@@ -129,9 +122,9 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         } else {
             uint256 amountInScaled18 = WeightedMath.computeInGivenOut(
                 balanceTokenInScaled18,
-                _getNormalizedWeight(request.tokenIn),
+                _getNormalizedWeight(request.indexIn),
                 balanceTokenOutScaled18,
-                _getNormalizedWeight(request.tokenOut),
+                _getNormalizedWeight(request.indexOut),
                 request.amountGivenScaled18
             );
 
@@ -140,12 +133,12 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         }
     }
 
-    function _getNormalizedWeight(IERC20 token) internal view virtual returns (uint256) {
+    function _getNormalizedWeight(uint256 tokenIndex) internal view virtual returns (uint256) {
         // prettier-ignore
-        if (token == _token0) { return _normalizedWeight0; }
-        else if (token == _token1) { return _normalizedWeight1; }
-        else if (token == _token2) { return _normalizedWeight2; }
-        else if (token == _token3) { return _normalizedWeight3; }
+        if (tokenIndex == 0) { return _normalizedWeight0; }
+        else if (tokenIndex == 1) { return _normalizedWeight1; }
+        else if (tokenIndex == 2) { return _normalizedWeight2; }
+        else if (tokenIndex == 3) { return _normalizedWeight3; }
         else {
             revert IVault.InvalidToken();
         }

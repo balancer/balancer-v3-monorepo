@@ -66,7 +66,14 @@ contract VaultLiquidityWithRatesTest is VaultUtils {
             )
         );
 
-        router.addLiquiditySingleTokenExactOut(address(pool), 0, defaultAmount, defaultAmount, false, bytes(""));
+        router.addLiquiditySingleTokenExactOut(
+            address(pool),
+            wsteth,
+            defaultAmount,
+            defaultAmount,
+            false,
+            bytes("")
+        );
     }
 
     function testAddLiquidityCustomWithRate() public {
@@ -110,6 +117,8 @@ contract VaultLiquidityWithRatesTest is VaultUtils {
             address(pool),
             defaultAmount * 2,
             [defaultAmount, defaultAmount].toMemoryArray(),
+            defaultAmount * 2,
+            [defaultAmount, defaultAmount].toMemoryArray(),
             false,
             bytes("")
         );
@@ -141,7 +150,14 @@ contract VaultLiquidityWithRatesTest is VaultUtils {
             )
         );
 
-        router.removeLiquiditySingleTokenExactIn(address(pool), bptAmountIn, 0, defaultAmount, false, bytes(""));
+        router.removeLiquiditySingleTokenExactIn(
+            address(pool),
+            bptAmountIn,
+            wsteth,
+            defaultAmount,
+            false,
+            bytes("")
+        );
     }
 
     function testRemoveLiquidityCustomWithRate() public {
