@@ -43,16 +43,18 @@ contract PoolDataTest is VaultUtils {
         rateProviders[1] = wstETHRateProvider;
 
         return
-            address(new PoolMock(
-                vault,
-                "ERC20 Pool",
-                "ERC20POOL",
-                [address(dai), address(wsteth)].toMemoryArray().asIERC20(),
-                rateProviders,
-                true,
-                365 days,
-                address(0)
-            ));
+            address(
+                new PoolMock(
+                    vault,
+                    "ERC20 Pool",
+                    "ERC20POOL",
+                    [address(dai), address(wsteth)].toMemoryArray().asIERC20(),
+                    rateProviders,
+                    true,
+                    365 days,
+                    address(0)
+                )
+            );
     }
 
     function testPoolData(uint256 daiRate, uint256 wstETHRate, bool roundUp) public {

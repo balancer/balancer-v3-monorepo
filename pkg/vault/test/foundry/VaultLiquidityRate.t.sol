@@ -42,16 +42,18 @@ contract VaultLiquidityWithRatesTest is VaultUtils {
         rateProviders[0] = rateProvider;
 
         return
-            address(new PoolMock(
-                vault,
-                "ERC20 Pool",
-                "ERC20POOL",
-                [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
-                rateProviders,
-                true,
-                365 days,
-                address(0)
-            ));
+            address(
+                new PoolMock(
+                    vault,
+                    "ERC20 Pool",
+                    "ERC20POOL",
+                    [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
+                    rateProviders,
+                    true,
+                    365 days,
+                    address(0)
+                )
+            );
     }
 
     function testAddLiquiditySingleTokenExactOutWithRate() public {
@@ -66,14 +68,7 @@ contract VaultLiquidityWithRatesTest is VaultUtils {
             )
         );
 
-        router.addLiquiditySingleTokenExactOut(
-            address(pool),
-            wsteth,
-            defaultAmount,
-            defaultAmount,
-            false,
-            bytes("")
-        );
+        router.addLiquiditySingleTokenExactOut(address(pool), wsteth, defaultAmount, defaultAmount, false, bytes(""));
     }
 
     function testAddLiquidityCustomWithRate() public {
@@ -148,14 +143,7 @@ contract VaultLiquidityWithRatesTest is VaultUtils {
             )
         );
 
-        router.removeLiquiditySingleTokenExactIn(
-            address(pool),
-            bptAmountIn,
-            wsteth,
-            defaultAmount,
-            false,
-            bytes("")
-        );
+        router.removeLiquiditySingleTokenExactIn(address(pool), bptAmountIn, wsteth, defaultAmount, false, bytes(""));
     }
 
     function testRemoveLiquidityCustomWithRate() public {

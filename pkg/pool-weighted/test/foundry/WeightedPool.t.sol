@@ -71,7 +71,8 @@ contract WeightedPoolTest is VaultUtils {
             amountsIn,
             // Account for the precision less
             DAI_AMOUNT - DELTA - 1e6,
-            false
+            false,
+            bytes("")
         );
     }
 

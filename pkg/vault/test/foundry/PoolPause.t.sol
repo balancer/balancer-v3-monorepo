@@ -36,16 +36,18 @@ contract PoolPauseTest is VaultUtils {
 
         rateProviders = new IRateProvider[](2);
 
-        pool = address(new PoolMock(
-            vault,
-            "ERC20 Pool",
-            "ERC20POOL",
-            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-            new IRateProvider[](2),
-            true,
-            365 days,
-            admin
-        ));
+        pool = address(
+            new PoolMock(
+                vault,
+                "ERC20 Pool",
+                "ERC20POOL",
+                [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+                new IRateProvider[](2),
+                true,
+                365 days,
+                admin
+            )
+        );
 
         // Pass zero for the pause manager
         unmanagedPool = new PoolMock(

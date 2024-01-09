@@ -42,21 +42,27 @@ contract VaultSwapWithRatesTest is VaultUtils {
         rateProvider.mockRate(mockRate);
 
         return
-            address(new PoolMock(
-                vault,
-                "ERC20 Pool",
-                "ERC20POOL",
-                [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
-                rateProviders,
-                true,
-                365 days,
-                address(0)
-            ));
+            address(
+                new PoolMock(
+                    vault,
+                    "ERC20 Pool",
+                    "ERC20POOL",
+                    [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
+                    rateProviders,
+                    true,
+                    365 days,
+                    address(0)
+                )
+            );
     }
 
     function testInitializePoolWithRate() public {
         // mock pool invariant is just a sum of all balances
-        assertEq(PoolMock(pool).balanceOf(lp), defaultAmount + defaultAmount.mulDown(mockRate) - 1e6, "Invalid amount of BPT");
+        assertEq(
+            PoolMock(pool).balanceOf(lp),
+            defaultAmount + defaultAmount.mulDown(mockRate) - 1e6,
+            "Invalid amount of BPT"
+        );
     }
 
     function testInitialRateProviderState() public {
@@ -87,7 +93,16 @@ contract VaultSwapWithRatesTest is VaultUtils {
         );
 
         vm.prank(bob);
-        router.swapExactIn(address(pool), dai, wsteth, defaultAmount, rateAdjustedLimit, type(uint256).max, false, bytes(""));
+        router.swapExactIn(
+            address(pool),
+            dai,
+            wsteth,
+            defaultAmount,
+            rateAdjustedLimit,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
     }
 
     function testSwapGivenOutWithRate() public {
