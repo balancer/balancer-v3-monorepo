@@ -36,8 +36,9 @@ import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Ba
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
+import { VaultStorage } from "./VaultStorage.sol";
 
-contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
+contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, ReentrancyGuard {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
     using FixedPoint for *;
@@ -46,79 +47,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
-    using PoolConfigLib for PoolCallbacks;
     using ScalingHelpers for *;
-
-    // Pools can have two, three, or four tokens.
-    uint256 private constant _MIN_TOKENS = 2;
-    // This maximum token count is also hard-coded in `PoolConfigLib`.
-    uint256 private constant _MAX_TOKENS = 4;
-
-    // 1e18 corresponds to a 100% fee.
-    uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
-
-    // 1e18 corresponds to a 100% fee.
-    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
-
-    // Registry of pool configs.
-    mapping(address => PoolConfigBits) internal _poolConfig;
-
-    // Store pool pause managers.
-    mapping(address => address) internal _poolPauseManagers;
-
-    // Pool -> (token -> balance): Pool's ERC20 tokens balances stored at the Vault.
-    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolTokenBalances;
-
-    // Pool -> (token -> address): Pool's Rate providers.
-    mapping(address => mapping(IERC20 => IRateProvider)) private _poolRateProviders;
-
-    /// @notice List of handlers. It is non-empty only during `invoke` calls.
-    address[] private _handlers;
-
-    /**
-     * @notice The total number of nonzero deltas over all active + completed lockers.
-     * @dev It is non-zero only during `invoke` calls.
-     */
-    uint256 private _nonzeroDeltaCount;
-
-    /**
-     * @notice Represents the token due/owed to each handler.
-     * @dev Must all net to zero when the last handler is released.
-     */
-    mapping(address => mapping(IERC20 => int256)) private _tokenDeltas;
-
-    /**
-     * @notice Represents the total reserve of each ERC20 token.
-     * @dev It should be always equal to `token.balanceOf(vault)`, except during `invoke`.
-     */
-    mapping(IERC20 => uint256) private _tokenReserves;
-
-    // We allow 0% swap fee.
-    // The protocol swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
-    // TODO consider using uint64 and packing with other things (when we have other things).
-    uint256 private _protocolSwapFeePercentage;
-
-    // Token -> fee: Protocol's swap fees accumulated in the Vault for harvest.
-    mapping(IERC20 => uint256) private _protocolSwapFees;
-
-    // Upgradeable contract in charge of setting permissions.
-    IAuthorizer private _authorizer;
-
-    /// @notice If set to true, disables query functionality of the Vault. Can be modified only by governance.
-    bool private _isQueryDisabled;
-
-    uint256 public constant MAX_PAUSE_WINDOW_DURATION = 356 days * 4;
-    uint256 public constant MAX_BUFFER_PERIOD_DURATION = 90 days;
-
-    // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
-    // solhint-disable not-rely-on-time
-
-    uint256 internal immutable _vaultPauseWindowEndTime;
-    uint256 internal immutable _vaultBufferPeriodEndTime;
-    // Stored as a convenience, to avoid calculating it on every operation.
-    uint256 internal immutable _vaultBufferPeriodDuration;
-
-    bool private _vaultPaused;
 
     /// @dev Modifier to make a function callable only when the Vault is not paused.
     modifier whenVaultNotPaused() {
