@@ -35,7 +35,7 @@ contract VaultSwapTest is VaultUtils {
     function setUp() public virtual override {
         VaultUtils.setUp();
 
-        noInitPool = createPool();
+        noInitPool = PoolMock(createPool());
     }
 
     /// Utils

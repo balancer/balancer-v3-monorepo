@@ -64,7 +64,7 @@ contract CallbacksTest is VaultUtils {
 
     function testOnAfterSwapCallbackRevert() public {
         // should fail
-        pool.setFailOnAfterSwapCallback(true);
+        PoolMock(pool).setFailOnAfterSwapCallback(true);
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(IVault.CallbackFailed.selector));
         router.swapExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
@@ -73,7 +73,7 @@ contract CallbacksTest is VaultUtils {
     // Before add
 
     function testOnBeforeAddLiquidityFlag() public {
-        pool.setFailOnBeforeAddLiquidityCallback(true);
+        PoolMock(pool).setFailOnBeforeAddLiquidityCallback(true);
 
         vm.prank(bob);
         // Doesn't fail, does not call callbacks
@@ -115,7 +115,7 @@ contract CallbacksTest is VaultUtils {
     // Before remove
 
     function testOnBeforeRemoveLiquidityFlag() public {
-        pool.setFailOnBeforeRemoveLiquidityCallback(true);
+        PoolMock(pool).setFailOnBeforeRemoveLiquidityCallback(true);
 
         vm.prank(alice);
         router.addLiquidityUnbalanced(
@@ -174,7 +174,7 @@ contract CallbacksTest is VaultUtils {
     // After add
 
     function testOnAfterAddLiquidityFlag() public {
-        pool.setFailOnAfterAddLiquidityCallback(true);
+        PoolMock(pool).setFailOnAfterAddLiquidityCallback(true);
 
         vm.prank(bob);
         // Doesn't fail, does not call callbacks
@@ -216,7 +216,7 @@ contract CallbacksTest is VaultUtils {
     // After remove
 
     function testOnAfterRemoveLiquidityFlag() public {
-        pool.setFailOnAfterRemoveLiquidityCallback(true);
+        PoolMock(pool).setFailOnAfterRemoveLiquidityCallback(true);
 
         vm.prank(alice);
         router.addLiquidityUnbalanced(

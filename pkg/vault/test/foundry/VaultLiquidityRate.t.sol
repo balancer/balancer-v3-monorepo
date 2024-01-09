@@ -36,13 +36,13 @@ contract VaultLiquidityWithRatesTest is VaultUtils {
         rateProvider.mockRate(mockRate);
     }
 
-    function createPool() internal override returns (PoolMock) {
+    function createPool() internal override returns (address) {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProvider = new RateProviderMock();
         rateProviders[0] = rateProvider;
 
         return
-            new PoolMock(
+            address(new PoolMock(
                 vault,
                 "ERC20 Pool",
                 "ERC20POOL",
@@ -51,7 +51,7 @@ contract VaultLiquidityWithRatesTest is VaultUtils {
                 true,
                 365 days,
                 address(0)
-            );
+            ));
     }
 
     function testAddLiquiditySingleTokenExactOutWithRate() public {

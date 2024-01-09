@@ -35,14 +35,14 @@ contract VaultSwapWithRatesTest is VaultUtils {
         VaultUtils.setUp();
     }
 
-    function createPool() internal override returns (PoolMock) {
+    function createPool() internal override returns (address) {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProvider = new RateProviderMock();
         rateProviders[0] = rateProvider;
         rateProvider.mockRate(mockRate);
 
         return
-            new PoolMock(
+            address(new PoolMock(
                 vault,
                 "ERC20 Pool",
                 "ERC20POOL",
@@ -51,12 +51,12 @@ contract VaultSwapWithRatesTest is VaultUtils {
                 true,
                 365 days,
                 address(0)
-            );
+            ));
     }
 
     function testInitializePoolWithRate() public {
         // mock pool invariant is just a sum of all balances
-        assertEq(pool.balanceOf(lp), defaultAmount + defaultAmount.mulDown(mockRate), "Invalid amount of BPT");
+        assertEq(PoolMock(pool).balanceOf(lp), defaultAmount + defaultAmount.mulDown(mockRate), "Invalid amount of BPT");
     }
 
     function testInitialRateProviderState() public {

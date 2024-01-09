@@ -25,23 +25,27 @@ import { VaultUtils } from "./utils/VaultUtils.sol";
 
 contract BalancerPoolTokenTest is VaultUtils {
     using ArrayHelpers for *;
+    PoolMock internal poolMock;
 
     function setUp() public virtual override {
         VaultUtils.setUp();
+        poolMock = PoolMock(pool);
     }
 
-    function initPool() internal override {}
+    function initPool() internal override {
+        // no init
+    }
 
     function testMetadata() public {
-        assertEq(pool.name(), "ERC20 Pool");
-        assertEq(pool.symbol(), "ERC20POOL");
-        assertEq(pool.decimals(), 18);
+        assertEq(poolMock.name(), "ERC20 Pool");
+        assertEq(poolMock.symbol(), "ERC20POOL");
+        assertEq(poolMock.decimals(), 18);
     }
 
     function testMint() public {
-        vault.mintERC20(address(pool), address(0xBEEF), defaultAmount);
+        vault.mintERC20(address(poolMock), address(0xBEEF), defaultAmount);
 
-        assertEq(pool.balanceOf(address(0xBEEF)), defaultAmount);
+        assertEq(poolMock.balanceOf(address(0xBEEF)), defaultAmount);
     }
 
     function testMintMinimum() public {
@@ -53,7 +57,7 @@ contract BalancerPoolTokenTest is VaultUtils {
         vault.mintERC20(address(pool), address(0xBEEF), defaultAmount);
         vault.burnERC20(address(pool), address(0xBEEF), defaultAmount - 1e6);
 
-        assertEq(pool.balanceOf(address(0xBEEF)), 1e6);
+        assertEq(poolMock.balanceOf(address(0xBEEF)), 1e6);
     }
 
     function testBurnMinimum() public {
@@ -66,19 +70,19 @@ contract BalancerPoolTokenTest is VaultUtils {
     function testApprove() public {
         vault.mintERC20(address(pool), address(this), defaultAmount);
 
-        pool.approve(address(0xBEEF), defaultAmount);
+        poolMock.approve(address(0xBEEF), defaultAmount);
 
-        assertEq(pool.allowance(address(this), address(0xBEEF)), defaultAmount);
+        assertEq(poolMock.allowance(address(this), address(0xBEEF)), defaultAmount);
     }
 
     function testTransfer() public {
         vault.mintERC20(address(pool), address(this), 1e18);
 
-        assertTrue(pool.transfer(address(0xBEEF), 1e18));
-        assertEq(pool.totalSupply(), 1e18);
+        assertTrue(poolMock.transfer(address(0xBEEF), 1e18));
+        assertEq(poolMock.totalSupply(), 1e18);
 
-        assertEq(pool.balanceOf(address(this)), 0);
-        assertEq(pool.balanceOf(address(0xBEEF)), 1e18);
+        assertEq(poolMock.balanceOf(address(this)), 0);
+        assertEq(poolMock.balanceOf(address(0xBEEF)), 1e18);
     }
 
     function testTransferFrom() public {
@@ -87,13 +91,13 @@ contract BalancerPoolTokenTest is VaultUtils {
         vault.mintERC20(address(pool), address(from), defaultAmount);
 
         vm.prank(from);
-        pool.approve(address(this), defaultAmount);
+        poolMock.approve(address(this), defaultAmount);
 
-        pool.transferFrom(from, address(0xBEEF), defaultAmount);
+        poolMock.transferFrom(from, address(0xBEEF), defaultAmount);
 
-        assertEq(pool.allowance(from, address(0xBEEF)), 0);
-        assertEq(pool.balanceOf(address(0xBEEF)), defaultAmount);
-        assertEq(pool.balanceOf(from), 0);
+        assertEq(poolMock.allowance(from, address(0xBEEF)), 0);
+        assertEq(poolMock.balanceOf(address(0xBEEF)), defaultAmount);
+        assertEq(poolMock.balanceOf(from), 0);
     }
 
     function testMintToZero() public {
@@ -107,6 +111,6 @@ contract BalancerPoolTokenTest is VaultUtils {
         vm.expectRevert(
             abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(this), 0, defaultAmount)
         );
-        pool.transferFrom(address(this), address(0), defaultAmount);
+        poolMock.transferFrom(address(this), address(0), defaultAmount);
     }
 }

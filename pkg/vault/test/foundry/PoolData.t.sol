@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
@@ -33,7 +34,7 @@ contract PoolDataTest is VaultUtils {
         VaultUtils.setUp();
     }
 
-    function createPool() internal override returns (PoolMock) {
+    function createPool() internal override returns (address) {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         wstETHRateProvider = new RateProviderMock();
         daiRateProvider = new RateProviderMock();
@@ -42,7 +43,7 @@ contract PoolDataTest is VaultUtils {
         rateProviders[1] = wstETHRateProvider;
 
         return
-            new PoolMock(
+            address(new PoolMock(
                 vault,
                 "ERC20 Pool",
                 "ERC20POOL",
@@ -51,7 +52,7 @@ contract PoolDataTest is VaultUtils {
                 true,
                 365 days,
                 address(0)
-            );
+            ));
     }
 
     function testPoolData(uint256 daiRate, uint256 wstETHRate, bool roundUp) public {
@@ -66,7 +67,7 @@ contract PoolDataTest is VaultUtils {
         PoolData memory data = vault.getPoolData(address(pool), roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN);
 
         // Compute decimal scaling factors from the tokens, in the mock.
-        uint256[] memory expectedScalingFactors = pool.getDecimalScalingFactors();
+        uint256[] memory expectedScalingFactors = PoolMock(pool).getDecimalScalingFactors();
         uint256[] memory expectedRawBalances = vault.getRawBalances(address(pool));
         uint256[] memory expectedRates = new uint256[](2);
         expectedRates[0] = daiRate;

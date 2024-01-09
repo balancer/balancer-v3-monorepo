@@ -23,18 +23,12 @@ import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol"
 import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
 
-contract WeightedPoolTest is Test {
+import { VaultUtils } from "./utils/VaultUtils.sol";
+
+contract WeightedPoolTest is VaultUtils {
     using ArrayHelpers for *;
 
-    VaultMock vault;
-    BasicAuthorizerMock authorizer;
     WeightedPoolFactory factory;
-    Router router;
-    WeightedPool pool;
-    ERC20TestToken USDC;
-    ERC20TestToken DAI;
-    address alice = vm.addr(1);
-    address bob = vm.addr(2);
 
     uint256 constant USDC_AMOUNT = 1e3 * 1e6;
     uint256 constant DAI_AMOUNT = 1e3 * 1e18;
@@ -46,51 +40,23 @@ contract WeightedPoolTest is Test {
 
     bytes32 constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
-    function setUp() public {
-        authorizer = new BasicAuthorizerMock();
-        vault = new VaultMock(authorizer, 30 days, 90 days);
+    function setUp() public virtual override {
+        VaultUtils.setUp();
+    }
+
+    function createPool() internal override returns (IBasePool) {
         factory = new WeightedPoolFactory(vault, 365 days);
-
-        router = new Router(IVault(vault), new WETHTestToken());
-        USDC = new ERC20TestToken("USDC", "USDC", 6);
-        DAI = new ERC20TestToken("DAI", "DAI", 18);
-        IERC20[] memory tokens = [address(DAI), address(USDC)].toMemoryArray().asIERC20();
-        IRateProvider[] memory rateProviders = new IRateProvider[](2);
-
-        pool = WeightedPool(
-            factory.create(
-                "ERC20 Pool",
-                "ERC20POOL",
-                tokens,
-                rateProviders,
-                [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
-                ZERO_BYTES32
-            )
-        );
-
-        USDC.mint(alice, USDC_AMOUNT);
-        DAI.mint(alice, DAI_AMOUNT);
-
-        USDC.mint(bob, USDC_AMOUNT);
-        DAI.mint(bob, DAI_AMOUNT);
-
-        vm.startPrank(alice);
-        USDC.approve(address(vault), type(uint256).max);
-        DAI.approve(address(vault), type(uint256).max);
-        vm.stopPrank();
-
-        vm.startPrank(bob);
-        USDC.approve(address(vault), type(uint256).max);
-        DAI.approve(address(vault), type(uint256).max);
-        vm.stopPrank();
-
-        vm.label(alice, "alice");
-        vm.label(bob, "bob");
-        vm.label(address(USDC), "USDC");
-        vm.label(address(DAI), "DAI");
-        vm.label(address(vault), "Vault");
-        vm.label(address(router), "Router");
-        vm.label(address(pool), "Pool");
+        return
+            WeightedPool(
+                factory.create(
+                    "ERC20 Pool",
+                    "ERC20POOL",
+                    tokens,
+                    rateProviders,
+                    [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                    ZERO_BYTES32
+                )
+            );
     }
 
     function testPoolPausedState() public {

@@ -36,7 +36,7 @@ contract PoolPauseTest is VaultUtils {
 
         rateProviders = new IRateProvider[](2);
 
-        pool = new PoolMock(
+        pool = address(new PoolMock(
             vault,
             "ERC20 Pool",
             "ERC20POOL",
@@ -45,7 +45,7 @@ contract PoolPauseTest is VaultUtils {
             true,
             365 days,
             admin
-        );
+        ));
 
         // Pass zero for the pause manager
         unmanagedPool = new PoolMock(

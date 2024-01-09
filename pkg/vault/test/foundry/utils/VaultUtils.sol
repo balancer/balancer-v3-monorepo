@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 
@@ -28,8 +29,8 @@ abstract contract VaultUtils is BaseTest {
     Router internal router;
     // Authorizer mock.
     BasicAuthorizerMock internal authorizer;
-    // Pool mock.
-    PoolMock internal pool;
+    // Pool for tests.
+    address internal pool;
     // Rate provider mock.
     RateProviderMock internal rateProvider;
 
@@ -82,7 +83,7 @@ abstract contract VaultUtils is BaseTest {
         router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false);
     }
 
-    function createPool() internal virtual returns (PoolMock) {
+    function createPool() internal virtual returns (address) {
         PoolMock newPool = new PoolMock(
             vault,
             "ERC20 Pool",
@@ -94,6 +95,6 @@ abstract contract VaultUtils is BaseTest {
             address(0)
         );
         vm.label(address(newPool), "pool");
-        return newPool;
+        return address(newPool);
     }
 }
