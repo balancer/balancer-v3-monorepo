@@ -1,9 +1,9 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { Contract } from 'ethers';
+import { Contract, EventLog } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH, currentTimestamp, fromNow } from '@balancer-labs/v3-helpers/src/time';
-import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
+import { PoolConfigStructOutput, VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
@@ -97,56 +97,41 @@ describe('Vault', function () {
     });
 
     it('registering a pool emits an event', async () => {
-      /*enum TOKEN_TYPE {
+      enum TOKEN_TYPE {
         STANDARD = 0,
         WITH_RATE,
         ERC4626,
       }
-      
-      const tokenConfig = Array.from({ length: poolBTokens.length }, (_, i) => ([
+
+      const tokenConfig = Array.from({ length: poolBTokens.length }, (_, i) => [
         poolBTokens[i],
         TOKEN_TYPE.STANDARD.toString(),
         ZERO_ADDRESS,
         false,
-      ]));*/
+      ]);
 
       const currentTime = await currentTimestamp();
       const pauseWindowEndTime = Number(currentTime) + PAUSE_WINDOW_DURATION;
 
-      await expect(
-        await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS)
-      ).to.emit(vault, 'PoolRegistered');
-      /*.withArgs(
-          poolBAddress,
-          await vault.getPoolFactoryMock(),
-          tokenConfig,
-          pauseWindowEndTime,
-          ANY_ADDRESS,
-          [false, false, false, false, false, false, false, false],
-          [true, true]
-        );*/
+      const expectedArgs = [
+        poolBAddress,
+        await vault.getPoolFactoryMock(),
+        tokenConfig,
+        pauseWindowEndTime.toString(),
+        ANY_ADDRESS,
+        [false, false, false, false, false, false, false, false],
+        [true, true],
+      ];
 
-      /* 
-        Haven't quite figured out how to match event arguments when they include an array of structs.
-        This is close...
-        
-        const tx = await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS);
-        const receipt = await tx.wait();
-        const logs = receipt?.logs as Array<EventLog>;
-        const events = logs.filter((e) => 'eventName' in e && e.eventName === 'PoolRegistered');
-        const emittedArgs = events[0].args;
+      const tx = await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS);
+      const receipt = await tx.wait();
 
-        const expectedArgs = [
-          poolBAddress,
-          await vault.getPoolFactoryMock(),
-          tokenConfig,
-          pauseWindowEndTime.toString(),
-          ANY_ADDRESS,
-          [false, false, false, false, false, false],
-          [true, true]
-        ];
+      // There must be a better way...
+      const logs = receipt?.logs as Array<EventLog>;
+      const events = logs.filter((e) => 'eventName' in e && e.eventName === 'PoolRegistered');
+      const emittedArgs = events[0].args;
 
-        expect(emittedArgs).to.deep.equal(expectedArgs); */
+      expect(emittedArgs.toString()).to.equal(expectedArgs.toString());
     });
 
     it('cannot register a pool twice', async () => {
