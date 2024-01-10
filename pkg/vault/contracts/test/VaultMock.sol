@@ -47,7 +47,7 @@ contract VaultMock is Vault {
         _poolConfig[pool] = config.fromPoolConfig();
     }
 
-    function setRateProviders(address pool, IERC20 token, IRateProvider rateProvider) external {
+    function setRateProvider(address pool, IERC20 token, IRateProvider rateProvider) external {
         _poolRateProviders[pool][token] = rateProvider;
     }
 
