@@ -255,7 +255,7 @@ contract VaultSwapTest is VaultUtils {
 
         (uint256 fee, uint256 protocolFee) = testFunc();
 
-        // asssets are transferred to/from user
+        // assets are transferred to/from user
         assertEq(usdc.balanceOf(alice), usdcBeforeSwap - defaultAmount, "Swap: User's USDC balance is wrong");
         assertEq(dai.balanceOf(alice), daiBeforeSwap + defaultAmount - fee, "Swap: User's DAI balance is wrong");
 
