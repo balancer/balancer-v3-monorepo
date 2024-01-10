@@ -92,6 +92,36 @@ contract VaultLiquidityTest is BaseVaultTest {
         );
     }
 
+    function testAddLiquidityBptAmountOutBelowMin() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IVault.BptAmountOutBelowMin.selector, 2 * defaultAmount, 2 * defaultAmount + 1)
+        );
+        vm.prank(alice);
+        router.addLiquidityUnbalanced(
+            address(pool),
+            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
+            2 * defaultAmount + 1,
+            false,
+            bytes("")
+        );
+    }
+
+    function testAddLiquidityAmountInAboveMax() public {
+        uint256 bptAmountOut = defaultAmount;
+        vm.expectRevert(
+            abi.encodeWithSelector(IVault.AmountInAboveMax.selector, address(dai), defaultAmount, defaultAmount - 1)
+        );
+        vm.prank(alice);
+        router.addLiquiditySingleTokenExactOut(
+            address(pool),
+            dai,
+            defaultAmount - 1,
+            2 * bptAmountOut,
+            false,
+            bytes("")
+        );
+    }
+
     /// Remove
 
     function removeLiquidityProportional() public returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
@@ -180,6 +210,35 @@ contract VaultLiquidityTest is BaseVaultTest {
             address(pool),
             defaultAmount,
             [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+    }
+
+    function testRemoveLiquidityAmountOutBelowMin() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IVault.AmountOutBelowMin.selector, address(dai), defaultAmount, defaultAmount + 1)
+        );
+        vm.startPrank(alice);
+        router.removeLiquidityProportional(
+            address(pool),
+            2 * defaultAmount,
+            [uint256(defaultAmount + 1), uint256(defaultAmount)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+    }
+
+    function testRemoveLiquidityBptInAboveMax() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IVault.BptAmountInAboveMax.selector, defaultAmount, defaultAmount / 2 - 1)
+        );
+        vm.startPrank(alice);
+        router.removeLiquiditySingleTokenExactOut(
+            address(pool),
+            defaultAmount / 2 - 1, // Exit with only one token, so the expected BPT amount in is 1/2 of the total.
+            dai,
+            uint256(defaultAmount),
             false,
             bytes("")
         );
