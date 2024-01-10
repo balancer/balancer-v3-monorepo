@@ -69,7 +69,7 @@ contract WeightedPoolTest is VaultUtils {
             pool,
             [address(dai), address(usdc)].toMemoryArray().asIERC20(),
             amountsIn,
-            // Account for the precision less
+            // Account for the precision loss
             DAI_AMOUNT - DELTA - 1e6,
             false,
             bytes("")
