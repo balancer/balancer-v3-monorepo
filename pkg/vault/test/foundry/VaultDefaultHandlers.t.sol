@@ -18,7 +18,18 @@ contract VaultDefaultHandlers is BaseVaultTest {
 
     function testReceive() public {
         vm.prank(alice);
-        vm.expectRevert(IVaultMain.CannotReceiveEth);
-        address(vault).send(1);
+        vm.expectRevert(abi.encodeWithSelector(IVaultMain.CannotReceiveEth.selector));
+        payable(vault).transfer(1);
+    }
+
+    function testDefaultHandlerWithEth() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IVaultMain.CannotReceiveEth.selector));
+        VaultExtensionMock(payable(vault)).mockExtensionHash{ value: 1 }("");
+    }
+
+    function testDefaultHandler() public {
+        bytes32 result = VaultExtensionMock(address(vault)).mockExtensionHash(bytes("V3"));
+        assertEq(result, keccak256(bytes("V3")));
     }
 }

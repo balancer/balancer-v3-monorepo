@@ -5,6 +5,7 @@ pragma solidity ^0.8.4;
 import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
@@ -33,7 +34,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         return
             address(
                 new PoolMock(
-                    vault,
+                    IVault(address(vault)),
                     "ERC20 Pool",
                     "ERC20POOL",
                     [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
@@ -70,7 +71,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
-                    kind: IVault.SwapKind.GIVEN_IN,
+                    kind: SwapKind.GIVEN_IN,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: [rateAdjustedAmount, defaultAmount].toMemoryArray(),
                     indexIn: 1,
@@ -103,7 +104,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
-                    kind: IVault.SwapKind.GIVEN_OUT,
+                    kind: SwapKind.GIVEN_OUT,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: [rateAdjustedBalance, defaultAmount].toMemoryArray(),
                     indexIn: 1,

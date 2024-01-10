@@ -5,6 +5,7 @@ pragma solidity ^0.8.4;
 import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -82,7 +83,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     function testAddLiquidityNotInitialized() public {
         pool = createPool();
 
-        vm.expectRevert(abi.encodeWithSelector(IVault.PoolNotInitialized.selector, address(pool)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultMain.PoolNotInitialized.selector, address(pool)));
         router.addLiquidityUnbalanced(
             address(pool),
             [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
@@ -94,7 +95,7 @@ contract VaultLiquidityTest is BaseVaultTest {
 
     function testAddLiquidityBptAmountOutBelowMin() public {
         vm.expectRevert(
-            abi.encodeWithSelector(IVault.BptAmountOutBelowMin.selector, 2 * defaultAmount, 2 * defaultAmount + 1)
+            abi.encodeWithSelector(IVaultMain.BptAmountOutBelowMin.selector, 2 * defaultAmount, 2 * defaultAmount + 1)
         );
         vm.prank(alice);
         router.addLiquidityUnbalanced(
@@ -109,7 +110,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     function testAddLiquidityAmountInAboveMax() public {
         uint256 bptAmountOut = defaultAmount;
         vm.expectRevert(
-            abi.encodeWithSelector(IVault.AmountInAboveMax.selector, address(dai), defaultAmount, defaultAmount - 1)
+            abi.encodeWithSelector(IVaultMain.AmountInAboveMax.selector, address(dai), defaultAmount, defaultAmount - 1)
         );
         vm.prank(alice);
         router.addLiquiditySingleTokenExactOut(
@@ -205,7 +206,7 @@ contract VaultLiquidityTest is BaseVaultTest {
 
         pool = createPool();
 
-        vm.expectRevert(abi.encodeWithSelector(IVault.PoolNotInitialized.selector, address(pool)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultMain.PoolNotInitialized.selector, address(pool)));
         router.removeLiquidityProportional(
             address(pool),
             defaultAmount,
@@ -217,7 +218,7 @@ contract VaultLiquidityTest is BaseVaultTest {
 
     function testRemoveLiquidityAmountOutBelowMin() public {
         vm.expectRevert(
-            abi.encodeWithSelector(IVault.AmountOutBelowMin.selector, address(dai), defaultAmount, defaultAmount + 1)
+            abi.encodeWithSelector(IVaultMain.AmountOutBelowMin.selector, address(dai), defaultAmount, defaultAmount + 1)
         );
         vm.startPrank(alice);
         router.removeLiquidityProportional(
@@ -231,7 +232,7 @@ contract VaultLiquidityTest is BaseVaultTest {
 
     function testRemoveLiquidityBptInAboveMax() public {
         vm.expectRevert(
-            abi.encodeWithSelector(IVault.BptAmountInAboveMax.selector, defaultAmount, defaultAmount / 2 - 1)
+            abi.encodeWithSelector(IVaultMain.BptAmountInAboveMax.selector, defaultAmount, defaultAmount / 2 - 1)
         );
         vm.startPrank(alice);
         router.removeLiquiditySingleTokenExactOut(

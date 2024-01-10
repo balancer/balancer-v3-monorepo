@@ -8,6 +8,7 @@ import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.
 
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
@@ -22,7 +23,7 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Router } from "../../contracts/Router.sol";
 import { RouterMock } from "../../contracts/test/RouterMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
-import { VaultExtensionMock } from "../../contracts/test/VaultMock.sol";
+import { VaultExtensionMock } from "../../contracts/test/VaultExtensionMock.sol";
 
 contract RouterTest is Test {
     using ArrayHelpers for *;
@@ -52,14 +53,14 @@ contract RouterTest is Test {
         vaultExtension = new VaultExtensionMock();
         vault = new VaultMock(vaultExtension, authorizer, 30 days, 90 days);
         WETH = new WETHTestToken();
-        router = new Router(IVault(vault), WETH);
-        routerMock = new RouterMock(IVault(vault), WETH);
+        router = new Router(IVault(address(vault)), WETH);
+        routerMock = new RouterMock(IVault(address(vault)), WETH);
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
 
         pool = new PoolMock(
-            vault,
+            IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
@@ -69,7 +70,7 @@ contract RouterTest is Test {
             address(0)
         );
         wethPool = new PoolMock(
-            vault,
+            IVault(address(vault)),
             "ERC20 WETH Pool",
             "ERC20POOL",
             [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
@@ -141,14 +142,14 @@ contract RouterTest is Test {
         vault.disableQuery();
 
         // Authorize alice
-        bytes32 disableQueryRole = vault.getActionId(IVault.disableQuery.selector);
+        bytes32 disableQueryRole = vault.getActionId(IVaultMain.disableQuery.selector);
 
         authorizer.grantRole(disableQueryRole, alice);
 
         vm.prank(alice);
         vault.disableQuery();
 
-        vm.expectRevert(abi.encodeWithSelector(IVault.QueriesDisabled.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVaultMain.QueriesDisabled.selector));
 
         vm.prank(address(0), address(0));
         router.querySwapExactIn(address(pool), USDC, DAI, USDC_AMOUNT_IN, bytes(""));
@@ -592,7 +593,7 @@ contract RouterTest is Test {
         assertEq(amountsGiven[0], 0);
         assertEq(amountsGiven[1], 4321);
 
-        vm.expectRevert(abi.encodeWithSelector(IVault.TokenNotRegistered.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVaultMain.TokenNotRegistered.selector));
         routerMock.getSingleInputArray(address(pool), WETH, DAI_AMOUNT_IN);
     }
 
