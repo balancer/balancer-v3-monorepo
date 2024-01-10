@@ -4,42 +4,29 @@ pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { IVault, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
-import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
-import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
-import { VaultMock } from "../../contracts/test/VaultMock.sol";
-import { Router } from "../../contracts/Router.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 
-contract PoolDataTest is Test {
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+
+contract PoolDataTest is BaseVaultTest {
     using ArrayHelpers for *;
     using FixedPoint for uint256;
 
-    VaultMock vault;
-    Router router;
-    BasicAuthorizerMock authorizer;
-    PoolMock pool;
-    ERC20TestToken WSTETH;
-    ERC20TestToken DAI;
     RateProviderMock wstETHRateProvider;
     RateProviderMock daiRateProvider;
 
-    function setUp() public {
-        authorizer = new BasicAuthorizerMock();
-        vault = new VaultMock(authorizer, 30 days, 90 days);
-        router = new Router(IVault(vault), new WETHTestToken());
-        WSTETH = new ERC20TestToken("WSTETH", "WSTETH", 6);
-        DAI = new ERC20TestToken("DAI", "DAI", 18);
+    function setUp() public virtual override {
+        BaseVaultTest.setUp();
+    }
 
+    function createPool() internal override returns (address) {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         wstETHRateProvider = new RateProviderMock();
         daiRateProvider = new RateProviderMock();
@@ -47,16 +34,19 @@ contract PoolDataTest is Test {
         rateProviders[0] = daiRateProvider;
         rateProviders[1] = wstETHRateProvider;
 
-        pool = new PoolMock(
-            vault,
-            "ERC20 Pool",
-            "ERC20POOL",
-            [address(DAI), address(WSTETH)].toMemoryArray().asIERC20(),
-            rateProviders,
-            true,
-            365 days,
-            address(0)
-        );
+        return
+            address(
+                new PoolMock(
+                    vault,
+                    "ERC20 Pool",
+                    "ERC20POOL",
+                    [address(dai), address(wsteth)].toMemoryArray().asIERC20(),
+                    rateProviders,
+                    true,
+                    365 days,
+                    address(0)
+                )
+            );
     }
 
     function testPoolData(uint256 daiRate, uint256 wstETHRate, bool roundUp) public {
@@ -71,7 +61,7 @@ contract PoolDataTest is Test {
         PoolData memory data = vault.computePoolData(address(pool), roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN);
 
         // Compute decimal scaling factors from the tokens, in the mock.
-        uint256[] memory expectedScalingFactors = pool.getDecimalScalingFactors();
+        uint256[] memory expectedScalingFactors = PoolMock(pool).getDecimalScalingFactors();
         uint256[] memory expectedRawBalances = vault.getRawBalances(address(pool));
         uint256[] memory expectedRates = new uint256[](2);
         expectedRates[0] = daiRate;
@@ -99,8 +89,8 @@ contract PoolDataTest is Test {
             assertEq(data.balancesLiveScaled18[i], expectedLiveBalance);
         }
 
-        assertEq(address(data.tokenConfig[0].token), address(DAI));
-        assertEq(address(data.tokenConfig[1].token), address(WSTETH));
+        assertEq(address(data.tokenConfig[0].token), address(dai));
+        assertEq(address(data.tokenConfig[1].token), address(wsteth));
 
         assertEq(address(data.tokenConfig[0].rateProvider), address(daiRateProvider));
         assertEq(address(data.tokenConfig[1].rateProvider), address(wstETHRateProvider));
