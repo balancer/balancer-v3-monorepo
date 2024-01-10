@@ -21,8 +21,46 @@ contract CallbacksTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.callbacks.shouldCallBeforeSwap = true;
         config.callbacks.shouldCallAfterSwap = true;
         vault.setConfig(address(pool), config);
+    }
+
+    function testOnBeforeSwapCallback() public {
+        vm.prank(bob);
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IPoolCallbacks.onBeforeSwap.selector,
+                IBasePool.SwapParams({
+                    kind: IVault.SwapKind.GIVEN_IN,
+                    amountGivenScaled18: defaultAmount,
+                    balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
+                    indexIn: 1,
+                    indexOut: 0,
+                    sender: address(router),
+                    userData: bytes("")
+                })
+            )
+        );
+        router.swapExactIn(address(pool), usdc, dai, defaultAmount, 0, type(uint256).max, false, bytes(""));
+    }
+
+    function testOnBeforeSwapCallbackRevert() public {
+        // should fail
+        PoolMock(pool).setFailOnBeforeSwapCallback(true);
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(IVault.CallbackFailed.selector));
+        router.swapExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
     }
 
     function testOnAfterSwapCallback() public {
