@@ -14,9 +14,9 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { FactoryWidePauseWindow } from "../../contracts/factories/FactoryWidePauseWindow.sol";
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 
-import { VaultUtils } from "./utils/VaultUtils.sol";
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract PoolPauseTest is VaultUtils {
+contract PoolPauseTest is BaseVaultTest {
     using ArrayHelpers for *;
 
     PoolMock internal unmanagedPool;
@@ -27,7 +27,7 @@ contract PoolPauseTest is VaultUtils {
     IRateProvider[] internal rateProviders;
 
     function setUp() public virtual override {
-        VaultUtils.setUp();
+        BaseVaultTest.setUp();
 
         rateProviders = new IRateProvider[](2);
 

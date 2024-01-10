@@ -11,14 +11,14 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
-import { VaultUtils } from "./utils/VaultUtils.sol";
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract BalancerPoolTokenTest is VaultUtils {
+contract BalancerPoolTokenTest is BaseVaultTest {
     using ArrayHelpers for *;
     PoolMock internal poolMock;
 
     function setUp() public virtual override {
-        VaultUtils.setUp();
+        BaseVaultTest.setUp();
         poolMock = PoolMock(pool);
     }
 

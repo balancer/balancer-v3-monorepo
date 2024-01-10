@@ -21,11 +21,11 @@ import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
 import { Router } from "@balancer-labs/v3-vault/contracts/Router.sol";
 import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
 import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
-import { VaultUtils } from "vault/test/foundry/utils/VaultUtils.sol";
+import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
 
-contract WeightedPoolTest is VaultUtils {
+contract WeightedPoolTest is BaseVaultTest {
     using ArrayHelpers for *;
 
     WeightedPoolFactory factory;
@@ -44,7 +44,7 @@ contract WeightedPoolTest is VaultUtils {
     uint256 internal bptAmountOut;
 
     function setUp() public virtual override {
-        VaultUtils.setUp();
+        BaseVaultTest.setUp();
     }
 
     function createPool() internal override returns (address) {

@@ -10,9 +10,9 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
-import { VaultUtils } from "./utils/VaultUtils.sol";
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract VaultLiquidityTest is VaultUtils {
+contract VaultLiquidityTest is BaseVaultTest {
     using ArrayHelpers for *;
 
     struct Balances {
@@ -22,7 +22,7 @@ contract VaultLiquidityTest is VaultUtils {
     }
 
     function setUp() public virtual override {
-        VaultUtils.setUp();
+        BaseVaultTest.setUp();
     }
 
     /// Add

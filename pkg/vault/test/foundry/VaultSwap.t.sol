@@ -10,9 +10,9 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
-import { VaultUtils } from "./utils/VaultUtils.sol";
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract VaultSwapTest is VaultUtils {
+contract VaultSwapTest is BaseVaultTest {
     using ArrayHelpers for *;
 
     PoolMock internal noInitPool;
@@ -20,7 +20,7 @@ contract VaultSwapTest is VaultUtils {
     uint256 internal protocolSwapFee = swapFee / 2; // 50%
 
     function setUp() public virtual override {
-        VaultUtils.setUp();
+        BaseVaultTest.setUp();
 
         noInitPool = PoolMock(createPool());
     }

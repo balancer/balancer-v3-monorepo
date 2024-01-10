@@ -14,14 +14,14 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 
-import { VaultUtils } from "./utils/VaultUtils.sol";
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract VaultSwapWithRatesTest is VaultUtils {
+contract VaultSwapWithRatesTest is BaseVaultTest {
     using ArrayHelpers for *;
     using FixedPoint for *;
 
     function setUp() public virtual override {
-        VaultUtils.setUp();
+        BaseVaultTest.setUp();
     }
 
     function createPool() internal override returns (address) {

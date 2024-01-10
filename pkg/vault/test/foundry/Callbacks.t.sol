@@ -12,13 +12,13 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
-import { VaultUtils } from "./utils/VaultUtils.sol";
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract CallbacksTest is VaultUtils {
+contract CallbacksTest is BaseVaultTest {
     using ArrayHelpers for *;
 
     function setUp() public virtual override {
-        VaultUtils.setUp();
+        BaseVaultTest.setUp();
 
         PoolConfig memory config = vault.getPoolConfig(address(pool));
         config.callbacks.shouldCallAfterSwap = true;

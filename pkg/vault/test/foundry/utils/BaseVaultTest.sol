@@ -13,14 +13,14 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { BaseTest } from "solidity-utils/test/foundry/utils/BaseTest.t.sol";
+import { BaseTest } from "solidity-utils/test/foundry/utils/BaseTest.sol";
 
 import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
 import { Router } from "../../../contracts/Router.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 
-abstract contract VaultUtils is BaseTest {
+abstract contract BaseVaultTest is BaseTest {
     using ArrayHelpers for *;
 
     // Vault mock.
