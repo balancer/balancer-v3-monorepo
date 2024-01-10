@@ -6,7 +6,9 @@ import "forge-std/Test.sol";
 
 import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
-import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
+import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -17,11 +19,13 @@ import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/W
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Router } from "../../contracts/Router.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
+import { VaultExtensionMock } from "../../contracts/test/VaultExtensionMock.sol";
 
 contract InitializerTest is Test {
     using ArrayHelpers for *;
 
     VaultMock vault;
+    VaultExtensionMock vaultExtension;
     IRouter router;
     BasicAuthorizerMock authorizer;
     PoolMock pool;
@@ -38,14 +42,15 @@ contract InitializerTest is Test {
 
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
-        vault = new VaultMock(authorizer, 30 days, 90 days);
-        router = new Router(IVault(vault), new WETHTestToken());
+        vaultExtension = new VaultExtensionMock();
+        vault = new VaultMock(vaultExtension, authorizer, 30 days, 90 days);
+        router = new Router(IVault(address(vault)), new WETHTestToken());
         USDC = new ERC20TestToken("USDC", "USDC", 18);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
 
         pool = new PoolMock(
-            vault,
+            IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
@@ -129,7 +134,7 @@ contract InitializerTest is Test {
     function testOnBeforeInitializeCallbackRevert() public {
         pool.setFailOnBeforeInitializeCallback(true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVault.CallbackFailed.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVaultMain.CallbackFailed.selector));
         router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
@@ -164,7 +169,7 @@ contract InitializerTest is Test {
     function testOnAfterInitializeCallbackRevert() public {
         pool.setFailOnAfterInitializeCallback(true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVault.CallbackFailed.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVaultMain.CallbackFailed.selector));
         router.initialize(
             address(pool),
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),

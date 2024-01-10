@@ -5,6 +5,7 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
 
@@ -66,6 +67,9 @@ contract VaultStorage {
 
     // Token -> fee: Protocol's swap fees accumulated in the Vault for harvest.
     mapping(IERC20 => uint256) internal _protocolSwapFees;
+
+    // Code extension for Vault.
+    IVaultExtension internal _vaultExtension;
 
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer internal _authorizer;

@@ -7,7 +7,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
-import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { PoolConfig, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -131,7 +132,7 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
 
     function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
         return
-            params.kind == IVault.SwapKind.GIVEN_IN
+            params.kind == SwapKind.GIVEN_IN
                 ? params.amountGivenScaled18.mulDown(_multiplier)
                 : params.amountGivenScaled18.divDown(_multiplier);
     }

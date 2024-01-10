@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -33,7 +34,7 @@ contract PoolPauseTest is BaseVaultTest {
 
         pool = address(
             new PoolMock(
-                vault,
+                IVault(address(vault)),
                 "ERC20 Pool",
                 "ERC20POOL",
                 [address(dai), address(usdc)].toMemoryArray().asIERC20(),
@@ -46,7 +47,7 @@ contract PoolPauseTest is BaseVaultTest {
 
         // Pass zero for the pause manager
         unmanagedPool = new PoolMock(
-            vault,
+            IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
             [address(dai), address(usdc)].toMemoryArray().asIERC20(),
@@ -57,7 +58,7 @@ contract PoolPauseTest is BaseVaultTest {
         );
 
         permissionlessPool = new PoolMock(
-            vault,
+            IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
             [address(dai), address(usdc)].toMemoryArray().asIERC20(),
@@ -68,7 +69,7 @@ contract PoolPauseTest is BaseVaultTest {
         );
 
         infinityPool = new PoolMock(
-            vault,
+            IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
             [address(dai), address(usdc)].toMemoryArray().asIERC20(),
@@ -78,7 +79,7 @@ contract PoolPauseTest is BaseVaultTest {
             address(0)
         );
 
-        factory = new PoolFactoryMock(vault, 365 days);
+        factory = new PoolFactoryMock(IVault(address(vault)), 365 days);
     }
 
     function testPoolFactory() public {
@@ -98,7 +99,7 @@ contract PoolPauseTest is BaseVaultTest {
 
         vm.expectRevert(FactoryWidePauseWindow.PoolPauseWindowDurationOverflow.selector);
         new PoolMock(
-            vault,
+            IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
             [address(dai), address(usdc)].toMemoryArray().asIERC20(),
@@ -135,11 +136,11 @@ contract PoolPauseTest is BaseVaultTest {
 
     function testCannotPauseIfNotManager() public {
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVault.SenderIsNotPauseManager.selector, address(pool)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultMain.SenderIsNotPauseManager.selector, address(pool)));
         vault.pausePool(address(pool));
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVault.SenderIsNotPauseManager.selector, address(pool)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultMain.SenderIsNotPauseManager.selector, address(pool)));
         vault.unpausePool(address(pool));
     }
 
@@ -150,7 +151,7 @@ contract PoolPauseTest is BaseVaultTest {
         vault.pausePool(address(unmanagedPool));
 
         // Reluctantly authorize Bob
-        bytes32 pausePoolRole = vault.getActionId(IVault.pausePool.selector);
+        bytes32 pausePoolRole = vault.getActionId(IVaultMain.pausePool.selector);
         authorizer.grantRole(pausePoolRole, bob);
 
         vm.prank(bob);
@@ -161,11 +162,11 @@ contract PoolPauseTest is BaseVaultTest {
 
     function testCannotPausePermissionlessPool() public {
         // Authorize alice
-        bytes32 pausePoolRole = vault.getActionId(IVault.pausePool.selector);
+        bytes32 pausePoolRole = vault.getActionId(IVaultMain.pausePool.selector);
         authorizer.grantRole(pausePoolRole, alice);
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVault.PoolPauseWindowExpired.selector, address(permissionlessPool)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultMain.PoolPauseWindowExpired.selector, address(permissionlessPool)));
         vault.pausePool(address(permissionlessPool));
     }
 
@@ -174,7 +175,7 @@ contract PoolPauseTest is BaseVaultTest {
         assertEq(pauseManager, address(0));
 
         // Authorize alice
-        bytes32 pausePoolRole = vault.getActionId(IVault.pausePool.selector);
+        bytes32 pausePoolRole = vault.getActionId(IVaultMain.pausePool.selector);
         authorizer.grantRole(pausePoolRole, alice);
 
         vm.prank(alice);

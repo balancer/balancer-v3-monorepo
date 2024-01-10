@@ -22,11 +22,13 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Router } from "../../contracts/Router.sol";
 import { RouterMock } from "../../contracts/test/RouterMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
+import { VaultExtensionMock } from "../../contracts/test/VaultMock.sol";
 
 contract RouterTest is Test {
     using ArrayHelpers for *;
 
     VaultMock vault;
+    VaultExtensionMock vaultExtension;
     IRouter router;
     RouterMock routerMock;
     BasicAuthorizerMock authorizer;
@@ -47,7 +49,8 @@ contract RouterTest is Test {
 
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
-        vault = new VaultMock(authorizer, 30 days, 90 days);
+        vaultExtension = new VaultExtensionMock();
+        vault = new VaultMock(vaultExtension, authorizer, 30 days, 90 days);
         WETH = new WETHTestToken();
         router = new Router(IVault(vault), WETH);
         routerMock = new RouterMock(IVault(vault), WETH);
