@@ -102,7 +102,7 @@ contract WeightedPoolTest is VaultUtils {
         assertEq(balances[1], USDC_AMOUNT);
 
         // should mint correct amount of BPT tokens
-        // Account for the precision less
+        // Account for the precision loss
         assertApproxEqAbs(weightedPool.balanceOf(lp), bptAmountOut, DELTA);
         assertApproxEqAbs(bptAmountOut, DAI_AMOUNT, DELTA);
     }
