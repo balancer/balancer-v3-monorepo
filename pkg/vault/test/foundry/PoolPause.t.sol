@@ -8,51 +8,40 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
-import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
-import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
-import { VaultMock } from "../../contracts/test/VaultMock.sol";
-import { Router } from "../../contracts/Router.sol";
 import { FactoryWidePauseWindow } from "../../contracts/factories/FactoryWidePauseWindow.sol";
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 
-contract PoolPauseTest is Test {
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+
+contract PoolPauseTest is BaseVaultTest {
     using ArrayHelpers for *;
 
-    VaultMock vault;
-    Router router;
-    BasicAuthorizerMock authorizer;
-    PoolMock pool;
-    PoolMock unmanagedPool;
-    PoolMock permissionlessPool;
-    PoolMock infinityPool;
-    PoolFactoryMock factory;
-    ERC20TestToken USDC;
-    ERC20TestToken DAI;
-    address alice = vm.addr(1);
-    address bob = vm.addr(2);
-    address admin = vm.addr(3);
-    IRateProvider[] rateProviders = new IRateProvider[](2);
+    PoolMock internal unmanagedPool;
+    PoolMock internal permissionlessPool;
+    PoolMock internal infinityPool;
 
-    function setUp() public {
-        authorizer = new BasicAuthorizerMock();
-        vault = new VaultMock(authorizer, 30 days, 90 days);
-        router = new Router(IVault(vault), new WETHTestToken());
-        USDC = new ERC20TestToken("USDC", "USDC", 18);
-        DAI = new ERC20TestToken("DAI", "DAI", 18);
+    PoolFactoryMock internal factory;
+    IRateProvider[] internal rateProviders;
 
-        pool = new PoolMock(
-            vault,
-            "ERC20 Pool",
-            "ERC20POOL",
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
-            rateProviders,
-            true,
-            365 days,
-            admin
+    function setUp() public virtual override {
+        BaseVaultTest.setUp();
+
+        rateProviders = new IRateProvider[](2);
+
+        pool = address(
+            new PoolMock(
+                vault,
+                "ERC20 Pool",
+                "ERC20POOL",
+                [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+                new IRateProvider[](2),
+                true,
+                365 days,
+                admin
+            )
         );
 
         // Pass zero for the pause manager
@@ -60,7 +49,7 @@ contract PoolPauseTest is Test {
             vault,
             "ERC20 Pool",
             "ERC20POOL",
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
             rateProviders,
             true,
             365 days,
@@ -71,7 +60,7 @@ contract PoolPauseTest is Test {
             vault,
             "ERC20 Pool",
             "ERC20POOL",
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
             rateProviders,
             true,
             0,
@@ -82,7 +71,7 @@ contract PoolPauseTest is Test {
             vault,
             "ERC20 Pool",
             "ERC20POOL",
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
             rateProviders,
             true,
             10000 days,
@@ -112,7 +101,7 @@ contract PoolPauseTest is Test {
             vault,
             "ERC20 Pool",
             "ERC20POOL",
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
             rateProviders,
             true,
             maxEndTimeTimestamp + 1,
