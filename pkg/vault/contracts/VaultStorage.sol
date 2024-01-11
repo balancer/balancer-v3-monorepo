@@ -5,6 +5,7 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
 
@@ -25,6 +26,9 @@ contract VaultStorage {
 
     // 1e18 corresponds to a 100% fee.
     uint256 internal constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
+
+    // Code extension for Vault.
+    IVaultExtension internal immutable _vaultExtension;
 
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
