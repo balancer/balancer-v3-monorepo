@@ -11,55 +11,8 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-import {
-    AmountGivenZero,
-    AmountInAboveMax,
-    AmountOutBelowMin,
-    BalanceNotSettled,
-    BptAmountInAboveMax,
-    BptAmountOutBelowMin,
-    CallbackFailed,
-    CannotReceiveEth,
-    CannotSwapSameToken,
-    HandlerOutOfBounds,
-    InvalidAddLiquidityKind,
-    InvalidRemoveLiquidityKind,
-    InvalidToken,
-    MaxTokens,
-    MinTokens,
-    NoHandler,
-    PauseBufferPeriodDurationTooLarge,
-    PoolAlreadyRegistered,
-    PoolNotInitialized,
-    PoolAlreadyInitialized,
-    PoolNotRegistered,
-    PoolNotPaused,
-    PoolPaused,
-    PoolPauseWindowExpired,
-    RouterNotTrusted,
-    SenderIsNotPauseManager,
-    TokenAlreadyRegistered,
-    TokensMismatch,
-    TokenNotRegistered,
-    VaultNotPaused,
-    VaultPaused,
-    VaultPauseWindowDurationTooLarge,
-    VaultPauseWindowExpired,
-    WrongHandler
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
-import {
-    AddLiquidityKind,
-    AddLiquidityParams,
-    LiquidityManagement,
-    PoolCallbacks,
-    PoolConfig,
-    PoolData,
-    RemoveLiquidityKind,
-    RemoveLiquidityParams,
-    Rounding,
-    SwapKind,
-    SwapParams
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
