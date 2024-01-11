@@ -4,7 +4,7 @@ pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
 
-import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
+import { CannotReceiveEth } from "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
 
 import { Vault } from "../../contracts/Vault.sol";
 import { VaultExtensionMock } from "../../contracts/test/VaultExtensionMock.sol";
@@ -18,13 +18,13 @@ contract VaultDefaultHandlers is BaseVaultTest {
 
     function testReceive() public {
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVaultMain.CannotReceiveEth.selector));
+        vm.expectRevert(abi.encodeWithSelector(CannotReceiveEth.selector));
         payable(vault).transfer(1);
     }
 
     function testDefaultHandlerWithEth() public {
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVaultMain.CannotReceiveEth.selector));
+        vm.expectRevert(abi.encodeWithSelector(CannotReceiveEth.selector));
         VaultExtensionMock(payable(vault)).mockExtensionHash{ value: 1 }("");
     }
 

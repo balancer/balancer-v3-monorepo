@@ -7,8 +7,8 @@ import "forge-std/Test.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
-import { PoolConfig, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultTypes.sol";
+import { CallbackFailed } from "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
+import { PoolConfig, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -52,17 +52,8 @@ contract CallbacksTest is BaseVaultTest {
         // should fail
         PoolMock(pool).setFailOnBeforeSwapCallback(true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultMain.CallbackFailed.selector));
-        router.swapExactIn(
-            address(pool),
-            usdc,
-            dai,
-            defaultAmount,
-            defaultAmount,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
+        vm.expectRevert(abi.encodeWithSelector(CallbackFailed.selector));
+        router.swapExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
     }
 
     function testOnAfterSwapCallback() public {
@@ -89,7 +80,7 @@ contract CallbacksTest is BaseVaultTest {
         // should fail
         PoolMock(pool).setFailOnAfterSwapCallback(true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultMain.CallbackFailed.selector));
+        vm.expectRevert(abi.encodeWithSelector(CallbackFailed.selector));
         router.swapExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
     }
 

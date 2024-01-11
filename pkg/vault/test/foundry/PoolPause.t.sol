@@ -7,6 +7,10 @@ import "forge-std/Test.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
+import {
+    PoolPauseWindowExpired,
+    SenderIsNotPauseManager
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -136,11 +140,11 @@ contract PoolPauseTest is BaseVaultTest {
 
     function testCannotPauseIfNotManager() public {
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultMain.SenderIsNotPauseManager.selector, address(pool)));
+        vm.expectRevert(abi.encodeWithSelector(SenderIsNotPauseManager.selector, address(pool)));
         vault.pausePool(address(pool));
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVaultMain.SenderIsNotPauseManager.selector, address(pool)));
+        vm.expectRevert(abi.encodeWithSelector(SenderIsNotPauseManager.selector, address(pool)));
         vault.unpausePool(address(pool));
     }
 
@@ -166,7 +170,7 @@ contract PoolPauseTest is BaseVaultTest {
         authorizer.grantRole(pausePoolRole, alice);
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVaultMain.PoolPauseWindowExpired.selector, address(permissionlessPool)));
+        vm.expectRevert(abi.encodeWithSelector(PoolPauseWindowExpired.selector, address(permissionlessPool)));
         vault.pausePool(address(permissionlessPool));
     }
 

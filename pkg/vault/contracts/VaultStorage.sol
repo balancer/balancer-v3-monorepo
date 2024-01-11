@@ -27,6 +27,9 @@ contract VaultStorage {
     // 1e18 corresponds to a 100% fee.
     uint256 internal constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
+    // Code extension for Vault.
+    IVaultExtension internal immutable _vaultExtension;
+
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
 
@@ -67,9 +70,6 @@ contract VaultStorage {
 
     // Token -> fee: Protocol's swap fees accumulated in the Vault for harvest.
     mapping(IERC20 => uint256) internal _protocolSwapFees;
-
-    // Code extension for Vault.
-    IVaultExtension internal _vaultExtension;
 
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer internal _authorizer;

@@ -9,6 +9,7 @@ import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
+import { TokenNotRegistered } from "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
 import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
@@ -593,7 +594,7 @@ contract RouterTest is Test {
         assertEq(amountsGiven[0], 0);
         assertEq(amountsGiven[1], 4321);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultMain.TokenNotRegistered.selector));
+        vm.expectRevert(abi.encodeWithSelector(TokenNotRegistered.selector));
         routerMock.getSingleInputArray(address(pool), WETH, DAI_AMOUNT_IN);
     }
 

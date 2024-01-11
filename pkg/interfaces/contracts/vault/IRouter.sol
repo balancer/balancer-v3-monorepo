@@ -4,7 +4,7 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./IVaultTypes.sol";
+import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 import { IBasePool } from "./IBasePool.sol";
 
 interface IRouter {

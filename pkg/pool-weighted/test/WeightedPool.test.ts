@@ -3,6 +3,7 @@ import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { PoolConfigStructOutput, VaultMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/VaultMock';
+import { VaultExtensionMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/VaultExtensionMock';
 import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/WETHTestToken';
@@ -32,8 +33,9 @@ describe('WeightedPool', function () {
     const BUFFER_PERIOD_DURATION = MONTH;
 
     const authorizer: BasicAuthorizerMock = await deploy('v3-solidity-utils/BasicAuthorizerMock');
+    const vaultExtension: VaultExtensionMock = await deploy('v3-vault/VaultExtensionMock');
     vault = await deploy('v3-vault/VaultMock', {
-      args: [authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
+      args: [await vaultExtension.getAddress(), authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
     });
 
     const WETH: WETHTestToken = await deploy('v3-solidity-utils/WETHTestToken');

@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.4;
 
+import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -11,9 +12,44 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import {
+    AmountGivenZero,
+    AmountInAboveMax,
+    AmountOutBelowMin,
+    BalanceNotSettled,
+    BptAmountInAboveMax,
+    BptAmountOutBelowMin,
+    CallbackFailed,
+    CannotReceiveEth,
+    CannotSwapSameToken,
+    HandlerOutOfBounds,
+    InvalidAddLiquidityKind,
+    InvalidRemoveLiquidityKind,
+    InvalidToken,
+    MaxTokens,
+    MinTokens,
+    NoHandler,
+    PauseBufferPeriodDurationTooLarge,
+    PoolAlreadyRegistered,
+    PoolNotInitialized,
+    PoolAlreadyInitialized,
+    PoolNotRegistered,
+    PoolNotPaused,
+    PoolPaused,
+    PoolPauseWindowExpired,
+    RouterNotTrusted,
+    SenderIsNotPauseManager,
+    TokenAlreadyRegistered,
+    TokensMismatch,
+    TokenNotRegistered,
+    VaultNotPaused,
+    VaultPaused,
+    VaultPauseWindowDurationTooLarge,
+    VaultPauseWindowExpired,
+    WrongHandler
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
+import {
     AddLiquidityKind,
     AddLiquidityParams,
-    InvalidToken,
     LiquidityManagement,
     PoolCallbacks,
     PoolConfig,
@@ -23,7 +59,7 @@ import {
     Rounding,
     SwapKind,
     SwapParams
-} from "@balancer-labs/v3-interfaces/contracts/vault/IVaultTypes.sol";
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -46,7 +82,7 @@ import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
 import { VaultStorage } from "./VaultStorage.sol";
 
-contract Vault is IVaultMain, VaultStorage, Authentication, ERC20MultiToken, ReentrancyGuard {
+contract Vault is IVaultMain, VaultStorage, Proxy, Authentication, ERC20MultiToken, ReentrancyGuard {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
     using FixedPoint for *;
@@ -1861,11 +1897,24 @@ contract Vault is IVaultMain, VaultStorage, Authentication, ERC20MultiToken, Ree
         revert CannotReceiveEth();
     }
 
-    fallback(bytes calldata data) external payable returns (bytes memory) {
+    /**
+     * @inheritdoc Proxy
+     * @dev Override proxy implementation of `fallback` to disallow incoming ETH transfers.
+     * This function actually returns whatever the Vault Extension does when handling the request.
+     */
+    fallback() external payable override {
         if (msg.value > 0) {
             revert CannotReceiveEth();
         }
 
-        return address(_vaultExtension).functionDelegateCall(data);
+        _fallback();
+    }
+
+    /**
+     * @inheritdoc Proxy
+     * @dev Returns Vault Extension, where fallback requests are forwarded.
+     */
+    function _implementation() internal view override returns (address) {
+        return address(_vaultExtension);
     }
 }

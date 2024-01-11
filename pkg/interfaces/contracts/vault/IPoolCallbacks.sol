@@ -5,7 +5,7 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "./IVault.sol";
-import { SwapKind } from "./IVaultTypes.sol";
+import { SwapKind } from "./VaultTypes.sol";
 import { IBasePool } from "./IBasePool.sol";
 
 /// @notice Interface for pool callbacks
