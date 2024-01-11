@@ -5,7 +5,9 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
-import { PoolConfig, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { PoolConfig, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
@@ -14,6 +16,7 @@ import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openze
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
+import { VaultExtension } from "../VaultExtension.sol";
 
 contract VaultMock is Vault {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
@@ -24,11 +27,12 @@ contract VaultMock is Vault {
     bytes32 private constant _ALL_BITS_SET = bytes32(type(uint256).max);
 
     constructor(
+        IVaultExtension vaultExtension,
         IAuthorizer authorizer,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) Vault(authorizer, pauseWindowDuration, bufferPeriodDuration) {
-        _poolFactoryMock = new PoolFactoryMock(this, pauseWindowDuration);
+    ) Vault(vaultExtension, authorizer, pauseWindowDuration, bufferPeriodDuration) {
+        _poolFactoryMock = new PoolFactoryMock(IVault(address(this)), pauseWindowDuration);
     }
 
     function getPoolFactoryMock() external view returns (address) {
@@ -45,6 +49,10 @@ contract VaultMock is Vault {
 
     function setConfig(address pool, PoolConfig calldata config) external {
         _poolConfig[pool] = config.fromPoolConfig();
+    }
+
+    function setRateProvider(address pool, IERC20 token, IRateProvider rateProvider) external {
+        _poolRateProviders[pool][token] = rateProvider;
     }
 
     function manualPauseVault() external {

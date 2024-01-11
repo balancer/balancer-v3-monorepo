@@ -1,27 +1,31 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
+import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { Router } from '../typechain-types/contracts/Router';
 import { ERC20PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/ERC20PoolMock';
+import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { VoidSigner } from 'ethers';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { fp } from '@balancer-labs/v3-helpers/src/numbers';
-import { Vault } from '../typechain-types';
+import { VaultExtensionMock } from '../typechain-types/contracts/test/VaultExtensionMock';
 
 describe('Queries', function () {
-  let vault: Vault;
+  let vault: VaultMock;
   let router: Router;
   let pool: ERC20PoolMock;
+  let authorizer: BasicAuthorizerMock;
   let DAI: ERC20TestToken;
   let USDC: ERC20TestToken;
   let zero: VoidSigner;
 
   const DAI_AMOUNT_IN = fp(1000);
   const USDC_AMOUNT_IN = fp(1000);
-  const BPT_AMOUNT = fp(1000);
+  const BPT_AMOUNT = fp(2000);
 
   let alice: SignerWithAddress;
 
@@ -31,7 +35,11 @@ describe('Queries', function () {
   });
 
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
-    vault = (await VaultDeployer.deploy()) as Vault;
+    authorizer = await deploy('v3-solidity-utils/BasicAuthorizerMock');
+    const vaultExtension: VaultExtensionMock = await deploy('VaultExtensionMock');
+    vault = await deploy('VaultMock', {
+      args: [await vaultExtension.getAddress(), authorizer.getAddress(), MONTH * 3, MONTH],
+    });
     const vaultAddress = await vault.getAddress();
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
     router = await deploy('Router', { args: [vaultAddress, WETH] });
@@ -52,15 +60,17 @@ describe('Queries', function () {
       ],
     });
 
-    await USDC.mint(alice, USDC_AMOUNT_IN);
-    await DAI.mint(alice, DAI_AMOUNT_IN);
+    await USDC.mint(alice, 2n * USDC_AMOUNT_IN);
+    await DAI.mint(alice, 2n * DAI_AMOUNT_IN);
 
     await USDC.connect(alice).approve(vault, MAX_UINT256);
     await DAI.connect(alice).approve(vault, MAX_UINT256);
 
     // The mock pool can be initialized with no liquidity; it mints some BPT to the initializer
     // to comply with the vault's required minimum.
-    await router.connect(alice).initialize(pool, [DAI, USDC], [DAI_AMOUNT_IN, USDC_AMOUNT_IN], 0, false, '0x');
+    await router
+      .connect(alice)
+      .initialize(pool, [DAI, USDC], [2n * DAI_AMOUNT_IN, 2n * USDC_AMOUNT_IN], 0, false, '0x');
   });
 
   // TODO: query a pool that has an actual invariant (introduced in #145)

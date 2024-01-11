@@ -190,6 +190,25 @@ library ScalingHelpers {
     }
 
     /**
+     * @dev Same as `toScaled18ApplyRateRoundUp`, but returns a new array, leaving the original intact.
+     */
+    function copyToScaled18ApplyRateRoundUpArray(
+        uint256[] memory amounts,
+        uint256[] memory scalingFactors,
+        uint256[] memory tokenRates
+    ) internal pure returns (uint256[] memory) {
+        uint256 length = amounts.length;
+        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length, tokenRates.length);
+        uint256[] memory amountsScaled18 = new uint256[](length);
+
+        for (uint256 i = 0; i < length; ++i) {
+            amountsScaled18[i] = amounts[i].toScaled18ApplyRateRoundUp(scalingFactors[i], tokenRates[i]);
+        }
+
+        return amountsScaled18;
+    }
+
+    /**
      * @dev Same as `toRawRoundDown`, but for an entire array. This function does not return anything, but instead
      * *mutates* the `amounts` array.
      */

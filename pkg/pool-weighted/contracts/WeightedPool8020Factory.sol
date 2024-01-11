@@ -2,7 +2,9 @@
 
 pragma solidity ^0.8.4;
 
+import "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
 
@@ -66,6 +68,8 @@ contract WeightedPool8020Factory is BasePoolFactory {
             getNewPoolPauseWindowEndTime(),
             address(0), // no pause manager
             PoolCallbacks({
+                shouldCallBeforeInitialize: false,
+                shouldCallAfterInitialize: false,
                 shouldCallBeforeAddLiquidity: false,
                 shouldCallAfterAddLiquidity: false,
                 shouldCallBeforeRemoveLiquidity: false,

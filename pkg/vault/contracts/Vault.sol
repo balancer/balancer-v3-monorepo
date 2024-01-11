@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.4;
 
+import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -11,13 +12,56 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import {
-    IVault,
-    PoolConfig,
-    PoolCallbacks,
+    AmountGivenZero,
+    AmountInAboveMax,
+    AmountOutBelowMin,
+    BalanceNotSettled,
+    BptAmountInAboveMax,
+    BptAmountOutBelowMin,
+    CallbackFailed,
+    CannotReceiveEth,
+    CannotSwapSameToken,
+    HandlerOutOfBounds,
+    InvalidAddLiquidityKind,
+    InvalidRemoveLiquidityKind,
+    InvalidToken,
+    MaxTokens,
+    MinTokens,
+    NoHandler,
+    PauseBufferPeriodDurationTooLarge,
+    PoolAlreadyRegistered,
+    PoolNotInitialized,
+    PoolAlreadyInitialized,
+    PoolNotRegistered,
+    PoolNotPaused,
+    PoolPaused,
+    PoolPauseWindowExpired,
+    RouterNotTrusted,
+    SenderIsNotPauseManager,
+    TokenAlreadyRegistered,
+    TokensMismatch,
+    TokenNotRegistered,
+    VaultNotPaused,
+    VaultPaused,
+    VaultPauseWindowDurationTooLarge,
+    VaultPauseWindowExpired,
+    WrongHandler
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
+import {
+    AddLiquidityKind,
+    AddLiquidityParams,
     LiquidityManagement,
+    PoolCallbacks,
+    PoolConfig,
     PoolData,
-    Rounding
-} from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+    RemoveLiquidityKind,
+    RemoveLiquidityParams,
+    Rounding,
+    SwapKind,
+    SwapParams
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
@@ -35,10 +79,10 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
-import { PoolRegistrationLib } from "./lib/PoolRegistrationLib.sol";
 import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
+import { VaultStorage } from "./VaultStorage.sol";
 
-contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
+contract Vault is IVaultMain, VaultStorage, Proxy, Authentication, ERC20MultiToken, ReentrancyGuard {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
     using FixedPoint for *;
@@ -47,77 +91,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
-    using PoolConfigLib for PoolCallbacks;
     using ScalingHelpers for *;
-
-    // Minimum BPT amount minted upon initialization.
-    uint256 private constant _MINIMUM_BPT = 1e6;
-
-    // 1e18 corresponds to a 100% fee.
-    uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
-
-    // 1e18 corresponds to a 100% fee.
-    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
-
-    // Registry of pool configs.
-    mapping(address => PoolConfigBits) internal _poolConfig;
-
-    // Store pool pause managers.
-    mapping(address => address) internal _poolPauseManagers;
-
-    // Pool -> (token -> balance): Pool's ERC20 tokens balances stored at the Vault.
-    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolTokenBalances;
-
-    // Pool -> (token -> address): Pool's Rate providers.
-    mapping(address => mapping(IERC20 => IRateProvider)) private _poolRateProviders;
-
-    /// @notice List of handlers. It is non-empty only during `invoke` calls.
-    address[] private _handlers;
-
-    /**
-     * @notice The total number of nonzero deltas over all active + completed lockers.
-     * @dev It is non-zero only during `invoke` calls.
-     */
-    uint256 private _nonzeroDeltaCount;
-
-    /**
-     * @notice Represents the token due/owed to each handler.
-     * @dev Must all net to zero when the last handler is released.
-     */
-    mapping(address => mapping(IERC20 => int256)) private _tokenDeltas;
-
-    /**
-     * @notice Represents the total reserve of each ERC20 token.
-     * @dev It should be always equal to `token.balanceOf(vault)`, except during `invoke`.
-     */
-    mapping(IERC20 => uint256) private _tokenReserves;
-
-    // We allow 0% swap fee.
-    // The protocol swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
-    // TODO consider using uint64 and packing with other things (when we have other things).
-    uint256 private _protocolSwapFeePercentage;
-
-    // Token -> fee: Protocol's swap fees accumulated in the Vault for harvest.
-    mapping(IERC20 => uint256) private _protocolSwapFees;
-
-    // Upgradeable contract in charge of setting permissions.
-    IAuthorizer private _authorizer;
-
-    /// @notice If set to true, disables query functionality of the Vault. Can be modified only by governance.
-    bool private _isQueryDisabled;
-
-    uint256 public constant MAX_PAUSE_WINDOW_DURATION = 356 days * 4;
-    uint256 public constant MAX_BUFFER_PERIOD_DURATION = 90 days;
-
-    // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
-    // solhint-disable not-rely-on-time
-
-    uint256 internal immutable _vaultPauseWindowEndTime;
-    uint256 internal immutable _vaultBufferPeriodEndTime;
-    // Stored as a convenience, to avoid calculating it on every operation.
-    uint256 internal immutable _vaultBufferPeriodDuration;
-
-    bool private _vaultPaused;
 
     /// @dev Modifier to make a function callable only when the Vault is not paused.
     modifier whenVaultNotPaused() {
@@ -133,6 +107,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     }
 
     constructor(
+        IVaultExtension vaultExtension,
         IAuthorizer authorizer,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
@@ -150,6 +125,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         _vaultBufferPeriodDuration = bufferPeriodDuration;
         _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
 
+        _vaultExtension = vaultExtension;
         _authorizer = authorizer;
     }
 
@@ -190,7 +166,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function invoke(bytes calldata data) external payable transient returns (bytes memory result) {
         // Executes the function call with value to the msg.sender.
         return (msg.sender).functionCallWithValue(data, msg.value);
@@ -220,7 +196,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         _;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function settle(IERC20 token) public nonReentrant withHandler returns (uint256 paid) {
         uint256 reservesBefore = _tokenReserves[token];
         _tokenReserves[token] = token.balanceOf(address(this));
@@ -229,7 +205,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         _supplyCredit(token, paid, msg.sender);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function wire(IERC20 token, address to, uint256 amount) public nonReentrant withHandler {
         // effects
         _takeDebt(token, amount, msg.sender);
@@ -238,7 +214,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         token.safeTransfer(to, amount);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function retrieve(IERC20 token, address from, uint256 amount) public nonReentrant withHandler onlyTrustedRouter {
         // effects
         _supplyCredit(token, amount, msg.sender);
@@ -247,7 +223,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         token.safeTransferFrom(from, address(this), amount);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getHandler(uint256 index) public view returns (address) {
         if (index >= _handlers.length) {
             revert HandlerOutOfBounds(index);
@@ -255,34 +231,34 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         return _handlers[index];
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getHandlersCount() external view returns (uint256) {
         return _handlers.length;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getNonzeroDeltaCount() external view returns (uint256) {
         return _nonzeroDeltaCount;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getTokenDelta(address user, IERC20 token) external view returns (int256) {
         return _tokenDeltas[user][token];
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getTokenReserve(IERC20 token) external view returns (uint256) {
         return _tokenReserves[token];
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getMinimumPoolTokens() external pure returns (uint256) {
-        return PoolRegistrationLib.MIN_TOKENS;
+        return _MIN_TOKENS;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getMaximumPoolTokens() external pure returns (uint256) {
-        return PoolRegistrationLib.MAX_TOKENS;
+        return _MAX_TOKENS;
     }
 
     /**
@@ -368,18 +344,18 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         _;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function quote(bytes calldata data) external payable query returns (bytes memory result) {
         // Forward the incoming call to the original sender of this transaction.
         return (msg.sender).functionCallWithValue(data, msg.value);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function disableQuery() external authenticate {
         _isQueryDisabled = true;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function isQueryDisabled() external view returns (bool) {
         return _isQueryDisabled;
     }
@@ -388,34 +364,34 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                                     Pool Tokens
     *******************************************************************************/
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function totalSupply(address token) external view returns (uint256) {
         return _totalSupply(token);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function balanceOf(address token, address account) external view returns (uint256) {
         return _balanceOf(token, account);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function allowance(address token, address owner, address spender) external view returns (uint256) {
         return _allowance(token, owner, spender);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function transfer(address owner, address to, uint256 amount) external returns (bool) {
         _transfer(msg.sender, owner, to, amount);
         return true;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function approve(address owner, address spender, uint256 amount) external returns (bool) {
         _approve(msg.sender, owner, spender, amount);
         return true;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool) {
         _spendAllowance(msg.sender, from, spender, amount);
         _transfer(msg.sender, from, to, amount);
@@ -467,7 +443,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         IBasePool.SwapParams poolSwapParams;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function swap(
         SwapParams memory params
     )
@@ -681,19 +657,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                             Pool Registration and Initialization
     *******************************************************************************/
 
-        // address pool,
-        // EnumerableMap.IERC20ToUint256Map storage poolTokenBalances,
-        // mapping(address => address) storage poolPauseManagers,
-        // mapping(address => PoolConfigBits) storage poolConfig,
-        // mapping(IERC20 => IRateProvider) storage poolRateProviders,
-        // IERC20[] memory tokens,
-        // IRateProvider[] memory rateProviders,
-        // uint256 pauseWindowEndTime,
-        // address pauseManager,
-        // PoolCallbacks memory callbackConfig,
-        // LiquidityManagement memory liquidityManagement
-
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function registerPool(
         address pool,
         IERC20[] memory tokens,
@@ -703,24 +667,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         PoolCallbacks calldata poolCallbacks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused {
-        PoolRegistrationLib.registerPool(
+        _registerPool(
             pool,
-            _poolTokenBalances[pool],
-            _poolPauseManagers,
-            _poolConfig,
-            _poolRateProviders[pool],
-            tokens,
-            rateProviders,
-            pauseWindowEndTime,
-            pauseManager,
-            poolCallbacks,
-            liquidityManagement
-        );
-
-        // Emit an event to log the pool registration (pass msg.sender as the factory argument)
-        emit PoolRegistered(
-            pool,
-            msg.sender,
             tokens,
             rateProviders,
             pauseWindowEndTime,
@@ -730,32 +678,32 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         );
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function isPoolRegistered(address pool) external view returns (bool) {
-        return PoolRegistrationLib._isPoolRegistered(_poolConfig, pool);
+        return _isPoolRegistered(pool);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function isPoolInitialized(address pool) external view returns (bool) {
         return _isPoolInitialized(pool);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function isPoolInRecoveryMode(address pool) external view returns (bool) {
         return _isPoolInRecoveryMode(pool);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getPoolConfig(address pool) external view returns (PoolConfig memory) {
         return _poolConfig[pool].toPoolConfig();
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getPoolTokens(address pool) external view withRegisteredPool(pool) returns (IERC20[] memory) {
         return _getPoolTokens(pool);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getPoolTokenCountAndIndexOfToken(
         address pool,
         IERC20 token
@@ -773,7 +721,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getPoolTokenInfo(
         address pool
     )
@@ -791,7 +739,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         (tokens, balancesRaw, decimalScalingFactors, rateProviders, ) = _getPoolTokenInfo(pool);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getPoolTokenRates(address pool) external view withRegisteredPool(pool) returns (uint256[] memory) {
         return _getPoolTokenRates(pool);
     }
@@ -804,9 +752,96 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
 
     /// @dev Reverts unless `pool` corresponds to a registered Pool.
     function _ensureRegisteredPool(address pool) internal view {
-        if (!PoolRegistrationLib._isPoolRegistered(_poolConfig, pool)) {
+        if (!_isPoolRegistered(pool)) {
             revert PoolNotRegistered(pool);
         }
+    }
+
+    /**
+     * @dev The function will register the pool, setting its tokens with an initial balance of zero.
+     * The function also checks for valid token addresses and ensures that the pool and tokens aren't
+     * already registered.
+     *
+     * Emits a `PoolRegistered` event upon successful registration.
+     */
+    function _registerPool(
+        address pool,
+        IERC20[] memory tokens,
+        IRateProvider[] memory rateProviders,
+        uint256 pauseWindowEndTime,
+        address pauseManager,
+        PoolCallbacks memory callbackConfig,
+        LiquidityManagement memory liquidityManagement
+    ) internal {
+        // Ensure the pool isn't already registered
+        if (_isPoolRegistered(pool)) {
+            revert PoolAlreadyRegistered(pool);
+        }
+
+        uint256 numTokens = tokens.length;
+
+        if (numTokens < _MIN_TOKENS) {
+            revert MinTokens();
+        }
+        if (numTokens > _MAX_TOKENS) {
+            revert MaxTokens();
+        }
+
+        // Retrieve or create the pool's token balances mapping
+        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+
+        uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; ++i) {
+            IERC20 token = tokens[i];
+
+            // Ensure that the token address is valid
+            if (token == IERC20(address(0))) {
+                revert InvalidToken();
+            }
+
+            // Register the token with an initial balance of zero.
+            // Note: EnumerableMaps require an explicit initial value when creating a key-value pair.
+            bool added = poolTokenBalances.set(token, 0);
+
+            // Ensure the token isn't already registered for the pool
+            if (!added) {
+                revert TokenAlreadyRegistered(token);
+            }
+
+            tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
+            _poolRateProviders[pool][token] = rateProviders[i];
+        }
+
+        // Store the pause manager. A zero address means default to the authorizer.
+        _poolPauseManagers[pool] = pauseManager;
+
+        // Store config and mark the pool as registered
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+
+        config.isPoolRegistered = true;
+        config.callbacks = callbackConfig;
+        config.liquidityManagement = liquidityManagement;
+        config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
+        config.pauseWindowEndTime = pauseWindowEndTime.toUint32();
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        // Emit an event to log the pool registration (pass msg.sender as the factory argument)
+        emit PoolRegistered(
+            pool,
+            msg.sender,
+            tokens,
+            rateProviders,
+            pauseWindowEndTime,
+            pauseManager,
+            callbackConfig,
+            liquidityManagement
+        );
+    }
+
+    /// @dev See `isPoolRegistered`
+    function _isPoolRegistered(address pool) internal view returns (bool) {
+        return _poolConfig[pool].isPoolRegistered();
     }
 
     /// @dev See `isPoolInRecoveryMode`
@@ -999,12 +1034,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         _;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function initialize(
         address pool,
         address to,
         IERC20[] memory tokens,
         uint256[] memory exactAmountsIn,
+        uint256 minBptAmountOut,
         bytes memory userData
     )
         external
@@ -1042,29 +1078,44 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         poolData.config.isPoolInitialized = true;
         _poolConfig[pool] = poolData.config.fromPoolConfig();
 
-        // Finally, call pool hook. Doing this at the end also means we do not need to downscale exact amounts in.
+        // Finally, compute the initial amount of BPT to mint, which is simply the invariant after adding exactAmountsIn.
+        // Doing this at the end also means we do not need to downscale exact amounts in.
         // Amounts are entering pool math, so round down. A lower invariant after the join means less bptOut,
         // favoring the pool.
         exactAmountsIn.toScaled18ApplyRateRoundDownArray(poolData.decimalScalingFactors, poolData.tokenRates);
 
-        bptAmountOut = IBasePool(pool).onInitialize(exactAmountsIn, userData);
-
-        if (bptAmountOut < _MINIMUM_BPT) {
-            revert BptAmountBelowAbsoluteMin();
+        if (poolData.config.callbacks.shouldCallBeforeInitialize) {
+            if (IPoolCallbacks(pool).onBeforeInitialize(exactAmountsIn, userData) == false) {
+                revert CallbackFailed();
+            }
+        }
+        bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsIn);
+        if (poolData.config.callbacks.shouldCallAfterInitialize) {
+            if (IPoolCallbacks(pool).onAfterInitialize(exactAmountsIn, bptAmountOut, userData) == false) {
+                revert CallbackFailed();
+            }
         }
 
+        _ensureMinimumTotalSupply(bptAmountOut);
+
+        // At this point we know that bptAmountOut >= _MINIMUM_TOTAL_SUPPLY, so this will not revert.
+        bptAmountOut -= _MINIMUM_TOTAL_SUPPLY;
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
-        // At this point we know that bptAmountOut >= _MINIMUM_BPT, so this will not revert.
-        bptAmountOut -= _MINIMUM_BPT;
+        // Minting will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
+        _mintMinimumSupplyReserve(address(pool));
         _mint(address(pool), to, bptAmountOut);
-        _mintToAddressZero(address(pool), _MINIMUM_BPT);
+
+        // At this point we have the calculated BPT amount.
+        if (bptAmountOut < minBptAmountOut) {
+            revert BptAmountOutBelowMin(bptAmountOut, minBptAmountOut);
+        }
 
         // Emit an event to log the pool initialization
         emit PoolInitialized(pool);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function addLiquidity(
         AddLiquidityParams memory params
     )
@@ -1199,16 +1250,26 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             revert InvalidAddLiquidityKind();
         }
 
+        // At this point we have the calculated BPT amount.
+        if (bptAmountOut < params.minBptAmountOut) {
+            revert BptAmountOutBelowMin(bptAmountOut, params.minBptAmountOut);
+        }
+
         // TODO: enforce min and max.
         uint256 numTokens = poolData.tokens.length;
         amountsInRaw = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {
-            // amountsIn are amounts entering the Pool, so we round up.
+            // amountsInRaw are amounts actually entering the Pool, so we round up.
             // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` callback
             uint256 amountInRaw = amountsInScaled18[i].toRawUndoRateRoundUp(
                 poolData.decimalScalingFactors[i],
                 poolData.tokenRates[i]
             );
+
+            // The limits must be checked for raw amounts
+            if (amountInRaw > params.maxAmountsIn[i]) {
+                revert AmountInAboveMax(poolData.tokens[i], amountInRaw, params.maxAmountsIn[i]);
+            }
 
             // Debit of token[i] for amountInRaw
             _takeDebt(poolData.tokens[i], amountInRaw, msg.sender);
@@ -1231,7 +1292,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         emit PoolBalanceChanged(params.pool, params.to, poolData.tokens, amountsInRaw.unsafeCastToInt256(true));
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function removeLiquidity(
         RemoveLiquidityParams memory params
     )
@@ -1248,7 +1309,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.minAmountsOut.length);
 
         // Amounts are entering pool math; higher amounts would burn more BPT, so round up to favor the pool.
-        params.minAmountsOut.toScaled18ApplyRateRoundUpArray(poolData.decimalScalingFactors, poolData.tokenRates);
+        // Do not mutate minAmountsOut, so that we can directly compare the raw limits later, without potentially
+        // losing precision by scaling up and then down.
+        uint256[] memory minAmountsOutScaled18 = params.minAmountsOut.copyToScaled18ApplyRateRoundUpArray(
+            poolData.decimalScalingFactors,
+            poolData.tokenRates
+        );
 
         if (poolData.config.callbacks.shouldCallBeforeRemoveLiquidity) {
             // TODO: check if `before` callback needs kind.
@@ -1256,7 +1322,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 IPoolCallbacks(params.pool).onBeforeRemoveLiquidity(
                     params.from,
                     params.maxBptAmountIn,
-                    params.minAmountsOut,
+                    minAmountsOutScaled18,
                     poolData.balancesLiveScaled18,
                     params.userData
                 ) == false
@@ -1274,7 +1340,11 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         // Note that poolData is mutated to update the Raw and Live balances, so they are accurate when passed
         // into the AfterRemoveLiquidity callback.
         uint256[] memory amountsOutScaled18;
-        (bptAmountIn, amountsOut, amountsOutScaled18, returnData) = _removeLiquidity(poolData, params);
+        (bptAmountIn, amountsOut, amountsOutScaled18, returnData) = _removeLiquidity(
+            poolData,
+            params,
+            minAmountsOutScaled18
+        );
 
         if (poolData.config.callbacks.shouldCallAfterRemoveLiquidity) {
             if (
@@ -1291,7 +1361,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function removeLiquidityRecovery(
         address pool,
         address from,
@@ -1336,7 +1406,8 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
      */
     function _removeLiquidity(
         PoolData memory poolData,
-        RemoveLiquidityParams memory params
+        RemoveLiquidityParams memory params,
+        uint256[] memory minAmountsOutScaled18
     )
         internal
         nonReentrant
@@ -1359,7 +1430,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN) {
             bptAmountIn = params.maxBptAmountIn;
 
-            amountsOutScaled18 = params.minAmountsOut;
+            amountsOutScaled18 = minAmountsOutScaled18;
             tokenOutIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
             amountsOutScaled18[tokenOutIndex] = BasePoolMath.computeRemoveLiquiditySingleTokenExactIn(
                 poolData.balancesLiveScaled18,
@@ -1370,7 +1441,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 IBasePool(params.pool).computeBalance
             );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
-            amountsOutScaled18 = params.minAmountsOut;
+            amountsOutScaled18 = minAmountsOutScaled18;
             tokenOutIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
 
             bptAmountIn = BasePoolMath.computeRemoveLiquiditySingleTokenExactOut(
@@ -1385,12 +1456,16 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
             (bptAmountIn, amountsOutScaled18, returnData) = IPoolLiquidity(params.pool).onRemoveLiquidityCustom(
                 params.from,
                 params.maxBptAmountIn,
-                params.minAmountsOut,
+                minAmountsOutScaled18,
                 poolData.balancesLiveScaled18,
                 params.userData
             );
         } else {
             revert InvalidRemoveLiquidityKind();
+        }
+
+        if (bptAmountIn > params.maxBptAmountIn) {
+            revert BptAmountInAboveMax(bptAmountIn, params.maxBptAmountIn);
         }
 
         uint256 numTokens = poolData.tokens.length;
@@ -1405,6 +1480,10 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                 poolData.decimalScalingFactors[i],
                 poolData.tokenRates[i]
             );
+
+            if (amountsOutRaw[i] < params.minAmountsOut[i]) {
+                revert AmountOutBelowMin(poolData.tokens[i], amountsOutRaw[i], params.minAmountsOut[i]);
+            }
         }
 
         _removeLiquidityUpdateAccounting(
@@ -1457,6 +1536,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         }
         // When removing liquidity, we must burn tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
+        // Burning will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
         _burn(address(pool), from, bptAmountIn);
 
         emit PoolBalanceChanged(
@@ -1508,13 +1588,13 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         _;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function enableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate {
         _ensurePoolNotInRecoveryMode(pool);
         _setPoolRecoveryMode(pool, true);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function disableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate {
         _ensurePoolInRecoveryMode(pool);
         _setPoolRecoveryMode(pool, false);
@@ -1553,7 +1633,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                                         Fees
     *******************************************************************************/
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function setProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external authenticate {
         if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
             revert ProtocolSwapFeePercentageTooHigh();
@@ -1562,17 +1642,17 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getProtocolSwapFeePercentage() external view returns (uint256) {
         return _protocolSwapFeePercentage;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getProtocolSwapFee(address token) external view returns (uint256) {
         return _protocolSwapFees[IERC20(token)];
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant {
         for (uint256 index = 0; index < tokens.length; index++) {
             IERC20 token = tokens[index];
@@ -1591,7 +1671,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
     }
 
     /**
-     * @inheritdoc IVault
+     * @inheritdoc IVaultMain
      * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
      * MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
      */
@@ -1614,7 +1694,7 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         emit SwapFeePercentageChanged(pool, swapFeePercentage);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getStaticSwapFeePercentage(address pool) external view returns (uint256) {
         return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
     }
@@ -1623,12 +1703,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                                     Authentication
     *******************************************************************************/
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getAuthorizer() external view returns (IAuthorizer) {
         return _authorizer;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function setAuthorizer(IAuthorizer newAuthorizer) external nonReentrant authenticate {
         _authorizer = newAuthorizer;
 
@@ -1644,22 +1724,22 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
                                     Vault Pausing
     *******************************************************************************/
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function isVaultPaused() external view returns (bool) {
         return _isVaultPaused();
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getVaultPausedState() public view returns (bool, uint256, uint256) {
         return (_isVaultPaused(), _vaultPauseWindowEndTime, _vaultBufferPeriodEndTime);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function pauseVault() external authenticate {
         _setVaultPaused(true);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function unpauseVault() external authenticate {
         _setVaultPaused(false);
     }
@@ -1729,12 +1809,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         _;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function isPoolPaused(address pool) external view withRegisteredPool(pool) returns (bool) {
         return _isPoolPaused(pool);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getPoolPausedState(
         address pool
     ) external view withRegisteredPool(pool) returns (bool, uint256, uint256, address) {
@@ -1758,12 +1838,12 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         return (pauseBit && block.timestamp <= pauseWindowEndTime + _vaultBufferPeriodDuration, pauseWindowEndTime);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function pausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) {
         _setPoolPaused(pool, true);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function unpausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) {
         _setPoolPaused(pool, false);
     }
@@ -1807,5 +1887,34 @@ contract Vault is IVault, Authentication, ERC20MultiToken, ReentrancyGuard {
         if (_isPoolPaused(pool)) {
             revert PoolPaused(pool);
         }
+    }
+
+    /*******************************************************************************
+                                     Default handlers
+    *******************************************************************************/
+
+    receive() external payable {
+        revert CannotReceiveEth();
+    }
+
+    /**
+     * @inheritdoc Proxy
+     * @dev Override proxy implementation of `fallback` to disallow incoming ETH transfers.
+     * This function actually returns whatever the Vault Extension does when handling the request.
+     */
+    fallback() external payable override {
+        if (msg.value > 0) {
+            revert CannotReceiveEth();
+        }
+
+        _fallback();
+    }
+
+    /**
+     * @inheritdoc Proxy
+     * @dev Returns Vault Extension, where fallback requests are forwarded.
+     */
+    function _implementation() internal view override returns (address) {
+        return address(_vaultExtension);
     }
 }

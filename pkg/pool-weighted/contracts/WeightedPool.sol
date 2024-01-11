@@ -5,6 +5,8 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { InvalidToken } from "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
+import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
@@ -14,8 +16,6 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 /// @notice Basic Weighted Pool with immutable weights.
 contract WeightedPool is IBasePool, BalancerPoolToken {
-    error InvalidTokenIndex(uint256 index);
-
     uint256 private immutable _totalTokens;
 
     IERC20 internal immutable _token0;
@@ -80,22 +80,6 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
     }
 
     /// @inheritdoc IBasePool
-    function onInitialize(
-        uint256[] memory exactAmountsInScaled18,
-        bytes memory
-    ) external view onlyVault returns (uint256) {
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-        uint256 invariantAfterJoin = WeightedMath.computeInvariant(normalizedWeights, exactAmountsInScaled18);
-
-        // Set the initial pool tokens amount to the value of the invariant times the number of tokens.
-        // This makes pool token supply more consistent in Pools with similar compositions
-        // but different number of tokens.
-        uint256 bptAmountOut = invariantAfterJoin * exactAmountsInScaled18.length;
-
-        return bptAmountOut;
-    }
-
-    /// @inheritdoc IBasePool
     function computeInvariant(uint256[] memory balancesLiveScaled18) public view returns (uint256) {
         return WeightedMath.computeInvariant(_getNormalizedWeights(), balancesLiveScaled18);
     }
@@ -127,7 +111,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         uint256 balanceTokenInScaled18 = request.balancesScaled18[request.indexIn];
         uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];
 
-        if (request.kind == IVault.SwapKind.GIVEN_IN) {
+        if (request.kind == SwapKind.GIVEN_IN) {
             uint256 amountOutScaled18 = WeightedMath.computeOutGivenIn(
                 balanceTokenInScaled18,
                 _getNormalizedWeight(request.indexIn),
@@ -158,7 +142,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         else if (tokenIndex == 2) { return _normalizedWeight2; }
         else if (tokenIndex == 3) { return _normalizedWeight3; }
         else {
-            revert InvalidTokenIndex(tokenIndex);
+            revert InvalidToken();
         }
     }
 

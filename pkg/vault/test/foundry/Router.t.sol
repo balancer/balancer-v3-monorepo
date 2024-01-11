@@ -5,13 +5,13 @@ pragma solidity ^0.8.4;
 import "forge-std/Test.sol";
 
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
+import { TokenNotRegistered } from "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
+import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -21,16 +21,16 @@ import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
-import { Vault } from "../../contracts/Vault.sol";
 import { Router } from "../../contracts/Router.sol";
-import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { RouterMock } from "../../contracts/test/RouterMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
+import { VaultExtensionMock } from "../../contracts/test/VaultExtensionMock.sol";
 
 contract RouterTest is Test {
     using ArrayHelpers for *;
 
     VaultMock vault;
+    VaultExtensionMock vaultExtension;
     IRouter router;
     RouterMock routerMock;
     BasicAuthorizerMock authorizer;
@@ -51,16 +51,17 @@ contract RouterTest is Test {
 
     function setUp() public {
         authorizer = new BasicAuthorizerMock();
-        vault = new VaultMock(authorizer, 30 days, 90 days);
+        vaultExtension = new VaultExtensionMock();
+        vault = new VaultMock(vaultExtension, authorizer, 30 days, 90 days);
         WETH = new WETHTestToken();
-        router = new Router(IVault(vault), WETH);
-        routerMock = new RouterMock(IVault(vault), WETH);
+        router = new Router(IVault(address(vault)), WETH);
+        routerMock = new RouterMock(IVault(address(vault)), WETH);
         USDC = new ERC20TestToken("USDC", "USDC", 6);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
 
         pool = new PoolMock(
-            vault,
+            IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
             [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
@@ -70,7 +71,7 @@ contract RouterTest is Test {
             address(0)
         );
         wethPool = new PoolMock(
-            vault,
+            IVault(address(vault)),
             "ERC20 WETH Pool",
             "ERC20POOL",
             [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
@@ -123,13 +124,7 @@ contract RouterTest is Test {
 
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(EVMCallModeHelpers.NotStaticCall.selector));
-        router.querySwapExactIn(
-            address(pool),
-            USDC,
-            DAI,
-            USDC_AMOUNT_IN,
-            bytes("")
-        );
+        router.querySwapExactIn(address(pool), USDC, DAI, USDC_AMOUNT_IN, bytes(""));
     }
 
     function testDisableQueries() public {
@@ -148,21 +143,27 @@ contract RouterTest is Test {
         vault.disableQuery();
 
         // Authorize alice
-        bytes32 disableQueryRole = vault.getActionId(IVault.disableQuery.selector);
+        bytes32 disableQueryRole = vault.getActionId(IVaultMain.disableQuery.selector);
 
         authorizer.grantRole(disableQueryRole, alice);
 
         vm.prank(alice);
         vault.disableQuery();
 
-        vm.expectRevert(abi.encodeWithSelector(IVault.QueriesDisabled.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVaultMain.QueriesDisabled.selector));
 
         vm.prank(address(0), address(0));
-        router.querySwapExactIn(
-            address(pool),
-            USDC,
-            DAI,
-            USDC_AMOUNT_IN,
+        router.querySwapExactIn(address(pool), USDC, DAI, USDC_AMOUNT_IN, bytes(""));
+    }
+
+    function testInitializeBelowMinimum() public {
+        vm.expectRevert(abi.encodeWithSelector(IERC20MultiToken.TotalSupplyTooLow.selector, 0, 1e6));
+        router.initialize(
+            address(wethPool),
+            [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
+            [uint256(0), uint256(0)].toMemoryArray(),
+            uint256(0),
+            false,
             bytes("")
         );
     }
@@ -593,7 +594,7 @@ contract RouterTest is Test {
         assertEq(amountsGiven[0], 0);
         assertEq(amountsGiven[1], 4321);
 
-        vm.expectRevert(abi.encodeWithSelector(IVault.TokenNotRegistered.selector));
+        vm.expectRevert(abi.encodeWithSelector(TokenNotRegistered.selector));
         routerMock.getSingleInputArray(address(pool), WETH, DAI_AMOUNT_IN);
     }
 

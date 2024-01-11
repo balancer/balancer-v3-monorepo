@@ -3,6 +3,7 @@
 pragma solidity ^0.8.4;
 
 import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 
 import "./Authentication.sol";
 

@@ -4,7 +4,7 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault } from "./IVault.sol";
+import { SwapKind } from "./VaultTypes.sol";
 
 /// @notice Interface for a Base Pool
 interface IBasePool {
@@ -14,24 +14,6 @@ interface IBasePool {
      * @return tokens List of tokens in the pool
      */
     function getPoolTokens() external view returns (IERC20[] memory tokens);
-
-    /***************************************************************************
-                                  Initialization
-    ***************************************************************************/
-
-    /**
-     * @notice Initialize pool with seed funds.
-     * @dev The vault enforces that this callback will only be called once.
-     * `exactAmountsIn` have been decimal scaled by the Vault, and are given here as 18-decimal floating point values.
-     *
-     * @param exactAmountsIn Exact amounts of tokens to be added
-     * @param userData Additional (optional) data provided by the user
-     * @return bptAmountOut Amount of pool tokens minted
-     */
-    function onInitialize(
-        uint256[] memory exactAmountsIn,
-        bytes memory userData
-    ) external returns (uint256 bptAmountOut);
 
     /***************************************************************************
                                    Invariant
@@ -75,7 +57,7 @@ interface IBasePool {
      * @param userData Additional (optional) data required for the swap
      */
     struct SwapParams {
-        IVault.SwapKind kind;
+        SwapKind kind;
         uint256 amountGivenScaled18;
         uint256[] balancesScaled18;
         uint256 indexIn;

@@ -10,6 +10,7 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
 import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
+import { VaultExtensionMock } from "@balancer-labs/v3-vault/contracts/test/VaultExtensionMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 
@@ -27,8 +28,9 @@ contract WeightedPool8020FactoryTest is Test {
 
     function setUp() public {
         BasicAuthorizerMock authorizer = new BasicAuthorizerMock();
-        vault = new VaultMock(authorizer, 30 days, 90 days);
-        factory = new WeightedPool8020Factory(vault, 365 days);
+        VaultExtensionMock vaultExtension = new VaultExtensionMock();
+        vault = new VaultMock(vaultExtension, authorizer, 30 days, 90 days);
+        factory = new WeightedPool8020Factory(IVault(address(vault)), 365 days);
 
         tokenA = new ERC20TestToken("Token A", "TKNA", 18);
         tokenB = new ERC20TestToken("Token B", "TKNB", 6);
