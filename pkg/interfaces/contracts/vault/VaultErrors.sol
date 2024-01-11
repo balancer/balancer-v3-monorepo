@@ -47,6 +47,14 @@ error MaxTokens();
 /// @dev Invalid tokens (e.g., zero) cannot be registered.
 error InvalidToken();
 
+/**
+ * @dev The token list passed into an operation does not match the pool tokens in the pool.
+ * @param pool Address of the pool
+ * @param expectedToken The correct token at a given index in the pool
+ * @param actualToken The actual token found at that index
+ */
+error TokensMismatch(address pool, address expectedToken, address actualToken);
+
 /*******************************************************************************
                              Transient Accounting
 *******************************************************************************/
@@ -78,19 +86,8 @@ error CallbackFailed();
 error RouterNotTrusted();
 
 /*******************************************************************************
-                                Add Liquidity
+                                    Swaps
 *******************************************************************************/
-
-/// @dev Add liquidity kind not supported.
-error InvalidAddLiquidityKind();
-
-/**
- * @dev The token list passed into an operation does not match the pool tokens in the pool.
- * @param pool Address of the pool
- * @param expectedToken The correct token at a given index in the pool
- * @param actualToken The actual token found at that index
- */
-error TokensMismatch(address pool, address expectedToken, address actualToken);
 
 /// @dev The user tried to swap zero tokens.
 error AmountGivenZero();
@@ -100,6 +97,13 @@ error CannotSwapSameToken();
 
 /// @dev The user attempted to swap a token not in the pool.
 error TokenNotRegistered();
+
+/*******************************************************************************
+                                Add Liquidity
+*******************************************************************************/
+
+/// @dev Add liquidity kind not supported.
+error InvalidAddLiquidityKind();
 
 /// @dev A required amountIn exceeds the maximum limit specified for the operation.
 error AmountInAboveMax(IERC20 token, uint256 amount, uint256 limit);
@@ -213,4 +217,5 @@ error SenderIsNotPauseManager(address pool);
 /// @dev Optional User Data should be empty in the current add / remove liquidity kind.
 error UserDataNotSupported();
 
+/// @dev The contract should not receive ETH.
 error CannotReceiveEth();
