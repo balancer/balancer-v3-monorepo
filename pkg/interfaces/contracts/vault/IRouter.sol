@@ -4,7 +4,7 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault } from "./IVault.sol";
+import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 import { IBasePool } from "./IBasePool.sol";
 
 interface IRouter {
@@ -76,7 +76,7 @@ interface IRouter {
         address pool;
         uint256[] maxAmountsIn;
         uint256 minBptAmountOut;
-        IVault.AddLiquidityKind kind;
+        AddLiquidityKind kind;
         bool wethIsEth;
         bytes userData;
     }
@@ -155,7 +155,7 @@ interface IRouter {
         address pool;
         uint256[] minAmountsOut;
         uint256 maxBptAmountIn;
-        IVault.RemoveLiquidityKind kind;
+        RemoveLiquidityKind kind;
         bool wethIsEth;
         bytes userData;
     }
@@ -256,7 +256,7 @@ interface IRouter {
      */
     struct SwapCallbackParams {
         address sender;
-        IVault.SwapKind kind;
+        SwapKind kind;
         address pool;
         IERC20 tokenIn;
         IERC20 tokenOut;

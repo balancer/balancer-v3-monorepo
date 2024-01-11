@@ -5,6 +5,7 @@ import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types
 import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
 import { PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/PoolMock';
 import { ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { VaultExtensionMock } from '../typechain-types';
 
 // This deploys a Vault, then creates 3 tokens and 2 pools. The first pool (A) is registered; the second (B) )s not,
 // which, along with a registration flag in the Pool mock, permits separate testing of registration functions.
@@ -16,8 +17,9 @@ export async function setupEnvironment(pauseWindowDuration: number): Promise<{
   const BUFFER_PERIOD_DURATION = MONTH;
 
   const authorizer: BasicAuthorizerMock = await deploy('v3-solidity-utils/BasicAuthorizerMock');
+  const vaultExtension: VaultExtensionMock = await deploy('VaultExtensionMock');
   const vault: VaultMock = await deploy('VaultMock', {
-    args: [authorizer.getAddress(), pauseWindowDuration, BUFFER_PERIOD_DURATION],
+    args: [await vaultExtension.getAddress(), authorizer.getAddress(), pauseWindowDuration, BUFFER_PERIOD_DURATION],
   });
   const vaultAddress = await vault.getAddress();
 

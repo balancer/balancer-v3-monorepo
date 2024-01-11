@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.4;
 
+import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -10,18 +11,10 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-import {
-    IVault,
-    PoolConfig,
-    TokenConfig,
-    TokenType,
-    PoolCallbacks,
-    TokenType,
-    TokenConfig,
-    LiquidityManagement,
-    PoolData,
-    Rounding
-} from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
@@ -42,7 +35,7 @@ import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
 import { VaultStorage } from "./VaultStorage.sol";
 
-contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, ReentrancyGuard {
+contract Vault is IVaultMain, VaultStorage, Proxy, Authentication, ERC20MultiToken, ReentrancyGuard {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
     using FixedPoint for *;
@@ -67,6 +60,7 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
     }
 
     constructor(
+        IVaultExtension vaultExtension,
         IAuthorizer authorizer,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
@@ -84,6 +78,7 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         _vaultBufferPeriodDuration = bufferPeriodDuration;
         _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
 
+        _vaultExtension = vaultExtension;
         _authorizer = authorizer;
     }
 
@@ -124,7 +119,7 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         }
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function invoke(bytes calldata data) external payable transient returns (bytes memory result) {
         // Executes the function call with value to the msg.sender.
         return (msg.sender).functionCallWithValue(data, msg.value);
@@ -154,7 +149,7 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         _;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function settle(IERC20 token) public nonReentrant withHandler returns (uint256 paid) {
         uint256 reservesBefore = _tokenReserves[token];
         _tokenReserves[token] = token.balanceOf(address(this));
@@ -163,7 +158,7 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         _supplyCredit(token, paid, msg.sender);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function wire(IERC20 token, address to, uint256 amount) public nonReentrant withHandler {
         // effects
         _takeDebt(token, amount, msg.sender);
@@ -172,7 +167,7 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         token.safeTransfer(to, amount);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function retrieve(IERC20 token, address from, uint256 amount) public nonReentrant withHandler onlyTrustedRouter {
         // effects
         _supplyCredit(token, amount, msg.sender);
@@ -181,7 +176,7 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         token.safeTransferFrom(from, address(this), amount);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getHandler(uint256 index) public view returns (address) {
         if (index >= _handlers.length) {
             revert HandlerOutOfBounds(index);
@@ -189,32 +184,32 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         return _handlers[index];
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getHandlersCount() external view returns (uint256) {
         return _handlers.length;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getNonzeroDeltaCount() external view returns (uint256) {
         return _nonzeroDeltaCount;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getTokenDelta(address user, IERC20 token) external view returns (int256) {
         return _tokenDeltas[user][token];
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getTokenReserve(IERC20 token) external view returns (uint256) {
         return _tokenReserves[token];
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getMinimumPoolTokens() external pure returns (uint256) {
         return _MIN_TOKENS;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getMaximumPoolTokens() external pure returns (uint256) {
         return _MAX_TOKENS;
     }
@@ -302,18 +297,18 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         _;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function quote(bytes calldata data) external payable query returns (bytes memory result) {
         // Forward the incoming call to the original sender of this transaction.
         return (msg.sender).functionCallWithValue(data, msg.value);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function disableQuery() external authenticate {
         _isQueryDisabled = true;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function isQueryDisabled() external view returns (bool) {
         return _isQueryDisabled;
     }
@@ -322,34 +317,34 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
                                     Pool Tokens
     *******************************************************************************/
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function totalSupply(address token) external view returns (uint256) {
         return _totalSupply(token);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function balanceOf(address token, address account) external view returns (uint256) {
         return _balanceOf(token, account);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function allowance(address token, address owner, address spender) external view returns (uint256) {
         return _allowance(token, owner, spender);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function transfer(address owner, address to, uint256 amount) external returns (bool) {
         _transfer(msg.sender, owner, to, amount);
         return true;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function approve(address owner, address spender, uint256 amount) external returns (bool) {
         _approve(msg.sender, owner, spender, amount);
         return true;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool) {
         _spendAllowance(msg.sender, from, spender, amount);
         _transfer(msg.sender, from, to, amount);
@@ -401,7 +396,7 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         IBasePool.SwapParams poolSwapParams;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function swap(
         SwapParams memory params
     )
@@ -625,44 +620,44 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
                             Pool Registration and Initialization
     *******************************************************************************/
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function registerPool(
         address pool,
-        TokenConfig[] memory tokens,
+        TokenConfig[] memory tokenConfig,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolCallbacks calldata poolCallbacks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused {
-        _registerPool(pool, tokens, pauseWindowEndTime, pauseManager, poolCallbacks, liquidityManagement);
+        _registerPool(pool, tokenConfig, pauseWindowEndTime, pauseManager, poolCallbacks, liquidityManagement);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function isPoolRegistered(address pool) external view returns (bool) {
         return _isPoolRegistered(pool);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function isPoolInitialized(address pool) external view returns (bool) {
         return _isPoolInitialized(pool);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function isPoolInRecoveryMode(address pool) external view returns (bool) {
         return _isPoolInRecoveryMode(pool);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getPoolConfig(address pool) external view returns (PoolConfig memory) {
         return _poolConfig[pool].toPoolConfig();
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getPoolTokens(address pool) external view withRegisteredPool(pool) returns (IERC20[] memory) {
         return _getPoolTokens(pool);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getPoolTokenCountAndIndexOfToken(
         address pool,
         IERC20 token
@@ -680,7 +675,7 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         }
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getPoolTokenInfo(
         address pool
     )
@@ -712,7 +707,7 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         }
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getPoolTokenRates(address pool) external view withRegisteredPool(pool) returns (uint256[] memory) {
         return _getPoolTokenRates(pool);
     }
@@ -1097,7 +1092,7 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         _;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function initialize(
         address pool,
         address to,
@@ -1174,7 +1169,7 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         emit PoolInitialized(pool);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function addLiquidity(
         AddLiquidityParams memory params
     )
@@ -1355,7 +1350,7 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         emit PoolBalanceChanged(params.pool, params.to, tokens, amountsInRaw.unsafeCastToInt256(true));
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function removeLiquidity(
         RemoveLiquidityParams memory params
     )
@@ -1424,7 +1419,7 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         }
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function removeLiquidityRecovery(
         address pool,
         address from,
@@ -1668,13 +1663,13 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         _;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function enableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate {
         _ensurePoolNotInRecoveryMode(pool);
         _setPoolRecoveryMode(pool, true);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function disableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate {
         _ensurePoolInRecoveryMode(pool);
         _setPoolRecoveryMode(pool, false);
@@ -1713,7 +1708,7 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
                                         Fees
     *******************************************************************************/
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function setProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external authenticate {
         if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
             revert ProtocolSwapFeePercentageTooHigh();
@@ -1722,12 +1717,12 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getProtocolSwapFeePercentage() external view returns (uint256) {
         return _protocolSwapFeePercentage;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function setProtocolYieldFeePercentage(uint256 newProtocolYieldFeePercentage) external authenticate {
         if (newProtocolYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
             revert ProtocolYieldFeePercentageTooHigh();
@@ -1736,17 +1731,17 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         emit ProtocolYieldFeePercentageChanged(newProtocolYieldFeePercentage);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getProtocolYieldFeePercentage() external view returns (uint256) {
         return _protocolYieldFeePercentage;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getProtocolFees(address token) external view returns (uint256) {
         return _protocolFees[IERC20(token)];
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant {
         for (uint256 index = 0; index < tokens.length; index++) {
             IERC20 token = tokens[index];
@@ -1765,7 +1760,7 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
     }
 
     /**
-     * @inheritdoc IVault
+     * @inheritdoc IVaultMain
      * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
      * MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
      */
@@ -1788,7 +1783,7 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         emit SwapFeePercentageChanged(pool, swapFeePercentage);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getStaticSwapFeePercentage(address pool) external view returns (uint256) {
         return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
     }
@@ -1797,12 +1792,12 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
                                     Authentication
     *******************************************************************************/
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getAuthorizer() external view returns (IAuthorizer) {
         return _authorizer;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function setAuthorizer(IAuthorizer newAuthorizer) external nonReentrant authenticate {
         _authorizer = newAuthorizer;
 
@@ -1818,22 +1813,22 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
                                     Vault Pausing
     *******************************************************************************/
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function isVaultPaused() external view returns (bool) {
         return _isVaultPaused();
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getVaultPausedState() public view returns (bool, uint256, uint256) {
         return (_isVaultPaused(), _vaultPauseWindowEndTime, _vaultBufferPeriodEndTime);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function pauseVault() external authenticate {
         _setVaultPaused(true);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function unpauseVault() external authenticate {
         _setVaultPaused(false);
     }
@@ -1903,12 +1898,12 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         _;
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function isPoolPaused(address pool) external view withRegisteredPool(pool) returns (bool) {
         return _isPoolPaused(pool);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function getPoolPausedState(
         address pool
     ) external view withRegisteredPool(pool) returns (bool, uint256, uint256, address) {
@@ -1932,12 +1927,12 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         return (pauseBit && block.timestamp <= pauseWindowEndTime + _vaultBufferPeriodDuration, pauseWindowEndTime);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function pausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) {
         _setPoolPaused(pool, true);
     }
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IVaultMain
     function unpausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) {
         _setPoolPaused(pool, false);
     }
@@ -1981,5 +1976,34 @@ contract Vault is IVault, VaultStorage, Authentication, ERC20MultiToken, Reentra
         if (_isPoolPaused(pool)) {
             revert PoolPaused(pool);
         }
+    }
+
+    /*******************************************************************************
+                                     Default handlers
+    *******************************************************************************/
+
+    receive() external payable {
+        revert CannotReceiveEth();
+    }
+
+    /**
+     * @inheritdoc Proxy
+     * @dev Override proxy implementation of `fallback` to disallow incoming ETH transfers.
+     * This function actually returns whatever the Vault Extension does when handling the request.
+     */
+    fallback() external payable override {
+        if (msg.value > 0) {
+            revert CannotReceiveEth();
+        }
+
+        _fallback();
+    }
+
+    /**
+     * @inheritdoc Proxy
+     * @dev Returns Vault Extension, where fallback requests are forwarded.
+     */
+    function _implementation() internal view override returns (address) {
+        return address(_vaultExtension);
     }
 }

@@ -15,7 +15,7 @@ import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
-import { RateProviderMock } from '../typechain-types';
+import { RateProviderMock, VaultExtensionMock } from '../typechain-types';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -191,8 +191,14 @@ describe('Vault', function () {
 
     sharedBeforeEach('redeploy Vault', async () => {
       authorizer = await deploy('v3-solidity-utils/BasicAuthorizerMock');
+      const vaultExtension: VaultExtensionMock = await deploy('VaultExtensionMock');
       timedVault = await deploy('VaultMock', {
-        args: [authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
+        args: [
+          await vaultExtension.getAddress(),
+          authorizer.getAddress(),
+          PAUSE_WINDOW_DURATION,
+          BUFFER_PERIOD_DURATION,
+        ],
       });
     });
 
