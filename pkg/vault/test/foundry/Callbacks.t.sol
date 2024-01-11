@@ -6,7 +6,9 @@ import "forge-std/Test.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
-import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { CallbackFailed } from "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
+import { PoolConfig, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -33,7 +35,7 @@ contract CallbacksTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IPoolCallbacks.onBeforeSwap.selector,
                 IBasePool.SwapParams({
-                    kind: IVault.SwapKind.GIVEN_IN,
+                    kind: SwapKind.GIVEN_IN,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
                     indexIn: 1,
@@ -50,17 +52,8 @@ contract CallbacksTest is BaseVaultTest {
         // should fail
         PoolMock(pool).setFailOnBeforeSwapCallback(true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVault.CallbackFailed.selector));
-        router.swapExactIn(
-            address(pool),
-            usdc,
-            dai,
-            defaultAmount,
-            defaultAmount,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
+        vm.expectRevert(abi.encodeWithSelector(CallbackFailed.selector));
+        router.swapExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
     }
 
     function testOnAfterSwapCallback() public {
@@ -70,7 +63,7 @@ contract CallbacksTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
-                    kind: IVault.SwapKind.GIVEN_IN,
+                    kind: SwapKind.GIVEN_IN,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
                     indexIn: 1,
@@ -87,7 +80,7 @@ contract CallbacksTest is BaseVaultTest {
         // should fail
         PoolMock(pool).setFailOnAfterSwapCallback(true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVault.CallbackFailed.selector));
+        vm.expectRevert(abi.encodeWithSelector(CallbackFailed.selector));
         router.swapExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
     }
 

@@ -12,6 +12,7 @@ import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/sign
 import { VoidSigner } from 'ethers';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { VaultExtensionMock } from '../typechain-types/contracts/test/VaultExtensionMock';
 
 describe('Queries', function () {
   let vault: VaultMock;
@@ -35,7 +36,10 @@ describe('Queries', function () {
 
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
     authorizer = await deploy('v3-solidity-utils/BasicAuthorizerMock');
-    vault = await deploy('VaultMock', { args: [authorizer.getAddress(), MONTH * 3, MONTH] });
+    const vaultExtension: VaultExtensionMock = await deploy('VaultExtensionMock');
+    vault = await deploy('VaultMock', {
+      args: [await vaultExtension.getAddress(), authorizer.getAddress(), MONTH * 3, MONTH],
+    });
     const vaultAddress = await vault.getAddress();
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
     router = await deploy('Router', { args: [vaultAddress, WETH] });

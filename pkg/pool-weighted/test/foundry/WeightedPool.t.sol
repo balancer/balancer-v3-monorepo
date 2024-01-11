@@ -8,7 +8,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { IVault, TokenConfig, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
+import { TokenConfig, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -48,7 +50,7 @@ contract WeightedPoolTest is BaseVaultTest {
     }
 
     function createPool() internal override returns (address) {
-        factory = new WeightedPoolFactory(vault, 365 days);
+        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
         TokenConfig[] memory tokens = new TokenConfig[](2);
         tokens[0].token = IERC20(dai);
         tokens[1].token = IERC20(usdc);
@@ -212,7 +214,7 @@ contract WeightedPoolTest is BaseVaultTest {
     }
 
     function testAddLiquidityUnbalanced() public {
-        authorizer.grantRole(vault.getActionId(IVault.setStaticSwapFeePercentage.selector), alice);
+        authorizer.grantRole(vault.getActionId(IVaultMain.setStaticSwapFeePercentage.selector), alice);
         vm.prank(alice);
         vault.setStaticSwapFeePercentage(address(pool), 10e16);
 
