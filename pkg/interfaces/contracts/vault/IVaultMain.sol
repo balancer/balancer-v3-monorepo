@@ -138,7 +138,10 @@ interface IVaultMain {
      */
     function getPoolTokenInfo(
         address pool
-    ) external view returns (IERC20[] memory, TokenType[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
+    )
+        external
+        view
+        returns (IERC20[] memory, TokenType[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
 
     /**
      * @notice Retrieve the scaling factors from a pool's rate providers.
