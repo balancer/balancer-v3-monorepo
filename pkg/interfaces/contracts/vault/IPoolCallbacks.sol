@@ -5,6 +5,7 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "./IVault.sol";
+import { SwapKind } from "./VaultTypes.sol";
 import { IBasePool } from "./IBasePool.sol";
 
 /// @notice Interface for pool callbacks
@@ -127,7 +128,7 @@ interface IPoolCallbacks {
      * @param userData Additional (optional) data required for the swap
      */
     struct AfterSwapParams {
-        IVault.SwapKind kind;
+        SwapKind kind;
         IERC20 tokenIn;
         IERC20 tokenOut;
         uint256 amountInScaled18;

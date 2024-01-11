@@ -17,6 +17,7 @@ import { BaseTest } from "solidity-utils/test/foundry/utils/BaseTest.sol";
 
 import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
+import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
 import { Router } from "../../../contracts/Router.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 
@@ -25,6 +26,8 @@ abstract contract BaseVaultTest is BaseTest {
 
     // Vault mock.
     VaultMock internal vault;
+    // Vault extension mock.
+    VaultExtensionMock internal vaultExtension;
     // Router for the vault
     Router internal router;
     // Authorizer mock.
@@ -53,8 +56,10 @@ abstract contract BaseVaultTest is BaseTest {
         BaseTest.setUp();
 
         authorizer = new BasicAuthorizerMock();
-        vault = new VaultMock(authorizer, 30 days, 90 days);
-        router = new Router(IVault(vault), weth);
+
+        vaultExtension = new VaultExtensionMock();
+        vault = new VaultMock(vaultExtension, authorizer, 30 days, 90 days);
+        router = new Router(IVault(address(vault)), weth);
         pool = createPool();
 
         // Approve vault allowances
@@ -85,7 +90,7 @@ abstract contract BaseVaultTest is BaseTest {
 
     function createPool() internal virtual returns (address) {
         PoolMock newPool = new PoolMock(
-            vault,
+            IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
             [address(dai), address(usdc)].toMemoryArray().asIERC20(),

@@ -12,6 +12,7 @@ import { WrappedTokenMock } from '../typechain-types/contracts/test/WrappedToken
 import { FP_ONE, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { PoolCallbacksStruct, TokenConfigStruct, LiquidityManagementStruct } from '../typechain-types/contracts/Vault';
+import { VaultExtensionMock } from '../typechain-types/contracts/test/VaultExtensionMock';
 
 describe('Vault - Wrapped Token Buffers', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -38,8 +39,9 @@ describe('Vault - Wrapped Token Buffers', function () {
 
   sharedBeforeEach('deploy vault', async function () {
     authorizer = await deploy('v3-solidity-utils/BasicAuthorizerMock');
+    const vaultExtension: VaultExtensionMock = await deploy('VaultExtensionMock');
     vault = await deploy('VaultMock', {
-      args: [authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
+      args: [vaultExtension.getAddress(), authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
     });
 
     baseToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Standard', 'BASE', 6] });
