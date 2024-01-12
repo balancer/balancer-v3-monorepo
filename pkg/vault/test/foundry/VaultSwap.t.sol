@@ -72,7 +72,9 @@ contract VaultSwapTest is BaseVaultTest {
 
     function swapGivenIn() public returns (uint256 fee, uint256 protocolFee) {
         vm.prank(alice);
+        snapStart("swapExactIn");
         router.swapExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
+        snapEnd();
         return (0, 0);
     }
 
