@@ -15,6 +15,8 @@ import { VaultExtension } from "./VaultExtension.sol";
  * @dev One-off factory to deploy the Vault at a specific address.
  */
 contract VaultFactory {
+    event VaultCreated(address);
+
     error VaultFactoryIsDisabled();
 
     error VaultAddressMismatch();
@@ -24,27 +26,18 @@ contract VaultFactory {
     IAuthorizer private immutable _authorizer;
     uint256 private immutable _pauseWindowDuration;
     uint256 private immutable _bufferPeriodDuration;
-    bytes32 private immutable _finalSalt;
-    address private immutable _vaultAddress;
+    address private immutable _deployer;
 
     bytes private _creationCode;
 
     // solhint-disable not-rely-on-time
 
     constructor(
-        bytes32 salt,
-        address targetAddress,
         IAuthorizer authorizer,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
     ) {
-        _finalSalt = keccak256(abi.encode(msg.sender, salt));
-        address vaultAddress = CREATE3.getDeployed(_finalSalt);
-        if (targetAddress != vaultAddress) {
-            revert VaultAddressMismatch();
-        }
-
-        _vaultAddress = vaultAddress;
+        _deployer = msg.sender;
         _creationCode = type(Vault).creationCode;
         _authorizer = authorizer;
         _pauseWindowDuration = pauseWindowDuration;
@@ -54,21 +47,39 @@ contract VaultFactory {
     /**
      * @notice Deploys the Vault.
      */
-    function create() external {
+    function create(
+        bytes32 salt,
+        address targetAddress
+    ) external {
         if (isDisabled) {
             revert VaultFactoryIsDisabled();
         }
         isDisabled = true;
 
-        VaultExtension vaultExtension = new VaultExtension(_vaultAddress);
-        _create(abi.encode(vaultExtension, _authorizer, _pauseWindowDuration, _bufferPeriodDuration));
+        bytes32 finalSalt = _computeFinalSalt(salt);
+        address vaultAddress = _getDeploymentAddress(finalSalt);
+        if (targetAddress != vaultAddress) {
+            revert VaultAddressMismatch();
+        }
+
+        VaultExtension vaultExtension = new VaultExtension(vaultAddress);
+        _create(abi.encode(vaultExtension, _authorizer, _pauseWindowDuration, _bufferPeriodDuration), finalSalt);
+
+        emit VaultCreated(vaultAddress);
     }
 
-    function getDeploymentAddress() external view returns (address) {
-        return _vaultAddress;
-    }
+    function getDeploymentAddress(bytes32 salt) external view returns (address) {
+        return _getDeploymentAddress(_computeFinalSalt(salt));
+     }
 
-    function _create(bytes memory constructorArgs) internal returns (address) {
-        return CREATE3.deploy(_finalSalt, abi.encodePacked(_creationCode, constructorArgs), 0);
+    function _getDeploymentAddress(bytes32 finalSalt) internal view returns (address) {
+        return CREATE3.getDeployed(finalSalt);
+     }
+
+    function _computeFinalSalt(bytes32 salt) internal view returns (bytes32) {
+        return keccak256(abi.encode(msg.sender, salt));
+    }
+    function _create(bytes memory constructorArgs, bytes32 finalSalt) internal returns (address) {
+        return CREATE3.deploy(finalSalt, abi.encodePacked(_creationCode, constructorArgs), 0);
     }
 }
