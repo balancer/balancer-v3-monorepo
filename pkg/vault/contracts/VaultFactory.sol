@@ -6,6 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
 import { Vault } from "./Vault.sol";
@@ -14,7 +15,7 @@ import { VaultExtension } from "./VaultExtension.sol";
 /**
  * @dev One-off factory to deploy the Vault at a specific address.
  */
-contract VaultFactory {
+contract VaultFactory is Authentication {
     event VaultCreated(address);
 
     error VaultFactoryIsDisabled();
@@ -36,7 +37,7 @@ contract VaultFactory {
         IAuthorizer authorizer,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) {
+    ) Authentication(bytes32(uint256(uint160(address(this))))) {
         _deployer = msg.sender;
         _creationCode = type(Vault).creationCode;
         _authorizer = authorizer;
@@ -47,39 +48,32 @@ contract VaultFactory {
     /**
      * @notice Deploys the Vault.
      */
-    function create(
-        bytes32 salt,
-        address targetAddress
-    ) external {
+    function create(bytes32 salt, address targetAddress) external authenticate {
         if (isDisabled) {
             revert VaultFactoryIsDisabled();
         }
         isDisabled = true;
 
-        bytes32 finalSalt = _computeFinalSalt(salt);
-        address vaultAddress = _getDeploymentAddress(finalSalt);
+        address vaultAddress = getDeploymentAddress(salt);
         if (targetAddress != vaultAddress) {
             revert VaultAddressMismatch();
         }
 
         VaultExtension vaultExtension = new VaultExtension(vaultAddress);
-        _create(abi.encode(vaultExtension, _authorizer, _pauseWindowDuration, _bufferPeriodDuration), finalSalt);
+        _create(abi.encode(vaultExtension, _authorizer, _pauseWindowDuration, _bufferPeriodDuration), salt);
 
         emit VaultCreated(vaultAddress);
     }
 
-    function getDeploymentAddress(bytes32 salt) external view returns (address) {
-        return _getDeploymentAddress(_computeFinalSalt(salt));
-     }
-
-    function _getDeploymentAddress(bytes32 finalSalt) internal view returns (address) {
-        return CREATE3.getDeployed(finalSalt);
-     }
-
-    function _computeFinalSalt(bytes32 salt) internal view returns (bytes32) {
-        return keccak256(abi.encode(msg.sender, salt));
+    function getDeploymentAddress(bytes32 salt) public view returns (address) {
+        return CREATE3.getDeployed(salt);
     }
+
     function _create(bytes memory constructorArgs, bytes32 finalSalt) internal returns (address) {
         return CREATE3.deploy(finalSalt, abi.encodePacked(_creationCode, constructorArgs), 0);
+    }
+
+    function _canPerform(bytes32 actionId, address user) internal view virtual override returns (bool) {
+        return _authorizer.canPerform(actionId, user, address(this));
     }
 }
