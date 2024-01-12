@@ -8,8 +8,6 @@
     "measure-deployment": "hardhat run deployment.ts",
     "benchmark": "yarn measure-deployment",
     "gas": "forge test -vvv --gas-report",
-    "snapshot": "forge snapshot",
-    "snapshot-check": "forge snapshot --check",
     "lint": "yarn lint:typescript",
     "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
   },
