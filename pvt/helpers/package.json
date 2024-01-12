@@ -5,6 +5,7 @@
   "version": "1.0.0",
   "license": "GPL-3.0-only",
   "scripts": {
+    "snapshot": "forge snapshot",
     "lint": "yarn lint:typescript",
     "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
   },

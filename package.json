@@ -21,6 +21,7 @@
   ],
   "scripts": {
     "build": "yarn workspaces foreach --parallel --verbose run build",
+    "snapshot": "yarn workspaces foreach --parallel --verbose run snapshot",
     "lint": "NODE_NO_WARNINGS=1 yarn workspaces foreach --parallel --verbose run lint",
     "test": "yarn workspaces foreach --parallel --verbose run test",
     "coverage": "yarn workspaces foreach --parallel --verbose run coverage",
