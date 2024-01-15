@@ -59,7 +59,7 @@ contract VaultFactoryTest is Test {
         address vaultAddress = factory.getDeploymentAddress(salt);
         vm.prank(deployer);
         vm.expectRevert(abi.encodeWithSelector(VaultFactory.VaultAddressMismatch.selector));
-        factory.create(bytes32(uint256(salt) + 1), vaultAddress);  
+        factory.create(bytes32(uint256(salt) + 1), vaultAddress);
     }
 
     function testCreateTwice() public {
@@ -68,8 +68,8 @@ contract VaultFactoryTest is Test {
 
         address vaultAddress = factory.getDeploymentAddress(salt);
         vm.startPrank(deployer);
-        factory.create(salt, vaultAddress);  
+        factory.create(salt, vaultAddress);
         vm.expectRevert(abi.encodeWithSelector(VaultFactory.VaultFactoryIsDisabled.selector));
-        factory.create(salt, vaultAddress);  
+        factory.create(salt, vaultAddress);
     }
 }

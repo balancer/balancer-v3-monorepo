@@ -1,7 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { ethers, BigNumberish } from 'ethers';
 
-import { FP_100_PCT } from '../../numbers';
 import { ZERO_ADDRESS } from '../../constants';
 import { Account } from './types';
 import { RawVaultDeployment, VaultDeployment } from '../vault/types';
@@ -22,15 +21,11 @@ export function computeDecimalsFromIndex(i: number): number {
 
 export default {
   toVaultDeployment(params: RawVaultDeployment): VaultDeployment {
-    let { mocked, admin, nextAdmin, pauseWindowDuration, bufferPeriodDuration, maxYieldValue, maxAUMValue } = params;
-    if (!mocked) mocked = false;
+    let { admin, pauseWindowDuration, bufferPeriodDuration } = params;
     if (!admin) admin = params.from;
-    if (!nextAdmin) nextAdmin = ZERO_ADDRESS;
     if (!pauseWindowDuration) pauseWindowDuration = 0;
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
-    if (!maxYieldValue) maxYieldValue = FP_100_PCT;
-    if (!maxAUMValue) maxAUMValue = FP_100_PCT;
-    return { mocked, admin, nextAdmin, pauseWindowDuration, bufferPeriodDuration, maxYieldValue, maxAUMValue };
+    return { admin, pauseWindowDuration, bufferPeriodDuration };
   },
 
   /***
