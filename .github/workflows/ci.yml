@@ -108,5 +108,6 @@ jobs:
         run: yarn build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORGE_SNAPSHOT_CHECK: true
       - name: Test
         run: yarn workspace @balancer-labs/v3-pool-weighted test:forge
