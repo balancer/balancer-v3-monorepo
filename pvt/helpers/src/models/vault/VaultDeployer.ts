@@ -11,14 +11,14 @@ import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
 
 export async function deploy(params: VaultDeploymentInputParams = {}): Promise<Vault> {
-  const deployment = await toVaultDeployment(params);
+  const deployment = await TypesConverter.toVaultDeployment(params);
 
   const basicAuthorizer = await deployBasicAuthorizer(deployment.admin);
   return await deployReal(deployment, basicAuthorizer);
 }
 
 export async function deployMock(params: VaultDeploymentInputParams = {}): Promise<VaultMock> {
-  const deployment = await toVaultDeployment(params);
+  const deployment = await TypesConverter.toVaultDeployment(params);
 
   const basicAuthorizer = await deployBasicAuthorizer(deployment.admin);
   return await deployMocked(deployment, basicAuthorizer);
@@ -34,12 +34,7 @@ async function deployReal(deployment: VaultDeploymentParams, authorizer: BaseCon
     from: admin,
   });
 
-  const args = [
-    await vaultExtension.getAddress(),
-    await authorizer.getAddress(),
-    pauseWindowDuration,
-    bufferPeriodDuration,
-  ];
+  const args = [vaultExtension, authorizer, pauseWindowDuration, bufferPeriodDuration];
   return await contract.deploy('v3-vault/Vault', {
     args,
     from: admin,
@@ -56,21 +51,14 @@ async function deployMocked(deployment: VaultDeploymentParams, authorizer: BaseC
     from: admin,
   });
 
-  const args = [
-    await vaultExtension.getAddress(),
-    await authorizer.getAddress(),
-    pauseWindowDuration,
-    bufferPeriodDuration,
-  ];
+  const args = [vaultExtension, authorizer, pauseWindowDuration, bufferPeriodDuration];
   return await contract.deploy('v3-vault/VaultMock', {
     args,
     from: admin,
   });
 }
 
-/**
- * Returns the Vault address to be deployed, assuming the VaultExtension is deployed by the same account beforehand.
- */
+/// Returns the Vault address to be deployed, assuming the VaultExtension is deployed by the same account beforehand.
 async function getVaultAddress(from: SignerWithAddress): Promise<string> {
   const nonce = await from.getNonce();
   const futureAddress = ethers.getCreateAddress({
@@ -82,11 +70,4 @@ async function getVaultAddress(from: SignerWithAddress): Promise<string> {
 
 async function deployBasicAuthorizer(admin: SignerWithAddress): Promise<BasicAuthorizerMock> {
   return contract.deploy('v3-solidity-utils/BasicAuthorizerMock', { args: [], from: admin });
-}
-
-async function toVaultDeployment(params: VaultDeploymentInputParams): VaultDeploymentParams {
-  const deployment = TypesConverter.toVaultDeployment(params);
-  if (!deployment.admin) deployment.admin = (await ethers.getSigners())[0];
-
-  return deployment;
 }

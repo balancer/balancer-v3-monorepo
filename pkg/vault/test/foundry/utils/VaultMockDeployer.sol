@@ -16,7 +16,7 @@ library VaultMockDeployer {
         IAuthorizer authorizer = new BasicAuthorizerMock();
         bytes32 salt = bytes32(0);
         vault = VaultMock(payable(CREATE3.getDeployed(salt)));
-        VaultExtensionMock vaultExtension = new VaultExtensionMock(address(vault));
+        VaultExtensionMock vaultExtension = new VaultExtensionMock(IVault(address(vault)));
         _create(abi.encode(vaultExtension, authorizer, 90 days, 30 days), salt);
         return vault;
     }

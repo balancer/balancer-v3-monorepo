@@ -20,7 +20,7 @@ contract VaultFactory is Authentication {
     event VaultCreated(address);
 
     /// @dev Vault has already been deployed, so this factory is disabled.
-    error VaultFactoryIsDisabled();
+    error VaultAlreadyCreated();
 
     /// @dev The given salt does not match the generated address when attempting to create the Vault.
     error VaultAddressMismatch();
@@ -58,7 +58,7 @@ contract VaultFactory is Authentication {
      */
     function create(bytes32 salt, address targetAddress) external authenticate {
         if (isDisabled) {
-            revert VaultFactoryIsDisabled();
+            revert VaultAlreadyCreated();
         }
         isDisabled = true;
 
@@ -67,8 +67,16 @@ contract VaultFactory is Authentication {
             revert VaultAddressMismatch();
         }
 
-        VaultExtension vaultExtension = new VaultExtension(vaultAddress);
-        _create(abi.encode(vaultExtension, _authorizer, _pauseWindowDuration, _bufferPeriodDuration), salt);
+        VaultExtension vaultExtension = new VaultExtension(IVault(vaultAddress));
+        address deployedAddress = _create(
+            abi.encode(vaultExtension, _authorizer, _pauseWindowDuration, _bufferPeriodDuration),
+            salt
+        );
+
+        // This should always be the case, but we enforce the end state to match the expected outcome anyways.
+        if (deployedAddress != targetAddress) {
+            revert VaultAddressMismatch();
+        }
 
         emit VaultCreated(vaultAddress);
     }

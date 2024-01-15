@@ -2,8 +2,11 @@
 
 pragma solidity ^0.8.4;
 
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
-import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
+import {
+    SingletonAuthentication
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import { VaultStorage } from "./VaultStorage.sol";
 
 /**
@@ -16,14 +19,6 @@ import { VaultStorage } from "./VaultStorage.sol";
  *
  * The storage of this contract is in practice unused.
  */
-contract VaultExtension is IVaultExtension, VaultStorage, Authentication {
-    address private immutable _vault;
-
-    constructor(address vault) Authentication(bytes32(uint256(uint160(address(vault))))) {
-        _vault = vault;
-    }
-
-    function _canPerform(bytes32 actionId, address user) internal view virtual override returns (bool) {
-        return _authorizer.canPerform(actionId, user, address(this));
-    }
+contract VaultExtension is IVaultExtension, VaultStorage, SingletonAuthentication {
+    constructor(IVault vault) SingletonAuthentication(vault) {}
 }

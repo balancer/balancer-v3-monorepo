@@ -26,8 +26,7 @@ contract VaultFactoryTest is Test {
     }
 
     /// forge-config: default.fuzz.runs = 100
-    function testFuzzCreate(uint256 saltInt) public {
-        bytes32 salt = bytes32(saltInt);
+    function testFuzzCreate(bytes32 salt) public {
         authorizer.grantRole(factory.getActionId(VaultFactory.create.selector), deployer);
 
         address vaultAddress = factory.getDeploymentAddress(salt);
@@ -69,7 +68,7 @@ contract VaultFactoryTest is Test {
         address vaultAddress = factory.getDeploymentAddress(salt);
         vm.startPrank(deployer);
         factory.create(salt, vaultAddress);
-        vm.expectRevert(abi.encodeWithSelector(VaultFactory.VaultFactoryIsDisabled.selector));
+        vm.expectRevert(abi.encodeWithSelector(VaultFactory.VaultAlreadyCreated.selector));
         factory.create(salt, vaultAddress);
     }
 }

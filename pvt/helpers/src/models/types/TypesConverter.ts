@@ -1,9 +1,8 @@
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { ethers, BigNumberish } from 'ethers';
+import { BigNumberish } from 'ethers';
+import { ethers } from 'hardhat';
 
 import { ZERO_ADDRESS } from '../../constants';
 import { Account } from './types';
-import { RawVaultDeployment, VaultDeployment } from '../vault/types';
 import {
   RawTokenApproval,
   RawTokenMint,
@@ -13,6 +12,8 @@ import {
   TokenDeployment,
   RawTokenDeployment,
 } from '../tokens/types';
+import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
+import { VaultDeploymentInputParams, VaultDeploymentParams } from '../vault/types';
 
 export function computeDecimalsFromIndex(i: number): number {
   // Produces repeating series (0..18)
@@ -20,9 +21,9 @@ export function computeDecimalsFromIndex(i: number): number {
 }
 
 export default {
-  toVaultDeployment(params: RawVaultDeployment): VaultDeployment {
+  async toVaultDeployment(params: VaultDeploymentInputParams): Promise<VaultDeploymentParams> {
     let { admin, pauseWindowDuration, bufferPeriodDuration } = params;
-    if (!admin) admin = params.from;
+    if (!admin) admin = (await ethers.getSigners())[0];
     if (!pauseWindowDuration) pauseWindowDuration = 0;
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
     return { admin, pauseWindowDuration, bufferPeriodDuration };
