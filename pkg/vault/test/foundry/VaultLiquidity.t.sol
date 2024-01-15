@@ -38,7 +38,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
         vm.prank(alice);
-        snapStart("addLiquidityUnbalanced");
+        snapStart("vaultAddLiquidityUnbalanced");
         bptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, defaultAmount, false, bytes(""));
         snapEnd();
 
@@ -53,7 +53,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     function addLiquiditySingleTokenExactOut() public returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         bptAmountOut = defaultAmount;
         vm.prank(alice);
-        snapStart("addLiquiditySingleTokenExactOut");
+        snapStart("vaultAddLiquiditySingleTokenExactOut");
         amountsIn = router.addLiquiditySingleTokenExactOut(
             address(pool),
             dai,
@@ -138,7 +138,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     function removeLiquidityProportional() public returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
         bptAmountIn = defaultAmount * 2;
 
-        snapStart("removeLiquidityProportional");
+        snapStart("vaultRemoveLiquidityProportional");
         amountsOut = router.removeLiquidityProportional(
             address(pool),
             bptAmountIn,
@@ -160,7 +160,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     function removeLiquiditySingleTokenExactIn() public returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
         bptAmountIn = defaultAmount * 2;
 
-        snapStart("removeLiquiditySingleTokenExactIn");
+        snapStart("vaultRemoveLiquiditySingleTokenExactIn");
         amountsOut = router.removeLiquiditySingleTokenExactIn(
             address(pool),
             bptAmountIn,
@@ -183,7 +183,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     function removeLiquiditySingleTokenExactOut() public returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
         amountsOut = [defaultAmount * 2, 0].toMemoryArray();
 
-        snapStart("removeLiquiditySingleTokenExactOut");
+        snapStart("vaultRemoveLiquiditySingleTokenExactOut");
         bptAmountIn = router.removeLiquiditySingleTokenExactOut(
             address(pool),
             2 * defaultAmount,

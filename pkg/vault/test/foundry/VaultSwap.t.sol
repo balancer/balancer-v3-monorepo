@@ -72,7 +72,7 @@ contract VaultSwapTest is BaseVaultTest {
 
     function swapGivenIn() public returns (uint256 fee, uint256 protocolFee) {
         vm.prank(alice);
-        snapStart("swapExactIn");
+        snapStart("vaultSwapExactIn");
         router.swapExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
         snapEnd();
         return (0, 0);
@@ -84,7 +84,7 @@ contract VaultSwapTest is BaseVaultTest {
 
     function swapGivenOut() public returns (uint256 fee, uint256 protocolFee) {
         vm.prank(alice);
-        snapStart("swapExactIn");
+        snapStart("vaultSwapExactIn");
         router.swapExactOut(
             address(pool),
             usdc,
@@ -107,7 +107,7 @@ contract VaultSwapTest is BaseVaultTest {
         setSwapFeePercentage();
 
         vm.prank(alice);
-        snapStart("swapFeeGivenIn");
+        snapStart("vaultSwapFeeGivenIn");
         router.swapExactIn(
             address(pool),
             usdc,
@@ -132,7 +132,7 @@ contract VaultSwapTest is BaseVaultTest {
         setProtocolSwapFeePercentage();
 
         vm.prank(alice);
-        snapStart("protocolSwapFeeGivenIn");
+        snapStart("vaultProtocolSwapFeeGivenIn");
         router.swapExactIn(
             address(pool),
             usdc,
