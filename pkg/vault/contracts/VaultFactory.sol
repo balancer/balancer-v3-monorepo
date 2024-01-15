@@ -16,10 +16,13 @@ import { VaultExtension } from "./VaultExtension.sol";
  * @dev One-off factory to deploy the Vault at a specific address.
  */
 contract VaultFactory is Authentication {
+    /// @dev Emitted when the Vault is deployed.
     event VaultCreated(address);
 
+    /// @dev Vault has already been deployed, so this factory is disabled.
     error VaultFactoryIsDisabled();
 
+    /// @dev The given salt does not match the generated address when attempting to create the Vault.
     error VaultAddressMismatch();
 
     bool public isDisabled;
@@ -47,6 +50,11 @@ contract VaultFactory is Authentication {
 
     /**
      * @notice Deploys the Vault.
+     * @dev The Vault can only be deployed once. Therefore, this function is permissioned to ensure that it is
+     * deployed to the right address.
+     * @param salt Salt used to create the vault. See `getDeploymentAddress`.
+     * @param targetAddress Expected Vault address. The function will revert if the given salt does not deploy the
+     * Vault to the target address.
      */
     function create(bytes32 salt, address targetAddress) external authenticate {
         if (isDisabled) {
@@ -65,6 +73,7 @@ contract VaultFactory is Authentication {
         emit VaultCreated(vaultAddress);
     }
 
+    /// @notice Gets deployment address for a given salt.
     function getDeploymentAddress(bytes32 salt) public view returns (address) {
         return CREATE3.getDeployed(salt);
     }
