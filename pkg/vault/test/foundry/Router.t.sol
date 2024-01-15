@@ -26,6 +26,8 @@ import { RouterMock } from "../../contracts/test/RouterMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 import { VaultExtensionMock } from "../../contracts/test/VaultExtensionMock.sol";
 
+import { VaultMockDeployer } from "./utils/VaultMockDeployer.sol";
+
 contract RouterTest is Test {
     using ArrayHelpers for *;
 
@@ -50,9 +52,8 @@ contract RouterTest is Test {
     uint256 constant BPT_AMOUNT_OUT = 1e18;
 
     function setUp() public {
-        authorizer = new BasicAuthorizerMock();
-        vaultExtension = new VaultExtensionMock();
-        vault = new VaultMock(vaultExtension, authorizer, 30 days, 90 days);
+        vault = VaultMockDeployer.deploy();
+        authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
         WETH = new WETHTestToken();
         router = new Router(IVault(address(vault)), WETH);
         routerMock = new RouterMock(IVault(address(vault)), WETH);
