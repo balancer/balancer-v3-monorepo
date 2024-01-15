@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.4;
 
+import { GasSnapshot } from "forge-gas-snapshot/GasSnapshot.sol";
+
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -9,7 +11,7 @@ import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/
 import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
-abstract contract BaseTest is Test {
+abstract contract BaseTest is Test, GasSnapshot {
     using ArrayHelpers for *;
 
     // Default admin.
