@@ -2,8 +2,11 @@
 
 pragma solidity ^0.8.4;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import {
     SingletonAuthentication
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
@@ -81,5 +84,14 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
 
     function _create(bytes memory constructorArgs, bytes32 salt) internal returns (address) {
         return CREATE3.deploy(_computeFinalSalt(salt), abi.encodePacked(_creationCode, constructorArgs), 0);
+    }
+
+    function _extractTokensFromTokenConfig(
+        TokenConfig[] memory tokenData
+    ) internal pure returns (IERC20[] memory registeredTokens) {
+        registeredTokens = new IERC20[](tokenData.length);
+        for (uint256 i = 0; i < tokenData.length; i++) {
+            registeredTokens[i] = tokenData[i].token;
+        }
     }
 }

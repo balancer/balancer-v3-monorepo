@@ -6,17 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { IRateProvider } from "./IRateProvider.sol";
-import {
-    AddLiquidityKind,
-    AddLiquidityParams,
-    PoolConfig,
-    PoolCallbacks,
-    LiquidityManagement,
-    RemoveLiquidityKind,
-    RemoveLiquidityParams,
-    SwapKind,
-    SwapParams
-} from "./VaultTypes.sol";
+import "./VaultTypes.sol";
 
 interface IVaultMain {
     /*******************************************************************************
@@ -27,8 +17,7 @@ interface IVaultMain {
      * @notice A Pool was registered by calling `registerPool`.
      * @param pool The pool being registered
      * @param factory The factory creating the pool
-     * @param tokens The pool's tokens
-     * @param rateProviders The pool's rate providers (or zero)
+     * @param tokenConfig The pool's tokens
      * @param pauseWindowEndTime The pool's pause window end time
      * @param pauseManager The pool's external pause manager (or 0 for governance)
      * @param liquidityManagement Supported liquidity management callback flags
@@ -36,8 +25,7 @@ interface IVaultMain {
     event PoolRegistered(
         address indexed pool,
         address indexed factory,
-        IERC20[] tokens,
-        IRateProvider[] rateProviders,
+        TokenConfig[] tokenConfig,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolCallbacks callbacks,
@@ -74,8 +62,7 @@ interface IVaultMain {
      * authorizer.
      *
      * @param factory The factory address associated with the pool being registered
-     * @param tokens An array of token addresses the pool will manage
-     * @param rateProviders An array of rate providers corresponding to the tokens (or zero for tokens without rates)
+     * @param tokenConfig An array of descriptors for the tokens the pool will manage
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param pauseManager Optional contract the Vault will allow to pause the pool
      * @param config Flags indicating which callbacks the pool supports
@@ -83,8 +70,7 @@ interface IVaultMain {
      */
     function registerPool(
         address factory,
-        IERC20[] memory tokens,
-        IRateProvider[] memory rateProviders,
+        TokenConfig[] memory tokenConfig,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolCallbacks calldata config,
@@ -145,13 +131,17 @@ interface IVaultMain {
     /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
      * @return tokens Tokens registered to the pool
+     * @return tokenTypes The types of all registered tokens
      * @return balancesRaw Corresponding raw balances of the tokens
      * @return scalingFactors Corresponding scalingFactors of the tokens
      * @return rateProviders Corresponding rateProviders of the tokens (or zero for tokens with no rates)
      */
     function getPoolTokenInfo(
         address pool
-    ) external view returns (IERC20[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
+    )
+        external
+        view
+        returns (IERC20[] memory, TokenType[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
 
     /**
      * @notice Retrieve the scaling factors from a pool's rate providers.

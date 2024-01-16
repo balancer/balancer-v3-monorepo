@@ -6,7 +6,12 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { PoolConfig, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    TokenConfig,
+    PoolConfig,
+    PoolData,
+    Rounding
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
@@ -73,12 +78,15 @@ contract VaultMock is Vault {
 
     // Used for testing the ReentrancyGuard
     function reentrantRegisterPool(address pool, IERC20[] memory tokens) external nonReentrant {
-        IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
+        TokenConfig[] memory tokenData = new TokenConfig[](tokens.length);
+        // Assume standard tokens (enum value = 0)
+        for (uint256 i = 0; i < tokens.length; i++) {
+            tokenData[i].token = tokens[i];
+        }
 
         this.registerPool(
             pool,
-            tokens,
-            rateProviders,
+            tokenData,
             365 days,
             address(0),
             PoolConfigBits.wrap(0).toPoolConfig().callbacks,

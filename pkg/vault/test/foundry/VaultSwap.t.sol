@@ -270,7 +270,7 @@ contract VaultSwapTest is BaseVaultTest {
         assertEq(dai.balanceOf(alice), daiBeforeSwap + defaultAmount - fee, "Swap: User's DAI balance is wrong");
 
         // Tokens are adjusted in the pool
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], fee - protocolFee, "Swap: Pool's [0] balance is wrong");
         assertEq(balances[1], 2 * defaultAmount, "Swap: Pool's [1] balance is wrong");
 

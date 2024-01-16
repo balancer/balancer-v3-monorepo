@@ -268,7 +268,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         balances.userTokens[1] = usdc.balanceOf(user);
         balances.userBpt = PoolMock(pool).balanceOf(user);
 
-        (, uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(pool));
         balances.poolTokens = poolBalances;
     }
 
