@@ -3,9 +3,7 @@
 pragma solidity ^0.8.4;
 
 import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -33,9 +31,9 @@ import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Ba
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
-import { VaultStorage } from "./VaultStorage.sol";
+import { VaultCommon } from "./VaultCommon.sol";
 
-contract Vault is IVaultMain, VaultStorage, Proxy, Authentication, ERC20MultiToken, ReentrancyGuard {
+contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
     using FixedPoint for *;
@@ -45,12 +43,6 @@ contract Vault is IVaultMain, VaultStorage, Proxy, Authentication, ERC20MultiTok
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
     using ScalingHelpers for *;
-
-    /// @dev Modifier to make a function callable only when the Vault is not paused.
-    modifier whenVaultNotPaused() {
-        _ensureVaultNotPaused();
-        _;
-    }
 
     /// @dev Modifier to make a function callable only when the Vault and Pool are not paused.
     modifier whenPoolNotPaused(address pool) {
@@ -611,27 +603,6 @@ contract Vault is IVaultMain, VaultStorage, Proxy, Authentication, ERC20MultiTok
     *******************************************************************************/
 
     /// @inheritdoc IVaultMain
-    function registerPool(
-        address pool,
-        IERC20[] memory tokens,
-        IRateProvider[] memory rateProviders,
-        uint256 pauseWindowEndTime,
-        address pauseManager,
-        PoolCallbacks calldata poolCallbacks,
-        LiquidityManagement calldata liquidityManagement
-    ) external nonReentrant whenVaultNotPaused {
-        _registerPool(
-            pool,
-            tokens,
-            rateProviders,
-            pauseWindowEndTime,
-            pauseManager,
-            poolCallbacks,
-            liquidityManagement
-        );
-    }
-
-    /// @inheritdoc IVaultMain
     function isPoolRegistered(address pool) external view returns (bool) {
         return _isPoolRegistered(pool);
     }
@@ -695,106 +666,6 @@ contract Vault is IVaultMain, VaultStorage, Proxy, Authentication, ERC20MultiTok
     /// @inheritdoc IVaultMain
     function getPoolTokenRates(address pool) external view withRegisteredPool(pool) returns (uint256[] memory) {
         return _getPoolTokenRates(pool);
-    }
-
-    /// @dev Reverts unless `pool` corresponds to a registered Pool.
-    modifier withRegisteredPool(address pool) {
-        _ensureRegisteredPool(pool);
-        _;
-    }
-
-    /// @dev Reverts unless `pool` corresponds to a registered Pool.
-    function _ensureRegisteredPool(address pool) internal view {
-        if (!_isPoolRegistered(pool)) {
-            revert PoolNotRegistered(pool);
-        }
-    }
-
-    /**
-     * @dev The function will register the pool, setting its tokens with an initial balance of zero.
-     * The function also checks for valid token addresses and ensures that the pool and tokens aren't
-     * already registered.
-     *
-     * Emits a `PoolRegistered` event upon successful registration.
-     */
-    function _registerPool(
-        address pool,
-        IERC20[] memory tokens,
-        IRateProvider[] memory rateProviders,
-        uint256 pauseWindowEndTime,
-        address pauseManager,
-        PoolCallbacks memory callbackConfig,
-        LiquidityManagement memory liquidityManagement
-    ) internal {
-        // Ensure the pool isn't already registered
-        if (_isPoolRegistered(pool)) {
-            revert PoolAlreadyRegistered(pool);
-        }
-
-        uint256 numTokens = tokens.length;
-
-        if (numTokens < _MIN_TOKENS) {
-            revert MinTokens();
-        }
-        if (numTokens > _MAX_TOKENS) {
-            revert MaxTokens();
-        }
-
-        // Retrieve or create the pool's token balances mapping
-        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
-
-        uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            IERC20 token = tokens[i];
-
-            // Ensure that the token address is valid
-            if (token == IERC20(address(0))) {
-                revert InvalidToken();
-            }
-
-            // Register the token with an initial balance of zero.
-            // Note: EnumerableMaps require an explicit initial value when creating a key-value pair.
-            bool added = poolTokenBalances.set(token, 0);
-
-            // Ensure the token isn't already registered for the pool
-            if (!added) {
-                revert TokenAlreadyRegistered(token);
-            }
-
-            tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
-            _poolRateProviders[pool][token] = rateProviders[i];
-        }
-
-        // Store the pause manager. A zero address means default to the authorizer.
-        _poolPauseManagers[pool] = pauseManager;
-
-        // Store config and mark the pool as registered
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-
-        config.isPoolRegistered = true;
-        config.callbacks = callbackConfig;
-        config.liquidityManagement = liquidityManagement;
-        config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
-        config.pauseWindowEndTime = pauseWindowEndTime.toUint32();
-        _poolConfig[pool] = config.fromPoolConfig();
-
-        // Emit an event to log the pool registration (pass msg.sender as the factory argument)
-        emit PoolRegistered(
-            pool,
-            msg.sender,
-            tokens,
-            rateProviders,
-            pauseWindowEndTime,
-            pauseManager,
-            callbackConfig,
-            liquidityManagement
-        );
-    }
-
-    /// @dev See `isPoolRegistered`
-    function _isPoolRegistered(address pool) internal view returns (bool) {
-        return _poolConfig[pool].isPoolRegistered();
     }
 
     /// @dev See `isPoolInRecoveryMode`
@@ -1698,14 +1569,6 @@ contract Vault is IVaultMain, VaultStorage, Proxy, Authentication, ERC20MultiTok
     }
 
     /**
-     * @dev For gas efficiency, storage is only read before `_vaultBufferPeriodEndTime`. Once we're past that
-     * timestamp, the expression short-circuits false, and the Vault is permanently unpaused.
-     */
-    function _isVaultPaused() internal view returns (bool) {
-        return block.timestamp <= _vaultBufferPeriodEndTime && _vaultPaused;
-    }
-
-    /**
      * @dev The contract can only be paused until the end of the Pause Window, and
      * unpaused until the end of the Buffer Period.
      */
@@ -1734,13 +1597,6 @@ contract Vault is IVaultMain, VaultStorage, Proxy, Authentication, ERC20MultiTok
         _vaultPaused = pausing;
 
         emit VaultPausedStateChanged(pausing);
-    }
-
-    /// @dev Reverts if the Vault is paused.
-    function _ensureVaultNotPaused() internal view {
-        if (_isVaultPaused()) {
-            revert VaultPaused();
-        }
     }
 
     /*******************************************************************************

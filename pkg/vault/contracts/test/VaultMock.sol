@@ -75,7 +75,7 @@ contract VaultMock is Vault {
     function reentrantRegisterPool(address pool, IERC20[] memory tokens) external nonReentrant {
         IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
 
-        this.registerPool(
+        IVault(address(this)).registerPool(
             pool,
             tokens,
             rateProviders,
