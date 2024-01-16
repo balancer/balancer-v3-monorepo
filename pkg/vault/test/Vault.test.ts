@@ -16,7 +16,8 @@ import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20Tok
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
 import { RateProviderMock, VaultExtensionMock } from '../typechain-types';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
-import { PoolConfigStructOutput } from '../typechain-types/contracts/Vault';
+import { IVault } from '@balancer-labs/v3-solidity-utils/typechain-types';
+import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -82,8 +83,10 @@ describe('Vault', function () {
 
   describe('registration', () => {
     it('can register a pool', async () => {
-      expect(await vault.isPoolRegistered(poolA)).to.be.true;
-      expect(await vault.isPoolRegistered(poolB)).to.be.false;
+      const iVault: IVault = await TypesConverter.toIVault(vault);
+
+      expect(await iVault.isPoolRegistered(poolA)).to.be.true;
+      expect(await iVault.isPoolRegistered(poolB)).to.be.false;
 
       const [tokens, balances] = await vault.getPoolTokenInfo(poolA);
       expect(tokens).to.deep.equal(poolATokens);
