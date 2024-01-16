@@ -2,13 +2,18 @@
 
 pragma solidity ^0.8.4;
 
-import "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import {
+    TokenType,
+    TokenConfig,
+    LiquidityManagement,
+    PoolCallbacks
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
+import { BasePoolFactory } from "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
 
-import "./WeightedPool.sol";
+import { WeightedPool } from "./WeightedPool.sol";
 
 /**
  * @notice Weighted Pool factory for 80/20 pools.
@@ -16,6 +21,9 @@ import "./WeightedPool.sol";
 contract WeightedPool8020Factory is BasePoolFactory {
     uint256 private constant _EIGHTY = 8e17; // 80%
     uint256 private constant _TWENTY = 2e17; // 20%
+
+    /// @dev By definition, this factory can only create two-token pools.
+    error NotTwoTokens();
 
     constructor(
         IVault vault,
@@ -26,28 +34,21 @@ contract WeightedPool8020Factory is BasePoolFactory {
 
     /**
      * @notice Deploys a new `WeightedPool`.
+     * @dev It assumes the 80% weight token is first in the array.
      * @param name Name of the pool
      * @param symbol Symbol of the pool
-     * @param highWeightToken The 80% token
-     * @param lowWeightToken The 20% token
+     * @param tokenConfig The token configuration of the pool: must be two-token
      * @param salt Value passed to create3, used to create the address
      */
     function create(
         string memory name,
         string memory symbol,
-        IERC20 highWeightToken,
-        IERC20 lowWeightToken,
-        IRateProvider highWeightRateProvider,
-        IRateProvider lowWeightRateProvider,
+        TokenConfig[] memory tokenConfig,
         bytes32 salt
     ) external returns (address pool) {
-        IERC20[] memory tokens = new IERC20[](2);
-        tokens[0] = highWeightToken;
-        tokens[1] = lowWeightToken;
-
-        IRateProvider[] memory rateProviders = new IRateProvider[](2);
-        rateProviders[0] = highWeightRateProvider;
-        rateProviders[1] = lowWeightRateProvider;
+        if (tokenConfig.length != 2) {
+            revert NotTwoTokens();
+        }
 
         uint256[] memory weights = new uint256[](2);
         weights[0] = _EIGHTY;
@@ -55,7 +56,12 @@ contract WeightedPool8020Factory is BasePoolFactory {
 
         pool = _create(
             abi.encode(
-                WeightedPool.NewPoolParams({ name: name, symbol: symbol, tokens: tokens, normalizedWeights: weights }),
+                WeightedPool.NewPoolParams({
+                    name: name,
+                    symbol: symbol,
+                    tokens: _extractTokensFromTokenConfig(tokenConfig),
+                    normalizedWeights: weights
+                }),
                 getVault()
             ),
             salt
@@ -63,8 +69,7 @@ contract WeightedPool8020Factory is BasePoolFactory {
 
         getVault().registerPool(
             pool,
-            tokens,
-            rateProviders,
+            tokenConfig,
             getNewPoolPauseWindowEndTime(),
             address(0), // no pause manager
             PoolCallbacks({

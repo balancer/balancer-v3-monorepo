@@ -10,7 +10,7 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
-import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { TokenConfig, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -51,12 +51,15 @@ contract WeightedPoolTest is BaseVaultTest {
 
     function createPool() internal override returns (address) {
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
+        TokenConfig[] memory tokens = new TokenConfig[](2);
+        tokens[0].token = IERC20(dai);
+        tokens[1].token = IERC20(usdc);
+
         weightedPool = WeightedPool(
             factory.create(
                 "ERC20 Pool",
                 "ERC20POOL",
-                [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-                new IRateProvider[](2),
+                tokens,
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                 ZERO_BYTES32
             )
@@ -99,7 +102,7 @@ contract WeightedPoolTest is BaseVaultTest {
         assertEq(dai.balanceOf(address(vault)), DAI_AMOUNT);
 
         // Tokens are deposited to the pool
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], DAI_AMOUNT);
         assertEq(balances[1], USDC_AMOUNT);
 
@@ -123,7 +126,7 @@ contract WeightedPoolTest is BaseVaultTest {
         assertEq(dai.balanceOf(address(vault)), DAI_AMOUNT * 2);
 
         // Tokens are deposited to the pool
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], DAI_AMOUNT * 2);
         assertEq(balances[1], USDC_AMOUNT * 2);
 
@@ -166,7 +169,7 @@ contract WeightedPoolTest is BaseVaultTest {
         assertApproxEqAbs(dai.balanceOf(address(vault)), DAI_AMOUNT, DELTA, "DAI vault balance is invalid");
 
         // Tokens are deposited to the pool
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
         assertApproxEqAbs(balances[0], DAI_AMOUNT, DELTA, "USDC pool balance is invalid");
         assertApproxEqAbs(balances[1], USDC_AMOUNT, DELTA, "DAI pool balance is invalid");
 
@@ -201,7 +204,7 @@ contract WeightedPoolTest is BaseVaultTest {
         assertEq(dai.balanceOf(address(vault)), DAI_AMOUNT + DAI_AMOUNT_IN);
 
         // Tokens are deposited to the pool
-        (, uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], DAI_AMOUNT + DAI_AMOUNT_IN);
         assertEq(balances[1], USDC_AMOUNT - amountCalculated);
     }

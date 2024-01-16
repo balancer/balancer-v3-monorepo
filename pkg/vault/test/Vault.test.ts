@@ -1,9 +1,9 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { Contract } from 'ethers';
+import { Contract, EventLog } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH, currentTimestamp, fromNow } from '@balancer-labs/v3-helpers/src/time';
-import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
+import { PoolConfigStructOutput, VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
@@ -97,22 +97,41 @@ describe('Vault', function () {
     });
 
     it('registering a pool emits an event', async () => {
+      enum TOKEN_TYPE {
+        STANDARD = 0,
+        WITH_RATE,
+        ERC4626,
+      }
+
+      const tokenConfig = Array.from({ length: poolBTokens.length }, (_, i) => [
+        poolBTokens[i],
+        TOKEN_TYPE.STANDARD.toString(),
+        ZERO_ADDRESS,
+        false,
+      ]);
+
       const currentTime = await currentTimestamp();
       const pauseWindowEndTime = Number(currentTime) + PAUSE_WINDOW_DURATION;
-      const rateProviders = Array(poolBTokens.length).fill(ZERO_ADDRESS);
 
-      await expect(await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS))
-        .to.emit(vault, 'PoolRegistered')
-        .withArgs(
-          poolBAddress,
-          await vault.getPoolFactoryMock(),
-          poolBTokens,
-          rateProviders,
-          pauseWindowEndTime,
-          ANY_ADDRESS,
-          [false, false, false, false, false, false, false, false],
-          [true, true]
-        );
+      const expectedArgs = [
+        poolBAddress,
+        await vault.getPoolFactoryMock(),
+        tokenConfig,
+        pauseWindowEndTime.toString(),
+        ANY_ADDRESS,
+        [false, false, false, false, false, false, false, false],
+        [true, true],
+      ];
+
+      const tx = await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS);
+      const receipt = await tx.wait();
+
+      // There must be a better way...
+      const logs = receipt?.logs as Array<EventLog>;
+      const events = logs.filter((e) => 'eventName' in e && e.eventName === 'PoolRegistered');
+      const emittedArgs = events[0].args;
+
+      expect(emittedArgs.toString()).to.equal(expectedArgs.toString());
     });
 
     it('cannot register a pool twice', async () => {
@@ -220,7 +239,7 @@ describe('Vault', function () {
       });
 
       it('has rate providers', async () => {
-        const [, , , poolProviders] = await vault.getPoolTokenInfo(poolC);
+        const [, , , , poolProviders] = await vault.getPoolTokenInfo(poolC);
         const tokenRates = await vault.getPoolTokenRates(poolC);
 
         expect(poolProviders).to.deep.equal(rateProviders);
@@ -235,20 +254,6 @@ describe('Vault', function () {
 
         const tokenRates = await vault.getPoolTokenRates(poolC);
         expect(tokenRates).to.deep.equal(expectedRates);
-      });
-
-      it('rate providers support underlying tokens', async () => {
-        expect(await rateProvider.getUnderlyingToken()).to.eq(ZERO_ADDRESS);
-
-        await rateProvider.setUnderlyingToken(ANY_ADDRESS);
-        expect(await rateProvider.getUnderlyingToken()).to.eq(ANY_ADDRESS);
-      });
-
-      it('rate providers support exempt flags', async () => {
-        expect(await rateProvider.isExemptFromYieldProtocolFee()).be.false;
-
-        await rateProvider.setYieldExemptFlag(true);
-        expect(await rateProvider.isExemptFromYieldProtocolFee()).to.be.true;
       });
     });
 
