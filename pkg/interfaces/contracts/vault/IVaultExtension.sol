@@ -5,7 +5,7 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IRateProvider } from "./IRateProvider.sol";
-import { PoolCallbacks, LiquidityManagement } from "./VaultTypes.sol";
+import { LiquidityManagement, PoolCallbacks, TokenConfig } from "./VaultTypes.sol";
 
 interface IVaultExtension {
     /*******************************************************************************
@@ -27,8 +27,7 @@ interface IVaultExtension {
      * authorizer.
      *
      * @param factory The factory address associated with the pool being registered
-     * @param tokens An array of token addresses the pool will manage
-     * @param rateProviders An array of rate providers corresponding to the tokens (or zero for tokens without rates)
+     * @param tokenConfig An array of descriptors for the tokens the pool will manage
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param pauseManager Optional contract the Vault will allow to pause the pool
      * @param config Flags indicating which callbacks the pool supports
@@ -36,8 +35,7 @@ interface IVaultExtension {
      */
     function registerPool(
         address factory,
-        IERC20[] memory tokens,
-        IRateProvider[] memory rateProviders,
+        TokenConfig[] memory tokenConfig,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolCallbacks calldata config,

@@ -6,19 +6,13 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { IRateProvider } from "./IRateProvider.sol";
-import {
-    AddLiquidityKind,
-    AddLiquidityParams,
-    PoolConfig,
-    PoolCallbacks,
-    LiquidityManagement,
-    RemoveLiquidityKind,
-    RemoveLiquidityParams,
-    SwapKind,
-    SwapParams
-} from "./VaultTypes.sol";
+import "./VaultTypes.sol";
 
 interface IVaultMain {
+    /*******************************************************************************
+                        Pool Registration and Initialization
+    *******************************************************************************/
+
     /**
      * @notice A Pool was initialized by calling `initialize`.
      * @param pool The pool being initialized
@@ -81,13 +75,17 @@ interface IVaultMain {
     /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
      * @return tokens Tokens registered to the pool
+     * @return tokenTypes The types of all registered tokens
      * @return balancesRaw Corresponding raw balances of the tokens
      * @return scalingFactors Corresponding scalingFactors of the tokens
      * @return rateProviders Corresponding rateProviders of the tokens (or zero for tokens with no rates)
      */
     function getPoolTokenInfo(
         address pool
-    ) external view returns (IERC20[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
+    )
+        external
+        view
+        returns (IERC20[] memory, TokenType[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
 
     /**
      * @notice Retrieve the scaling factors from a pool's rate providers.

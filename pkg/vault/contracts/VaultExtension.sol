@@ -42,22 +42,13 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     /// @inheritdoc IVaultExtension
     function registerPool(
         address pool,
-        IERC20[] memory tokens,
-        IRateProvider[] memory rateProviders,
+        TokenConfig[] memory tokenConfig,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolCallbacks calldata poolCallbacks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused {
-        _registerPool(
-            pool,
-            tokens,
-            rateProviders,
-            pauseWindowEndTime,
-            pauseManager,
-            poolCallbacks,
-            liquidityManagement
-        );
+        _registerPool(pool, tokenConfig, pauseWindowEndTime, pauseManager, poolCallbacks, liquidityManagement);
     }
 
     /// @inheritdoc IVaultExtension
@@ -74,8 +65,7 @@ contract VaultExtension is IVaultExtension, VaultCommon {
      */
     function _registerPool(
         address pool,
-        IERC20[] memory tokens,
-        IRateProvider[] memory rateProviders,
+        TokenConfig[] memory tokenConfig,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolCallbacks memory callbackConfig,
@@ -86,7 +76,7 @@ contract VaultExtension is IVaultExtension, VaultCommon {
             revert PoolAlreadyRegistered(pool);
         }
 
-        uint256 numTokens = tokens.length;
+        uint256 numTokens = tokenConfig.length;
 
         if (numTokens < _MIN_TOKENS) {
             revert MinTokens();
@@ -95,13 +85,13 @@ contract VaultExtension is IVaultExtension, VaultCommon {
             revert MaxTokens();
         }
 
-        // Retrieve or create the pool's token balances mapping
+        // Retrieve or create the pool's token balances mapping.
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
-
         uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            IERC20 token = tokens[i];
+            TokenConfig memory tokenData = tokenConfig[i];
+            IERC20 token = tokenData.token;
 
             // Ensure that the token address is valid
             if (token == IERC20(address(0))) {
@@ -109,16 +99,31 @@ contract VaultExtension is IVaultExtension, VaultCommon {
             }
 
             // Register the token with an initial balance of zero.
+            // Ensure the token isn't already registered for the pool.
             // Note: EnumerableMaps require an explicit initial value when creating a key-value pair.
-            bool added = poolTokenBalances.set(token, 0);
-
-            // Ensure the token isn't already registered for the pool
-            if (!added) {
+            if (poolTokenBalances.set(token, 0) == false) {
                 revert TokenAlreadyRegistered(token);
             }
 
+            bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
+            _poolTokenConfig[pool][token] = tokenData;
+
+            if (tokenData.tokenType == TokenType.STANDARD) {
+                if (hasRateProvider) {
+                    revert InvalidTokenConfiguration();
+                }
+            } else if (tokenData.tokenType == TokenType.WITH_RATE) {
+                if (hasRateProvider == false) {
+                    revert InvalidTokenConfiguration();
+                }
+            } else if (tokenData.tokenType == TokenType.ERC4626) {
+                // TODO implement in later phases.
+                revert InvalidTokenConfiguration();
+            } else {
+                revert InvalidTokenType();
+            }
+
             tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
-            _poolRateProviders[pool][token] = rateProviders[i];
         }
 
         // Store the pause manager. A zero address means default to the authorizer.
@@ -138,8 +143,7 @@ contract VaultExtension is IVaultExtension, VaultCommon {
         emit PoolRegistered(
             pool,
             msg.sender,
-            tokens,
-            rateProviders,
+            tokenConfig,
             pauseWindowEndTime,
             pauseManager,
             callbackConfig,
