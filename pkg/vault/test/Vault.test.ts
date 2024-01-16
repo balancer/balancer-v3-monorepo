@@ -14,7 +14,7 @@ import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
-import { RateProviderMock } from '../typechain-types';
+import { RateProviderMock, VaultExtensionMock } from '../typechain-types';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { PoolConfigStructOutput } from '../typechain-types/contracts/Vault';
 
@@ -23,7 +23,7 @@ describe('Vault', function () {
   const BUFFER_PERIOD_DURATION = MONTH;
 
   let vault: VaultMock;
-  let vaultExtension: VaultMockExtension;
+  let vaultExtension: VaultExtensionMock;
   let poolA: PoolMock;
   let poolB: PoolMock;
   let tokenA: ERC20TestToken;
@@ -49,7 +49,10 @@ describe('Vault', function () {
     const { vault: vaultMock, tokens, pools } = await setupEnvironment(PAUSE_WINDOW_DURATION);
 
     vault = vaultMock;
-    vaultExtension = await deployedAt('VaultExtensionMock', await vault.getVaultExtension());
+    vaultExtension = (await deployedAt(
+      'VaultExtensionMock',
+      await vault.getVaultExtension()
+    )) as unknown as VaultExtensionMock;
 
     tokenA = tokens[0];
     tokenB = tokens[1];
