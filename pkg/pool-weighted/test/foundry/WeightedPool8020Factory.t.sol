@@ -5,6 +5,7 @@ pragma solidity ^0.8.4;
 import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { TokenConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
@@ -42,15 +43,16 @@ contract WeightedPool8020FactoryTest is Test {
 
     function testPoolCreation(bytes32 salt) public {
         vm.assume(salt > 0);
+        
+        TokenConfig[] memory tokens = new TokenConfig[](2);
+        tokens[0].token = tokenA;
+        tokens[1].token = tokenB;
 
         WeightedPool pool = WeightedPool(
             factory.create(
                 "Balancer 80/20 Pool",
                 "Pool8020",
-                tokenA,
-                tokenB,
-                IRateProvider(address(0)),
-                IRateProvider(address(0)),
+                tokens,
                 bytes32(0)
             )
         );
@@ -61,17 +63,47 @@ contract WeightedPool8020FactoryTest is Test {
         assertEq(pool.symbol(), "Pool8020");
     }
 
+    function testInvalidPoolMinTokens() public {
+        TokenConfig[] memory tokens = new TokenConfig[](1);
+        tokens[0].token = tokenA;
+
+        vm.expectRevert(WeightedPool8020Factory.NotTwoTokens.selector);
+        factory.create(
+                "Balancer 80/20 Pool",
+                "Pool8020",
+                tokens,
+                bytes32(0)
+            );
+    }
+
+    function testInvalidPoolMaxTokens() public {
+        TokenConfig[] memory tokens = new TokenConfig[](3);
+        tokens[0].token = tokenA;
+        tokens[1].token = tokenB;
+        tokens[2].token = new ERC20TestToken("Token C", "TKNC", 18);
+
+        vm.expectRevert(WeightedPool8020Factory.NotTwoTokens.selector);
+        factory.create(
+                "Balancer 80/20 Pool",
+                "Pool8020",
+                tokens,
+                bytes32(0)
+            );
+    }
+
     function testPoolSalt(bytes32 salt) public {
         vm.assume(salt > 0);
+
+        TokenConfig[] memory tokens = new TokenConfig[](2);
+        tokens[0].token = tokenA;
+        tokens[1].token = tokenB;
+        tokens[0].rateProvider = rateProvider;
 
         WeightedPool pool = WeightedPool(
             factory.create(
                 "Balancer 80/20 Pool",
                 "Pool8020",
-                tokenA,
-                tokenB,
-                IRateProvider(address(rateProvider)),
-                IRateProvider(address(0)),
+                tokens,
                 bytes32(0)
             )
         );
@@ -81,10 +113,7 @@ contract WeightedPool8020FactoryTest is Test {
             factory.create(
                 "Balancer 80/20 Pool",
                 "Pool8020",
-                tokenA,
-                tokenB,
-                IRateProvider(address(rateProvider)),
-                IRateProvider(address(0)),
+                tokens,
                 salt
             )
         );
@@ -97,16 +126,18 @@ contract WeightedPool8020FactoryTest is Test {
         vm.assume(salt > 0);
         address expectedPoolAddress = factory.getDeploymentAddress(salt);
 
+        TokenConfig[] memory tokens = new TokenConfig[](2);
+        tokens[0].token = tokenA;
+        tokens[1].token = tokenB;
+        tokens[0].rateProvider = rateProvider;
+
         // Different sender should change the address of the pool, given the same salt value
         vm.prank(alice);
         WeightedPool pool = WeightedPool(
             factory.create(
                 "Balancer 80/20 Pool",
                 "Pool8020",
-                tokenA,
-                tokenB,
-                IRateProvider(address(rateProvider)),
-                IRateProvider(address(0)),
+                tokens,
                 salt
             )
         );
@@ -120,15 +151,17 @@ contract WeightedPool8020FactoryTest is Test {
     function testPoolCrossChainProtection(bytes32 salt, uint16 chainId) public {
         vm.assume(chainId > 1);
 
+        TokenConfig[] memory tokens = new TokenConfig[](2);
+        tokens[0].token = tokenA;
+        tokens[1].token = tokenB;
+        tokens[0].rateProvider = rateProvider;
+
         vm.prank(alice);
         WeightedPool poolMainnet = WeightedPool(
             factory.create(
                 "Balancer 80/20 Pool",
                 "Pool8020",
-                tokenA,
-                tokenB,
-                IRateProvider(address(rateProvider)),
-                IRateProvider(address(0)),
+                tokens,
                 salt
             )
         );
@@ -140,10 +173,7 @@ contract WeightedPool8020FactoryTest is Test {
             factory.create(
                 "Balancer 80/20 Pool",
                 "Pool8020",
-                tokenA,
-                tokenB,
-                IRateProvider(address(rateProvider)),
-                IRateProvider(address(0)),
+                tokens,
                 salt
             )
         );

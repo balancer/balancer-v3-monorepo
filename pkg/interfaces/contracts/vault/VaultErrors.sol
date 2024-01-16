@@ -47,6 +47,12 @@ error MaxTokens();
 /// @dev Invalid tokens (e.g., zero) cannot be registered.
 error InvalidToken();
 
+/// @dev The token type given in a TokenConfig during pool registration is invalid.
+error InvalidTokenType();
+
+/// @dev The data in a TokenConfig struct is inconsistent or unsupported.
+error InvalidTokenConfiguration();
+
 /**
  * @dev The token list passed into an operation does not match the pool tokens in the pool.
  * @param pool Address of the pool
