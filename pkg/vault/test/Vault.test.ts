@@ -5,7 +5,6 @@ import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH, currentTimestamp, fromNow } from '@balancer-labs/v3-helpers/src/time';
 import { PoolConfigStructOutput, VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
-import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
@@ -15,7 +14,8 @@ import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
-import { RateProviderMock, VaultExtensionMock } from '../typechain-types';
+import { RateProviderMock } from '../typechain-types';
+import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -186,19 +186,12 @@ describe('Vault', function () {
   });
 
   describe('initialization', () => {
-    let authorizer: BasicAuthorizerMock;
     let timedVault: VaultMock;
 
     sharedBeforeEach('redeploy Vault', async () => {
-      authorizer = await deploy('v3-solidity-utils/BasicAuthorizerMock');
-      const vaultExtension: VaultExtensionMock = await deploy('VaultExtensionMock');
-      timedVault = await deploy('VaultMock', {
-        args: [
-          await vaultExtension.getAddress(),
-          authorizer.getAddress(),
-          PAUSE_WINDOW_DURATION,
-          BUFFER_PERIOD_DURATION,
-        ],
+      timedVault = await VaultDeployer.deployMock({
+        pauseWindowDuration: PAUSE_WINDOW_DURATION,
+        bufferPeriodDuration: BUFFER_PERIOD_DURATION,
       });
     });
 
