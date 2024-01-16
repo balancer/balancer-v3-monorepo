@@ -1130,8 +1130,8 @@ contract Vault is IVaultMain, VaultStorage, Proxy, Authentication, ERC20MultiTok
         poolData.poolConfig.isPoolInitialized = true;
         _poolConfig[pool] = poolData.poolConfig.fromPoolConfig();
 
-        // Finally, compute the initial amount of BPT to mint, which is simply the invariant after adding exactAmountsIn.
-        // Doing this at the end also means we do not need to downscale exact amounts in.
+        // Finally, compute the initial amount of BPT to mint, which is simply the invariant after adding
+        // exactAmountsIn. Doing this at the end also means we do not need to downscale exact amounts in.
         // Amounts are entering pool math, so round down. A lower invariant after the join means less bptOut,
         // favoring the pool.
         exactAmountsIn.toScaled18ApplyRateRoundDownArray(poolData.decimalScalingFactors, poolData.tokenRates);
