@@ -1,10 +1,10 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { deploy } from '@balancer-labs/v3-helpers/src/contract';
+import { Contract } from 'ethers';
+import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
-import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
@@ -12,7 +12,7 @@ import { WrappedTokenMock } from '../typechain-types/contracts/test/WrappedToken
 import { FP_ONE, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { PoolCallbacksStruct, TokenConfigStruct, LiquidityManagementStruct } from '../typechain-types/contracts/Vault';
-import { VaultExtensionMock } from '../typechain-types/contracts/test/VaultExtensionMock';
+import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 
 describe('Vault - Wrapped Token Buffers', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -25,7 +25,7 @@ describe('Vault - Wrapped Token Buffers', function () {
   }
 
   let vault: VaultMock;
-  let authorizer: BasicAuthorizerMock;
+  let authorizer: Contract;
   let baseToken: ERC20TestToken;
   let wrappedToken: WrappedTokenMock;
 
@@ -38,12 +38,12 @@ describe('Vault - Wrapped Token Buffers', function () {
   });
 
   sharedBeforeEach('deploy vault', async function () {
-    authorizer = await deploy('v3-solidity-utils/BasicAuthorizerMock');
-    const vaultExtension: VaultExtensionMock = await deploy('VaultExtensionMock');
-    vault = await deploy('VaultMock', {
-      args: [vaultExtension.getAddress(), authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
+    vault = await VaultDeployer.deployMock({
+      pauseWindowDuration: PAUSE_WINDOW_DURATION,
+      bufferPeriodDuration: BUFFER_PERIOD_DURATION,
     });
-
+    const authorizerAddress = await vault.getAuthorizer();
+    authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
     baseToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Standard', 'BASE', 6] });
     wrappedToken = await deploy('WrappedTokenMock', { args: [baseToken, 'ERC4626', 'WRAPPED', 8] });
 
