@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { Contract, EventLog } from 'ethers';
+import { Contract } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH, currentTimestamp, fromNow } from '@balancer-labs/v3-helpers/src/time';
 import { PoolConfigStructOutput, VaultMock } from '../typechain-types/contracts/test/VaultMock';
