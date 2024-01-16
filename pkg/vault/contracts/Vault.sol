@@ -2101,6 +2101,11 @@ contract Vault is IVaultMain, VaultStorage, Proxy, Authentication, ERC20MultiTok
         _fallback();
     }
 
+    /// @inheritdoc IVaultMain
+    function getVaultExtension() external view returns (address) {
+        return _implementation();
+    }
+
     /**
      * @inheritdoc Proxy
      * @dev Returns Vault Extension, where fallback requests are forwarded.

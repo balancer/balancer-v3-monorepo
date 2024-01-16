@@ -747,4 +747,13 @@ interface IVaultMain {
      * deployment. Note that the Pool will automatically unpause after the Buffer Period expires.
      */
     function unpausePool(address pool) external;
+
+    /*******************************************************************************
+                                     Miscellaneous
+    *******************************************************************************/
+
+    /**
+     * @notice Returns the Vault Extension address.
+     */
+    function getVaultExtension() external view returns (address);
 }
