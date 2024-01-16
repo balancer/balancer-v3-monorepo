@@ -43,4 +43,11 @@ interface IVaultExtension {
         PoolCallbacks calldata config,
         LiquidityManagement calldata liquidityManagement
     ) external;
+
+    /**
+     * @notice Checks whether a pool is registered.
+     * @param pool Address of the pool to check
+     * @return True if the pool is registered, false otherwise
+     */
+    function isPoolRegistered(address pool) external view returns (bool);
 }

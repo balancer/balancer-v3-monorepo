@@ -60,6 +60,11 @@ contract VaultExtension is IVaultExtension, VaultCommon {
         );
     }
 
+    /// @inheritdoc IVaultExtension
+    function isPoolRegistered(address pool) external view returns (bool) {
+        return _isPoolRegistered(pool);
+    }
+
     /**
      * @dev The function will register the pool, setting its tokens with an initial balance of zero.
      * The function also checks for valid token addresses and ensures that the pool and tokens aren't

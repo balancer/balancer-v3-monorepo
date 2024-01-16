@@ -603,11 +603,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
     *******************************************************************************/
 
     /// @inheritdoc IVaultMain
-    function isPoolRegistered(address pool) external view returns (bool) {
-        return _isPoolRegistered(pool);
-    }
-
-    /// @inheritdoc IVaultMain
     function isPoolInitialized(address pool) external view returns (bool) {
         return _isPoolInitialized(pool);
     }

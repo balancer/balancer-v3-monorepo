@@ -54,13 +54,6 @@ interface IVaultMain {
     ) external returns (uint256 bptAmountOut);
 
     /**
-     * @notice Checks whether a pool is registered.
-     * @param pool Address of the pool to check
-     * @return True if the pool is registered, false otherwise
-     */
-    function isPoolRegistered(address pool) external view returns (bool);
-
-    /**
      * @notice Checks whether a pool is initialized.
      * @dev An initialized pool can be considered registered as well.
      * @param pool Address of the pool to check
