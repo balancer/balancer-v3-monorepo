@@ -1,10 +1,8 @@
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { ethers, BigNumberish } from 'ethers';
+import { BigNumberish } from 'ethers';
+import { ethers } from 'hardhat';
 
-import { FP_100_PCT } from '../../numbers';
 import { ZERO_ADDRESS } from '../../constants';
 import { Account } from './types';
-import { RawVaultDeployment, VaultDeployment } from '../vault/types';
 import {
   RawTokenApproval,
   RawTokenMint,
@@ -14,6 +12,8 @@ import {
   TokenDeployment,
   RawTokenDeployment,
 } from '../tokens/types';
+import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
+import { VaultDeploymentInputParams, VaultDeploymentParams } from '../vault/types';
 
 export function computeDecimalsFromIndex(i: number): number {
   // Produces repeating series (0..18)
@@ -21,16 +21,12 @@ export function computeDecimalsFromIndex(i: number): number {
 }
 
 export default {
-  toVaultDeployment(params: RawVaultDeployment): VaultDeployment {
-    let { mocked, admin, nextAdmin, pauseWindowDuration, bufferPeriodDuration, maxYieldValue, maxAUMValue } = params;
-    if (!mocked) mocked = false;
-    if (!admin) admin = params.from;
-    if (!nextAdmin) nextAdmin = ZERO_ADDRESS;
+  async toVaultDeployment(params: VaultDeploymentInputParams): Promise<VaultDeploymentParams> {
+    let { admin, pauseWindowDuration, bufferPeriodDuration } = params;
+    if (!admin) admin = (await ethers.getSigners())[0];
     if (!pauseWindowDuration) pauseWindowDuration = 0;
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
-    if (!maxYieldValue) maxYieldValue = FP_100_PCT;
-    if (!maxAUMValue) maxAUMValue = FP_100_PCT;
-    return { mocked, admin, nextAdmin, pauseWindowDuration, bufferPeriodDuration, maxYieldValue, maxAUMValue };
+    return { admin, pauseWindowDuration, bufferPeriodDuration };
   },
 
   /***

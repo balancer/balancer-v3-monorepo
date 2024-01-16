@@ -1,24 +1,21 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
-import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
-import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { Router } from '../typechain-types/contracts/Router';
 import { ERC20PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/ERC20PoolMock';
-import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { VoidSigner } from 'ethers';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { fp } from '@balancer-labs/v3-helpers/src/numbers';
-import { VaultExtensionMock } from '../typechain-types/contracts/test/VaultExtensionMock';
+import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
+import { Vault } from '@balancer-labs/v3-vault/typechain-types';
 
 describe('Queries', function () {
-  let vault: VaultMock;
+  let vault: Vault;
   let router: Router;
   let pool: ERC20PoolMock;
-  let authorizer: BasicAuthorizerMock;
   let DAI: ERC20TestToken;
   let USDC: ERC20TestToken;
   let zero: VoidSigner;
@@ -35,11 +32,7 @@ describe('Queries', function () {
   });
 
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
-    authorizer = await deploy('v3-solidity-utils/BasicAuthorizerMock');
-    const vaultExtension: VaultExtensionMock = await deploy('VaultExtensionMock');
-    vault = await deploy('VaultMock', {
-      args: [await vaultExtension.getAddress(), authorizer.getAddress(), MONTH * 3, MONTH],
-    });
+    vault = await VaultDeployer.deploy();
     const vaultAddress = await vault.getAddress();
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
     router = await deploy('Router', { args: [vaultAddress, WETH] });

@@ -21,6 +21,8 @@ import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.s
 import { Router } from "../../../contracts/Router.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 
+import { VaultMockDeployer } from "./VaultMockDeployer.sol";
+
 abstract contract BaseVaultTest is BaseTest {
     using ArrayHelpers for *;
 
@@ -55,10 +57,8 @@ abstract contract BaseVaultTest is BaseTest {
     function setUp() public virtual override {
         BaseTest.setUp();
 
-        authorizer = new BasicAuthorizerMock();
-
-        vaultExtension = new VaultExtensionMock();
-        vault = new VaultMock(vaultExtension, authorizer, 30 days, 90 days);
+        vault = VaultMockDeployer.deploy();
+        authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
         router = new Router(IVault(address(vault)), weth);
         pool = createPool();
 

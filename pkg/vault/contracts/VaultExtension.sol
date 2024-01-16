@@ -2,7 +2,11 @@
 
 pragma solidity ^0.8.4;
 
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import {
+    SingletonAuthentication
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import { VaultStorage } from "./VaultStorage.sol";
 
 /**
@@ -15,6 +19,6 @@ import { VaultStorage } from "./VaultStorage.sol";
  *
  * The storage of this contract is in practice unused.
  */
-contract VaultExtension is IVaultExtension, VaultStorage {
-
+contract VaultExtension is IVaultExtension, VaultStorage, SingletonAuthentication {
+    constructor(IVault vault) SingletonAuthentication(vault) {}
 }
