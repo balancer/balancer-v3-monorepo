@@ -69,6 +69,7 @@ __metadata:
     chai: "npm:^4.3.7"
     ds-test: "https://github.com/dapphub/ds-test#e282159d5170298eb2455a6c05280ab5a73a4ef0"
     ethers: "npm:^6.5.1"
+    forge-gas-snapshot: "https://github.com/ylv-io/forge-gas-snapshot"
     forge-std: "https://github.com/foundry-rs/forge-std.git#v1.7.1"
     hardhat-gas-reporter: "npm:^1.0.9"
     hardhat-ignore-warnings: "npm:^0.2.4"
@@ -3865,6 +3866,13 @@ __metadata:
   version: 0.6.1
   resolution: "forever-agent@npm:0.6.1"
   checksum: b426cf45f0bdea79970a4320cb550b84d0bcd0530d544e0424456f44272a19641a000ea921f8e58dba5511b71f94d95c80692e3d13ce5f0b766f18426430efd5
+  languageName: node
+  linkType: hard
+
+"forge-gas-snapshot@https://github.com/ylv-io/forge-gas-snapshot":
+  version: 0.1.1
+  resolution: "forge-gas-snapshot@https://github.com/ylv-io/forge-gas-snapshot.git#commit=6510bea46378bddef9ccf9e582ab198a21e3a36c"
+  checksum: a726ddec47928e687ced4f77aae400e3e5644e6b9ca99936294cc4bcbdb8e1f398717199b09128371a11b79566416c8fa2b01a42220f194cd9b52a12b77effb7
   languageName: node
   linkType: hard
 

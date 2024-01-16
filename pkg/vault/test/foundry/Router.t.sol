@@ -3,6 +3,7 @@
 pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
+import { GasSnapshot } from "forge-gas-snapshot/GasSnapshot.sol";
 
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
@@ -26,7 +27,9 @@ import { RouterMock } from "../../contracts/test/RouterMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 import { VaultExtensionMock } from "../../contracts/test/VaultExtensionMock.sol";
 
-contract RouterTest is Test {
+import { VaultMockDeployer } from "./utils/VaultMockDeployer.sol";
+
+contract RouterTest is Test, GasSnapshot {
     using ArrayHelpers for *;
 
     VaultMock vault;
@@ -50,9 +53,8 @@ contract RouterTest is Test {
     uint256 constant BPT_AMOUNT_OUT = 1e18;
 
     function setUp() public {
-        authorizer = new BasicAuthorizerMock();
-        vaultExtension = new VaultExtensionMock();
-        vault = new VaultMock(vaultExtension, authorizer, 30 days, 90 days);
+        vault = VaultMockDeployer.deploy();
+        authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
         WETH = new WETHTestToken();
         router = new Router(IVault(address(vault)), WETH);
         routerMock = new RouterMock(IVault(address(vault)), WETH);
@@ -312,6 +314,7 @@ contract RouterTest is Test {
         require(WETH.balanceOf(alice) == ETH_AMOUNT_IN);
         require(wethPool.balanceOf(alice) == 0);
 
+        snapStart("routerAddLiquidityWETH");
         router.addLiquidityCustom(
             address(wethPool),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
@@ -319,6 +322,7 @@ contract RouterTest is Test {
             wethIsEth,
             bytes("")
         );
+        snapEnd();
 
         // WETH was deposited, pool tokens were minted to Alice.
         assertEq(WETH.balanceOf(alice), 0);
@@ -355,6 +359,7 @@ contract RouterTest is Test {
         require(aliceNativeBalanceBefore >= ETH_AMOUNT_IN);
         require(wethPool.balanceOf(alice) == 0);
 
+        snapStart("routerAddLiquidityNative");
         router.addLiquidityCustom{ value: ETH_AMOUNT_IN }(
             address(wethPool),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
@@ -362,6 +367,7 @@ contract RouterTest is Test {
             wethIsEth,
             bytes("")
         );
+        snapEnd();
 
         // WETH was deposited, pool tokens were minted to Alice.
         assertEq(address(alice).balance, aliceNativeBalanceBefore - ETH_AMOUNT_IN);
@@ -412,6 +418,7 @@ contract RouterTest is Test {
         require(WETH.balanceOf(alice) == 0);
 
         wethIsEth = false;
+        snapStart("routerRemoveLiquidityWETH");
         router.removeLiquidityCustom(
             address(wethPool),
             exactBptAmount,
@@ -419,6 +426,7 @@ contract RouterTest is Test {
             wethIsEth,
             ""
         );
+        snapEnd();
 
         // Liquidity position was removed, Alice gets WETH back
         assertGt(WETH.balanceOf(alice), 0);
@@ -445,6 +453,7 @@ contract RouterTest is Test {
         require(wethPool.balanceOf(alice) == exactBptAmount);
         require(WETH.balanceOf(alice) == 0);
 
+        snapStart("routerRemoveLiquidityNative");
         router.removeLiquidityCustom(
             address(wethPool),
             exactBptAmount,
@@ -452,6 +461,7 @@ contract RouterTest is Test {
             wethIsEth,
             ""
         );
+        snapEnd();
 
         // Liquidity position was removed, Alice gets ETH back
         assertEq(WETH.balanceOf(alice), 0);
@@ -468,6 +478,7 @@ contract RouterTest is Test {
         uint256 daiBalanceBefore = DAI.balanceOf(alice);
         bool wethIsEth = false;
 
+        snapStart("routerSwapExactInWETH");
         uint256 outputTokenAmount = router.swapSingleTokenExactIn(
             address(wethPool),
             WETH,
@@ -478,6 +489,7 @@ contract RouterTest is Test {
             wethIsEth,
             ""
         );
+        snapEnd();
 
         assertEq(WETH.balanceOf(alice), 0);
         assertEq(DAI.balanceOf(alice), daiBalanceBefore + outputTokenAmount);
@@ -517,6 +529,7 @@ contract RouterTest is Test {
         uint256 daiBalanceBefore = DAI.balanceOf(alice);
         bool wethIsEth = true;
 
+        snapStart("routerSwapExactInNative");
         router.swapSingleTokenExactIn{ value: ETH_AMOUNT_IN }(
             address(wethPool),
             WETH,
@@ -527,6 +540,7 @@ contract RouterTest is Test {
             wethIsEth,
             ""
         );
+        snapEnd();
 
         assertEq(WETH.balanceOf(alice), 0);
         assertEq(DAI.balanceOf(alice), daiBalanceBefore + ETH_AMOUNT_IN);
