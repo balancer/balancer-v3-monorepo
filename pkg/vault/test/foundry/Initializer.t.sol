@@ -21,6 +21,8 @@ import { Router } from "../../contracts/Router.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 import { VaultExtensionMock } from "../../contracts/test/VaultExtensionMock.sol";
 
+import { VaultMockDeployer } from "./utils/VaultMockDeployer.sol";
+
 contract InitializerTest is Test {
     using ArrayHelpers for *;
 
@@ -41,9 +43,7 @@ contract InitializerTest is Test {
     uint256 constant DEFAULT_AMOUNT_ROUND_DOWN = DEFAULT_AMOUNT - 1;
 
     function setUp() public {
-        authorizer = new BasicAuthorizerMock();
-        vaultExtension = new VaultExtensionMock();
-        vault = new VaultMock(vaultExtension, authorizer, 30 days, 90 days);
+        vault = VaultMockDeployer.deploy();
         router = new Router(IVault(address(vault)), new WETHTestToken());
         USDC = new ERC20TestToken("USDC", "USDC", 18);
         DAI = new ERC20TestToken("DAI", "DAI", 18);
