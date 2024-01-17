@@ -166,7 +166,7 @@ contract RouterTest is BaseVaultTest {
         checkPreConditions();
 
         vm.prank(alice);
-        uint256 bptAmountOut = router.initialize(
+        bptAmountOut = router.initialize(
             address(wethPoolNoInit),
             [address(weth), address(dai)].toMemoryArray().asIERC20(),
             [uint256(ethAmountIn), uint256(daiAmountIn)].toMemoryArray(),
@@ -203,7 +203,7 @@ contract RouterTest is BaseVaultTest {
 
         bool wethIsEth = true;
         vm.startPrank(alice);
-        uint256 bptAmountOut = router.initialize{ value: ethAmountIn }(
+        bptAmountOut = router.initialize{ value: ethAmountIn }(
             address(wethPoolNoInit),
             [address(weth), address(dai)].toMemoryArray().asIERC20(),
             [uint256(ethAmountIn), uint256(daiAmountIn)].toMemoryArray(),
@@ -228,7 +228,7 @@ contract RouterTest is BaseVaultTest {
         require(wethPool.balanceOf(alice) == 0);
 
         bool wethIsEth = true;
-        uint256 bptAmountOut = router.initialize{ value: initExcessEth }(
+        bptAmountOut = router.initialize{ value: initExcessEth }(
             address(wethPoolNoInit),
             [address(weth), address(dai)].toMemoryArray().asIERC20(),
             [uint256(ethAmountIn), uint256(daiAmountIn)].toMemoryArray(),
@@ -527,7 +527,7 @@ contract RouterTest is BaseVaultTest {
         router.getSingleInputArray(address(pool), weth, daiAmountIn);
     }
 
-    function checkPreConditions() internal {
+    function checkPreConditions() internal view {
         require(weth.balanceOf(alice) == defaultBalance, "Wrong WETH balance");
         require(alice.balance == defaultBalance, "Wrong WETH balance");
         require(wethPool.balanceOf(alice) == 0, "Wrong weth pool balance");
