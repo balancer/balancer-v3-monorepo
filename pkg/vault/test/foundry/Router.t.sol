@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 import { GasSnapshot } from "forge-gas-snapshot/GasSnapshot.sol";
 
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -23,27 +24,15 @@ import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/h
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Router } from "../../contracts/Router.sol";
-import { RouterMock } from "../../contracts/test/RouterMock.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 import { VaultExtensionMock } from "../../contracts/test/VaultExtensionMock.sol";
 
 import { VaultMockDeployer } from "./utils/VaultMockDeployer.sol";
 
-contract RouterTest is Test, GasSnapshot {
-    using ArrayHelpers for *;
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-    VaultMock vault;
-    VaultExtensionMock vaultExtension;
-    IRouter router;
-    RouterMock routerMock;
-    BasicAuthorizerMock authorizer;
-    PoolMock pool;
-    PoolMock wethPool;
-    ERC20TestToken USDC;
-    ERC20TestToken DAI;
-    WETHTestToken WETH;
-    address alice = vm.addr(1);
-    address bob = vm.addr(2);
+contract RouterTest is BaseVaultTest {
+    using ArrayHelpers for *;
 
     uint256 constant USDC_AMOUNT_IN = 1e3 * 1e6;
     uint256 constant DAI_AMOUNT_IN = 1e3 * 1e18;
@@ -52,94 +41,78 @@ contract RouterTest is Test, GasSnapshot {
     uint256 constant INIT_BPT = 10e18;
     uint256 constant BPT_AMOUNT_OUT = 1e18;
 
-    function setUp() public {
-        vault = VaultMockDeployer.deploy();
-        authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
-        WETH = new WETHTestToken();
-        router = new Router(IVault(address(vault)), WETH);
-        routerMock = new RouterMock(IVault(address(vault)), WETH);
-        USDC = new ERC20TestToken("USDC", "USDC", 6);
-        DAI = new ERC20TestToken("DAI", "DAI", 18);
-        IRateProvider[] memory rateProviders = new IRateProvider[](2);
+    PoolMock internal wethPool;
+    PoolMock internal wethPoolNoInit;
 
-        pool = new PoolMock(
+    function setUp() public virtual override {
+        BaseVaultTest.setUp();
+    }
+
+    function createPool() internal override returns (address) {
+        IRateProvider[] memory rateProviders = new IRateProvider[](2);
+        PoolMock newPool = new PoolMock(
             IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
             rateProviders,
             true,
             365 days,
             address(0)
         );
+        vm.label(address(newPool), "pool");
+
         wethPool = new PoolMock(
             IVault(address(vault)),
-            "ERC20 WETH Pool",
+            "ERC20 weth Pool",
             "ERC20POOL",
-            [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
+            [address(weth), address(dai)].toMemoryArray().asIERC20(),
             rateProviders,
             true,
             365 days,
             address(0)
         );
+        vm.label(address(wethPool), "wethPool");
 
-        USDC.mint(bob, USDC_AMOUNT_IN);
-        DAI.mint(bob, DAI_AMOUNT_IN);
-        vm.deal(bob, ETH_AMOUNT_IN);
+        wethPoolNoInit = new PoolMock(
+            IVault(address(vault)),
+            "ERC20 weth Pool",
+            "ERC20POOL",
+            [address(weth), address(dai)].toMemoryArray().asIERC20(),
+            rateProviders,
+            true,
+            365 days,
+            address(0)
+        );
+        vm.label(address(wethPoolNoInit), "wethPoolNoInit");
 
-        USDC.mint(alice, USDC_AMOUNT_IN);
-        DAI.mint(alice, DAI_AMOUNT_IN);
-        vm.deal(alice, ETH_AMOUNT_IN);
+        return address(newPool);
+    }
 
-        vm.startPrank(bob);
+    function initPool() internal override {
+        (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(address(pool));
+        vm.prank(lp);
+        router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
 
-        USDC.approve(address(vault), type(uint256).max);
-        DAI.approve(address(vault), type(uint256).max);
-        WETH.approve(address(vault), type(uint256).max);
-
-        vm.stopPrank();
-
-        vm.startPrank(alice);
-
-        USDC.approve(address(vault), type(uint256).max);
-        DAI.approve(address(vault), type(uint256).max);
-        WETH.approve(address(vault), type(uint256).max);
-
-        vm.stopPrank();
-
-        vm.label(alice, "alice");
-        vm.label(bob, "bob");
-        vm.label(address(USDC), "USDC");
-        vm.label(address(DAI), "DAI");
+        vm.prank(lp);
+        bool wethIsEth = true;
+        router.initialize{ value: ETH_AMOUNT_IN }(
+            address(wethPool),
+            [address(weth), address(dai)].toMemoryArray().asIERC20(),
+            [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
+            INIT_BPT,
+            wethIsEth,
+            bytes("")
+        );
     }
 
     function testQuerySwap() public {
-        vm.prank(alice);
-        router.initialize(
-            address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            INIT_BPT,
-            false,
-            bytes("")
-        );
-
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(EVMCallModeHelpers.NotStaticCall.selector));
-        router.querySwapExactIn(address(pool), USDC, DAI, USDC_AMOUNT_IN, bytes(""));
+        router.querySwapExactIn(address(pool), usdc, dai, USDC_AMOUNT_IN, bytes(""));
     }
 
     function testDisableQueries() public {
-        vm.prank(alice);
-        router.initialize(
-            address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
-            [uint256(DAI_AMOUNT_IN), uint256(USDC_AMOUNT_IN)].toMemoryArray(),
-            INIT_BPT,
-            false,
-            bytes("")
-        );
-
         vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
 
         vault.disableQuery();
@@ -155,14 +128,14 @@ contract RouterTest is Test, GasSnapshot {
         vm.expectRevert(abi.encodeWithSelector(IVaultMain.QueriesDisabled.selector));
 
         vm.prank(address(0), address(0));
-        router.querySwapExactIn(address(pool), USDC, DAI, USDC_AMOUNT_IN, bytes(""));
+        router.querySwapExactIn(address(pool), usdc, dai, USDC_AMOUNT_IN, bytes(""));
     }
 
     function testInitializeBelowMinimum() public {
         vm.expectRevert(abi.encodeWithSelector(IERC20MultiToken.TotalSupplyTooLow.selector, 0, 1e6));
         router.initialize(
-            address(wethPool),
-            [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
+            address(wethPoolNoInit),
+            [address(weth), address(dai)].toMemoryArray().asIERC20(),
             [uint256(0), uint256(0)].toMemoryArray(),
             uint256(0),
             false,
@@ -171,17 +144,17 @@ contract RouterTest is Test, GasSnapshot {
     }
 
     function testInitializeWETHNoBalance() public {
-        require(WETH.balanceOf(alice) == 0);
+        require(weth.balanceOf(broke) == 0);
 
-        vm.prank(alice);
         bool wethIsEth = false;
-        // Revert when sending ETH while wethIsEth is false (caller holds no WETH).
+        // Revert when sending ETH while wethIsEth is false (caller holds no weth).
         vm.expectRevert(
-            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, alice, 0, ETH_AMOUNT_IN)
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, broke, 0, ETH_AMOUNT_IN)
         );
-        router.initialize{ value: ETH_AMOUNT_IN }(
-            address(wethPool),
-            [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
+        vm.prank(broke);
+        router.initialize(
+            address(wethPoolNoInit),
+            [address(weth), address(dai)].toMemoryArray().asIERC20(),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
             INIT_BPT,
             wethIsEth,
@@ -190,72 +163,63 @@ contract RouterTest is Test, GasSnapshot {
     }
 
     function testInitializeWETH() public {
-        vm.startPrank(alice);
-        WETH.deposit{ value: ETH_AMOUNT_IN }();
-        // Alice holds WETH, but no pool tokens.
-        require(WETH.balanceOf(alice) == ETH_AMOUNT_IN);
-        require(wethPool.balanceOf(alice) == 0);
+        checkPreConditions();
 
-        bool wethIsEth = false;
+        vm.prank(alice);
         uint256 bptAmountOut = router.initialize(
-            address(wethPool),
-            [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
+            address(wethPoolNoInit),
+            [address(weth), address(dai)].toMemoryArray().asIERC20(),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
             INIT_BPT,
-            wethIsEth,
+            false,
             bytes("")
         );
 
-        // WETH was deposited, pool tokens were minted to Alice.
-        assertEq(WETH.balanceOf(alice), 0);
-        assertEq(wethPool.balanceOf(alice), bptAmountOut);
-        assertGt(bptAmountOut, 0);
+        // weth was deposited, pool tokens were minted to Alice.
+        assertEq(weth.balanceOf(alice), defaultBalance - ETH_AMOUNT_IN, "Wrong WETH balance");
+        assertEq(wethPoolNoInit.balanceOf(alice), bptAmountOut, "Wrong WETH pool balance");
+        assertGt(bptAmountOut, 0, "Wrong bptAmountOut");
     }
 
     function testInitializeNativeNoBalance() public {
-        vm.startPrank(alice);
-        WETH.deposit{ value: ETH_AMOUNT_IN }();
-        require(WETH.balanceOf(alice) == ETH_AMOUNT_IN);
-        require(alice.balance < ETH_AMOUNT_IN);
-        require(wethPool.balanceOf(alice) == 0);
+        checkPreConditions();
 
-        bool wethIsEth = true;
-        // Caller does not have enough ETH, even if they hold WETH.
+        // Caller does not have enough ETH, even if they hold weth.
         vm.expectRevert(abi.encodeWithSelector(IRouter.InsufficientEth.selector));
+        vm.prank(alice);
         router.initialize(
-            address(wethPool),
-            [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
+            address(wethPoolNoInit),
+            [address(weth), address(dai)].toMemoryArray().asIERC20(),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
             INIT_BPT,
-            wethIsEth,
+            true,
             bytes("")
         );
     }
 
     function testInitializeNative() public {
-        vm.startPrank(alice);
-        uint256 aliceNativeBalanceBefore = address(alice).balance;
-        require(aliceNativeBalanceBefore >= ETH_AMOUNT_IN);
+        require(address(alice).balance == defaultBalance);
         require(wethPool.balanceOf(alice) == 0);
 
         bool wethIsEth = true;
+        vm.startPrank(alice);
         uint256 bptAmountOut = router.initialize{ value: ETH_AMOUNT_IN }(
-            address(wethPool),
-            [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
+            address(wethPoolNoInit),
+            [address(weth), address(dai)].toMemoryArray().asIERC20(),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
             INIT_BPT,
             wethIsEth,
             bytes("")
         );
 
-        // WETH was deposited, pool tokens were minted to Alice.
-        assertEq(address(alice).balance, aliceNativeBalanceBefore - ETH_AMOUNT_IN);
-        assertEq(wethPool.balanceOf(alice), bptAmountOut);
+        // weth was deposited, pool tokens were minted to Alice.
+        assertEq(address(alice).balance, defaultBalance - ETH_AMOUNT_IN, "Wrong ETH balance");
+        assertEq(wethPoolNoInit.balanceOf(alice), bptAmountOut, "Wrong WETH pool balance");
         assertGt(bptAmountOut, 0);
     }
 
     function testInitializeNativeExcessEth() public {
-        uint256 initExcessEth = ETH_AMOUNT_IN + 1 ether;
+        uint256 initExcessEth = defaultBalance + 1 ether;
         vm.deal(alice, initExcessEth);
 
         vm.startPrank(alice);
@@ -265,135 +229,107 @@ contract RouterTest is Test, GasSnapshot {
 
         bool wethIsEth = true;
         uint256 bptAmountOut = router.initialize{ value: initExcessEth }(
-            address(wethPool),
-            [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
+            address(wethPoolNoInit),
+            [address(weth), address(dai)].toMemoryArray().asIERC20(),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
             INIT_BPT,
             wethIsEth,
             bytes("")
         );
 
-        // WETH was deposited, excess ETH was returned, pool tokens were minted to Alice.
+        // weth was deposited, excess ETH was returned, pool tokens were minted to Alice.
         assertEq(address(alice).balance, aliceNativeBalanceBefore - ETH_AMOUNT_IN);
-        assertEq(wethPool.balanceOf(alice), bptAmountOut);
+        assertEq(wethPoolNoInit.balanceOf(alice), bptAmountOut);
         assertGt(bptAmountOut, 0);
     }
 
     function testAddLiquidityWETHNoBalance() public {
-        _initializePool();
+        checkPreConditions();
 
-        bool wethIsEth = false;
-        vm.startPrank(alice);
-        require(WETH.balanceOf(alice) == 0);
-
-        // Revert when sending ETH while wethIsEth is false (caller holds no WETH).
+        // Revert when sending ETH while wethIsEth is false (caller holds no weth).
         vm.expectRevert(
-            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, alice, 0, ETH_AMOUNT_IN)
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, broke, 0, ETH_AMOUNT_IN)
         );
+        vm.prank(broke);
         router.addLiquidityCustom(
             address(wethPool),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
             BPT_AMOUNT_OUT,
-            wethIsEth,
+            false,
             bytes("")
         );
     }
 
     function testAddLiquidityWETH() public {
-        _initializePool();
-        bool wethIsEth = false;
-
-        vm.startPrank(alice);
-        WETH.deposit{ value: ETH_AMOUNT_IN }();
-        require(WETH.balanceOf(alice) == ETH_AMOUNT_IN);
-        require(wethPool.balanceOf(alice) == 0);
-
+        vm.prank(alice);
         snapStart("routerAddLiquidityWETH");
         router.addLiquidityCustom(
             address(wethPool),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
             BPT_AMOUNT_OUT,
-            wethIsEth,
+            false,
             bytes("")
         );
         snapEnd();
 
-        // WETH was deposited, pool tokens were minted to Alice.
-        assertEq(WETH.balanceOf(alice), 0);
+        // weth was deposited, pool tokens were minted to Alice.
+        assertEq(defaultBalance - weth.balanceOf(alice), ETH_AMOUNT_IN);
         assertEq(wethPool.balanceOf(alice), BPT_AMOUNT_OUT);
     }
 
     function testAddLiquidityNativeNoBalance() public {
-        _initializePool();
-        bool wethIsEth = true;
+        checkPreConditions();
 
-        vm.startPrank(alice);
-        WETH.deposit{ value: ETH_AMOUNT_IN }();
-        require(WETH.balanceOf(alice) == ETH_AMOUNT_IN);
-        require(alice.balance < ETH_AMOUNT_IN);
-        require(wethPool.balanceOf(alice) == 0);
-
-        // Caller does not have enough ETH, even if they hold WETH.
+        // Caller does not have enough ETH, even if they hold weth.
         vm.expectRevert(abi.encodeWithSelector(IRouter.InsufficientEth.selector));
+        vm.prank(alice);
         router.addLiquidityCustom(
             address(wethPool),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
             BPT_AMOUNT_OUT,
-            wethIsEth,
+            true,
             bytes("")
         );
     }
 
     function testAddLiquidityNative() public {
-        _initializePool();
-        bool wethIsEth = true;
-
-        vm.startPrank(alice);
-        uint256 aliceNativeBalanceBefore = address(alice).balance;
-        require(aliceNativeBalanceBefore >= ETH_AMOUNT_IN);
-        require(wethPool.balanceOf(alice) == 0);
+        checkPreConditions();
 
         snapStart("routerAddLiquidityNative");
+        vm.prank(alice);
         router.addLiquidityCustom{ value: ETH_AMOUNT_IN }(
             address(wethPool),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
             BPT_AMOUNT_OUT,
-            wethIsEth,
+            true,
             bytes("")
         );
         snapEnd();
 
-        // WETH was deposited, pool tokens were minted to Alice.
-        assertEq(address(alice).balance, aliceNativeBalanceBefore - ETH_AMOUNT_IN);
+        // weth was deposited, pool tokens were minted to Alice.
+        assertEq(address(alice).balance, defaultBalance - ETH_AMOUNT_IN);
         assertEq(wethPool.balanceOf(alice), BPT_AMOUNT_OUT);
     }
 
     function testAddLiquidityNativeExcessEth() public {
-        _initializePool();
-        uint256 ethAmountInExcess = ETH_AMOUNT_IN + 1 ether;
-        vm.deal(alice, ethAmountInExcess);
-        bool wethIsEth = true;
-
-        vm.startPrank(alice);
-        uint256 aliceNativeBalanceBefore = address(alice).balance;
-        require(aliceNativeBalanceBefore >= ethAmountInExcess);
+        require(address(alice).balance == defaultBalance);
         require(wethPool.balanceOf(alice) == 0);
 
-        router.addLiquidityCustom{ value: ethAmountInExcess }(
+        vm.prank(alice);
+        router.addLiquidityCustom{ value: defaultBalance }(
             address(wethPool),
             [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
             BPT_AMOUNT_OUT,
-            wethIsEth,
+            true,
             bytes("")
         );
 
-        // WETH was deposited, excess was returned, pool tokens were minted to Alice.
-        assertEq(address(alice).balance, aliceNativeBalanceBefore - ETH_AMOUNT_IN);
+        // weth was deposited, excess was returned, pool tokens were minted to Alice.
+        assertEq(address(alice).balance, defaultBalance - ETH_AMOUNT_IN);
         assertEq(wethPool.balanceOf(alice), BPT_AMOUNT_OUT);
     }
 
     function testRemoveLiquidityWETH() public {
-        _initializePool();
         // Make Alice an LP and remove its liquidity position afterwards
         vm.startPrank(alice);
         bool wethIsEth = true;
@@ -409,7 +345,7 @@ contract RouterTest is Test, GasSnapshot {
 
         uint256 aliceNativeBalanceBefore = address(alice).balance;
         require(wethPool.balanceOf(alice) == exactBptAmount);
-        require(WETH.balanceOf(alice) == 0);
+        require(weth.balanceOf(alice) == defaultBalance, "Wrong WETh balance");
 
         wethIsEth = false;
         snapStart("routerRemoveLiquidityWETH");
@@ -422,15 +358,13 @@ contract RouterTest is Test, GasSnapshot {
         );
         snapEnd();
 
-        // Liquidity position was removed, Alice gets WETH back
-        assertGt(WETH.balanceOf(alice), 0);
-        assertEq(WETH.balanceOf(alice), ETH_AMOUNT_IN);
+        // Liquidity position was removed, Alice gets weth back
+        assertEq(weth.balanceOf(alice), defaultBalance + ETH_AMOUNT_IN);
         assertEq(wethPool.balanceOf(alice), 0);
         assertEq(address(alice).balance, aliceNativeBalanceBefore);
     }
 
     function testRemoveLiquidityNative() public {
-        _initializePool();
         // Make Alice an LP and remove its liquidity position afterwards
         vm.startPrank(alice);
         bool wethIsEth = true;
@@ -445,7 +379,7 @@ contract RouterTest is Test, GasSnapshot {
 
         uint256 aliceNativeBalanceBefore = address(alice).balance;
         require(wethPool.balanceOf(alice) == exactBptAmount);
-        require(WETH.balanceOf(alice) == 0);
+        require(weth.balanceOf(alice) == defaultBalance);
 
         snapStart("routerRemoveLiquidityNative");
         router.removeLiquidityCustom(
@@ -458,25 +392,22 @@ contract RouterTest is Test, GasSnapshot {
         snapEnd();
 
         // Liquidity position was removed, Alice gets ETH back
-        assertEq(WETH.balanceOf(alice), 0);
+        assertEq(weth.balanceOf(alice), defaultBalance);
         assertEq(wethPool.balanceOf(alice), 0);
         assertEq(address(alice).balance, aliceNativeBalanceBefore + ETH_AMOUNT_IN);
     }
 
     function testSwapExactInWETH() public {
-        _initializePool();
-        vm.startPrank(alice);
-        WETH.deposit{ value: ETH_AMOUNT_IN }();
+        require(weth.balanceOf(alice) == defaultBalance);
 
-        require(WETH.balanceOf(alice) == ETH_AMOUNT_IN);
-        uint256 daiBalanceBefore = DAI.balanceOf(alice);
         bool wethIsEth = false;
 
+        vm.prank(alice);
         snapStart("routerSwapExactInWETH");
         uint256 outputTokenAmount = router.swapExactIn(
             address(wethPool),
-            WETH,
-            DAI,
+            weth,
+            dai,
             ETH_AMOUNT_IN,
             0,
             type(uint256).max,
@@ -485,23 +416,19 @@ contract RouterTest is Test, GasSnapshot {
         );
         snapEnd();
 
-        assertEq(WETH.balanceOf(alice), 0);
-        assertEq(DAI.balanceOf(alice), daiBalanceBefore + outputTokenAmount);
+        assertEq(weth.balanceOf(alice), defaultBalance - ETH_AMOUNT_IN);
+        assertEq(dai.balanceOf(alice), defaultBalance + outputTokenAmount);
     }
 
     function testSwapExactOutWETH() public {
-        _initializePool();
-        vm.startPrank(alice);
-        WETH.deposit{ value: ETH_AMOUNT_IN }();
-
-        require(WETH.balanceOf(alice) == ETH_AMOUNT_IN);
-        uint256 daiBalanceBefore = DAI.balanceOf(alice);
+        require(weth.balanceOf(alice) == defaultBalance);
         bool wethIsEth = false;
 
+        vm.prank(alice);
         uint256 outputTokenAmount = router.swapExactOut(
             address(wethPool),
-            WETH,
-            DAI,
+            weth,
+            dai,
             DAI_AMOUNT_OUT,
             type(uint256).max,
             type(uint256).max,
@@ -509,25 +436,22 @@ contract RouterTest is Test, GasSnapshot {
             ""
         );
 
-        assertEq(WETH.balanceOf(alice), ETH_AMOUNT_IN - outputTokenAmount);
-        assertEq(DAI.balanceOf(alice), daiBalanceBefore + DAI_AMOUNT_OUT);
+        assertEq(weth.balanceOf(alice), defaultBalance - outputTokenAmount);
+        assertEq(dai.balanceOf(alice), defaultBalance + DAI_AMOUNT_OUT);
     }
 
     function testSwapExactInNative() public {
-        _initializePool();
-        vm.startPrank(alice);
+        require(weth.balanceOf(alice) == defaultBalance);
+        require(alice.balance == defaultBalance);
 
-        require(WETH.balanceOf(alice) == 0);
-        require(alice.balance >= ETH_AMOUNT_IN);
-        uint256 ethBalanceBefore = alice.balance;
-        uint256 daiBalanceBefore = DAI.balanceOf(alice);
         bool wethIsEth = true;
 
+        vm.prank(alice);
         snapStart("routerSwapExactInNative");
         router.swapExactIn{ value: ETH_AMOUNT_IN }(
             address(wethPool),
-            WETH,
-            DAI,
+            weth,
+            dai,
             ETH_AMOUNT_IN,
             0,
             type(uint256).max,
@@ -536,25 +460,22 @@ contract RouterTest is Test, GasSnapshot {
         );
         snapEnd();
 
-        assertEq(WETH.balanceOf(alice), 0);
-        assertEq(DAI.balanceOf(alice), daiBalanceBefore + ETH_AMOUNT_IN);
-        assertEq(alice.balance, ethBalanceBefore - ETH_AMOUNT_IN);
+        assertEq(weth.balanceOf(alice), defaultBalance);
+        assertEq(dai.balanceOf(alice), defaultBalance + ETH_AMOUNT_IN);
+        assertEq(alice.balance, defaultBalance - ETH_AMOUNT_IN);
     }
 
     function testSwapExactOutNative() public {
-        _initializePool();
-        vm.startPrank(alice);
+        require(weth.balanceOf(alice) == defaultBalance);
+        require(alice.balance == defaultBalance);
 
-        require(WETH.balanceOf(alice) == 0);
-        require(alice.balance >= ETH_AMOUNT_IN);
-        uint256 daiBalanceBefore = DAI.balanceOf(alice);
-        uint256 ethBalanceBefore = alice.balance;
         bool wethIsEth = true;
 
+        vm.prank(alice);
         router.swapExactOut{ value: DAI_AMOUNT_OUT }(
             address(wethPool),
-            WETH,
-            DAI,
+            weth,
+            dai,
             DAI_AMOUNT_OUT,
             type(uint256).max,
             type(uint256).max,
@@ -562,28 +483,22 @@ contract RouterTest is Test, GasSnapshot {
             ""
         );
 
-        assertEq(WETH.balanceOf(alice), 0);
-        assertEq(DAI.balanceOf(alice), daiBalanceBefore + DAI_AMOUNT_OUT);
-        assertEq(alice.balance, ethBalanceBefore - DAI_AMOUNT_OUT);
+        assertEq(weth.balanceOf(alice), defaultBalance);
+        assertEq(dai.balanceOf(alice), defaultBalance + DAI_AMOUNT_OUT);
+        assertEq(alice.balance, defaultBalance - DAI_AMOUNT_OUT);
     }
 
     function testSwapNativeExcessEth() public {
-        _initializePool();
-        uint256 excessEthAmountIn = ETH_AMOUNT_IN + 1 ether;
-        vm.deal(alice, excessEthAmountIn);
+        require(weth.balanceOf(alice) == defaultBalance);
+        require(alice.balance == defaultBalance);
 
-        vm.startPrank(alice);
-
-        require(WETH.balanceOf(alice) == 0);
-        require(alice.balance >= ETH_AMOUNT_IN);
-        uint256 ethBalanceBefore = alice.balance;
-        uint256 daiBalanceBefore = DAI.balanceOf(alice);
         bool wethIsEth = true;
 
-        router.swapExactIn{ value: excessEthAmountIn }(
+        vm.startPrank(alice);
+        router.swapExactIn{ value: defaultBalance }(
             address(wethPool),
-            WETH,
-            DAI,
+            weth,
+            dai,
             ETH_AMOUNT_IN,
             0,
             type(uint256).max,
@@ -592,36 +507,29 @@ contract RouterTest is Test, GasSnapshot {
         );
 
         // Only ETH_AMOUNT_IN is sent to the router
-        assertEq(WETH.balanceOf(alice), 0);
-        assertEq(DAI.balanceOf(alice), daiBalanceBefore + ETH_AMOUNT_IN);
-        assertEq(alice.balance, ethBalanceBefore - ETH_AMOUNT_IN);
+        assertEq(weth.balanceOf(alice), defaultBalance);
+        assertEq(dai.balanceOf(alice), defaultBalance + ETH_AMOUNT_IN);
+        assertEq(alice.balance, defaultBalance - ETH_AMOUNT_IN);
     }
 
     function testGetSingleInputArray() public {
-        uint256[] memory amountsGiven = routerMock.getSingleInputArray(address(pool), DAI, 1234);
+        uint256[] memory amountsGiven = router.getSingleInputArray(address(pool), dai, 1234);
         assertEq(amountsGiven.length, 2);
         assertEq(amountsGiven[0], 1234);
         assertEq(amountsGiven[1], 0);
 
-        amountsGiven = routerMock.getSingleInputArray(address(pool), USDC, 4321);
+        amountsGiven = router.getSingleInputArray(address(pool), usdc, 4321);
         assertEq(amountsGiven.length, 2);
         assertEq(amountsGiven[0], 0);
         assertEq(amountsGiven[1], 4321);
 
         vm.expectRevert(abi.encodeWithSelector(TokenNotRegistered.selector));
-        routerMock.getSingleInputArray(address(pool), WETH, DAI_AMOUNT_IN);
+        router.getSingleInputArray(address(pool), weth, DAI_AMOUNT_IN);
     }
 
-    function _initializePool() internal returns (uint256 bptAmountOut) {
-        vm.prank(bob);
-        bool wethIsEth = true;
-        bptAmountOut = router.initialize{ value: ETH_AMOUNT_IN }(
-            address(wethPool),
-            [address(WETH), address(DAI)].toMemoryArray().asIERC20(),
-            [uint256(ETH_AMOUNT_IN), uint256(DAI_AMOUNT_IN)].toMemoryArray(),
-            INIT_BPT,
-            wethIsEth,
-            bytes("")
-        );
+    function checkPreConditions() internal {
+        require(weth.balanceOf(alice) == defaultBalance, "Wrong WETH balance");
+        require(alice.balance == defaultBalance, "Wrong WETH balance");
+        require(wethPool.balanceOf(alice) == 0, "Wrong weth pool balance");
     }
 }
