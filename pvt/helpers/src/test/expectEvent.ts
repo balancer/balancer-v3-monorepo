@@ -8,7 +8,11 @@ import { ContractTransactionReceipt, EventLog } from 'ethers';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-export function inReceipt(receipt: ContractTransactionReceipt, eventName: string, eventArgs = {}): any {
+export function inReceipt(receipt: ContractTransactionReceipt | null, eventName: string, eventArgs = {}): any {
+  if (receipt === null) {
+    throw new Error('Receipt is null');
+  }
+
   if (receipt.logs === undefined) {
     throw new Error('No events found in receipt');
   }
