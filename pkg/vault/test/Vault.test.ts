@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { Contract, EventLog } from 'ethers';
+import { Contract } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH, currentTimestamp, fromNow } from '@balancer-labs/v3-helpers/src/time';
 import { PoolConfigStructOutput, VaultMock } from '../typechain-types/contracts/test/VaultMock';
@@ -16,6 +16,7 @@ import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20Tok
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
 import { RateProviderMock } from '../typechain-types';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
+import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -113,25 +114,19 @@ describe('Vault', function () {
       const currentTime = await currentTimestamp();
       const pauseWindowEndTime = Number(currentTime) + PAUSE_WINDOW_DURATION;
 
-      const expectedArgs = [
-        poolBAddress,
-        await vault.getPoolFactoryMock(),
+      const expectedArgs = {
+        pool: poolBAddress,
+        factory: await vault.getPoolFactoryMock(),
         tokenConfig,
-        pauseWindowEndTime.toString(),
-        ANY_ADDRESS,
-        [false, false, false, false, false, false, false, false],
-        [true, true],
-      ];
+        pauseWindowEndTime: pauseWindowEndTime.toString(),
+        pauseManager: ANY_ADDRESS,
+        callbacks: [false, false, false, false, false, false, false, false],
+        liquidityManagement: [true, true],
+      };
 
+      // Use expectEvent here to prevent errors with structs of arrays with hardhat matchers.
       const tx = await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS);
-      const receipt = await tx.wait();
-
-      // There must be a better way...
-      const logs = receipt?.logs as Array<EventLog>;
-      const events = logs.filter((e) => 'eventName' in e && e.eventName === 'PoolRegistered');
-      const emittedArgs = events[0].args;
-
-      expect(emittedArgs.toString()).to.equal(expectedArgs.toString());
+      expectEvent.inReceipt(await tx.wait(), 'PoolRegistered', expectedArgs);
     });
 
     it('cannot register a pool twice', async () => {
