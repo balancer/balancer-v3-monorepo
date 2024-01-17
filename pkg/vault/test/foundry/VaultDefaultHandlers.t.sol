@@ -5,7 +5,8 @@ pragma solidity ^0.8.4;
 import "forge-std/Test.sol";
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { CannotReceiveEth } from "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { CannotReceiveEth, NotVaultDelegateCall } from "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
 
 import { Vault } from "../../contracts/Vault.sol";
 import { VaultExtensionMock } from "../../contracts/test/VaultExtensionMock.sol";
@@ -37,5 +38,14 @@ contract VaultDefaultHandlers is BaseVaultTest {
     function testDefaultHandlerNonExistingFunction() public {
         vm.expectRevert();
         IRateProvider(address(vault)).getRate();
+    }
+
+    function testOnlyVault() public {
+        // Does not revert via Vault
+        assertTrue(IVault(address(vault)).isPoolRegistered(pool));
+
+        IVault vaultExtension = IVault(vault.getVaultExtension());
+        vm.expectRevert(abi.encodeWithSelector(NotVaultDelegateCall.selector));
+        vaultExtension.isPoolRegistered(pool);
     }
 }

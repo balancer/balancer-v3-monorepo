@@ -228,3 +228,6 @@ error UserDataNotSupported();
 
 /// @dev The contract should not receive ETH.
 error CannotReceiveEth();
+
+/// @dev The Vault extension was called by an account directly; it can only be called by the Vault via delegatecall.
+error NotVaultDelegateCall();

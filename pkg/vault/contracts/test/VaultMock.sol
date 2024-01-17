@@ -84,7 +84,7 @@ contract VaultMock is Vault {
             tokenData[i].token = tokens[i];
         }
 
-        this.registerPool(
+        IVault(address(this)).registerPool(
             pool,
             tokenData,
             365 days,

@@ -14,15 +14,17 @@ import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
-import { RateProviderMock } from '../typechain-types';
+import { IVault, RateProviderMock, VaultExtensionMock } from '../typechain-types';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
+import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
 
   let vault: VaultMock;
+  let vaultExtension: VaultExtensionMock;
   let poolA: PoolMock;
   let poolB: PoolMock;
   let tokenA: ERC20TestToken;
@@ -48,6 +50,10 @@ describe('Vault', function () {
     const { vault: vaultMock, tokens, pools } = await setupEnvironment(PAUSE_WINDOW_DURATION);
 
     vault = vaultMock;
+    vaultExtension = (await deployedAt(
+      'VaultExtensionMock',
+      await vault.getVaultExtension()
+    )) as unknown as VaultExtensionMock;
 
     tokenA = tokens[0];
     tokenB = tokens[1];
@@ -77,8 +83,10 @@ describe('Vault', function () {
 
   describe('registration', () => {
     it('can register a pool', async () => {
-      expect(await vault.isPoolRegistered(poolA)).to.be.true;
-      expect(await vault.isPoolRegistered(poolB)).to.be.false;
+      const iVault: IVault = await TypesConverter.toIVault(vault);
+
+      expect(await iVault.isPoolRegistered(poolA)).to.be.true;
+      expect(await iVault.isPoolRegistered(poolB)).to.be.false;
 
       const [tokens, balances] = await vault.getPoolTokenInfo(poolA);
       expect(tokens).to.deep.equal(poolATokens);
@@ -133,17 +141,20 @@ describe('Vault', function () {
       await vault.manualRegisterPool(poolB, poolBTokens);
 
       await expect(vault.manualRegisterPool(poolB, poolBTokens))
-        .to.be.revertedWithCustomError(vault, 'PoolAlreadyRegistered')
+        .to.be.revertedWithCustomError(vaultExtension, 'PoolAlreadyRegistered')
         .withArgs(await poolB.getAddress());
     });
 
     it('cannot register a pool with an invalid token', async () => {
-      await expect(vault.manualRegisterPool(poolB, invalidTokens)).to.be.revertedWithCustomError(vault, 'InvalidToken');
+      await expect(vault.manualRegisterPool(poolB, invalidTokens)).to.be.revertedWithCustomError(
+        vaultExtension,
+        'InvalidToken'
+      );
     });
 
     it('cannot register a pool with duplicate tokens', async () => {
       await expect(vault.manualRegisterPool(poolB, duplicateTokens))
-        .to.be.revertedWithCustomError(vault, 'TokenAlreadyRegistered')
+        .to.be.revertedWithCustomError(vaultExtension, 'TokenAlreadyRegistered')
         .withArgs(tokenAAddress);
     });
 
@@ -167,14 +178,17 @@ describe('Vault', function () {
     });
 
     it('cannot register a pool with too few tokens', async () => {
-      await expect(vault.manualRegisterPool(poolB, [poolATokens[0]])).to.be.revertedWithCustomError(vault, 'MinTokens');
+      await expect(vault.manualRegisterPool(poolB, [poolATokens[0]])).to.be.revertedWithCustomError(
+        vaultExtension,
+        'MinTokens'
+      );
     });
 
     it('cannot register a pool with too many tokens', async () => {
       const tokens = await ERC20TokenList.create(5);
 
       await expect(vault.manualRegisterPool(poolB, await tokens.addresses)).to.be.revertedWithCustomError(
-        vault,
+        vaultExtension,
         'MaxTokens'
       );
     });
