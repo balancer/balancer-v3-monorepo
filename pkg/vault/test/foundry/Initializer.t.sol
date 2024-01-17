@@ -23,73 +23,21 @@ import { VaultExtensionMock } from "../../contracts/test/VaultExtensionMock.sol"
 
 import { VaultMockDeployer } from "./utils/VaultMockDeployer.sol";
 
-contract InitializerTest is Test {
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+
+contract InitializerTest is BaseVaultTest {
     using ArrayHelpers for *;
 
-    VaultMock vault;
-    VaultExtensionMock vaultExtension;
-    IRouter router;
-    BasicAuthorizerMock authorizer;
-    PoolMock pool;
-    ERC20TestToken USDC;
-    ERC20TestToken DAI;
-    address alice = vm.addr(1);
-    address bob = vm.addr(2);
-
-    uint256 constant BPT_AMOUNT = 2e3 * 1e18;
-    uint256 constant BPT_AMOUNT_ROUND_DOWN = BPT_AMOUNT - 1;
-    uint256 constant DEFAULT_AMOUNT = 1e3 * 1e18;
-    uint256 constant DEFAULT_AMOUNT_ROUND_UP = DEFAULT_AMOUNT + 1;
-    uint256 constant DEFAULT_AMOUNT_ROUND_DOWN = DEFAULT_AMOUNT - 1;
-
-    function setUp() public {
-        vault = VaultMockDeployer.deploy();
-        router = new Router(IVault(address(vault)), new WETHTestToken());
-        USDC = new ERC20TestToken("USDC", "USDC", 18);
-        DAI = new ERC20TestToken("DAI", "DAI", 18);
-        IRateProvider[] memory rateProviders = new IRateProvider[](2);
-
-        pool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
-            rateProviders,
-            true,
-            365 days,
-            address(0)
-        );
+    function setUp() public virtual override {
+        BaseVaultTest.setUp();
 
         PoolConfig memory config = vault.getPoolConfig(address(pool));
         config.callbacks.shouldCallBeforeInitialize = true;
         config.callbacks.shouldCallAfterInitialize = true;
         vault.setConfig(address(pool), config);
-
-        USDC.mint(bob, DEFAULT_AMOUNT);
-        DAI.mint(bob, DEFAULT_AMOUNT);
-
-        USDC.mint(alice, 2 * DEFAULT_AMOUNT);
-        DAI.mint(alice, 2 * DEFAULT_AMOUNT);
-
-        vm.startPrank(bob);
-
-        USDC.approve(address(vault), type(uint256).max);
-        DAI.approve(address(vault), type(uint256).max);
-
-        vm.stopPrank();
-
-        vm.startPrank(alice);
-
-        USDC.approve(address(vault), type(uint256).max);
-        DAI.approve(address(vault), type(uint256).max);
-
-        vm.stopPrank();
-
-        vm.label(alice, "alice");
-        vm.label(bob, "bob");
-        vm.label(address(USDC), "USDC");
-        vm.label(address(DAI), "DAI");
     }
+
+    function initPool() internal override {}
 
     function testNoRevertWithZeroConfig() public {
         PoolConfig memory config = vault.getPoolConfig(address(pool));
@@ -97,14 +45,14 @@ contract InitializerTest is Test {
         config.callbacks.shouldCallAfterInitialize = false;
         vault.setConfig(address(pool), config);
 
-        pool.setFailOnBeforeInitializeCallback(true);
-        pool.setFailOnAfterInitializeCallback(true);
+        PoolMock(pool).setFailOnBeforeInitializeCallback(true);
+        PoolMock(pool).setFailOnAfterInitializeCallback(true);
 
         vm.prank(bob);
         router.initialize(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
-            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            [defaultAmount, defaultAmount].toMemoryArray(),
             0,
             false,
             bytes("0xff")
@@ -117,14 +65,14 @@ contract InitializerTest is Test {
             address(pool),
             abi.encodeWithSelector(
                 IPoolCallbacks.onBeforeInitialize.selector,
-                [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
+                [defaultAmount, defaultAmount].toMemoryArray(),
                 bytes("0xff")
             )
         );
         router.initialize(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
-            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            [defaultAmount, defaultAmount].toMemoryArray(),
             0,
             false,
             bytes("0xff")
@@ -132,13 +80,13 @@ contract InitializerTest is Test {
     }
 
     function testOnBeforeInitializeCallbackRevert() public {
-        pool.setFailOnBeforeInitializeCallback(true);
+        PoolMock(pool).setFailOnBeforeInitializeCallback(true);
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(CallbackFailed.selector));
         router.initialize(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
-            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            [defaultAmount, defaultAmount].toMemoryArray(),
             0,
             false,
             bytes("0xff")
@@ -151,15 +99,15 @@ contract InitializerTest is Test {
             address(pool),
             abi.encodeWithSelector(
                 IPoolCallbacks.onAfterInitialize.selector,
-                [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
-                2 * DEFAULT_AMOUNT,
+                [defaultAmount, defaultAmount].toMemoryArray(),
+                2 * defaultAmount,
                 bytes("0xff")
             )
         );
         router.initialize(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
-            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            [defaultAmount, defaultAmount].toMemoryArray(),
             0,
             false,
             bytes("0xff")
@@ -167,13 +115,13 @@ contract InitializerTest is Test {
     }
 
     function testOnAfterInitializeCallbackRevert() public {
-        pool.setFailOnAfterInitializeCallback(true);
+        PoolMock(pool).setFailOnAfterInitializeCallback(true);
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(CallbackFailed.selector));
         router.initialize(
             address(pool),
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
-            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            [defaultAmount, defaultAmount].toMemoryArray(),
             0,
             false,
             bytes("0xff")
