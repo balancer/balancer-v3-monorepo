@@ -148,9 +148,7 @@ contract RouterTest is BaseVaultTest {
 
         bool wethIsEth = false;
         // Revert when sending ETH while wethIsEth is false (caller holds no weth).
-        vm.expectRevert(
-            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, broke, 0, ethAmountIn)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, broke, 0, ethAmountIn));
         vm.prank(broke);
         router.initialize(
             address(wethPoolNoInit),
@@ -163,7 +161,7 @@ contract RouterTest is BaseVaultTest {
     }
 
     function testInitializeWETH() public {
-        checkPreConditions();
+        checkAddLiquidityPreConditions();
 
         vm.prank(alice);
         bptAmountOut = router.initialize(
@@ -182,7 +180,7 @@ contract RouterTest is BaseVaultTest {
     }
 
     function testInitializeNativeNoBalance() public {
-        checkPreConditions();
+        checkAddLiquidityPreConditions();
 
         // Caller does not have enough ETH, even if they hold weth.
         vm.expectRevert(abi.encodeWithSelector(IRouter.InsufficientEth.selector));
@@ -198,8 +196,7 @@ contract RouterTest is BaseVaultTest {
     }
 
     function testInitializeNative() public {
-        require(address(alice).balance == defaultBalance);
-        require(wethPool.balanceOf(alice) == 0);
+        checkAddLiquidityPreConditions();
 
         bool wethIsEth = true;
         vm.startPrank(alice);
@@ -219,16 +216,11 @@ contract RouterTest is BaseVaultTest {
     }
 
     function testInitializeNativeExcessEth() public {
-        uint256 initExcessEth = defaultBalance + 1 ether;
-        vm.deal(alice, initExcessEth);
-
-        vm.startPrank(alice);
-        uint256 aliceNativeBalanceBefore = address(alice).balance;
-        require(aliceNativeBalanceBefore >= initExcessEth);
-        require(wethPool.balanceOf(alice) == 0);
+        checkAddLiquidityPreConditions();
 
         bool wethIsEth = true;
-        bptAmountOut = router.initialize{ value: initExcessEth }(
+        vm.prank(alice);
+        bptAmountOut = router.initialize{ value: defaultBalance }(
             address(wethPoolNoInit),
             [address(weth), address(dai)].toMemoryArray().asIERC20(),
             [uint256(ethAmountIn), uint256(daiAmountIn)].toMemoryArray(),
@@ -238,18 +230,16 @@ contract RouterTest is BaseVaultTest {
         );
 
         // weth was deposited, excess ETH was returned, pool tokens were minted to Alice.
-        assertEq(address(alice).balance, aliceNativeBalanceBefore - ethAmountIn);
+        assertEq(address(alice).balance, defaultBalance - ethAmountIn);
         assertEq(wethPoolNoInit.balanceOf(alice), bptAmountOut);
         assertGt(bptAmountOut, 0);
     }
 
     function testAddLiquidityWETHNoBalance() public {
-        checkPreConditions();
+        checkAddLiquidityPreConditions();
 
         // Revert when sending ETH while wethIsEth is false (caller holds no weth).
-        vm.expectRevert(
-            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, broke, 0, ethAmountIn)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, broke, 0, ethAmountIn));
         vm.prank(broke);
         router.addLiquidityCustom(
             address(wethPool),
@@ -261,6 +251,8 @@ contract RouterTest is BaseVaultTest {
     }
 
     function testAddLiquidityWETH() public {
+        checkAddLiquidityPreConditions();
+
         vm.prank(alice);
         snapStart("routerAddLiquidityWETH");
         router.addLiquidityCustom(
@@ -278,7 +270,7 @@ contract RouterTest is BaseVaultTest {
     }
 
     function testAddLiquidityNativeNoBalance() public {
-        checkPreConditions();
+        checkAddLiquidityPreConditions();
 
         // Caller does not have enough ETH, even if they hold weth.
         vm.expectRevert(abi.encodeWithSelector(IRouter.InsufficientEth.selector));
@@ -293,7 +285,7 @@ contract RouterTest is BaseVaultTest {
     }
 
     function testAddLiquidityNative() public {
-        checkPreConditions();
+        checkAddLiquidityPreConditions();
 
         snapStart("routerAddLiquidityNative");
         vm.prank(alice);
@@ -312,8 +304,7 @@ contract RouterTest is BaseVaultTest {
     }
 
     function testAddLiquidityNativeExcessEth() public {
-        require(address(alice).balance == defaultBalance);
-        require(wethPool.balanceOf(alice) == 0);
+        checkAddLiquidityPreConditions();
 
         vm.prank(alice);
         router.addLiquidityCustom{ value: defaultBalance }(
@@ -343,9 +334,7 @@ contract RouterTest is BaseVaultTest {
             bytes("")
         );
 
-        uint256 aliceNativeBalanceBefore = address(alice).balance;
-        require(wethPool.balanceOf(alice) == exactBptAmount);
-        require(weth.balanceOf(alice) == defaultBalance, "Wrong WETh balance");
+        checkRemoveLiquidityPreConditions();
 
         wethIsEth = false;
         snapStart("routerRemoveLiquidityWETH");
@@ -361,7 +350,7 @@ contract RouterTest is BaseVaultTest {
         // Liquidity position was removed, Alice gets weth back
         assertEq(weth.balanceOf(alice), defaultBalance + ethAmountIn);
         assertEq(wethPool.balanceOf(alice), 0);
-        assertEq(address(alice).balance, aliceNativeBalanceBefore);
+        assertEq(address(alice).balance, defaultBalance - ethAmountIn);
     }
 
     function testRemoveLiquidityNative() public {
@@ -378,8 +367,7 @@ contract RouterTest is BaseVaultTest {
         );
 
         uint256 aliceNativeBalanceBefore = address(alice).balance;
-        require(wethPool.balanceOf(alice) == exactBptAmount);
-        require(weth.balanceOf(alice) == defaultBalance);
+        checkRemoveLiquidityPreConditions();
 
         snapStart("routerRemoveLiquidityNative");
         router.removeLiquidityCustom(
@@ -527,9 +515,14 @@ contract RouterTest is BaseVaultTest {
         router.getSingleInputArray(address(pool), weth, daiAmountIn);
     }
 
-    function checkPreConditions() internal view {
+    function checkRemoveLiquidityPreConditions() internal view {
         require(weth.balanceOf(alice) == defaultBalance, "Wrong WETH balance");
-        require(alice.balance == defaultBalance, "Wrong WETH balance");
+        require(wethPool.balanceOf(alice) == bptAmountOut, "Wrong weth pool balance");
+    }
+
+    function checkAddLiquidityPreConditions() internal view {
+        require(weth.balanceOf(alice) == defaultBalance, "Wrong WETH balance");
+        require(alice.balance == defaultBalance, "Wrong ETH balance");
         require(wethPool.balanceOf(alice) == 0, "Wrong weth pool balance");
     }
 }
