@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { CannotReceiveEth, NotVaultDelegateCall } from "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { Vault } from "../../contracts/Vault.sol";
 import { VaultExtensionMock } from "../../contracts/test/VaultExtensionMock.sol";
@@ -20,13 +20,13 @@ contract VaultDefaultHandlers is BaseVaultTest {
 
     function testReceive() public {
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(CannotReceiveEth.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.CannotReceiveEth.selector));
         payable(vault).transfer(1);
     }
 
     function testDefaultHandlerWithEth() public {
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(CannotReceiveEth.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.CannotReceiveEth.selector));
         VaultExtensionMock(payable(vault)).mockExtensionHash{ value: 1 }("");
     }
 
@@ -45,7 +45,7 @@ contract VaultDefaultHandlers is BaseVaultTest {
         assertTrue(IVault(address(vault)).isPoolRegistered(pool));
 
         IVault vaultExtension = IVault(vault.getVaultExtension());
-        vm.expectRevert(abi.encodeWithSelector(NotVaultDelegateCall.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.NotVaultDelegateCall.selector));
         vaultExtension.isPoolRegistered(pool);
     }
 }

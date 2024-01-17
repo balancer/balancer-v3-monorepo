@@ -20,8 +20,6 @@ interface IVaultMainMock {
 
     function manualUnpausePool(address pool) external;
 
-    function reentrantRegisterPool(address pool, IERC20[] memory tokens) external;
-
     function manualRegisterPool(address pool, IERC20[] memory tokens) external;
 
     function manualRegisterPoolAtTimestamp(

@@ -66,24 +66,6 @@ contract VaultMock is IVaultMainMock, Vault {
         _setPoolPaused(pool, false);
     }
 
-    // Used for testing the ReentrancyGuard
-    function reentrantRegisterPool(address pool, IERC20[] memory tokens) external override nonReentrant {
-        TokenConfig[] memory tokenData = new TokenConfig[](tokens.length);
-        // Assume standard tokens (enum value = 0)
-        for (uint256 i = 0; i < tokens.length; i++) {
-            tokenData[i].token = tokens[i];
-        }
-
-        IVault(address(this)).registerPool(
-            pool,
-            tokenData,
-            365 days,
-            address(0),
-            PoolConfigBits.wrap(0).toPoolConfig().callbacks,
-            PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
-        );
-    }
-
     // Used for testing pool registration, which is ordinarily done in the pool factory.
     // The Mock pool has an argument for whether or not to register on deployment. To call register pool
     // separately, deploy it with the registration flag false, then call this function.
