@@ -33,7 +33,20 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
 
-    constructor(IVault vault) Authentication(bytes32(uint256(uint160(address(vault))))) {}
+    IVault private immutable _vault;
+
+    modifier onlyVault() {
+        // If this is a delegate call from the vault, the address of the contract should be the Vault's,
+        // not the extension.
+        if (address(this) != address(_vault)) {
+            revert NotVaultDelegateCall();
+        }
+        _;
+    }
+
+    constructor(IVault vault) Authentication(bytes32(uint256(uint160(address(vault))))) {
+        _vault = vault;
+    }
 
     /*******************************************************************************
                             Pool Registration and Initialization
@@ -47,12 +60,12 @@ contract VaultExtension is IVaultExtension, VaultCommon {
         address pauseManager,
         PoolCallbacks calldata poolCallbacks,
         LiquidityManagement calldata liquidityManagement
-    ) external nonReentrant whenVaultNotPaused {
+    ) external nonReentrant whenVaultNotPaused onlyVault {
         _registerPool(pool, tokenConfig, pauseWindowEndTime, pauseManager, poolCallbacks, liquidityManagement);
     }
 
     /// @inheritdoc IVaultExtension
-    function isPoolRegistered(address pool) external view returns (bool) {
+    function isPoolRegistered(address pool) external view onlyVault returns (bool) {
         return _isPoolRegistered(pool);
     }
 
