@@ -5,7 +5,7 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { InvalidToken } from "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
@@ -142,7 +142,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         else if (tokenIndex == 2) { return _normalizedWeight2; }
         else if (tokenIndex == 3) { return _normalizedWeight3; }
         else {
-            revert InvalidToken();
+            revert IVaultErrors.InvalidToken();
         }
     }
 

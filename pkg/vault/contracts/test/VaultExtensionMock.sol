@@ -3,10 +3,11 @@
 pragma solidity ^0.8.4;
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultExtensionMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultExtensionMock.sol";
 
 import "../VaultExtension.sol";
 
-contract VaultExtensionMock is VaultExtension {
+contract VaultExtensionMock is IVaultExtensionMock, VaultExtension {
     constructor(
         IVault vault,
         uint256 pauseWindowDuration,
@@ -17,11 +18,11 @@ contract VaultExtensionMock is VaultExtension {
         return keccak256(input);
     }
 
-    function manualPauseVault() external {
+    function manualPauseVault() external override {
         _setVaultPaused(true);
     }
 
-    function manualUnpauseVault() external {
+    function manualUnpauseVault() external override {
         _setVaultPaused(false);
     }
 }

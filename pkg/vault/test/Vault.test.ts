@@ -18,12 +18,13 @@ import { IVault, RateProviderMock, VaultExtensionMock } from '../typechain-types
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
+import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
 
-  let vault: VaultMock;
+  let vault: IVaultMock;
   let vaultExtension: VaultExtensionMock;
   let poolA: PoolMock;
   let poolB: PoolMock;
@@ -83,10 +84,8 @@ describe('Vault', function () {
 
   describe('registration', () => {
     it('can register a pool', async () => {
-      const iVault: IVault = await TypesConverter.toIVault(vault);
-
-      expect(await iVault.isPoolRegistered(poolA)).to.be.true;
-      expect(await iVault.isPoolRegistered(poolB)).to.be.false;
+      expect(await vault.isPoolRegistered(poolA)).to.be.true;
+      expect(await vault.isPoolRegistered(poolB)).to.be.false;
 
       const [tokens, balances] = await vault.getPoolTokenInfo(poolA);
       expect(tokens).to.deep.equal(poolATokens);
@@ -97,7 +96,7 @@ describe('Vault', function () {
         .withArgs(poolBAddress);
     });
 
-    it('pools are initially  not in recovery mode', async () => {
+    it('pools are initially not in recovery mode', async () => {
       expect(await vault.isPoolInRecoveryMode(poolBAddress)).to.be.false;
     });
 
@@ -159,9 +158,7 @@ describe('Vault', function () {
     });
 
     it('cannot register a pool when paused', async () => {
-      const vaultMock = await TypesConverter.toVaultMockExtension(vault);
-
-      await vaultMock.manualPauseVault();
+      await vault.manualPauseVault();
 
       await expect(vault.manualRegisterPool(poolB, poolBTokens)).to.be.revertedWithCustomError(vault, 'VaultPaused');
     });
@@ -197,21 +194,20 @@ describe('Vault', function () {
   });
 
   describe('initialization', () => {
-    let timedVault: VaultMock;
+    let timedVault: IVaultMock;
 
     sharedBeforeEach('redeploy Vault', async () => {
-      timedVault = await VaultDeployer.deployMock({
+      const timedVaultMock = await VaultDeployer.deployMock({
         pauseWindowDuration: PAUSE_WINDOW_DURATION,
         bufferPeriodDuration: BUFFER_PERIOD_DURATION,
       });
+      timedVault = await TypesConverter.toIVaultMock(timedVaultMock);
     });
 
     it('is temporarily pausable', async () => {
-      const vault = await TypesConverter.toVaultMockExtension(timedVault);
+      expect(await timedVault.isVaultPaused()).to.equal(false);
 
-      expect(await vault.isVaultPaused()).to.equal(false);
-
-      const [paused, pauseWindowEndTime, bufferPeriodEndTime] = await vault.getVaultPausedState();
+      const [paused, pauseWindowEndTime, bufferPeriodEndTime] = await timedVault.getVaultPausedState();
 
       expect(paused).to.be.false;
       // We substract 1 because the timestamp is set when the extension is deployed.
@@ -219,22 +215,20 @@ describe('Vault', function () {
       expect(pauseWindowEndTime).to.equal(await fromNow(PAUSE_WINDOW_DURATION - 1));
       expect(bufferPeriodEndTime).to.equal((await fromNow(PAUSE_WINDOW_DURATION - 1)) + bn(BUFFER_PERIOD_DURATION));
 
-      await vault.manualPauseVault();
-      expect(await vault.isVaultPaused()).to.be.true;
+      await timedVault.manualPauseVault();
+      expect(await timedVault.isVaultPaused()).to.be.true;
 
-      await vault.manualUnpauseVault();
-      expect(await vault.isVaultPaused()).to.be.false;
+      await timedVault.manualUnpauseVault();
+      expect(await timedVault.isVaultPaused()).to.be.false;
     });
 
     it('pausing the Vault emits an event', async () => {
-      const vault = await TypesConverter.toVaultMockExtension(timedVault);
-
-      await expect(await vault.manualPauseVault())
-        .to.emit(vault, 'VaultPausedStateChanged')
+      await expect(await timedVault.manualPauseVault())
+        .to.emit(timedVault, 'VaultPausedStateChanged')
         .withArgs(true);
 
-      await expect(await vault.manualUnpauseVault())
-        .to.emit(vault, 'VaultPausedStateChanged')
+      await expect(await timedVault.manualUnpauseVault())
+        .to.emit(timedVault, 'VaultPausedStateChanged')
         .withArgs(false);
     });
 
