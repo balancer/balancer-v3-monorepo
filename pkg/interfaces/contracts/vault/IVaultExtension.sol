@@ -5,6 +5,24 @@ pragma solidity ^0.8.4;
 import { LiquidityManagement, PoolCallbacks, TokenConfig } from "./VaultTypes.sol";
 
 interface IVaultExtension {
+    /**
+     * @notice Returns Vault's pause window end time.
+     * @dev This value is immutable; the getter can be called by anyone.
+     */
+    function getPauseWindowEndTime() external view returns (uint256);
+
+    /**
+     * @notice Returns Vault's buffer period duration.
+     * @dev This value is immutable; the getter can be called by anyone.
+     */
+    function getBufferPeriodDuration() external view returns (uint256);
+
+    /**
+     * @notice Returns Vault's buffer period end time.
+     * @dev This value is immutable; the getter can be called by anyone.
+     */
+    function getBufferPeriodEndTime() external view returns (uint256);
+
     /*******************************************************************************
                         Pool Registration and Initialization
     *******************************************************************************/

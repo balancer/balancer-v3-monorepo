@@ -159,7 +159,9 @@ describe('Vault', function () {
     });
 
     it('cannot register a pool when paused', async () => {
-      await vault.manualPauseVault();
+      const vaultMock = await TypesConverter.toVaultMockExtension(vault);
+
+      await vaultMock.manualPauseVault();
 
       await expect(vault.manualRegisterPool(poolB, poolBTokens)).to.be.revertedWithCustomError(vault, 'VaultPaused');
     });
@@ -205,28 +207,36 @@ describe('Vault', function () {
     });
 
     it('is temporarily pausable', async () => {
-      expect(await timedVault.isVaultPaused()).to.equal(false);
+      const vault = await TypesConverter.toVaultMockExtension(timedVault);
 
-      const [paused, pauseWindowEndTime, bufferPeriodEndTime] = await timedVault.getVaultPausedState();
+      expect(await vault.isVaultPaused()).to.equal(false);
+
+      const [paused, pauseWindowEndTime, bufferPeriodEndTime] = await vault.getVaultPausedState();
+
+      console.log('current timestamp vault paused state: ', await currentTimestamp());
 
       expect(paused).to.be.false;
-      expect(pauseWindowEndTime).to.equal(await fromNow(PAUSE_WINDOW_DURATION));
-      expect(bufferPeriodEndTime).to.equal((await fromNow(PAUSE_WINDOW_DURATION)) + bn(BUFFER_PERIOD_DURATION));
+      // We substract 1 because the timestamp is set when the extension is deployed.
+      // Each contract deployment pushes the timestamp by 1, and the main Vault is deployed right after the extension.
+      expect(pauseWindowEndTime).to.equal(await fromNow(PAUSE_WINDOW_DURATION - 1));
+      expect(bufferPeriodEndTime).to.equal((await fromNow(PAUSE_WINDOW_DURATION - 1)) + bn(BUFFER_PERIOD_DURATION));
 
-      await timedVault.manualPauseVault();
-      expect(await timedVault.isVaultPaused()).to.be.true;
+      await vault.manualPauseVault();
+      expect(await vault.isVaultPaused()).to.be.true;
 
-      await timedVault.manualUnpauseVault();
-      expect(await timedVault.isVaultPaused()).to.be.false;
+      await vault.manualUnpauseVault();
+      expect(await vault.isVaultPaused()).to.be.false;
     });
 
     it('pausing the Vault emits an event', async () => {
-      await expect(await timedVault.manualPauseVault())
-        .to.emit(timedVault, 'VaultPausedStateChanged')
+      const vault = await TypesConverter.toVaultMockExtension(timedVault);
+
+      await expect(await vault.manualPauseVault())
+        .to.emit(vault, 'VaultPausedStateChanged')
         .withArgs(true);
 
-      await expect(await timedVault.manualUnpauseVault())
-        .to.emit(timedVault, 'VaultPausedStateChanged')
+      await expect(await vault.manualUnpauseVault())
+        .to.emit(vault, 'VaultPausedStateChanged')
         .withArgs(false);
     });
 

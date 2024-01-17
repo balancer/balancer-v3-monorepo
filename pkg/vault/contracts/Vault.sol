@@ -53,25 +53,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
 
     constructor(
         IVaultExtension vaultExtension,
-        IAuthorizer authorizer,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
+        IAuthorizer authorizer
     ) Authentication(bytes32(uint256(uint160(address(this))))) {
-        if (pauseWindowDuration > MAX_PAUSE_WINDOW_DURATION) {
-            revert VaultPauseWindowDurationTooLarge();
-        }
-        if (bufferPeriodDuration > MAX_BUFFER_PERIOD_DURATION) {
-            revert PauseBufferPeriodDurationTooLarge();
-        }
-
-        uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
-
-        _vaultPauseWindowEndTime = pauseWindowEndTime;
-        _vaultBufferPeriodDuration = bufferPeriodDuration;
-        _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
-
         _vaultExtension = vaultExtension;
         _authorizer = authorizer;
+
+        _vaultPauseWindowEndTime = vaultExtension.getPauseWindowEndTime();
+        _vaultBufferPeriodDuration = vaultExtension.getBufferPeriodDuration();
+        _vaultBufferPeriodEndTime = vaultExtension.getBufferPeriodEndTime();
     }
 
     /*******************************************************************************

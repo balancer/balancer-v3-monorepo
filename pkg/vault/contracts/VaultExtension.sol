@@ -44,8 +44,39 @@ contract VaultExtension is IVaultExtension, VaultCommon {
         _;
     }
 
-    constructor(IVault vault) Authentication(bytes32(uint256(uint160(address(vault))))) {
+    constructor(
+        IVault vault,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration
+    ) Authentication(bytes32(uint256(uint160(address(vault))))) {
+        if (pauseWindowDuration > MAX_PAUSE_WINDOW_DURATION) {
+            revert VaultPauseWindowDurationTooLarge();
+        }
+        if (bufferPeriodDuration > MAX_BUFFER_PERIOD_DURATION) {
+            revert PauseBufferPeriodDurationTooLarge();
+        }
+
+        uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
+
+        _vaultPauseWindowEndTime = pauseWindowEndTime;
+        _vaultBufferPeriodDuration = bufferPeriodDuration;
+        _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
         _vault = vault;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getPauseWindowEndTime() external view returns (uint256) {
+        return _vaultPauseWindowEndTime;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getBufferPeriodDuration() external view returns (uint256) {
+        return _vaultBufferPeriodDuration;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getBufferPeriodEndTime() external view returns (uint256) {
+        return _vaultBufferPeriodEndTime;
     }
 
     /*******************************************************************************
@@ -169,22 +200,22 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function isVaultPaused() external view returns (bool) {
+    function isVaultPaused() external view onlyVault returns (bool) {
         return _isVaultPaused();
     }
 
     /// @inheritdoc IVaultExtension
-    function getVaultPausedState() public view returns (bool, uint256, uint256) {
+    function getVaultPausedState() public view onlyVault returns (bool, uint256, uint256) {
         return (_isVaultPaused(), _vaultPauseWindowEndTime, _vaultBufferPeriodEndTime);
     }
 
     /// @inheritdoc IVaultExtension
-    function pauseVault() external authenticate {
+    function pauseVault() external authenticate onlyVault {
         _setVaultPaused(true);
     }
 
     /// @inheritdoc IVaultExtension
-    function unpauseVault() external authenticate {
+    function unpauseVault() external authenticate onlyVault {
         _setVaultPaused(false);
     }
 

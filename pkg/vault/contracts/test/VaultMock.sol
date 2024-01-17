@@ -31,13 +31,10 @@ contract VaultMock is Vault {
 
     bytes32 private constant _ALL_BITS_SET = bytes32(type(uint256).max);
 
-    constructor(
-        IVaultExtension vaultExtension,
-        IAuthorizer authorizer,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
-    ) Vault(vaultExtension, authorizer, pauseWindowDuration, bufferPeriodDuration) {
-        _poolFactoryMock = new PoolFactoryMock(IVault(address(this)), pauseWindowDuration);
+    constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) Vault(vaultExtension, authorizer) {
+        uint256 pauseWindowEndTime = vaultExtension.getPauseWindowEndTime();
+        uint256 bufferPeriodDuration = vaultExtension.getBufferPeriodDuration();
+        _poolFactoryMock = new PoolFactoryMock(IVault(address(this)), pauseWindowEndTime - bufferPeriodDuration);
     }
 
     function getPoolFactoryMock() external view returns (address) {
