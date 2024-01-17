@@ -1562,61 +1562,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
     }
 
     /*******************************************************************************
-                                    Vault Pausing
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultMain
-    function isVaultPaused() external view returns (bool) {
-        return _isVaultPaused();
-    }
-
-    /// @inheritdoc IVaultMain
-    function getVaultPausedState() public view returns (bool, uint256, uint256) {
-        return (_isVaultPaused(), _vaultPauseWindowEndTime, _vaultBufferPeriodEndTime);
-    }
-
-    /// @inheritdoc IVaultMain
-    function pauseVault() external authenticate {
-        _setVaultPaused(true);
-    }
-
-    /// @inheritdoc IVaultMain
-    function unpauseVault() external authenticate {
-        _setVaultPaused(false);
-    }
-
-    /**
-     * @dev The contract can only be paused until the end of the Pause Window, and
-     * unpaused until the end of the Buffer Period.
-     */
-    function _setVaultPaused(bool pausing) internal {
-        if (_isVaultPaused()) {
-            if (pausing) {
-                // Already paused, and we're trying to pause it again.
-                revert VaultPaused();
-            }
-
-            // The Vault can always be unpaused while it's paused.
-            // When the buffer period expires, `_isVaultPaused` will return false, so we would be in the outside
-            // else clause, where trying to unpause will revert unconditionally.
-        } else {
-            if (pausing) {
-                // Not already paused; we can pause within the window.
-                if (block.timestamp >= _vaultPauseWindowEndTime) {
-                    revert VaultPauseWindowExpired();
-                }
-            } else {
-                // Not paused, and we're trying to unpause it.
-                revert VaultNotPaused();
-            }
-        }
-
-        _vaultPaused = pausing;
-
-        emit VaultPausedStateChanged(pausing);
-    }
-
-    /*******************************************************************************
                                      Pool Pausing
     *******************************************************************************/
 

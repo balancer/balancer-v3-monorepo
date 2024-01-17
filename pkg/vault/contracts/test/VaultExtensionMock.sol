@@ -12,4 +12,12 @@ contract VaultExtensionMock is VaultExtension {
     function mockExtensionHash(bytes calldata input) external payable returns (bytes32) {
         return keccak256(input);
     }
+
+    function manualPauseVault() external {
+        _setVaultPaused(true);
+    }
+
+    function manualUnpauseVault() external {
+        _setVaultPaused(false);
+    }
 }

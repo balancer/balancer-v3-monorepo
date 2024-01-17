@@ -60,14 +60,6 @@ contract VaultMock is Vault {
         _poolRateProviders[pool][token] = rateProvider;
     }
 
-    function manualPauseVault() external {
-        _setVaultPaused(true);
-    }
-
-    function manualUnpauseVault() external {
-        _setVaultPaused(false);
-    }
-
     function manualPausePool(address pool) external {
         _setPoolPaused(pool, true);
     }
