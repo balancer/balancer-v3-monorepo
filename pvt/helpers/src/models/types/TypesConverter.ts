@@ -14,6 +14,7 @@ import {
 } from '../tokens/types';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
 import { VaultDeploymentInputParams, VaultDeploymentParams } from '../vault/types';
+import { IVault, IVault__factory, Vault, VaultMock } from '@balancer-labs/v3-vault/typechain-types';
 
 export function computeDecimalsFromIndex(i: number): number {
   // Produces repeating series (0..18)
@@ -27,6 +28,10 @@ export default {
     if (!pauseWindowDuration) pauseWindowDuration = 0;
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
     return { admin, pauseWindowDuration, bufferPeriodDuration };
+  },
+
+  async toIVault(vault: Vault | VaultMock): Promise<IVault> {
+    return IVault__factory.connect(await vault.getAddress(), vault.runner);
   },
 
   /***

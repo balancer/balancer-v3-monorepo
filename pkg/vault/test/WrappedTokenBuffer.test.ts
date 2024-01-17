@@ -13,6 +13,8 @@ import { FP_ONE, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { PoolCallbacksStruct, TokenConfigStruct, LiquidityManagementStruct } from '../typechain-types/contracts/Vault';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
+import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
+import { IVault, VaultExtensionMock } from '../typechain-types';
 
 describe('Vault - Wrapped Token Buffers', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -25,9 +27,11 @@ describe('Vault - Wrapped Token Buffers', function () {
   }
 
   let vault: VaultMock;
+  let vaultExtension: VaultExtensionMock;
   let authorizer: Contract;
   let baseToken: ERC20TestToken;
   let wrappedToken: WrappedTokenMock;
+  let iVault: IVault;
 
   let tokenA: ERC20TestToken;
 
@@ -42,6 +46,14 @@ describe('Vault - Wrapped Token Buffers', function () {
       pauseWindowDuration: PAUSE_WINDOW_DURATION,
       bufferPeriodDuration: BUFFER_PERIOD_DURATION,
     });
+
+    iVault = await TypesConverter.toIVault(vault);
+
+    vaultExtension = (await deployedAt(
+      'VaultExtensionMock',
+      await vault.getVaultExtension()
+    )) as unknown as VaultExtensionMock;
+
     const authorizerAddress = await vault.getAuthorizer();
     authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
     baseToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Standard', 'BASE', 6] });
@@ -129,7 +141,7 @@ describe('Vault - Wrapped Token Buffers', function () {
         ];
 
         await expect(
-          vault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement)
+          iVault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement)
         ).to.be.revertedWithCustomError(vault, 'WrappedTokenBufferNotRegistered');
       });
 
@@ -141,7 +153,7 @@ describe('Vault - Wrapped Token Buffers', function () {
         vault.connect(alice).registerBuffer(wrappedToken);
 
         await expect(
-          vault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement)
+          iVault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement)
         ).to.be.revertedWithCustomError(vault, 'InvalidTokenConfiguration');
       });
 
@@ -153,7 +165,7 @@ describe('Vault - Wrapped Token Buffers', function () {
         vault.connect(alice).registerBuffer(wrappedToken);
 
         await expect(
-          vault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement)
+          iVault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement)
         ).to.be.revertedWithCustomError(vault, 'InvalidTokenConfiguration');
       });
 
@@ -165,8 +177,8 @@ describe('Vault - Wrapped Token Buffers', function () {
         ];
         vault.connect(alice).registerBuffer(wrappedToken);
 
-        await expect(vault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement))
-          .to.be.revertedWithCustomError(vault, 'AmbiguousPoolToken')
+        await expect(iVault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement))
+          .to.be.revertedWithCustomError(vaultExtension, 'AmbiguousPoolToken')
           .withArgs(await baseToken.getAddress());
       });
     });
@@ -188,7 +200,7 @@ describe('Vault - Wrapped Token Buffers', function () {
 
       it('exposes base tokens for ERC4626', async () => {
         vault.connect(alice).registerBuffer(wrappedToken);
-        await vault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement);
+        await iVault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement);
 
         const poolTokens = await vault.getPoolTokens(ANY_ADDRESS);
         expect(poolTokens).to.deep.equal([tokenAAddress, baseAddress]);
@@ -198,7 +210,7 @@ describe('Vault - Wrapped Token Buffers', function () {
         vault.connect(alice).registerBuffer(wrappedToken);
 
         expect(
-          await vault
+          await iVault
             .connect(alice)
             .registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement)
         )
