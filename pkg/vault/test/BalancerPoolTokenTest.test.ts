@@ -1,6 +1,5 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/PoolMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
@@ -10,11 +9,12 @@ import { impersonate } from '@balancer-labs/v3-helpers/src/signers';
 import { setupEnvironment } from './poolSetup';
 import '@balancer-labs/v3-common/setupTests';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
+import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 
 describe('BalancerPoolToken', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 9;
 
-  let vault: VaultMock;
+  let vault: IVaultMock;
   let poolA: PoolMock;
   let poolB: PoolMock;
 

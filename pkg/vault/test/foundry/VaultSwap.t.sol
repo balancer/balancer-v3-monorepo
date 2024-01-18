@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
-import { PoolNotInitialized, PoolPaused } from "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -46,14 +46,14 @@ contract VaultSwapTest is BaseVaultTest {
     function testCannotSwapWhenPaused() public {
         vault.manualPausePool(address(pool));
 
-        vm.expectRevert(abi.encodeWithSelector(PoolPaused.selector, address(pool)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, address(pool)));
 
         vm.prank(bob);
         router.swapExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
     }
 
     function testSwapNotInitialized() public {
-        vm.expectRevert(abi.encodeWithSelector(PoolNotInitialized.selector, address(noInitPool)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, address(noInitPool)));
         router.swapExactIn(
             address(noInitPool),
             usdc,
