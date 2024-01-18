@@ -856,15 +856,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
 
         for (uint256 i = 0; i < numTokens; ++i) {
             TokenType tokenType = poolData.tokenConfig[i].tokenType;
-            // Initialize by token type: ERC4626 always pay yield fees.
-            bool subjectToYieldProtocolFees = tokenType == TokenType.ERC4626;
+
+            // Do not charge yield fees until the pool is initialized.
+            // ERC4626 tokens always pay yield fees; WITH_RATE tokens pay unless exempt.
+            bool subjectToYieldProtocolFees = poolData.poolConfig.isPoolInitialized &&
+                (tokenType == TokenType.ERC4626 ||
+                    (tokenType == TokenType.WITH_RATE && poolData.tokenConfig[i].yieldFeeExempt == false));
 
             if (tokenType == TokenType.STANDARD) {
                 poolData.tokenRates[i] = FixedPoint.ONE;
             } else if (tokenType == TokenType.WITH_RATE) {
                 poolData.tokenRates[i] = poolData.tokenConfig[i].rateProvider.getRate();
-                // Tokens with rates pay yield fees unless exempt.
-                subjectToYieldProtocolFees = poolData.tokenConfig[i].yieldFeeExempt == false;
             } else {
                 // TODO implement ERC4626 at a later stage. Not coming from user input, so can only be these three.
                 revert InvalidTokenConfiguration();
@@ -873,7 +875,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
             _setLiveBalanceFromRawForToken(poolData, roundingDirection, i);
 
             // Check for yield protocol fees after initialization
-            if (subjectToYieldProtocolFees && poolData.poolConfig.isPoolInitialized) {
+            if (subjectToYieldProtocolFees) {
                 IERC20 token = poolData.tokenConfig[i].token;
                 if (yieldFeePercentage > 0) {
                     uint256 yieldFeeAmountRaw = _computeYieldProtocolFeesDue(
