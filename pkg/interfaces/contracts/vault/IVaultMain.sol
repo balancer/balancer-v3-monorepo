@@ -350,12 +350,6 @@ interface IVaultMain {
                                    Fees
     *******************************************************************************/
 
-    /// @dev Error raised when the protocol swap fee percentage exceeds the maximum allowed value.
-    error ProtocolSwapFeePercentageTooHigh();
-
-    /// @dev Error raised when the swap fee percentage exceeds the maximum allowed value.
-    error SwapFeePercentageTooHigh();
-
     /**
      * @notice Sets a new swap fee percentage for the protocol.
      * @param newSwapFeePercentage The new swap fee percentage to be set
@@ -419,9 +413,6 @@ interface IVaultMain {
                                     Queries
     *******************************************************************************/
 
-    /// @dev A user tried to execute a query operation when they were disabled.
-    error QueriesDisabled();
-
     /**
      * @notice Invokes a callback on msg.sender with arguments provided in `data`.
      * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
@@ -459,23 +450,11 @@ interface IVaultMain {
     event PoolRecoveryModeStateChanged(address indexed pool, bool recoveryMode);
 
     /**
-     * @dev Cannot enable recovery mode when already enabled.
-     * @param pool The pool
-     */
-    error PoolInRecoveryMode(address pool);
-
-    /**
-     * @dev Cannot disable recovery mode when not enabled.
-     * @param pool The pool
-     */
-    error PoolNotInRecoveryMode(address pool);
-
-    /**
      * @notice Checks whether a pool is in recovery mode.
      * @param pool Address of the pool to check
      * @return True if the pool is initialized, false otherwise
      */
-    function isPoolInRecoveryMode(address pool) external returns (bool);
+    function isPoolInRecoveryMode(address pool) external view returns (bool);
 
     /**
      * @notice Enable recovery mode for a pool.

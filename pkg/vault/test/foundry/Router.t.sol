@@ -11,7 +11,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
-import { TokenNotRegistered } from "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
@@ -125,7 +125,7 @@ contract RouterTest is BaseVaultTest {
         vm.prank(alice);
         vault.disableQuery();
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultMain.QueriesDisabled.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.QueriesDisabled.selector));
 
         vm.prank(address(0), address(0));
         router.querySwapExactIn(address(pool), usdc, dai, usdcAmountIn, bytes(""));
@@ -511,7 +511,7 @@ contract RouterTest is BaseVaultTest {
         assertEq(amountsGiven[0], 0);
         assertEq(amountsGiven[1], 4321);
 
-        vm.expectRevert(abi.encodeWithSelector(TokenNotRegistered.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.TokenNotRegistered.selector));
         router.getSingleInputArray(address(pool), weth, daiAmountIn);
     }
 

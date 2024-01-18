@@ -7,7 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { SenderIsNotVault } from "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import {
     AddLiquidityKind,
     AddLiquidityParams,
@@ -30,7 +30,7 @@ contract Router is IRouter, ReentrancyGuard {
 
     modifier onlyVault() {
         if (msg.sender != address(_vault)) {
-            revert SenderIsNotVault(msg.sender);
+            revert IVaultErrors.SenderIsNotVault(msg.sender);
         }
         _;
     }
