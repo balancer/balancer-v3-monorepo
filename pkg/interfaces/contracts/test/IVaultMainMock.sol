@@ -16,10 +16,6 @@ interface IVaultMainMock {
 
     function setRateProvider(address pool, IERC20 token, IRateProvider rateProvider) external;
 
-    function manualPausePool(address pool) external;
-
-    function manualUnpausePool(address pool) external;
-
     function manualRegisterPool(address pool, IERC20[] memory tokens) external;
 
     function manualRegisterPoolAtTimestamp(

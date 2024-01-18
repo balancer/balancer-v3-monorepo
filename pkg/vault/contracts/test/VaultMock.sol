@@ -58,14 +58,6 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolRateProviders[pool][token] = rateProvider;
     }
 
-    function manualPausePool(address pool) external override {
-        _setPoolPaused(pool, true);
-    }
-
-    function manualUnpausePool(address pool) external override {
-        _setPoolPaused(pool, false);
-    }
-
     // Used for testing pool registration, which is ordinarily done in the pool factory.
     // The Mock pool has an argument for whether or not to register on deployment. To call register pool
     // separately, deploy it with the registration flag false, then call this function.
