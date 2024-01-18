@@ -26,11 +26,11 @@ contract VaultExtensionMock is IVaultExtensionMock, VaultExtension {
         _setVaultPaused(false);
     }
 
-    function manualPausePool(address pool) external override {
+    function manualPausePool(address pool) external {
         _setPoolPaused(pool, true);
     }
 
-    function manualUnpausePool(address pool) external override {
+    function manualUnpausePool(address pool) external {
         _setPoolPaused(pool, false);
     }
 }
