@@ -7,7 +7,7 @@ import "forge-std/Test.sol";
 import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { CallbackFailed } from "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
@@ -82,7 +82,7 @@ contract InitializerTest is BaseVaultTest {
     function testOnBeforeInitializeCallbackRevert() public {
         PoolMock(pool).setFailOnBeforeInitializeCallback(true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(CallbackFailed.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.CallbackFailed.selector));
         router.initialize(
             address(pool),
             [address(dai), address(usdc)].toMemoryArray().asIERC20(),
@@ -117,7 +117,7 @@ contract InitializerTest is BaseVaultTest {
     function testOnAfterInitializeCallbackRevert() public {
         PoolMock(pool).setFailOnAfterInitializeCallback(true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(CallbackFailed.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.CallbackFailed.selector));
         router.initialize(
             address(pool),
             [address(dai), address(usdc)].toMemoryArray().asIERC20(),

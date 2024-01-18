@@ -450,12 +450,6 @@ interface IVaultMain {
                                    Fees
     *******************************************************************************/
 
-    /// @dev Error raised when the protocol swap fee percentage exceeds the maximum allowed value.
-    error ProtocolSwapFeePercentageTooHigh();
-
-    /// @dev Error raised when the swap fee percentage exceeds the maximum allowed value.
-    error SwapFeePercentageTooHigh();
-
     /**
      * @notice Sets a new swap fee percentage for the protocol.
      * @param newSwapFeePercentage The new swap fee percentage to be set
@@ -519,9 +513,6 @@ interface IVaultMain {
                                     Queries
     *******************************************************************************/
 
-    /// @dev A user tried to execute a query operation when they were disabled.
-    error QueriesDisabled();
-
     /**
      * @notice Invokes a callback on msg.sender with arguments provided in `data`.
      * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
@@ -559,23 +550,11 @@ interface IVaultMain {
     event PoolRecoveryModeStateChanged(address indexed pool, bool recoveryMode);
 
     /**
-     * @dev Cannot enable recovery mode when already enabled.
-     * @param pool The pool
-     */
-    error PoolInRecoveryMode(address pool);
-
-    /**
-     * @dev Cannot disable recovery mode when not enabled.
-     * @param pool The pool
-     */
-    error PoolNotInRecoveryMode(address pool);
-
-    /**
      * @notice Checks whether a pool is in recovery mode.
      * @param pool Address of the pool to check
      * @return True if the pool is initialized, false otherwise
      */
-    function isPoolInRecoveryMode(address pool) external returns (bool);
+    function isPoolInRecoveryMode(address pool) external view returns (bool);
 
     /**
      * @notice Enable recovery mode for a pool.
@@ -619,44 +598,11 @@ interface IVaultMain {
     *******************************************************************************/
 
     /**
-     * @dev The Vault's pause status has changed.
-     * @param paused True if the Vault was paused
-     */
-    event VaultPausedStateChanged(bool paused);
-
-    /**
      * @dev A Pool's pause status has changed.
      * @param pool The pool that was just paused or unpaused
      * @param paused True if the pool was paused
      */
     event PoolPausedStateChanged(address indexed pool, bool paused);
-
-    /**
-     * @notice Indicates whether the Vault is paused.
-     * @return True if the Vault is paused
-     */
-    function isVaultPaused() external view returns (bool);
-
-    /**
-     * @notice Returns the paused status, and end times of the Vault's pause window and buffer period.
-     * @return paused True if the Vault is paused
-     * @return vaultPauseWindowEndTime The timestamp of the end of the Vault's pause window
-     * @return vaultBufferPeriodEndTime The timestamp of the end of the Vault's buffer period
-     */
-    function getVaultPausedState() external view returns (bool, uint256, uint256);
-
-    /**
-     * @notice Pause the Vault: an emergency action which disables all operational state-changing functions.
-     * @dev This is a permissioned function that will only work during the Pause Window set during deployment.
-     */
-    function pauseVault() external;
-
-    /**
-     * @notice Reverse a `pause` operation, and restore the Vault to normal functionality.
-     * @dev This is a permissioned function that will only work on a paused Vault within the Buffer Period set during
-     * deployment. Note that the Vault will automatically unpause after the Buffer Period expires.
-     */
-    function unpauseVault() external;
 
     /**
      * @notice Indicates whether a pool is paused.

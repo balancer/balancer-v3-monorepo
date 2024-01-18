@@ -30,13 +30,12 @@ async function deployReal(deployment: VaultDeploymentParams, authorizer: BaseCon
   const futureVaultAddress = await getVaultAddress(admin);
 
   const vaultExtension: VaultExtension = await contract.deploy('v3-vault/VaultExtension', {
-    args: [futureVaultAddress],
+    args: [futureVaultAddress, pauseWindowDuration, bufferPeriodDuration],
     from: admin,
   });
 
-  const args = [vaultExtension, authorizer, pauseWindowDuration, bufferPeriodDuration];
   return await contract.deploy('v3-vault/Vault', {
-    args,
+    args: [vaultExtension, authorizer],
     from: admin,
   });
 }
@@ -47,13 +46,12 @@ async function deployMocked(deployment: VaultDeploymentParams, authorizer: BaseC
   const futureVaultAddress = await getVaultAddress(admin);
 
   const vaultExtension: VaultExtension = await contract.deploy('v3-vault/VaultExtensionMock', {
-    args: [futureVaultAddress],
+    args: [futureVaultAddress, pauseWindowDuration, bufferPeriodDuration],
     from: admin,
   });
 
-  const args = [vaultExtension, authorizer, pauseWindowDuration, bufferPeriodDuration];
   return await contract.deploy('v3-vault/VaultMock', {
-    args,
+    args: [vaultExtension, authorizer],
     from: admin,
   });
 }

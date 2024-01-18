@@ -13,6 +13,7 @@ import {
     Rounding
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IVaultMainMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMainMock.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
@@ -23,7 +24,7 @@ import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
 
-contract VaultMock is Vault {
+contract VaultMock is IVaultMainMock, Vault {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using PoolConfigLib for PoolConfig;
 
@@ -31,73 +32,44 @@ contract VaultMock is Vault {
 
     bytes32 private constant _ALL_BITS_SET = bytes32(type(uint256).max);
 
-    constructor(
-        IVaultExtension vaultExtension,
-        IAuthorizer authorizer,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
-    ) Vault(vaultExtension, authorizer, pauseWindowDuration, bufferPeriodDuration) {
-        _poolFactoryMock = new PoolFactoryMock(IVault(address(this)), pauseWindowDuration);
+    constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) Vault(vaultExtension, authorizer) {
+        uint256 pauseWindowEndTime = vaultExtension.getPauseWindowEndTime();
+        uint256 bufferPeriodDuration = vaultExtension.getBufferPeriodDuration();
+        _poolFactoryMock = new PoolFactoryMock(IVault(address(this)), pauseWindowEndTime - bufferPeriodDuration);
     }
 
-    function getPoolFactoryMock() external view returns (address) {
+    function getPoolFactoryMock() external view override returns (address) {
         return address(_poolFactoryMock);
     }
 
-    function burnERC20(address token, address from, uint256 amount) external {
+    function burnERC20(address token, address from, uint256 amount) external override {
         _burn(token, from, amount);
     }
 
-    function mintERC20(address token, address to, uint256 amount) external {
+    function mintERC20(address token, address to, uint256 amount) external override {
         _mint(token, to, amount);
     }
 
-    function setConfig(address pool, PoolConfig calldata config) external {
+    function setConfig(address pool, PoolConfig calldata config) external override {
         _poolConfig[pool] = config.fromPoolConfig();
     }
 
-    function setRateProvider(address pool, IERC20 token, IRateProvider rateProvider) external {
+    function setRateProvider(address pool, IERC20 token, IRateProvider rateProvider) external override {
         _poolRateProviders[pool][token] = rateProvider;
     }
 
-    function manualPauseVault() external {
-        _setVaultPaused(true);
-    }
-
-    function manualUnpauseVault() external {
-        _setVaultPaused(false);
-    }
-
-    function manualPausePool(address pool) external {
+    function manualPausePool(address pool) external override {
         _setPoolPaused(pool, true);
     }
 
-    function manualUnpausePool(address pool) external {
+    function manualUnpausePool(address pool) external override {
         _setPoolPaused(pool, false);
-    }
-
-    // Used for testing the ReentrancyGuard
-    function reentrantRegisterPool(address pool, IERC20[] memory tokens) external nonReentrant {
-        TokenConfig[] memory tokenData = new TokenConfig[](tokens.length);
-        // Assume standard tokens (enum value = 0)
-        for (uint256 i = 0; i < tokens.length; i++) {
-            tokenData[i].token = tokens[i];
-        }
-
-        IVault(address(this)).registerPool(
-            pool,
-            tokenData,
-            365 days,
-            address(0),
-            PoolConfigBits.wrap(0).toPoolConfig().callbacks,
-            PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
-        );
     }
 
     // Used for testing pool registration, which is ordinarily done in the pool factory.
     // The Mock pool has an argument for whether or not to register on deployment. To call register pool
     // separately, deploy it with the registration flag false, then call this function.
-    function manualRegisterPool(address pool, IERC20[] memory tokens) external whenVaultNotPaused {
+    function manualRegisterPool(address pool, IERC20[] memory tokens) external override whenVaultNotPaused {
         IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
 
         _poolFactoryMock.registerPool(
@@ -115,7 +87,7 @@ contract VaultMock is Vault {
         IERC20[] memory tokens,
         uint256 timestamp,
         address pauseManager
-    ) external whenVaultNotPaused {
+    ) external override whenVaultNotPaused {
         IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
 
         _poolFactoryMock.registerPoolAtTimestamp(
@@ -129,7 +101,7 @@ contract VaultMock is Vault {
         );
     }
 
-    function getDecimalScalingFactors(address pool) external view returns (uint256[] memory) {
+    function getDecimalScalingFactors(address pool) external view override returns (uint256[] memory) {
         PoolConfig memory config = _poolConfig[pool].toPoolConfig();
         IERC20[] memory tokens = _getPoolTokens(pool);
 
@@ -146,15 +118,15 @@ contract VaultMock is Vault {
         _setPoolRecoveryMode(pool, false);
     }
 
-    function recoveryModeExit(address pool) external view onlyInRecoveryMode(pool) {
+    function recoveryModeExit(address pool) external view override onlyInRecoveryMode(pool) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function getPoolData(address pool, Rounding roundingDirection) external view returns (PoolData memory) {
+    function getPoolData(address pool, Rounding roundingDirection) external view override returns (PoolData memory) {
         return _getPoolData(pool, roundingDirection);
     }
 
-    function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw) {
+    function getRawBalances(address pool) external view override returns (uint256[] memory balancesRaw) {
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
 
         uint256 numTokens = poolTokenBalances.length();

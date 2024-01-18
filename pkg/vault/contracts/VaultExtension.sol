@@ -7,7 +7,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -46,8 +45,39 @@ contract VaultExtension is IVaultExtension, VaultCommon {
         _;
     }
 
-    constructor(IVault vault) Authentication(bytes32(uint256(uint160(address(vault))))) {
+    constructor(
+        IVault vault,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration
+    ) Authentication(bytes32(uint256(uint160(address(vault))))) {
+        if (pauseWindowDuration > MAX_PAUSE_WINDOW_DURATION) {
+            revert VaultPauseWindowDurationTooLarge();
+        }
+        if (bufferPeriodDuration > MAX_BUFFER_PERIOD_DURATION) {
+            revert PauseBufferPeriodDurationTooLarge();
+        }
+
+        uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
+
+        _vaultPauseWindowEndTime = pauseWindowEndTime;
+        _vaultBufferPeriodDuration = bufferPeriodDuration;
+        _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
         _vault = vault;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getPauseWindowEndTime() external view returns (uint256) {
+        return _vaultPauseWindowEndTime;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getBufferPeriodDuration() external view returns (uint256) {
+        return _vaultBufferPeriodDuration;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getBufferPeriodEndTime() external view returns (uint256) {
+        return _vaultBufferPeriodEndTime;
     }
 
     /*******************************************************************************
@@ -125,7 +155,7 @@ contract VaultExtension is IVaultExtension, VaultCommon {
             // Ensure the token isn't already registered for the pool.
             // Note: EnumerableMaps require an explicit initial value when creating a key-value pair.
             if (poolTokenBalances.set(token, 0) == false) {
-                revert TokenAlreadyRegistered(address(token));
+                revert TokenAlreadyRegistered(token);
             }
 
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
@@ -204,6 +234,61 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     function _initRegistrationLocals(uint256 numTokens) private pure returns (RegistrationLocals memory vars) {
         vars.tokenDecimalDiffs = new uint8[](numTokens);
         vars.tempRegisteredTokens = new IERC20[](numTokens);
+    }
+
+    /*******************************************************************************
+                                    Vault Pausing
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
+    function isVaultPaused() external view onlyVault returns (bool) {
+        return _isVaultPaused();
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getVaultPausedState() public view onlyVault returns (bool, uint256, uint256) {
+        return (_isVaultPaused(), _vaultPauseWindowEndTime, _vaultBufferPeriodEndTime);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function pauseVault() external authenticate onlyVault {
+        _setVaultPaused(true);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function unpauseVault() external authenticate onlyVault {
+        _setVaultPaused(false);
+    }
+
+    /**
+     * @dev The contract can only be paused until the end of the Pause Window, and
+     * unpaused until the end of the Buffer Period.
+     */
+    function _setVaultPaused(bool pausing) internal {
+        if (_isVaultPaused()) {
+            if (pausing) {
+                // Already paused, and we're trying to pause it again.
+                revert VaultPaused();
+            }
+
+            // The Vault can always be unpaused while it's paused.
+            // When the buffer period expires, `_isVaultPaused` will return false, so we would be in the outside
+            // else clause, where trying to unpause will revert unconditionally.
+        } else {
+            if (pausing) {
+                // Not already paused; we can pause within the window.
+                if (block.timestamp >= _vaultPauseWindowEndTime) {
+                    revert VaultPauseWindowExpired();
+                }
+            } else {
+                // Not paused, and we're trying to unpause it.
+                revert VaultNotPaused();
+            }
+        }
+
+        _vaultPaused = pausing;
+
+        emit VaultPausedStateChanged(pausing);
     }
 
     function _canPerform(bytes32 actionId, address user) internal view virtual override returns (bool) {
