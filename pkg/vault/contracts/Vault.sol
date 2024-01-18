@@ -906,13 +906,18 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
         uint256 tokenIndex,
         uint256 yieldFeePercentage
     ) internal pure returns (uint256 feeAmountRaw) {
-        uint256 liveBalanceDiff = poolData.balancesLiveScaled18[tokenIndex] - lastLiveBalance;
+        uint256 currentLiveBalance = poolData.balancesLiveScaled18[tokenIndex];
 
-        if (liveBalanceDiff > 0) {
-            feeAmountRaw = liveBalanceDiff.mulDown(yieldFeePercentage).toRawUndoRateRoundDown(
-                poolData.decimalScalingFactors[tokenIndex],
-                poolData.tokenRates[tokenIndex]
-            );
+        if (currentLiveBalance > lastLiveBalance) {
+            unchecked {
+                // Magnitudes checked above, so it's safe to do unchecked math here.
+                uint256 liveBalanceDiff = currentLiveBalance - lastLiveBalance;
+
+                feeAmountRaw = liveBalanceDiff.mulDown(yieldFeePercentage).toRawUndoRateRoundDown(
+                    poolData.decimalScalingFactors[tokenIndex],
+                    poolData.tokenRates[tokenIndex]
+                );
+            }
         }
     }
 
