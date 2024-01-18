@@ -18,11 +18,11 @@ contract VaultExtensionMock is IVaultExtensionMock, VaultExtension {
         return keccak256(input);
     }
 
-    function manualPauseVault() external override {
+    function manualPauseVault() external {
         _setVaultPaused(true);
     }
 
-    function manualUnpauseVault() external override {
+    function manualUnpauseVault() external {
         _setVaultPaused(false);
     }
 }
