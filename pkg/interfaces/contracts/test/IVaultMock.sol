@@ -11,4 +11,6 @@ import { IVaultMainMock } from "./IVaultMainMock.sol";
 import { IVaultExtensionMock } from "./IVaultExtensionMock.sol";
 
 /// @dev One-fits-all solution for hardhat tests. Use the typechain type for errors, events and functions.
-interface IVaultMock is IVault, IVaultMainMock, IVaultExtensionMock, IERC20Errors, IAuthentication {}
+interface IVaultMock is IVault, IVaultMainMock, IVaultExtensionMock, IERC20Errors, IAuthentication {
+    // solhint-disable-previous-line no-empty-blocks
+}

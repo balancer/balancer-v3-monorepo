@@ -7,4 +7,6 @@ import { IVaultMain } from "./IVaultMain.sol";
 import { IVaultErrors } from "./IVaultErrors.sol";
 import { IVaultEvents } from "./IVaultEvents.sol";
 
-interface IVault is IVaultMain, IVaultExtension, IVaultErrors, IVaultEvents {}
+interface IVault is IVaultMain, IVaultExtension, IVaultErrors, IVaultEvents {
+    // solhint-disable-previous-line no-empty-blocks
+}
