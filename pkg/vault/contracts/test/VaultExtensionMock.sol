@@ -7,9 +7,21 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import "../VaultExtension.sol";
 
 contract VaultExtensionMock is VaultExtension {
-    constructor(IVault vault) VaultExtension(vault) {}
+    constructor(
+        IVault vault,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration
+    ) VaultExtension(vault, pauseWindowDuration, bufferPeriodDuration) {}
 
     function mockExtensionHash(bytes calldata input) external payable returns (bytes32) {
         return keccak256(input);
+    }
+
+    function manualPauseVault() external {
+        _setVaultPaused(true);
+    }
+
+    function manualUnpauseVault() external {
+        _setVaultPaused(false);
     }
 }

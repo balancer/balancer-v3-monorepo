@@ -24,6 +24,9 @@ abstract contract BaseTest is Test, GasSnapshot {
     address payable bob;
     // Malicious user.
     address payable hacker;
+    // Broke user.
+    address payable broke;
+
 
     // ERC20 tokens used for tests.
     ERC20TestToken internal dai;
@@ -60,6 +63,8 @@ abstract contract BaseTest is Test, GasSnapshot {
         alice = createUser("alice");
         bob = createUser("bob");
         hacker = createUser("hacker");
+        broke = payable(makeAddr("broke"));
+        vm.label(broke, "broke");
     }
 
     /// @dev Creates an ERC20 test token, labels its address.
