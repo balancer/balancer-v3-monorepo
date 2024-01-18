@@ -519,44 +519,11 @@ interface IVaultMain {
     *******************************************************************************/
 
     /**
-     * @dev The Vault's pause status has changed.
-     * @param paused True if the Vault was paused
-     */
-    event VaultPausedStateChanged(bool paused);
-
-    /**
      * @dev A Pool's pause status has changed.
      * @param pool The pool that was just paused or unpaused
      * @param paused True if the pool was paused
      */
     event PoolPausedStateChanged(address indexed pool, bool paused);
-
-    /**
-     * @notice Indicates whether the Vault is paused.
-     * @return True if the Vault is paused
-     */
-    function isVaultPaused() external view returns (bool);
-
-    /**
-     * @notice Returns the paused status, and end times of the Vault's pause window and buffer period.
-     * @return paused True if the Vault is paused
-     * @return vaultPauseWindowEndTime The timestamp of the end of the Vault's pause window
-     * @return vaultBufferPeriodEndTime The timestamp of the end of the Vault's buffer period
-     */
-    function getVaultPausedState() external view returns (bool, uint256, uint256);
-
-    /**
-     * @notice Pause the Vault: an emergency action which disables all operational state-changing functions.
-     * @dev This is a permissioned function that will only work during the Pause Window set during deployment.
-     */
-    function pauseVault() external;
-
-    /**
-     * @notice Reverse a `pause` operation, and restore the Vault to normal functionality.
-     * @dev This is a permissioned function that will only work on a paused Vault within the Buffer Period set during
-     * deployment. Note that the Vault will automatically unpause after the Buffer Period expires.
-     */
-    function unpauseVault() external;
 
     /**
      * @notice Indicates whether a pool is paused.
