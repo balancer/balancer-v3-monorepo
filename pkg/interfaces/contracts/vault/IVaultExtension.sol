@@ -7,6 +7,10 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { LiquidityManagement, PoolCallbacks, TokenConfig } from "./VaultTypes.sol";
 
 interface IVaultExtension {
+    /*******************************************************************************
+                              Constants and immutables
+    *******************************************************************************/
+
     /**
      * @notice Returns Vault's pause window end time.
      * @dev This value is immutable; the getter can be called by anyone.
@@ -24,6 +28,58 @@ interface IVaultExtension {
      * @dev This value is immutable; the getter can be called by anyone.
      */
     function getBufferPeriodEndTime() external view returns (uint256);
+
+    /**
+     * @notice Get the minimum number of tokens in a pool.
+     * @dev We expect the vast majority of pools to be 2-token.
+     * @return The token count of a minimal pool
+     */
+    function getMinimumPoolTokens() external pure returns (uint256);
+
+    /**
+     * @notice Get the maximum number of tokens in a pool.
+     * @return The token count of a minimal pool
+     */
+    function getMaximumPoolTokens() external pure returns (uint256);
+
+    /*******************************************************************************
+                              Transient Accounting
+    *******************************************************************************/
+
+    /**
+     * @notice Returns the address at the specified index of the _handlers array.
+     * @param index The index of the handler's address to fetch
+     * @return The address at the given index
+     */
+    function getHandler(uint256 index) external view returns (address);
+
+    /**
+     * @notice Returns the total number of handlers.
+     * @return The number of handlers
+     */
+    function getHandlersCount() external view returns (uint256);
+
+    /**
+     *  @notice Returns the count of non-zero deltas.
+     *  @return The current value of _nonzeroDeltaCount
+     */
+    function getNonzeroDeltaCount() external view returns (uint256);
+
+    /**
+     * @notice Retrieves the token delta for a specific user and token.
+     * @dev This function allows reading the value from the `_tokenDeltas` mapping.
+     * @param user The address of the user for whom the delta is being fetched
+     * @param token The token for which the delta is being fetched
+     * @return The delta of the specified token for the specified user
+     */
+    function getTokenDelta(address user, IERC20 token) external view returns (int256);
+
+    /**
+     * @notice Retrieves the reserve of a given token.
+     * @param token The token for which to retrieve the reserve
+     * @return The amount of reserves for the given token
+     */
+    function getTokenReserve(IERC20 token) external view returns (uint256);
 
     /*******************************************************************************
                                     Pool Registration
