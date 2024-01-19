@@ -122,8 +122,11 @@ contract VaultMock is IVaultMainMock, Vault {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function computePoolData(address pool, Rounding roundingDirection) external returns (PoolData memory) {
-        return _computePoolData(pool, roundingDirection);
+    function updateLiveBalancesAndComputePoolData(
+        address pool,
+        Rounding roundingDirection
+    ) external returns (PoolData memory) {
+        return _updateLiveBalancesAndComputePoolData(pool, roundingDirection);
     }
 
     function getRawBalances(address pool) external view override returns (uint256[] memory balancesRaw) {

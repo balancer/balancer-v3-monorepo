@@ -37,7 +37,7 @@ interface IVaultMainMock {
 
     function recoveryModeExit(address pool) external view;
 
-    function computePoolData(address pool, Rounding roundingDirection) external returns (PoolData memory);
+    function updateLiveBalancesAndComputePoolData(address pool, Rounding roundingDirection) external returns (PoolData memory);
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw);
 }
