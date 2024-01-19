@@ -398,4 +398,44 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     function getStaticSwapFeePercentage(address pool) external view returns (uint256) {
         return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
     }
+
+    /*******************************************************************************
+                                    Recovery Mode
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
+    function isPoolInRecoveryMode(address pool) external view onlyVault returns (bool) {
+        return _isPoolInRecoveryMode(pool);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function enableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate onlyVault {
+        _ensurePoolNotInRecoveryMode(pool);
+        _setPoolRecoveryMode(pool, true);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function disableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate onlyVault {
+        _ensurePoolInRecoveryMode(pool);
+        _setPoolRecoveryMode(pool, false);
+    }
+
+    function _setPoolRecoveryMode(address pool, bool recoveryMode) internal {
+        // Update poolConfig
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        config.isPoolInRecoveryMode = recoveryMode;
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        emit PoolRecoveryModeStateChanged(pool, recoveryMode);
+    }
+
+    /**
+     * @dev Reverts if the pool is in recovery mode.
+     * @param pool The pool
+     */
+    function _ensurePoolNotInRecoveryMode(address pool) internal view {
+        if (_isPoolInRecoveryMode(pool)) {
+            revert PoolInRecoveryMode(pool);
+        }
+    }
 }

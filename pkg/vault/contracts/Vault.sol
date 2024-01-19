@@ -589,11 +589,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
     }
 
     /// @inheritdoc IVaultMain
-    function isPoolInRecoveryMode(address pool) external view returns (bool) {
-        return _isPoolInRecoveryMode(pool);
-    }
-
-    /// @inheritdoc IVaultMain
     function getPoolConfig(address pool) external view returns (PoolConfig memory) {
         return _poolConfig[pool].toPoolConfig();
     }
@@ -643,11 +638,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
     /// @inheritdoc IVaultMain
     function getPoolTokenRates(address pool) external view withRegisteredPool(pool) returns (uint256[] memory) {
         return _getPoolTokenRates(pool);
-    }
-
-    /// @dev See `isPoolInRecoveryMode`
-    function _isPoolInRecoveryMode(address pool) internal view returns (bool) {
-        return _poolConfig[pool].isPoolInRecoveryMode();
     }
 
     /// @dev Reverts unless `pool` corresponds to an initialized Pool.
@@ -1395,60 +1385,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
     function _isTrustedRouter(address) internal pure returns (bool) {
         //TODO: Implement based on approval by governance and user
         return true;
-    }
-
-    /*******************************************************************************
-                                    Recovery Mode
-    *******************************************************************************/
-
-    /**
-     * @dev Place on functions that may only be called when the associated pool is in recovery mode.
-     * @param pool The pool
-     */
-    modifier onlyInRecoveryMode(address pool) {
-        _ensurePoolInRecoveryMode(pool);
-        _;
-    }
-
-    /// @inheritdoc IVaultMain
-    function enableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate {
-        _ensurePoolNotInRecoveryMode(pool);
-        _setPoolRecoveryMode(pool, true);
-    }
-
-    /// @inheritdoc IVaultMain
-    function disableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate {
-        _ensurePoolInRecoveryMode(pool);
-        _setPoolRecoveryMode(pool, false);
-    }
-
-    function _setPoolRecoveryMode(address pool, bool recoveryMode) internal {
-        // Update poolConfig
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.isPoolInRecoveryMode = recoveryMode;
-        _poolConfig[pool] = config.fromPoolConfig();
-
-        emit PoolRecoveryModeStateChanged(pool, recoveryMode);
-    }
-
-    /**
-     * @dev Reverts if the pool is in recovery mode.
-     * @param pool The pool
-     */
-    function _ensurePoolNotInRecoveryMode(address pool) internal view {
-        if (_isPoolInRecoveryMode(pool)) {
-            revert PoolInRecoveryMode(pool);
-        }
-    }
-
-    /**
-     * @dev Reverts if the pool is not in recovery mode.
-     * @param pool The pool
-     */
-    function _ensurePoolInRecoveryMode(address pool) internal view {
-        if (!_isPoolInRecoveryMode(pool)) {
-            revert PoolNotInRecoveryMode(pool);
-        }
     }
 
     /*******************************************************************************

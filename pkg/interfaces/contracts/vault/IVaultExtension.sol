@@ -184,4 +184,29 @@ interface IVaultExtension {
      * @return The current static swap fee percentage for the specified pool
      */
     function getStaticSwapFeePercentage(address pool) external view returns (uint256);
+
+    /*******************************************************************************
+                                Recovery Mode
+    *******************************************************************************/
+
+    /**
+     * @notice Checks whether a pool is in recovery mode.
+     * @param pool Address of the pool to check
+     * @return True if the pool is initialized, false otherwise
+     */
+    function isPoolInRecoveryMode(address pool) external view returns (bool);
+
+    /**
+     * @notice Enable recovery mode for a pool.
+     * @dev This is a permissioned function.
+     * @param pool The pool
+     */
+    function enableRecoveryMode(address pool) external;
+
+    /**
+     * @notice Disable recovery mode for a pool.
+     * @dev This is a permissioned function.
+     * @param pool The pool
+     */
+    function disableRecoveryMode(address pool) external;
 }

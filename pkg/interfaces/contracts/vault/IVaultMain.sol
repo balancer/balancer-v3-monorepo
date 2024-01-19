@@ -376,38 +376,6 @@ interface IVaultMain {
     function isQueryDisabled() external view returns (bool);
 
     /*******************************************************************************
-                                Recovery Mode
-    *******************************************************************************/
-
-    /**
-     * @dev Recovery mode has been enabled or disabled for a pool.
-     * @param pool The pool
-     * @param recoveryMode True if recovery mode was enabled
-     */
-    event PoolRecoveryModeStateChanged(address indexed pool, bool recoveryMode);
-
-    /**
-     * @notice Checks whether a pool is in recovery mode.
-     * @param pool Address of the pool to check
-     * @return True if the pool is initialized, false otherwise
-     */
-    function isPoolInRecoveryMode(address pool) external view returns (bool);
-
-    /**
-     * @notice Enable recovery mode for a pool.
-     * @dev This is a permissioned function.
-     * @param pool The pool
-     */
-    function enableRecoveryMode(address pool) external;
-
-    /**
-     * @notice Disable recovery mode for a pool.
-     * @dev This is a permissioned function.
-     * @param pool The pool
-     */
-    function disableRecoveryMode(address pool) external;
-
-    /*******************************************************************************
                                 Authentication
     *******************************************************************************/
 
