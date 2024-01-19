@@ -102,19 +102,6 @@ interface IVaultMain {
      */
     function getPoolConfig(address pool) external view returns (PoolConfig memory);
 
-    /**
-     * @notice Get the minimum number of tokens in a pool.
-     * @dev We expect the vast majority of pools to be 2-token.
-     * @return The token count of a minimal pool
-     */
-    function getMinimumPoolTokens() external pure returns (uint256);
-
-    /**
-     * @notice Get the maximum number of tokens in a pool.
-     * @return The token count of a minimal pool
-     */
-    function getMaximumPoolTokens() external pure returns (uint256);
-
     /*******************************************************************************
                                     MultiToken
     *******************************************************************************/
@@ -218,41 +205,6 @@ interface IVaultMain {
      */
     function retrieve(IERC20 token, address from, uint256 amount) external;
 
-    /**
-     * @notice Returns the address at the specified index of the _handlers array.
-     * @param index The index of the handler's address to fetch
-     * @return The address at the given index
-     */
-    function getHandler(uint256 index) external view returns (address);
-
-    /**
-     * @notice Returns the total number of handlers.
-     * @return The number of handlers
-     */
-    function getHandlersCount() external view returns (uint256);
-
-    /**
-     *  @notice Returns the count of non-zero deltas.
-     *  @return The current value of _nonzeroDeltaCount
-     */
-    function getNonzeroDeltaCount() external view returns (uint256);
-
-    /**
-     * @notice Retrieves the token delta for a specific user and token.
-     * @dev This function allows reading the value from the `_tokenDeltas` mapping.
-     * @param user The address of the user for whom the delta is being fetched
-     * @param token The token for which the delta is being fetched
-     * @return The delta of the specified token for the specified user
-     */
-    function getTokenDelta(address user, IERC20 token) external view returns (int256);
-
-    /**
-     * @notice Retrieves the reserve of a given token.
-     * @param token The token for which to retrieve the reserve
-     * @return The amount of reserves for the given token
-     */
-    function getTokenReserve(IERC20 token) external view returns (uint256);
-
     /***************************************************************************
                                    Add Liquidity
     ***************************************************************************/
@@ -347,151 +299,6 @@ interface IVaultMain {
     ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
     /*******************************************************************************
-                                   Fees
-    *******************************************************************************/
-
-    /// @dev Error raised when the protocol swap fee percentage exceeds the maximum allowed value.
-    error ProtocolSwapFeePercentageTooHigh();
-
-    /// @dev Error raised when the swap fee percentage exceeds the maximum allowed value.
-    error SwapFeePercentageTooHigh();
-
-    /**
-     * @notice Sets a new swap fee percentage for the protocol.
-     * @param newSwapFeePercentage The new swap fee percentage to be set
-     */
-    function setProtocolSwapFeePercentage(uint256 newSwapFeePercentage) external;
-
-    /**
-     * @notice Emitted when the protocol swap fee percentage is updated.
-     * @param swapFeePercentage The updated protocol swap fee percentage
-     */
-    event ProtocolSwapFeePercentageChanged(uint256 indexed swapFeePercentage);
-
-    /**
-     * @notice Retrieves the current protocol swap fee percentage.
-     * @return The current protocol swap fee percentage
-     */
-    function getProtocolSwapFeePercentage() external view returns (uint256);
-
-    /**
-     * @notice Returns the accumulated swap fee in `token` collected by the protocol.
-     * @param token The address of the token in which fees have been accumulated
-     * @return The total amount of fees accumulated in the specified token
-     */
-    function getProtocolSwapFee(address token) external view returns (uint256);
-
-    /**
-     * @notice Collects accumulated protocol fees for the specified array of tokens.
-     * @dev Fees are sent to msg.sender.
-     * @param tokens An array of token addresses for which the fees should be collected
-     */
-    function collectProtocolFees(IERC20[] calldata tokens) external;
-
-    /**
-     * @notice Logs the collection of fees in a specific token and amount.
-     * @param token The token in which the fee has been collected
-     * @param amount The amount of the token collected as fees
-     */
-    event ProtocolFeeCollected(IERC20 indexed token, uint256 indexed amount);
-
-    /**
-     * @notice Assigns a new static swap fee percentage to the specified pool.
-     * @param pool The address of the pool for which the static swap fee will be changed
-     * @param swapFeePercentage The new swap fee percentage to apply to the pool
-     */
-    function setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) external;
-
-    /**
-     * @notice Emitted when the swap fee percentage of a pool is updated.
-     * @param swapFeePercentage The new swap fee percentage for the pool
-     */
-    event SwapFeePercentageChanged(address indexed pool, uint256 indexed swapFeePercentage);
-
-    /**
-     * @notice Fetches the static swap fee percentage for a given pool.
-     * @param pool The address of the pool whose static swap fee percentage is being queried
-     * @return The current static swap fee percentage for the specified pool
-     */
-    function getStaticSwapFeePercentage(address pool) external view returns (uint256);
-
-    /*******************************************************************************
-                                    Queries
-    *******************************************************************************/
-
-    /// @dev A user tried to execute a query operation when they were disabled.
-    error QueriesDisabled();
-
-    /**
-     * @notice Invokes a callback on msg.sender with arguments provided in `data`.
-     * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
-     * anything else will revert.
-     *
-     * Allows querying any operation on the Vault that has the `withHandler` modifier.
-     *
-     * Allows the external calling of a function via the Vault contract to
-     * access Vault's functions guarded by `withHandler`.
-     * `transient` modifier ensuring balances changes within the Vault are settled.
-     *
-     * @param data Contains function signature and args to be passed to the msg.sender
-     * @return result Resulting data from the call
-     */
-    function quote(bytes calldata data) external payable returns (bytes memory result);
-
-    /// @notice Disables queries functionality on the Vault. Can be called only by governance.
-    function disableQuery() external;
-
-    /**
-     * @notice Checks if the queries enabled on the Vault.
-     * @return If true, then queries are disabled
-     */
-    function isQueryDisabled() external view returns (bool);
-
-    /*******************************************************************************
-                                Recovery Mode
-    *******************************************************************************/
-
-    /**
-     * @dev Recovery mode has been enabled or disabled for a pool.
-     * @param pool The pool
-     * @param recoveryMode True if recovery mode was enabled
-     */
-    event PoolRecoveryModeStateChanged(address indexed pool, bool recoveryMode);
-
-    /**
-     * @dev Cannot enable recovery mode when already enabled.
-     * @param pool The pool
-     */
-    error PoolInRecoveryMode(address pool);
-
-    /**
-     * @dev Cannot disable recovery mode when not enabled.
-     * @param pool The pool
-     */
-    error PoolNotInRecoveryMode(address pool);
-
-    /**
-     * @notice Checks whether a pool is in recovery mode.
-     * @param pool Address of the pool to check
-     * @return True if the pool is initialized, false otherwise
-     */
-    function isPoolInRecoveryMode(address pool) external returns (bool);
-
-    /**
-     * @notice Enable recovery mode for a pool.
-     * @dev This is a permissioned function.
-     * @param pool The pool
-     */
-    function enableRecoveryMode(address pool) external;
-
-    /**
-     * @notice Disable recovery mode for a pool.
-     * @dev This is a permissioned function.
-     * @param pool The pool
-     */
-    function disableRecoveryMode(address pool) external;
-
-    /*******************************************************************************
                                 Authentication
     *******************************************************************************/
 
@@ -513,51 +320,6 @@ interface IVaultMain {
      * Emits an `AuthorizerChanged` event.
      */
     function setAuthorizer(IAuthorizer newAuthorizer) external;
-
-    /*******************************************************************************
-                                        Pausing
-    *******************************************************************************/
-
-    /**
-     * @dev A Pool's pause status has changed.
-     * @param pool The pool that was just paused or unpaused
-     * @param paused True if the pool was paused
-     */
-    event PoolPausedStateChanged(address indexed pool, bool paused);
-
-    /**
-     * @notice Indicates whether a pool is paused.
-     * @param pool The pool to be checked
-     * @return True if the pool is paused
-     */
-    function isPoolPaused(address pool) external view returns (bool);
-
-    /**
-     * @notice Returns the paused status, and end times of the Pool's pause window and buffer period.
-     * @dev Note that even when set to a paused state, the pool will automatically unpause at the end of
-     * the buffer period.
-     *
-     * @param pool The pool whose data is requested
-     * @return paused True if the Pool is paused
-     * @return poolPauseWindowEndTime The timestamp of the end of the Pool's pause window
-     * @return poolBufferPeriodEndTime The timestamp after which the Pool unpauses itself (if paused)
-     * @return pauseManager The pause manager, or the zero address
-     */
-    function getPoolPausedState(address pool) external view returns (bool, uint256, uint256, address);
-
-    /**
-     * @notice Pause the Pool: an emergency action which disables all pool functions.
-     * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
-     * deployment.
-     */
-    function pausePool(address pool) external;
-
-    /**
-     * @notice Reverse a `pause` operation, and restore the Pool to normal functionality.
-     * @dev This is a permissioned function that will only work on a paused Pool within the Buffer Period set during
-     * deployment. Note that the Pool will automatically unpause after the Buffer Period expires.
-     */
-    function unpausePool(address pool) external;
 
     /*******************************************************************************
                                      Miscellaneous
