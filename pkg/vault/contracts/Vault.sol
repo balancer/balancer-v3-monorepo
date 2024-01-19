@@ -252,41 +252,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
     }
 
     /*******************************************************************************
-                                    Queries
-    *******************************************************************************/
-
-    /// @dev Ensure that only static calls are made to the functions with this modifier.
-    modifier query() {
-        if (!EVMCallModeHelpers.isStaticCall()) {
-            revert EVMCallModeHelpers.NotStaticCall();
-        }
-
-        if (_isQueryDisabled) {
-            revert QueriesDisabled();
-        }
-
-        // Add the current handler to the list so `withHandler` does not revert
-        _handlers.push(msg.sender);
-        _;
-    }
-
-    /// @inheritdoc IVaultMain
-    function quote(bytes calldata data) external payable query returns (bytes memory result) {
-        // Forward the incoming call to the original sender of this transaction.
-        return (msg.sender).functionCallWithValue(data, msg.value);
-    }
-
-    /// @inheritdoc IVaultMain
-    function disableQuery() external authenticate {
-        _isQueryDisabled = true;
-    }
-
-    /// @inheritdoc IVaultMain
-    function isQueryDisabled() external view returns (bool) {
-        return _isQueryDisabled;
-    }
-
-    /*******************************************************************************
                                     Pool Tokens
     *******************************************************************************/
 
