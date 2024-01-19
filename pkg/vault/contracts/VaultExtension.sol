@@ -420,6 +420,13 @@ contract VaultExtension is IVaultExtension, VaultCommon {
         _setPoolRecoveryMode(pool, false);
     }
 
+    /**
+     * @dev Change the recovery mode state of a pool, and emit an event. Assumes any validation (e.g., whether
+     * the proposed state change is consistent) has already been done.
+     *
+     * @param pool The pool
+     * @param recoveryMode The desired recovery mode state
+     */
     function _setPoolRecoveryMode(address pool, bool recoveryMode) internal {
         // Update poolConfig
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);

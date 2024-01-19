@@ -124,7 +124,11 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Authe
         }
     }
 
-    /// @dev See `isPoolInRecoveryMode`
+    /**
+     * @notice Checks whether a pool is in recovery mode.
+     * @param pool Address of the pool to check
+     * @return True if the pool is initialized, false otherwise
+     */
     function _isPoolInRecoveryMode(address pool) internal view returns (bool) {
         return _poolConfig[pool].isPoolInRecoveryMode();
     }
