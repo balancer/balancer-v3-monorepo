@@ -6,4 +6,8 @@ interface IVaultExtensionMock {
     function manualPauseVault() external;
 
     function manualUnpauseVault() external;
+
+    function manualPausePool(address pool) external;
+
+    function manualUnpausePool(address pool) external;
 }

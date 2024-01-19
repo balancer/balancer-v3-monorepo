@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
@@ -28,7 +29,7 @@ abstract contract BaseVaultTest is BaseTest {
     using ArrayHelpers for *;
 
     // Vault mock.
-    VaultMock internal vault;
+    IVaultMock internal vault;
     // Vault extension mock.
     VaultExtensionMock internal vaultExtension;
     // Router mock.
@@ -58,7 +59,7 @@ abstract contract BaseVaultTest is BaseTest {
     function setUp() public virtual override {
         BaseTest.setUp();
 
-        vault = VaultMockDeployer.deploy();
+        vault = IVaultMock(address(VaultMockDeployer.deploy()));
         authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
         router = new RouterMock(IVault(address(vault)), weth);
         pool = createPool();
