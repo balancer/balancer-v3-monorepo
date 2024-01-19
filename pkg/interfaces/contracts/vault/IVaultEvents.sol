@@ -83,4 +83,11 @@ interface IVaultEvents {
      * @param amount The amount of the protocol fee
      */
     event ProtocolYieldFeeCharged(address indexed pool, address indexed token, uint256 amount);
+
+    /**
+     * @dev Recovery mode has been enabled or disabled for a pool.
+     * @param pool The pool
+     * @param recoveryMode True if recovery mode was enabled
+     */
+    event PoolRecoveryModeStateChanged(address indexed pool, bool recoveryMode);
 }

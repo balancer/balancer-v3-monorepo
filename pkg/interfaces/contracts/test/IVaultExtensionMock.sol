@@ -10,4 +10,8 @@ interface IVaultExtensionMock {
     function manualPausePool(address pool) external;
 
     function manualUnpausePool(address pool) external;
+
+    function manualEnableRecoveryMode(address pool) external;
+
+    function manualDisableRecoveryMode(address pool) external;
 }

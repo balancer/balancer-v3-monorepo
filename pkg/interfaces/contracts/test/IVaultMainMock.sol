@@ -27,10 +27,6 @@ interface IVaultMainMock {
 
     function getDecimalScalingFactors(address pool) external view returns (uint256[] memory);
 
-    function manualEnableRecoveryMode(address pool) external;
-
-    function manualDisableRecoveryMode(address pool) external;
-
     function recoveryModeExit(address pool) external view;
 
     function updateLiveBalancesAndComputePoolData(
