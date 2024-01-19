@@ -209,4 +209,33 @@ interface IVaultExtension {
      * @param pool The pool
      */
     function disableRecoveryMode(address pool) external;
+
+    /*******************************************************************************
+                                    Queries
+    *******************************************************************************/
+
+    /**
+     * @notice Invokes a callback on msg.sender with arguments provided in `data`.
+     * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
+     * anything else will revert.
+     *
+     * Allows querying any operation on the Vault that has the `withHandler` modifier.
+     *
+     * Allows the external calling of a function via the Vault contract to
+     * access Vault's functions guarded by `withHandler`.
+     * `transient` modifier ensuring balances changes within the Vault are settled.
+     *
+     * @param data Contains function signature and args to be passed to the msg.sender
+     * @return result Resulting data from the call
+     */
+    function quote(bytes calldata data) external payable returns (bytes memory result);
+
+    /// @notice Disables queries functionality on the Vault. Can be called only by governance.
+    function disableQuery() external;
+
+    /**
+     * @notice Checks if the queries enabled on the Vault.
+     * @return If true, then queries are disabled
+     */
+    function isQueryDisabled() external view returns (bool);
 }
