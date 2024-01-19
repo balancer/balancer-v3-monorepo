@@ -710,15 +710,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
         Rounding roundingDirection,
         uint256 tokenIndex
     ) private pure {
-        poolData.balancesLiveScaled18[tokenIndex] = roundingDirection == Rounding.ROUND_UP
-            ? poolData.balancesRaw[tokenIndex].toScaled18ApplyRateRoundUp(
-                poolData.decimalScalingFactors[tokenIndex],
-                poolData.tokenRates[tokenIndex]
-            )
-            : poolData.balancesRaw[tokenIndex].toScaled18ApplyRateRoundDown(
-                poolData.decimalScalingFactors[tokenIndex],
-                poolData.tokenRates[tokenIndex]
-            );
+        function(uint256, uint256, uint256) internal pure returns (uint256) _upOrDown = roundingDirection ==
+            Rounding.ROUND_UP
+            ? ScalingHelpers.toScaled18ApplyRateRoundUp
+            : ScalingHelpers.toScaled18ApplyRateRoundDown;
+
+        poolData.balancesLiveScaled18[tokenIndex] = _upOrDown(
+            poolData.balancesRaw[tokenIndex],
+            poolData.decimalScalingFactors[tokenIndex],
+            poolData.tokenRates[tokenIndex]
+        );
     }
 
     /*******************************************************************************
