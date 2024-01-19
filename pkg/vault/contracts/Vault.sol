@@ -154,44 +154,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
         token.safeTransferFrom(from, address(this), amount);
     }
 
-    /// @inheritdoc IVaultMain
-    function getHandler(uint256 index) public view returns (address) {
-        if (index >= _handlers.length) {
-            revert HandlerOutOfBounds(index);
-        }
-        return _handlers[index];
-    }
-
-    /// @inheritdoc IVaultMain
-    function getHandlersCount() external view returns (uint256) {
-        return _handlers.length;
-    }
-
-    /// @inheritdoc IVaultMain
-    function getNonzeroDeltaCount() external view returns (uint256) {
-        return _nonzeroDeltaCount;
-    }
-
-    /// @inheritdoc IVaultMain
-    function getTokenDelta(address user, IERC20 token) external view returns (int256) {
-        return _tokenDeltas[user][token];
-    }
-
-    /// @inheritdoc IVaultMain
-    function getTokenReserve(IERC20 token) external view returns (uint256) {
-        return _tokenReserves[token];
-    }
-
-    /// @inheritdoc IVaultMain
-    function getMinimumPoolTokens() external pure returns (uint256) {
-        return _MIN_TOKENS;
-    }
-
-    /// @inheritdoc IVaultMain
-    function getMaximumPoolTokens() external pure returns (uint256) {
-        return _MAX_TOKENS;
-    }
-
     /**
      * @notice Records the `debt` for a given handler and token.
      * @param token   The ERC20 token for which the `debt` will be accounted.

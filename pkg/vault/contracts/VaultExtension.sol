@@ -70,6 +70,10 @@ contract VaultExtension is IVaultExtension, VaultCommon {
         _vault = vault;
     }
 
+    /*******************************************************************************
+                              Constants and immutables
+    *******************************************************************************/
+
     /// @inheritdoc IVaultExtension
     function getPauseWindowEndTime() external view returns (uint256) {
         return _vaultPauseWindowEndTime;
@@ -83,6 +87,48 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     /// @inheritdoc IVaultExtension
     function getBufferPeriodEndTime() external view returns (uint256) {
         return _vaultBufferPeriodEndTime;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getMinimumPoolTokens() external pure returns (uint256) {
+        return _MIN_TOKENS;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getMaximumPoolTokens() external pure returns (uint256) {
+        return _MAX_TOKENS;
+    }
+
+    /*******************************************************************************
+                              Transient Accounting
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
+    function getHandler(uint256 index) public view returns (address) {
+        if (index >= _handlers.length) {
+            revert HandlerOutOfBounds(index);
+        }
+        return _handlers[index];
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getHandlersCount() external view returns (uint256) {
+        return _handlers.length;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getNonzeroDeltaCount() external view returns (uint256) {
+        return _nonzeroDeltaCount;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getTokenDelta(address user, IERC20 token) external view returns (int256) {
+        return _tokenDeltas[user][token];
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getTokenReserve(IERC20 token) external view returns (uint256) {
+        return _tokenReserves[token];
     }
 
     /*******************************************************************************
