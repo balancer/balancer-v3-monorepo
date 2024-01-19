@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.4;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { LiquidityManagement, PoolCallbacks, TokenConfig } from "./VaultTypes.sol";
 
 interface IVaultEvents {
@@ -23,4 +25,30 @@ interface IVaultEvents {
         PoolCallbacks callbacks,
         LiquidityManagement liquidityManagement
     );
+
+    /**
+     * @dev The Vault's pause status has changed.
+     * @param paused True if the Vault was paused
+     */
+    event VaultPausedStateChanged(bool paused);
+
+    /**
+     * @dev A Pool's pause status has changed.
+     * @param pool The pool that was just paused or unpaused
+     * @param paused True if the pool was paused
+     */
+    event PoolPausedStateChanged(address indexed pool, bool paused);
+
+    /**
+     * @notice Emitted when the protocol swap fee percentage is updated.
+     * @param swapFeePercentage The updated protocol swap fee percentage
+     */
+    event ProtocolSwapFeePercentageChanged(uint256 indexed swapFeePercentage);
+
+    /**
+     * @notice Logs the collection of fees in a specific token and amount.
+     * @param token The token in which the fee has been collected
+     * @param amount The amount of the token collected as fees
+     */
+    event ProtocolFeeCollected(IERC20 indexed token, uint256 indexed amount);
 }

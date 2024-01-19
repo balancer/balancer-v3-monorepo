@@ -67,11 +67,13 @@ contract VaultFactory is Authentication {
             revert VaultAddressMismatch();
         }
 
-        VaultExtension vaultExtension = new VaultExtension(IVault(vaultAddress));
-        address deployedAddress = _create(
-            abi.encode(vaultExtension, _authorizer, _pauseWindowDuration, _bufferPeriodDuration),
-            salt
+        VaultExtension vaultExtension = new VaultExtension(
+            IVault(vaultAddress),
+            _pauseWindowDuration,
+            _bufferPeriodDuration
         );
+
+        address deployedAddress = _create(abi.encode(vaultExtension, _authorizer), salt);
 
         // This should always be the case, but we enforce the end state to match the expected outcome anyways.
         if (deployedAddress != targetAddress) {

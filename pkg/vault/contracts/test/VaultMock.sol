@@ -13,6 +13,7 @@ import {
     Rounding
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IVaultMainMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMainMock.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
@@ -23,7 +24,7 @@ import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
 
-contract VaultMock is Vault {
+contract VaultMock is IVaultMainMock, Vault {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using PoolConfigLib for PoolConfig;
 
@@ -31,13 +32,10 @@ contract VaultMock is Vault {
 
     bytes32 private constant _ALL_BITS_SET = bytes32(type(uint256).max);
 
-    constructor(
-        IVaultExtension vaultExtension,
-        IAuthorizer authorizer,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
-    ) Vault(vaultExtension, authorizer, pauseWindowDuration, bufferPeriodDuration) {
-        _poolFactoryMock = new PoolFactoryMock(IVault(address(this)), pauseWindowDuration);
+    constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) Vault(vaultExtension, authorizer) {
+        uint256 pauseWindowEndTime = vaultExtension.getPauseWindowEndTime();
+        uint256 bufferPeriodDuration = vaultExtension.getBufferPeriodDuration();
+        _poolFactoryMock = new PoolFactoryMock(IVault(address(this)), pauseWindowEndTime - bufferPeriodDuration);
     }
 
     function getPoolFactoryMock() external view returns (address) {
@@ -58,40 +56,6 @@ contract VaultMock is Vault {
 
     function setRateProvider(address pool, IERC20 token, IRateProvider rateProvider) external {
         _poolRateProviders[pool][token] = rateProvider;
-    }
-
-    function manualPauseVault() external {
-        _setVaultPaused(true);
-    }
-
-    function manualUnpauseVault() external {
-        _setVaultPaused(false);
-    }
-
-    function manualPausePool(address pool) external {
-        _setPoolPaused(pool, true);
-    }
-
-    function manualUnpausePool(address pool) external {
-        _setPoolPaused(pool, false);
-    }
-
-    // Used for testing the ReentrancyGuard
-    function reentrantRegisterPool(address pool, IERC20[] memory tokens) external nonReentrant {
-        TokenConfig[] memory tokenData = new TokenConfig[](tokens.length);
-        // Assume standard tokens (enum value = 0)
-        for (uint256 i = 0; i < tokens.length; i++) {
-            tokenData[i].token = tokens[i];
-        }
-
-        IVault(address(this)).registerPool(
-            pool,
-            tokenData,
-            365 days,
-            address(0),
-            PoolConfigBits.wrap(0).toPoolConfig().callbacks,
-            PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
-        );
     }
 
     // Used for testing pool registration, which is ordinarily done in the pool factory.
