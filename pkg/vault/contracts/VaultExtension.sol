@@ -5,6 +5,7 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
@@ -13,6 +14,7 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
+import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -29,6 +31,7 @@ import { VaultCommon } from "./VaultCommon.sol";
  * The storage of this contract is in practice unused.
  */
 contract VaultExtension is IVaultExtension, VaultCommon {
+    using Address for *;
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
@@ -411,5 +414,87 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     /// @inheritdoc IVaultExtension
     function getStaticSwapFeePercentage(address pool) external view returns (uint256) {
         return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
+    }
+
+    /*******************************************************************************
+                                    Recovery Mode
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
+    function isPoolInRecoveryMode(address pool) external view onlyVault returns (bool) {
+        return _isPoolInRecoveryMode(pool);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function enableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate onlyVault {
+        _ensurePoolNotInRecoveryMode(pool);
+        _setPoolRecoveryMode(pool, true);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function disableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate onlyVault {
+        _ensurePoolInRecoveryMode(pool);
+        _setPoolRecoveryMode(pool, false);
+    }
+
+    /**
+     * @dev Change the recovery mode state of a pool, and emit an event. Assumes any validation (e.g., whether
+     * the proposed state change is consistent) has already been done.
+     *
+     * @param pool The pool
+     * @param recoveryMode The desired recovery mode state
+     */
+    function _setPoolRecoveryMode(address pool, bool recoveryMode) internal {
+        // Update poolConfig
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        config.isPoolInRecoveryMode = recoveryMode;
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        emit PoolRecoveryModeStateChanged(pool, recoveryMode);
+    }
+
+    /**
+     * @dev Reverts if the pool is in recovery mode.
+     * @param pool The pool
+     */
+    function _ensurePoolNotInRecoveryMode(address pool) internal view {
+        if (_isPoolInRecoveryMode(pool)) {
+            revert PoolInRecoveryMode(pool);
+        }
+    }
+
+    /*******************************************************************************
+                                    Queries
+    *******************************************************************************/
+
+    /// @dev Ensure that only static calls are made to the functions with this modifier.
+    modifier query() {
+        if (!EVMCallModeHelpers.isStaticCall()) {
+            revert EVMCallModeHelpers.NotStaticCall();
+        }
+
+        if (_isQueryDisabled) {
+            revert QueriesDisabled();
+        }
+
+        // Add the current handler to the list so `withHandler` does not revert
+        _handlers.push(msg.sender);
+        _;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function quote(bytes calldata data) external payable query onlyVault returns (bytes memory result) {
+        // Forward the incoming call to the original sender of this transaction.
+        return (msg.sender).functionCallWithValue(data, msg.value);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function disableQuery() external authenticate onlyVault {
+        _isQueryDisabled = true;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function isQueryDisabled() external view onlyVault returns (bool) {
+        return _isQueryDisabled;
     }
 }

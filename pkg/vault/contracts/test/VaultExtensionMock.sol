@@ -33,4 +33,14 @@ contract VaultExtensionMock is IVaultExtensionMock, VaultExtension {
     function manualUnpausePool(address pool) external {
         _setPoolPaused(pool, false);
     }
+
+    function manualEnableRecoveryMode(address pool) external {
+        _ensurePoolNotInRecoveryMode(pool);
+        _setPoolRecoveryMode(pool, true);
+    }
+
+    function manualDisableRecoveryMode(address pool) external {
+        _ensurePoolInRecoveryMode(pool);
+        _setPoolRecoveryMode(pool, false);
+    }
 }
