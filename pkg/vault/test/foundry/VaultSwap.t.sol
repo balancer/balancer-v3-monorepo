@@ -5,8 +5,9 @@ pragma solidity ^0.8.4;
 import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
-import { PoolNotInitialized, PoolPaused } from "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -30,13 +31,13 @@ contract VaultSwapTest is BaseVaultTest {
     /// Utils
 
     function setSwapFeePercentage() internal {
-        authorizer.grantRole(vault.getActionId(IVaultMain.setStaticSwapFeePercentage.selector), alice);
+        authorizer.grantRole(vault.getActionId(IVaultExtension.setStaticSwapFeePercentage.selector), alice);
         vm.prank(alice);
         vault.setStaticSwapFeePercentage(address(pool), 1e16); // 1%
     }
 
     function setProtocolSwapFeePercentage() internal {
-        authorizer.grantRole(vault.getActionId(IVaultMain.setProtocolSwapFeePercentage.selector), alice);
+        authorizer.grantRole(vault.getActionId(IVaultExtension.setProtocolSwapFeePercentage.selector), alice);
         vm.prank(alice);
         vault.setProtocolSwapFeePercentage(50e16); // %50
     }
@@ -46,14 +47,14 @@ contract VaultSwapTest is BaseVaultTest {
     function testCannotSwapWhenPaused() public {
         vault.manualPausePool(address(pool));
 
-        vm.expectRevert(abi.encodeWithSelector(PoolPaused.selector, address(pool)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, address(pool)));
 
         vm.prank(bob);
         router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
     }
 
     function testSwapNotInitialized() public {
-        vm.expectRevert(abi.encodeWithSelector(PoolNotInitialized.selector, address(noInitPool)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, address(noInitPool)));
         router.swapSingleTokenExactIn(
             address(noInitPool),
             usdc,
@@ -66,7 +67,7 @@ contract VaultSwapTest is BaseVaultTest {
         );
     }
 
-    function testSwapGivenIn() public {
+    function testSwapSingleTokenExactIn() public {
         assertSwap(swapSingleTokenExactIn);
     }
 
@@ -78,7 +79,7 @@ contract VaultSwapTest is BaseVaultTest {
         return (0, 0);
     }
 
-    function testSwapGivenOut() public {
+    function testSwapSingleTokenExactOut() public {
         assertSwap(swapSingleTokenExactOut);
     }
 
@@ -246,7 +247,7 @@ contract VaultSwapTest is BaseVaultTest {
             bytes("")
         );
 
-        authorizer.grantRole(vault.getActionId(IVaultMain.collectProtocolFees.selector), admin);
+        authorizer.grantRole(vault.getActionId(IVaultExtension.collectProtocolFees.selector), admin);
         vm.prank(admin);
         vault.collectProtocolFees([address(dai)].toMemoryArray().asIERC20());
 

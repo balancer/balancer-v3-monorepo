@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
@@ -19,6 +20,7 @@ import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
 import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
 import { Router } from "../../../contracts/Router.sol";
+import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 
 import { VaultMockDeployer } from "./VaultMockDeployer.sol";
@@ -27,11 +29,11 @@ abstract contract BaseVaultTest is BaseTest {
     using ArrayHelpers for *;
 
     // Vault mock.
-    VaultMock internal vault;
+    IVaultMock internal vault;
     // Vault extension mock.
     VaultExtensionMock internal vaultExtension;
-    // Router for the vault
-    Router internal router;
+    // Router mock.
+    RouterMock internal router;
     // Authorizer mock.
     BasicAuthorizerMock internal authorizer;
     // Pool for tests.
@@ -57,9 +59,9 @@ abstract contract BaseVaultTest is BaseTest {
     function setUp() public virtual override {
         BaseTest.setUp();
 
-        vault = VaultMockDeployer.deploy();
+        vault = IVaultMock(address(VaultMockDeployer.deploy()));
         authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
-        router = new Router(IVault(address(vault)), weth);
+        router = new RouterMock(IVault(address(vault)), weth);
         pool = createPool();
 
         // Approve vault allowances
@@ -67,6 +69,7 @@ abstract contract BaseVaultTest is BaseTest {
         approveVault(lp);
         approveVault(alice);
         approveVault(bob);
+        approveVault(broke);
 
         // Add initial liquidity
         initPool();

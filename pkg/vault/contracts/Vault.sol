@@ -9,7 +9,6 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
@@ -44,34 +43,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
     using PoolConfigLib for PoolConfig;
     using ScalingHelpers for *;
 
-    /// @dev Modifier to make a function callable only when the Vault and Pool are not paused.
-    modifier whenPoolNotPaused(address pool) {
-        _ensureVaultNotPaused();
-        _ensurePoolNotPaused(pool);
-        _;
-    }
-
     constructor(
         IVaultExtension vaultExtension,
-        IAuthorizer authorizer,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
+        IAuthorizer authorizer
     ) Authentication(bytes32(uint256(uint160(address(this))))) {
-        if (pauseWindowDuration > MAX_PAUSE_WINDOW_DURATION) {
-            revert VaultPauseWindowDurationTooLarge();
-        }
-        if (bufferPeriodDuration > MAX_BUFFER_PERIOD_DURATION) {
-            revert PauseBufferPeriodDurationTooLarge();
-        }
-
-        uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
-
-        _vaultPauseWindowEndTime = pauseWindowEndTime;
-        _vaultBufferPeriodDuration = bufferPeriodDuration;
-        _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
-
         _vaultExtension = vaultExtension;
         _authorizer = authorizer;
+
+        _vaultPauseWindowEndTime = vaultExtension.getPauseWindowEndTime();
+        _vaultBufferPeriodDuration = vaultExtension.getBufferPeriodDuration();
+        _vaultBufferPeriodEndTime = vaultExtension.getBufferPeriodEndTime();
     }
 
     /*******************************************************************************
@@ -1471,76 +1452,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
     }
 
     /*******************************************************************************
-                                        Fees
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultMain
-    function setProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external authenticate {
-        if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
-            revert ProtocolSwapFeePercentageTooHigh();
-        }
-        _protocolSwapFeePercentage = newProtocolSwapFeePercentage;
-        emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
-    }
-
-    /// @inheritdoc IVaultMain
-    function getProtocolSwapFeePercentage() external view returns (uint256) {
-        return _protocolSwapFeePercentage;
-    }
-
-    /// @inheritdoc IVaultMain
-    function getProtocolSwapFee(address token) external view returns (uint256) {
-        return _protocolSwapFees[IERC20(token)];
-    }
-
-    /// @inheritdoc IVaultMain
-    function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant {
-        for (uint256 index = 0; index < tokens.length; index++) {
-            IERC20 token = tokens[index];
-            uint256 amount = _protocolSwapFees[token];
-            // checks
-            if (amount > 0) {
-                // effects
-                // set fees to zero for the token
-                _protocolSwapFees[token] = 0;
-                // interactions
-                token.safeTransfer(msg.sender, amount);
-                // emit an event
-                emit ProtocolFeeCollected(token, amount);
-            }
-        }
-    }
-
-    /**
-     * @inheritdoc IVaultMain
-     * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
-     * MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
-     */
-    function setStaticSwapFeePercentage(
-        address pool,
-        uint256 swapFeePercentage
-    ) external authenticate withRegisteredPool(pool) whenPoolNotPaused(pool) {
-        _setStaticSwapFeePercentage(pool, swapFeePercentage);
-    }
-
-    function _setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) internal virtual {
-        if (swapFeePercentage > _MAX_SWAP_FEE_PERCENTAGE) {
-            revert SwapFeePercentageTooHigh();
-        }
-
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.staticSwapFeePercentage = swapFeePercentage.toUint64();
-        _poolConfig[pool] = config.fromPoolConfig();
-
-        emit SwapFeePercentageChanged(pool, swapFeePercentage);
-    }
-
-    /// @inheritdoc IVaultMain
-    function getStaticSwapFeePercentage(address pool) external view returns (uint256) {
-        return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
-    }
-
-    /*******************************************************************************
                                     Authentication
     *******************************************************************************/
 
@@ -1559,160 +1470,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
     /// @dev Access control is delegated to the Authorizer
     function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
         return _authorizer.canPerform(actionId, user, address(this));
-    }
-
-    /*******************************************************************************
-                                    Vault Pausing
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultMain
-    function isVaultPaused() external view returns (bool) {
-        return _isVaultPaused();
-    }
-
-    /// @inheritdoc IVaultMain
-    function getVaultPausedState() public view returns (bool, uint256, uint256) {
-        return (_isVaultPaused(), _vaultPauseWindowEndTime, _vaultBufferPeriodEndTime);
-    }
-
-    /// @inheritdoc IVaultMain
-    function pauseVault() external authenticate {
-        _setVaultPaused(true);
-    }
-
-    /// @inheritdoc IVaultMain
-    function unpauseVault() external authenticate {
-        _setVaultPaused(false);
-    }
-
-    /**
-     * @dev The contract can only be paused until the end of the Pause Window, and
-     * unpaused until the end of the Buffer Period.
-     */
-    function _setVaultPaused(bool pausing) internal {
-        if (_isVaultPaused()) {
-            if (pausing) {
-                // Already paused, and we're trying to pause it again.
-                revert VaultPaused();
-            }
-
-            // The Vault can always be unpaused while it's paused.
-            // When the buffer period expires, `_isVaultPaused` will return false, so we would be in the outside
-            // else clause, where trying to unpause will revert unconditionally.
-        } else {
-            if (pausing) {
-                // Not already paused; we can pause within the window.
-                if (block.timestamp >= _vaultPauseWindowEndTime) {
-                    revert VaultPauseWindowExpired();
-                }
-            } else {
-                // Not paused, and we're trying to unpause it.
-                revert VaultNotPaused();
-            }
-        }
-
-        _vaultPaused = pausing;
-
-        emit VaultPausedStateChanged(pausing);
-    }
-
-    /*******************************************************************************
-                                     Pool Pausing
-    *******************************************************************************/
-
-    modifier onlyAuthenticatedPauser(address pool) {
-        address pauseManager = _poolPauseManagers[pool];
-
-        if (pauseManager == address(0)) {
-            // If there is no pause manager, default to the authorizer.
-            _authenticateCaller();
-        } else {
-            // Sender must be the pause manager.
-            if (msg.sender != pauseManager) {
-                revert SenderIsNotPauseManager(pool);
-            }
-        }
-        _;
-    }
-
-    /// @inheritdoc IVaultMain
-    function isPoolPaused(address pool) external view withRegisteredPool(pool) returns (bool) {
-        return _isPoolPaused(pool);
-    }
-
-    /// @inheritdoc IVaultMain
-    function getPoolPausedState(
-        address pool
-    ) external view withRegisteredPool(pool) returns (bool, uint256, uint256, address) {
-        (bool paused, uint256 pauseWindowEndTime) = _getPoolPausedState(pool);
-
-        return (paused, pauseWindowEndTime, pauseWindowEndTime + _vaultBufferPeriodDuration, _poolPauseManagers[pool]);
-    }
-
-    /// @dev Check both the flag and timestamp to determine whether the pool is paused.
-    function _isPoolPaused(address pool) internal view returns (bool) {
-        (bool paused, ) = _getPoolPausedState(pool);
-
-        return paused;
-    }
-
-    /// @dev Lowest level routine that plucks only the minimum necessary parts from storage.
-    function _getPoolPausedState(address pool) private view returns (bool, uint256) {
-        (bool pauseBit, uint256 pauseWindowEndTime) = PoolConfigLib.getPoolPausedState(_poolConfig[pool]);
-
-        // Use the Vault's buffer period.
-        return (pauseBit && block.timestamp <= pauseWindowEndTime + _vaultBufferPeriodDuration, pauseWindowEndTime);
-    }
-
-    /// @inheritdoc IVaultMain
-    function pausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) {
-        _setPoolPaused(pool, true);
-    }
-
-    /// @inheritdoc IVaultMain
-    function unpausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) {
-        _setPoolPaused(pool, false);
-    }
-
-    function _setPoolPaused(address pool, bool pausing) internal {
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-
-        if (_isPoolPaused(pool)) {
-            if (pausing) {
-                // Already paused, and we're trying to pause it again.
-                revert PoolPaused(pool);
-            }
-
-            // The pool can always be unpaused while it's paused.
-            // When the buffer period expires, `_isPoolPaused` will return false, so we would be in the outside
-            // else clause, where trying to unpause will revert unconditionally.
-        } else {
-            if (pausing) {
-                // Not already paused; we can pause within the window.
-                if (block.timestamp >= config.pauseWindowEndTime) {
-                    revert PoolPauseWindowExpired(pool);
-                }
-            } else {
-                // Not paused, and we're trying to unpause it.
-                revert PoolNotPaused(pool);
-            }
-        }
-
-        // Update poolConfig.
-        config.isPoolPaused = pausing;
-        _poolConfig[pool] = config.fromPoolConfig();
-
-        emit PoolPausedStateChanged(pool, pausing);
-    }
-
-    /**
-     * @dev Reverts if the pool is paused.
-     * @param pool The pool
-     */
-    function _ensurePoolNotPaused(address pool) internal view {
-        if (_isPoolPaused(pool)) {
-            revert PoolPaused(pool);
-        }
     }
 
     /*******************************************************************************
