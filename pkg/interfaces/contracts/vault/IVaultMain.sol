@@ -102,19 +102,6 @@ interface IVaultMain {
      */
     function getPoolConfig(address pool) external view returns (PoolConfig memory);
 
-    /**
-     * @notice Get the minimum number of tokens in a pool.
-     * @dev We expect the vast majority of pools to be 2-token.
-     * @return The token count of a minimal pool
-     */
-    function getMinimumPoolTokens() external pure returns (uint256);
-
-    /**
-     * @notice Get the maximum number of tokens in a pool.
-     * @return The token count of a minimal pool
-     */
-    function getMaximumPoolTokens() external pure returns (uint256);
-
     /*******************************************************************************
                                     MultiToken
     *******************************************************************************/
@@ -217,41 +204,6 @@ interface IVaultMain {
      * @param amount Amount of tokens to retrieve
      */
     function retrieve(IERC20 token, address from, uint256 amount) external;
-
-    /**
-     * @notice Returns the address at the specified index of the _handlers array.
-     * @param index The index of the handler's address to fetch
-     * @return The address at the given index
-     */
-    function getHandler(uint256 index) external view returns (address);
-
-    /**
-     * @notice Returns the total number of handlers.
-     * @return The number of handlers
-     */
-    function getHandlersCount() external view returns (uint256);
-
-    /**
-     *  @notice Returns the count of non-zero deltas.
-     *  @return The current value of _nonzeroDeltaCount
-     */
-    function getNonzeroDeltaCount() external view returns (uint256);
-
-    /**
-     * @notice Retrieves the token delta for a specific user and token.
-     * @dev This function allows reading the value from the `_tokenDeltas` mapping.
-     * @param user The address of the user for whom the delta is being fetched
-     * @param token The token for which the delta is being fetched
-     * @return The delta of the specified token for the specified user
-     */
-    function getTokenDelta(address user, IERC20 token) external view returns (int256);
-
-    /**
-     * @notice Retrieves the reserve of a given token.
-     * @param token The token for which to retrieve the reserve
-     * @return The amount of reserves for the given token
-     */
-    function getTokenReserve(IERC20 token) external view returns (uint256);
 
     /***************************************************************************
                                    Add Liquidity
