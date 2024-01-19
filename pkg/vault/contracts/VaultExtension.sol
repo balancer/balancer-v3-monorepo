@@ -2,9 +2,10 @@
 
 pragma solidity ^0.8.4;
 
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -31,6 +32,7 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
+    using SafeERC20 for IERC20;
 
     IVault private immutable _vault;
 
@@ -325,5 +327,75 @@ contract VaultExtension is IVaultExtension, VaultCommon {
         _poolConfig[pool] = config.fromPoolConfig();
 
         emit PoolPausedStateChanged(pool, pausing);
+    }
+
+    /*******************************************************************************
+                                        Fees
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
+    function setProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external authenticate {
+        if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
+            revert ProtocolSwapFeePercentageTooHigh();
+        }
+        _protocolSwapFeePercentage = newProtocolSwapFeePercentage;
+        emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getProtocolSwapFeePercentage() external view returns (uint256) {
+        return _protocolSwapFeePercentage;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getProtocolSwapFee(address token) external view returns (uint256) {
+        return _protocolSwapFees[IERC20(token)];
+    }
+
+    /// @inheritdoc IVaultExtension
+    function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant {
+        for (uint256 index = 0; index < tokens.length; index++) {
+            IERC20 token = tokens[index];
+            uint256 amount = _protocolSwapFees[token];
+            // checks
+            if (amount > 0) {
+                // effects
+                // set fees to zero for the token
+                _protocolSwapFees[token] = 0;
+                // interactions
+                token.safeTransfer(msg.sender, amount);
+                // emit an event
+                emit ProtocolFeeCollected(token, amount);
+            }
+        }
+    }
+
+    /**
+     * @inheritdoc IVaultExtension
+     * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
+     * MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
+     */
+    function setStaticSwapFeePercentage(
+        address pool,
+        uint256 swapFeePercentage
+    ) external authenticate withRegisteredPool(pool) whenPoolNotPaused(pool) {
+        _setStaticSwapFeePercentage(pool, swapFeePercentage);
+    }
+
+    function _setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) internal virtual {
+        if (swapFeePercentage > _MAX_SWAP_FEE_PERCENTAGE) {
+            revert SwapFeePercentageTooHigh();
+        }
+
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        config.staticSwapFeePercentage = swapFeePercentage.toUint64();
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        emit SwapFeePercentageChanged(pool, swapFeePercentage);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getStaticSwapFeePercentage(address pool) external view returns (uint256) {
+        return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
     }
 }
