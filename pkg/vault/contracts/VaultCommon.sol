@@ -10,7 +10,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
-import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
+import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultStorage } from "./VaultStorage.sol";
 
 /**
@@ -41,6 +41,42 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Authe
      */
     function _isVaultPaused() internal view returns (bool) {
         return block.timestamp <= _vaultBufferPeriodEndTime && _vaultPaused;
+    }
+
+    /*******************************************************************************
+                                    Vault Pausing
+    *******************************************************************************/
+
+    /// @dev Modifier to make a function callable only when the Vault and Pool are not paused.
+    modifier whenPoolNotPaused(address pool) {
+        _ensureVaultNotPaused();
+        _ensurePoolNotPaused(pool);
+        _;
+    }
+
+    /**
+     * @dev Reverts if the pool is paused.
+     * @param pool The pool
+     */
+    function _ensurePoolNotPaused(address pool) internal view {
+        if (_isPoolPaused(pool)) {
+            revert PoolPaused(pool);
+        }
+    }
+
+    /// @dev Check both the flag and timestamp to determine whether the pool is paused.
+    function _isPoolPaused(address pool) internal view returns (bool) {
+        (bool paused, ) = _getPoolPausedState(pool);
+
+        return paused;
+    }
+
+    /// @dev Lowest level routine that plucks only the minimum necessary parts from storage.
+    function _getPoolPausedState(address pool) internal view returns (bool, uint256) {
+        (bool pauseBit, uint256 pauseWindowEndTime) = PoolConfigLib.getPoolPausedState(_poolConfig[pool]);
+
+        // Use the Vault's buffer period.
+        return (pauseBit && block.timestamp <= pauseWindowEndTime + _vaultBufferPeriodDuration, pauseWindowEndTime);
     }
 
     /*******************************************************************************
