@@ -340,7 +340,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
             vars.indexOut -= 1;
         }
 
-        // poolData struct has current raw balances (possibly adjusted for yield fees in `_computePoolDataUpdatingBalancesAndFees`).
         vars.tokenInBalance = poolData.balancesRaw[vars.indexIn];
         vars.tokenOutBalance = poolData.balancesRaw[vars.indexOut];
 
@@ -688,6 +687,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
     ) internal pure returns (uint256 feeAmountRaw) {
         uint256 currentLiveBalance = poolData.balancesLiveScaled18[tokenIndex];
 
+        // Do not charge fees if rates go down. If the rate were to go up, down, and back up again, protocol fees
+        // would be charged multiple times on the "same" yield. For tokens subject to yield fees, this should not
+        // happen, or at least be very rare. It can be addressed for known volatile rates by setting the yield fee
+        // exempt flag on registration, or compensated off-chain if there is an incident with a normally
+        // well-behaved rate provider.
         if (currentLiveBalance > lastLiveBalance) {
             unchecked {
                 // Magnitudes checked above, so it's safe to do unchecked math here.
