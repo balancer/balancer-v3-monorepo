@@ -51,4 +51,11 @@ interface IVaultEvents {
      * @param amount The amount of the token collected as fees
      */
     event ProtocolFeeCollected(IERC20 indexed token, uint256 indexed amount);
+
+    /**
+     * @dev Recovery mode has been enabled or disabled for a pool.
+     * @param pool The pool
+     * @param recoveryMode True if recovery mode was enabled
+     */
+    event PoolRecoveryModeStateChanged(address indexed pool, bool recoveryMode);
 }
