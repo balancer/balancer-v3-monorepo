@@ -102,7 +102,7 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function getHandler(uint256 index) public view returns (address) {
+    function getHandler(uint256 index) public view onlyVault returns (address) {
         if (index >= _handlers.length) {
             revert HandlerOutOfBounds(index);
         }
@@ -110,22 +110,22 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     }
 
     /// @inheritdoc IVaultExtension
-    function getHandlersCount() external view returns (uint256) {
+    function getHandlersCount() external view onlyVault returns (uint256) {
         return _handlers.length;
     }
 
     /// @inheritdoc IVaultExtension
-    function getNonzeroDeltaCount() external view returns (uint256) {
+    function getNonzeroDeltaCount() external view onlyVault returns (uint256) {
         return _nonzeroDeltaCount;
     }
 
     /// @inheritdoc IVaultExtension
-    function getTokenDelta(address user, IERC20 token) external view returns (int256) {
+    function getTokenDelta(address user, IERC20 token) external view onlyVault returns (int256) {
         return _tokenDeltas[user][token];
     }
 
     /// @inheritdoc IVaultExtension
-    function getTokenReserve(IERC20 token) external view returns (uint256) {
+    function getTokenReserve(IERC20 token) external view onlyVault returns (uint256) {
         return _tokenReserves[token];
     }
 
@@ -250,17 +250,17 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function isPoolInitialized(address pool) external view returns (bool) {
+    function isPoolInitialized(address pool) external view onlyVault returns (bool) {
         return _isPoolInitialized(pool);
     }
 
     /// @inheritdoc IVaultExtension
-    function getPoolConfig(address pool) external view returns (PoolConfig memory) {
+    function getPoolConfig(address pool) external view onlyVault returns (PoolConfig memory) {
         return _poolConfig[pool].toPoolConfig();
     }
 
     /// @inheritdoc IVaultExtension
-    function getPoolTokens(address pool) external view withRegisteredPool(pool) returns (IERC20[] memory) {
+    function getPoolTokens(address pool) external view withRegisteredPool(pool) onlyVault returns (IERC20[] memory) {
         return _getPoolTokens(pool);
     }
 
@@ -268,7 +268,7 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     function getPoolTokenCountAndIndexOfToken(
         address pool,
         IERC20 token
-    ) external view withRegisteredPool(pool) returns (uint256, uint256) {
+    ) external view withRegisteredPool(pool) onlyVault returns (uint256, uint256) {
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
         uint256 tokenCount = poolTokenBalances.length();
         // unchecked indexOf returns index + 1, or 0 if token is not present.
@@ -289,6 +289,7 @@ contract VaultExtension is IVaultExtension, VaultCommon {
         external
         view
         withRegisteredPool(pool)
+        onlyVault
         returns (
             IERC20[] memory tokens,
             TokenType[] memory tokenTypes,
@@ -302,7 +303,9 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     }
 
     /// @inheritdoc IVaultExtension
-    function getPoolTokenRates(address pool) external view withRegisteredPool(pool) returns (uint256[] memory) {
+    function getPoolTokenRates(
+        address pool
+    ) external view withRegisteredPool(pool) onlyVault returns (uint256[] memory) {
         return _getPoolTokenRates(pool);
     }
 
