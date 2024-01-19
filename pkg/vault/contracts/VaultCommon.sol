@@ -8,7 +8,6 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
-import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -18,7 +17,7 @@ import { VaultStorage } from "./VaultStorage.sol";
  * @dev Storage layout for Vault. This contract has no code except for common utilities in the inheritance chain
  * that require storage to work and will be required in both the main Vault and its extension.
  */
-abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Authentication, ReentrancyGuard {
+abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, ReentrancyGuard {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
 
     /*******************************************************************************

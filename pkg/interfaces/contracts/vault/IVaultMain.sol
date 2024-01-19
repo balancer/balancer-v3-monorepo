@@ -244,29 +244,6 @@ interface IVaultMain {
     ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
     /*******************************************************************************
-                                Authentication
-    *******************************************************************************/
-
-    /**
-     * @notice A new authorizer is set by `setAuthorizer`.
-     * @param newAuthorizer The address of the new authorizer
-     */
-    event AuthorizerChanged(IAuthorizer indexed newAuthorizer);
-
-    /**
-     * @notice Returns the Vault's Authorizer.
-     * @return Address of the authorizer
-     */
-    function getAuthorizer() external view returns (IAuthorizer);
-
-    /**
-     * @notice Sets a new Authorizer for the Vault.
-     * @dev The caller must be allowed by the current Authorizer to do this.
-     * Emits an `AuthorizerChanged` event.
-     */
-    function setAuthorizer(IAuthorizer newAuthorizer) external;
-
-    /*******************************************************************************
                                      Miscellaneous
     *******************************************************************************/
 

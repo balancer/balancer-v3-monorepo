@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IAuthorizer } from "./IAuthorizer.sol";
 import "./VaultTypes.sol";
 
 interface IVaultExtension {
@@ -353,4 +354,21 @@ interface IVaultExtension {
      * @return If true, then queries are disabled
      */
     function isQueryDisabled() external view returns (bool);
+
+    /*******************************************************************************
+                                Authentication
+    *******************************************************************************/
+
+    /**
+     * @notice Returns the Vault's Authorizer.
+     * @return Address of the authorizer
+     */
+    function getAuthorizer() external view returns (IAuthorizer);
+
+    /**
+     * @notice Sets a new Authorizer for the Vault.
+     * @dev The caller must be allowed by the current Authorizer to do this.
+     * Emits an `AuthorizerChanged` event.
+     */
+    function setAuthorizer(IAuthorizer newAuthorizer) external;
 }

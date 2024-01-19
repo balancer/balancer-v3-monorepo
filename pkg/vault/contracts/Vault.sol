@@ -15,7 +15,6 @@ import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultM
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
-import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
@@ -44,11 +43,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
     using ScalingHelpers for *;
 
     constructor(
-        IVaultExtension vaultExtension,
-        IAuthorizer authorizer
-    ) Authentication(bytes32(uint256(uint160(address(this))))) {
+        IVaultExtension vaultExtension
+    ) {
         _vaultExtension = vaultExtension;
-        _authorizer = authorizer;
 
         _vaultPauseWindowEndTime = vaultExtension.getPauseWindowEndTime();
         _vaultBufferPeriodDuration = vaultExtension.getBufferPeriodDuration();
@@ -1154,27 +1151,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
     function _isTrustedRouter(address) internal pure returns (bool) {
         //TODO: Implement based on approval by governance and user
         return true;
-    }
-
-    /*******************************************************************************
-                                    Authentication
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultMain
-    function getAuthorizer() external view returns (IAuthorizer) {
-        return _authorizer;
-    }
-
-    /// @inheritdoc IVaultMain
-    function setAuthorizer(IAuthorizer newAuthorizer) external nonReentrant authenticate {
-        _authorizer = newAuthorizer;
-
-        emit AuthorizerChanged(newAuthorizer);
-    }
-
-    /// @dev Access control is delegated to the Authorizer
-    function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
-        return _authorizer.canPerform(actionId, user, address(this));
     }
 
     /*******************************************************************************
