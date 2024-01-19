@@ -789,14 +789,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    )
-        external
-        withHandler
-        nonReentrant
-        withRegisteredPool(pool)
-        whenPoolNotPaused(pool)
-        returns (uint256 bptAmountOut)
-    {
+    ) external withHandler withRegisteredPool(pool) whenPoolNotPaused(pool) returns (uint256 bptAmountOut) {
         PoolData memory poolData = _getPoolData(pool, Rounding.ROUND_DOWN);
 
         if (poolData.config.isPoolInitialized) {
@@ -805,6 +798,37 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
 
         InputHelpers.ensureInputLengthMatch(poolData.tokens.length, exactAmountsIn.length);
 
+        // Amounts are entering pool math, so round down. A lower invariant after the join means less bptOut,
+        // favoring the pool.
+        uint256[] memory exactAmountsInScaled18 = exactAmountsIn.copyToScaled18ApplyRateRoundDownArray(
+            poolData.decimalScalingFactors,
+            poolData.tokenRates
+        );
+
+        if (poolData.config.callbacks.shouldCallBeforeInitialize) {
+            if (IPoolCallbacks(pool).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
+                revert CallbackFailed();
+            }
+        }
+
+        bptAmountOut = _initialize(pool, to, poolData, tokens, exactAmountsIn, exactAmountsInScaled18, minBptAmountOut);
+
+        if (poolData.config.callbacks.shouldCallAfterInitialize) {
+            if (IPoolCallbacks(pool).onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false) {
+                revert CallbackFailed();
+            }
+        }
+    }
+
+    function _initialize(
+        address pool,
+        address to,
+        PoolData memory poolData,
+        IERC20[] memory tokens,
+        uint256[] memory exactAmountsIn,
+        uint256[] memory exactAmountsInScaled18,
+        uint256 minBptAmountOut
+    ) internal nonReentrant returns (uint256 bptAmountOut) {
         for (uint256 i = 0; i < poolData.tokens.length; ++i) {
             IERC20 actualToken = poolData.tokens[i];
 
@@ -825,23 +849,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
         poolData.config.isPoolInitialized = true;
         _poolConfig[pool] = poolData.config.fromPoolConfig();
 
-        // Finally, compute the initial amount of BPT to mint, which is simply the invariant after adding
-        // exactAmountsIn. Doing this at the end also means we do not need to downscale exact amounts in.
-        // Amounts are entering pool math, so round down. A lower invariant after the join means less bptOut,
-        // favoring the pool.
-        exactAmountsIn.toScaled18ApplyRateRoundDownArray(poolData.decimalScalingFactors, poolData.tokenRates);
-
-        if (poolData.config.callbacks.shouldCallBeforeInitialize) {
-            if (IPoolCallbacks(pool).onBeforeInitialize(exactAmountsIn, userData) == false) {
-                revert CallbackFailed();
-            }
-        }
-        bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsIn);
-        if (poolData.config.callbacks.shouldCallAfterInitialize) {
-            if (IPoolCallbacks(pool).onAfterInitialize(exactAmountsIn, bptAmountOut, userData) == false) {
-                revert CallbackFailed();
-            }
-        }
+        // Pass scaled balances to the pool
+        bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsInScaled18);
 
         _ensureMinimumTotalSupply(bptAmountOut);
 
