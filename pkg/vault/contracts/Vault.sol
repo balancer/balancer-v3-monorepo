@@ -616,6 +616,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
                 revert InvalidTokenConfiguration();
             }
 
+            // This sets the live balance from the raw balance, applying scaling and rates,
+            // and respecting the rounding direction. Charging a yield fee changes the raw
+            // balance, in which case the safest and most numerically precise way to adjust
+            // the live balance is to simply repeat the scaling (hence the second call below).
             _setLiveBalanceFromRawForToken(poolData, roundingDirection, i);
 
             // Check for yield protocol fees after initialization
