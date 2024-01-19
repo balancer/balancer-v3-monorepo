@@ -347,67 +347,6 @@ interface IVaultMain {
     ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
     /*******************************************************************************
-                                    Queries
-    *******************************************************************************/
-
-    /**
-     * @notice Invokes a callback on msg.sender with arguments provided in `data`.
-     * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
-     * anything else will revert.
-     *
-     * Allows querying any operation on the Vault that has the `withHandler` modifier.
-     *
-     * Allows the external calling of a function via the Vault contract to
-     * access Vault's functions guarded by `withHandler`.
-     * `transient` modifier ensuring balances changes within the Vault are settled.
-     *
-     * @param data Contains function signature and args to be passed to the msg.sender
-     * @return result Resulting data from the call
-     */
-    function quote(bytes calldata data) external payable returns (bytes memory result);
-
-    /// @notice Disables queries functionality on the Vault. Can be called only by governance.
-    function disableQuery() external;
-
-    /**
-     * @notice Checks if the queries enabled on the Vault.
-     * @return If true, then queries are disabled
-     */
-    function isQueryDisabled() external view returns (bool);
-
-    /*******************************************************************************
-                                Recovery Mode
-    *******************************************************************************/
-
-    /**
-     * @dev Recovery mode has been enabled or disabled for a pool.
-     * @param pool The pool
-     * @param recoveryMode True if recovery mode was enabled
-     */
-    event PoolRecoveryModeStateChanged(address indexed pool, bool recoveryMode);
-
-    /**
-     * @notice Checks whether a pool is in recovery mode.
-     * @param pool Address of the pool to check
-     * @return True if the pool is initialized, false otherwise
-     */
-    function isPoolInRecoveryMode(address pool) external view returns (bool);
-
-    /**
-     * @notice Enable recovery mode for a pool.
-     * @dev This is a permissioned function.
-     * @param pool The pool
-     */
-    function enableRecoveryMode(address pool) external;
-
-    /**
-     * @notice Disable recovery mode for a pool.
-     * @dev This is a permissioned function.
-     * @param pool The pool
-     */
-    function disableRecoveryMode(address pool) external;
-
-    /*******************************************************************************
                                 Authentication
     *******************************************************************************/
 
