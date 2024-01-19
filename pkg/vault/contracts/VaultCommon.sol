@@ -9,6 +9,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultStorage } from "./VaultStorage.sol";
@@ -18,6 +19,8 @@ import { VaultStorage } from "./VaultStorage.sol";
  * that require storage to work and will be required in both the main Vault and its extension.
  */
 abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Authentication, ReentrancyGuard {
+    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
+
     /*******************************************************************************
                                     Vault Pausing
     *******************************************************************************/
@@ -99,6 +102,105 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Authe
     /// @dev See `isPoolRegistered`
     function _isPoolRegistered(address pool) internal view returns (bool) {
         return _poolConfig[pool].isPoolRegistered();
+    }
+
+    /// @dev Reverts unless `pool` corresponds to an initialized Pool.
+    function _ensureInitializedPool(address pool) internal view {
+        if (!_isPoolInitialized(pool)) {
+            revert PoolNotInitialized(pool);
+        }
+    }
+
+    /// @dev See `isPoolInitialized`
+    function _isPoolInitialized(address pool) internal view returns (bool) {
+        return _poolConfig[pool].isPoolInitialized();
+    }
+
+    /*******************************************************************************
+                                    Pool Information
+    *******************************************************************************/
+
+    /**
+     * @notice Fetches the tokens and their corresponding balances for a given pool.
+     * @dev Utilizes an enumerable map to obtain pool token balances.
+     * The function is structured to minimize storage reads by leveraging the `unchecked_at` method.
+     *
+     * @param pool The address of the pool for which tokens and balances are to be fetched.
+     * @return tokens An array of token addresses.
+     */
+    function _getPoolTokens(address pool) internal view returns (IERC20[] memory tokens) {
+        // Retrieve the mapping of tokens and their balances for the specified pool.
+        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+
+        // Initialize arrays to store tokens based on the number of tokens in the pool.
+        tokens = new IERC20[](poolTokenBalances.length());
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
+            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
+            // storage reads.
+            (tokens[i], ) = poolTokenBalances.unchecked_at(i);
+        }
+    }
+
+    function _getPoolTokenInfo(
+        address pool
+    )
+        internal
+        view
+        returns (
+            TokenConfig[] memory tokenConfig,
+            uint256[] memory balancesRaw,
+            uint256[] memory decimalScalingFactors,
+            PoolConfig memory poolConfig
+        )
+    {
+        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(IERC20 => TokenConfig) storage poolTokenConfig = _poolTokenConfig[pool];
+
+        uint256 numTokens = poolTokenBalances.length();
+        poolConfig = _poolConfig[pool].toPoolConfig();
+
+        tokenConfig = new TokenConfig[](numTokens);
+        balancesRaw = new uint256[](numTokens);
+        decimalScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolConfig, numTokens);
+        IERC20 token;
+
+        for (uint256 i = 0; i < numTokens; i++) {
+            (token, balancesRaw[i]) = poolTokenBalances.unchecked_at(i);
+            tokenConfig[i] = poolTokenConfig[token];
+        }
+    }
+
+    /**
+     * @dev Called by the external `getPoolTokenRates` function, and internally during pool operations,
+     * this will make external calls for tokens that have rate providers.
+     */
+    function _getPoolTokenRates(address pool) internal view returns (uint256[] memory tokenRates) {
+        // Retrieve the mapping of tokens for the specified pool.
+        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(IERC20 => TokenConfig) storage poolTokenConfig = _poolTokenConfig[pool];
+
+        // Initialize arrays to store tokens based on the number of tokens in the pool.
+        tokenRates = new uint256[](poolTokenBalances.length());
+        IERC20 token;
+
+        for (uint256 i = 0; i < tokenRates.length; ++i) {
+            // Because the iteration is bounded by `tokenRates.length`, which matches the EnumerableMap's
+            // length, we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
+            // storage reads.
+            (token, ) = poolTokenBalances.unchecked_at(i);
+            TokenType tokenType = poolTokenConfig[token].tokenType;
+
+            if (tokenType == TokenType.STANDARD) {
+                tokenRates[i] = FixedPoint.ONE;
+            } else if (tokenType == TokenType.WITH_RATE) {
+                tokenRates[i] = poolTokenConfig[token].rateProvider.getRate();
+            } else {
+                // TODO implement ERC4626 at a later stage.
+                revert InvalidTokenConfiguration();
+            }
+        }
     }
 
     /*******************************************************************************
