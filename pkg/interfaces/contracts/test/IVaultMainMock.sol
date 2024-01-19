@@ -16,10 +16,6 @@ interface IVaultMainMock {
 
     function setRateProvider(address pool, IERC20 token, IRateProvider rateProvider) external;
 
-    function manualPausePool(address pool) external;
-
-    function manualUnpausePool(address pool) external;
-
     function manualRegisterPool(address pool, IERC20[] memory tokens) external;
 
     function manualRegisterPoolAtTimestamp(
@@ -43,4 +39,6 @@ interface IVaultMainMock {
     ) external returns (PoolData memory);
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw);
+
+    function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances);
 }
