@@ -23,4 +23,17 @@ interface IVaultEvents {
         PoolCallbacks callbacks,
         LiquidityManagement liquidityManagement
     );
+
+    /**
+     * @dev The Vault's pause status has changed.
+     * @param paused True if the Vault was paused
+     */
+    event VaultPausedStateChanged(bool paused);
+
+    /**
+     * @dev A Pool's pause status has changed.
+     * @param pool The pool that was just paused or unpaused
+     * @param paused True if the pool was paused
+     */
+    event PoolPausedStateChanged(address indexed pool, bool paused);
 }

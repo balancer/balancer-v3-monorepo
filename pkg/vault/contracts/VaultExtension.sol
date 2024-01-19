@@ -252,4 +252,78 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     function _canPerform(bytes32 actionId, address user) internal view virtual override returns (bool) {
         return _authorizer.canPerform(actionId, user, address(this));
     }
+
+    /*******************************************************************************
+                                     Pool Pausing
+    *******************************************************************************/
+
+    modifier onlyAuthenticatedPauser(address pool) {
+        address pauseManager = _poolPauseManagers[pool];
+
+        if (pauseManager == address(0)) {
+            // If there is no pause manager, default to the authorizer.
+            _authenticateCaller();
+        } else {
+            // Sender must be the pause manager.
+            if (msg.sender != pauseManager) {
+                revert SenderIsNotPauseManager(pool);
+            }
+        }
+        _;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function isPoolPaused(address pool) external view withRegisteredPool(pool) returns (bool) {
+        return _isPoolPaused(pool);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getPoolPausedState(
+        address pool
+    ) external view withRegisteredPool(pool) returns (bool, uint256, uint256, address) {
+        (bool paused, uint256 pauseWindowEndTime) = _getPoolPausedState(pool);
+
+        return (paused, pauseWindowEndTime, pauseWindowEndTime + _vaultBufferPeriodDuration, _poolPauseManagers[pool]);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function pausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) {
+        _setPoolPaused(pool, true);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function unpausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) {
+        _setPoolPaused(pool, false);
+    }
+
+    function _setPoolPaused(address pool, bool pausing) internal {
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+
+        if (_isPoolPaused(pool)) {
+            if (pausing) {
+                // Already paused, and we're trying to pause it again.
+                revert PoolPaused(pool);
+            }
+
+            // The pool can always be unpaused while it's paused.
+            // When the buffer period expires, `_isPoolPaused` will return false, so we would be in the outside
+            // else clause, where trying to unpause will revert unconditionally.
+        } else {
+            if (pausing) {
+                // Not already paused; we can pause within the window.
+                if (block.timestamp >= config.pauseWindowEndTime) {
+                    revert PoolPauseWindowExpired(pool);
+                }
+            } else {
+                // Not paused, and we're trying to unpause it.
+                revert PoolNotPaused(pool);
+            }
+        }
+
+        // Update poolConfig.
+        config.isPoolPaused = pausing;
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        emit PoolPausedStateChanged(pool, pausing);
+    }
 }

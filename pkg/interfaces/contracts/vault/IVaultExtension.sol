@@ -24,7 +24,7 @@ interface IVaultExtension {
     function getBufferPeriodEndTime() external view returns (uint256);
 
     /*******************************************************************************
-                        Pool Registration and Initialization
+                                    Pool Registration
     *******************************************************************************/
 
     /**
@@ -65,14 +65,8 @@ interface IVaultExtension {
     function isPoolRegistered(address pool) external view returns (bool);
 
     /*******************************************************************************
-                                        Pausing
+                                    Vault Pausing
     *******************************************************************************/
-
-    /**
-     * @dev The Vault's pause status has changed.
-     * @param paused True if the Vault was paused
-     */
-    event VaultPausedStateChanged(bool paused);
 
     /**
      * @notice Indicates whether the Vault is paused.
@@ -100,4 +94,42 @@ interface IVaultExtension {
      * deployment. Note that the Vault will automatically unpause after the Buffer Period expires.
      */
     function unpauseVault() external;
+
+    /*******************************************************************************
+                                    Pool Pausing
+    *******************************************************************************/
+
+    /**
+     * @notice Indicates whether a pool is paused.
+     * @param pool The pool to be checked
+     * @return True if the pool is paused
+     */
+    function isPoolPaused(address pool) external view returns (bool);
+
+    /**
+     * @notice Returns the paused status, and end times of the Pool's pause window and buffer period.
+     * @dev Note that even when set to a paused state, the pool will automatically unpause at the end of
+     * the buffer period.
+     *
+     * @param pool The pool whose data is requested
+     * @return paused True if the Pool is paused
+     * @return poolPauseWindowEndTime The timestamp of the end of the Pool's pause window
+     * @return poolBufferPeriodEndTime The timestamp after which the Pool unpauses itself (if paused)
+     * @return pauseManager The pause manager, or the zero address
+     */
+    function getPoolPausedState(address pool) external view returns (bool, uint256, uint256, address);
+
+    /**
+     * @notice Pause the Pool: an emergency action which disables all pool functions.
+     * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
+     * deployment.
+     */
+    function pausePool(address pool) external;
+
+    /**
+     * @notice Reverse a `pause` operation, and restore the Pool to normal functionality.
+     * @dev This is a permissioned function that will only work on a paused Pool within the Buffer Period set during
+     * deployment. Note that the Pool will automatically unpause after the Buffer Period expires.
+     */
+    function unpausePool(address pool) external;
 }
