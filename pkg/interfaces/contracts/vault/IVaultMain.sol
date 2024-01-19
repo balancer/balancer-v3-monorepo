@@ -47,61 +47,6 @@ interface IVaultMain {
         bytes memory userData
     ) external returns (uint256 bptAmountOut);
 
-    /**
-     * @notice Checks whether a pool is initialized.
-     * @dev An initialized pool can be considered registered as well.
-     * @param pool Address of the pool to check
-     * @return True if the pool is initialized, false otherwise
-     */
-    function isPoolInitialized(address pool) external view returns (bool);
-
-    /**
-     * @notice Gets the tokens registered to a pool.
-     * @param pool Address of the pool
-     * @return tokens List of tokens in the pool
-     */
-    function getPoolTokens(address pool) external view returns (IERC20[] memory);
-
-    /**
-     * @notice Gets the index of a token in a given pool.
-     * @dev Reverts if the pool is not registered, or if the token does not belong to the pool.
-     * @param pool Address of the pool
-     * @param token Address of the token
-     * @return tokenCount Number of tokens in the pool
-     * @return index Index corresponding to the given token in the pool's token list
-     */
-    function getPoolTokenCountAndIndexOfToken(address pool, IERC20 token) external view returns (uint256, uint256);
-
-    /**
-     * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
-     * @return tokens Tokens registered to the pool
-     * @return tokenTypes The types of all registered tokens
-     * @return balancesRaw Corresponding raw balances of the tokens
-     * @return scalingFactors Corresponding scalingFactors of the tokens
-     * @return rateProviders Corresponding rateProviders of the tokens (or zero for tokens with no rates)
-     */
-    function getPoolTokenInfo(
-        address pool
-    )
-        external
-        view
-        returns (IERC20[] memory, TokenType[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
-
-    /**
-     * @notice Retrieve the scaling factors from a pool's rate providers.
-     * @dev This is not included in `getPoolTokenInfo` since it makes external calls that might revert,
-     * effectively preventing retrieval of basic pool parameters. Tokens without rate providers will always return
-     * FixedPoint.ONE (1e18).
-     */
-    function getPoolTokenRates(address pool) external view returns (uint256[] memory);
-
-    /**
-     * @notice Gets the configuration parameters of a pool.
-     * @param pool Address of the pool
-     * @return Pool configuration
-     */
-    function getPoolConfig(address pool) external view returns (PoolConfig memory);
-
     /*******************************************************************************
                                     MultiToken
     *******************************************************************************/
