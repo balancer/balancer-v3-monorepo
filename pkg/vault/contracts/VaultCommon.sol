@@ -100,4 +100,36 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Authe
     function _isPoolRegistered(address pool) internal view returns (bool) {
         return _poolConfig[pool].isPoolRegistered();
     }
+
+    /*******************************************************************************
+                                    Recovery Mode
+    *******************************************************************************/
+
+    /**
+     * @dev Place on functions that may only be called when the associated pool is in recovery mode.
+     * @param pool The pool
+     */
+    modifier onlyInRecoveryMode(address pool) {
+        _ensurePoolInRecoveryMode(pool);
+        _;
+    }
+
+    /**
+     * @dev Reverts if the pool is not in recovery mode.
+     * @param pool The pool
+     */
+    function _ensurePoolInRecoveryMode(address pool) internal view {
+        if (!_isPoolInRecoveryMode(pool)) {
+            revert PoolNotInRecoveryMode(pool);
+        }
+    }
+
+    /**
+     * @notice Checks whether a pool is in recovery mode.
+     * @param pool Address of the pool to check
+     * @return True if the pool is initialized, false otherwise
+     */
+    function _isPoolInRecoveryMode(address pool) internal view returns (bool) {
+        return _poolConfig[pool].isPoolInRecoveryMode();
+    }
 }
