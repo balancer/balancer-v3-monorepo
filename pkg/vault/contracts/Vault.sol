@@ -318,7 +318,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
         // storage, if yield fees are due. Since the swap callbacks are reentrant and could do anything, including
         // change these balances, we cannot simply store the pending yield fees (and balance changes) in the poolData
         // struct, to be settled in non-reentrant _swap with the rest of the accounting.
-        PoolData memory poolData = _updateLiveBalancesAndComputePoolData(params.pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN);
         // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
         EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolTokenBalances[params.pool];
         SwapLocals memory vars;
@@ -340,7 +340,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
             vars.indexOut -= 1;
         }
 
-        // poolData struct has current raw balances (possibly adjusted for yield fees in `_updateLiveBalancesAndComputePoolData`).
+        // poolData struct has current raw balances (possibly adjusted for yield fees in `_computePoolDataUpdatingBalancesAndFees`).
         vars.tokenInBalance = poolData.balancesRaw[vars.indexIn];
         vars.tokenOutBalance = poolData.balancesRaw[vars.indexOut];
 
@@ -649,7 +649,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
      * This function modifies protocol fees and last live balance storage. Since it modifies storage and makes
      * external calls, it must be nonReentrant.
      */
-    function _updateLiveBalancesAndComputePoolData(
+    function _computePoolDataUpdatingBalancesAndFees(
         address pool,
         Rounding roundingDirection
     ) internal nonReentrant returns (PoolData memory poolData) {
@@ -736,7 +736,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
         uint256 minBptAmountOut,
         bytes memory userData
     ) external withHandler withRegisteredPool(pool) whenPoolNotPaused(pool) returns (uint256 bptAmountOut) {
-        PoolData memory poolData = _updateLiveBalancesAndComputePoolData(pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(pool, Rounding.ROUND_DOWN);
 
         if (poolData.poolConfig.isPoolInitialized) {
             revert PoolAlreadyInitialized(pool);
@@ -835,7 +835,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
         // If proportional, higher balances = higher proportional amountsIn, favoring the pool.
         // If unbalanced, higher balances = lower invariant ratio with fees.
         // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
-        PoolData memory poolData = _updateLiveBalancesAndComputePoolData(params.pool, Rounding.ROUND_UP);
+        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_UP);
         InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.maxAmountsIn.length);
 
         // Amounts are entering pool math, so round down.
@@ -1015,7 +1015,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
         // If proportional, lower balances = lower proportional amountsOut, favoring the pool.
         // If unbalanced, lower balances = lower invariant ratio without fees.
         // bptIn = supply * (1 - ratio), so lower ratio = more bptIn, favoring the pool.
-        PoolData memory poolData = _updateLiveBalancesAndComputePoolData(params.pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN);
         InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.minAmountsOut.length);
 
         // Amounts are entering pool math; higher amounts would burn more BPT, so round up to favor the pool.

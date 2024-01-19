@@ -29,7 +29,7 @@ interface IVaultMainMock {
 
     function recoveryModeExit(address pool) external view;
 
-    function updateLiveBalancesAndComputePoolData(
+    function computePoolDataUpdatingBalancesAndFees(
         address pool,
         Rounding roundingDirection
     ) external returns (PoolData memory);
