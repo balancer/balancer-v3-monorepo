@@ -900,9 +900,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
                 revert CallbackFailed();
             }
         }
-
-        // Emit an event to log the pool initialization
-        emit PoolInitialized(pool);
     }
 
     function _initialize(
@@ -951,6 +948,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
         if (bptAmountOut < minBptAmountOut) {
             revert BptAmountOutBelowMin(bptAmountOut, minBptAmountOut);
         }
+
+        // Emit an event to log the pool initialization
+        emit PoolInitialized(pool);
     }
 
     /// @inheritdoc IVaultMain
