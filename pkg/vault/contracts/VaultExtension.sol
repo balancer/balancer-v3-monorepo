@@ -250,12 +250,12 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function isPoolInitialized(address pool) external view onlyVault returns (bool) {
+    function isPoolInitialized(address pool) external view withRegisteredPool(pool) onlyVault returns (bool) {
         return _isPoolInitialized(pool);
     }
 
     /// @inheritdoc IVaultExtension
-    function getPoolConfig(address pool) external view onlyVault returns (PoolConfig memory) {
+    function getPoolConfig(address pool) external view withRegisteredPool(pool) onlyVault returns (PoolConfig memory) {
         return _poolConfig[pool].toPoolConfig();
     }
 
@@ -534,7 +534,7 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     }
 
     /// @inheritdoc IVaultExtension
-    function getStaticSwapFeePercentage(address pool) external view returns (uint256) {
+    function getStaticSwapFeePercentage(address pool) external view withRegisteredPool(pool) returns (uint256) {
         return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
     }
 
@@ -543,7 +543,7 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function isPoolInRecoveryMode(address pool) external view onlyVault returns (bool) {
+    function isPoolInRecoveryMode(address pool) external view withRegisteredPool(pool) onlyVault returns (bool) {
         return _isPoolInRecoveryMode(pool);
     }
 

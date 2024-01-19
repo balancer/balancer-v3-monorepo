@@ -97,7 +97,7 @@ describe('Vault', function () {
     });
 
     it('pools are initially not in recovery mode', async () => {
-      expect(await vault.isPoolInRecoveryMode(poolBAddress)).to.be.false;
+      expect(await vault.isPoolInRecoveryMode(poolA)).to.be.false;
     });
 
     it('pools are initially unpaused', async () => {
