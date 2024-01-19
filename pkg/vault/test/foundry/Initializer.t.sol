@@ -28,6 +28,8 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract InitializerTest is BaseVaultTest {
     using ArrayHelpers for *;
 
+    uint256 constant MIN_BPT = 1e6;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
@@ -100,7 +102,7 @@ contract InitializerTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IPoolCallbacks.onAfterInitialize.selector,
                 [defaultAmount, defaultAmount].toMemoryArray(),
-                2 * defaultAmount,
+                2 * defaultAmount - MIN_BPT,
                 bytes("0xff")
             )
         );
