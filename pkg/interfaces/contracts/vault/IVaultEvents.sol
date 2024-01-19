@@ -58,4 +58,11 @@ interface IVaultEvents {
      * @param recoveryMode True if recovery mode was enabled
      */
     event PoolRecoveryModeStateChanged(address indexed pool, bool recoveryMode);
+
+    /**
+     * @dev Emitted on creation of a new wrapped token buffer.
+     * @param baseToken The base ERC20 token
+     * @param wrappedToken THe wrapped ERC4626 token
+     */
+    event WrappedTokenBufferRegistered(address indexed baseToken, address indexed wrappedToken);
 }

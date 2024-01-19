@@ -3,7 +3,6 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
-import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
@@ -14,7 +13,8 @@ import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constan
 import { PoolCallbacksStruct, TokenConfigStruct, LiquidityManagementStruct } from '../typechain-types/contracts/Vault';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
-import { IVault, VaultExtensionMock } from '../typechain-types';
+import { VaultExtensionMock } from '../typechain-types';
+import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 
 describe('Vault - Wrapped Token Buffers', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -26,12 +26,11 @@ describe('Vault - Wrapped Token Buffers', function () {
     ERC4626,
   }
 
-  let vault: VaultMock;
+  let vault: IVaultMock;
   let vaultExtension: VaultExtensionMock;
   let authorizer: Contract;
   let baseToken: ERC20TestToken;
   let wrappedToken: WrappedTokenMock;
-  let iVault: IVault;
 
   let tokenA: ERC20TestToken;
 
@@ -42,12 +41,11 @@ describe('Vault - Wrapped Token Buffers', function () {
   });
 
   sharedBeforeEach('deploy vault', async function () {
-    vault = await VaultDeployer.deployMock({
+    const vaultMock = await VaultDeployer.deployMock({
       pauseWindowDuration: PAUSE_WINDOW_DURATION,
       bufferPeriodDuration: BUFFER_PERIOD_DURATION,
     });
-
-    iVault = await TypesConverter.toIVault(vault);
+    vault = await TypesConverter.toIVaultMock(vaultMock);
 
     vaultExtension = (await deployedAt(
       'VaultExtensionMock',
@@ -141,7 +139,7 @@ describe('Vault - Wrapped Token Buffers', function () {
         ];
 
         await expect(
-          iVault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement)
+          vault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement)
         ).to.be.revertedWithCustomError(vault, 'WrappedTokenBufferNotRegistered');
       });
 
@@ -153,7 +151,7 @@ describe('Vault - Wrapped Token Buffers', function () {
         vault.connect(alice).registerBuffer(wrappedToken);
 
         await expect(
-          iVault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement)
+          vault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement)
         ).to.be.revertedWithCustomError(vault, 'InvalidTokenConfiguration');
       });
 
@@ -165,7 +163,7 @@ describe('Vault - Wrapped Token Buffers', function () {
         vault.connect(alice).registerBuffer(wrappedToken);
 
         await expect(
-          iVault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement)
+          vault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement)
         ).to.be.revertedWithCustomError(vault, 'InvalidTokenConfiguration');
       });
 
@@ -177,7 +175,7 @@ describe('Vault - Wrapped Token Buffers', function () {
         ];
         vault.connect(alice).registerBuffer(wrappedToken);
 
-        await expect(iVault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement))
+        await expect(vault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement))
           .to.be.revertedWithCustomError(vaultExtension, 'AmbiguousPoolToken')
           .withArgs(await baseToken.getAddress());
       });
@@ -200,7 +198,7 @@ describe('Vault - Wrapped Token Buffers', function () {
 
       it('exposes base tokens for ERC4626', async () => {
         vault.connect(alice).registerBuffer(wrappedToken);
-        await iVault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement);
+        await vault.registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement);
 
         const poolTokens = await vault.getPoolTokens(ANY_ADDRESS);
         expect(poolTokens).to.deep.equal([tokenAAddress, baseAddress]);
@@ -210,7 +208,7 @@ describe('Vault - Wrapped Token Buffers', function () {
         vault.connect(alice).registerBuffer(wrappedToken);
 
         expect(
-          await iVault
+          await vault
             .connect(alice)
             .registerPool(ANY_ADDRESS, tokens, MONTH, ZERO_ADDRESS, poolCallbacks, liquidityManagement)
         )

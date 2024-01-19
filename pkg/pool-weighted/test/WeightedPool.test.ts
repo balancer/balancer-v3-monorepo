@@ -10,11 +10,12 @@ import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/sign
 import { FP_ZERO, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
-import { Vault } from '@balancer-labs/v3-vault/typechain-types';
-import { PoolConfigStructOutput } from '@balancer-labs/v3-vault/typechain-types/contracts/Vault';
+import { IVault } from '@balancer-labs/v3-vault/typechain-types';
+import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
+import { PoolConfigStructOutput } from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
 
 describe('WeightedPool', function () {
-  let vault: Vault;
+  let vault: IVault;
   let pool: PoolMock;
   let router: Router;
   let alice: SignerWithAddress;
@@ -28,7 +29,7 @@ describe('WeightedPool', function () {
   });
 
   sharedBeforeEach('deploy vault, router, tokens, and pool', async function () {
-    vault = await VaultDeployer.deploy();
+    vault = await TypesConverter.toIVault(await VaultDeployer.deploy());
 
     const WETH: WETHTestToken = await deploy('v3-solidity-utils/WETHTestToken');
     router = await deploy('v3-vault/Router', { args: [vault, await WETH.getAddress()] });
