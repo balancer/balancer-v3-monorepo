@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.4;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { LiquidityManagement, PoolCallbacks, TokenConfig } from "./VaultTypes.sol";
 
 interface IVaultEvents {
@@ -23,4 +25,62 @@ interface IVaultEvents {
         PoolCallbacks callbacks,
         LiquidityManagement liquidityManagement
     );
+
+    /**
+     * @dev The Vault's pause status has changed.
+     * @param paused True if the Vault was paused
+     */
+    event VaultPausedStateChanged(bool paused);
+
+    /**
+     * @dev A Pool's pause status has changed.
+     * @param pool The pool that was just paused or unpaused
+     * @param paused True if the pool was paused
+     */
+    event PoolPausedStateChanged(address indexed pool, bool paused);
+
+    /**
+     * @notice Emitted when the protocol swap fee percentage is updated.
+     * @param swapFeePercentage The updated protocol swap fee percentage
+     */
+    event ProtocolSwapFeePercentageChanged(uint256 indexed swapFeePercentage);
+
+    /**
+     * @notice Emitted when the protocol yield fee percentage is updated.
+     * @param yieldFeePercentage The updated protocol yield fee percentage
+     */
+    event ProtocolYieldFeePercentageChanged(uint256 indexed yieldFeePercentage);
+
+    /**
+     * @notice Logs the collection of fees in a specific token and amount.
+     * @param token The token in which the fee has been collected
+     * @param amount The amount of the token collected as fees
+     */
+    event ProtocolFeeCollected(IERC20 indexed token, uint256 indexed amount);
+
+    /**
+     * @notice Emitted when a protocol swap fee is incurred.
+     * @dev This is included for traceability of fees to pools. Pending protocol fees on both swap and yield are
+     * combined. It is an invariant of the system that the total amounts for each token reported here and by
+     * `ProtocolYieldFeeCharged`, summed over all pools, should equal the total collected for the token reported by
+     * `ProtocolFeeCollected` when `collectProtocolFees` is called.
+     *
+     * @param pool The pool associated with this charge
+     * @param token The token whose protocol fee balance increased
+     * @param amount The amount of the protocol fee
+     */
+    event ProtocolSwapFeeCharged(address indexed pool, address indexed token, uint256 amount);
+
+    /**
+     * @notice Emitted when a protocol swap fee is incurred.
+     * @dev This is included for traceability of fees to pools. Pending protocol fees on both swap and yield are
+     * combined. It is an invariant of the system that the total amounts for each token reported here and by
+     * `ProtocolSwapFeeCharged`, summed over all pools, should equal the total collected for the token reported by
+     * `ProtocolFeeCollected` when `collectProtocolFees` is called.
+     *
+     * @param pool The pool associated with this charge
+     * @param token The token whose protocol fee balance increased
+     * @param amount The amount of the protocol fee
+     */
+    event ProtocolYieldFeeCharged(address indexed pool, address indexed token, uint256 amount);
 }
