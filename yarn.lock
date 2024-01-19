@@ -3870,9 +3870,9 @@ __metadata:
   linkType: hard
 
 "forge-gas-snapshot@https://github.com/ylv-io/forge-gas-snapshot":
-  version: 0.1.2
-  resolution: "forge-gas-snapshot@https://github.com/ylv-io/forge-gas-snapshot.git#commit=3f100432151b9da7a61a3d2b54d5fd6c6b29359b"
-  checksum: 38a230ec18d1d97d550c7007f14ce2c5f8e7f6ca0a91be8389b8953ef9ab9c8d1d84f968c29b1ab9b20acd05e4aec765fffdbcffcc96e20719ec1124c5db419d
+  version: 0.1.3
+  resolution: "forge-gas-snapshot@https://github.com/ylv-io/forge-gas-snapshot.git#commit=5a3362df757f1cf4cd374c72dc59b2cb2c98efca"
+  checksum: b6d3b51ec7561e33d1f50daf029d91e2caa1eda46a04476d871a5521618ed4528956b7e2663c912c66d720d0faccb10596e9f363dc3500488a0add246d46fdc3
   languageName: node
   linkType: hard
 
