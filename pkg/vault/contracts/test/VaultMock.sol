@@ -32,7 +32,7 @@ contract VaultMock is IVaultMainMock, Vault {
 
     bytes32 private constant _ALL_BITS_SET = bytes32(type(uint256).max);
 
-    constructor(IVaultExtension vaultExtension) Vault(vaultExtension) {
+    constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) Vault(vaultExtension, authorizer) {
         uint256 pauseWindowEndTime = vaultExtension.getPauseWindowEndTime();
         uint256 bufferPeriodDuration = vaultExtension.getBufferPeriodDuration();
         _poolFactoryMock = new PoolFactoryMock(IVault(address(this)), pauseWindowEndTime - bufferPeriodDuration);

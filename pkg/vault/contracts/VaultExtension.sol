@@ -39,7 +39,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     using SafeERC20 for IERC20;
 
     IVault private immutable _vault;
-    IAuthorizer private _authorizer;
 
     modifier onlyVault() {
         // If this is a delegate call from the vault, the address of the contract should be the Vault's,
@@ -52,7 +51,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
 
     constructor(
         IVault vault,
-        IAuthorizer authorizer,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
     ) Authentication(bytes32(uint256(uint160(address(vault))))) {
@@ -70,7 +68,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
 
         _vault = vault;
-        _authorizer = authorizer;
     }
 
     /*******************************************************************************
@@ -600,12 +597,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function getAuthorizer() external view returns (IAuthorizer) {
+    function getAuthorizer() external view onlyVault returns (IAuthorizer) {
         return _authorizer;
     }
 
     /// @inheritdoc IVaultExtension
-    function setAuthorizer(IAuthorizer newAuthorizer) external nonReentrant authenticate {
+    function setAuthorizer(IAuthorizer newAuthorizer) external nonReentrant authenticate onlyVault {
         _authorizer = newAuthorizer;
 
         emit AuthorizerChanged(newAuthorizer);

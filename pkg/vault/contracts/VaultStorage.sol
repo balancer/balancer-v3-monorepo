@@ -78,6 +78,9 @@ contract VaultStorage {
     // Token -> fee: Protocol's swap fees accumulated in the Vault for harvest.
     mapping(IERC20 => uint256) internal _protocolSwapFees;
 
+    // Upgradeable contract in charge of setting permissions.
+    IAuthorizer internal _authorizer;
+
     /// @notice If set to true, disables query functionality of the Vault. Can be modified only by governance.
     bool internal _isQueryDisabled;
 

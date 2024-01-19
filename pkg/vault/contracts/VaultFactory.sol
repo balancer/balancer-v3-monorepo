@@ -69,12 +69,11 @@ contract VaultFactory is Authentication {
 
         VaultExtension vaultExtension = new VaultExtension(
             IVault(vaultAddress),
-            _authorizer,
             _pauseWindowDuration,
             _bufferPeriodDuration
         );
 
-        address deployedAddress = _create(abi.encode(vaultExtension), salt);
+        address deployedAddress = _create(abi.encode(vaultExtension, _authorizer), salt);
 
         // This should always be the case, but we enforce the end state to match the expected outcome anyways.
         if (deployedAddress != targetAddress) {

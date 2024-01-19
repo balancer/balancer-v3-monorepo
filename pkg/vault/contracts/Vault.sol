@@ -10,6 +10,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -42,14 +43,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
     using PoolConfigLib for PoolConfig;
     using ScalingHelpers for *;
 
-    constructor(
-        IVaultExtension vaultExtension
-    ) {
+    constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) {
         _vaultExtension = vaultExtension;
 
         _vaultPauseWindowEndTime = vaultExtension.getPauseWindowEndTime();
         _vaultBufferPeriodDuration = vaultExtension.getBufferPeriodDuration();
         _vaultBufferPeriodEndTime = vaultExtension.getBufferPeriodEndTime();
+
+        _authorizer = authorizer;
     }
 
     /*******************************************************************************
