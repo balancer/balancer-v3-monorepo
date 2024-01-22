@@ -63,10 +63,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     }
 
     constructor(
-        IVault vault,
+        IVault mainVault,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) Authentication(bytes32(uint256(uint160(address(vault))))) {
+    ) Authentication(bytes32(uint256(uint160(address(mainVault))))) {
         if (pauseWindowDuration > MAX_PAUSE_WINDOW_DURATION) {
             revert VaultPauseWindowDurationTooLarge();
         }
@@ -80,7 +80,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         _vaultBufferPeriodDuration = bufferPeriodDuration;
         _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
 
-        _vault = vault;
+        _vault = mainVault;
     }
 
     /*******************************************************************************
@@ -110,6 +110,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     /// @inheritdoc IVaultExtension
     function getMaximumPoolTokens() external pure returns (uint256) {
         return _MAX_TOKENS;
+    }
+
+    function vault() external view returns (IVault) {
+        return _vault;
     }
 
     /*******************************************************************************
