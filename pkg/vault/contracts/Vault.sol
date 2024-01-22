@@ -10,12 +10,12 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
-import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
@@ -29,10 +29,9 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
-import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 
-contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
+contract Vault is IVaultMain, VaultCommon, Proxy {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
     using FixedPoint for *;
@@ -43,16 +42,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
     using PoolConfigLib for PoolConfig;
     using ScalingHelpers for *;
 
-    constructor(
-        IVaultExtension vaultExtension,
-        IAuthorizer authorizer
-    ) Authentication(bytes32(uint256(uint160(address(this))))) {
+    constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) {
         _vaultExtension = vaultExtension;
-        _authorizer = authorizer;
 
         _vaultPauseWindowEndTime = vaultExtension.getPauseWindowEndTime();
         _vaultBufferPeriodDuration = vaultExtension.getBufferPeriodDuration();
         _vaultBufferPeriodEndTime = vaultExtension.getBufferPeriodEndTime();
+
+        _authorizer = authorizer;
     }
 
     /*******************************************************************************
@@ -98,30 +95,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
         return (msg.sender).functionCallWithValue(data, msg.value);
     }
 
-    /**
-     * @dev This modifier ensures that the function it modifies can only be called
-     * by the last handler in the `_handlers` array. This is used to enforce the
-     * order of execution when multiple handlers are in play, ensuring only the
-     * current or "active" handler can invoke certain operations in the Vault.
-     * If no handler is found or the caller is not the expected handler,
-     * it reverts the transaction with specific error messages.
-     */
-    modifier withHandler() {
-        // If there are no handlers in the list, revert with an error.
-        if (_handlers.length == 0) {
-            revert NoHandler();
-        }
-
-        // Get the last handler from the `_handlers` array.
-        // This represents the current active handler.
-        address handler = _handlers[_handlers.length - 1];
-
-        // If the current function caller is not the active handler, revert.
-        if (msg.sender != handler) revert WrongHandler(msg.sender, handler);
-
-        _;
-    }
-
     /// @inheritdoc IVaultMain
     function settle(IERC20 token) public nonReentrant withHandler returns (uint256 paid) {
         uint256 reservesBefore = _tokenReserves[token];
@@ -150,16 +123,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
     }
 
     /**
-     * @notice Records the `debt` for a given handler and token.
-     * @param token   The ERC20 token for which the `debt` will be accounted.
-     * @param debt    The amount of `token` taken from the Vault in favor of the `handler`.
-     * @param handler The account responsible for the debt.
-     */
-    function _takeDebt(IERC20 token, uint256 debt, address handler) internal {
-        _accountDelta(token, debt.toInt256(), handler);
-    }
-
-    /**
      * @notice Records the `credit` for a given handler and token.
      * @param token   The ERC20 token for which the 'credit' will be accounted.
      * @param credit  The amount of `token` supplied to the Vault in favor of the `handler`.
@@ -167,88 +130,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
      */
     function _supplyCredit(IERC20 token, uint256 credit, address handler) internal {
         _accountDelta(token, -credit.toInt256(), handler);
-    }
-
-    /**
-     * @dev Accounts the delta for the given handler and token.
-     * Positive delta represents debt, while negative delta represents surplus.
-     * The function ensures that only the specified handler can update its respective delta.
-     *
-     * @param token   The ERC20 token for which the delta is being accounted.
-     * @param delta   The difference in the token balance.
-     *                Positive indicates a debit or a decrease in Vault's tokens,
-     *                negative indicates a credit or an increase in Vault's tokens.
-     * @param handler The handler whose balance difference is being accounted for.
-     *                Must be the same as the caller of the function.
-     */
-    function _accountDelta(IERC20 token, int256 delta, address handler) internal {
-        // If the delta is zero, there's nothing to account for.
-        if (delta == 0) return;
-
-        // Ensure that the handler specified is indeed the caller.
-        if (handler != msg.sender) {
-            revert WrongHandler(handler, msg.sender);
-        }
-
-        // Get the current recorded delta for this token and handler.
-        int256 current = _tokenDeltas[handler][token];
-
-        // Calculate the new delta after accounting for the change.
-        int256 next = current + delta;
-
-        unchecked {
-            // If the resultant delta becomes zero after this operation,
-            // decrease the count of non-zero deltas.
-            if (next == 0) {
-                _nonzeroDeltaCount--;
-            }
-            // If there was no previous delta (i.e., it was zero) and now we have one,
-            // increase the count of non-zero deltas.
-            else if (current == 0) {
-                _nonzeroDeltaCount++;
-            }
-        }
-
-        // Update the delta for this token and handler.
-        _tokenDeltas[handler][token] = next;
-    }
-
-    /*******************************************************************************
-                                    Pool Tokens
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultMain
-    function totalSupply(address token) external view returns (uint256) {
-        return _totalSupply(token);
-    }
-
-    /// @inheritdoc IVaultMain
-    function balanceOf(address token, address account) external view returns (uint256) {
-        return _balanceOf(token, account);
-    }
-
-    /// @inheritdoc IVaultMain
-    function allowance(address token, address owner, address spender) external view returns (uint256) {
-        return _allowance(token, owner, spender);
-    }
-
-    /// @inheritdoc IVaultMain
-    function transfer(address owner, address to, uint256 amount) external returns (bool) {
-        _transfer(msg.sender, owner, to, amount);
-        return true;
-    }
-
-    /// @inheritdoc IVaultMain
-    function approve(address owner, address spender, uint256 amount) external returns (bool) {
-        _approve(msg.sender, owner, spender, amount);
-        return true;
-    }
-
-    /// @inheritdoc IVaultMain
-    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool) {
-        _spendAllowance(msg.sender, from, spender, amount);
-        _transfer(msg.sender, from, to, amount);
-        return true;
     }
 
     /*******************************************************************************
@@ -572,156 +453,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
         }
     }
 
-    /**
-     * @dev Get poolData and compute protocol yield fees due, without changing any state.
-     */
-    function _getPoolDataAndYieldFees(
-        address pool,
-        Rounding roundingDirection
-    ) internal view returns (PoolData memory poolData, uint256[] memory dueProtocolYieldFees) {
-        (
-            poolData.tokenConfig,
-            poolData.balancesRaw,
-            poolData.decimalScalingFactors,
-            poolData.poolConfig
-        ) = _getPoolTokenInfo(pool);
-
-        EnumerableMap.IERC20ToUint256Map storage lastLiveBalances = _lastLivePoolTokenBalances[pool];
-        uint256 numTokens = poolData.tokenConfig.length;
-
-        dueProtocolYieldFees = new uint256[](numTokens);
-
-        // Initialize arrays to store balances and rates based on the number of tokens in the pool.
-        // Will be read raw, then upscaled and rounded as directed.
-        poolData.balancesLiveScaled18 = new uint256[](numTokens);
-        poolData.tokenRates = new uint256[](numTokens);
-        uint256 yieldFeePercentage = _protocolYieldFeePercentage;
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            TokenType tokenType = poolData.tokenConfig[i].tokenType;
-
-            // Do not charge yield fees until the pool is initialized.
-            // ERC4626 tokens always pay yield fees; WITH_RATE tokens pay unless exempt.
-            bool subjectToYieldProtocolFees = poolData.poolConfig.isPoolInitialized &&
-                (tokenType == TokenType.ERC4626 ||
-                    (tokenType == TokenType.WITH_RATE && poolData.tokenConfig[i].yieldFeeExempt == false));
-
-            if (tokenType == TokenType.STANDARD) {
-                poolData.tokenRates[i] = FixedPoint.ONE;
-            } else if (tokenType == TokenType.WITH_RATE) {
-                poolData.tokenRates[i] = poolData.tokenConfig[i].rateProvider.getRate();
-            } else {
-                // TODO implement ERC4626 at a later stage. Not coming from user input, so can only be these three.
-                revert InvalidTokenConfiguration();
-            }
-
-            // This sets the live balance from the raw balance, applying scaling and rates,
-            // and respecting the rounding direction. Charging a yield fee changes the raw
-            // balance, in which case the safest and most numerically precise way to adjust
-            // the live balance is to simply repeat the scaling (hence the second call below).
-            _setLiveBalanceFromRawForToken(poolData, roundingDirection, i);
-
-            // Check for yield protocol fees after initialization
-            if (subjectToYieldProtocolFees) {
-                if (yieldFeePercentage > 0) {
-                    uint256 yieldFeeAmountRaw = _computeYieldProtocolFeesDue(
-                        poolData,
-                        lastLiveBalances.unchecked_valueAt(i),
-                        i,
-                        yieldFeePercentage
-                    );
-
-                    if (yieldFeeAmountRaw > 0) {
-                        dueProtocolYieldFees[i] = yieldFeeAmountRaw;
-
-                        // Adjust raw and live balances.
-                        poolData.balancesRaw[i] -= yieldFeeAmountRaw;
-                        _setLiveBalanceFromRawForToken(poolData, roundingDirection, i);
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
-     * This function modifies protocol fees and last live balance storage. Since it modifies storage and makes
-     * external calls, it must be nonReentrant.
-     */
-    function _computePoolDataUpdatingBalancesAndFees(
-        address pool,
-        Rounding roundingDirection
-    ) internal nonReentrant returns (PoolData memory poolData) {
-        uint256[] memory dueProtocolYieldFees;
-
-        (poolData, dueProtocolYieldFees) = _getPoolDataAndYieldFees(pool, roundingDirection);
-
-        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
-        EnumerableMap.IERC20ToUint256Map storage lastLiveBalances = _lastLivePoolTokenBalances[pool];
-
-        uint256 numTokens = poolData.tokenConfig.length;
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            IERC20 token = poolData.tokenConfig[i].token;
-            uint256 yieldFeeAmountRaw = dueProtocolYieldFees[i];
-
-            if (yieldFeeAmountRaw > 0) {
-                // Charge protocol fee.
-                _protocolFees[token] += yieldFeeAmountRaw;
-                emit ProtocolYieldFeeCharged(pool, address(token), yieldFeeAmountRaw);
-
-                // Adjust raw and live balances.
-                poolTokenBalances.unchecked_setAt(i, poolData.balancesRaw[i]);
-                _setLiveBalanceFromRawForToken(poolData, roundingDirection, i);
-            }
-            // Update last live balance
-            lastLiveBalances.unchecked_setAt(i, poolData.balancesLiveScaled18[i]);
-        }
-    }
-
-    function _computeYieldProtocolFeesDue(
-        PoolData memory poolData,
-        uint256 lastLiveBalance,
-        uint256 tokenIndex,
-        uint256 yieldFeePercentage
-    ) internal pure returns (uint256 feeAmountRaw) {
-        uint256 currentLiveBalance = poolData.balancesLiveScaled18[tokenIndex];
-
-        // Do not charge fees if rates go down. If the rate were to go up, down, and back up again, protocol fees
-        // would be charged multiple times on the "same" yield. For tokens subject to yield fees, this should not
-        // happen, or at least be very rare. It can be addressed for known volatile rates by setting the yield fee
-        // exempt flag on registration, or compensated off-chain if there is an incident with a normally
-        // well-behaved rate provider.
-        if (currentLiveBalance > lastLiveBalance) {
-            unchecked {
-                // Magnitudes checked above, so it's safe to do unchecked math here.
-                uint256 liveBalanceDiff = currentLiveBalance - lastLiveBalance;
-
-                feeAmountRaw = liveBalanceDiff.mulDown(yieldFeePercentage).toRawUndoRateRoundDown(
-                    poolData.decimalScalingFactors[tokenIndex],
-                    poolData.tokenRates[tokenIndex]
-                );
-            }
-        }
-    }
-
-    function _setLiveBalanceFromRawForToken(
-        PoolData memory poolData,
-        Rounding roundingDirection,
-        uint256 tokenIndex
-    ) private pure {
-        function(uint256, uint256, uint256) internal pure returns (uint256) _upOrDown = roundingDirection ==
-            Rounding.ROUND_UP
-            ? ScalingHelpers.toScaled18ApplyRateRoundUp
-            : ScalingHelpers.toScaled18ApplyRateRoundDown;
-
-        poolData.balancesLiveScaled18[tokenIndex] = _upOrDown(
-            poolData.balancesRaw[tokenIndex],
-            poolData.decimalScalingFactors[tokenIndex],
-            poolData.tokenRates[tokenIndex]
-        );
-    }
-
     /*******************************************************************************
                                 Pool Operations
     *******************************************************************************/
@@ -730,100 +461,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
     modifier onlyTrustedRouter() {
         _onlyTrustedRouter(msg.sender);
         _;
-    }
-
-    /// @inheritdoc IVaultMain
-    function initialize(
-        address pool,
-        address to,
-        IERC20[] memory tokens,
-        uint256[] memory exactAmountsIn,
-        uint256 minBptAmountOut,
-        bytes memory userData
-    ) external withHandler withRegisteredPool(pool) whenPoolNotPaused(pool) returns (uint256 bptAmountOut) {
-        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(pool, Rounding.ROUND_DOWN);
-
-        if (poolData.poolConfig.isPoolInitialized) {
-            revert PoolAlreadyInitialized(pool);
-        }
-        uint256 numTokens = poolData.tokenConfig.length;
-
-        InputHelpers.ensureInputLengthMatch(numTokens, exactAmountsIn.length);
-
-        // Amounts are entering pool math, so round down. A lower invariant after the join means less bptOut,
-        // favoring the pool.
-        uint256[] memory exactAmountsInScaled18 = exactAmountsIn.copyToScaled18ApplyRateRoundDownArray(
-            poolData.decimalScalingFactors,
-            poolData.tokenRates
-        );
-
-        if (poolData.poolConfig.callbacks.shouldCallBeforeInitialize) {
-            if (IPoolCallbacks(pool).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
-                revert CallbackFailed();
-            }
-        }
-
-        bptAmountOut = _initialize(pool, to, poolData, tokens, exactAmountsIn, exactAmountsInScaled18, minBptAmountOut);
-
-        if (poolData.poolConfig.callbacks.shouldCallAfterInitialize) {
-            if (IPoolCallbacks(pool).onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false) {
-                revert CallbackFailed();
-            }
-        }
-    }
-
-    function _initialize(
-        address pool,
-        address to,
-        PoolData memory poolData,
-        IERC20[] memory tokens,
-        uint256[] memory exactAmountsIn,
-        uint256[] memory exactAmountsInScaled18,
-        uint256 minBptAmountOut
-    ) internal nonReentrant returns (uint256 bptAmountOut) {
-        for (uint256 i = 0; i < poolData.tokenConfig.length; ++i) {
-            IERC20 actualToken = poolData.tokenConfig[i].token;
-
-            // Tokens passed into `initialize` are the "expected" tokens.
-            if (actualToken != tokens[i]) {
-                revert TokensMismatch(pool, address(tokens[i]), address(actualToken));
-            }
-
-            // Debit of token[i] for amountIn
-            _takeDebt(actualToken, exactAmountsIn[i], msg.sender);
-        }
-
-        // Store the new Pool balances.
-        _setPoolBalances(pool, exactAmountsIn);
-        // Initialize live balances, incorporating the current rate.
-        _setLastLivePoolBalances(pool, exactAmountsInScaled18);
-
-        emit PoolBalanceChanged(pool, to, tokens, exactAmountsIn.unsafeCastToInt256(true));
-
-        // Store config and mark the pool as initialized
-        poolData.poolConfig.isPoolInitialized = true;
-        _poolConfig[pool] = poolData.poolConfig.fromPoolConfig();
-
-        // Pass scaled balances to the pool
-        bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsInScaled18);
-
-        _ensureMinimumTotalSupply(bptAmountOut);
-
-        // At this point we know that bptAmountOut >= _MINIMUM_TOTAL_SUPPLY, so this will not revert.
-        bptAmountOut -= _MINIMUM_TOTAL_SUPPLY;
-        // When adding liquidity, we must mint tokens concurrently with updating pool balances,
-        // as the pool's math relies on totalSupply.
-        // Minting will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
-        _mintMinimumSupplyReserve(address(pool));
-        _mint(address(pool), to, bptAmountOut);
-
-        // At this point we have the calculated BPT amount.
-        if (bptAmountOut < minBptAmountOut) {
-            revert BptAmountOutBelowMin(bptAmountOut, minBptAmountOut);
-        }
-
-        // Emit an event to log the pool initialization
-        emit PoolInitialized(pool);
     }
 
     /// @inheritdoc IVaultMain
@@ -1266,36 +903,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
         );
     }
 
-    /**
-     * @dev Sets the balances of a Pool's tokens to `newBalances`.
-     *
-     * WARNING: this assumes `newBalances` has the same length and order as the Pool's tokens.
-     */
-    function _setPoolBalances(address pool, uint256[] memory newBalances) internal {
-        EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolTokenBalances[pool];
-
-        for (uint256 i = 0; i < newBalances.length; ++i) {
-            // Since we assume all newBalances are properly ordered, we can simply use `unchecked_setAt`
-            // to avoid one less storage read per token.
-            poolBalances.unchecked_setAt(i, newBalances[i]);
-        }
-    }
-
-    /**
-     * @dev Sets the live balances of a Pool's tokens to `newBalances`.
-     *
-     * WARNING: this assumes `newBalances` has the same length and order as the Pool's tokens.
-     */
-    function _setLastLivePoolBalances(address pool, uint256[] memory newBalances) internal {
-        EnumerableMap.IERC20ToUint256Map storage liveBalances = _lastLivePoolTokenBalances[pool];
-
-        for (uint256 i = 0; i < newBalances.length; ++i) {
-            // Since we assume all newBalances are properly ordered, we can simply use `unchecked_setAt`
-            // to avoid one less storage read per token.
-            liveBalances.unchecked_setAt(i, newBalances[i]);
-        }
-    }
-
     function _onlyTrustedRouter(address sender) internal pure {
         if (!_isTrustedRouter(sender)) {
             revert RouterNotTrusted();
@@ -1305,27 +912,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
     function _isTrustedRouter(address) internal pure returns (bool) {
         //TODO: Implement based on approval by governance and user
         return true;
-    }
-
-    /*******************************************************************************
-                                    Authentication
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultMain
-    function getAuthorizer() external view returns (IAuthorizer) {
-        return _authorizer;
-    }
-
-    /// @inheritdoc IVaultMain
-    function setAuthorizer(IAuthorizer newAuthorizer) external nonReentrant authenticate {
-        _authorizer = newAuthorizer;
-
-        emit AuthorizerChanged(newAuthorizer);
-    }
-
-    /// @dev Access control is delegated to the Authorizer
-    function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
-        return _authorizer.canPerform(actionId, user, address(this));
     }
 
     /*******************************************************************************

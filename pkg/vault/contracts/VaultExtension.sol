@@ -10,10 +10,16 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 
@@ -30,12 +36,15 @@ import { VaultCommon } from "./VaultCommon.sol";
  *
  * The storage of this contract is in practice unused.
  */
-contract VaultExtension is IVaultExtension, VaultCommon {
+contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     using Address for *;
+    using ArrayHelpers for uint256[];
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
     using SafeERC20 for IERC20;
+    using InputHelpers for uint256;
+    using ScalingHelpers for *;
 
     IVault private immutable _vault;
 
@@ -65,6 +74,7 @@ contract VaultExtension is IVaultExtension, VaultCommon {
         _vaultPauseWindowEndTime = pauseWindowEndTime;
         _vaultBufferPeriodDuration = bufferPeriodDuration;
         _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
+
         _vault = vault;
     }
 
@@ -130,7 +140,7 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     }
 
     /*******************************************************************************
-                                    Pool Registration
+                            Pool Registration and Initialization
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
@@ -245,6 +255,115 @@ contract VaultExtension is IVaultExtension, VaultCommon {
         );
     }
 
+    /// @inheritdoc IVaultExtension
+    function initialize(
+        address pool,
+        address to,
+        IERC20[] memory tokens,
+        uint256[] memory exactAmountsIn,
+        uint256 minBptAmountOut,
+        bytes memory userData
+    ) external withHandler withRegisteredPool(pool) whenPoolNotPaused(pool) returns (uint256 bptAmountOut) {
+        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(pool, Rounding.ROUND_DOWN);
+
+        if (poolData.poolConfig.isPoolInitialized) {
+            revert PoolAlreadyInitialized(pool);
+        }
+        uint256 numTokens = poolData.tokenConfig.length;
+
+        InputHelpers.ensureInputLengthMatch(numTokens, exactAmountsIn.length);
+
+        // Amounts are entering pool math, so round down. A lower invariant after the join means less bptOut,
+        // favoring the pool.
+        uint256[] memory exactAmountsInScaled18 = exactAmountsIn.copyToScaled18ApplyRateRoundDownArray(
+            poolData.decimalScalingFactors,
+            poolData.tokenRates
+        );
+
+        if (poolData.poolConfig.callbacks.shouldCallBeforeInitialize) {
+            if (IPoolCallbacks(pool).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
+                revert CallbackFailed();
+            }
+        }
+
+        bptAmountOut = _initialize(pool, to, poolData, tokens, exactAmountsIn, exactAmountsInScaled18, minBptAmountOut);
+
+        if (poolData.poolConfig.callbacks.shouldCallAfterInitialize) {
+            if (IPoolCallbacks(pool).onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false) {
+                revert CallbackFailed();
+            }
+        }
+    }
+
+    function _initialize(
+        address pool,
+        address to,
+        PoolData memory poolData,
+        IERC20[] memory tokens,
+        uint256[] memory exactAmountsIn,
+        uint256[] memory exactAmountsInScaled18,
+        uint256 minBptAmountOut
+    ) internal nonReentrant returns (uint256 bptAmountOut) {
+        for (uint256 i = 0; i < poolData.tokenConfig.length; ++i) {
+            IERC20 actualToken = poolData.tokenConfig[i].token;
+
+            // Tokens passed into `initialize` are the "expected" tokens.
+            if (actualToken != tokens[i]) {
+                revert TokensMismatch(pool, address(tokens[i]), address(actualToken));
+            }
+
+            // Debit of token[i] for amountIn
+            _takeDebt(actualToken, exactAmountsIn[i], msg.sender);
+        }
+
+        // Store the new Pool balances.
+        _setPoolBalances(pool, exactAmountsIn);
+        // Initialize live balances, incorporating the current rate.
+        _setLastLivePoolBalances(pool, exactAmountsInScaled18);
+
+        emit PoolBalanceChanged(pool, to, tokens, exactAmountsIn.unsafeCastToInt256(true));
+
+        // Store config and mark the pool as initialized
+        poolData.poolConfig.isPoolInitialized = true;
+        _poolConfig[pool] = poolData.poolConfig.fromPoolConfig();
+
+        // Pass scaled balances to the pool
+        bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsInScaled18);
+
+        _ensureMinimumTotalSupply(bptAmountOut);
+
+        // At this point we know that bptAmountOut >= _MINIMUM_TOTAL_SUPPLY, so this will not revert.
+        bptAmountOut -= _MINIMUM_TOTAL_SUPPLY;
+        // When adding liquidity, we must mint tokens concurrently with updating pool balances,
+        // as the pool's math relies on totalSupply.
+        // Minting will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
+        _mintMinimumSupplyReserve(address(pool));
+        _mint(address(pool), to, bptAmountOut);
+
+        // At this point we have the calculated BPT amount.
+        if (bptAmountOut < minBptAmountOut) {
+            revert BptAmountOutBelowMin(bptAmountOut, minBptAmountOut);
+        }
+
+        // Emit an event to log the pool initialization
+        emit PoolInitialized(pool);
+    }
+
+    /**
+     * @dev Sets the live balances of a Pool's tokens to `newBalances`.
+     *
+     * WARNING: this assumes `newBalances` has the same length and order as the Pool's tokens.
+     */
+    function _setLastLivePoolBalances(address pool, uint256[] memory newBalances) internal {
+        EnumerableMap.IERC20ToUint256Map storage liveBalances = _lastLivePoolTokenBalances[pool];
+
+        for (uint256 i = 0; i < newBalances.length; ++i) {
+            // Since we assume all newBalances are properly ordered, we can simply use `unchecked_setAt`
+            // to avoid one less storage read per token.
+            liveBalances.unchecked_setAt(i, newBalances[i]);
+        }
+    }
+    
     /*******************************************************************************
                                     Pool Information
     *******************************************************************************/
@@ -322,6 +441,44 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     }
 
     /*******************************************************************************
+                                    Pool Tokens
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
+    function totalSupply(address token) external view returns (uint256) {
+        return _totalSupply(token);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function balanceOf(address token, address account) external view returns (uint256) {
+        return _balanceOf(token, account);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function allowance(address token, address owner, address spender) external view returns (uint256) {
+        return _allowance(token, owner, spender);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function transfer(address owner, address to, uint256 amount) external returns (bool) {
+        _transfer(msg.sender, owner, to, amount);
+        return true;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function approve(address owner, address spender, uint256 amount) external returns (bool) {
+        _approve(msg.sender, owner, spender, amount);
+        return true;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool) {
+        _spendAllowance(msg.sender, from, spender, amount);
+        _transfer(msg.sender, from, to, amount);
+        return true;
+    }
+
+    /*******************************************************************************
                                     Vault Pausing
     *******************************************************************************/
 
@@ -374,10 +531,6 @@ contract VaultExtension is IVaultExtension, VaultCommon {
         _vaultPaused = pausing;
 
         emit VaultPausedStateChanged(pausing);
-    }
-
-    function _canPerform(bytes32 actionId, address user) internal view virtual override returns (bool) {
-        return _authorizer.canPerform(actionId, user, address(this));
     }
 
     /*******************************************************************************
@@ -618,5 +771,26 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     /// @inheritdoc IVaultExtension
     function isQueryDisabled() external view onlyVault returns (bool) {
         return _isQueryDisabled;
+    }
+
+    /*******************************************************************************
+                                    Authentication
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
+    function getAuthorizer() external view onlyVault returns (IAuthorizer) {
+        return _authorizer;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function setAuthorizer(IAuthorizer newAuthorizer) external nonReentrant authenticate onlyVault {
+        _authorizer = newAuthorizer;
+
+        emit AuthorizerChanged(newAuthorizer);
+    }
+
+    /// @dev Access control is delegated to the Authorizer
+    function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
+        return _authorizer.canPerform(actionId, user, address(this));
     }
 }

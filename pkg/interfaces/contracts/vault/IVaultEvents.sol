@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IAuthorizer } from "./IAuthorizer.sol";
 import { LiquidityManagement, PoolCallbacks, TokenConfig } from "./VaultTypes.sol";
 
 interface IVaultEvents {
@@ -25,6 +26,21 @@ interface IVaultEvents {
         PoolCallbacks callbacks,
         LiquidityManagement liquidityManagement
     );
+
+    /**
+     * @notice A Pool was initialized by calling `initialize`.
+     * @param pool The pool being initialized
+     */
+    event PoolInitialized(address indexed pool);
+
+    /**
+     * @notice Pool balances have changed (e.g., after initialization, add/remove liquidity).
+     * @param pool The pool being registered
+     * @param liquidityProvider The user performing the operation
+     * @param tokens The pool's tokens
+     * @param deltas The amount each token changed
+     */
+    event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
 
     /**
      * @dev The Vault's pause status has changed.
@@ -90,4 +106,10 @@ interface IVaultEvents {
      * @param recoveryMode True if recovery mode was enabled
      */
     event PoolRecoveryModeStateChanged(address indexed pool, bool recoveryMode);
+
+    /**
+     * @notice A new authorizer is set by `setAuthorizer`.
+     * @param newAuthorizer The address of the new authorizer
+     */
+    event AuthorizerChanged(IAuthorizer indexed newAuthorizer);
 }

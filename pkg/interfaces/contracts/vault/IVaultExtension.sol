@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IAuthorizer } from "./IAuthorizer.sol";
 import "./VaultTypes.sol";
 
 interface IVaultExtension {
@@ -122,6 +123,25 @@ interface IVaultExtension {
      */
     function isPoolRegistered(address pool) external view returns (bool);
 
+    /**
+     * @notice Initializes a registered pool by adding liquidity; mints BPT tokens for the first time in exchange.
+     * @param pool Address of the pool to initialize
+     * @param to Address that will receive the output BPT
+     * @param tokens Tokens used to seed the pool (must match the registered tokens)
+     * @param exactAmountsIn Exact amounts of input tokens
+     * @param minBptAmountOut Minimum amount of output pool tokens
+     * @param userData Additional (optional) data required for adding initial liquidity
+     * @return bptAmountOut Output pool token amount
+     */
+    function initialize(
+        address pool,
+        address to,
+        IERC20[] memory tokens,
+        uint256[] memory exactAmountsIn,
+        uint256 minBptAmountOut,
+        bytes memory userData
+    ) external returns (uint256 bptAmountOut);
+
     /*******************************************************************************
                                     Pool Information
     *******************************************************************************/
@@ -180,6 +200,71 @@ interface IVaultExtension {
      * @return Pool configuration
      */
     function getPoolConfig(address pool) external view returns (PoolConfig memory);
+
+    /*******************************************************************************
+                                    Pool Tokens
+    *******************************************************************************/
+
+    /**
+     * @notice Gets total supply of a given ERC20 token.
+     * @param token Token's address
+     * @return Total supply of the token
+     */
+    function totalSupply(address token) external view returns (uint256);
+
+    /**
+     * @notice Gets balance of an account for a given ERC20 token.
+     * @param token Token's address
+     * @param account Account's address
+     * @return Balance of the account for the token
+     */
+    function balanceOf(address token, address account) external view returns (uint256);
+
+    /**
+     * @notice Gets allowance of a spender for a given ERC20 token and owner.
+     * @param token Token's address
+     * @param owner Owner's address
+     * @param spender Spender's address
+     * @return Amount of tokens the spender is allowed to spend
+     */
+    function allowance(address token, address owner, address spender) external view returns (uint256);
+
+    /**
+     * @notice Transfers pool token from owner to a recipient.
+     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
+     * the pool contract, so msg.sender is used as the token address.
+     *
+     * @param owner Owner's address
+     * @param to Recipient's address
+     * @param amount Amount of tokens to transfer
+     * @return True if successful, false otherwise
+     */
+    function transfer(address owner, address to, uint256 amount) external returns (bool);
+
+    /**
+     * @notice Transfers pool token from a sender to a recipient using an allowance.
+     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
+     * the pool contract, so msg.sender is used as the token address.
+     *
+     * @param spender Address allowed to perform the transfer
+     * @param from Sender's address
+     * @param to Recipient's address
+     * @param amount Amount of tokens to transfer
+     * @return True if successful, false otherwise
+     */
+    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
+
+    /**
+     * @notice Approves a spender to spend pool tokens on behalf of sender.
+     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
+     * the pool contract, so msg.sender is used as the token address.
+     *
+     * @param owner Owner's address
+     * @param spender Spender's address
+     * @param amount Amount of tokens to approve
+     * @return True if successful, false otherwise
+     */
+    function approve(address owner, address spender, uint256 amount) external returns (bool);
 
     /*******************************************************************************
                                     Vault Pausing
@@ -365,4 +450,21 @@ interface IVaultExtension {
      * @return If true, then queries are disabled
      */
     function isQueryDisabled() external view returns (bool);
+
+    /*******************************************************************************
+                                Authentication
+    *******************************************************************************/
+
+    /**
+     * @notice Returns the Vault's Authorizer.
+     * @return Address of the authorizer
+     */
+    function getAuthorizer() external view returns (IAuthorizer);
+
+    /**
+     * @notice Sets a new Authorizer for the Vault.
+     * @dev The caller must be allowed by the current Authorizer to do this.
+     * Emits an `AuthorizerChanged` event.
+     */
+    function setAuthorizer(IAuthorizer newAuthorizer) external;
 }
