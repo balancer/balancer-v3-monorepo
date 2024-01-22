@@ -363,7 +363,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             liveBalances.unchecked_setAt(i, newBalances[i]);
         }
     }
-    
+
     /*******************************************************************************
                                     Pool Information
     *******************************************************************************/

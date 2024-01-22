@@ -25,7 +25,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     using ScalingHelpers for *;
     using SafeCast for *;
     using FixedPoint for *;
-    
+
     /*******************************************************************************
                               Transient Accounting
     *******************************************************************************/
