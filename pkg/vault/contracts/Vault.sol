@@ -29,10 +29,9 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
-import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 
-contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
+contract Vault is IVaultMain, VaultCommon, Proxy {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
     using FixedPoint for *;
@@ -209,44 +208,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy, ERC20MultiToken {
 
         // Update the delta for this token and handler.
         _tokenDeltas[handler][token] = next;
-    }
-
-    /*******************************************************************************
-                                    Pool Tokens
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultMain
-    function totalSupply(address token) external view returns (uint256) {
-        return _totalSupply(token);
-    }
-
-    /// @inheritdoc IVaultMain
-    function balanceOf(address token, address account) external view returns (uint256) {
-        return _balanceOf(token, account);
-    }
-
-    /// @inheritdoc IVaultMain
-    function allowance(address token, address owner, address spender) external view returns (uint256) {
-        return _allowance(token, owner, spender);
-    }
-
-    /// @inheritdoc IVaultMain
-    function transfer(address owner, address to, uint256 amount) external returns (bool) {
-        _transfer(msg.sender, owner, to, amount);
-        return true;
-    }
-
-    /// @inheritdoc IVaultMain
-    function approve(address owner, address spender, uint256 amount) external returns (bool) {
-        _approve(msg.sender, owner, spender, amount);
-        return true;
-    }
-
-    /// @inheritdoc IVaultMain
-    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool) {
-        _spendAllowance(msg.sender, from, spender, amount);
-        _transfer(msg.sender, from, to, amount);
-        return true;
     }
 
     /*******************************************************************************

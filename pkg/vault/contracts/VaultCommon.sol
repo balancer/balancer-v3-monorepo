@@ -12,12 +12,13 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultStorage } from "./VaultStorage.sol";
+import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
 
 /**
  * @dev Storage layout for Vault. This contract has no code except for common utilities in the inheritance chain
  * that require storage to work and will be required in both the main Vault and its extension.
  */
-abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, ReentrancyGuard {
+abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, ReentrancyGuard, ERC20MultiToken {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
 
     /*******************************************************************************

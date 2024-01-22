@@ -312,6 +312,44 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     }
 
     /*******************************************************************************
+                                    Pool Tokens
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
+    function totalSupply(address token) external view returns (uint256) {
+        return _totalSupply(token);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function balanceOf(address token, address account) external view returns (uint256) {
+        return _balanceOf(token, account);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function allowance(address token, address owner, address spender) external view returns (uint256) {
+        return _allowance(token, owner, spender);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function transfer(address owner, address to, uint256 amount) external returns (bool) {
+        _transfer(msg.sender, owner, to, amount);
+        return true;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function approve(address owner, address spender, uint256 amount) external returns (bool) {
+        _approve(msg.sender, owner, spender, amount);
+        return true;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool) {
+        _spendAllowance(msg.sender, from, spender, amount);
+        _transfer(msg.sender, from, to, amount);
+        return true;
+    }
+
+    /*******************************************************************************
                                     Vault Pausing
     *******************************************************************************/
 
