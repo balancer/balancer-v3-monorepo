@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IAuthorizer } from "./IAuthorizer.sol";
 import { LiquidityManagement, PoolCallbacks, TokenConfig } from "./VaultTypes.sol";
 
 interface IVaultEvents {
@@ -58,4 +59,10 @@ interface IVaultEvents {
      * @param recoveryMode True if recovery mode was enabled
      */
     event PoolRecoveryModeStateChanged(address indexed pool, bool recoveryMode);
+
+    /**
+     * @notice A new authorizer is set by `setAuthorizer`.
+     * @param newAuthorizer The address of the new authorizer
+     */
+    event AuthorizerChanged(IAuthorizer indexed newAuthorizer);
 }

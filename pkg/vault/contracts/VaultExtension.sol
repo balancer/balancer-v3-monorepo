@@ -10,6 +10,7 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
@@ -30,7 +31,7 @@ import { VaultCommon } from "./VaultCommon.sol";
  *
  * The storage of this contract is in practice unused.
  */
-contract VaultExtension is IVaultExtension, VaultCommon {
+contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     using Address for *;
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using SafeCast for *;
@@ -65,6 +66,7 @@ contract VaultExtension is IVaultExtension, VaultCommon {
         _vaultPauseWindowEndTime = pauseWindowEndTime;
         _vaultBufferPeriodDuration = bufferPeriodDuration;
         _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
+
         _vault = vault;
     }
 
@@ -364,10 +366,6 @@ contract VaultExtension is IVaultExtension, VaultCommon {
         emit VaultPausedStateChanged(pausing);
     }
 
-    function _canPerform(bytes32 actionId, address user) internal view virtual override returns (bool) {
-        return _authorizer.canPerform(actionId, user, address(this));
-    }
-
     /*******************************************************************************
                                      Pool Pausing
     *******************************************************************************/
@@ -592,5 +590,26 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     /// @inheritdoc IVaultExtension
     function isQueryDisabled() external view onlyVault returns (bool) {
         return _isQueryDisabled;
+    }
+
+    /*******************************************************************************
+                                    Authentication
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
+    function getAuthorizer() external view onlyVault returns (IAuthorizer) {
+        return _authorizer;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function setAuthorizer(IAuthorizer newAuthorizer) external nonReentrant authenticate onlyVault {
+        _authorizer = newAuthorizer;
+
+        emit AuthorizerChanged(newAuthorizer);
+    }
+
+    /// @dev Access control is delegated to the Authorizer
+    function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
+        return _authorizer.canPerform(actionId, user, address(this));
     }
 }
