@@ -5,15 +5,22 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
@@ -31,13 +38,17 @@ import { VaultCommon } from "./VaultCommon.sol";
  *
  * The storage of this contract is in practice unused.
  */
-contract VaultExtension is IVaultExtension, VaultCommon {
+contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     using Address for *;
+    using ArrayHelpers for uint256[];
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeCast for *;
+    using SafeERC20 for IERC4626;
     using PoolConfigLib for PoolConfig;
     using SafeERC20 for IERC20;
+    using InputHelpers for uint256;
+    using ScalingHelpers for *;
 
     IVault private immutable _vault;
 
@@ -67,6 +78,7 @@ contract VaultExtension is IVaultExtension, VaultCommon {
         _vaultPauseWindowEndTime = pauseWindowEndTime;
         _vaultBufferPeriodDuration = bufferPeriodDuration;
         _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
+
         _vault = vault;
     }
 
@@ -132,7 +144,7 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     }
 
     /*******************************************************************************
-                                    Pool Registration
+                            Pool Registration and Initialization
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
@@ -287,6 +299,96 @@ contract VaultExtension is IVaultExtension, VaultCommon {
         vars.tempRegisteredTokens = new IERC20[](numTokens);
     }
 
+    /// @inheritdoc IVaultExtension
+    function initialize(
+        address pool,
+        address to,
+        IERC20[] memory tokens,
+        uint256[] memory exactAmountsIn,
+        uint256 minBptAmountOut,
+        bytes memory userData
+    ) external withHandler withRegisteredPool(pool) whenPoolNotPaused(pool) returns (uint256 bptAmountOut) {
+        PoolData memory poolData = _getPoolData(pool, Rounding.ROUND_DOWN);
+
+        if (poolData.config.isPoolInitialized) {
+            revert PoolAlreadyInitialized(pool);
+        }
+
+        InputHelpers.ensureInputLengthMatch(poolData.tokens.length, exactAmountsIn.length);
+
+        // Amounts are entering pool math, so round down. A lower invariant after the join means less bptOut,
+        // favoring the pool.
+        uint256[] memory exactAmountsInScaled18 = exactAmountsIn.copyToScaled18ApplyRateRoundDownArray(
+            poolData.decimalScalingFactors,
+            poolData.tokenRates
+        );
+
+        if (poolData.config.callbacks.shouldCallBeforeInitialize) {
+            if (IPoolCallbacks(pool).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
+                revert CallbackFailed();
+            }
+        }
+
+        bptAmountOut = _initialize(pool, to, poolData, tokens, exactAmountsIn, exactAmountsInScaled18, minBptAmountOut);
+
+        if (poolData.config.callbacks.shouldCallAfterInitialize) {
+            if (IPoolCallbacks(pool).onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false) {
+                revert CallbackFailed();
+            }
+        }
+    }
+
+    function _initialize(
+        address pool,
+        address to,
+        PoolData memory poolData,
+        IERC20[] memory tokens,
+        uint256[] memory exactAmountsIn,
+        uint256[] memory exactAmountsInScaled18,
+        uint256 minBptAmountOut
+    ) internal nonReentrant returns (uint256 bptAmountOut) {
+        for (uint256 i = 0; i < poolData.tokens.length; ++i) {
+            IERC20 actualToken = poolData.tokens[i];
+
+            // Tokens passed into `initialize` are the "expected" tokens.
+            if (actualToken != tokens[i]) {
+                revert TokensMismatch(pool, address(tokens[i]), address(actualToken));
+            }
+
+            // Debit of token[i] for amountIn
+            _takeDebt(actualToken, exactAmountsIn[i], msg.sender);
+        }
+
+        // Store the new Pool balances.
+        _setPoolBalances(pool, exactAmountsIn);
+        emit PoolBalanceChanged(pool, to, poolData.tokens, exactAmountsIn.unsafeCastToInt256(true));
+
+        // Store config and mark the pool as initialized
+        poolData.config.isPoolInitialized = true;
+        _poolConfig[pool] = poolData.config.fromPoolConfig();
+
+        // Pass scaled balances to the pool
+        bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsInScaled18);
+
+        _ensureMinimumTotalSupply(bptAmountOut);
+
+        // At this point we know that bptAmountOut >= _MINIMUM_TOTAL_SUPPLY, so this will not revert.
+        bptAmountOut -= _MINIMUM_TOTAL_SUPPLY;
+        // When adding liquidity, we must mint tokens concurrently with updating pool balances,
+        // as the pool's math relies on totalSupply.
+        // Minting will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
+        _mintMinimumSupplyReserve(address(pool));
+        _mint(address(pool), to, bptAmountOut);
+
+        // At this point we have the calculated BPT amount.
+        if (bptAmountOut < minBptAmountOut) {
+            revert BptAmountOutBelowMin(bptAmountOut, minBptAmountOut);
+        }
+
+        // Emit an event to log the pool initialization
+        emit PoolInitialized(pool);
+    }
+
     /*******************************************************************************
                                     Pool Information
     *******************************************************************************/
@@ -352,6 +454,44 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     }
 
     /*******************************************************************************
+                                    Pool Tokens
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
+    function totalSupply(address token) external view returns (uint256) {
+        return _totalSupply(token);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function balanceOf(address token, address account) external view returns (uint256) {
+        return _balanceOf(token, account);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function allowance(address token, address owner, address spender) external view returns (uint256) {
+        return _allowance(token, owner, spender);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function transfer(address owner, address to, uint256 amount) external returns (bool) {
+        _transfer(msg.sender, owner, to, amount);
+        return true;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function approve(address owner, address spender, uint256 amount) external returns (bool) {
+        _approve(msg.sender, owner, spender, amount);
+        return true;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool) {
+        _spendAllowance(msg.sender, from, spender, amount);
+        _transfer(msg.sender, from, to, amount);
+        return true;
+    }
+
+    /*******************************************************************************
                                     Vault Pausing
     *******************************************************************************/
 
@@ -404,10 +544,6 @@ contract VaultExtension is IVaultExtension, VaultCommon {
         _vaultPaused = pausing;
 
         emit VaultPausedStateChanged(pausing);
-    }
-
-    function _canPerform(bytes32 actionId, address user) internal view virtual override returns (bool) {
-        return _authorizer.canPerform(actionId, user, address(this));
     }
 
     /*******************************************************************************
@@ -634,5 +770,187 @@ contract VaultExtension is IVaultExtension, VaultCommon {
     /// @inheritdoc IVaultExtension
     function isQueryDisabled() external view onlyVault returns (bool) {
         return _isQueryDisabled;
+    }
+
+    /*******************************************************************************
+                              ERC4626 Buffer Operations
+    *******************************************************************************/
+
+    // TODO: probably want to move this all to its own abstract contract with storage/library pattern.
+
+    /// @inheritdoc IVaultExtension
+    function registerBuffer(address wrappedToken) external authenticate {
+        // Cast types for clarity.
+        IERC4626 yieldToken = IERC4626(wrappedToken);
+        address asset = yieldToken.asset();
+
+        if (_wrappedTokenBuffers.contains(wrappedToken)) {
+            revert WrappedTokenBufferAlreadyRegistered();
+        }
+
+        _wrappedTokenBuffers.add(wrappedToken);
+        _wrappedTokenBufferBaseTokens[IERC20(wrappedToken)] = IERC20(asset);
+
+        // Compute the decimal difference (used for yield token rate computation).
+        _bufferRateScalingFactors.set(
+            yieldToken,
+            10 ** (18 + yieldToken.decimals() - IERC20Metadata(asset).decimals())
+        );
+
+        // Initialize the total supply.
+        _bufferTotalSupply.set(IERC20(wrappedToken), 0);
+
+        emit WrappedTokenBufferRegistered(asset, wrappedToken);
+    }
+
+    modifier withRegisteredBuffer(address wrappedToken) {
+        _ensureRegisteredBuffer(wrappedToken);
+        _;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getWrappedTokenBufferRate(
+        address wrappedToken
+    ) public view withRegisteredBuffer(wrappedToken) returns (uint256) {
+        IERC4626 yieldToken = IERC4626(wrappedToken);
+
+        return yieldToken.convertToAssets(_bufferRateScalingFactors.get(yieldToken));
+    }
+
+    /// @inheritdoc IVaultExtension
+    function depositToBuffer(
+        address wrappedToken,
+        uint256 baseAmountIn,
+        uint256 wrappedAmountIn
+    ) external withRegisteredBuffer(wrappedToken) nonReentrant authenticate returns (uint256 sharesAmountOut) {
+        // Pretend the buffer is a two-token pool. Pull the tokens, then compute and assign the virtual BPT.
+        // TODO: Do we need minSharesAmountOut? Maybe not as this isn't a real pool with retail trades?
+
+        // Pull in the base and wrapped tokens (depositor must have approved the Vault).
+        IERC20 baseToken = _wrappedTokenBufferBaseTokens[IERC20(wrappedToken)];
+        baseToken.safeTransferFrom(msg.sender, address(this), baseAmountIn);
+        IERC20(wrappedToken).safeTransferFrom(msg.sender, address(this), wrappedAmountIn);
+
+        // TODO: This will be something like StableMath._calcBptOutGivenExactTokensIn. As a placeholder,
+        // just use the sum.
+        sharesAmountOut = baseAmountIn + wrappedAmountIn;
+        if (sharesAmountOut > 0) {
+            // TODO: Update _wrappedTokenBufferBalances - infrastructure in another PR.
+
+            // Increase the total supply of the buffer.
+            uint256 currentTotalSupply = _bufferTotalSupply.get(IERC20(wrappedToken));
+            _bufferTotalSupply.set(IERC20(wrappedToken), currentTotalSupply + sharesAmountOut);
+
+            // Set this depositor's shares.
+            EnumerableMap.IERC20ToUint256Map storage bufferShares = _bufferDepositorShares[IERC20(wrappedToken)];
+
+            // Looks weird, but done to leverage map data structure.
+            uint256 depositorIndex = bufferShares.unchecked_indexOf(IERC20(msg.sender));
+
+            // If the index is 0, this is a new depositor. Otherwise, adjust the map index to zero-based.
+            uint256 currentShares = depositorIndex == 0 ? 0 : bufferShares.unchecked_valueAt(depositorIndex - 1);
+
+            bufferShares.set(IERC20(msg.sender), currentShares + sharesAmountOut);
+
+            emit TokensDepositedToBuffer(address(baseToken), wrappedToken, baseAmountIn, wrappedAmountIn);
+        }
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getBufferShares(address wrappedToken) external view withRegisteredBuffer(wrappedToken) returns (uint256) {
+        EnumerableMap.IERC20ToUint256Map storage bufferShares = _bufferDepositorShares[IERC20(wrappedToken)];
+
+        // Return 0 if the caller is unknown. Otherwise, adjust the map index to zero-based.
+        uint256 depositorIndex = bufferShares.unchecked_indexOf(IERC20(msg.sender));
+
+        return depositorIndex == 0 ? 0 : bufferShares.unchecked_valueAt(depositorIndex - 1);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getTotalSupplyOfBuffer(
+        address wrappedToken
+    ) external view withRegisteredBuffer(wrappedToken) returns (uint256) {
+        return _bufferTotalSupply.get(IERC20(wrappedToken));
+    }
+
+    /// @inheritdoc IVaultExtension
+    function withdrawFromBuffer(
+        address wrappedToken,
+        uint256 baseAmountOut,
+        uint256 wrappedAmountOut
+    ) external withRegisteredBuffer(wrappedToken) nonReentrant returns (uint256 sharesAmountIn) {
+        // Pretend the buffer is a two-token pool. Compute the sharesAmountIn (virtual BPT) corresponding to the given
+        // amounts, deduct it from the sender, then withdraw the tokens.
+        // TODO: Should we support this, or only proportional? As with deposit, do we need a maxSharesAmountIn?
+
+        // This will be something like StableMath._calcBptInGivenExactTokensOut. As a placeholder, just use the sum.
+        sharesAmountIn = baseAmountOut + wrappedAmountOut;
+
+        if (sharesAmountIn > 0) {
+            EnumerableMap.IERC20ToUint256Map storage bufferShares = _bufferDepositorShares[IERC20(wrappedToken)];
+            uint256 depositorIndex = bufferShares.unchecked_indexOf(IERC20(msg.sender));
+
+            uint256 currentShares = depositorIndex == 0 ? 0 : bufferShares.unchecked_valueAt(depositorIndex - 1);
+            if (sharesAmountIn > currentShares) {
+                revert InsufficientSharesForBufferWithdrawal();
+            }
+
+            // Reduce the caller's share balance (i.e., "burn" the virtual BPT).
+            bufferShares.set(IERC20(msg.sender), currentShares - sharesAmountIn);
+
+            // TODO: Update _wrappedTokenBufferBalances - infrastructure in another PR.
+
+            // Reduce the buffer's total supply
+            uint256 currentTotalSupply = _bufferTotalSupply.get(IERC20(wrappedToken));
+            _bufferTotalSupply.set(IERC20(wrappedToken), currentTotalSupply - sharesAmountIn);
+
+            // Send the tokens.
+            IERC20 baseToken = _wrappedTokenBufferBaseTokens[IERC20(wrappedToken)];
+            baseToken.safeTransfer(msg.sender, baseAmountOut);
+            IERC20(wrappedToken).safeTransfer(msg.sender, wrappedAmountOut);
+
+            emit TokensWithdrawnFromBuffer(address(baseToken), wrappedToken, baseAmountOut, wrappedAmountOut);
+        }
+    }
+
+    /// @inheritdoc IVaultExtension
+    function rebalanceBuffer(address wrappedToken) external withRegisteredBuffer(wrappedToken) authenticate {
+        // TODO: Implementation. Do we want to return anything? Surely an event.
+    }
+
+    // TODO: verify swap functions are internal (used by rebalance)
+    function _swapbaseToWrapped(address wrappedToken, uint256 amountIn) internal withRegisteredBuffer(wrappedToken) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function _swapWrappedTobase(address wrappedToken, uint256 amountIn) internal withRegisteredBuffer(wrappedToken) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function _ensureRegisteredBuffer(address wrappedToken) private view {
+        if (!_wrappedTokenBuffers.contains(wrappedToken)) {
+            revert WrappedTokenBufferNotRegistered();
+        }
+    }
+
+    /*******************************************************************************
+                                    Authentication
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
+    function getAuthorizer() external view onlyVault returns (IAuthorizer) {
+        return _authorizer;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function setAuthorizer(IAuthorizer newAuthorizer) external nonReentrant authenticate onlyVault {
+        _authorizer = newAuthorizer;
+
+        emit AuthorizerChanged(newAuthorizer);
+    }
+
+    /// @dev Access control is delegated to the Authorizer
+    function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
+        return _authorizer.canPerform(actionId, user, address(this));
     }
 }

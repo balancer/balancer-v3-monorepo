@@ -34,7 +34,6 @@ describe('BalancerPoolToken', function () {
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { vault: vaultMock, pools } = await setupEnvironment(PAUSE_WINDOW_DURATION);
-
     vault = vaultMock;
 
     poolA = pools[0]; // This pool is registered

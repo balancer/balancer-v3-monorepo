@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IAuthorizer } from "./IAuthorizer.sol";
 import "./VaultTypes.sol";
 
 interface IVaultExtension {
@@ -122,6 +123,118 @@ interface IVaultExtension {
      */
     function isPoolRegistered(address pool) external view returns (bool);
 
+    /**
+     * @notice Initializes a registered pool by adding liquidity; mints BPT tokens for the first time in exchange.
+     * @param pool Address of the pool to initialize
+     * @param to Address that will receive the output BPT
+     * @param tokens Tokens used to seed the pool (must match the registered tokens)
+     * @param exactAmountsIn Exact amounts of input tokens
+     * @param minBptAmountOut Minimum amount of output pool tokens
+     * @param userData Additional (optional) data required for adding initial liquidity
+     * @return bptAmountOut Output pool token amount
+     */
+    function initialize(
+        address pool,
+        address to,
+        IERC20[] memory tokens,
+        uint256[] memory exactAmountsIn,
+        uint256 minBptAmountOut,
+        bytes memory userData
+    ) external returns (uint256 bptAmountOut);
+
+    /**
+     * @notice Register a wrapped token buffer.
+     * @dev We are assuming wrapped token addresses are unique (i.e., they are not upgradeable in place,
+     * which would be insecure for depositors). Each wrapped token therefore unique describes a buffer,
+     * since the base token is specified by IERC4626, and it is its own rate provider.
+     * This is a permissioned function.
+     *
+     * @param wrappedToken The wrapped token associated with the new buffer.
+     */
+    function registerBuffer(address wrappedToken) external;
+
+    /**
+     * @notice Deposit base and wrapped tokens to an internal ERC4626 token buffer.
+     * @param wrappedToken The wrapped buffer token
+     * @param baseAmountIn The amount of base tokens (e.g., DAI for waDAI)
+     * @param wrappedAmountIn The amount of wrapped tokens
+     * @return sharesAmountOut The number of "shares" assigned as a result of this deposit.
+     */
+    function depositToBuffer(
+        address wrappedToken,
+        uint256 baseAmountIn,
+        uint256 wrappedAmountIn
+    ) external returns (uint256 sharesAmountOut);
+
+    /**
+     * @dev Record a deposit to an ERC4626 buffer.
+     * @param baseToken The base token corresponding to the buffer
+     * @param wrappedToken The wrapped token, identifying the buffer
+     * @param baseAmountIn The amount of base tokens deposited
+     * @param wrappedAmountIn The amount of wrapped tokens deposited
+     */
+    event TokensDepositedToBuffer(
+        address indexed baseToken,
+        address indexed wrappedToken,
+        uint256 baseAmountIn,
+        uint256 wrappedAmountIn
+    );
+
+    /**
+     * @notice Get the current rate of a wrapped token buffer.
+     * @dev Reverts if the buffer does not exist.
+     * @param wrappedToken The IERC4626 wrapped token
+     * @return rate The current rate
+     */
+    function getWrappedTokenBufferRate(address wrappedToken) external view returns (uint256);
+
+    /**
+     * @notice Get the number of shares (i.e., virtual BPT) held by a depositor in an ERC4626 buffer.
+     * @param wrappedToken The wrapped token identifying the buffer
+     * @return sharesAmount The total shares controlled by the caller
+     */
+    function getBufferShares(address wrappedToken) external view returns (uint256);
+
+    /**
+     * @notice Get the total supply for a given buffer.
+     * @param wrappedToken The wrapped token identifying the buffer
+     * @return totalSupply The current total supply of the buffer (i.e., total shares of virtual BPT)
+     */
+    function getTotalSupplyOfBuffer(address wrappedToken) external view returns (uint256);
+
+    /**
+     * @notice Withdraw shares in an ERC4626 token buffer.
+     * @param wrappedToken The wrapped token specifying the buffer
+     * @param baseAmountOut The amount of base tokens to withdraw (e.g., DAI for waDAI)
+     * @param wrappedAmountOut The amount of wrapped tokens to withdraw
+     * @return sharesAmountIn The amount of shares "burned" in exchange for the tokens.
+     */
+    function withdrawFromBuffer(
+        address wrappedToken,
+        uint256 baseAmountOut,
+        uint256 wrappedAmountOut
+    ) external returns (uint256 sharesAmountIn);
+
+    /**
+     * @dev Record a withdrawal from an ERC4626 buffer.
+     * @param baseToken The base token corresponding to the buffer
+     * @param wrappedToken The wrapped token, identifying the buffer
+     * @param baseAmountOut The amount of base tokens deposited
+     * @param wrappedAmountOut The amount of wrapped tokens deposited
+     */
+    event TokensWithdrawnFromBuffer(
+        address indexed baseToken,
+        address indexed wrappedToken,
+        uint256 baseAmountOut,
+        uint256 wrappedAmountOut
+    );
+
+    /**
+     * @notice Rebalance an ERC4626 buffer.
+     * @param wrappedToken The wrapped token identifying the buffer
+     */
+    function rebalanceBuffer(address wrappedToken) external;
+
     /*******************************************************************************
                                     Pool Information
     *******************************************************************************/
@@ -180,6 +293,71 @@ interface IVaultExtension {
      * @return Pool configuration
      */
     function getPoolConfig(address pool) external view returns (PoolConfig memory);
+
+    /*******************************************************************************
+                                    Pool Tokens
+    *******************************************************************************/
+
+    /**
+     * @notice Gets total supply of a given ERC20 token.
+     * @param token Token's address
+     * @return Total supply of the token
+     */
+    function totalSupply(address token) external view returns (uint256);
+
+    /**
+     * @notice Gets balance of an account for a given ERC20 token.
+     * @param token Token's address
+     * @param account Account's address
+     * @return Balance of the account for the token
+     */
+    function balanceOf(address token, address account) external view returns (uint256);
+
+    /**
+     * @notice Gets allowance of a spender for a given ERC20 token and owner.
+     * @param token Token's address
+     * @param owner Owner's address
+     * @param spender Spender's address
+     * @return Amount of tokens the spender is allowed to spend
+     */
+    function allowance(address token, address owner, address spender) external view returns (uint256);
+
+    /**
+     * @notice Transfers pool token from owner to a recipient.
+     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
+     * the pool contract, so msg.sender is used as the token address.
+     *
+     * @param owner Owner's address
+     * @param to Recipient's address
+     * @param amount Amount of tokens to transfer
+     * @return True if successful, false otherwise
+     */
+    function transfer(address owner, address to, uint256 amount) external returns (bool);
+
+    /**
+     * @notice Transfers pool token from a sender to a recipient using an allowance.
+     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
+     * the pool contract, so msg.sender is used as the token address.
+     *
+     * @param spender Address allowed to perform the transfer
+     * @param from Sender's address
+     * @param to Recipient's address
+     * @param amount Amount of tokens to transfer
+     * @return True if successful, false otherwise
+     */
+    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
+
+    /**
+     * @notice Approves a spender to spend pool tokens on behalf of sender.
+     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
+     * the pool contract, so msg.sender is used as the token address.
+     *
+     * @param owner Owner's address
+     * @param spender Spender's address
+     * @param amount Amount of tokens to approve
+     * @return True if successful, false otherwise
+     */
+    function approve(address owner, address spender, uint256 amount) external returns (bool);
 
     /*******************************************************************************
                                     Vault Pausing
@@ -353,4 +531,21 @@ interface IVaultExtension {
      * @return If true, then queries are disabled
      */
     function isQueryDisabled() external view returns (bool);
+
+    /*******************************************************************************
+                                Authentication
+    *******************************************************************************/
+
+    /**
+     * @notice Returns the Vault's Authorizer.
+     * @return Address of the authorizer
+     */
+    function getAuthorizer() external view returns (IAuthorizer);
+
+    /**
+     * @notice Sets a new Authorizer for the Vault.
+     * @dev The caller must be allowed by the current Authorizer to do this.
+     * Emits an `AuthorizerChanged` event.
+     */
+    function setAuthorizer(IAuthorizer newAuthorizer) external;
 }
