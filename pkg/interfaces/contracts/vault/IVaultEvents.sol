@@ -28,6 +28,21 @@ interface IVaultEvents {
     );
 
     /**
+     * @notice A Pool was initialized by calling `initialize`.
+     * @param pool The pool being initialized
+     */
+    event PoolInitialized(address indexed pool);
+
+    /**
+     * @notice Pool balances have changed (e.g., after initialization, add/remove liquidity).
+     * @param pool The pool being registered
+     * @param liquidityProvider The user performing the operation
+     * @param tokens The pool's tokens
+     * @param deltas The amount each token changed
+     */
+    event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
+
+    /**
      * @dev The Vault's pause status has changed.
      * @param paused True if the Vault was paused
      */

@@ -10,44 +10,6 @@ import "./VaultTypes.sol";
 
 interface IVaultMain {
     /*******************************************************************************
-                        Pool Registration and Initialization
-    *******************************************************************************/
-
-    /**
-     * @notice A Pool was initialized by calling `initialize`.
-     * @param pool The pool being initialized
-     */
-    event PoolInitialized(address indexed pool);
-
-    /**
-     * @notice Pool balances have changed (e.g., after initialization, add/remove liquidity).
-     * @param pool The pool being registered
-     * @param liquidityProvider The user performing the operation
-     * @param tokens The pool's tokens
-     * @param deltas The amount each token changed
-     */
-    event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
-
-    /**
-     * @notice Initializes a registered pool by adding liquidity; mints BPT tokens for the first time in exchange.
-     * @param pool Address of the pool to initialize
-     * @param to Address that will receive the output BPT
-     * @param tokens Tokens used to seed the pool (must match the registered tokens)
-     * @param exactAmountsIn Exact amounts of input tokens
-     * @param minBptAmountOut Minimum amount of output pool tokens
-     * @param userData Additional (optional) data required for adding initial liquidity
-     * @return bptAmountOut Output pool token amount
-     */
-    function initialize(
-        address pool,
-        address to,
-        IERC20[] memory tokens,
-        uint256[] memory exactAmountsIn,
-        uint256 minBptAmountOut,
-        bytes memory userData
-    ) external returns (uint256 bptAmountOut);
-
-    /*******************************************************************************
                               Transient Accounting
     *******************************************************************************/
 
