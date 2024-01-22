@@ -18,11 +18,6 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 contract WeightedPool is IBasePool, BalancerPoolToken {
     uint256 private immutable _totalTokens;
 
-    IERC20 internal immutable _token0;
-    IERC20 internal immutable _token1;
-    IERC20 internal immutable _token2;
-    IERC20 internal immutable _token3;
-
     uint256 internal immutable _normalizedWeight0;
     uint256 internal immutable _normalizedWeight1;
     uint256 internal immutable _normalizedWeight2;
@@ -63,11 +58,6 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         }
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
-        _token0 = params.tokens[0];
-        _token1 = params.tokens[1];
-        _token2 = numTokens > 2 ? params.tokens[2] : IERC20(address(0));
-        _token3 = numTokens > 3 ? params.tokens[3] : IERC20(address(0));
-
         _normalizedWeight0 = params.normalizedWeights[0];
         _normalizedWeight1 = params.normalizedWeights[1];
         _normalizedWeight2 = numTokens > 2 ? params.normalizedWeights[2] : 0;
