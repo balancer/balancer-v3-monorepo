@@ -48,13 +48,18 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
 
     IVault private immutable _vault;
 
+    /// @dev Functions with this modifier can only be delegate-called by the vault.
     modifier onlyVault() {
+        _ensureVaultDelegateCall();
+        _;
+    }
+
+    function _ensureVaultDelegateCall() internal view {
         // If this is a delegate call from the vault, the address of the contract should be the Vault's,
         // not the extension.
         if (address(this) != address(_vault)) {
             revert NotVaultDelegateCall();
         }
-        _;
     }
 
     constructor(
