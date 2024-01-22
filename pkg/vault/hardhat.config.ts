@@ -5,6 +5,7 @@ import '@typechain/hardhat';
 import 'hardhat-ignore-warnings';
 import 'hardhat-gas-reporter';
 
+import { name } from './package.json';
 import { hardhatBaseConfig } from '@balancer-labs/v3-common';
 
 export default {
@@ -15,6 +16,7 @@ export default {
   },
   solidity: {
     compilers: hardhatBaseConfig.compilers,
+    overrides: { ...hardhatBaseConfig.overrides(name) },
   },
   warnings: hardhatBaseConfig.warnings,
 };
