@@ -121,6 +121,10 @@ describe('ERC4626BufferPool', function () {
       const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(pool);
 
       expect(poolConfig.pauseWindowEndTime).to.gt(currentTime);
+      expect(poolConfig.callbacks.shouldCallBeforeInitialize).to.be.true;
+      expect(poolConfig.callbacks.shouldCallAfterInitialize).to.be.false;
+      expect(poolConfig.callbacks.shouldCallBeforeAddLiquidity).to.be.true;
+      expect(poolConfig.callbacks.shouldCallAfterAddLiquidity).to.be.false;
       expect(poolConfig.callbacks.shouldCallBeforeSwap).to.be.true;
       expect(poolConfig.callbacks.shouldCallAfterSwap).to.be.false;
       expect(poolConfig.liquidityManagement.supportsAddLiquidityCustom).to.be.true;

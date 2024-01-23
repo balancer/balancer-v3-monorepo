@@ -776,9 +776,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             pauseWindowEndTime,
             address(0), // no pause manager
             PoolCallbacks({
-                shouldCallBeforeInitialize: false,
+                shouldCallBeforeInitialize: true, // ensure proportional
                 shouldCallAfterInitialize: false,
-                shouldCallBeforeAddLiquidity: false,
+                shouldCallBeforeAddLiquidity: true, // ensure proportional
                 shouldCallAfterAddLiquidity: false,
                 shouldCallBeforeRemoveLiquidity: false,
                 shouldCallAfterRemoveLiquidity: false,

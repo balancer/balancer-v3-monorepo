@@ -11,17 +11,19 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
 
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 
 import { BalancerPoolToken } from "./BalancerPoolToken.sol";
+import { PoolCallbacks } from "./PoolCallbacks.sol";
 
 /**
  * @notice ERC4626 Buffer Pool, designed to be used internally for ERC4626 token types in standard pools.
  * @dev These "pools" reuse the code for pools, but are not registered with the Vault, guaranteeing they
  * cannot be used externally. To the outside world, they don't exist.
  */
-contract ERC4626BufferPool is IBasePool, IRateProvider, BalancerPoolToken {
+contract ERC4626BufferPool is IBasePool, IRateProvider, BalancerPoolToken, PoolCallbacks {
     uint256 private constant _DEFAULT_BUFFER_AMP_PARAMETER = 200;
     uint256 private constant _AMP_PRECISION = 1e3;
 
@@ -52,6 +54,27 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, BalancerPoolToken {
     /// @inheritdoc IBasePool
     function getPoolTokens() public view onlyVault returns (IERC20[] memory tokens) {
         return getVault().getPoolTokens(address(this));
+    }
+
+    /// @inheritdoc IPoolCallbacks
+    function onBeforeInitialize(
+        uint256[] memory exactAmountsIn,
+        bytes memory
+    ) external view override onlyVault returns (bool) {
+        // Enforce proportionality
+        return exactAmountsIn.length == 2 && exactAmountsIn[0] == exactAmountsIn[1];
+    }
+
+    /// @inheritdoc IPoolCallbacks
+    function onBeforeAddLiquidity(
+        address,
+        uint256[] memory maxAmountsInScaled18,
+        uint256,
+        uint256[] memory,
+        bytes memory
+    ) external view override onlyVault returns (bool) {
+        // Enforce proportionality
+        return maxAmountsInScaled18.length == 2 && maxAmountsInScaled18[0] == maxAmountsInScaled18[1];
     }
 
     /// @inheritdoc IBasePool
