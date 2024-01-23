@@ -140,6 +140,11 @@ describe('ERC4626BufferPool', function () {
       expect(await pool.balanceOf(alice)).to.eq(TOKEN_AMOUNT * 2n - MIN_BPT);
       expect(await wrappedToken.balanceOf(alice)).to.eq(0);
       expect(await baseToken.balanceOf(alice)).to.eq(0);
+
+      // Cannot initialize more than once
+      await expect(
+        router.connect(alice).initialize(pool, tokenAddresses, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x')
+      ).to.be.revertedWithCustomError(vault, 'PoolAlreadyInitialized');
     });
   });
 });
