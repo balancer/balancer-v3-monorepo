@@ -148,6 +148,11 @@ describe('ERC4626BufferPool', function () {
       expect(await wrappedToken.balanceOf(alice)).to.eq(TOKEN_AMOUNT);
       expect(await baseToken.balanceOf(alice)).to.eq(TOKEN_AMOUNT);
 
+      // Cannot initialize disproportionately
+      await expect(
+        router.connect(alice).initialize(pool, tokenAddresses, [TOKEN_AMOUNT * 2n, TOKEN_AMOUNT], FP_ZERO, false, '0x')
+      ).to.be.revertedWithCustomError(vault, 'CallbackFailed');
+
       expect(
         await router.connect(alice).initialize(pool, tokenAddresses, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x')
       )
