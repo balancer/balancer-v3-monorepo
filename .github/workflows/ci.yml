@@ -41,6 +41,7 @@ jobs:
         run: yarn build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORGE_SNAPSHOT_CHECK: true
       - name: Test
         run: yarn workspace @balancer-labs/v3-vault test:forge
 
@@ -80,6 +81,33 @@ jobs:
         run: yarn build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORGE_SNAPSHOT_CHECK: true
       - name: Test
         run: yarn workspace @balancer-labs/v3-solidity-utils test:forge
 
+  test-hardhat-pool-weighted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - name: Compile
+        run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Test
+        run: yarn workspace @balancer-labs/v3-pool-weighted test:hardhat
+
+  test-forge-pool-weighted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - name: Compile
+        run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORGE_SNAPSHOT_CHECK: true
+      - name: Test
+        run: yarn workspace @balancer-labs/v3-pool-weighted test:forge

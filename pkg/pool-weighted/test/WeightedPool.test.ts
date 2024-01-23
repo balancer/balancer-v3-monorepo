@@ -2,19 +2,20 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
-import { PoolConfigStructOutput, VaultMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/VaultMock';
 import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/WETHTestToken';
-import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
 import { PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/PoolMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
-import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { FP_ZERO, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
+import { IVault } from '@balancer-labs/v3-vault/typechain-types';
+import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
+import { PoolConfigStructOutput } from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
 
 describe('WeightedPool', function () {
-  let vault: VaultMock;
+  let vault: IVault;
   let pool: PoolMock;
   let router: Router;
   let alice: SignerWithAddress;
@@ -28,13 +29,7 @@ describe('WeightedPool', function () {
   });
 
   sharedBeforeEach('deploy vault, router, tokens, and pool', async function () {
-    const PAUSE_WINDOW_DURATION = MONTH * 3;
-    const BUFFER_PERIOD_DURATION = MONTH;
-
-    const authorizer: BasicAuthorizerMock = await deploy('v3-solidity-utils/BasicAuthorizerMock');
-    vault = await deploy('v3-vault/VaultMock', {
-      args: [authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
-    });
+    vault = await TypesConverter.toIVault(await VaultDeployer.deploy());
 
     const WETH: WETHTestToken = await deploy('v3-solidity-utils/WETHTestToken');
     router = await deploy('v3-vault/Router', { args: [vault, await WETH.getAddress()] });
@@ -93,7 +88,7 @@ describe('WeightedPool', function () {
         const tokensFromPool = await pool.getPoolTokens();
         expect(tokensFromPool).to.deep.equal(poolTokens);
 
-        const [tokensFromVault, balancesFromVault] = await vault.getPoolTokenInfo(pool);
+        const [tokensFromVault, , balancesFromVault] = await vault.getPoolTokenInfo(pool);
         expect(tokensFromVault).to.deep.equal(tokensFromPool);
         expect(balancesFromVault).to.deep.equal(INITIAL_BALANCES);
       });

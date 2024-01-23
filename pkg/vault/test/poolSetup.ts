@@ -2,22 +2,24 @@ import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
-import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
 import { PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/PoolMock';
 import { ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
+import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
+import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 
 // This deploys a Vault, then creates 3 tokens and 2 pools. The first pool (A) is registered; the second (B) )s not,
 // which, along with a registration flag in the Pool mock, permits separate testing of registration functions.
 export async function setupEnvironment(pauseWindowDuration: number): Promise<{
-  vault: VaultMock;
+  vault: IVaultMock;
   tokens: ERC20TestToken[];
   pools: PoolMock[];
 }> {
   const BUFFER_PERIOD_DURATION = MONTH;
 
-  const authorizer: BasicAuthorizerMock = await deploy('v3-solidity-utils/BasicAuthorizerMock');
-  const vault: VaultMock = await deploy('VaultMock', {
-    args: [authorizer.getAddress(), pauseWindowDuration, BUFFER_PERIOD_DURATION],
+  const vault: VaultMock = await VaultDeployer.deployMock({
+    pauseWindowDuration,
+    bufferPeriodDuration: BUFFER_PERIOD_DURATION,
   });
   const vaultAddress = await vault.getAddress();
 
@@ -58,5 +60,5 @@ export async function setupEnvironment(pauseWindowDuration: number): Promise<{
     ],
   });
 
-  return { vault: vault, tokens: [tokenA, tokenB, tokenC], pools: [poolA, poolB] };
+  return { vault: await TypesConverter.toIVaultMock(vault), tokens: [tokenA, tokenB, tokenC], pools: [poolA, poolB] };
 }

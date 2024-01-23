@@ -5,8 +5,8 @@
   "version": "1.0.0",
   "license": "GPL-3.0-only",
   "scripts": {
-    "measure-deployment": "hardhat run deployment.ts",
-    "benchmark": "yarn measure-deployment",
+    "build": "yarn compile && rm -rf artifacts/build-info",
+    "compile": "hardhat compile",
     "gas": "forge test -vvv --gas-report",
     "lint": "yarn lint:typescript",
     "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"

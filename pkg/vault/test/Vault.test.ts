@@ -3,9 +3,8 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH, currentTimestamp, fromNow } from '@balancer-labs/v3-helpers/src/time';
-import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
+import { PoolConfigStructOutput } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
-import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
@@ -15,13 +14,18 @@ import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
-import { RateProviderMock } from '../typechain-types';
+import { RateProviderMock, VaultExtensionMock } from '../typechain-types';
+import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
+import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
+import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
+import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
 
-  let vault: VaultMock;
+  let vault: IVaultMock;
+  let vaultExtension: VaultExtensionMock;
   let poolA: PoolMock;
   let poolB: PoolMock;
   let tokenA: ERC20TestToken;
@@ -47,6 +51,10 @@ describe('Vault', function () {
     const { vault: vaultMock, tokens, pools } = await setupEnvironment(PAUSE_WINDOW_DURATION);
 
     vault = vaultMock;
+    vaultExtension = (await deployedAt(
+      'VaultExtensionMock',
+      await vault.getVaultExtension()
+    )) as unknown as VaultExtensionMock;
 
     tokenA = tokens[0];
     tokenB = tokens[1];
@@ -88,7 +96,7 @@ describe('Vault', function () {
         .withArgs(poolBAddress);
     });
 
-    it('pools are initially  not in recovery mode', async () => {
+    it('pools are initially not in recovery mode', async () => {
       expect(await vault.isPoolInRecoveryMode(poolBAddress)).to.be.false;
     });
 
@@ -97,39 +105,55 @@ describe('Vault', function () {
     });
 
     it('registering a pool emits an event', async () => {
+      enum TOKEN_TYPE {
+        STANDARD = 0,
+        WITH_RATE,
+        ERC4626,
+      }
+
+      const tokenConfig = Array.from({ length: poolBTokens.length }, (_, i) => [
+        poolBTokens[i],
+        TOKEN_TYPE.STANDARD.toString(),
+        ZERO_ADDRESS,
+        false,
+      ]);
+
       const currentTime = await currentTimestamp();
       const pauseWindowEndTime = Number(currentTime) + PAUSE_WINDOW_DURATION;
-      const rateProviders = Array(poolBTokens.length).fill(ZERO_ADDRESS);
 
-      await expect(await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS))
-        .to.emit(vault, 'PoolRegistered')
-        .withArgs(
-          poolBAddress,
-          await vault.getPoolFactoryMock(),
-          poolBTokens,
-          rateProviders,
-          pauseWindowEndTime,
-          ANY_ADDRESS,
-          [false, false, false, false, false, false],
-          [true, true]
-        );
+      const expectedArgs = {
+        pool: poolBAddress,
+        factory: await vault.getPoolFactoryMock(),
+        tokenConfig,
+        pauseWindowEndTime: pauseWindowEndTime.toString(),
+        pauseManager: ANY_ADDRESS,
+        callbacks: [false, false, false, false, false, false, false, false],
+        liquidityManagement: [true, true],
+      };
+
+      // Use expectEvent here to prevent errors with structs of arrays with hardhat matchers.
+      const tx = await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS);
+      expectEvent.inReceipt(await tx.wait(), 'PoolRegistered', expectedArgs);
     });
 
     it('cannot register a pool twice', async () => {
       await vault.manualRegisterPool(poolB, poolBTokens);
 
       await expect(vault.manualRegisterPool(poolB, poolBTokens))
-        .to.be.revertedWithCustomError(vault, 'PoolAlreadyRegistered')
+        .to.be.revertedWithCustomError(vaultExtension, 'PoolAlreadyRegistered')
         .withArgs(await poolB.getAddress());
     });
 
     it('cannot register a pool with an invalid token', async () => {
-      await expect(vault.manualRegisterPool(poolB, invalidTokens)).to.be.revertedWithCustomError(vault, 'InvalidToken');
+      await expect(vault.manualRegisterPool(poolB, invalidTokens)).to.be.revertedWithCustomError(
+        vaultExtension,
+        'InvalidToken'
+      );
     });
 
     it('cannot register a pool with duplicate tokens', async () => {
       await expect(vault.manualRegisterPool(poolB, duplicateTokens))
-        .to.be.revertedWithCustomError(vault, 'TokenAlreadyRegistered')
+        .to.be.revertedWithCustomError(vaultExtension, 'TokenAlreadyRegistered')
         .withArgs(tokenAAddress);
     });
 
@@ -139,13 +163,6 @@ describe('Vault', function () {
       await expect(vault.manualRegisterPool(poolB, poolBTokens)).to.be.revertedWithCustomError(vault, 'VaultPaused');
     });
 
-    it('cannot register while registering another pool', async () => {
-      await expect(vault.reentrantRegisterPool(poolB, poolATokens)).to.be.revertedWithCustomError(
-        vault,
-        'ReentrancyGuardReentrantCall'
-      );
-    });
-
     it('cannot get pool tokens for an invalid pool', async () => {
       await expect(vault.getPoolTokens(ANY_ADDRESS))
         .to.be.revertedWithCustomError(vault, 'PoolNotRegistered')
@@ -153,28 +170,31 @@ describe('Vault', function () {
     });
 
     it('cannot register a pool with too few tokens', async () => {
-      await expect(vault.manualRegisterPool(poolB, [poolATokens[0]])).to.be.revertedWithCustomError(vault, 'MinTokens');
+      await expect(vault.manualRegisterPool(poolB, [poolATokens[0]])).to.be.revertedWithCustomError(
+        vaultExtension,
+        'MinTokens'
+      );
     });
 
     it('cannot register a pool with too many tokens', async () => {
       const tokens = await ERC20TokenList.create(5);
 
       await expect(vault.manualRegisterPool(poolB, await tokens.addresses)).to.be.revertedWithCustomError(
-        vault,
+        vaultExtension,
         'MaxTokens'
       );
     });
   });
 
   describe('initialization', () => {
-    let authorizer: BasicAuthorizerMock;
-    let timedVault: VaultMock;
+    let timedVault: IVaultMock;
 
     sharedBeforeEach('redeploy Vault', async () => {
-      authorizer = await deploy('v3-solidity-utils/BasicAuthorizerMock');
-      timedVault = await deploy('VaultMock', {
-        args: [authorizer.getAddress(), PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
+      const timedVaultMock = await VaultDeployer.deployMock({
+        pauseWindowDuration: PAUSE_WINDOW_DURATION,
+        bufferPeriodDuration: BUFFER_PERIOD_DURATION,
       });
+      timedVault = await TypesConverter.toIVaultMock(timedVaultMock);
     });
 
     it('is temporarily pausable', async () => {
@@ -183,8 +203,10 @@ describe('Vault', function () {
       const [paused, pauseWindowEndTime, bufferPeriodEndTime] = await timedVault.getVaultPausedState();
 
       expect(paused).to.be.false;
-      expect(pauseWindowEndTime).to.equal(await fromNow(PAUSE_WINDOW_DURATION));
-      expect(bufferPeriodEndTime).to.equal((await fromNow(PAUSE_WINDOW_DURATION)) + bn(BUFFER_PERIOD_DURATION));
+      // We substract 1 because the timestamp is set when the extension is deployed.
+      // Each contract deployment pushes the timestamp by 1, and the main Vault is deployed right after the extension.
+      expect(pauseWindowEndTime).to.equal(await fromNow(PAUSE_WINDOW_DURATION - 1));
+      expect(bufferPeriodEndTime).to.equal((await fromNow(PAUSE_WINDOW_DURATION - 1)) + bn(BUFFER_PERIOD_DURATION));
 
       await timedVault.manualPauseVault();
       expect(await timedVault.isVaultPaused()).to.be.true;
@@ -221,7 +243,7 @@ describe('Vault', function () {
       });
 
       it('has rate providers', async () => {
-        const [, , , poolProviders] = await vault.getPoolTokenInfo(poolC);
+        const [, , , , poolProviders] = await vault.getPoolTokenInfo(poolC);
         const tokenRates = await vault.getPoolTokenRates(poolC);
 
         expect(poolProviders).to.deep.equal(rateProviders);
@@ -236,20 +258,6 @@ describe('Vault', function () {
 
         const tokenRates = await vault.getPoolTokenRates(poolC);
         expect(tokenRates).to.deep.equal(expectedRates);
-      });
-
-      it('rate providers support underlying tokens', async () => {
-        expect(await rateProvider.getUnderlyingToken()).to.eq(ZERO_ADDRESS);
-
-        await rateProvider.setUnderlyingToken(ANY_ADDRESS);
-        expect(await rateProvider.getUnderlyingToken()).to.eq(ANY_ADDRESS);
-      });
-
-      it('rate providers support exempt flags', async () => {
-        expect(await rateProvider.isExemptFromYieldProtocolFee()).be.false;
-
-        await rateProvider.setYieldExemptFlag(true);
-        expect(await rateProvider.isExemptFromYieldProtocolFee()).to.be.true;
       });
     });
 

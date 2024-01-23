@@ -6,61 +6,53 @@ import "forge-std/Test.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
-import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
-import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
-import { VaultMock } from "../../contracts/test/VaultMock.sol";
-import { Router } from "../../contracts/Router.sol";
 import { FactoryWidePauseWindow } from "../../contracts/factories/FactoryWidePauseWindow.sol";
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 
-contract PoolPauseTest is Test {
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+
+contract PoolPauseTest is BaseVaultTest {
     using ArrayHelpers for *;
 
-    VaultMock vault;
-    Router router;
-    BasicAuthorizerMock authorizer;
-    PoolMock pool;
-    PoolMock unmanagedPool;
-    PoolMock permissionlessPool;
-    PoolMock infinityPool;
-    PoolFactoryMock factory;
-    ERC20TestToken USDC;
-    ERC20TestToken DAI;
-    address alice = vm.addr(1);
-    address bob = vm.addr(2);
-    address admin = vm.addr(3);
-    IRateProvider[] rateProviders = new IRateProvider[](2);
+    PoolMock internal unmanagedPool;
+    PoolMock internal permissionlessPool;
+    PoolMock internal infinityPool;
 
-    function setUp() public {
-        authorizer = new BasicAuthorizerMock();
-        vault = new VaultMock(authorizer, 30 days, 90 days);
-        router = new Router(IVault(vault), new WETHTestToken());
-        USDC = new ERC20TestToken("USDC", "USDC", 18);
-        DAI = new ERC20TestToken("DAI", "DAI", 18);
+    PoolFactoryMock internal factory;
+    IRateProvider[] internal rateProviders;
 
-        pool = new PoolMock(
-            vault,
-            "ERC20 Pool",
-            "ERC20POOL",
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
-            rateProviders,
-            true,
-            365 days,
-            admin
+    function setUp() public virtual override {
+        BaseVaultTest.setUp();
+
+        rateProviders = new IRateProvider[](2);
+
+        pool = address(
+            new PoolMock(
+                IVault(address(vault)),
+                "ERC20 Pool",
+                "ERC20POOL",
+                [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+                new IRateProvider[](2),
+                true,
+                365 days,
+                admin
+            )
         );
 
         // Pass zero for the pause manager
         unmanagedPool = new PoolMock(
-            vault,
+            IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
             rateProviders,
             true,
             365 days,
@@ -68,10 +60,10 @@ contract PoolPauseTest is Test {
         );
 
         permissionlessPool = new PoolMock(
-            vault,
+            IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
             rateProviders,
             true,
             0,
@@ -79,17 +71,17 @@ contract PoolPauseTest is Test {
         );
 
         infinityPool = new PoolMock(
-            vault,
+            IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
             rateProviders,
             true,
             10000 days,
             address(0)
         );
 
-        factory = new PoolFactoryMock(vault, 365 days);
+        factory = new PoolFactoryMock(IVault(address(vault)), 365 days);
     }
 
     function testPoolFactory() public {
@@ -109,10 +101,10 @@ contract PoolPauseTest is Test {
 
         vm.expectRevert(FactoryWidePauseWindow.PoolPauseWindowDurationOverflow.selector);
         new PoolMock(
-            vault,
+            IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
-            [address(DAI), address(USDC)].toMemoryArray().asIERC20(),
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
             rateProviders,
             true,
             maxEndTimeTimestamp + 1,
@@ -146,11 +138,11 @@ contract PoolPauseTest is Test {
 
     function testCannotPauseIfNotManager() public {
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVault.SenderIsNotPauseManager.selector, address(pool)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotPauseManager.selector, address(pool)));
         vault.pausePool(address(pool));
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVault.SenderIsNotPauseManager.selector, address(pool)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotPauseManager.selector, address(pool)));
         vault.unpausePool(address(pool));
     }
 
@@ -161,7 +153,7 @@ contract PoolPauseTest is Test {
         vault.pausePool(address(unmanagedPool));
 
         // Reluctantly authorize Bob
-        bytes32 pausePoolRole = vault.getActionId(IVault.pausePool.selector);
+        bytes32 pausePoolRole = vault.getActionId(IVaultExtension.pausePool.selector);
         authorizer.grantRole(pausePoolRole, bob);
 
         vm.prank(bob);
@@ -172,11 +164,13 @@ contract PoolPauseTest is Test {
 
     function testCannotPausePermissionlessPool() public {
         // Authorize alice
-        bytes32 pausePoolRole = vault.getActionId(IVault.pausePool.selector);
+        bytes32 pausePoolRole = vault.getActionId(IVaultExtension.pausePool.selector);
         authorizer.grantRole(pausePoolRole, alice);
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVault.PoolPauseWindowExpired.selector, address(permissionlessPool)));
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.PoolPauseWindowExpired.selector, address(permissionlessPool))
+        );
         vault.pausePool(address(permissionlessPool));
     }
 
@@ -185,7 +179,7 @@ contract PoolPauseTest is Test {
         assertEq(pauseManager, address(0));
 
         // Authorize alice
-        bytes32 pausePoolRole = vault.getActionId(IVault.pausePool.selector);
+        bytes32 pausePoolRole = vault.getActionId(IVaultExtension.pausePool.selector);
         authorizer.grantRole(pausePoolRole, alice);
 
         vm.prank(alice);

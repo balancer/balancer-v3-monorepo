@@ -5,6 +5,8 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
@@ -15,11 +17,6 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 /// @notice Basic Weighted Pool with immutable weights.
 contract WeightedPool is IBasePool, BalancerPoolToken {
     uint256 private immutable _totalTokens;
-
-    IERC20 internal immutable _token0;
-    IERC20 internal immutable _token1;
-    IERC20 internal immutable _token2;
-    IERC20 internal immutable _token3;
 
     uint256 internal immutable _normalizedWeight0;
     uint256 internal immutable _normalizedWeight1;
@@ -61,11 +58,6 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         }
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
-        _token0 = params.tokens[0];
-        _token1 = params.tokens[1];
-        _token2 = numTokens > 2 ? params.tokens[2] : IERC20(address(0));
-        _token3 = numTokens > 3 ? params.tokens[3] : IERC20(address(0));
-
         _normalizedWeight0 = params.normalizedWeights[0];
         _normalizedWeight1 = params.normalizedWeights[1];
         _normalizedWeight2 = numTokens > 2 ? params.normalizedWeights[2] : 0;
@@ -75,22 +67,6 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
     /// @inheritdoc IBasePool
     function getPoolTokens() public view returns (IERC20[] memory tokens) {
         return getVault().getPoolTokens(address(this));
-    }
-
-    /// @inheritdoc IBasePool
-    function onInitialize(
-        uint256[] memory exactAmountsInScaled18,
-        bytes memory
-    ) external view onlyVault returns (uint256) {
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-        uint256 invariantAfterJoin = WeightedMath.computeInvariant(normalizedWeights, exactAmountsInScaled18);
-
-        // Set the initial pool tokens amount to the value of the invariant times the number of tokens.
-        // This makes pool token supply more consistent in Pools with similar compositions
-        // but different number of tokens.
-        uint256 bptAmountOut = invariantAfterJoin * exactAmountsInScaled18.length;
-
-        return bptAmountOut;
     }
 
     /// @inheritdoc IBasePool
@@ -125,7 +101,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         uint256 balanceTokenInScaled18 = request.balancesScaled18[request.indexIn];
         uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];
 
-        if (request.kind == IVault.SwapKind.GIVEN_IN) {
+        if (request.kind == SwapKind.GIVEN_IN) {
             uint256 amountOutScaled18 = WeightedMath.computeOutGivenIn(
                 balanceTokenInScaled18,
                 _getNormalizedWeight(request.indexIn),
@@ -156,7 +132,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         else if (tokenIndex == 2) { return _normalizedWeight2; }
         else if (tokenIndex == 3) { return _normalizedWeight3; }
         else {
-            revert IVault.InvalidToken();
+            revert IVaultErrors.InvalidToken();
         }
     }
 

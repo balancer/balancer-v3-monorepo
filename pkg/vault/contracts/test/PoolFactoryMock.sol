@@ -4,7 +4,13 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault, PoolCallbacks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import {
+    TokenType,
+    TokenConfig,
+    PoolCallbacks,
+    LiquidityManagement
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { FactoryWidePauseWindow } from "../factories/FactoryWidePauseWindow.sol";
@@ -26,8 +32,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
     ) external {
         _vault.registerPool(
             pool,
-            tokens,
-            rateProviders,
+            _buildTokenConfig(tokens, rateProviders),
             getNewPoolPauseWindowEndTime(),
             pauseManager,
             poolCallbacks,
@@ -45,6 +50,28 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         LiquidityManagement calldata liquidityManagement,
         uint256 timestamp
     ) external {
-        _vault.registerPool(pool, tokens, rateProviders, timestamp, pauseManager, poolCallbacks, liquidityManagement);
+        _vault.registerPool(
+            pool,
+            _buildTokenConfig(tokens, rateProviders),
+            timestamp,
+            pauseManager,
+            poolCallbacks,
+            liquidityManagement
+        );
+    }
+
+    function _buildTokenConfig(
+        IERC20[] memory tokens,
+        IRateProvider[] memory rateProviders
+    ) private pure returns (TokenConfig[] memory tokenData) {
+        tokenData = new TokenConfig[](tokens.length);
+        // Assume standard tokens
+        for (uint256 i = 0; i < tokens.length; i++) {
+            tokenData[i].token = tokens[i];
+            tokenData[i].rateProvider = rateProviders[i];
+            tokenData[i].tokenType = rateProviders[i] == IRateProvider(address(0))
+                ? TokenType.STANDARD
+                : TokenType.WITH_RATE;
+        }
     }
 }

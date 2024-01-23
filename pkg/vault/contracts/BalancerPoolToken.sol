@@ -6,6 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 /**
  * @notice A fully ERC20-compatible token to be used as the base contract for Balancer Pools,
@@ -19,7 +20,7 @@ contract BalancerPoolToken is IERC20, IERC20Metadata {
 
     modifier onlyVault() {
         if (msg.sender != address(_vault)) {
-            revert IVault.SenderIsNotVault(msg.sender);
+            revert IVaultErrors.SenderIsNotVault(msg.sender);
         }
         _;
     }

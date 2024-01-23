@@ -1,10 +1,8 @@
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { ethers, BigNumberish } from 'ethers';
+import { BigNumberish } from 'ethers';
+import { ethers } from 'hardhat';
 
-import { FP_100_PCT } from '../../numbers';
 import { ZERO_ADDRESS } from '../../constants';
 import { Account } from './types';
-import { RawVaultDeployment, VaultDeployment } from '../vault/types';
 import {
   RawTokenApproval,
   RawTokenMint,
@@ -14,6 +12,10 @@ import {
   TokenDeployment,
   RawTokenDeployment,
 } from '../tokens/types';
+import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
+import { VaultDeploymentInputParams, VaultDeploymentParams } from '../vault/types';
+import { IVault, IVault__factory, Vault, VaultMock } from '@balancer-labs/v3-vault/typechain-types';
+import { IVaultMock, IVaultMock__factory } from '@balancer-labs/v3-interfaces/typechain-types';
 
 export function computeDecimalsFromIndex(i: number): number {
   // Produces repeating series (0..18)
@@ -21,16 +23,20 @@ export function computeDecimalsFromIndex(i: number): number {
 }
 
 export default {
-  toVaultDeployment(params: RawVaultDeployment): VaultDeployment {
-    let { mocked, admin, nextAdmin, pauseWindowDuration, bufferPeriodDuration, maxYieldValue, maxAUMValue } = params;
-    if (!mocked) mocked = false;
-    if (!admin) admin = params.from;
-    if (!nextAdmin) nextAdmin = ZERO_ADDRESS;
+  async toVaultDeployment(params: VaultDeploymentInputParams): Promise<VaultDeploymentParams> {
+    let { admin, pauseWindowDuration, bufferPeriodDuration } = params;
+    if (!admin) admin = (await ethers.getSigners())[0];
     if (!pauseWindowDuration) pauseWindowDuration = 0;
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
-    if (!maxYieldValue) maxYieldValue = FP_100_PCT;
-    if (!maxAUMValue) maxAUMValue = FP_100_PCT;
-    return { mocked, admin, nextAdmin, pauseWindowDuration, bufferPeriodDuration, maxYieldValue, maxAUMValue };
+    return { admin, pauseWindowDuration, bufferPeriodDuration };
+  },
+
+  async toIVault(vault: Vault | VaultMock): Promise<IVault> {
+    return IVault__factory.connect(await vault.getAddress(), vault.runner);
+  },
+
+  async toIVaultMock(vault: VaultMock): Promise<IVaultMock> {
+    return IVaultMock__factory.connect(await vault.getAddress(), vault.runner);
   },
 
   /***

@@ -5,7 +5,15 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
-import { PoolConfig, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import {
+    TokenConfig,
+    PoolConfig,
+    PoolData,
+    Rounding
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IVaultMainMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMainMock.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
@@ -14,8 +22,9 @@ import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openze
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
+import { VaultExtension } from "../VaultExtension.sol";
 
-contract VaultMock is Vault {
+contract VaultMock is IVaultMainMock, Vault {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using PoolConfigLib for PoolConfig;
 
@@ -23,12 +32,10 @@ contract VaultMock is Vault {
 
     bytes32 private constant _ALL_BITS_SET = bytes32(type(uint256).max);
 
-    constructor(
-        IAuthorizer authorizer,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
-    ) Vault(authorizer, pauseWindowDuration, bufferPeriodDuration) {
-        _poolFactoryMock = new PoolFactoryMock(this, pauseWindowDuration);
+    constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) Vault(vaultExtension, authorizer) {
+        uint256 pauseWindowEndTime = vaultExtension.getPauseWindowEndTime();
+        uint256 bufferPeriodDuration = vaultExtension.getBufferPeriodDuration();
+        _poolFactoryMock = new PoolFactoryMock(IVault(address(this)), pauseWindowEndTime - bufferPeriodDuration);
     }
 
     function getPoolFactoryMock() external view returns (address) {
@@ -47,35 +54,8 @@ contract VaultMock is Vault {
         _poolConfig[pool] = config.fromPoolConfig();
     }
 
-    function manualPauseVault() external {
-        _setVaultPaused(true);
-    }
-
-    function manualUnpauseVault() external {
-        _setVaultPaused(false);
-    }
-
-    function manualPausePool(address pool) external {
-        _setPoolPaused(pool, true);
-    }
-
-    function manualUnpausePool(address pool) external {
-        _setPoolPaused(pool, false);
-    }
-
-    // Used for testing the ReentrancyGuard
-    function reentrantRegisterPool(address pool, IERC20[] memory tokens) external nonReentrant {
-        IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
-
-        this.registerPool(
-            pool,
-            tokens,
-            rateProviders,
-            365 days,
-            address(0),
-            PoolConfigBits.wrap(0).toPoolConfig().callbacks,
-            PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
-        );
+    function setRateProvider(address pool, IERC20 token, IRateProvider rateProvider) external {
+        _poolRateProviders[pool][token] = rateProvider;
     }
 
     // Used for testing pool registration, which is ordinarily done in the pool factory.
@@ -118,16 +98,6 @@ contract VaultMock is Vault {
         IERC20[] memory tokens = _getPoolTokens(pool);
 
         return PoolConfigLib.getDecimalScalingFactors(config, tokens.length);
-    }
-
-    function manualEnableRecoveryMode(address pool) external {
-        _ensurePoolNotInRecoveryMode(pool);
-        _setPoolRecoveryMode(pool, true);
-    }
-
-    function manualDisableRecoveryMode(address pool) external {
-        _ensurePoolInRecoveryMode(pool);
-        _setPoolRecoveryMode(pool, false);
     }
 
     function recoveryModeExit(address pool) external view onlyInRecoveryMode(pool) {

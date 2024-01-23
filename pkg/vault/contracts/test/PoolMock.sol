@@ -7,7 +7,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
-import { IVault, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { PoolConfig, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -22,6 +23,8 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
 
     uint256 public constant MIN_INIT_BPT = 1e6;
 
+    bool public failOnAfterInitialize;
+    bool public failOnBeforeInitialize;
     bool public failOnBeforeSwapCallback;
     bool public failOnAfterSwapCallback;
     bool public failOnBeforeAddLiquidity;
@@ -56,10 +59,6 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
         }
     }
 
-    function onInitialize(uint256[] memory exactAmountsIn, bytes memory) external pure override returns (uint256) {
-        return (MIN_INIT_BPT > exactAmountsIn[0] ? MIN_INIT_BPT : exactAmountsIn[0]);
-    }
-
     function computeInvariant(uint256[] memory balances) external pure returns (uint256) {
         // inv = x + y
         uint256 invariant;
@@ -81,6 +80,14 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
     ) external pure returns (uint256 newBalance) {
         // inv = x + y
         return balances[tokenInIndex].mulDown(invariantRatio);
+    }
+
+    function setFailOnAfterInitializeCallback(bool fail) external {
+        failOnAfterInitialize = fail;
+    }
+
+    function setFailOnBeforeInitializeCallback(bool fail) external {
+        failOnBeforeInitialize = fail;
     }
 
     function setFailOnBeforeSwapCallback(bool fail) external {
@@ -111,13 +118,21 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
         _multiplier = newMultiplier;
     }
 
+    function onBeforeInitialize(uint256[] memory, bytes memory) external view returns (bool) {
+        return !failOnBeforeInitialize;
+    }
+
+    function onAfterInitialize(uint256[] memory, uint256, bytes memory) external view returns (bool) {
+        return !failOnAfterInitialize;
+    }
+
     function onBeforeSwap(IBasePool.SwapParams calldata) external view override returns (bool success) {
         return !failOnBeforeSwapCallback;
     }
 
     function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
         return
-            params.kind == IVault.SwapKind.GIVEN_IN
+            params.kind == SwapKind.GIVEN_IN
                 ? params.amountGivenScaled18.mulDown(_multiplier)
                 : params.amountGivenScaled18.divDown(_multiplier);
     }

@@ -1,19 +1,17 @@
 import { ethers } from 'hardhat';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
-import { MONTH } from '@balancer-labs/v3-helpers/src/time';
-import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
-import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/BasicAuthorizerMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
-import { Router } from '../typechain-types';
+import { Router, Vault } from '../typechain-types';
 import { expectBalanceChange } from '@balancer-labs/v3-helpers/src/test/tokenBalance';
+import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 
 describe('BatchSwap', function () {
-  let vault: VaultMock;
+  let vault: Vault;
   let poolA: PoolMock;
   let poolB: PoolMock;
   let poolC: PoolMock;
@@ -34,10 +32,7 @@ describe('BatchSwap', function () {
   });
 
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
-    const authorizer: BasicAuthorizerMock = await deploy('v3-solidity-utils/BasicAuthorizerMock');
-    vault = await deploy('VaultMock', {
-      args: [authorizer.getAddress(), MONTH, MONTH],
-    });
+    vault = await VaultDeployer.deploy();
     const vaultAddress = await vault.getAddress();
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
     router = await deploy('Router', { args: [vaultAddress, WETH] });

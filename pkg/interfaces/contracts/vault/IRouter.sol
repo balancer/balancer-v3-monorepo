@@ -4,7 +4,7 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault } from "./IVault.sol";
+import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 import { IBasePool } from "./IBasePool.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -24,7 +24,7 @@ interface IRouter {
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
-     * @param userData Additional (optional) data required for initialization
+     * @param userData Additional (optional) data required for adding initial liquidity
      */
     struct InitializeCallbackParams {
         address sender;
@@ -43,7 +43,7 @@ interface IRouter {
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
-     * @param userData Additional (optional) data required for initialization
+     * @param userData Additional (optional) data required for adding initial liquidity
      * @return bptAmountOut Actual amount of pool tokens minted in exchange for initial liquidity
      */
     function initialize(
@@ -66,7 +66,7 @@ interface IRouter {
      * @dev Data for the add liquidity callback.
      * @param sender Account originating the add liquidity operation
      * @param pool Address of the liquidity pool
-     * @param amountsIn Amounts of tokens to be added, sorted in token registration order
+     * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param kind Type of join (e.g., single or multi-token)
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
@@ -75,18 +75,12 @@ interface IRouter {
     struct AddLiquidityCallbackParams {
         address sender;
         address pool;
-        uint256[] amountsIn;
+        uint256[] maxAmountsIn;
         uint256 minBptAmountOut;
-        IVault.AddLiquidityKind kind;
+        AddLiquidityKind kind;
         bool wethIsEth;
         bytes userData;
     }
-
-    /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
-    error BptAmountBelowMin(uint256 amount, uint256 limit);
-
-    /// @dev A required amountIn exceeds the maximum limit specified in the join.
-    error JoinAboveMax(uint256 amount, uint256 limit);
 
     /**
      * @notice Adds with arbitrary token amounts in to a pool.
@@ -162,13 +156,13 @@ interface IRouter {
         address pool;
         uint256[] minAmountsOut;
         uint256 maxBptAmountIn;
-        IVault.RemoveLiquidityKind kind;
+        RemoveLiquidityKind kind;
         bool wethIsEth;
         bytes userData;
     }
 
     /// @dev The actual bptAmountOut is below the minimum limit specified in the exit.
-    error ExitBelowMin();
+    error ExitBelowMin(uint256 amount, uint256 limit);
 
     /**
      * @notice Removes liquidity with proportional token amounts from a pool, burning an exact pool token amount.
@@ -288,7 +282,7 @@ interface IRouter {
      */
     struct SwapSingleTokenCallbackParams {
         address sender;
-        IVault.SwapKind kind;
+        SwapKind kind;
         address pool;
         IERC20 tokenIn;
         IERC20 tokenOut;

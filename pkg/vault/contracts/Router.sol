@@ -7,6 +7,15 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import {
+    AddLiquidityKind,
+    AddLiquidityParams,
+    RemoveLiquidityKind,
+    RemoveLiquidityParams,
+    SwapKind,
+    SwapParams
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
@@ -30,7 +39,7 @@ contract Router is IRouter, ReentrancyGuard {
 
     modifier onlyVault() {
         if (msg.sender != address(_vault)) {
-            revert IVault.SenderIsNotVault(msg.sender);
+            revert IVaultErrors.SenderIsNotVault(msg.sender);
         }
         _;
     }
@@ -88,12 +97,9 @@ contract Router is IRouter, ReentrancyGuard {
             params.sender,
             params.tokens,
             params.exactAmountsIn,
+            params.minBptAmountOut,
             params.userData
         );
-
-        if (bptAmountOut < params.minBptAmountOut) {
-            revert BptAmountBelowMin(bptAmountOut, params.minBptAmountOut);
-        }
 
         uint256 ethAmountIn;
         for (uint256 i = 0; i < params.tokens.length; ++i) {
@@ -135,9 +141,9 @@ contract Router is IRouter, ReentrancyGuard {
                     AddLiquidityCallbackParams({
                         sender: msg.sender,
                         pool: pool,
-                        amountsIn: exactAmountsIn,
+                        maxAmountsIn: exactAmountsIn,
                         minBptAmountOut: minBptAmountOut,
-                        kind: IVault.AddLiquidityKind.UNBALANCED,
+                        kind: AddLiquidityKind.UNBALANCED,
                         wethIsEth: wethIsEth,
                         userData: userData
                     })
@@ -165,9 +171,9 @@ contract Router is IRouter, ReentrancyGuard {
                     AddLiquidityCallbackParams({
                         sender: msg.sender,
                         pool: pool,
-                        amountsIn: maxAmountsIn,
+                        maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
-                        kind: IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                        kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                         wethIsEth: wethIsEth,
                         userData: userData
                     })
@@ -193,9 +199,9 @@ contract Router is IRouter, ReentrancyGuard {
                         AddLiquidityCallbackParams({
                             sender: msg.sender,
                             pool: pool,
-                            amountsIn: inputAmountsIn,
+                            maxAmountsIn: inputAmountsIn,
                             minBptAmountOut: minBptAmountOut,
-                            kind: IVault.AddLiquidityKind.CUSTOM,
+                            kind: AddLiquidityKind.CUSTOM,
                             wethIsEth: wethIsEth,
                             userData: userData
                         })
@@ -222,10 +228,10 @@ contract Router is IRouter, ReentrancyGuard {
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
         (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
-            IVault.AddLiquidityParams({
+            AddLiquidityParams({
                 pool: params.pool,
                 to: params.sender,
-                amountsIn: params.amountsIn,
+                maxAmountsIn: params.maxAmountsIn,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
                 userData: params.userData
@@ -235,20 +241,11 @@ contract Router is IRouter, ReentrancyGuard {
         // maxAmountsIn length is checked against tokens length at the vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
-        if (bptAmountOut < params.minBptAmountOut) {
-            revert BptAmountBelowMin(bptAmountOut, params.minBptAmountOut);
-        }
-
         uint256 ethAmountIn;
         for (uint256 i = 0; i < tokens.length; ++i) {
             // Receive tokens from the handler
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
-
-            // TODO: check amounts in for every type.
-            if (amountIn > params.amountsIn[i]) {
-                revert JoinAboveMax(amountIn, params.amountsIn[i]);
-            }
 
             // There can be only one WETH token in the pool
             if (params.wethIsEth && address(token) == address(_weth)) {
@@ -285,7 +282,7 @@ contract Router is IRouter, ReentrancyGuard {
                         pool: pool,
                         minAmountsOut: minAmountsOut,
                         maxBptAmountIn: exactBptAmountIn,
-                        kind: IVault.RemoveLiquidityKind.PROPORTIONAL,
+                        kind: RemoveLiquidityKind.PROPORTIONAL,
                         wethIsEth: wethIsEth,
                         userData: userData
                     })
@@ -315,7 +312,7 @@ contract Router is IRouter, ReentrancyGuard {
                         pool: pool,
                         minAmountsOut: minAmountsOut,
                         maxBptAmountIn: exactBptAmountIn,
-                        kind: IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
+                        kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
                         wethIsEth: wethIsEth,
                         userData: userData
                     })
@@ -345,7 +342,7 @@ contract Router is IRouter, ReentrancyGuard {
                         pool: pool,
                         minAmountsOut: minAmountsOut,
                         maxBptAmountIn: maxBptAmountIn,
-                        kind: IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                        kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                         wethIsEth: wethIsEth,
                         userData: userData
                     })
@@ -375,7 +372,7 @@ contract Router is IRouter, ReentrancyGuard {
                             pool: pool,
                             minAmountsOut: minAmountsOut,
                             maxBptAmountIn: maxBptAmountIn,
-                            kind: IVault.RemoveLiquidityKind.CUSTOM,
+                            kind: RemoveLiquidityKind.CUSTOM,
                             wethIsEth: wethIsEth,
                             userData: userData
                         })
@@ -402,7 +399,7 @@ contract Router is IRouter, ReentrancyGuard {
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
     {
         (bptAmountIn, amountsOut, returnData) = _vault.removeLiquidity(
-            IVault.RemoveLiquidityParams({
+            RemoveLiquidityParams({
                 pool: params.pool,
                 from: params.sender,
                 maxBptAmountIn: params.maxBptAmountIn,
@@ -421,7 +418,7 @@ contract Router is IRouter, ReentrancyGuard {
             IERC20 token = tokens[i];
 
             if (amountOut < params.minAmountsOut[i]) {
-                revert ExitBelowMin();
+                revert ExitBelowMin(amountOut, params.minAmountsOut[i]);
             }
 
             // There can be only one WETH token in the pool
@@ -458,7 +455,7 @@ contract Router is IRouter, ReentrancyGuard {
                         Router.swapSingleTokenCallback.selector,
                         SwapSingleTokenCallbackParams({
                             sender: msg.sender,
-                            kind: IVault.SwapKind.GIVEN_IN,
+                            kind: SwapKind.GIVEN_IN,
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
@@ -492,7 +489,7 @@ contract Router is IRouter, ReentrancyGuard {
                         Router.swapSingleTokenCallback.selector,
                         SwapSingleTokenCallbackParams({
                             sender: msg.sender,
-                            kind: IVault.SwapKind.GIVEN_OUT,
+                            kind: SwapKind.GIVEN_OUT,
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
@@ -625,12 +622,12 @@ contract Router is IRouter, ReentrancyGuard {
 
                     // Reusing `amountsOut` as input argument and function output to prevent stack too deep error.
                     (, amountsOut, ) = _vault.removeLiquidity(
-                        IVault.RemoveLiquidityParams({
+                        RemoveLiquidityParams({
                             pool: step.pool,
                             from: params.sender,
                             maxBptAmountIn: exactAmountIn,
                             minAmountsOut: amountsOut,
-                            kind: IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
+                            kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
                             userData: params.userData
                         })
                     );
@@ -656,12 +653,12 @@ contract Router is IRouter, ReentrancyGuard {
                     );
 
                     (, uint256 bptAmountOut, ) = _vault.addLiquidity(
-                        IVault.AddLiquidityParams({
+                        AddLiquidityParams({
                             pool: step.pool,
                             to: params.sender,
-                            amountsIn: exactAmountsIn,
+                            maxAmountsIn: exactAmountsIn,
                             minBptAmountOut: minAmountOut,
-                            kind: IVault.AddLiquidityKind.UNBALANCED,
+                            kind: AddLiquidityKind.UNBALANCED,
                             userData: params.userData
                         })
                     );
@@ -681,8 +678,8 @@ contract Router is IRouter, ReentrancyGuard {
                 } else {
                     // No BPT involved in the operation: regular swap exact in
                     (, , uint256 amountOut) = _vault.swap(
-                        IVault.SwapParams({
-                            kind: IVault.SwapKind.GIVEN_IN,
+                        SwapParams({
+                            kind: SwapKind.GIVEN_IN,
                             pool: step.pool,
                             tokenIn: tokenIn,
                             tokenOut: step.tokenOut,
@@ -773,12 +770,12 @@ contract Router is IRouter, ReentrancyGuard {
                     );
 
                     (uint256 bptAmountIn, , ) = _vault.removeLiquidity(
-                        IVault.RemoveLiquidityParams({
+                        RemoveLiquidityParams({
                             pool: step.pool,
                             from: params.sender,
                             maxBptAmountIn: maxAmountIn,
                             minAmountsOut: exactAmountsOut,
-                            kind: IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                            kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                             userData: params.userData
                         })
                     );
@@ -800,12 +797,12 @@ contract Router is IRouter, ReentrancyGuard {
 
                     // Reusing `amountsIn` as input argument and function output to prevent stack too deep error.
                     (amountsIn, , ) = _vault.addLiquidity(
-                        IVault.AddLiquidityParams({
+                        AddLiquidityParams({
                             pool: step.pool,
                             to: params.sender,
-                            amountsIn: amountsIn,
+                            maxAmountsIn: amountsIn,
                             minBptAmountOut: exactAmountOut,
-                            kind: IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                            kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                             userData: params.userData
                         })
                     );
@@ -819,8 +816,8 @@ contract Router is IRouter, ReentrancyGuard {
                 } else {
                     // No BPT involved in the operation: regular swap exact out
                     (, uint256 amountIn, ) = _vault.swap(
-                        IVault.SwapParams({
-                            kind: IVault.SwapKind.GIVEN_OUT,
+                        SwapParams({
+                            kind: SwapKind.GIVEN_OUT,
                             pool: step.pool,
                             tokenIn: tokenIn,
                             tokenOut: step.tokenOut,
@@ -852,7 +849,7 @@ contract Router is IRouter, ReentrancyGuard {
         }
 
         (amountCalculated, amountIn, amountOut) = _vault.swap(
-            IVault.SwapParams({
+            SwapParams({
                 kind: params.kind,
                 pool: params.pool,
                 tokenIn: params.tokenIn,
@@ -862,8 +859,8 @@ contract Router is IRouter, ReentrancyGuard {
             })
         );
 
-        if (params.kind == IVault.SwapKind.GIVEN_IN ? amountOut < params.limit : amountIn > params.limit) {
-            revert SwapLimit(params.kind == IVault.SwapKind.GIVEN_IN ? amountOut : amountIn, params.limit);
+        if (params.kind == SwapKind.GIVEN_IN ? amountOut < params.limit : amountIn > params.limit) {
+            revert SwapLimit(params.kind == SwapKind.GIVEN_IN ? amountOut : amountIn, params.limit);
         }
     }
 
@@ -886,7 +883,7 @@ contract Router is IRouter, ReentrancyGuard {
                         Router.querySwapCallback.selector,
                         SwapSingleTokenCallbackParams({
                             sender: msg.sender,
-                            kind: IVault.SwapKind.GIVEN_IN,
+                            kind: SwapKind.GIVEN_IN,
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
@@ -917,7 +914,7 @@ contract Router is IRouter, ReentrancyGuard {
                         Router.querySwapCallback.selector,
                         SwapSingleTokenCallbackParams({
                             sender: msg.sender,
-                            kind: IVault.SwapKind.GIVEN_OUT,
+                            kind: SwapKind.GIVEN_OUT,
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
@@ -963,9 +960,9 @@ contract Router is IRouter, ReentrancyGuard {
                         // but it is possible to add liquidity to any recipient
                         sender: address(this),
                         pool: pool,
-                        amountsIn: exactAmountsIn,
+                        maxAmountsIn: exactAmountsIn,
                         minBptAmountOut: minBptAmountOut,
-                        kind: IVault.AddLiquidityKind.UNBALANCED,
+                        kind: AddLiquidityKind.UNBALANCED,
                         wethIsEth: false,
                         userData: userData
                     })
@@ -994,9 +991,9 @@ contract Router is IRouter, ReentrancyGuard {
                         // but it is possible to add liquidity to any recipient
                         sender: address(this),
                         pool: pool,
-                        amountsIn: maxAmountsIn,
+                        maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
-                        kind: IVault.AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                        kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                         wethIsEth: false,
                         userData: userData
                     })
@@ -1023,9 +1020,9 @@ contract Router is IRouter, ReentrancyGuard {
                             // but it is possible to add liquidity to any recipient
                             sender: address(this),
                             pool: pool,
-                            amountsIn: inputAmountsIn,
+                            maxAmountsIn: inputAmountsIn,
                             minBptAmountOut: minBptAmountOut,
-                            kind: IVault.AddLiquidityKind.CUSTOM,
+                            kind: AddLiquidityKind.CUSTOM,
                             wethIsEth: false,
                             userData: userData
                         })
@@ -1053,10 +1050,10 @@ contract Router is IRouter, ReentrancyGuard {
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
         (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
-            IVault.AddLiquidityParams({
+            AddLiquidityParams({
                 pool: params.pool,
                 to: params.sender,
-                amountsIn: params.amountsIn,
+                maxAmountsIn: params.maxAmountsIn,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
                 userData: params.userData
@@ -1082,7 +1079,7 @@ contract Router is IRouter, ReentrancyGuard {
                         pool: pool,
                         minAmountsOut: minAmountsOut,
                         maxBptAmountIn: exactBptAmountIn,
-                        kind: IVault.RemoveLiquidityKind.PROPORTIONAL,
+                        kind: RemoveLiquidityKind.PROPORTIONAL,
                         wethIsEth: false,
                         userData: userData
                     })
@@ -1113,7 +1110,7 @@ contract Router is IRouter, ReentrancyGuard {
                         pool: pool,
                         minAmountsOut: minAmountsOut,
                         maxBptAmountIn: exactBptAmountIn,
-                        kind: IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
+                        kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
                         wethIsEth: false,
                         userData: userData
                     })
@@ -1144,7 +1141,7 @@ contract Router is IRouter, ReentrancyGuard {
                         pool: pool,
                         minAmountsOut: minAmountsOut,
                         maxBptAmountIn: maxBptAmountIn,
-                        kind: IVault.RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                        kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                         wethIsEth: false,
                         userData: userData
                     })
@@ -1175,7 +1172,7 @@ contract Router is IRouter, ReentrancyGuard {
                             pool: pool,
                             minAmountsOut: minAmountsOut,
                             maxBptAmountIn: maxBptAmountIn,
-                            kind: IVault.RemoveLiquidityKind.CUSTOM,
+                            kind: RemoveLiquidityKind.CUSTOM,
                             wethIsEth: false,
                             userData: userData
                         })
@@ -1203,7 +1200,7 @@ contract Router is IRouter, ReentrancyGuard {
     {
         return
             _vault.removeLiquidity(
-                IVault.RemoveLiquidityParams({
+                RemoveLiquidityParams({
                     pool: params.pool,
                     from: params.sender,
                     maxBptAmountIn: params.maxBptAmountIn,
