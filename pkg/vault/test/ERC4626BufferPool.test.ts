@@ -15,16 +15,11 @@ import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { FP_ZERO, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
+import { TOKEN_TYPE } from '@balancer-labs/v3-helpers/src/models/types/types';
 
 describe('ERC4626BufferPool', function () {
   const TOKEN_AMOUNT = fp(1000);
   const MIN_BPT = bn(1e6);
-
-  enum TOKEN_TYPE {
-    STANDARD = 0,
-    WITH_RATE,
-    ERC4626,
-  }
 
   let vault: IVaultMock;
   let authorizer: Contract;

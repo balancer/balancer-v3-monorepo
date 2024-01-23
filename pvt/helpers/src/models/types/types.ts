@@ -8,3 +8,9 @@ export type Account = string | SignerWithAddress | Contract | { address: string 
 export type TxParams = {
   from?: SignerWithAddress;
 };
+
+export enum TOKEN_TYPE {
+  STANDARD = 0,
+  WITH_RATE,
+  ERC4626,
+}

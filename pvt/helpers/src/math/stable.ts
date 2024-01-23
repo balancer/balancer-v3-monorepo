@@ -6,10 +6,7 @@ export function calculateInvariant(fpRawBalances: BigNumberish[], amplificationP
   return calculateApproxInvariant(fpRawBalances, amplificationParameter);
 }
 
-export function calculateApproxInvariant(
-  fpRawBalances: BigNumberish[],
-  amplificationParameter: BigNumberish
-): bigint {
+export function calculateApproxInvariant(fpRawBalances: BigNumberish[], amplificationParameter: BigNumberish): bigint {
   const totalCoins = fpRawBalances.length;
   const balances: Decimal[] = fpRawBalances.map(fromFp);
 
