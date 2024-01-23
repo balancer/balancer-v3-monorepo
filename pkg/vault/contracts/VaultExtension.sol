@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.4;
 
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -222,7 +223,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
                 }
             } else if (tokenData.tokenType == TokenType.ERC4626) {
                 // TODO implement in later phases.
-                revert InvalidTokenConfiguration();
             } else {
                 revert InvalidTokenType();
             }
@@ -747,5 +747,45 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     /// @dev Access control is delegated to the Authorizer
     function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
         return _authorizer.canPerform(actionId, user, address(this));
+    }
+
+    /*******************************************************************************
+-                                ERC4626 Buffers
+     *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
+    function registerBuffer(
+        IERC4626 wrappedToken,
+        address pool,
+        uint256 pauseWindowEndTime
+    ) external nonReentrant whenVaultNotPaused onlyVault {
+        // Ensure buffer does not already exist.
+        if (_wrappedTokenBuffers[wrappedToken] != address(0)) {
+            revert WrappedTokenBufferAlreadyRegistered();
+        }
+        _wrappedTokenBuffers[wrappedToken] = pool;
+
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[0].token = IERC20(wrappedToken);
+        tokenConfig[0].tokenType = TokenType.ERC4626;
+        tokenConfig[1].token = IERC20(wrappedToken.asset());
+
+        _registerPool(
+            pool,
+            tokenConfig,
+            pauseWindowEndTime,
+            address(0), // no pause manager
+            PoolCallbacks({
+                shouldCallBeforeInitialize: false,
+                shouldCallAfterInitialize: false,
+                shouldCallBeforeAddLiquidity: false,
+                shouldCallAfterAddLiquidity: false,
+                shouldCallBeforeRemoveLiquidity: false,
+                shouldCallAfterRemoveLiquidity: false,
+                shouldCallBeforeSwap: true, // rebalancing
+                shouldCallAfterSwap: false
+            }),
+            LiquidityManagement({ supportsAddLiquidityCustom: true, supportsRemoveLiquidityCustom: false })
+        );
     }
 }
