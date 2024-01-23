@@ -20,8 +20,13 @@ describe('ERC4626BufferPool', function () {
   const TOKEN_AMOUNT = fp(1000);
   const MIN_BPT = bn(1e6);
 
+  enum TOKEN_TYPE {
+    STANDARD = 0,
+    WITH_RATE,
+    ERC4626,
+  }
+
   let vault: IVaultMock;
-  let vaultExtension: VaultExtensionMock;
   let authorizer: Contract;
   let router: Router;
   let factory: Contract;
@@ -45,11 +50,6 @@ describe('ERC4626BufferPool', function () {
 
     const authorizerAddress = await vault.getAuthorizer();
     authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
-
-    vaultExtension = (await deployedAt(
-      'VaultExtensionMock',
-      await vault.getVaultExtension()
-    )) as unknown as VaultExtensionMock;
 
     const WETH: WETHTestToken = await deploy('v3-solidity-utils/WETHTestToken');
     router = await deploy('v3-vault/Router', { args: [vault, await WETH.getAddress()] });
@@ -163,6 +163,10 @@ describe('ERC4626BufferPool', function () {
       expect(await pool.balanceOf(alice)).to.eq(TOKEN_AMOUNT * 2n - MIN_BPT);
       expect(await wrappedToken.balanceOf(alice)).to.eq(0);
       expect(await baseToken.balanceOf(alice)).to.eq(0);
+
+      const [, tokenTypes, balances, ,] = await vault.getPoolTokenInfo(pool);
+      expect(tokenTypes).to.deep.equal([TOKEN_TYPE.ERC4626, TOKEN_TYPE.STANDARD]);
+      expect(balances).to.deep.equal([TOKEN_AMOUNT, TOKEN_AMOUNT]);
 
       // Cannot initialize more than once
       await expect(
