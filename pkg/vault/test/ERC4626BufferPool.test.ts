@@ -4,23 +4,27 @@ import { Contract } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
-import { ERC4626BufferPoolFactory, IVault, Router } from '@balancer-labs/v3-vault/typechain-types';
+import { Router, VaultExtensionMock } from '@balancer-labs/v3-vault/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { MONTH, currentTimestamp } from '@balancer-labs/v3-helpers/src/time';
 import { ERC20TestToken, ERC4626TestToken, WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { MAX_UINT256, ONES_BYTES32, ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
-import { PoolConfigStructOutput } from '../typechain-types/contracts/test/VaultMock';
+import { PoolConfigStructOutput, VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
+import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { FP_ZERO, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 
 describe('ERC4626BufferPool', function () {
   const TOKEN_AMOUNT = fp(1000);
   const MIN_BPT = bn(1e6);
 
-  let vault: IVault;
+  let vault: IVaultMock;
+  let vaultExtension: VaultExtensionMock;
+  let authorizer: Contract;
   let router: Router;
-  let factory: ERC4626BufferPoolFactory;
+  let factory: Contract;
   let wrappedToken: ERC4626TestToken;
   let baseToken: ERC20TestToken;
   let baseTokenAddress: string;
@@ -36,7 +40,16 @@ describe('ERC4626BufferPool', function () {
   });
 
   sharedBeforeEach('deploy vault, router, tokens, and pool', async function () {
-    vault = await TypesConverter.toIVault(await VaultDeployer.deploy());
+    const vaultMock: VaultMock = await VaultDeployer.deployMock();
+    vault = await TypesConverter.toIVaultMock(vaultMock);
+
+    const authorizerAddress = await vault.getAuthorizer();
+    authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
+
+    vaultExtension = (await deployedAt(
+      'VaultExtensionMock',
+      await vault.getVaultExtension()
+    )) as unknown as VaultExtensionMock;
 
     const WETH: WETHTestToken = await deploy('v3-solidity-utils/WETHTestToken');
     router = await deploy('v3-vault/Router', { args: [vault, await WETH.getAddress()] });
@@ -53,8 +66,14 @@ describe('ERC4626BufferPool', function () {
     factory = await deploy('v3-vault/ERC4626BufferPoolFactory', { args: [vault, 12 * MONTH] });
   });
 
-  async function createPool(): Promise<Contract> {
-    const tx = await factory.create(wrappedToken, ZERO_BYTES32);
+  async function createPool(grantPermission = false): Promise<Contract> {
+    if (grantPermission) {
+      const createPoolAction = await actionId(factory, 'create');
+
+      await authorizer.grantRole(createPoolAction, alice.address);
+    }
+
+    const tx = await factory.connect(alice).create(wrappedToken, ZERO_BYTES32);
     const receipt = await tx.wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
@@ -64,9 +83,13 @@ describe('ERC4626BufferPool', function () {
     return await deployedAt('ERC4626BufferPool', poolAddress);
   }
 
+  it('does not allow registration without permission', async () => {
+    await expect(createPool()).to.be.revertedWithCustomError(vault, 'SenderNotAllowed');
+  });
+
   describe('registration', () => {
     sharedBeforeEach('create pool', async () => {
-      pool = await createPool();
+      pool = await createPool(true);
     });
 
     it('creates a pool', async () => {
@@ -92,7 +115,7 @@ describe('ERC4626BufferPool', function () {
     });
 
     it('cannot be registered twice', async () => {
-      await expect(factory.create(wrappedToken, ONES_BYTES32)).to.be.revertedWithCustomError(
+      await expect(factory.connect(alice).create(wrappedToken, ONES_BYTES32)).to.be.revertedWithCustomError(
         vault,
         'WrappedTokenBufferAlreadyRegistered'
       );
@@ -112,7 +135,7 @@ describe('ERC4626BufferPool', function () {
 
   describe('initialization', () => {
     sharedBeforeEach('create pool', async () => {
-      pool = await createPool();
+      pool = await createPool(true);
 
       wrappedToken.mint(TOKEN_AMOUNT, alice);
       baseToken.mint(alice, TOKEN_AMOUNT);

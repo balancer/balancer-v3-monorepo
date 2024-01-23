@@ -31,7 +31,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
      * @param wrappedToken The ERC4626 wrapped token associated with the buffer and pool
      * @param salt The salt value that will be passed to create3 deployment
      */
-    function create(IERC4626 wrappedToken, bytes32 salt) external returns (address pool) {
+    function create(IERC4626 wrappedToken, bytes32 salt) external authenticate returns (address pool) {
         pool = _create(
             abi.encode(
                 string.concat("Balancer Buffer-", wrappedToken.name()),
