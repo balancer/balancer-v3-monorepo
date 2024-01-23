@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.4;
 
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -334,21 +335,24 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                 poolData.tokenRates[i] = FixedPoint.ONE;
             } else if (tokenType == TokenType.WITH_RATE) {
                 poolData.tokenRates[i] = poolData.rateProviders[i].getRate();
+            } else if (tokenType == TokenType.ERC4626) {
+                // Get rate from associated buffer
+                poolData.tokenRates[i] = IRateProvider(_wrappedTokenBuffers[IERC4626(address(poolData.tokens[i]))])
+                    .getRate();
             } else {
-                // TODO implement ERC4626 at a later stage. Not coming from user input, so can only be these three.
                 revert InvalidTokenConfiguration();
             }
 
-            //TODO: remove pending yield fee using live balance mechanism
-            poolData.balancesLiveScaled18[i] = roundingDirection == Rounding.ROUND_UP
-                ? poolData.balancesRaw[i].toScaled18ApplyRateRoundUp(
-                    poolData.decimalScalingFactors[i],
-                    poolData.tokenRates[i]
-                )
-                : poolData.balancesRaw[i].toScaled18ApplyRateRoundDown(
-                    poolData.decimalScalingFactors[i],
-                    poolData.tokenRates[i]
-                );
+            function(uint256, uint256, uint256) internal pure returns (uint256) _upOrDown = roundingDirection ==
+                Rounding.ROUND_UP
+                ? ScalingHelpers.toScaled18ApplyRateRoundUp
+                : ScalingHelpers.toScaled18ApplyRateRoundDown;
+
+            poolData.balancesLiveScaled18[i] = _upOrDown(
+                poolData.balancesRaw[i],
+                poolData.decimalScalingFactors[i],
+                poolData.tokenRates[i]
+            );
         }
     }
 
