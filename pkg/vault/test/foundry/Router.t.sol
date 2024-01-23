@@ -503,7 +503,6 @@ contract RouterTest is BaseVaultTest {
     function testGetSingleInputArray() public {
         uint256[] memory amountsGiven;
         uint256 index;
-
         (amountsGiven, index) = router.getSingleInputArrayAndTokenIndex(address(pool), dai, 1234);
         assertEq(amountsGiven.length, 2);
         assertEq(amountsGiven[0], 1234);

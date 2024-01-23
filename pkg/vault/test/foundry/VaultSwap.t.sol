@@ -50,7 +50,16 @@ contract VaultSwapTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, address(pool)));
 
         vm.prank(bob);
-        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
+        router.swapSingleTokenExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
     }
 
     function testSwapNotInitialized() public {
@@ -73,8 +82,17 @@ contract VaultSwapTest is BaseVaultTest {
 
     function swapSingleTokenExactIn() public returns (uint256 fee, uint256 protocolFee) {
         vm.prank(alice);
-        snapStart("vaultSwapExactIn");
-        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
+        snapStart("vaultSwapSingleTokenExactIn");
+        router.swapSingleTokenExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
         snapEnd();
         return (0, 0);
     }
@@ -85,7 +103,7 @@ contract VaultSwapTest is BaseVaultTest {
 
     function swapSingleTokenExactOut() public returns (uint256 fee, uint256 protocolFee) {
         vm.prank(alice);
-        snapStart("vaultSwapExactIn");
+        snapStart("vaultSwapSingleTokenExactOut");
         router.swapSingleTokenExactOut(
             address(pool),
             usdc,
@@ -100,15 +118,15 @@ contract VaultSwapTest is BaseVaultTest {
         return (0, 0);
     }
 
-    function testSwapFeeGivenIn() public {
-        assertSwap(swapFeeGivenIn);
+    function testSwapSingleTokenExactInWithFee() public {
+        assertSwap(swapSingleTokenExactInWithFee);
     }
 
-    function swapFeeGivenIn() public returns (uint256 fee, uint256 protocolFee) {
+    function swapSingleTokenExactInWithFee() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage();
 
         vm.prank(alice);
-        snapStart("vaultSwapFeeGivenIn");
+        snapStart("vaultSwapSingleTokenExactInWithFee");
         router.swapSingleTokenExactIn(
             address(pool),
             usdc,
@@ -124,16 +142,16 @@ contract VaultSwapTest is BaseVaultTest {
         return (swapFee, 0);
     }
 
-    function testProtocolSwapFeeGivenIn() public {
-        assertSwap(protocolSwapFeeGivenIn);
+    function testSwapSingleTokenExactInWithProtocolFee() public {
+        assertSwap(swapSingleTokenExactInWithProtocolFee);
     }
 
-    function protocolSwapFeeGivenIn() public returns (uint256 fee, uint256 protocolFee) {
+    function swapSingleTokenExactInWithProtocolFee() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage();
         setProtocolSwapFeePercentage();
 
         vm.prank(alice);
-        snapStart("vaultProtocolSwapFeeGivenIn");
+        snapStart("vaultSwapSingleTokenExactInWithProtocolFee");
         router.swapSingleTokenExactIn(
             address(pool),
             usdc,
@@ -149,11 +167,11 @@ contract VaultSwapTest is BaseVaultTest {
         return (swapFee, protocolSwapFee);
     }
 
-    function testSwapFeeGivenOut() public {
-        assertSwap(swapFeeGivenOut);
+    function testSwapSingleTokenExactOutWithFee() public {
+        assertSwap(swapSingleTokenExactOutWithFee);
     }
 
-    function swapFeeGivenOut() public returns (uint256 fee, uint256 protocolFee) {
+    function swapSingleTokenExactOutWithFee() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage();
 
         vm.prank(alice);
@@ -171,11 +189,11 @@ contract VaultSwapTest is BaseVaultTest {
         return (swapFee, 0);
     }
 
-    function testProtocolSwapFeeGivenOut() public {
-        assertSwap(protocolSwapFeeGivenOut);
+    function testSwapSingleTokenExactOutWithProtocolFee() public {
+        assertSwap(swapSingleTokenExactOutWithProtocolFee);
     }
 
-    function protocolSwapFeeGivenOut() public returns (uint256 fee, uint256 protocolFee) {
+    function swapSingleTokenExactOutWithProtocolFee() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage();
         setProtocolSwapFeePercentage();
 

@@ -53,7 +53,16 @@ contract CallbacksTest is BaseVaultTest {
         PoolMock(pool).setFailOnBeforeSwapCallback(true);
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.CallbackFailed.selector));
-        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
+        router.swapSingleTokenExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
     }
 
     function testOnAfterSwapCallback() public {
@@ -81,7 +90,16 @@ contract CallbacksTest is BaseVaultTest {
         PoolMock(pool).setFailOnAfterSwapCallback(true);
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.CallbackFailed.selector));
-        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
+        router.swapSingleTokenExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
     }
 
     // Before add
