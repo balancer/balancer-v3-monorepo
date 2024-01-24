@@ -78,6 +78,20 @@ describe('ERC4626BufferPool', function () {
     return await deployedAt('ERC4626BufferPool', poolAddress);
   }
 
+  async function createAndInitializePool(): Promise<Contract> {
+    pool = await createPool(true);
+
+    wrappedToken.mint(TOKEN_AMOUNT, alice);
+    baseToken.mint(alice, TOKEN_AMOUNT);
+
+    wrappedToken.connect(alice).approve(vault, MAX_UINT256);
+    baseToken.connect(alice).approve(vault, MAX_UINT256);
+
+    await router.connect(alice).initialize(pool, tokenAddresses, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
+
+    return pool;
+  }
+
   it('does not allow registration without permission', async () => {
     await expect(createPool()).to.be.revertedWithCustomError(vault, 'SenderNotAllowed');
   });
@@ -181,17 +195,23 @@ describe('ERC4626BufferPool', function () {
     });
   });
 
+  describe('swaps', () => {
+    sharedBeforeEach('create and initialize pool', async () => {
+      pool = await createAndInitializePool();
+    });
+
+    it('does not allow external swaps', async () => {
+      await expect(
+        router
+          .connect(alice)
+          .swapExactIn(pool, baseTokenAddress, wrappedTokenAddress, TOKEN_AMOUNT, 0, MAX_UINT256, false, '0x')
+      ).to.be.revertedWithCustomError(vault, 'SenderIsNotVault');
+    });
+  });
+
   describe('remove liquidity', () => {
     sharedBeforeEach('create and initialize pool', async () => {
-      pool = await createPool(true);
-
-      wrappedToken.mint(TOKEN_AMOUNT, alice);
-      baseToken.mint(alice, TOKEN_AMOUNT);
-
-      wrappedToken.connect(alice).approve(vault, MAX_UINT256);
-      baseToken.connect(alice).approve(vault, MAX_UINT256);
-
-      await router.connect(alice).initialize(pool, tokenAddresses, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
+      pool = await createAndInitializePool();
     });
 
     it('satisfies preconditions', async () => {

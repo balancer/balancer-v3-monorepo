@@ -112,7 +112,12 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
     }
 
     /// @inheritdoc PoolCallbacks
-    function onBeforeSwap(IBasePool.SwapParams calldata) external view override onlyVault returns (bool) {
+    function onBeforeSwap(IBasePool.SwapParams calldata request) external view override onlyVault returns (bool) {
+        // Swaps cannot be called externally
+        if (request.sender != address(getVault())) {
+            revert IVaultErrors.SenderIsNotVault(request.sender);
+        }
+
         // TODO implement - check for / perform rebalancing
         return true;
     }
