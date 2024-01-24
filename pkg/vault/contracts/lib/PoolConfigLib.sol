@@ -3,11 +3,13 @@
 pragma solidity ^0.8.4;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 import {
     PoolConfig,
     PoolCallbacks,
     LiquidityManagement
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -18,12 +20,6 @@ type PoolConfigBits is bytes32;
 using PoolConfigLib for PoolConfigBits global;
 
 library PoolConfigLib {
-    /// @dev Pool does not support adding liquidity with a customized input.
-    error DoesNotSupportAddLiquidityCustom();
-
-    /// @dev Pool does not support removing liquidity with a customized input.
-    error DoesNotSupportRemoveLiquidityCustom();
-
     using WordCodec for bytes32;
     using SafeCast for uint256;
 
@@ -134,7 +130,7 @@ library PoolConfigLib {
 
     function requireSupportsAddLiquidityCustom(PoolConfigBits config) internal pure {
         if (config.supportsAddLiquidityCustom() == false) {
-            revert DoesNotSupportAddLiquidityCustom();
+            revert IVaultErrors.DoesNotSupportAddLiquidityCustom();
         }
     }
 
@@ -144,7 +140,7 @@ library PoolConfigLib {
 
     function requireSupportsRemoveLiquidityCustom(PoolConfigBits config) internal pure {
         if (config.supportsRemoveLiquidityCustom() == false) {
-            revert DoesNotSupportRemoveLiquidityCustom();
+            revert IVaultErrors.DoesNotSupportRemoveLiquidityCustom();
         }
     }
 

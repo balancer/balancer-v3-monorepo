@@ -119,6 +119,9 @@ interface IVaultErrors {
     /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
     error BptAmountOutBelowMin(uint256 amount, uint256 limit);
 
+    /// @dev Pool does not support adding liquidity with a customized input.
+    error DoesNotSupportAddLiquidityCustom();
+
     /*******************************************************************************
                                     Remove Liquidity
     *******************************************************************************/
@@ -131,6 +134,9 @@ interface IVaultErrors {
 
     /// @dev The required BPT amount in exceeds the maximum limit specified for the operation.
     error BptAmountInAboveMax(uint256 amount, uint256 limit);
+
+    /// @dev Pool does not support removing liquidity with a customized input.
+    error DoesNotSupportRemoveLiquidityCustom();
 
     /*******************************************************************************
                                      Fees
