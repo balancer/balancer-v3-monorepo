@@ -83,7 +83,7 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
     /// @inheritdoc IPoolLiquidity
     function onAddLiquidityCustom(
         address,
-        uint256[] memory maxAmountsInScaled18,
+        uint256[] memory,
         uint256 exactBptAmountOut,
         uint256[] memory balancesScaled18,
         bytes memory
@@ -98,15 +98,6 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
         returnData = "";
 
         amountsInScaled18 = BasePoolMath.computeProportionalAmountsIn(balancesScaled18, bptAmountOut, totalSupply());
-
-        // Ensure we have the correct token order.
-        IERC20[] memory tokens = getPoolTokens();
-
-        for (uint256 i = 0; i < maxAmountsInScaled18.length; i++) {
-            if (amountsInScaled18[i] > maxAmountsInScaled18[i]) {
-                revert IVaultErrors.AmountInAboveMax(tokens[i], amountsInScaled18[i], maxAmountsInScaled18[i]);
-            }
-        }
     }
 
     /// @inheritdoc BasePoolCallbacks
