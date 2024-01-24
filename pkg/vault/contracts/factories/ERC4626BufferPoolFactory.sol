@@ -13,12 +13,8 @@ import { BasePoolFactory } from "./BasePoolFactory.sol";
 /**
  * @notice Factory for ERC4626 Buffer Pools
  * @dev These are internal pools used with "Boosted Pools" to provide a reservoir of base tokens to support swaps.
- * Ideally we would deploy a pool on buffer creation, but this would require including the pool bytecode in the
- * Vault (or extension), which of course would not fit.
  */
 contract ERC4626BufferPoolFactory is BasePoolFactory {
-    // solhint-disable not-rely-on-time
-
     constructor(
         IVault vault,
         uint256 pauseWindowDuration
@@ -27,8 +23,9 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
     }
 
     /**
-     * @notice Deploys a new `WeightedPool`.
-     * @dev Buffers might need an external pause manager (e.g., a large depositor)
+     * @notice Deploys a new `ERC4626BufferPool`.
+     * @dev Buffers might need an external pause manager (e.g., a large depositor). This is a permissioned function.
+     * While anyone can deposit to existing buffers, they can only be created with governance approval.
      * @param wrappedToken The ERC4626 wrapped token associated with the buffer and pool
      * @param pauseManager The pause manager for this pool (or 0)
      * @param salt The salt value that will be passed to create3 deployment
