@@ -21,7 +21,7 @@ import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { FP_ZERO, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
-import { TOKEN_TYPE } from '@balancer-labs/v3-helpers/src/models/types/types';
+import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 
 describe('ERC4626BufferPool', function () {
   const TOKEN_AMOUNT = fp(1000);
@@ -195,7 +195,7 @@ describe('ERC4626BufferPool', function () {
       expect(await baseToken.balanceOf(alice)).to.eq(0);
 
       const [, tokenTypes, balances, ,] = await vault.getPoolTokenInfo(pool);
-      expect(tokenTypes).to.deep.equal([TOKEN_TYPE.ERC4626, TOKEN_TYPE.STANDARD]);
+      expect(tokenTypes).to.deep.equal([TokenType.ERC4626, TokenType.STANDARD]);
       expect(balances).to.deep.equal([TOKEN_AMOUNT, TOKEN_AMOUNT]);
 
       // Cannot initialize more than once

@@ -18,7 +18,7 @@ import { RateProviderMock, VaultExtensionMock } from '../typechain-types';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
-import { TOKEN_TYPE } from '@balancer-labs/v3-helpers/src/models/types/types';
+import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 
 describe('Vault', function () {
@@ -108,7 +108,7 @@ describe('Vault', function () {
     it('registering a pool emits an event', async () => {
       const tokenConfig = Array.from({ length: poolBTokens.length }, (_, i) => [
         poolBTokens[i],
-        TOKEN_TYPE.STANDARD.toString(),
+        TokenType.STANDARD.toString(),
         ZERO_ADDRESS,
         false,
       ]);

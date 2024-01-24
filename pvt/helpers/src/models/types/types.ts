@@ -9,7 +9,7 @@ export type TxParams = {
   from?: SignerWithAddress;
 };
 
-export enum TOKEN_TYPE {
+export enum TokenType {
   STANDARD = 0,
   WITH_RATE,
   ERC4626,
