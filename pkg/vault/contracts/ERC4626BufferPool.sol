@@ -6,33 +6,26 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
-import {
-    AddLiquidityKind,
-    RemoveLiquidityKind,
-    TokenConfig,
-    TokenType
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 
 import { BalancerPoolToken } from "./BalancerPoolToken.sol";
-import { PoolCallbacks } from "./PoolCallbacks.sol";
+import { BasePoolCallbacks } from "./BasePoolCallbacks.sol";
 
 /**
  * @notice ERC4626 Buffer Pool, designed to be used internally for ERC4626 token types in standard pools.
  * @dev These "pools" reuse the code for pools, but are not registered with the Vault, guaranteeing they
  * cannot be used externally. To the outside world, they don't exist.
  */
-contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, BalancerPoolToken, PoolCallbacks {
+contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, BalancerPoolToken, BasePoolCallbacks {
     uint256 private constant _DEFAULT_BUFFER_AMP_PARAMETER = 200;
     uint256 private constant _AMP_PRECISION = 1e3;
 
@@ -62,7 +55,7 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
         return getVault().getPoolTokens(address(this));
     }
 
-    /// @inheritdoc PoolCallbacks
+    /// @inheritdoc BasePoolCallbacks
     function onBeforeInitialize(
         uint256[] memory exactAmountsInScaled18,
         bytes memory
@@ -71,7 +64,7 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
         return exactAmountsInScaled18.length == 2 && exactAmountsInScaled18[0] == exactAmountsInScaled18[1];
     }
 
-    /// @inheritdoc PoolCallbacks
+    /// @inheritdoc BasePoolCallbacks
     function onBeforeAddLiquidity(
         address,
         AddLiquidityKind kind,
@@ -115,7 +108,7 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
         }
     }
 
-    /// @inheritdoc PoolCallbacks
+    /// @inheritdoc BasePoolCallbacks
     function onBeforeRemoveLiquidity(
         address,
         RemoveLiquidityKind kind,
@@ -131,7 +124,7 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
         return true;
     }
 
-    /// @inheritdoc PoolCallbacks
+    /// @inheritdoc BasePoolCallbacks
     function onBeforeSwap(IBasePool.SwapParams calldata request) external view override onlyVault returns (bool) {
         // Swaps cannot be called externally
         if (request.sender != address(getVault())) {

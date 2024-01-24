@@ -10,7 +10,7 @@ import { AddLiquidityKind, RemoveLiquidityKind } from "@balancer-labs/v3-interfa
  * @dev Pools that only implement a subset of callbacks can inherit from here instead of IPoolCallbacks,
  * and only override what they need.
  */
-abstract contract PoolCallbacks is IPoolCallbacks {
+abstract contract BasePoolCallbacks is IPoolCallbacks {
     /// @inheritdoc IPoolCallbacks
     function onBeforeInitialize(uint256[] memory, bytes memory) external virtual returns (bool) {
         return false;
