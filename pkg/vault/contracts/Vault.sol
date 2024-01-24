@@ -485,6 +485,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             if (
                 IPoolCallbacks(params.pool).onBeforeAddLiquidity(
                     params.to,
+                    params.kind,
                     maxAmountsInScaled18,
                     params.minBptAmountOut,
                     poolData.balancesLiveScaled18,
@@ -656,10 +657,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         );
 
         if (poolData.config.callbacks.shouldCallBeforeRemoveLiquidity) {
-            // TODO: check if `before` callback needs kind.
             if (
                 IPoolCallbacks(params.pool).onBeforeRemoveLiquidity(
                     params.from,
+                    params.kind,
                     params.maxBptAmountIn,
                     minAmountsOutScaled18,
                     poolData.balancesLiveScaled18,

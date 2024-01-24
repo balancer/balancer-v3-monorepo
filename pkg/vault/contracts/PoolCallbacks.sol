@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 
 import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { AddLiquidityKind, RemoveLiquidityKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 /**
  * @dev Pools that only implement a subset of callbacks can inherit from here instead of IPoolCallbacks,
@@ -21,6 +22,18 @@ abstract contract PoolCallbacks is IPoolCallbacks {
     }
 
     /// @inheritdoc IPoolCallbacks
+    function onBeforeAddLiquidity(
+        address,
+        AddLiquidityKind,
+        uint256[] memory,
+        uint256,
+        uint256[] memory,
+        bytes memory
+    ) external virtual returns (bool) {
+        return false;
+    }
+
+    /// @inheritdoc IPoolCallbacks
     function onAfterAddLiquidity(
         address,
         uint256[] memory,
@@ -34,6 +47,7 @@ abstract contract PoolCallbacks is IPoolCallbacks {
     /// @inheritdoc IPoolCallbacks
     function onBeforeRemoveLiquidity(
         address,
+        RemoveLiquidityKind,
         uint256,
         uint256[] memory,
         uint256[] memory,

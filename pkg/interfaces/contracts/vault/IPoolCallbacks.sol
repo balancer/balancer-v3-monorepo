@@ -5,7 +5,7 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "./IVault.sol";
-import { SwapKind } from "./VaultTypes.sol";
+import { SwapKind, AddLiquidityKind, RemoveLiquidityKind } from "./VaultTypes.sol";
 import { IBasePool } from "./IBasePool.sol";
 
 /// @notice Interface for pool callbacks
@@ -42,6 +42,7 @@ interface IPoolCallbacks {
     /**
      * @notice Optional callback to be executed before adding liquidity.
      * @param sender Address of the sender
+     * @param kind The type of add liquidity operation (e.g., proportional, custom)
      * @param maxAmountsInScaled18 Maximum amounts of input tokens
      * @param minBptAmountOut Minimum amount of output pool tokens
      * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
@@ -50,6 +51,7 @@ interface IPoolCallbacks {
      */
     function onBeforeAddLiquidity(
         address sender,
+        AddLiquidityKind kind,
         uint256[] memory maxAmountsInScaled18,
         uint256 minBptAmountOut,
         uint256[] memory balancesScaled18,
@@ -80,6 +82,7 @@ interface IPoolCallbacks {
     /**
      * @notice Optional callback to be executed before removing liquidity.
      * @param sender Address of the sender
+     * @param kind The type of remove liquidity operation (e.g., proportional, custom)
      * @param maxBptAmountIn Maximum amount of input pool tokens
      * @param minAmountsOutScaled18 Minimum output amounts, in the same order as the tokens registered in the pool
      * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
@@ -88,6 +91,7 @@ interface IPoolCallbacks {
      */
     function onBeforeRemoveLiquidity(
         address sender,
+        RemoveLiquidityKind kind,
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOutScaled18,
         uint256[] memory balancesScaled18,

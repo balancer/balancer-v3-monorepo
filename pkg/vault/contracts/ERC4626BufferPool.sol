@@ -12,6 +12,9 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
+import { AddLiquidityKind, RemoveLiquidityKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 
@@ -23,7 +26,7 @@ import { PoolCallbacks } from "./PoolCallbacks.sol";
  * @dev These "pools" reuse the code for pools, but are not registered with the Vault, guaranteeing they
  * cannot be used externally. To the outside world, they don't exist.
  */
-contract ERC4626BufferPool is IBasePool, IRateProvider, BalancerPoolToken, PoolCallbacks {
+contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, BalancerPoolToken, PoolCallbacks {
     uint256 private constant _DEFAULT_BUFFER_AMP_PARAMETER = 200;
     uint256 private constant _AMP_PRECISION = 1e3;
 
@@ -56,25 +59,62 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, BalancerPoolToken, PoolC
         return getVault().getPoolTokens(address(this));
     }
 
-    /// @inheritdoc IPoolCallbacks
+    /// @inheritdoc PoolCallbacks
     function onBeforeInitialize(
-        uint256[] memory exactAmountsIn,
+        uint256[] memory exactAmountsInScaled18,
         bytes memory
     ) external view override onlyVault returns (bool) {
-        // Enforce proportionality
-        return exactAmountsIn.length == 2 && exactAmountsIn[0] == exactAmountsIn[1];
+        // Enforce proportionality - might need to say exactAmountsIn[0].mulDown(getRate()) to compare equal value?
+        return exactAmountsInScaled18.length == 2 && exactAmountsInScaled18[0] == exactAmountsInScaled18[1];
     }
 
-    /// @inheritdoc IPoolCallbacks
+    /// @inheritdoc PoolCallbacks
     function onBeforeAddLiquidity(
         address,
-        uint256[] memory maxAmountsInScaled18,
+        AddLiquidityKind kind,
+        uint256[] memory,
         uint256,
         uint256[] memory,
         bytes memory
     ) external view override onlyVault returns (bool) {
-        // Enforce proportionality
-        return maxAmountsInScaled18.length == 2 && maxAmountsInScaled18[0] == maxAmountsInScaled18[1];
+        if (kind != AddLiquidityKind.CUSTOM) {
+            revert IVaultErrors.InvalidAddLiquidityKind();
+        }
+
+        return true;
+    }
+
+    /// @inheritdoc IPoolLiquidity
+    function onAddLiquidityCustom(
+        address sender,
+        uint256[] memory maxAmountsInScaled18,
+        uint256 minBptAmountOut,
+        uint256[] memory balancesScaled18,
+        bytes memory userData
+    ) external onlyVault returns (uint256[] memory amountsInScaled18, uint256 bptAmountOut, bytes memory returnData) {
+        // TODO: Implement
+    }
+
+    /// @inheritdoc PoolCallbacks
+    function onBeforeRemoveLiquidity(
+        address,
+        RemoveLiquidityKind kind,
+        uint256,
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
+    ) external view override onlyVault returns (bool) {
+        if (kind != RemoveLiquidityKind.PROPORTIONAL) {
+            revert IVaultErrors.InvalidRemoveLiquidityKind();
+        }
+
+        return true;
+    }
+
+    /// @inheritdoc PoolCallbacks
+    function onBeforeSwap(IBasePool.SwapParams calldata) external view override onlyVault returns (bool) {
+        // TODO implement - check for / perform rebalancing
+        return true;
     }
 
     /// @inheritdoc IBasePool
@@ -111,6 +151,16 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, BalancerPoolToken, PoolC
         return StableMath.computeInvariant(_amplificationParameter, balancesLiveScaled18);
     }
 
+    /**
+     * @notice Get the current rate of a wrapped token buffer, also scaled for decimals.
+     * @return rate The current rate as an 18-decimal FP value, incorporating decimals
+     */
+    function getRate() external view onlyVault returns (uint256) {
+        return _wrappedToken.convertToAssets(_rateScalingFactor);
+    }
+
+    // Unsupported functions that unconditionally revert
+
     /// @inheritdoc IBasePool
     function computeBalance(
         uint256[] memory, // balancesLiveScaled18,
@@ -121,11 +171,14 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, BalancerPoolToken, PoolC
         revert NotImplemented();
     }
 
-    /**
-     * @notice Get the current rate of a wrapped token buffer, also scaled for decimals.
-     * @return rate The current rate as an 18-decimal FP value, incorporating decimals
-     */
-    function getRate() external view onlyVault returns (uint256) {
-        return _wrappedToken.convertToAssets(_rateScalingFactor);
+    /// @inheritdoc IPoolLiquidity
+    function onRemoveLiquidityCustom(
+        address,
+        uint256,
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
+    ) external pure returns (uint256, uint256[] memory, bytes memory) {
+        revert NotImplemented();
     }
 }

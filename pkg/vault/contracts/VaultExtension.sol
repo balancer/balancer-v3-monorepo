@@ -10,7 +10,6 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
@@ -23,6 +22,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
@@ -778,9 +778,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             PoolCallbacks({
                 shouldCallBeforeInitialize: true, // ensure proportional
                 shouldCallAfterInitialize: false,
-                shouldCallBeforeAddLiquidity: true, // ensure proportional
+                shouldCallBeforeAddLiquidity: true, // ensure custom
                 shouldCallAfterAddLiquidity: false,
-                shouldCallBeforeRemoveLiquidity: false,
+                shouldCallBeforeRemoveLiquidity: true, // ensure proportional
                 shouldCallAfterRemoveLiquidity: false,
                 shouldCallBeforeSwap: true, // rebalancing
                 shouldCallAfterSwap: false
