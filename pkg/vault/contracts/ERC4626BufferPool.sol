@@ -99,11 +99,12 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
 
         amountsInScaled18 = BasePoolMath.computeProportionalAmountsIn(balancesScaled18, bptAmountOut, totalSupply());
 
+        // Ensure we have the correct token order.
+        IERC20[] memory tokens = getVault().getPoolTokens(address(this));
+
         for (uint256 i = 0; i < maxAmountsInScaled18.length; i++) {
             if (amountsInScaled18[i] > maxAmountsInScaled18[i]) {
-                IERC20 token = i == 0 ? _wrappedToken : IERC20(_wrappedToken.asset());
-
-                revert IVaultErrors.AmountInAboveMax(token, amountsInScaled18[i], maxAmountsInScaled18[i]);
+                revert IVaultErrors.AmountInAboveMax(tokens[i], amountsInScaled18[i], maxAmountsInScaled18[i]);
             }
         }
     }
