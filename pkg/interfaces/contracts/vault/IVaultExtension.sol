@@ -472,5 +472,10 @@ interface IVaultExtension {
      * @param pauseManager The pause manager associated with the pool
      * @param pauseWindowEndTime The pool's pause window end time
      */
-    function registerBuffer(IERC4626 wrappedToken, address pool, address pauseManager, uint256 pauseWindowEndTime) external;
+    function registerBuffer(
+        IERC4626 wrappedToken,
+        address pool,
+        address pauseManager,
+        uint256 pauseWindowEndTime
+    ) external;
 }
