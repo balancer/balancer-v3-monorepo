@@ -187,6 +187,7 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
         uint256 // invariantRatio
     ) external pure returns (uint256) {
         // This pool doesn't support single token add/remove liquidity, so this function is not needed.
+        // Should never get here, but need to implement the interface.
         revert IVaultErrors.OperationNotSupported();
     }
 
@@ -198,6 +199,7 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
         uint256[] memory,
         bytes memory
     ) external pure returns (uint256, uint256[] memory, bytes memory) {
+        // Should throw `DoesNotSupportRemoveLiquidityCustom` before getting here, but need to implement the interface.
         revert IVaultErrors.OperationNotSupported();
     }
 }
