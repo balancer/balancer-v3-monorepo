@@ -12,8 +12,6 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import { FixedPoint } from "../math/FixedPoint.sol";
 
 contract ERC4626TestToken is ERC4626, IRateProvider {
-    using Math for uint256;
-
     uint8 private immutable _wrappedTokenDecimals;
 
     constructor(
