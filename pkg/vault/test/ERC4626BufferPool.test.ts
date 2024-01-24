@@ -180,4 +180,59 @@ describe('ERC4626BufferPool', function () {
       ).to.be.revertedWithCustomError(vault, 'PoolAlreadyInitialized');
     });
   });
+
+  describe('remove liquidity', () => {
+    sharedBeforeEach('create and initialize pool', async () => {
+      pool = await createPool(true);
+
+      wrappedToken.mint(TOKEN_AMOUNT, alice);
+      baseToken.mint(alice, TOKEN_AMOUNT);
+
+      wrappedToken.connect(alice).approve(vault, MAX_UINT256);
+      baseToken.connect(alice).approve(vault, MAX_UINT256);
+
+      await router.connect(alice).initialize(pool, tokenAddresses, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
+    });
+
+    it('satisfies preconditions', async () => {
+      const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(pool);
+
+      expect(poolConfig.isPoolRegistered).to.be.true;
+      expect(poolConfig.isPoolInitialized).to.be.true;
+      expect(await baseToken.balanceOf(alice)).to.eq(0);
+      expect(await wrappedToken.balanceOf(alice)).to.eq(0);
+    });
+
+    context('invalid kinds', () => {
+      it('cannot remove liquidity single token exact in', async () => {
+        await expect(
+          router.connect(alice).removeLiquiditySingleTokenExactIn(pool, TOKEN_AMOUNT, baseTokenAddress, 0, false, '0x')
+        ).to.be.revertedWithCustomError(vault, 'InvalidRemoveLiquidityKind');
+      });
+
+      it('cannot remove liquidity single token exact out', async () => {
+        await expect(
+          router
+            .connect(alice)
+            .removeLiquiditySingleTokenExactOut(pool, TOKEN_AMOUNT, baseTokenAddress, TOKEN_AMOUNT, false, '0x')
+        ).to.be.revertedWithCustomError(vault, 'InvalidRemoveLiquidityKind');
+      });
+
+      it('cannot remove liquidity custom', async () => {
+        await expect(
+          router.connect(alice).removeLiquidityCustom(pool, TOKEN_AMOUNT, [0, 0], false, '0x')
+        ).to.be.revertedWithCustomError(vault, 'InvalidRemoveLiquidityKind');
+      });
+    });
+
+    it('can remove liquidity proportionally', async () => {
+      const bptAmountIn = await pool.balanceOf(alice);
+
+      await router.connect(alice).removeLiquidityProportional(pool, bptAmountIn, [0, 0], false, '0x');
+
+      expect(await pool.balanceOf(alice)).to.be.zero;
+      expect(await baseToken.balanceOf(alice)).to.almostEqual(TOKEN_AMOUNT);
+      expect(await wrappedToken.balanceOf(alice)).to.almostEqual(TOKEN_AMOUNT);
+    });
+  });
 });
