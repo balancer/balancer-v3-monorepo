@@ -71,6 +71,7 @@ __metadata:
     ethers: "npm:^6.5.1"
     forge-gas-snapshot: "https://github.com/ylv-io/forge-gas-snapshot"
     forge-std: "https://github.com/foundry-rs/forge-std.git#v1.7.1"
+    hardhat-contract-sizer: "npm:^2.10.0"
     hardhat-gas-reporter: "npm:^1.0.9"
     hardhat-ignore-warnings: "npm:^0.2.4"
     prettier: "npm:^2.8.8"
@@ -301,6 +302,13 @@ __metadata:
     "@chainsafe/persistent-merkle-tree": "npm:^0.4.2"
     case: "npm:^1.6.3"
   checksum: 4b839080524432fe8671061ede8629c168804bb7634c2e4c58c54a072b0ddeff9fb93e9a13c8da1540f764521fa8fe19f4c490437f2d049c3cef8eb874170dbc
+  languageName: node
+  linkType: hard
+
+"@colors/colors@npm:1.5.0":
+  version: 1.5.0
+  resolution: "@colors/colors@npm:1.5.0"
+  checksum: 5e08870799494f68e5b3b79e9a337bbf5fd7e634904fbbe642769921bf158fe458c41c888f88edf051b78c5325e3339970f00b24e31421c3480bb58f02687218
   languageName: node
   linkType: hard
 
@@ -2653,6 +2661,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"cli-table3@npm:^0.6.0":
+  version: 0.6.3
+  resolution: "cli-table3@npm:0.6.3"
+  dependencies:
+    "@colors/colors": "npm:1.5.0"
+    string-width: "npm:^4.2.0"
+  dependenciesMeta:
+    "@colors/colors":
+      optional: true
+  checksum: 82fe6f515833019cdb7064c7276a546c5e3fe6bae6a1db4bf4b41e4bdcf9b119b086630f991461ac8556d82330ae5284fc4942a740118be6c8bbfcc69c118d0a
+  languageName: node
+  linkType: hard
+
 "cliui@npm:^5.0.0":
   version: 5.0.0
   resolution: "cliui@npm:5.0.0"
@@ -4376,6 +4397,19 @@ __metadata:
     ajv: "npm:^6.12.3"
     har-schema: "npm:^2.0.0"
   checksum: 3eb98922f5a5c67bf4973721275b1707b915e2d3dd88131cc0040b2f7dcdb512556cf1a692c90d1c2e0648b873735199bb27884612f7cb7457b4eb1f4cec6db4
+  languageName: node
+  linkType: hard
+
+"hardhat-contract-sizer@npm:^2.10.0":
+  version: 2.10.0
+  resolution: "hardhat-contract-sizer@npm:2.10.0"
+  dependencies:
+    chalk: "npm:^4.0.0"
+    cli-table3: "npm:^0.6.0"
+    strip-ansi: "npm:^6.0.0"
+  peerDependencies:
+    hardhat: ^2.0.0
+  checksum: c2ea61517a9462f44cee2f2d2253a2b6177e268cc06d9673ad54bede16511ed8983864426eec7e2cf0c43193c747eb7c2477ece9b7a7b6a1e790a1eb125fccf0
   languageName: node
   linkType: hard
 
