@@ -17,6 +17,7 @@ import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPo
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
+import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 
 import { BalancerPoolToken } from "./BalancerPoolToken.sol";
 import { PoolCallbacks } from "./PoolCallbacks.sol";
@@ -86,13 +87,30 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
 
     /// @inheritdoc IPoolLiquidity
     function onAddLiquidityCustom(
-        address sender,
+        address,
         uint256[] memory maxAmountsInScaled18,
-        uint256 minBptAmountOut,
+        uint256 exactBptAmountOut,
         uint256[] memory balancesScaled18,
-        bytes memory userData
-    ) external onlyVault returns (uint256[] memory amountsInScaled18, uint256 bptAmountOut, bytes memory returnData) {
-        // TODO: Implement
+        bytes memory
+    )
+        external
+        view
+        onlyVault
+        returns (uint256[] memory amountsInScaled18, uint256 bptAmountOut, bytes memory returnData)
+    {
+        // This is a proportional join
+        bptAmountOut = exactBptAmountOut;
+        returnData = "";
+
+        amountsInScaled18 = BasePoolMath.computeProportionalAmountsIn(balancesScaled18, bptAmountOut, totalSupply());
+
+        for (uint256 i = 0; i < maxAmountsInScaled18.length; i++) {
+            if (amountsInScaled18[i] > maxAmountsInScaled18[i]) {
+                IERC20 token = i == 0 ? _wrappedToken : IERC20(_wrappedToken.asset());
+
+                revert IVaultErrors.AmountInAboveMax(token, amountsInScaled18[i], maxAmountsInScaled18[i]);
+            }
+        }
     }
 
     /// @inheritdoc PoolCallbacks

@@ -481,7 +481,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         );
 
         if (poolData.config.callbacks.shouldCallBeforeAddLiquidity) {
-            // TODO: check if `before` needs kind.
             if (
                 IPoolCallbacks(params.pool).onBeforeAddLiquidity(
                     params.to,
@@ -595,7 +594,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             revert BptAmountOutBelowMin(bptAmountOut, params.minBptAmountOut);
         }
 
-        // TODO: enforce min and max.
         uint256 numTokens = poolData.tokens.length;
         amountsInRaw = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {

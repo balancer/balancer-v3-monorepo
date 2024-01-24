@@ -32,11 +32,12 @@ describe('ERC4626BufferPool', function () {
   let tokenAddresses: string[];
 
   let alice: SignerWithAddress;
+  let bob: SignerWithAddress;
 
   let pool: Contract;
 
   before('setup signers', async () => {
-    [, alice] = await ethers.getSigners();
+    [, alice, bob] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault, router, tokens, and pool', async function () {
@@ -206,6 +207,45 @@ describe('ERC4626BufferPool', function () {
           .connect(alice)
           .swapExactIn(pool, baseTokenAddress, wrappedTokenAddress, TOKEN_AMOUNT, 0, MAX_UINT256, false, '0x')
       ).to.be.revertedWithCustomError(vault, 'SenderIsNotVault');
+    });
+  });
+
+  describe('add liquidity', () => {
+    sharedBeforeEach('create and initialize pool', async () => {
+      pool = await createAndInitializePool();
+    });
+
+    context('invalid kinds', () => {
+      it('cannot add liquidity unbalanced', async () => {
+        await expect(
+          router.connect(alice).addLiquidityUnbalanced(pool, [0, TOKEN_AMOUNT], 0, false, '0x')
+        ).to.be.revertedWithCustomError(vault, 'InvalidAddLiquidityKind');
+      });
+
+      it('cannot add liquidity single token exact out', async () => {
+        await expect(
+          router
+            .connect(alice)
+            .addLiquiditySingleTokenExactOut(pool, baseTokenAddress, TOKEN_AMOUNT, TOKEN_AMOUNT, false, '0x')
+        ).to.be.revertedWithCustomError(vault, 'InvalidAddLiquidityKind');
+      });
+    });
+
+    it('can add liquidity custom', async () => {
+      wrappedToken.mint(TOKEN_AMOUNT + MIN_BPT, bob);
+      baseToken.mint(bob, TOKEN_AMOUNT + MIN_BPT);
+
+      wrappedToken.connect(bob).approve(vault, MAX_UINT256);
+      baseToken.connect(bob).approve(vault, MAX_UINT256);
+
+      // Set rate to 1
+      await wrappedToken.setTotalSupply(TOKEN_AMOUNT * 2n);
+      await wrappedToken.setTotalAssets(TOKEN_AMOUNT * 2n);
+
+      const bptAmount = await pool.balanceOf(alice);
+      const MAX_AMOUNT = TOKEN_AMOUNT + MIN_BPT;
+
+      await router.connect(bob).addLiquidityCustom(pool, [MAX_AMOUNT, MAX_AMOUNT], bptAmount, false, '0x');
     });
   });
 
