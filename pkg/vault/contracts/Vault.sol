@@ -433,8 +433,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             } else if (tokenType == TokenType.WITH_RATE) {
                 // TODO Adjust for protocol fees?
                 poolData.tokenRates[i] = poolTokenConfig[token].rateProvider.getRate();
-            } else {
-                // TODO implement ERC4626 at a later stage.
+            } else if (tokenType != TokenType.ERC4626) {
+                // TODO: implement ERC4626 at a later stage
                 revert InvalidTokenConfiguration();
             }
 
@@ -793,6 +793,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == RemoveLiquidityKind.CUSTOM) {
+            _poolConfig[params.pool].requireSupportsRemoveLiquidityCustom();
+
             (bptAmountIn, amountsOutScaled18, returnData) = IPoolLiquidity(params.pool).onRemoveLiquidityCustom(
                 params.from,
                 params.maxBptAmountIn,
