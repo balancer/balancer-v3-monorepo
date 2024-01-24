@@ -304,8 +304,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                 tokenRates[i] = FixedPoint.ONE;
             } else if (tokenType == TokenType.WITH_RATE) {
                 tokenRates[i] = poolTokenConfig[token].rateProvider.getRate();
-            } else if (tokenType != TokenType.ERC4626) {
-                // TODO implement ERC4626 at a later stage.
+            } else if (tokenType == TokenType.ERC4626) {
+                // TODO: implement ERC4626 in later phases.
+            } else {
                 revert InvalidTokenConfiguration();
             }
         }

@@ -465,7 +465,8 @@ interface IVaultExtension {
      * @notice Register an ERC4626BufferPool, an "internal" pool to maintain a buffer of base tokens for swaps.
      * @param wrappedToken The ERC4626 token to be buffered
      * @param pool The pool associated with the buffer
+     * @param pauseManager The pause manager associated with the pool
      * @param pauseWindowEndTime The pool's pause window end time
      */
-    function registerBuffer(IERC4626 wrappedToken, address pool, uint256 pauseWindowEndTime) external;
+    function registerBuffer(IERC4626 wrappedToken, address pool, address pauseManager, uint256 pauseWindowEndTime) external;
 }

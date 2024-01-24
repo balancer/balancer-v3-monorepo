@@ -12,7 +12,12 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
-import { AddLiquidityKind, RemoveLiquidityKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    AddLiquidityKind,
+    RemoveLiquidityKind,
+    TokenConfig,
+    TokenType
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
@@ -37,9 +42,6 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
 
     // TODO: At some point, allow changing this. Do we still need the rate limiting?
     uint256 private _amplificationParameter;
-
-    /// @dev Error thrown when a pool function is not supported.
-    error NotImplemented();
 
     constructor(
         string memory name,
@@ -79,7 +81,7 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
         bytes memory
     ) external view override onlyVault returns (bool) {
         if (kind != AddLiquidityKind.CUSTOM) {
-            revert IVaultErrors.InvalidAddLiquidityKind();
+            revert IVaultErrors.OperationNotSupported();
         }
 
         return true;
@@ -123,7 +125,7 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
         bytes memory
     ) external view override onlyVault returns (bool) {
         if (kind != RemoveLiquidityKind.PROPORTIONAL) {
-            revert IVaultErrors.InvalidRemoveLiquidityKind();
+            revert IVaultErrors.OperationNotSupported();
         }
 
         return true;
@@ -191,7 +193,7 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
         uint256 // invariantRatio
     ) external pure returns (uint256) {
         // This pool doesn't support single token add/remove liquidity, so this function is not needed.
-        revert NotImplemented();
+        revert IVaultErrors.OperationNotSupported();
     }
 
     /// @inheritdoc IPoolLiquidity
@@ -202,6 +204,6 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
         uint256[] memory,
         bytes memory
     ) external pure returns (uint256, uint256[] memory, bytes memory) {
-        revert NotImplemented();
+        revert IVaultErrors.OperationNotSupported();
     }
 }

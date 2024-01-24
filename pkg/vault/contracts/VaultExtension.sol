@@ -222,7 +222,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
                     revert InvalidTokenConfiguration();
                 }
             } else if (tokenData.tokenType == TokenType.ERC4626) {
-                // TODO implement in later phases.
+                // TODO: implement ERC4626 in later phases.
             } else {
                 revert InvalidTokenType();
             }
@@ -757,6 +757,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     function registerBuffer(
         IERC4626 wrappedToken,
         address pool,
+        address pauseManager,
         uint256 pauseWindowEndTime
     ) external nonReentrant whenVaultNotPaused onlyVault {
         // Ensure buffer does not already exist.
@@ -765,6 +766,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         }
         _wrappedTokenBuffers[wrappedToken] = pool;
 
+        // Token order is wrapped first, then base.
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[0].token = IERC20(wrappedToken);
         tokenConfig[0].tokenType = TokenType.ERC4626;
@@ -774,7 +776,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             pool,
             tokenConfig,
             pauseWindowEndTime,
-            address(0), // no pause manager
+            pauseManager,
             PoolCallbacks({
                 shouldCallBeforeInitialize: true, // ensure proportional
                 shouldCallAfterInitialize: false,

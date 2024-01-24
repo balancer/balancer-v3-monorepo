@@ -8,7 +8,13 @@ import { Router } from '@balancer-labs/v3-vault/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { MONTH, currentTimestamp } from '@balancer-labs/v3-helpers/src/time';
 import { ERC20TestToken, ERC4626TestToken, WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
-import { MAX_UINT256, ONES_BYTES32, ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
+import {
+  ANY_ADDRESS,
+  MAX_UINT256,
+  ONES_BYTES32,
+  ZERO_ADDRESS,
+  ZERO_BYTES32,
+} from '@balancer-labs/v3-helpers/src/constants';
 import { PoolConfigStructOutput, VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
@@ -69,7 +75,7 @@ describe('ERC4626BufferPool', function () {
       await authorizer.grantRole(createPoolAction, alice.address);
     }
 
-    const tx = await factory.connect(alice).create(wrappedToken, ZERO_BYTES32);
+    const tx = await factory.connect(alice).create(wrappedToken, ANY_ADDRESS, ZERO_BYTES32);
     const receipt = await tx.wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
@@ -125,15 +131,18 @@ describe('ERC4626BufferPool', function () {
     });
 
     it('cannot be registered twice', async () => {
-      await expect(factory.connect(alice).create(wrappedToken, ONES_BYTES32)).to.be.revertedWithCustomError(
-        vault,
-        'WrappedTokenBufferAlreadyRegistered'
-      );
+      await expect(
+        factory.connect(alice).create(wrappedToken, ZERO_ADDRESS, ONES_BYTES32)
+      ).to.be.revertedWithCustomError(vault, 'WrappedTokenBufferAlreadyRegistered');
     });
 
     it('configures the pool correctly', async () => {
       const currentTime = await currentTimestamp();
       const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(pool);
+
+      const [paused, , , pauseManager] = await vault.getPoolPausedState(pool);
+      expect(paused).to.be.false;
+      expect(pauseManager).to.eq(ANY_ADDRESS);
 
       expect(poolConfig.pauseWindowEndTime).to.gt(currentTime);
       expect(poolConfig.callbacks.shouldCallBeforeInitialize).to.be.true;
@@ -219,7 +228,7 @@ describe('ERC4626BufferPool', function () {
       it('cannot add liquidity unbalanced', async () => {
         await expect(
           router.connect(alice).addLiquidityUnbalanced(pool, [0, TOKEN_AMOUNT], 0, false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'InvalidAddLiquidityKind');
+        ).to.be.revertedWithCustomError(vault, 'OperationNotSupported');
       });
 
       it('cannot add liquidity single token exact out', async () => {
@@ -227,7 +236,7 @@ describe('ERC4626BufferPool', function () {
           router
             .connect(alice)
             .addLiquiditySingleTokenExactOut(pool, baseTokenAddress, TOKEN_AMOUNT, TOKEN_AMOUNT, false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'InvalidAddLiquidityKind');
+        ).to.be.revertedWithCustomError(vault, 'OperationNotSupported');
       });
     });
 
@@ -267,7 +276,7 @@ describe('ERC4626BufferPool', function () {
       it('cannot remove liquidity single token exact in', async () => {
         await expect(
           router.connect(alice).removeLiquiditySingleTokenExactIn(pool, TOKEN_AMOUNT, baseTokenAddress, 0, false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'InvalidRemoveLiquidityKind');
+        ).to.be.revertedWithCustomError(vault, 'OperationNotSupported');
       });
 
       it('cannot remove liquidity single token exact out', async () => {
@@ -275,13 +284,13 @@ describe('ERC4626BufferPool', function () {
           router
             .connect(alice)
             .removeLiquiditySingleTokenExactOut(pool, TOKEN_AMOUNT, baseTokenAddress, TOKEN_AMOUNT, false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'InvalidRemoveLiquidityKind');
+        ).to.be.revertedWithCustomError(vault, 'OperationNotSupported');
       });
 
       it('cannot remove liquidity custom', async () => {
         await expect(
           router.connect(alice).removeLiquidityCustom(pool, TOKEN_AMOUNT, [0, 0], false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'InvalidRemoveLiquidityKind');
+        ).to.be.revertedWithCustomError(vault, 'OperationNotSupported');
       });
     });
 

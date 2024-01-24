@@ -28,10 +28,16 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
 
     /**
      * @notice Deploys a new `WeightedPool`.
+     * @dev Buffers might need an external pause manager (e.g., a large depositor)
      * @param wrappedToken The ERC4626 wrapped token associated with the buffer and pool
+     * @param pauseManager The pause manager for this pool (or 0)
      * @param salt The salt value that will be passed to create3 deployment
      */
-    function create(IERC4626 wrappedToken, bytes32 salt) external authenticate returns (address pool) {
+    function create(
+        IERC4626 wrappedToken,
+        address pauseManager,
+        bytes32 salt
+    ) external authenticate returns (address pool) {
         pool = _create(
             abi.encode(
                 string.concat("Balancer Buffer-", wrappedToken.name()),
@@ -42,7 +48,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
             salt
         );
 
-        getVault().registerBuffer(wrappedToken, pool, getNewPoolPauseWindowEndTime());
+        getVault().registerBuffer(wrappedToken, pool, pauseManager, getNewPoolPauseWindowEndTime());
 
         _registerPoolWithFactory(pool);
     }

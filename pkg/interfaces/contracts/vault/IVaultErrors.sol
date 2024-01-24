@@ -243,4 +243,7 @@ interface IVaultErrors {
 
     /// @dev The Vault extension was called by an account directly; it can only be called by the Vault via delegatecall.
     error NotVaultDelegateCall();
+
+    /// @dev Error thrown when a function is not supported.
+    error OperationNotSupported();
 }
