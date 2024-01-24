@@ -90,6 +90,7 @@ describe('ERC4626BufferPool', function () {
 
     wrappedToken.mint(TOKEN_AMOUNT, alice);
     baseToken.mint(alice, TOKEN_AMOUNT);
+    baseToken.mint(wrappedToken, TOKEN_AMOUNT); // initialize assets
 
     wrappedToken.connect(alice).approve(vault, MAX_UINT256);
     baseToken.connect(alice).approve(vault, MAX_UINT256);
@@ -164,6 +165,7 @@ describe('ERC4626BufferPool', function () {
 
       wrappedToken.mint(TOKEN_AMOUNT, alice);
       baseToken.mint(alice, TOKEN_AMOUNT);
+      baseToken.mint(wrappedToken, TOKEN_AMOUNT); // initialize assets
 
       wrappedToken.connect(alice).approve(vault, MAX_UINT256);
       baseToken.connect(alice).approve(vault, MAX_UINT256);
@@ -246,10 +248,6 @@ describe('ERC4626BufferPool', function () {
 
       wrappedToken.connect(bob).approve(vault, MAX_UINT256);
       baseToken.connect(bob).approve(vault, MAX_UINT256);
-
-      // Set rate to 1
-      await wrappedToken.setTotalSupply(TOKEN_AMOUNT * 2n);
-      await wrappedToken.setTotalAssets(TOKEN_AMOUNT * 2n);
 
       const bptAmount = await pool.balanceOf(alice);
       const MAX_AMOUNT = TOKEN_AMOUNT + MIN_BPT;

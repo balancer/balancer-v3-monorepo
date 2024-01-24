@@ -16,6 +16,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BalancerPoolToken } from "./BalancerPoolToken.sol";
 import { BasePoolCallbacks } from "./BasePoolCallbacks.sol";
@@ -31,8 +32,6 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
 
     IERC4626 internal immutable _wrappedToken;
 
-    uint256 internal immutable _rateScalingFactor;
-
     // TODO: At some point, allow changing this. Do we still need the rate limiting?
     uint256 private _amplificationParameter;
 
@@ -45,9 +44,6 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
         _wrappedToken = wrappedToken;
 
         _amplificationParameter = _DEFAULT_BUFFER_AMP_PARAMETER * _AMP_PRECISION;
-
-        // Compute the decimal difference (used for yield token rate computation).
-        _rateScalingFactor = 10 ** (18 + wrappedToken.decimals() - IERC20Metadata(wrappedToken.asset()).decimals());
     }
 
     /// @inheritdoc IBasePool
@@ -162,11 +158,11 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
     }
 
     /**
-     * @notice Get the current rate of a wrapped token buffer, also scaled for decimals.
-     * @return rate The current rate as an 18-decimal FP value, incorporating decimals
+     * @notice Get the current rate of a wrapped token buffer.
+     * @return rate The current rate
      */
     function getRate() external view onlyVault returns (uint256) {
-        return _wrappedToken.convertToAssets(_rateScalingFactor);
+        return _wrappedToken.convertToAssets(FixedPoint.ONE);
     }
 
     // Unsupported functions that unconditionally revert
