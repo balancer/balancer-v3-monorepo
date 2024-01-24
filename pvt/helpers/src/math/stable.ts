@@ -341,10 +341,10 @@ export function calculateOneTokenSwapFeeAmount(
 // The amp factor input must be a number: *not* multiplied by the precision
 export function getTokenBalanceGivenInvariantAndAllOtherBalances(
   amp: number,
-  fpBalances: BigNumber[],
-  fpInvariant: BigNumber,
+  fpBalances: BigNumberish[],
+  fpInvariant: BigNumberish,
   tokenIndex: number
-): BigNumber {
+): bigint {
   const invariant = fromFp(fpInvariant);
   const balances = fpBalances.map(fromFp);
   return fp(_getTokenBalanceGivenInvariantAndAllOtherBalances(balances, decimal(amp), invariant, tokenIndex));
