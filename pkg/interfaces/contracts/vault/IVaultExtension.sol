@@ -6,6 +6,7 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthorizer } from "./IAuthorizer.sol";
+import { IVault } from "./IVault.sol";
 import "./VaultTypes.sol";
 
 interface IVaultExtension {
@@ -43,6 +44,9 @@ interface IVaultExtension {
      * @return The token count of a minimal pool
      */
     function getMaximumPoolTokens() external pure returns (uint256);
+
+    /// @dev Returns the main Vault address.
+    function vault() external view returns (IVault);
 
     /*******************************************************************************
                               Transient Accounting

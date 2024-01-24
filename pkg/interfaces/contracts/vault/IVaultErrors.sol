@@ -246,4 +246,7 @@ interface IVaultErrors {
 
     /// @dev Error thrown when a function is not supported.
     error OperationNotSupported();
+
+    /// @dev The vault extension was configured with an incorrect Vault address.
+    error WrongVaultExtensionDeployment();
 }

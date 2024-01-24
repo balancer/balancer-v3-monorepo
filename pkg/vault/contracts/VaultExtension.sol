@@ -49,20 +49,25 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
 
     IVault private immutable _vault;
 
+    /// @dev Functions with this modifier can only be delegate-called by the vault.
     modifier onlyVault() {
+        _ensureVaultDelegateCall();
+        _;
+    }
+
+    function _ensureVaultDelegateCall() internal view {
         // If this is a delegate call from the vault, the address of the contract should be the Vault's,
         // not the extension.
         if (address(this) != address(_vault)) {
             revert NotVaultDelegateCall();
         }
-        _;
     }
 
     constructor(
-        IVault vault,
+        IVault mainVault,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) Authentication(bytes32(uint256(uint160(address(vault))))) {
+    ) Authentication(bytes32(uint256(uint160(address(mainVault))))) {
         if (pauseWindowDuration > MAX_PAUSE_WINDOW_DURATION) {
             revert VaultPauseWindowDurationTooLarge();
         }
@@ -76,7 +81,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         _vaultBufferPeriodDuration = bufferPeriodDuration;
         _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
 
-        _vault = vault;
+        _vault = mainVault;
     }
 
     /*******************************************************************************
@@ -108,12 +113,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         return _MAX_TOKENS;
     }
 
+    function vault() external view returns (IVault) {
+        return _vault;
+    }
+
     /*******************************************************************************
                               Transient Accounting
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function getHandler(uint256 index) public view onlyVault returns (address) {
+    function getHandler(uint256 index) external view onlyVault returns (address) {
         if (index >= _handlers.length) {
             revert HandlerOutOfBounds(index);
         }
@@ -263,7 +272,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external withHandler withRegisteredPool(pool) whenPoolNotPaused(pool) returns (uint256 bptAmountOut) {
+    ) external withHandler withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault returns (uint256 bptAmountOut) {
         PoolData memory poolData = _getPoolData(pool, Rounding.ROUND_DOWN);
 
         if (poolData.config.isPoolInitialized) {
@@ -414,34 +423,34 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function totalSupply(address token) external view returns (uint256) {
+    function totalSupply(address token) external view onlyVault returns (uint256) {
         return _totalSupply(token);
     }
 
     /// @inheritdoc IVaultExtension
-    function balanceOf(address token, address account) external view returns (uint256) {
+    function balanceOf(address token, address account) external view onlyVault returns (uint256) {
         return _balanceOf(token, account);
     }
 
     /// @inheritdoc IVaultExtension
-    function allowance(address token, address owner, address spender) external view returns (uint256) {
+    function allowance(address token, address owner, address spender) external view onlyVault returns (uint256) {
         return _allowance(token, owner, spender);
     }
 
     /// @inheritdoc IVaultExtension
-    function transfer(address owner, address to, uint256 amount) external returns (bool) {
+    function transfer(address owner, address to, uint256 amount) external onlyVault returns (bool) {
         _transfer(msg.sender, owner, to, amount);
         return true;
     }
 
     /// @inheritdoc IVaultExtension
-    function approve(address owner, address spender, uint256 amount) external returns (bool) {
+    function approve(address owner, address spender, uint256 amount) external onlyVault returns (bool) {
         _approve(msg.sender, owner, spender, amount);
         return true;
     }
 
     /// @inheritdoc IVaultExtension
-    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool) {
+    function transferFrom(address spender, address from, address to, uint256 amount) external onlyVault returns (bool) {
         _spendAllowance(msg.sender, from, spender, amount);
         _transfer(msg.sender, from, to, amount);
         return true;
@@ -457,7 +466,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultExtension
-    function getVaultPausedState() public view onlyVault returns (bool, uint256, uint256) {
+    function getVaultPausedState() external view onlyVault returns (bool, uint256, uint256) {
         return (_isVaultPaused(), _vaultPauseWindowEndTime, _vaultBufferPeriodEndTime);
     }
 
@@ -522,26 +531,26 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultExtension
-    function isPoolPaused(address pool) external view withRegisteredPool(pool) returns (bool) {
+    function isPoolPaused(address pool) external view withRegisteredPool(pool) onlyVault returns (bool) {
         return _isPoolPaused(pool);
     }
 
     /// @inheritdoc IVaultExtension
     function getPoolPausedState(
         address pool
-    ) external view withRegisteredPool(pool) returns (bool, uint256, uint256, address) {
+    ) external view withRegisteredPool(pool) onlyVault returns (bool, uint256, uint256, address) {
         (bool paused, uint256 pauseWindowEndTime) = _getPoolPausedState(pool);
 
         return (paused, pauseWindowEndTime, pauseWindowEndTime + _vaultBufferPeriodDuration, _poolPauseManagers[pool]);
     }
 
     /// @inheritdoc IVaultExtension
-    function pausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) {
+    function pausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) onlyVault {
         _setPoolPaused(pool, true);
     }
 
     /// @inheritdoc IVaultExtension
-    function unpausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) {
+    function unpausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) onlyVault {
         _setPoolPaused(pool, false);
     }
 
@@ -581,7 +590,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function setProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external authenticate {
+    function setProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external authenticate onlyVault {
         if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
             revert ProtocolSwapFeePercentageTooHigh();
         }
@@ -590,17 +599,17 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultExtension
-    function getProtocolSwapFeePercentage() external view returns (uint256) {
+    function getProtocolSwapFeePercentage() external view onlyVault returns (uint256) {
         return _protocolSwapFeePercentage;
     }
 
     /// @inheritdoc IVaultExtension
-    function getProtocolSwapFee(address token) external view returns (uint256) {
+    function getProtocolSwapFee(address token) external view onlyVault returns (uint256) {
         return _protocolSwapFees[IERC20(token)];
     }
 
     /// @inheritdoc IVaultExtension
-    function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant {
+    function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant onlyVault {
         for (uint256 index = 0; index < tokens.length; index++) {
             IERC20 token = tokens[index];
             uint256 amount = _protocolSwapFees[token];
@@ -625,7 +634,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     function setStaticSwapFeePercentage(
         address pool,
         uint256 swapFeePercentage
-    ) external authenticate withRegisteredPool(pool) whenPoolNotPaused(pool) {
+    ) external authenticate withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault {
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 
@@ -642,7 +651,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultExtension
-    function getStaticSwapFeePercentage(address pool) external view returns (uint256) {
+    function getStaticSwapFeePercentage(address pool) external view onlyVault returns (uint256) {
         return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
     }
 
