@@ -144,8 +144,17 @@ describe('Vault', function () {
         .withArgs(await poolB.getAddress());
     });
 
-    it('cannot register a pool with an invalid token', async () => {
+    it('cannot register a pool with an invalid token (zero address)', async () => {
       await expect(vault.manualRegisterPool(poolB, invalidTokens)).to.be.revertedWithCustomError(
+        vaultExtension,
+        'InvalidToken'
+      );
+    });
+
+    it('cannot register a pool with an invalid token (pool address)', async () => {
+      const poolBTokensWithItself = Array.from(poolBTokens);
+      poolBTokensWithItself.push(poolBAddress);
+      await expect(vault.manualRegisterPool(poolB, poolBTokensWithItself)).to.be.revertedWithCustomError(
         vaultExtension,
         'InvalidToken'
       );
