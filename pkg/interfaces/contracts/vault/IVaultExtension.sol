@@ -356,7 +356,6 @@ interface IVaultExtension {
     function getProtocolSwapFeePercentage() external view returns (uint256);
 
     /**
-     * @notice Returns the accumulated swap fee in `token` collected by the protocol.
      * @notice Sets a new yield fee percentage for the protocol.
      * @param newYieldFeePercentage The new swap fee percentage to be set
      */
