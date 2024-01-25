@@ -136,12 +136,12 @@ interface IVaultErrors {
                                      Fees
     *******************************************************************************/
 
-    /// @dev Error raised when the protocol yield fee percentage exceeds the maximum allowed value.
-    error ProtocolYieldFeePercentageTooHigh();
-    
     /// @dev Error raised when the protocol swap fee percentage exceeds the maximum allowed value.
     error ProtocolSwapFeePercentageTooHigh();
 
+    /// @dev Error raised when the protocol yield fee percentage exceeds the maximum allowed value.
+    error ProtocolYieldFeePercentageTooHigh();
+    
     /// @dev Error raised when the swap fee percentage exceeds the maximum allowed value.
     error SwapFeePercentageTooHigh();
 
