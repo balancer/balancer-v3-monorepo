@@ -265,11 +265,11 @@ library StableMath {
         return nonTaxableAmount + (taxableAmount.divUp(FixedPoint.ONE - swapFeePercentage));
     }
 
-    /*
-    Flow of calculations:
-    amountsTokenOut -> amountsOutProportional ->
-    amountOutPercentageExcess -> amountOutBeforeFee -> newInvariant -> amountBPTIn
-    */
+    /**
+     * @dev Flow of calculations:
+     * amountsTokenOut -> amountsOutProportional ->
+     * amountOutPercentageExcess -> amountOutBeforeFee -> newInvariant -> amountBPTIn
+     */
     function _calcBptInGivenExactTokensOut(
         uint256 amp,
         uint256[] memory balances,
