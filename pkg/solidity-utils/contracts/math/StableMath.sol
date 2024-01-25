@@ -126,7 +126,9 @@ library StableMath {
 
         // No need to use checked arithmetic since `tokenAmountIn` was actually added to the same balance right before
         // calling `_getTokenBalanceGivenInvariantAndAllOtherBalances` which doesn't alter the balances array.
-        balances[tokenIndexIn] -= tokenAmountIn;
+        unchecked {
+            balances[tokenIndexIn] -= tokenAmountIn;
+        }
 
         return balances[tokenIndexOut] - finalBalanceOut - 1;
     }
