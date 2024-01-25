@@ -26,15 +26,13 @@ library StableMath {
     // not make any unnecessary checks. We rely on a set of invariants to avoid having to use checked arithmetic,
     // including:
     //  - the amplification parameter is bounded by _MAX_AMP * _AMP_PRECISION, which fits in 23 bits
-    //  - the token balances are bounded by 2^112 (guaranteed by the Vault) times 1e18 (the maximum scaling factor),
-    //    which fits in 172 bits
     //
     // This means e.g. we can safely multiply a balance by the amplification parameter without worrying about overflow.
 
-    // About swap fees on joins and exits:
-    // Any join or exit that is not perfectly balanced (e.g. all single token joins or exits) is mathematically
-    // equivalent to a perfectly balanced join or exit followed by a series of swaps. Since these swaps would charge
-    // swap fees, it follows that (some) joins and exits should as well.
+    // About swap fees on add and remove liquidity:
+    // Any add or remove that is not perfectly balanced (e.g. all single token operations) is mathematically
+    // equivalent to a perfectly balanced add or remove followed by a series of swaps. Since these swaps would charge
+    // swap fees, it follows that unbalanced adds and removes should as well.
     // On these operations, we split the token amounts in 'taxable' and 'non-taxable' portions, where the 'taxable' part
     // is the one to which swap fees are applied.
 
@@ -82,12 +80,15 @@ library StableMath {
                 ((((ampTimesTotal * sum) / _AMP_PRECISION) + (D_P * numTokens)) * invariant) /
                 ((((ampTimesTotal - _AMP_PRECISION) * invariant) / _AMP_PRECISION) + ((numTokens + 1) * D_P));
 
-            if (invariant > prevInvariant) {
-                if (invariant - prevInvariant <= 1) {
+            unchecked {
+                // We are explicitly checking the magnitudes here, so can use unchecked math.
+                if (invariant > prevInvariant) {
+                    if (invariant - prevInvariant <= 1) {
+                        return invariant;
+                    }
+                } else if (prevInvariant - invariant <= 1) {
                     return invariant;
                 }
-            } else if (prevInvariant - invariant <= 1) {
-                return invariant;
             }
         }
 
@@ -117,7 +118,7 @@ library StableMath {
         **************************************************************************************************************/
 
         // Amount out, so we round down overall.
-        balances[tokenIndexIn] = balances[tokenIndexIn] + (tokenAmountIn);
+        balances[tokenIndexIn] += tokenAmountIn;
 
         uint256 finalBalanceOut = _getTokenBalanceGivenInvariantAndAllOtherBalances(
             amplificationParameter,
@@ -128,7 +129,9 @@ library StableMath {
 
         // No need to use checked arithmetic since `tokenAmountIn` was actually added to the same balance right before
         // calling `_getTokenBalanceGivenInvariantAndAllOtherBalances` which doesn't alter the balances array.
-        balances[tokenIndexIn] = balances[tokenIndexIn] - tokenAmountIn;
+        unchecked {
+            balances[tokenIndexIn] -= tokenAmountIn;
+        }
 
         return balances[tokenIndexOut] - finalBalanceOut - 1;
     }
@@ -157,7 +160,7 @@ library StableMath {
         **************************************************************************************************************/
 
         // Amount in, so we round up overall.
-        balances[tokenIndexOut] = balances[tokenIndexOut] - tokenAmountOut;
+        balances[tokenIndexOut] -= tokenAmountOut;
 
         uint256 finalBalanceIn = _getTokenBalanceGivenInvariantAndAllOtherBalances(
             amplificationParameter,
@@ -166,7 +169,11 @@ library StableMath {
             tokenIndexIn
         );
 
-        balances[tokenIndexOut] = balances[tokenIndexOut] + tokenAmountOut;
+        // No need to use checked arithmetic since `tokenAmountOut` was actually subtracted from the same balance right
+        // before calling `_getTokenBalanceGivenInvariantAndAllOtherBalances` which doesn't alter the balances array.
+        unchecked {
+            balances[tokenIndexOut] += tokenAmountOut;
+        }
 
         return finalBalanceIn - balances[tokenIndexIn] + 1;
     }
@@ -185,7 +192,7 @@ library StableMath {
         // the current weights of each token, relative to this sum
         uint256 sumBalances = 0;
         for (uint256 i = 0; i < balances.length; i++) {
-            sumBalances = sumBalances + balances[i];
+            sumBalances += balances[i];
         }
 
         // Calculate the weighted balance ratio without considering fees
@@ -252,7 +259,7 @@ library StableMath {
         // the current weight of each token
         uint256 sumBalances = 0;
         for (uint256 i = 0; i < balances.length; i++) {
-            sumBalances = sumBalances + balances[i];
+            sumBalances += balances[i];
         }
 
         // We can now compute how much extra balance is being deposited and used in virtual swaps, and charge swap fees
@@ -265,11 +272,11 @@ library StableMath {
         return nonTaxableAmount + (taxableAmount.divUp(FixedPoint.ONE - swapFeePercentage));
     }
 
-    /*
-    Flow of calculations:
-    amountsTokenOut -> amountsOutProportional ->
-    amountOutPercentageExcess -> amountOutBeforeFee -> newInvariant -> amountBPTIn
-    */
+    /**
+     * @dev Flow of calculations:
+     * amountsTokenOut -> amountsOutProportional ->
+     * amountOutPercentageExcess -> amountOutBeforeFee -> newInvariant -> amountBPTIn
+     */
     function _calcBptInGivenExactTokensOut(
         uint256 amp,
         uint256[] memory balances,
@@ -284,7 +291,7 @@ library StableMath {
         // the current weights of each token relative to this sum
         uint256 sumBalances = 0;
         for (uint256 i = 0; i < balances.length; i++) {
-            sumBalances = sumBalances + balances[i];
+            sumBalances += balances[i];
         }
 
         // Calculate the weighted balance ratio without considering fees
@@ -347,7 +354,7 @@ library StableMath {
         // the current weight of each token
         uint256 sumBalances = 0;
         for (uint256 i = 0; i < balances.length; i++) {
-            sumBalances = sumBalances + balances[i];
+            sumBalances += balances[i];
         }
 
         // We can now compute how much excess balance is being withdrawn as a result of the virtual swaps, which result
@@ -381,30 +388,32 @@ library StableMath {
         }
         sum = sum - balances[tokenIndex];
 
+        // Use divUpRaw with inv2, as it is a "raw" 36 decimal value
         uint256 inv2 = invariant * invariant;
         // We remove the balance from c by multiplying it
-        uint256 c = ((inv2 / FixedPoint.ONE).divUp(ampTimesTotal * P_D) * _AMP_PRECISION) * balances[tokenIndex];
+        uint256 c = (inv2.divUpRaw(ampTimesTotal * P_D) * _AMP_PRECISION) * balances[tokenIndex];
         uint256 b = sum + ((invariant / ampTimesTotal) * _AMP_PRECISION);
-
         // We iterate to find the balance
         uint256 prevTokenBalance = 0;
         // We multiply the first iteration outside the loop with the invariant to set the value of the
         // initial approximation.
-        uint256 tokenBalance = ((inv2 + c) / FixedPoint.ONE).divUp(invariant + b);
+        uint256 tokenBalance = (inv2 + c).divUpRaw(invariant + b);
 
         for (uint256 i = 0; i < 255; i++) {
             prevTokenBalance = tokenBalance;
 
-            tokenBalance = (((tokenBalance * tokenBalance) + c) / FixedPoint.ONE).divUp(
-                (tokenBalance * 2) + b - invariant
-            );
+            // Use divUpRaw with tokenBalance, as it is a "raw" 36 decimal value
+            tokenBalance = ((tokenBalance * tokenBalance) + c).divUpRaw((tokenBalance * 2) + b - invariant);
 
-            if (tokenBalance > prevTokenBalance) {
-                if (tokenBalance - prevTokenBalance <= 1) {
+            // We are explicitly checking the magnitudes here, so can use unchecked math.
+            unchecked {
+                if (tokenBalance > prevTokenBalance) {
+                    if (tokenBalance - prevTokenBalance <= 1) {
+                        return tokenBalance;
+                    }
+                } else if (prevTokenBalance - tokenBalance <= 1) {
                     return tokenBalance;
                 }
-            } else if (prevTokenBalance - tokenBalance <= 1) {
-                return tokenBalance;
             }
         }
 

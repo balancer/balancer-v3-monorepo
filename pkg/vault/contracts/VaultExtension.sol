@@ -208,7 +208,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             IERC20 token = tokenData.token;
 
             // Ensure that the token address is valid
-            if (token == IERC20(address(0))) {
+            if (address(token) == address(0) || address(token) == pool) {
                 revert InvalidToken();
             }
 
