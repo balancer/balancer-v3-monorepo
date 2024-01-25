@@ -74,15 +74,17 @@ contract VaultStorage {
      */
     mapping(IERC20 => uint256) internal _tokenReserves;
 
-    // Protocol yield fee - charged on all pool operations.
-    uint256 internal _protocolYieldFeePercentage;
-
     // We allow 0% swap fee.
     // The protocol swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
     // TODO consider using uint64 and packing with other things (when we have other things).
     uint256 internal _protocolSwapFeePercentage;
 
-    // Token -> fee: Protocol's swap fees accumulated in the Vault for harvest.
+-    // Protocol yield fee - charged on all pool operations.
+-    uint256 internal _protocolYieldFeePercentage;
+-
+-    // Token -> fee: Protocol fees (from both swap and yield) accumulated in the Vault for harvest.
++    // Token -> fee: Protocol's swap fees accumulated in the Vault for harvest.
+
     mapping(IERC20 => uint256) internal _protocolFees;
 
     // Upgradeable contract in charge of setting permissions.
