@@ -185,7 +185,7 @@ library StableMath {
         // the current weights of each token, relative to this sum
         uint256 sumBalances = 0;
         for (uint256 i = 0; i < balances.length; i++) {
-            sumBalances = sumBalances + balances[i];
+            sumBalances += balances[i];
         }
 
         // Calculate the weighted balance ratio without considering fees
@@ -252,7 +252,7 @@ library StableMath {
         // the current weight of each token
         uint256 sumBalances = 0;
         for (uint256 i = 0; i < balances.length; i++) {
-            sumBalances = sumBalances + balances[i];
+            sumBalances += balances[i];
         }
 
         // We can now compute how much extra balance is being deposited and used in virtual swaps, and charge swap fees
@@ -284,7 +284,7 @@ library StableMath {
         // the current weights of each token relative to this sum
         uint256 sumBalances = 0;
         for (uint256 i = 0; i < balances.length; i++) {
-            sumBalances = sumBalances + balances[i];
+            sumBalances += balances[i];
         }
 
         // Calculate the weighted balance ratio without considering fees
@@ -347,7 +347,7 @@ library StableMath {
         // the current weight of each token
         uint256 sumBalances = 0;
         for (uint256 i = 0; i < balances.length; i++) {
-            sumBalances = sumBalances + balances[i];
+            sumBalances += balances[i];
         }
 
         // We can now compute how much excess balance is being withdrawn as a result of the virtual swaps, which result
