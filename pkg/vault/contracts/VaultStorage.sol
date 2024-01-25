@@ -25,10 +25,14 @@ contract VaultStorage {
     // This maximum token count is also hard-coded in `PoolConfigLib`.
     uint256 internal constant _MAX_TOKENS = 4;
 
-    // 1e18 corresponds to a 100% fee.
+    // Maximum protocol yield fee percentage.
+    // TODO Optimize storage; could pack fees into one slot (potentially a single vaultConfig slot).
+    uint256 internal constant _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 20e16; // 20%
+
+    // Maximum protocol swap fee percentage. 1e18 corresponds to a 100% fee.
     uint256 internal constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
 
-    // 1e18 corresponds to a 100% fee.
+    // Maximum pool swap fee percentage.
     uint256 internal constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
     // Code extension for Vault.
@@ -70,13 +74,16 @@ contract VaultStorage {
      */
     mapping(IERC20 => uint256) internal _tokenReserves;
 
+    // Protocol yield fee - charged on all pool operations.
+    uint256 internal _protocolYieldFeePercentage;
+
     // We allow 0% swap fee.
     // The protocol swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
     // TODO consider using uint64 and packing with other things (when we have other things).
     uint256 internal _protocolSwapFeePercentage;
 
     // Token -> fee: Protocol's swap fees accumulated in the Vault for harvest.
-    mapping(IERC20 => uint256) internal _protocolSwapFees;
+    mapping(IERC20 => uint256) internal _protocolFees;
 
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer internal _authorizer;

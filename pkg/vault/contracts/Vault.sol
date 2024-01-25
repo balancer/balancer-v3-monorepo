@@ -368,7 +368,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     poolData.tokenRates[vars.indexOut]
                 );
 
-            _protocolSwapFees[vaultSwapParams.tokenOut] += vars.protocolSwapFeeAmountRaw;
+            _protocolFees[vaultSwapParams.tokenOut] += vars.protocolSwapFeeAmountRaw;
         }
 
         // Use `unchecked_setAt` to save storage reads.

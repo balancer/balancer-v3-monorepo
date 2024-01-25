@@ -252,7 +252,7 @@ contract VaultSwapTest is BaseVaultTest {
         vault.collectProtocolFees([address(dai)].toMemoryArray().asIERC20());
 
         // protocol fees are zero
-        assertEq(0, vault.getProtocolSwapFee(address(dai)), "Protocol fees are not zero");
+        assertEq(0, vault.getProtocolFees(address(dai)), "Protocol fees are not zero");
 
         // alice received protocol fees
         assertEq(dai.balanceOf(admin) - defaultBalance, (protocolSwapFee), "Protocol fees not collected");
@@ -276,7 +276,7 @@ contract VaultSwapTest is BaseVaultTest {
         assertEq(balances[1], 2 * defaultAmount, "Swap: Pool's [1] balance is wrong");
 
         // protocol fees are accrued
-        assertEq(protocolFee, vault.getProtocolSwapFee(address(dai)), "Swap: Protocol's fee amount is wrong");
+        assertEq(protocolFee, vault.getProtocolFees(address(dai)), "Swap: Protocol's fee amount is wrong");
 
         // vault are adjusted balances
         assertEq(dai.balanceOf(address(vault)), fee, "Swap: Vault's DAI balance is wrong");
