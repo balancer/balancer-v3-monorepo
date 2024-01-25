@@ -4,6 +4,7 @@ import '@typechain/hardhat';
 
 import 'hardhat-ignore-warnings';
 import 'hardhat-gas-reporter';
+import 'hardhat-contract-sizer';
 
 import { name } from './package.json';
 import { hardhatBaseConfig } from '@balancer-labs/v3-common';
