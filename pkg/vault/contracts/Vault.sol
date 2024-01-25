@@ -43,6 +43,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using ScalingHelpers for *;
 
     constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) {
+        if (address(vaultExtension.vault()) != address(this)) {
+            revert WrongVaultExtensionDeployment();
+        }
+
         _vaultExtension = vaultExtension;
 
         _vaultPauseWindowEndTime = vaultExtension.getPauseWindowEndTime();

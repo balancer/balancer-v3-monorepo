@@ -233,4 +233,7 @@ interface IVaultErrors {
 
     /// @dev The Vault extension was called by an account directly; it can only be called by the Vault via delegatecall.
     error NotVaultDelegateCall();
+
+    /// @dev The vault extension was configured with an incorrect Vault address.
+    error WrongVaultExtensionDeployment();
 }
