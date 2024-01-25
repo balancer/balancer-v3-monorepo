@@ -115,7 +115,7 @@ library StableMath {
         **************************************************************************************************************/
 
         // Amount out, so we round down overall.
-        balances[tokenIndexIn] = balances[tokenIndexIn] + (tokenAmountIn);
+        balances[tokenIndexIn] += tokenAmountIn;
 
         uint256 finalBalanceOut = _getTokenBalanceGivenInvariantAndAllOtherBalances(
             amplificationParameter,
@@ -126,7 +126,7 @@ library StableMath {
 
         // No need to use checked arithmetic since `tokenAmountIn` was actually added to the same balance right before
         // calling `_getTokenBalanceGivenInvariantAndAllOtherBalances` which doesn't alter the balances array.
-        balances[tokenIndexIn] = balances[tokenIndexIn] - tokenAmountIn;
+        balances[tokenIndexIn] -= tokenAmountIn;
 
         return balances[tokenIndexOut] - finalBalanceOut - 1;
     }
