@@ -26,15 +26,13 @@ library StableMath {
     // not make any unnecessary checks. We rely on a set of invariants to avoid having to use checked arithmetic,
     // including:
     //  - the amplification parameter is bounded by _MAX_AMP * _AMP_PRECISION, which fits in 23 bits
-    //  - the token balances are bounded by 2^112 (guaranteed by the Vault) times 1e18 (the maximum scaling factor),
-    //    which fits in 172 bits
     //
     // This means e.g. we can safely multiply a balance by the amplification parameter without worrying about overflow.
 
-    // About swap fees on joins and exits:
-    // Any join or exit that is not perfectly balanced (e.g. all single token joins or exits) is mathematically
-    // equivalent to a perfectly balanced join or exit followed by a series of swaps. Since these swaps would charge
-    // swap fees, it follows that (some) joins and exits should as well.
+    // About swap fees on add and remove liquidity:
+    // Any add or remove that is not perfectly balanced (e.g. all single token operations) is mathematically
+    // equivalent to a perfectly balanced add or remove followed by a series of swaps. Since these swaps would charge
+    // swap fees, it follows that unbalanced adds and removes should as well.
     // On these operations, we split the token amounts in 'taxable' and 'non-taxable' portions, where the 'taxable' part
     // is the one to which swap fees are applied.
 
@@ -394,9 +392,7 @@ library StableMath {
         for (uint256 i = 0; i < 255; i++) {
             prevTokenBalance = tokenBalance;
 
-            tokenBalance = (tokenBalance.mulDown(tokenBalance) + c).divUp(
-                (tokenBalance * 2) + b - invariant
-            );
+            tokenBalance = (tokenBalance.mulDown(tokenBalance) + c).divUp((tokenBalance * 2) + b - invariant);
 
             if (tokenBalance > prevTokenBalance) {
                 if (tokenBalance - prevTokenBalance <= 1) {
