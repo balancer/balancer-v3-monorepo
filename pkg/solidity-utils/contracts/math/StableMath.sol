@@ -80,12 +80,15 @@ library StableMath {
                 ((((ampTimesTotal * sum) / _AMP_PRECISION) + (D_P * numTokens)) * invariant) /
                 ((((ampTimesTotal - _AMP_PRECISION) * invariant) / _AMP_PRECISION) + ((numTokens + 1) * D_P));
 
-            if (invariant > prevInvariant) {
-                if (invariant - prevInvariant <= 1) {
+            unchecked {
+                // We are explicitly checking the magnitudes here, so can use unchecked math.
+                if (invariant > prevInvariant) {
+                    if (invariant - prevInvariant <= 1) {
+                        return invariant;
+                    }
+                } else if (prevInvariant - invariant <= 1) {
                     return invariant;
                 }
-            } else if (prevInvariant - invariant <= 1) {
-                return invariant;
             }
         }
 
@@ -166,7 +169,11 @@ library StableMath {
             tokenIndexIn
         );
 
-        balances[tokenIndexOut] += tokenAmountOut;
+        // No need to use checked arithmetic since `tokenAmountOut` was actually subtracted from the same balance right
+        // before calling `_getTokenBalanceGivenInvariantAndAllOtherBalances` which doesn't alter the balances array.
+        unchecked {
+            balances[tokenIndexOut] += tokenAmountOut;
+        }
 
         return finalBalanceIn - balances[tokenIndexIn] + 1;
     }
@@ -396,12 +403,15 @@ library StableMath {
 
             tokenBalance = (tokenBalance.mulDown(tokenBalance) + c).divUp((tokenBalance * 2) + b - invariant);
 
-            if (tokenBalance > prevTokenBalance) {
-                if (tokenBalance - prevTokenBalance <= 1) {
+            // We are explicitly checking the magnitudes here, so can use unchecked math.
+            unchecked {
+                if (tokenBalance > prevTokenBalance) {
+                    if (tokenBalance - prevTokenBalance <= 1) {
+                        return tokenBalance;
+                    }
+                } else if (prevTokenBalance - tokenBalance <= 1) {
                     return tokenBalance;
                 }
-            } else if (prevTokenBalance - tokenBalance <= 1) {
-                return tokenBalance;
             }
         }
 
