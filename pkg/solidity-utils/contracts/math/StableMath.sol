@@ -388,20 +388,22 @@ library StableMath {
         }
         sum = sum - balances[tokenIndex];
 
-        uint256 inv2 = invariant.mulDown(invariant);
+        // Use divUpRaw with inv2, as it is a "raw" 36 decimal value
+        uint256 inv2 = invariant * invariant;
         // We remove the balance from c by multiplying it
-        uint256 c = (inv2.divUp(ampTimesTotal * P_D) * _AMP_PRECISION).mulDown(balances[tokenIndex]);
+        uint256 c = (inv2.divUpRaw(ampTimesTotal * P_D) * _AMP_PRECISION) * balances[tokenIndex];
         uint256 b = sum + ((invariant / ampTimesTotal) * _AMP_PRECISION);
         // We iterate to find the balance
         uint256 prevTokenBalance = 0;
         // We multiply the first iteration outside the loop with the invariant to set the value of the
         // initial approximation.
-        uint256 tokenBalance = (inv2 + c).divUp(invariant + b);
+        uint256 tokenBalance = (inv2 + c).divUpRaw(invariant + b);
 
         for (uint256 i = 0; i < 255; i++) {
             prevTokenBalance = tokenBalance;
 
-            tokenBalance = (tokenBalance.mulDown(tokenBalance) + c).divUp((tokenBalance * 2) + b - invariant);
+            // Use divUpRaw with tokenBalance, as it is a "raw" 36 decimal value
+            tokenBalance = ((tokenBalance * tokenBalance) + c).divUpRaw((tokenBalance * 2) + b - invariant);
 
             // We are explicitly checking the magnitudes here, so can use unchecked math.
             unchecked {

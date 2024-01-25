@@ -73,6 +73,25 @@ library FixedPoint {
     }
 
     /**
+     * @dev Version of divUp when the input is raw (i.e., already "inflated"). For instance,
+     * invariant * invariant (36 decimals) vs. invariant.mulDown(invariant) (18 decimal FP).
+     * This can occur in calculations with many successive multiplications and divisions, and
+     * we want to minimize the number of operations by avoiding unnecessary scaling by ONE.
+     */
+    function divUpRaw(uint256 a, uint256 b) internal pure returns (uint256 result) {
+        // This check is required because Yul's `div` doesn't revert on b==0
+        if (b == 0) {
+            revert ZeroDivision();
+        }
+
+        // Equivalent to:
+        // result = a == 0 ? 0 : 1 + (a - 1) / b;
+        assembly {
+            result := mul(iszero(iszero(a)), add(1, div(sub(a, 1), b)))
+        }
+    }
+
+    /**
      * @dev Returns x^y, assuming both are fixed point numbers, rounding down. The result is guaranteed to not be above
      * the true value (that is, the error function expected - actual is always positive).
      */
