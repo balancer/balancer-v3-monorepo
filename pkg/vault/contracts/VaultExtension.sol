@@ -649,7 +649,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultExtension
-    function getProtocolFees(address token) external view returns (uint256) {
+    function getProtocolFees(address token) external view onlyVault returns (uint256) {
         return _protocolFees[IERC20(token)];
     }
 
