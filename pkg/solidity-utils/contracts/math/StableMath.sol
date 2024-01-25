@@ -381,21 +381,20 @@ library StableMath {
         }
         sum = sum - balances[tokenIndex];
 
-        uint256 inv2 = invariant * invariant;
+        uint256 inv2 = invariant.mulDown(invariant);
         // We remove the balance from c by multiplying it
-        uint256 c = ((inv2 / FixedPoint.ONE).divUp(ampTimesTotal * P_D) * _AMP_PRECISION) * balances[tokenIndex];
+        uint256 c = (inv2.divUp(ampTimesTotal * P_D) * _AMP_PRECISION).mulDown(balances[tokenIndex]);
         uint256 b = sum + ((invariant / ampTimesTotal) * _AMP_PRECISION);
-
         // We iterate to find the balance
         uint256 prevTokenBalance = 0;
         // We multiply the first iteration outside the loop with the invariant to set the value of the
         // initial approximation.
-        uint256 tokenBalance = ((inv2 + c) / FixedPoint.ONE).divUp(invariant + b);
+        uint256 tokenBalance = (inv2 + c).divUp(invariant + b);
 
         for (uint256 i = 0; i < 255; i++) {
             prevTokenBalance = tokenBalance;
 
-            tokenBalance = (((tokenBalance * tokenBalance) + c) / FixedPoint.ONE).divUp(
+            tokenBalance = (tokenBalance.mulDown(tokenBalance) + c).divUp(
                 (tokenBalance * 2) + b - invariant
             );
 
