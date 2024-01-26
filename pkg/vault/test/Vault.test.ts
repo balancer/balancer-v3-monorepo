@@ -19,6 +19,7 @@ import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/Vault
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
+import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -105,15 +106,9 @@ describe('Vault', function () {
     });
 
     it('registering a pool emits an event', async () => {
-      enum TOKEN_TYPE {
-        STANDARD = 0,
-        WITH_RATE,
-        ERC4626,
-      }
-
       const tokenConfig = Array.from({ length: poolBTokens.length }, (_, i) => [
         poolBTokens[i],
-        TOKEN_TYPE.STANDARD.toString(),
+        TokenType.STANDARD.toString(),
         ZERO_ADDRESS,
         false,
       ]);
