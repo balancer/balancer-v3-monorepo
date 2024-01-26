@@ -56,6 +56,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FORGE_SNAPSHOT_CHECK: false
+      - name: Install node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.15
       - name: Cache
         uses: actions/cache@v3
         id: cache
