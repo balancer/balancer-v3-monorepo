@@ -20,4 +20,4 @@ export type TokenConfig = {
   tokenType: TokenType;
   rateProvider: string;
   yieldFeeExempt: boolean;
-}
+};
