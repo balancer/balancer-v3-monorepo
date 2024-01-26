@@ -27,7 +27,7 @@
     "test": "yarn test:hardhat && yarn test:forge",
     "test:hardhat": "hardhat test",
     "test:forge": "forge test -vvv --no-match-test Fork",
-    "test:fork": "forge test -vvv --match-test Fork --fork-url ${MAINNET_RPC_URL}",
+    "test:fork": "forge test -vvv --match-test Fork",
     "test:stress": "FOUNDRY_PROFILE=intense forge test -vvv",
     "coverage": "./coverage.sh",
     "gas": "REPORT_GAS=true hardhat test",
