@@ -451,10 +451,10 @@ describe('Vault', function () {
 
       it('cannot exceed protocol fee limits', async () => {
         await expect(
-          vault.connect(alice).setProtocolSwapFeePercentage(MAX_PROTOCOL_SWAP_FEE + bn(1))
+          vault.connect(alice).setProtocolSwapFeePercentage(MAX_PROTOCOL_SWAP_FEE + 1n)
         ).to.be.revertedWithCustomError(vault, 'ProtocolSwapFeePercentageTooHigh');
         await expect(
-          vault.connect(alice).setProtocolYieldFeePercentage(MAX_PROTOCOL_YIELD_FEE + bn(1))
+          vault.connect(alice).setProtocolYieldFeePercentage(MAX_PROTOCOL_YIELD_FEE + 1n)
         ).to.be.revertedWithCustomError(vault, 'ProtocolYieldFeePercentageTooHigh');
 
         expect(await vault.getProtocolSwapFeePercentage()).to.eq(0);

@@ -635,7 +635,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultExtension
-    function setProtocolYieldFeePercentage(uint256 newProtocolYieldFeePercentage) external authenticate {
+    function setProtocolYieldFeePercentage(uint256 newProtocolYieldFeePercentage) external authenticate onlyVault {
         if (newProtocolYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
             revert ProtocolYieldFeePercentageTooHigh();
         }
@@ -644,7 +644,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultExtension
-    function getProtocolYieldFeePercentage() external view returns (uint256) {
+    function getProtocolYieldFeePercentage() external view onlyVault returns (uint256) {
         return _protocolYieldFeePercentage;
     }
 
