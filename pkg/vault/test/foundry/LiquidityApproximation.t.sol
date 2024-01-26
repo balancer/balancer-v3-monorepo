@@ -1,0 +1,220 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+pragma solidity ^0.8.4;
+
+import "forge-std/Test.sol";
+
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
+
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+
+import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
+
+/**
+ * @notice Liquidity operations that are unproportional allow for indirect swaps. It is
+ * crucial to guarantee that the swap fees for indirect swaps facilitated
+ * through liquidity operations are not lower than those for direct swaps.
+ * To ensure this, we analyze the results of two different operations:
+ * unproportional liquidity operation (addLiquidityUnbalanced) combined with
+ * add/remove liquidity proportionally, and swapExactIn. Consider the following scenario:
+ *
+ * Alice begins with balances of [100, 0].
+ * She executes addLiquidityUnbalanced([100, 0]) and subsequently removeLiquidityProportionally,
+ * resulting in balances of [66, 33].
+ * Bob, starting with the same balances [100, 0], performs a swapExactIn(34).
+ * We determine the amount Alice indirectly traded as 34 (100 - 66 = 34),
+ * enabling us to compare the swap fees incurred on the trade.
+ * This comparison ensures that the fees for a direct swap remain higher than those for an indirect swap.
+ * Finally, we assess the final balances of Alice and Bob. Two criteria must be satisfied:
+ *   a. The initial coin balances for the trade should be identical,
+ *      meaning Alice's [66, ...] should correspond to Bob's [66, ...].
+ *   b. The resulting balances from the trade should ensure that Bob always has an equal or greater amount than Alice.
+ *      But the difference should never be too much, i.e. we don't want to steal from users on liquidity operations.
+ *      This implies that Alice's balance [..., 33] should be less than or at most equal to Bob's [..., 34].
+ *
+ * This methodology and evaluation criteria are applicable to all unproportional liquidity operations and pool types.
+ * Furthermore, this approach validates the correct amount of BPT minted/burned for liquidity operations.
+ * If more BPT were minted or fewer BPT were burned than required,
+ * it would result in Alice having more assets at the end than Bob, which we have verified to be untrue.
+ *
+ * @dev assertGe( (usdc.balanceOf(bob) * 1e18) / usdc.balanceOf(alice), 99e16, "Bob has too little USDC compare to Alice");
+                                                             // See @notice
+                                                                     assertLe( (usdc.balanceOf(bob) * 1e18) / usdc.balanceOf(alice), 101e16, "Bob has too much USDC compare to Alice");
+
+ * Bob should always maintain a balance of USDC equal to or greater than Alice's
+ * since liquidity operations should not confer any advantage over a pure swap.
+ * At the same time, we aim to avoid unfairly diminishing user balances.
+ * Therefore, Alice's balance should ideally be slightly less than Bob's,
+ * though extremely close. This allowance for a minor discrepancy accounts
+ * for the inherent imperfections in Solidity's mathematics and rounding errors in the code.
+ */
+contract LiquidityApproximationTest is BaseVaultTest {
+    using ArrayHelpers for *;
+
+    PoolMock internal swapPool;
+    PoolMock internal liquidityPool;
+    // Allows small delta to account for rounding
+    uint256 internal delta = 8e15;
+
+    function setUp() public virtual override {
+        defaultBalance = 1e10 * 1e18;
+        BaseVaultTest.setUp();
+    }
+
+    function createPool() internal override returns (address) {
+        liquidityPool = new PoolMock(
+            IVault(address(vault)),
+            "ERC20 Pool",
+            "ERC20POOL",
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            new IRateProvider[](2),
+            true,
+            365 days,
+            address(0)
+        );
+        vm.label(address(liquidityPool), "liquidityPool");
+
+        swapPool = new PoolMock(
+            IVault(address(vault)),
+            "ERC20 Pool",
+            "ERC20POOL",
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            new IRateProvider[](2),
+            true,
+            365 days,
+            address(0)
+        );
+        vm.label(address(swapPool), "swapPool");
+
+        return address(liquidityPool);
+    }
+
+    function initPool() internal override {
+        poolInitAmount = 1e9 * 1e18;
+        (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(address(swapPool));
+        vm.prank(lp);
+        router.initialize(address(swapPool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
+
+        vm.prank(lp);
+        router.initialize(
+            address(liquidityPool),
+            tokens,
+            [poolInitAmount, poolInitAmount].toMemoryArray(),
+            0,
+            false,
+            ""
+        );
+    }
+
+    /// Add
+
+    function testAddLiquidityUnbalancedSimpleFuzz(uint256 daiAmountIn, uint256 swapFee) public {
+        // function testAddLiquidityUnbalanced() public {
+        daiAmountIn = bound(daiAmountIn, 1e18, 3e8 * 1e18);
+        // swap fee from 0% - 10%
+        swapFee = bound(swapFee, 0, 1e17);
+
+        //uint256 daiAmountIn = defaultAmount;
+        //uint256 swapFee = 1e17;
+
+        setSwapFeePercentage(swapFee);
+        uint256[] memory amountsIn = [uint256(daiAmountIn), 0].toMemoryArray();
+
+        vm.startPrank(alice);
+        uint256 bptAmountOut = router.addLiquidityUnbalanced(address(liquidityPool), amountsIn, 0, false, bytes(""));
+
+        uint256[] memory amountsOut = router.removeLiquidityProportional(
+            address(liquidityPool),
+            liquidityPool.balanceOf(alice),
+            [uint256(0), uint256(0)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        vm.prank(bob);
+        uint256 amountOut = router.swapExactIn(
+            address(pool),
+            dai,
+            usdc,
+            daiAmountIn - amountsOut[0],
+            0,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+        console2.log("daiAmountIn - amountsOut[0]:", daiAmountIn - amountsOut[0]);
+        console2.log("amountOut:", amountOut / 1e18);
+
+        console2.log("usdc.balanceOf(bob):", usdc.balanceOf(bob) / 1e18);
+        console2.log("dai.balanceOf(bob):", dai.balanceOf(bob) / 1e18);
+        console2.log("amountsOut:", amountsOut[0] / 1e18);
+        console2.log("amountsOut:", amountsOut[1] / 1e18);
+        console2.log("usdc.balanceOf(alice):", usdc.balanceOf(alice) / 1e18);
+        console2.log("dai.balanceOf(alice):", dai.balanceOf(alice) / 1e18);
+
+        // See @notice
+        assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
+
+        uint256 aliceAmountOut = usdc.balanceOf(alice) - defaultBalance;
+        console2.log("aliceAmountOut:", aliceAmountOut);
+        uint256 bobAmountOut = usdc.balanceOf(bob) - defaultBalance;
+        console2.log("bobAmountOut:", bobAmountOut);
+        uint256 bobToAliceRate = (bobAmountOut * 1e18) / aliceAmountOut;
+        // See @notice
+        assertGe(bobToAliceRate, 1e18 - delta, "Bob has too little USDC compare to Alice");
+        // See @notice
+        assertLe(bobToAliceRate, 1e18 + delta, "Bob has too much USDC compare to Alice");
+    }
+
+    function testFuzzAddLiquidityUnbalanced(
+        uint256 balance0,
+        uint256 balance1,
+        uint256 exactAmount0,
+        uint256 exactAmount1,
+        uint256 totalSupply,
+        uint256 swapFeePercentage
+    ) public {
+        balance0 = bound(balance0, 1e6, 1e23);
+        balance1 = bound(balance1, 1e6, 1e23);
+        exactAmount0 = bound(exactAmount0, 1e6, 1e21);
+        exactAmount1 = bound(exactAmount1, 1e6, 1e21);
+        totalSupply = bound(totalSupply, 1e6, 1e23);
+        swapFeePercentage = bound(swapFeePercentage, 0, 1e17);
+
+        uint256 bptAmountOut = BasePoolMath.computeAddLiquidityUnbalanced(
+            [balance0, balance1].toMemoryArray(),
+            [exactAmount0, exactAmount1].toMemoryArray(),
+            totalSupply,
+            swapFeePercentage,
+            this.computeSimpleInvariant
+        );
+    }
+
+    /// Remove
+
+    /// Utils
+
+    function setSwapFeePercentage(uint256 swapFee) internal {
+        authorizer.grantRole(vault.getActionId(IVaultExtension.setStaticSwapFeePercentage.selector), alice);
+        vm.prank(alice);
+        vault.setStaticSwapFeePercentage(address(pool), swapFee); // 1%
+    }
+
+    function computeSimpleInvariant(uint256[] memory balances) external pure returns (uint256) {
+        // inv = x + y
+        uint256 invariant;
+        for (uint256 index = 0; index < balances.length; index++) {
+            invariant += balances[index];
+        }
+        return invariant;
+    }
+}

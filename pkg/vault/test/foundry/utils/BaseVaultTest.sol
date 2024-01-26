@@ -60,8 +60,11 @@ abstract contract BaseVaultTest is BaseTest {
         BaseTest.setUp();
 
         vault = IVaultMock(address(VaultMockDeployer.deploy()));
+        vm.label(address(vault), "vault");
         authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
+        vm.label(address(authorizer), "authorizer");
         router = new RouterMock(IVault(address(vault)), weth);
+        vm.label(address(router), "router");
         pool = createPool();
 
         // Approve vault allowances

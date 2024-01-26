@@ -114,7 +114,12 @@ contract VaultLiquidityTest is BaseVaultTest {
     function testAddLiquidityAmountInAboveMax() public {
         uint256 bptAmountOut = defaultAmount;
         vm.expectRevert(
-            abi.encodeWithSelector(IVaultErrors.AmountInAboveMax.selector, address(dai), defaultAmount, defaultAmount - 1)
+            abi.encodeWithSelector(
+                IVaultErrors.AmountInAboveMax.selector,
+                address(dai),
+                defaultAmount,
+                defaultAmount - 1
+            )
         );
         vm.prank(alice);
         router.addLiquiditySingleTokenExactOut(
@@ -228,7 +233,12 @@ contract VaultLiquidityTest is BaseVaultTest {
 
     function testRemoveLiquidityAmountOutBelowMin() public {
         vm.expectRevert(
-            abi.encodeWithSelector(IVaultErrors.AmountOutBelowMin.selector, address(dai), defaultAmount, defaultAmount + 1)
+            abi.encodeWithSelector(
+                IVaultErrors.AmountOutBelowMin.selector,
+                address(dai),
+                defaultAmount,
+                defaultAmount + 1
+            )
         );
         vm.startPrank(alice);
         router.removeLiquidityProportional(
@@ -241,7 +251,9 @@ contract VaultLiquidityTest is BaseVaultTest {
     }
 
     function testRemoveLiquidityBptInAboveMax() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BptAmountInAboveMax.selector, defaultAmount, defaultAmount / 2 - 1));
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.BptAmountInAboveMax.selector, defaultAmount, defaultAmount / 2 - 1)
+        );
         vm.startPrank(alice);
         router.removeLiquiditySingleTokenExactOut(
             address(pool),

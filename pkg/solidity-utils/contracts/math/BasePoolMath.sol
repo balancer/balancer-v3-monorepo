@@ -3,6 +3,7 @@
 pragma solidity ^0.8.4;
 
 import { FixedPoint } from "./FixedPoint.sol";
+import "forge-std/console2.sol";
 
 library BasePoolMath {
     using FixedPoint for uint256;
@@ -130,7 +131,10 @@ library BasePoolMath {
             // If so, calculate the taxable amount.
             if (newBalances[index] > invariantRatio.mulUp(currentBalances[index])) {
                 uint256 taxableAmount = newBalances[index] - invariantRatio.mulUp(currentBalances[index]);
-                // Subtract the fee from the new balance.
+                console2.log("taxableAmount:", taxableAmount);
+                console2.log('swapFeePercentage:', swapFeePercentage);
+                console2.log('swapFeePercentage:', swapFeePercentage);
+                                // Subtract the fee from the new balance.
                 // We are essentially imposing swap fees on non-proportional incoming amounts.
                 newBalances[index] = newBalances[index] - taxableAmount.mulUp(swapFeePercentage);
             }

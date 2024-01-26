@@ -41,9 +41,6 @@ abstract contract BaseTest is Test, GasSnapshot {
     uint256 internal defaultBalance;
 
     function setUp() public virtual {
-        // Set default balance to 1mil
-        defaultBalance = 1e6 * 1e18;
-
         // Deploy the base test contracts.
         dai = createERC20("DAI", 18);
         usdc = createERC20("USDC", 18);
