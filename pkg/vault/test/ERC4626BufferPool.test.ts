@@ -221,6 +221,16 @@ describe('ERC4626BufferPool', function () {
     });
   });
 
+  describe('rebalancing', () => {
+    sharedBeforeEach('create and initialize pool', async () => {
+      pool = await createAndInitializePool();
+    });
+
+    it('does not allow external calls to rebalance', async () => {
+      await expect(pool.connect(alice).rebalance()).to.be.revertedWithCustomError(vault, 'SenderIsNotVault');
+    });
+  });
+
   describe('add liquidity', () => {
     sharedBeforeEach('create and initialize pool', async () => {
       pool = await createAndInitializePool();

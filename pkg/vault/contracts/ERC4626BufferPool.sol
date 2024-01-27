@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
@@ -26,7 +27,14 @@ import { BasePoolCallbacks } from "./BasePoolCallbacks.sol";
  * @dev These "pools" reuse the code for pools, but are not registered with the Vault, guaranteeing they
  * cannot be used externally. To the outside world, they don't exist.
  */
-contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, BalancerPoolToken, BasePoolCallbacks {
+contract ERC4626BufferPool is
+    IBasePool,
+    IBufferPool,
+    IRateProvider,
+    IPoolLiquidity,
+    BalancerPoolToken,
+    BasePoolCallbacks
+{
     uint256 private constant _DEFAULT_BUFFER_AMP_PARAMETER = 200;
     uint256 private constant _AMP_PRECISION = 1e3;
 
@@ -119,7 +127,7 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
             revert IVaultErrors.SenderIsNotVault(request.sender);
         }
 
-        // TODO implement - check for / perform rebalancing
+        // TODO implement - check for / perform rebalancing; call _rebalance() if needed
         return true;
     }
 
@@ -160,6 +168,15 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
     /// @inheritdoc IRateProvider
     function getRate() external view onlyVault returns (uint256) {
         return _wrappedToken.convertToAssets(FixedPoint.ONE);
+    }
+
+    /// @inheritdoc IBufferPool
+    function rebalance() external onlyVault {
+        _rebalance();
+    }
+
+    function _rebalance() private {
+        // TODO: implement - can be called by the pool during a swap, or from the Vault directly
     }
 
     // Unsupported functions that unconditionally revert
