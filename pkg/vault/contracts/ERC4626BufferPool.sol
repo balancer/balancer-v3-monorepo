@@ -157,10 +157,7 @@ contract ERC4626BufferPool is IBasePool, IRateProvider, IPoolLiquidity, Balancer
         return StableMath.computeInvariant(_amplificationParameter, balancesLiveScaled18);
     }
 
-    /**
-     * @notice Get the current rate of a wrapped token buffer.
-     * @return rate The current rate
-     */
+    /// @inheritdoc IRateProvider
     function getRate() external view onlyVault returns (uint256) {
         return _wrappedToken.convertToAssets(FixedPoint.ONE);
     }
