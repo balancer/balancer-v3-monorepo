@@ -41,6 +41,7 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
         string memory symbol,
         IERC20[] memory tokens,
         IRateProvider[] memory rateProviders,
+        bool[] memory yieldExemptFlags,
         bool registerPool,
         uint256 pauseWindowDuration,
         address pauseManager
@@ -52,6 +53,7 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
                 address(this),
                 tokens,
                 rateProviders,
+                yieldExemptFlags,
                 pauseManager,
                 PoolConfigBits.wrap(0).toPoolConfig().callbacks,
                 PoolConfigBits.wrap(bytes32(type(uint256).max)).toPoolConfig().liquidityManagement

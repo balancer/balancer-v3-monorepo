@@ -100,6 +100,7 @@ abstract contract BaseVaultTest is BaseTest {
             "ERC20POOL",
             [address(dai), address(usdc)].toMemoryArray().asIERC20(),
             new IRateProvider[](2),
+            new bool[](2),
             true,
             365 days,
             address(0)

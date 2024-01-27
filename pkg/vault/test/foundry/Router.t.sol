@@ -50,12 +50,15 @@ contract RouterTest is BaseVaultTest {
 
     function createPool() internal override returns (address) {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
+        bool[] memory yieldExemptFlags = new bool[](2);
+        
         PoolMock newPool = new PoolMock(
             IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
             [address(dai), address(usdc)].toMemoryArray().asIERC20(),
             rateProviders,
+            yieldExemptFlags,
             true,
             365 days,
             address(0)
@@ -68,6 +71,7 @@ contract RouterTest is BaseVaultTest {
             "ERC20POOL",
             [address(weth), address(dai)].toMemoryArray().asIERC20(),
             rateProviders,
+            yieldExemptFlags,
             true,
             365 days,
             address(0)
@@ -80,6 +84,7 @@ contract RouterTest is BaseVaultTest {
             "ERC20POOL",
             [address(weth), address(dai)].toMemoryArray().asIERC20(),
             rateProviders,
+            yieldExemptFlags,
             true,
             365 days,
             address(0)

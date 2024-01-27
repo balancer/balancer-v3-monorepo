@@ -43,6 +43,7 @@ contract PoolDataTest is BaseVaultTest {
                     "ERC20POOL",
                     [address(dai), address(wsteth)].toMemoryArray().asIERC20(),
                     rateProviders,
+                    new bool[](2),
                     true,
                     365 days,
                     address(0)

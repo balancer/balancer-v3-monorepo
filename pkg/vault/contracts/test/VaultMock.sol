@@ -63,11 +63,13 @@ contract VaultMock is IVaultMainMock, Vault {
     // separately, deploy it with the registration flag false, then call this function.
     function manualRegisterPool(address pool, IERC20[] memory tokens) external whenVaultNotPaused {
         IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
+        bool[] memory yieldExemptFlags = new bool[](tokens.length);
 
         _poolFactoryMock.registerPool(
             pool,
             tokens,
             rateProviders,
+            yieldExemptFlags,
             address(0),
             PoolConfigBits.wrap(0).toPoolConfig().callbacks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
@@ -81,11 +83,13 @@ contract VaultMock is IVaultMainMock, Vault {
         address pauseManager
     ) external whenVaultNotPaused {
         IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
-
+        bool[] memory yieldExemptFlags = new bool[](tokens.length);
+        
         _poolFactoryMock.registerPoolAtTimestamp(
             pool,
             tokens,
             rateProviders,
+            yieldExemptFlags,
             pauseManager,
             PoolConfigBits.wrap(0).toPoolConfig().callbacks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement,

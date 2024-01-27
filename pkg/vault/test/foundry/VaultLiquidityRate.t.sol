@@ -39,6 +39,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
                     "ERC20POOL",
                     [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
                     rateProviders,
+                    new bool[](2),
                     true,
                     365 days,
                     address(0)

@@ -26,13 +26,14 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         address pool,
         IERC20[] memory tokens,
         IRateProvider[] memory rateProviders,
+        bool[] memory yieldExemptFlags,
         address pauseManager,
         PoolCallbacks calldata poolCallbacks,
         LiquidityManagement calldata liquidityManagement
     ) external {
         _vault.registerPool(
             pool,
-            _buildTokenConfig(tokens, rateProviders),
+            _buildTokenConfig(tokens, rateProviders, yieldExemptFlags),
             getNewPoolPauseWindowEndTime(),
             pauseManager,
             poolCallbacks,
@@ -45,6 +46,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         address pool,
         IERC20[] memory tokens,
         IRateProvider[] memory rateProviders,
+        bool[] memory yieldExemptFlags,
         address pauseManager,
         PoolCallbacks calldata poolCallbacks,
         LiquidityManagement calldata liquidityManagement,
@@ -52,7 +54,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
     ) external {
         _vault.registerPool(
             pool,
-            _buildTokenConfig(tokens, rateProviders),
+            _buildTokenConfig(tokens, rateProviders, yieldExemptFlags),
             timestamp,
             pauseManager,
             poolCallbacks,
@@ -62,16 +64,20 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
 
     function _buildTokenConfig(
         IERC20[] memory tokens,
-        IRateProvider[] memory rateProviders
+        IRateProvider[] memory rateProviders,
+        bool[] memory yieldExemptFlags
     ) private pure returns (TokenConfig[] memory tokenData) {
         tokenData = new TokenConfig[](tokens.length);
         // Assume standard tokens
         for (uint256 i = 0; i < tokens.length; i++) {
             tokenData[i].token = tokens[i];
             tokenData[i].rateProvider = rateProviders[i];
-            tokenData[i].tokenType = rateProviders[i] == IRateProvider(address(0))
-                ? TokenType.STANDARD
-                : TokenType.WITH_RATE;
+            if (rateProviders[i] == IRateProvider(address(0))) {
+                tokenData[i].tokenType = TokenType.STANDARD;
+            } else {
+                tokenData[i].tokenType = TokenType.WITH_RATE;
+                tokenData[i].yieldFeeExempt = yieldExemptFlags[i];
+            }
         }
     }
 }
