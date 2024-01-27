@@ -823,7 +823,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         if (bufferPool == address(0)) {
             revert WrappedTokenBufferNotRegistered();
         }
-        
+
         IBufferPool(bufferPool).rebalance();
-    } 
+    }
 }
