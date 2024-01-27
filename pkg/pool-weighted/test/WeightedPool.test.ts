@@ -61,9 +61,10 @@ describe('WeightedPool', function () {
 
     poolTokens = [tokenAAddress, tokenBAddress, tokenCAddress];
     const rateProviders = [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
+    const yieldFlags = [false, false, false];
 
     pool = await deploy('v3-vault/PoolMock', {
-      args: [vault, 'Pool', 'POOL', poolTokens, rateProviders, true, 365 * 24 * 3600, ZERO_ADDRESS],
+      args: [vault, 'Pool', 'POOL', poolTokens, rateProviders, yieldFlags, true, 365 * 24 * 3600, ZERO_ADDRESS],
     });
   });
 
