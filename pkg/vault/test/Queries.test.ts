@@ -47,6 +47,7 @@ describe('Queries', function () {
         'POOL',
         [DAI, USDC],
         [ZERO_ADDRESS, ZERO_ADDRESS],
+        [false, false],
         true,
         365 * 24 * 3600,
         ZERO_ADDRESS,
