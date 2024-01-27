@@ -84,7 +84,7 @@ contract VaultMock is IVaultMainMock, Vault {
     ) external whenVaultNotPaused {
         IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
         bool[] memory yieldExemptFlags = new bool[](tokens.length);
-        
+
         _poolFactoryMock.registerPoolAtTimestamp(
             pool,
             tokens,
