@@ -674,6 +674,9 @@ contract Router is IRouter, ReentrancyGuard {
                         exactAmountIn = bptAmountOut;
                         // The token in for the next step is the token out of the current step.
                         tokenIn = step.tokenOut;
+                        // If this is an intermediate step, we'll need to send to send it back to the vault
+                        // to get credit for the BPT minted in the add liquidity operation.
+                        _vault.retrieve(IERC20(step.pool), params.sender, bptAmountOut);
                     }
                 } else {
                     // No BPT involved in the operation: regular swap exact in

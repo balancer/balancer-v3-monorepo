@@ -26,7 +26,7 @@ type CompareFunction =
   | 'very-near';
 export type Comparison = [CompareFunction, BigNumberish];
 
-interface BalanceChange {
+export interface BalanceChange {
   account: Account;
   changes?: Dictionary<BigNumberish | Comparison>;
 }
@@ -147,7 +147,7 @@ export async function expectBalanceChange(
     trackers[address] = {};
 
     await tokens.asyncEach(async (token) => {
-      trackers[address][token.symbol] = vault
+      trackers[address][await token.symbol()] = vault
         ? await internalBalanceTracker(vault, address, token)
         : await balanceTracker(address, token);
     });
@@ -159,7 +159,8 @@ export async function expectBalanceChange(
     const address = accountToAddress(account);
     const accountTrackers = trackers[address];
 
-    await tokens.asyncEach(async ({ symbol }) => {
+    await tokens.asyncEach(async (token) => {
+      const symbol = await token.symbol();
       const delta = await accountTrackers[symbol].delta();
 
       const change = (changes || {})[symbol];
