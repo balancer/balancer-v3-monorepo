@@ -640,6 +640,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         RemoveLiquidityParams memory params
     )
         external
+        withHandler
         withInitializedPool(params.pool)
         whenPoolNotPaused(params.pool)
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
@@ -711,6 +712,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 exactBptAmountIn
     )
         external
+        withHandler
         nonReentrant
         withInitializedPool(pool)
         onlyInRecoveryMode(pool)
