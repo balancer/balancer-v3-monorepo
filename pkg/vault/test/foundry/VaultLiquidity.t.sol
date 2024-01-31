@@ -117,7 +117,7 @@ contract VaultLiquidityTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IVaultErrors.AmountInAboveMax.selector,
                 address(dai),
-                defaultAmount,
+                2 * defaultAmount,
                 defaultAmount - 1
             )
         );
@@ -171,7 +171,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         snapEnd();
 
         // amountsOut are correct
-        assertEq(amountsOut[0], defaultAmount);
+        assertEq(amountsOut[0], 2 * defaultAmount);
         assertEq(amountsOut[1], 0);
     }
 

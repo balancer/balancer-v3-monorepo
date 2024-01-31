@@ -27,7 +27,6 @@ abstract contract BaseTest is Test, GasSnapshot {
     // Broke user.
     address payable broke;
 
-
     // ERC20 tokens used for tests.
     ERC20TestToken internal dai;
     ERC20TestToken internal usdc;
@@ -38,7 +37,7 @@ abstract contract BaseTest is Test, GasSnapshot {
     IERC20[] internal tokens;
 
     // Default balance for accounts
-    uint256 internal defaultBalance;
+    uint256 internal defaultBalance = 1e6 * 1e18;
 
     function setUp() public virtual {
         // Deploy the base test contracts.

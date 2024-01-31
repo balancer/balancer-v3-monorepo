@@ -9,6 +9,7 @@ import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IV
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -58,40 +59,45 @@ import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Ba
  */
 contract LiquidityApproximationTest is BaseVaultTest {
     using ArrayHelpers for *;
+    using FixedPoint for *;
 
-    PoolMock internal swapPool;
-    PoolMock internal liquidityPool;
+    address internal swapPool;
+    address internal liquidityPool;
     // Allows small delta to account for rounding
     uint256 internal delta = 1e12;
-    uint256 internal maxAmount = 3e8 * 1e18;
+    uint256 internal maxAmount = 3e8 * 1e18 - 1;
 
     function setUp() public virtual override {
         defaultBalance = 1e10 * 1e18;
         BaseVaultTest.setUp();
     }
 
-    function createPool() internal override returns (address) {
-        liquidityPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
-            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-            new IRateProvider[](2),
-            true,
-            365 days,
-            address(0)
+    function createPool() internal virtual override returns (address) {
+        liquidityPool = address(
+            new PoolMock(
+                IVault(address(vault)),
+                "ERC20 Pool",
+                "ERC20POOL",
+                [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+                new IRateProvider[](2),
+                true,
+                365 days,
+                address(0)
+            )
         );
         vm.label(address(liquidityPool), "liquidityPool");
 
-        swapPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
-            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-            new IRateProvider[](2),
-            true,
-            365 days,
-            address(0)
+        swapPool = address(
+            new PoolMock(
+                IVault(address(vault)),
+                "ERC20 Pool",
+                "ERC20POOL",
+                [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+                new IRateProvider[](2),
+                true,
+                365 days,
+                address(0)
+            )
         );
         vm.label(address(swapPool), "swapPool");
 
@@ -118,16 +124,16 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     /// Add
 
-    function testAddLiquidityUnbalancedSimpleFuzz(uint256 daiAmountIn, uint256 swapFee) public {
+    function testAddLiquidityUnbalancedSimpleFuzz(uint256 daiAmountIn, uint256 swapFeePercentage) public {
         daiAmountIn = bound(daiAmountIn, 1e18, maxAmount);
         // swap fee from 0% - 10%
-        swapFee = bound(swapFee, 0, 1e17);
+        swapFeePercentage = bound(swapFeePercentage, 0, 1e17);
 
         //daiAmountIn = defaultAmount;
-        //swapFee = 1e17;
+        //swapFeePercentage = 1e17;
 
-        setSwapFeePercentage(swapFee, address(liquidityPool));
-        setSwapFeePercentage(swapFee, address(swapPool));
+        setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
+        setSwapFeePercentage(swapFeePercentage, address(swapPool));
 
         uint256[] memory amountsIn = [uint256(daiAmountIn), 0].toMemoryArray();
 
@@ -136,7 +142,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(liquidityPool),
-            liquidityPool.balanceOf(alice),
+            IERC20(liquidityPool).balanceOf(alice),
             [uint256(0), uint256(0)].toMemoryArray(),
             false,
             bytes("")
@@ -173,24 +179,35 @@ contract LiquidityApproximationTest is BaseVaultTest {
         console2.log("bobAmountOut:", bobAmountOut);
         uint256 bobToAliceRatio = (bobAmountOut * 1e18) / aliceAmountOut;
 
-        uint256 liquidityTaxPercentage = (6e15 * swapFee) / 1e17;
+        uint256 liquidityTaxPercentage = (2e16 * swapFeePercentage) / 1e17;
+
+        uint256 swapFee = amountOut.divUp(1e18 - swapFeePercentage) - amountOut;
+        console2.log("swapFee:", swapFee);
+
+        // See @notice at `LiquidityApproximationTest`
+        assertApproxEqAbs(
+            aliceAmountOut,
+            bobAmountOut,
+            swapFee / 6 + delta,
+            "Alice and Bob amounts difference is greater than swap fee"
+        );
 
         // See @notice at `LiquidityApproximationTest`
         assertGe(bobToAliceRatio, 1e18 - liquidityTaxPercentage - delta, "Bob has too little USDC compare to Alice");
-        assertLe(bobToAliceRatio, 1e18 + liquidityTaxPercentage + delta, "Bob has too much USDC compare to Alice");
+        assertLe(bobToAliceRatio, 1e18 + delta, "Bob has too much USDC compare to Alice");
     }
 
-    function testAddLiquiditySingleTokenExactOutFuzz(uint256 exactBptAmountOut, uint256 swapFee) public {
+    function testAddLiquiditySingleTokenExactOutFuzz(uint256 exactBptAmountOut, uint256 swapFeePercentage) public {
         exactBptAmountOut = bound(exactBptAmountOut, 1e18, maxAmount);
         console2.log("exactBptAmountOut:", exactBptAmountOut);
         // swap fee from 0% - 10%
-        swapFee = bound(swapFee, 0, 1e17);
-        console2.log("swapFee:", swapFee);
+        swapFeePercentage = bound(swapFeePercentage, 0, 1e17);
+        console2.log("swapFeePercentage:", swapFeePercentage);
 
-        //swapFee = 1e17;
+        //swapFeePercentage = 1e17;
 
-        setSwapFeePercentage(swapFee, address(liquidityPool));
-        setSwapFeePercentage(swapFee, address(swapPool));
+        setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
+        setSwapFeePercentage(swapFeePercentage, address(swapPool));
 
         vm.startPrank(alice);
         uint256[] memory amountsIn = router.addLiquiditySingleTokenExactOut(
@@ -205,10 +222,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
         console2.log("daiAmountIn:", daiAmountIn);
         console2.log("amountsIn[1]:", amountsIn[1]);
 
-        console2.log("liquidityPool.balanceOf(alice):", liquidityPool.balanceOf(alice));
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(liquidityPool),
-            liquidityPool.balanceOf(alice),
+            IERC20(liquidityPool).balanceOf(alice),
             [uint256(0), uint256(0)].toMemoryArray(),
             false,
             bytes("")
@@ -246,7 +262,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         console2.log("bobAmountOut:", bobAmountOut);
         uint256 bobToAliceRatio = (bobAmountOut * 1e18) / aliceAmountOut;
 
-        uint256 liquidityTaxPercentage = (6e15 * swapFee) / 1e17;
+        uint256 liquidityTaxPercentage = (6e15 * swapFeePercentage) / 1e17;
 
         // See @notice at `LiquidityApproximationTest`
         assertGe(bobToAliceRatio, 1e18 - liquidityTaxPercentage - delta, "Bob has too little USDC compare to Alice");
@@ -255,17 +271,17 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     /// Remove
 
-    function testRemoveLiquiditySingleTokenExactFuzz(uint256 exactAmountOut, uint256 swapFee) public {
+    function testRemoveLiquiditySingleTokenExactFuzz(uint256 exactAmountOut, uint256 swapFeePercentage) public {
         exactAmountOut = bound(exactAmountOut, 1e18, maxAmount);
         console2.log("exactAmountOut:", exactAmountOut);
         // swap fee from 0% - 10%
-        swapFee = bound(swapFee, 0, 1e17);
-        console2.log("swapFee:", swapFee);
+        swapFeePercentage = bound(swapFeePercentage, 0, 1e17);
+        console2.log("swapFeePercentage:", swapFeePercentage);
 
-        //swapFee = 1e17;
+        //swapFeePercentage = 1e17;
 
-        setSwapFeePercentage(swapFee, address(liquidityPool));
-        setSwapFeePercentage(swapFee, address(swapPool));
+        setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
+        setSwapFeePercentage(swapFeePercentage, address(swapPool));
 
         // Add liquidity so we have something to remove
         vm.prank(alice);
@@ -290,14 +306,13 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         router.removeLiquidityProportional(
             address(liquidityPool),
-            liquidityPool.balanceOf(alice),
+            IERC20(liquidityPool).balanceOf(alice),
             [uint256(0), uint256(0)].toMemoryArray(),
             false,
             bytes("")
         );
 
         vm.stopPrank();
-
 
         vm.startPrank(bob);
         uint256 amountOut = router.swapExactIn(
@@ -328,7 +343,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         console2.log("bobAmountOut:", bobAmountOut);
         uint256 bobToAliceRatio = (bobAmountOut * 1e18) / aliceAmountOut;
 
-        uint256 liquidityTaxPercentage = (6e15 * swapFee) / 1e17;
+        uint256 liquidityTaxPercentage = (6e15 * swapFeePercentage) / 1e17;
 
         // See @notice at `LiquidityApproximationTest`
         assertGe(bobToAliceRatio, 1e18 - delta, "Bob has too little USDC compare to Alice");
@@ -337,10 +352,10 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     /// Utils
 
-    function setSwapFeePercentage(uint256 swapFee, address pool) internal {
+    function setSwapFeePercentage(uint256 swapFeePercentage, address pool) internal {
         authorizer.grantRole(vault.getActionId(IVaultExtension.setStaticSwapFeePercentage.selector), alice);
         vm.prank(alice);
-        vault.setStaticSwapFeePercentage(address(pool), swapFee); // 1%
+        vault.setStaticSwapFeePercentage(address(pool), swapFeePercentage); // 1%
     }
 
     function computeSimpleInvariant(uint256[] memory balances) external pure returns (uint256) {
