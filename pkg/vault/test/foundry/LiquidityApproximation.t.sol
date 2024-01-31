@@ -173,11 +173,11 @@ contract LiquidityApproximationTest is BaseVaultTest {
         console2.log("bobAmountOut:", bobAmountOut);
         uint256 bobToAliceRatio = (bobAmountOut * 1e18) / aliceAmountOut;
 
-        uint256 liquidityGrowthPercentage = (6e15 * swapFee) / 1e17;
+        uint256 liquidityTaxPercentage = (6e15 * swapFee) / 1e17;
 
         // See @notice at `LiquidityApproximationTest`
-        assertGe(bobToAliceRatio, 1e18 - liquidityGrowthPercentage - delta, "Bob has too little USDC compare to Alice");
-        assertLe(bobToAliceRatio, 1e18 + liquidityGrowthPercentage + delta, "Bob has too much USDC compare to Alice");
+        assertGe(bobToAliceRatio, 1e18 - liquidityTaxPercentage - delta, "Bob has too little USDC compare to Alice");
+        assertLe(bobToAliceRatio, 1e18 + liquidityTaxPercentage + delta, "Bob has too much USDC compare to Alice");
     }
 
     function testAddLiquiditySingleTokenExactOutFuzz(uint256 exactBptAmountOut, uint256 swapFee) public {
@@ -246,11 +246,11 @@ contract LiquidityApproximationTest is BaseVaultTest {
         console2.log("bobAmountOut:", bobAmountOut);
         uint256 bobToAliceRatio = (bobAmountOut * 1e18) / aliceAmountOut;
 
-        uint256 liquidityGrowthPercentage = (6e15 * swapFee) / 1e17;
+        uint256 liquidityTaxPercentage = (6e15 * swapFee) / 1e17;
 
         // See @notice at `LiquidityApproximationTest`
-        assertGe(bobToAliceRatio, 1e18 - liquidityGrowthPercentage - delta, "Bob has too little USDC compare to Alice");
-        assertLe(bobToAliceRatio, 1e18 + liquidityGrowthPercentage + delta, "Bob has too much USDC compare to Alice");
+        assertGe(bobToAliceRatio, 1e18 - liquidityTaxPercentage - delta, "Bob has too little USDC compare to Alice");
+        assertLe(bobToAliceRatio, 1e18 + liquidityTaxPercentage + delta, "Bob has too much USDC compare to Alice");
     }
 
     /// Remove
@@ -328,11 +328,11 @@ contract LiquidityApproximationTest is BaseVaultTest {
         console2.log("bobAmountOut:", bobAmountOut);
         uint256 bobToAliceRatio = (bobAmountOut * 1e18) / aliceAmountOut;
 
-        uint256 liquidityGrowthPercentage = (6e15 * swapFee) / 1e17;
+        uint256 liquidityTaxPercentage = (6e15 * swapFee) / 1e17;
 
         // See @notice at `LiquidityApproximationTest`
-        assertGe(bobToAliceRatio, 1e18 - liquidityGrowthPercentage - delta, "Bob has too little USDC compare to Alice");
-        assertLe(bobToAliceRatio, 1e18 + liquidityGrowthPercentage + delta, "Bob has too much USDC compare to Alice");
+        assertGe(bobToAliceRatio, 1e18 - delta, "Bob has too little USDC compare to Alice");
+        assertLe(bobToAliceRatio, 1e18 + liquidityTaxPercentage + delta, "Bob has too much USDC compare to Alice");
     }
 
     /// Utils
