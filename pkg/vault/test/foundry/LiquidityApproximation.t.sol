@@ -46,10 +46,6 @@ import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Ba
  * If more BPT were minted or fewer BPT were burned than required,
  * it would result in Alice having more assets at the end than Bob, which we have verified to be untrue.
  *
- * @dev assertGe( (usdc.balanceOf(bob) * 1e18) / usdc.balanceOf(alice), 99e16, "Bob has too little USDC compare to Alice");
-                                                             // See @notice
-                                                                     assertLe( (usdc.balanceOf(bob) * 1e18) / usdc.balanceOf(alice), 101e16, "Bob has too much USDC compare to Alice");
-
  * Bob should always maintain a balance of USDC equal to or greater than Alice's
  * since liquidity operations should not confer any advantage over a pure swap.
  * At the same time, we aim to avoid unfairly diminishing user balances.
@@ -159,32 +155,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             bytes("")
         );
 
-        // See @notice
-        assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
-
-        uint256 aliceAmountOut = usdc.balanceOf(alice) - defaultBalance;
-        uint256 bobAmountOut = usdc.balanceOf(bob) - defaultBalance;
-        uint256 bobToAliceRatio = (bobAmountOut * 1e18) / aliceAmountOut;
-
-        uint256 liquidityTaxPercentage = (liquidityPercentageDelta * swapFeePercentage) / 1e17;
-
-        uint256 swapFee = amountOut.divUp(1e18 - swapFeePercentage) - amountOut;
-
-        // See @notice at `LiquidityApproximationTest`
-        assertApproxEqAbs(
-            aliceAmountOut,
-            bobAmountOut,
-            (swapFee * swapFeePercentageDelta) / 1e18 + roundingDelta,
-            "Swap fee delta is too big"
-        );
-
-        // See @notice at `LiquidityApproximationTest`
-        assertGe(
-            bobToAliceRatio,
-            1e18 - liquidityTaxPercentage - roundingDelta,
-            "Bob has too little USDC compare to Alice"
-        );
-        assertLe(bobToAliceRatio, 1e18 + roundingDelta, "Bob has too much USDC compare to Alice");
+        assertLiquidityOperation(amountOut, swapFeePercentage, true);
     }
 
     function testAddLiquiditySingleTokenExactOutFuzz(uint256 exactBptAmountOut, uint256 swapFeePercentage) public {
@@ -227,32 +198,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             bytes("")
         );
 
-        // See @notice
-        assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
-
-        uint256 aliceAmountOut = usdc.balanceOf(alice) - defaultBalance;
-        uint256 bobAmountOut = usdc.balanceOf(bob) - defaultBalance;
-        uint256 bobToAliceRatio = (bobAmountOut * 1e18) / aliceAmountOut;
-
-        uint256 liquidityTaxPercentage = (liquidityPercentageDelta * swapFeePercentage) / 1e17;
-
-        uint256 swapFee = amountOut.divUp(1e18 - swapFeePercentage) - amountOut;
-
-        // See @notice at `LiquidityApproximationTest`
-        assertApproxEqAbs(
-            aliceAmountOut,
-            bobAmountOut,
-            (swapFee * swapFeePercentageDelta) / 1e8 + roundingDelta,
-            "Swap fee delta is too big"
-        );
-
-        // See @notice at `LiquidityApproximationTest`
-        assertGe(
-            bobToAliceRatio,
-            1e18 - liquidityTaxPercentage - roundingDelta,
-            "Bob has too little USDC compare to Alice"
-        );
-        assertLe(bobToAliceRatio, 1e18 + roundingDelta, "Bob has too much USDC compare to Alice");
+        assertLiquidityOperation(amountOut, swapFeePercentage, true);
     }
 
     /// Remove
@@ -276,6 +222,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         );
 
         vm.startPrank(alice);
+        // test removeLiquiditySingleTokenExactOut
         router.removeLiquiditySingleTokenExactOut(
             address(liquidityPool),
             bptAmountOut,
@@ -285,6 +232,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             bytes("")
         );
 
+        // remove remaining liquidity
         router.removeLiquidityProportional(
             address(liquidityPool),
             IERC20(liquidityPool).balanceOf(alice),
@@ -296,6 +244,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.stopPrank();
 
         vm.startPrank(bob);
+        // simulate the same outcome with a pure swap
         uint256 amountOut = router.swapExactIn(
             address(swapPool),
             dai,
@@ -308,6 +257,16 @@ contract LiquidityApproximationTest is BaseVaultTest {
         );
         vm.stopPrank();
 
+        assertLiquidityOperation(amountOut, swapFeePercentage, false);
+    }
+
+    /// Utils
+
+    function assertLiquidityOperation(
+        uint256 amountOut,
+        uint256 swapFeePercentage,
+        bool addLiquidity
+    ) internal {
         // See @notice
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
 
@@ -328,15 +287,17 @@ contract LiquidityApproximationTest is BaseVaultTest {
         );
 
         // See @notice at `LiquidityApproximationTest`
-        assertGe(bobToAliceRatio, 1e18 - roundingDelta, "Bob has too little USDC compare to Alice");
+        assertGe(
+            bobToAliceRatio,
+            1e18 - (addLiquidity ? liquidityTaxPercentage : 0) - roundingDelta,
+            "Bob has too little USDC compare to Alice"
+        );
         assertLe(
             bobToAliceRatio,
-            1e18 + liquidityTaxPercentage + roundingDelta,
+            1e18 + (addLiquidity ? 0 : liquidityTaxPercentage) + roundingDelta,
             "Bob has too much USDC compare to Alice"
         );
     }
-
-    /// Utils
 
     function setSwapFeePercentage(uint256 swapFeePercentage, address pool) internal {
         authorizer.grantRole(vault.getActionId(IVaultExtension.setStaticSwapFeePercentage.selector), alice);
