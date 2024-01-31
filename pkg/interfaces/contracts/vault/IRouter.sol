@@ -106,7 +106,7 @@ interface IRouter {
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for adding liquidity
-     * @return amountsIn Actual amounts of tokens added, sorted in token registration order
+     * @return amountIn Actual amount of tokens added
      */
     function addLiquiditySingleTokenExactOut(
         address pool,
@@ -115,7 +115,7 @@ interface IRouter {
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn);
+    ) external payable returns (uint256 amountIn);
 
     /**
      * @notice Adds liquidity to a pool with a custom request.
@@ -188,7 +188,7 @@ interface IRouter {
      * @param minAmountOut Minimum amount of tokens to be received
      * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
      * @param userData Additional (optional) data required for removing liquidity
-     * @return amountsOut Actual amounts of tokens received, sorted in token registration order
+     * @return amountOut Actual amount of tokens received
      */
     function removeLiquiditySingleTokenExactIn(
         address pool,
@@ -197,7 +197,7 @@ interface IRouter {
         uint256 minAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsOut);
+    ) external payable returns (uint256 amountOut);
 
     /**
      * @notice Removes liquidity from a pool via a single token, specifying the exact amount of tokens to receive.
@@ -345,7 +345,7 @@ interface IRouter {
      * @param maxAmountIn Max amount tokens to be added
      * @param exactBptAmountOut Expected exact amount of pool tokens to receive
      * @param userData Additional (optional) data required for the query
-     * @return amountsIn Expected amounts of tokens to add, sorted in token registration order
+     * @return amountIn Expected amount of tokens to add
      */
     function queryAddLiquiditySingleTokenExactOut(
         address pool,
@@ -353,7 +353,7 @@ interface IRouter {
         uint256 maxAmountIn,
         uint256 exactBptAmountOut,
         bytes memory userData
-    ) external returns (uint256[] memory amountsIn);
+    ) external returns (uint256 amountIn);
 
     /**
      * @notice Adds liquidity to a pool with a custom request.
@@ -394,7 +394,7 @@ interface IRouter {
      * @param tokenOut Token used to remove liquidity
      * @param minAmountOut Expected minimum amount of tokens to receive
      * @param userData Additional (optional) data required for the query
-     * @return amountsOut Expected amounts of tokens to receive, sorted in token registration order
+     * @return amountOut Expected amount of tokens to receive
      */
     function queryRemoveLiquiditySingleTokenExactIn(
         address pool,
@@ -402,7 +402,7 @@ interface IRouter {
         IERC20 tokenOut,
         uint256 minAmountOut,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut);
+    ) external returns (uint256 amountOut);
 
     /**
      * @notice Queries `removeLiquiditySingleTokenExactOut` operation without actually executing it.
