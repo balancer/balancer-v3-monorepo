@@ -59,7 +59,7 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
         }
     }
 
-    function computeInvariant(uint256[] memory balances) external pure returns (uint256) {
+    function computeInvariant(uint256[] memory balances) public pure returns (uint256) {
         // inv = x + y
         uint256 invariant;
         for (uint256 index = 0; index < balances.length; index++) {
@@ -79,7 +79,8 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
         uint256 invariantRatio
     ) external pure returns (uint256 newBalance) {
         // inv = x + y
-        return balances[tokenInIndex].mulDown(invariantRatio);
+        uint256 invariant = computeInvariant(balances);
+        return invariant.mulDown(invariantRatio) - invariant + balances[tokenInIndex];
     }
 
     function setFailOnAfterInitializeCallback(bool fail) external {

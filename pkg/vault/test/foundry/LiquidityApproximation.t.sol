@@ -62,7 +62,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
     PoolMock internal swapPool;
     PoolMock internal liquidityPool;
     // Allows small delta to account for rounding
-    uint256 internal delta = 8e15;
+    uint256 internal delta = 1e12;
+    uint256 internal maxAmount = 3e8 * 1e18;
 
     function setUp() public virtual override {
         defaultBalance = 1e10 * 1e18;
@@ -99,6 +100,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     function initPool() internal override {
         poolInitAmount = 1e9 * 1e18;
+        // poolInitAmount = 1000 * 1e18;
         (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(address(swapPool));
         vm.prank(lp);
         router.initialize(address(swapPool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
@@ -117,15 +119,16 @@ contract LiquidityApproximationTest is BaseVaultTest {
     /// Add
 
     function testAddLiquidityUnbalancedSimpleFuzz(uint256 daiAmountIn, uint256 swapFee) public {
-        // function testAddLiquidityUnbalanced() public {
-        daiAmountIn = bound(daiAmountIn, 1e18, 3e8 * 1e18);
+        daiAmountIn = bound(daiAmountIn, 1e18, maxAmount);
         // swap fee from 0% - 10%
         swapFee = bound(swapFee, 0, 1e17);
 
-        //uint256 daiAmountIn = defaultAmount;
-        //uint256 swapFee = 1e17;
+        //daiAmountIn = defaultAmount;
+        //swapFee = 1e17;
 
-        setSwapFeePercentage(swapFee);
+        setSwapFeePercentage(swapFee, address(liquidityPool));
+        setSwapFeePercentage(swapFee, address(swapPool));
+
         uint256[] memory amountsIn = [uint256(daiAmountIn), 0].toMemoryArray();
 
         vm.startPrank(alice);
@@ -142,7 +145,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         vm.prank(bob);
         uint256 amountOut = router.swapExactIn(
-            address(pool),
+            address(swapPool),
             dai,
             usdc,
             daiAmountIn - amountsOut[0],
@@ -168,42 +171,173 @@ contract LiquidityApproximationTest is BaseVaultTest {
         console2.log("aliceAmountOut:", aliceAmountOut);
         uint256 bobAmountOut = usdc.balanceOf(bob) - defaultBalance;
         console2.log("bobAmountOut:", bobAmountOut);
-        uint256 bobToAliceRate = (bobAmountOut * 1e18) / aliceAmountOut;
-        // See @notice
-        assertGe(bobToAliceRate, 1e18 - delta, "Bob has too little USDC compare to Alice");
-        // See @notice
-        assertLe(bobToAliceRate, 1e18 + delta, "Bob has too much USDC compare to Alice");
+        uint256 bobToAliceRatio = (bobAmountOut * 1e18) / aliceAmountOut;
+
+        uint256 liquidityGrowthPercentage = (6e15 * swapFee) / 1e17;
+
+        // See @notice at `LiquidityApproximationTest`
+        assertGe(bobToAliceRatio, 1e18 - liquidityGrowthPercentage - delta, "Bob has too little USDC compare to Alice");
+        assertLe(bobToAliceRatio, 1e18 + liquidityGrowthPercentage + delta, "Bob has too much USDC compare to Alice");
     }
 
-    function testFuzzAddLiquidityUnbalanced(
-        uint256 balance0,
-        uint256 balance1,
-        uint256 exactAmount0,
-        uint256 exactAmount1,
-        uint256 totalSupply,
-        uint256 swapFeePercentage
-    ) public {
-        balance0 = bound(balance0, 1e6, 1e23);
-        balance1 = bound(balance1, 1e6, 1e23);
-        exactAmount0 = bound(exactAmount0, 1e6, 1e21);
-        exactAmount1 = bound(exactAmount1, 1e6, 1e21);
-        totalSupply = bound(totalSupply, 1e6, 1e23);
-        swapFeePercentage = bound(swapFeePercentage, 0, 1e17);
+    function testAddLiquiditySingleTokenExactOutFuzz(uint256 exactBptAmountOut, uint256 swapFee) public {
+        exactBptAmountOut = bound(exactBptAmountOut, 1e18, maxAmount);
+        console2.log("exactBptAmountOut:", exactBptAmountOut);
+        // swap fee from 0% - 10%
+        swapFee = bound(swapFee, 0, 1e17);
+        console2.log("swapFee:", swapFee);
 
-        uint256 bptAmountOut = BasePoolMath.computeAddLiquidityUnbalanced(
-            [balance0, balance1].toMemoryArray(),
-            [exactAmount0, exactAmount1].toMemoryArray(),
-            totalSupply,
-            swapFeePercentage,
-            this.computeSimpleInvariant
+        //swapFee = 1e17;
+
+        setSwapFeePercentage(swapFee, address(liquidityPool));
+        setSwapFeePercentage(swapFee, address(swapPool));
+
+        vm.startPrank(alice);
+        uint256[] memory amountsIn = router.addLiquiditySingleTokenExactOut(
+            address(liquidityPool),
+            dai,
+            1e50,
+            exactBptAmountOut,
+            false,
+            bytes("")
         );
+        uint256 daiAmountIn = amountsIn[0];
+        console2.log("daiAmountIn:", daiAmountIn);
+        console2.log("amountsIn[1]:", amountsIn[1]);
+
+        console2.log("liquidityPool.balanceOf(alice):", liquidityPool.balanceOf(alice));
+        uint256[] memory amountsOut = router.removeLiquidityProportional(
+            address(liquidityPool),
+            liquidityPool.balanceOf(alice),
+            [uint256(0), uint256(0)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        console2.log("amountsOut:", amountsOut[0]);
+        console2.log("amountsOut:", amountsOut[1]);
+
+        vm.prank(bob);
+        uint256 amountOut = router.swapExactIn(
+            address(swapPool),
+            dai,
+            usdc,
+            daiAmountIn - amountsOut[0],
+            0,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+        console2.log("daiAmountIn - amountsOut[0]:", daiAmountIn - amountsOut[0]);
+        console2.log("amountOut:", amountOut / 1e18);
+
+        console2.log("usdc.balanceOf(bob):", usdc.balanceOf(bob) / 1e18);
+        console2.log("dai.balanceOf(bob):", dai.balanceOf(bob) / 1e18);
+        console2.log("usdc.balanceOf(alice):", usdc.balanceOf(alice) / 1e18);
+        console2.log("dai.balanceOf(alice):", dai.balanceOf(alice) / 1e18);
+
+        // See @notice
+        assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
+
+        uint256 aliceAmountOut = usdc.balanceOf(alice) - defaultBalance;
+        console2.log("aliceAmountOut:", aliceAmountOut);
+        uint256 bobAmountOut = usdc.balanceOf(bob) - defaultBalance;
+        console2.log("bobAmountOut:", bobAmountOut);
+        uint256 bobToAliceRatio = (bobAmountOut * 1e18) / aliceAmountOut;
+
+        uint256 liquidityGrowthPercentage = (6e15 * swapFee) / 1e17;
+
+        // See @notice at `LiquidityApproximationTest`
+        assertGe(bobToAliceRatio, 1e18 - liquidityGrowthPercentage - delta, "Bob has too little USDC compare to Alice");
+        assertLe(bobToAliceRatio, 1e18 + liquidityGrowthPercentage + delta, "Bob has too much USDC compare to Alice");
     }
 
     /// Remove
 
+    function testRemoveLiquiditySingleTokenExactFuzz(uint256 exactAmountOut, uint256 swapFee) public {
+        exactAmountOut = bound(exactAmountOut, 1e18, maxAmount);
+        console2.log("exactAmountOut:", exactAmountOut);
+        // swap fee from 0% - 10%
+        swapFee = bound(swapFee, 0, 1e17);
+        console2.log("swapFee:", swapFee);
+
+        //swapFee = 1e17;
+
+        setSwapFeePercentage(swapFee, address(liquidityPool));
+        setSwapFeePercentage(swapFee, address(swapPool));
+
+        // Add liquidity so we have something to remove
+        vm.prank(alice);
+        uint256 bptAmountOut = router.addLiquidityUnbalanced(
+            address(liquidityPool),
+            [maxAmount, maxAmount].toMemoryArray(),
+            0,
+            false,
+            bytes("")
+        );
+
+        vm.startPrank(alice);
+        uint256 bptAmountIn = router.removeLiquiditySingleTokenExactOut(
+            address(liquidityPool),
+            bptAmountOut,
+            usdc,
+            exactAmountOut,
+            false,
+            bytes("")
+        );
+        console2.log("bptAmountIn:", bptAmountIn);
+
+        router.removeLiquidityProportional(
+            address(liquidityPool),
+            liquidityPool.balanceOf(alice),
+            [uint256(0), uint256(0)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+
+        vm.stopPrank();
+
+
+        vm.startPrank(bob);
+        uint256 amountOut = router.swapExactIn(
+            address(swapPool),
+            dai,
+            usdc,
+            defaultBalance - dai.balanceOf(alice),
+            0,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        console2.log("amountOut:", amountOut / 1e18);
+
+        console2.log("usdc.balanceOf(bob):", usdc.balanceOf(bob) / 1e18);
+        console2.log("dai.balanceOf(bob):", dai.balanceOf(bob) / 1e18);
+        console2.log("usdc.balanceOf(alice):", usdc.balanceOf(alice) / 1e18);
+        console2.log("dai.balanceOf(alice):", dai.balanceOf(alice) / 1e18);
+
+        // See @notice
+        assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
+
+        uint256 aliceAmountOut = usdc.balanceOf(alice) - defaultBalance;
+        console2.log("aliceAmountOut:", aliceAmountOut);
+        uint256 bobAmountOut = usdc.balanceOf(bob) - defaultBalance;
+        console2.log("bobAmountOut:", bobAmountOut);
+        uint256 bobToAliceRatio = (bobAmountOut * 1e18) / aliceAmountOut;
+
+        uint256 liquidityGrowthPercentage = (6e15 * swapFee) / 1e17;
+
+        // See @notice at `LiquidityApproximationTest`
+        assertGe(bobToAliceRatio, 1e18 - liquidityGrowthPercentage - delta, "Bob has too little USDC compare to Alice");
+        assertLe(bobToAliceRatio, 1e18 + liquidityGrowthPercentage + delta, "Bob has too much USDC compare to Alice");
+    }
+
     /// Utils
 
-    function setSwapFeePercentage(uint256 swapFee) internal {
+    function setSwapFeePercentage(uint256 swapFee, address pool) internal {
         authorizer.grantRole(vault.getActionId(IVaultExtension.setStaticSwapFeePercentage.selector), alice);
         vm.prank(alice);
         vault.setStaticSwapFeePercentage(address(pool), swapFee); // 1%
