@@ -207,7 +207,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             IERC20 token = tokenData.token;
 
             // Ensure that the token address is valid
-            if (token == IERC20(address(0))) {
+            if (address(token) == address(0) || address(token) == pool) {
                 revert InvalidToken();
             }
 
@@ -604,20 +604,34 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultExtension
-    function getProtocolSwapFee(address token) external view onlyVault returns (uint256) {
-        return _protocolSwapFees[IERC20(token)];
+    function setProtocolYieldFeePercentage(uint256 newProtocolYieldFeePercentage) external authenticate onlyVault {
+        if (newProtocolYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
+            revert ProtocolYieldFeePercentageTooHigh();
+        }
+        _protocolYieldFeePercentage = newProtocolYieldFeePercentage;
+        emit ProtocolYieldFeePercentageChanged(newProtocolYieldFeePercentage);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getProtocolYieldFeePercentage() external view onlyVault returns (uint256) {
+        return _protocolYieldFeePercentage;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getProtocolFees(address token) external view onlyVault returns (uint256) {
+        return _protocolFees[IERC20(token)];
     }
 
     /// @inheritdoc IVaultExtension
     function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant onlyVault {
         for (uint256 index = 0; index < tokens.length; index++) {
             IERC20 token = tokens[index];
-            uint256 amount = _protocolSwapFees[token];
+            uint256 amount = _protocolFees[token];
             // checks
             if (amount > 0) {
                 // effects
                 // set fees to zero for the token
-                _protocolSwapFees[token] = 0;
+                _protocolFees[token] = 0;
                 // interactions
                 token.safeTransfer(msg.sender, amount);
                 // emit an event

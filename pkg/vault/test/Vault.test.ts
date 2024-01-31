@@ -144,8 +144,17 @@ describe('Vault', function () {
         .withArgs(await poolB.getAddress());
     });
 
-    it('cannot register a pool with an invalid token', async () => {
+    it('cannot register a pool with an invalid token (zero address)', async () => {
       await expect(vault.manualRegisterPool(poolB, invalidTokens)).to.be.revertedWithCustomError(
+        vaultExtension,
+        'InvalidToken'
+      );
+    });
+
+    it('cannot register a pool with an invalid token (pool address)', async () => {
+      const poolBTokensWithItself = Array.from(poolBTokens);
+      poolBTokensWithItself.push(poolBAddress);
+      await expect(vault.manualRegisterPool(poolB, poolBTokensWithItself)).to.be.revertedWithCustomError(
         vaultExtension,
         'InvalidToken'
       );
@@ -399,6 +408,73 @@ describe('Vault', function () {
       const vaultScalingFactors = await vault.getDecimalScalingFactors(poolA);
 
       expect(vaultScalingFactors).to.deep.equal(poolScalingFactors);
+    });
+  });
+
+  describe('protocol fees', () => {
+    const MAX_PROTOCOL_SWAP_FEE = fp(0.5);
+    const MAX_PROTOCOL_YIELD_FEE = fp(0.2);
+
+    context('without permission', () => {
+      it('protocol fees are initialized to zero', async () => {
+        expect(await vault.getProtocolSwapFeePercentage()).to.eq(0);
+        expect(await vault.getProtocolYieldFeePercentage()).to.eq(0);
+      });
+
+      it('requires permission to set protocol fees', async () => {
+        await expect(vault.setProtocolSwapFeePercentage(MAX_PROTOCOL_SWAP_FEE)).to.be.revertedWithCustomError(
+          vault,
+          'SenderNotAllowed'
+        );
+        await expect(vault.setProtocolYieldFeePercentage(MAX_PROTOCOL_YIELD_FEE)).to.be.revertedWithCustomError(
+          vault,
+          'SenderNotAllowed'
+        );
+      });
+    });
+
+    context('with permission', () => {
+      let authorizer: Contract;
+
+      sharedBeforeEach('grant permission', async () => {
+        const setSwapFeeAction = await actionId(vault, 'setProtocolSwapFeePercentage');
+        const setYieldFeeAction = await actionId(vault, 'setProtocolYieldFeePercentage');
+        const authorizerAddress = await vault.getAuthorizer();
+        authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
+
+        await authorizer.grantRole(setSwapFeeAction, alice.address);
+        await authorizer.grantRole(setYieldFeeAction, alice.address);
+      });
+
+      it('can set protocol fees', async () => {
+        await vault.connect(alice).setProtocolSwapFeePercentage(MAX_PROTOCOL_SWAP_FEE);
+        await vault.connect(alice).setProtocolYieldFeePercentage(MAX_PROTOCOL_YIELD_FEE);
+
+        expect(await vault.getProtocolSwapFeePercentage()).to.eq(MAX_PROTOCOL_SWAP_FEE);
+        expect(await vault.getProtocolYieldFeePercentage()).to.eq(MAX_PROTOCOL_YIELD_FEE);
+      });
+
+      it('cannot exceed protocol fee limits', async () => {
+        await expect(
+          vault.connect(alice).setProtocolSwapFeePercentage(MAX_PROTOCOL_SWAP_FEE + 1n)
+        ).to.be.revertedWithCustomError(vault, 'ProtocolSwapFeePercentageTooHigh');
+        await expect(
+          vault.connect(alice).setProtocolYieldFeePercentage(MAX_PROTOCOL_YIELD_FEE + 1n)
+        ).to.be.revertedWithCustomError(vault, 'ProtocolYieldFeePercentageTooHigh');
+
+        expect(await vault.getProtocolSwapFeePercentage()).to.eq(0);
+        expect(await vault.getProtocolYieldFeePercentage()).to.eq(0);
+      });
+
+      it('setting protocol fees emits an event', async () => {
+        await expect(vault.connect(alice).setProtocolSwapFeePercentage(MAX_PROTOCOL_SWAP_FEE))
+          .to.emit(vault, 'ProtocolSwapFeePercentageChanged')
+          .withArgs(MAX_PROTOCOL_SWAP_FEE);
+
+        await expect(vault.connect(alice).setProtocolYieldFeePercentage(MAX_PROTOCOL_YIELD_FEE))
+          .to.emit(vault, 'ProtocolYieldFeePercentageChanged')
+          .withArgs(MAX_PROTOCOL_YIELD_FEE);
+      });
     });
   });
 
