@@ -405,7 +405,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
                 // Adjust raw and live balances.
                 poolTokenBalances.unchecked_setAt(i, poolData.balancesRaw[i]);
-                _setLiveBalanceFromRawForToken(poolData, roundingDirection, i);
             }
             // Update last live balance
             lastLiveBalances.unchecked_setAt(i, poolData.balancesLiveScaled18[i]);
@@ -438,11 +437,15 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         }
     }
 
+    /**
+     * @dev Sets live balances in pool data, scaling raw balances by both decimal and token rates rounding the result
+     * in the given direction.
+     */
     function _setLiveBalanceFromRawForToken(
         PoolData memory poolData,
         Rounding roundingDirection,
         uint256 tokenIndex
-    ) private pure {
+    ) internal pure {
         function(uint256, uint256, uint256) internal pure returns (uint256) _upOrDown = roundingDirection ==
             Rounding.ROUND_UP
             ? ScalingHelpers.toScaled18ApplyRateRoundUp

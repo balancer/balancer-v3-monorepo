@@ -115,6 +115,24 @@ contract VaultMock is IVaultMainMock, Vault {
         return _computePoolDataUpdatingBalancesAndFees(pool, roundingDirection);
     }
 
+    function setLiveBalanceFromRawForToken(
+        PoolData memory poolData,
+        Rounding roundingDirection,
+        uint256 tokenIndex
+    ) external pure returns (PoolData memory) {
+        _setLiveBalanceFromRawForToken(poolData, roundingDirection, tokenIndex);
+        return poolData;
+    }
+
+    function computeYieldProtocolFeesDue(
+        PoolData memory poolData,
+        uint256 lastLiveBalance,
+        uint256 tokenIndex,
+        uint256 yieldFeePercentage
+    ) external pure returns (uint256) {
+        return _computeYieldProtocolFeesDue(poolData, lastLiveBalance, tokenIndex, yieldFeePercentage);
+    }
+
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw) {
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
 
