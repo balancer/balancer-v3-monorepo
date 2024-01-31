@@ -100,6 +100,36 @@ contract VaultSwapTest is BaseVaultTest {
         return (0, 0);
     }
 
+    function testSwapLimitGivenIn() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, defaultAmount - 1, defaultAmount));
+        router.swapExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount - 1,
+            defaultAmount,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+    }
+
+    function testSwapLimitGivenOut() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, defaultAmount - 1, defaultAmount));
+        router.swapExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount - 1,
+            defaultAmount,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+    }
+
     function testSwapFeeGivenIn() public {
         assertSwap(swapFeeGivenIn);
     }
