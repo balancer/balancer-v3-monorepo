@@ -234,10 +234,12 @@ describe('ERC4626BufferPool', function () {
 
     context('without permission', () => {
       it('calls to rebalance revert without permission', async () => {
-        await expect(vault.connect(alice).rebalanceBuffer(ANY_ADDRESS)).to.be.revertedWithCustomError(vault, 'SenderNotAllowed');
+        await expect(vault.connect(alice).rebalanceBuffer(ANY_ADDRESS)).to.be.revertedWithCustomError(
+          vault,
+          'SenderNotAllowed'
+        );
       });
     });
-
 
     context('with permission', () => {
       sharedBeforeEach('grant permission', async () => {
