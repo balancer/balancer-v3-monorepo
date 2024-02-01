@@ -44,7 +44,7 @@ jobs:
           FORGE_SNAPSHOT_CHECK: true
       - name: Test
         run: yarn workspace @balancer-labs/v3-vault test:forge
-  
+
   test-hardhat-vault:
     runs-on: ubuntu-latest
     steps:
