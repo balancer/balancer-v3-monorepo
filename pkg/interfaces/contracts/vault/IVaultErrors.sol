@@ -106,6 +106,9 @@ interface IVaultErrors {
     /// @dev The user attempted to swap a token not in the pool.
     error TokenNotRegistered();
 
+    /// @dev An amount in or out has exceeded the limit specified in the swap request.
+    error SwapLimit(uint256 amount, uint256 limit);
+
     /*******************************************************************************
                                     Add Liquidity
     *******************************************************************************/
