@@ -626,10 +626,12 @@ contract Router is IRouter, ReentrancyGuard {
 
                 if (address(tokenIn) == step.pool) {
                     // Token in is BPT: remove liquidity - Single token exact in
+                    // minAmountOut cannot be 0 in this case, as that would send an array of 0s to the Vault, which
+                    // wouldn't know which token to use.
                     (uint256[] memory amountsOut, uint256 index) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
                         step.tokenOut,
-                        minAmountOut
+                        minAmountOut == 0 ? 1 : minAmountOut
                     );
 
                     // Reusing `amountsOut` as input argument and function output to prevent stack too deep error.
