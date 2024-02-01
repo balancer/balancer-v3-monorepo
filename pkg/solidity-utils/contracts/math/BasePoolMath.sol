@@ -3,7 +3,6 @@
 pragma solidity ^0.8.4;
 
 import { FixedPoint } from "./FixedPoint.sol";
-import "forge-std/console2.sol";
 
 library BasePoolMath {
     using FixedPoint for uint256;
@@ -193,11 +192,9 @@ library BasePoolMath {
         uint256 nonTaxableBalance = newSupply.mulUp(currentBalances[tokenInIndex]).divDown(totalSupply);
 
         uint256 taxableAmount = (amountIn + currentBalances[tokenInIndex]) - nonTaxableBalance;
-        console2.log("taxableAmount:", taxableAmount);
 
         // Calculate the swap fee based on the taxable amount and the swap fee percentage
         uint256 fee = taxableAmount.divUp(swapFeePercentage.complement()) - taxableAmount;
-        console2.log('fee:', fee);
 
         // Return the total amount of input token needed, including the swap fee
         return amountIn + fee;
