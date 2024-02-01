@@ -270,9 +270,6 @@ interface IRouter {
     /// @dev The swap transaction was not mined before the specified deadline timestamp.
     error SwapDeadline();
 
-    /// @dev An amount in or out has exceeded the limit specified in the swap request.
-    error SwapLimit(uint256 amount, uint256 limit);
-
     /**
      * @notice Executes a swap operation specifying an exact input token amount.
      * @param pool Address of the liquidity pool

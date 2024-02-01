@@ -574,13 +574,10 @@ contract Router is IRouter, ReentrancyGuard {
                 tokenIn: params.tokenIn,
                 tokenOut: params.tokenOut,
                 amountGivenRaw: params.amountGiven,
+                limitRaw: params.limit,
                 userData: params.userData
             })
         );
-
-        if (params.kind == SwapKind.GIVEN_IN ? amountOut < params.limit : amountIn > params.limit) {
-            revert SwapLimit(params.kind == SwapKind.GIVEN_IN ? amountOut : amountIn, params.limit);
-        }
     }
 
     /*******************************************************************************
