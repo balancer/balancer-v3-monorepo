@@ -119,7 +119,7 @@ describe('Queries', function () {
       const amountsIn = await router
         .connect(zero)
         .queryAddLiquiditySingleTokenExactOut.staticCall(pool, DAI, DAI_AMOUNT_IN, BPT_AMOUNT, '0x');
-      expect(amountsIn).to.be.deep.eq([DAI_AMOUNT_IN, 0]);
+      expect(amountsIn).to.be.eq(DAI_AMOUNT_IN);
     });
 
     it('reverts if not a static call', async () => {
@@ -165,12 +165,11 @@ describe('Queries', function () {
 
   describe('removeLiquiditySingleTokenExactIn', () => {
     it('queries removeLiquiditySingleTokenExactIn correctly', async () => {
-      const amountsOut = await router
+      const amountOut = await router
         .connect(zero)
         .queryRemoveLiquiditySingleTokenExactIn.staticCall(pool, BPT_AMOUNT, DAI, DAI_AMOUNT_IN, '0x');
 
-      expect(amountsOut[0]).to.be.eq(DAI_AMOUNT_IN);
-      expect(amountsOut[1]).to.be.eq(0);
+      expect(amountOut).to.be.eq(DAI_AMOUNT_IN);
     });
 
     it('reverts if not a static call', async () => {
