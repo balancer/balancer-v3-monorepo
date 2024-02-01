@@ -176,7 +176,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.stopPrank();
 
         vm.prank(bob);
-        uint256 amountOut = router.swapExactIn(
+        router.swapExactIn(
             address(swapPool),
             dai,
             usdc,
@@ -330,6 +330,58 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.stopPrank();
 
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
+    }
+
+    function testRemoveLiquiditySingleTokenExactNoSwapFeeFuzz(uint256 exactAmountOut) public {
+        exactAmountOut = bound(exactAmountOut, 1e18, maxAmount);
+
+        // Add liquidity so we have something to remove
+        vm.prank(alice);
+        uint256 bptAmountOut = router.addLiquidityUnbalanced(
+            address(liquidityPool),
+            [maxAmount, maxAmount].toMemoryArray(),
+            0,
+            false,
+            bytes("")
+        );
+
+        vm.startPrank(alice);
+        // test removeLiquiditySingleTokenExactOut
+        router.removeLiquiditySingleTokenExactOut(
+            address(liquidityPool),
+            bptAmountOut,
+            usdc,
+            exactAmountOut,
+            false,
+            bytes("")
+        );
+
+        // remove remaining liquidity
+        router.removeLiquidityProportional(
+            address(liquidityPool),
+            IERC20(liquidityPool).balanceOf(alice),
+            [uint256(0), uint256(0)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        // simulate the same outcome with a pure swap
+        router.swapExactIn(
+            address(swapPool),
+            dai,
+            usdc,
+            defaultBalance - dai.balanceOf(alice),
+            0,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        assertLiquidityOperationNoSwapFee();
     }
 
     function testRemoveLiquiditySingleTokenExactInFuzz(uint256 exactBptAmountIn, uint256 swapFeePercentage) public {
