@@ -58,6 +58,8 @@ jobs:
           FORGE_SNAPSHOT_CHECK: false
       - name: Fork Test
         run: yarn workspace @balancer-labs/v3-vault test:fork
+        env:
+          MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
 
   test-hardhat-vault:
     runs-on: ubuntu-latest
@@ -71,8 +73,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Test
         run: yarn workspace @balancer-labs/v3-vault test:hardhat
-        env:
-          MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
 
   test-hardhat-solidity-utils:
     runs-on: ubuntu-latest
