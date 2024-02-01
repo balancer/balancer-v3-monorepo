@@ -3,7 +3,6 @@
 pragma solidity ^0.8.4;
 
 import { FixedPoint } from "./FixedPoint.sol";
-import 'forge-std/console2.sol';
 
 library BasePoolMath {
     using FixedPoint for uint256;
@@ -108,6 +107,16 @@ library BasePoolMath {
         uint256 swapFeePercentage,
         function(uint256[] memory) external view returns (uint256) computeInvariant
     ) internal view returns (uint256) {
+        /***********************************************************************
+        //                                                                    //
+        // s = totalSupply                                 (iFees - iCur)     //
+        // b = tokenBalance                  btpOut = s *  --------------     //
+        // btpOut = bptAmountOut                                iCur          //
+        // iFees = invariantWithFeesApplied                                   //
+        // iCur = currentInvariant                                            //
+        // iNew = newInvariant                                                //
+        ***********************************************************************/
+
         // Determine the number of tokens in the pool.
         uint256 numTokens = currentBalances.length;
 
@@ -122,8 +131,11 @@ library BasePoolMath {
         // Calculate the invariant using the current balances (before the addition).
         uint256 currentInvariant = computeInvariant(currentBalances);
 
+        // Calculate the new invariant using the new balances (after the addition).
+        uint256 newInvariant = computeInvariant(newBalances);
+
         // Calculate the new invariant ratio by dividing the new invariant by the old invariant.
-        uint256 invariantRatio = computeInvariant(newBalances).divDown(currentInvariant);
+        uint256 invariantRatio = newInvariant.divDown(currentInvariant);
 
         // Loop through each token to apply fees if necessary.
         for (uint256 index = 0; index < currentBalances.length; index++) {
@@ -131,7 +143,6 @@ library BasePoolMath {
             // If so, calculate the taxable amount.
             if (newBalances[index] > invariantRatio.mulUp(currentBalances[index])) {
                 uint256 taxableAmount = newBalances[index] - invariantRatio.mulUp(currentBalances[index]);
-                console2.log('taxableAmount:', taxableAmount);
                 // Subtract the fee from the new balance.
                 // We are essentially imposing swap fees on non-proportional incoming amounts.
                 newBalances[index] = newBalances[index] - taxableAmount.mulUp(swapFeePercentage);
@@ -143,8 +154,9 @@ library BasePoolMath {
 
         // Calculate the amount of BPT to mint. This is done by multiplying the
         // total supply with the ratio of the change in invariant.
-        //  mulDown/divDown minize amount of pool tokens to mint.
-        return totalSupply.mulDown((invariantWithFeesApplied - currentInvariant).divDown(currentInvariant));
+        // mulDown/divDown minize amount of pool tokens to mint.
+        return
+            totalSupply.mulDown((invariantWithFeesApplied - currentInvariant).divDown(currentInvariant));
     }
 
     /**
