@@ -501,18 +501,24 @@ contract RouterTest is BaseVaultTest {
     }
 
     function testGetSingleInputArray() public {
-        uint256[] memory amountsGiven = router.getSingleInputArray(address(pool), dai, 1234);
+        (uint256[] memory amountsGiven, uint256 tokenIndex) = router.getSingleInputArrayAndTokenIndex(
+            address(pool),
+            dai,
+            1234
+        );
         assertEq(amountsGiven.length, 2);
         assertEq(amountsGiven[0], 1234);
         assertEq(amountsGiven[1], 0);
+        assertEq(tokenIndex, 0);
 
-        amountsGiven = router.getSingleInputArray(address(pool), usdc, 4321);
+        (amountsGiven, tokenIndex) = router.getSingleInputArrayAndTokenIndex(address(pool), usdc, 4321);
         assertEq(amountsGiven.length, 2);
         assertEq(amountsGiven[0], 0);
         assertEq(amountsGiven[1], 4321);
+        assertEq(tokenIndex, 1);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.TokenNotRegistered.selector));
-        router.getSingleInputArray(address(pool), weth, daiAmountIn);
+        router.getSingleInputArrayAndTokenIndex(address(pool), weth, daiAmountIn);
     }
 
     function checkRemoveLiquidityPreConditions() internal view {
