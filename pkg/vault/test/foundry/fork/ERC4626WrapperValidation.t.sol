@@ -19,7 +19,6 @@ import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 // IMPORTANT: this is a fork test. Make sure the env variable MAINNET_RPC_URL is set!
 contract ERC4626WrapperValidation is BaseVaultTest {
     ERC4626BufferPoolFactory factory;
-    uint256 mainnetFork;
     
     IERC4626 waDAI = IERC4626(0x098256c06ab24F5655C5506A6488781BD711c14b);
     IERC4626 waUSDC = IERC4626(0x57d20c946A7A3812a7225B881CdcD8431D23431C);
@@ -29,9 +28,7 @@ contract ERC4626WrapperValidation is BaseVaultTest {
     uint256 constant BLOCK_NUMBER = 19091677;
 
     function setUp() public virtual override {
-        string memory MAINNET_RPC = vm.envString("MAINNET_RPC_URL");
-        mainnetFork = vm.createFork(MAINNET_RPC, BLOCK_NUMBER);
-        vm.selectFork(mainnetFork);
+        vm.createSelectFork({ blockNumber: BLOCK_NUMBER, urlOrAlias: "mainnet" });
 
         BaseVaultTest.setUp();
 
