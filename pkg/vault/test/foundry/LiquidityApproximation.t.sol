@@ -233,9 +233,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertLiquidityOperation(amountOut, swapFeePercentage, true);
     }
 
-    function testAddLiquiditySingleTokenExactOutNoSwapFeeFuzz(uint256 exactBptAmountOut)
-        public
-    {
+    function testAddLiquiditySingleTokenExactOutNoSwapFeeFuzz(uint256 exactBptAmountOut) public {
         exactBptAmountOut = bound(exactBptAmountOut, 1e18, maxAmount / 2 - 1);
 
         vm.startPrank(alice);
@@ -394,7 +392,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         // Add liquidity so we have something to remove
         vm.prank(alice);
-        uint256 bptAmountOut = router.addLiquidityUnbalanced(
+        router.addLiquidityUnbalanced(
             address(liquidityPool),
             [maxAmount, maxAmount].toMemoryArray(),
             0,
@@ -432,6 +430,51 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.stopPrank();
 
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
+    }
+
+    function testRemoveLiquiditySingleTokenExactInNoSwapFeeFuzz(uint256 exactBptAmountIn) public {
+        exactBptAmountIn = bound(exactBptAmountIn, 1e18, maxAmount / 2 - 1);
+
+        // Add liquidity so we have something to remove
+        vm.prank(alice);
+        router.addLiquidityUnbalanced(
+            address(liquidityPool),
+            [maxAmount, maxAmount].toMemoryArray(),
+            0,
+            false,
+            bytes("")
+        );
+
+        vm.startPrank(alice);
+        // test removeLiquiditySingleTokenExactIn
+        router.removeLiquiditySingleTokenExactIn(address(liquidityPool), exactBptAmountIn, usdc, 1, false, bytes(""));
+
+        // remove remaining liquidity
+        router.removeLiquidityProportional(
+            address(liquidityPool),
+            IERC20(liquidityPool).balanceOf(alice),
+            [uint256(0), uint256(0)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        // simulate the same outcome with a pure swap
+        router.swapExactIn(
+            address(swapPool),
+            dai,
+            usdc,
+            defaultBalance - dai.balanceOf(alice),
+            0,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        assertLiquidityOperationNoSwapFee();
     }
 
     /// Utils
