@@ -339,21 +339,29 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vars.amountCalculatedScaled18 -= vars.swapFeeAmountScaled18;
         }
 
-        // For `GivenIn` the amount calculated is leaving the Vault, so we round down.
-        // Round up when entering the Vault on `GivenOut`.
-        amountCalculated = vaultSwapParams.kind == SwapKind.GIVEN_IN
-            ? vars.amountCalculatedScaled18.toRawUndoRateRoundDown(
+        if (vaultSwapParams.kind == SwapKind.GIVEN_IN) {
+            // For `GivenIn` the amount calculated is leaving the Vault, so we round down.
+            amountCalculated = vars.amountCalculatedScaled18.toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[vars.indexOut],
                 poolData.tokenRates[vars.indexOut]
-            )
-            : vars.amountCalculatedScaled18.toRawUndoRateRoundUp(
+            );
+            (amountIn, amountOut) = (vaultSwapParams.amountGivenRaw, amountCalculated);
+
+            if (amountOut < vaultSwapParams.limitRaw) {
+                revert SwapLimit(amountOut, vaultSwapParams.limitRaw);
+            }
+        } else {
+            // Round up when entering the Vault on `GivenOut`.
+            amountCalculated = vars.amountCalculatedScaled18.toRawUndoRateRoundUp(
                 poolData.decimalScalingFactors[vars.indexIn],
                 poolData.tokenRates[vars.indexIn]
             );
+            (amountIn, amountOut) = (amountCalculated, vaultSwapParams.amountGivenRaw);
 
-        (amountIn, amountOut) = vaultSwapParams.kind == SwapKind.GIVEN_IN
-            ? (vaultSwapParams.amountGivenRaw, amountCalculated)
-            : (amountCalculated, vaultSwapParams.amountGivenRaw);
+            if (amountIn > vaultSwapParams.limitRaw) {
+                revert SwapLimit(amountIn, vaultSwapParams.limitRaw);
+            }
+        }
 
         // Charge protocolSwapFee
         if (vars.swapFeeAmountScaled18 > 0 && _protocolSwapFeePercentage > 0) {
@@ -908,6 +916,28 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function _isTrustedRouter(address) internal pure returns (bool) {
         //TODO: Implement based on approval by governance and user
         return true;
+    }
+
+    /*******************************************************************************
+                                    Pool Information
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultMain
+    function getPoolTokenCountAndIndexOfToken(
+        address pool,
+        IERC20 token
+    ) external view withRegisteredPool(pool) returns (uint256, uint256) {
+        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+        uint256 tokenCount = poolTokenBalances.length();
+        // unchecked indexOf returns index + 1, or 0 if token is not present.
+        uint256 index = poolTokenBalances.unchecked_indexOf(token);
+        if (index == 0) {
+            revert TokenNotRegistered();
+        }
+
+        unchecked {
+            return (tokenCount, index - 1);
+        }
     }
 
     /*******************************************************************************

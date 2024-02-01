@@ -48,7 +48,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         bptAmountOut = defaultAmount;
         vm.prank(alice);
         snapStart("vaultAddLiquiditySingleTokenExactOut");
-        amountsIn = router.addLiquiditySingleTokenExactOut(
+        uint256 amountIn = router.addLiquiditySingleTokenExactOut(
             address(pool),
             dai,
             defaultAmount,
@@ -57,6 +57,8 @@ contract VaultLiquidityTest is BaseVaultTest {
             bytes("")
         );
         snapEnd();
+
+        (amountsIn, ) = router.getSingleInputArrayAndTokenIndex(pool, dai, amountIn);
 
         // should mint correct amount of BPT tokens
         assertEq(bptAmountOut, defaultAmount, "Invalid amount of BPT");
@@ -160,7 +162,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         bptAmountIn = defaultAmount * 2;
 
         snapStart("vaultRemoveLiquiditySingleTokenExactIn");
-        amountsOut = router.removeLiquiditySingleTokenExactIn(
+        uint256 amountOut = router.removeLiquiditySingleTokenExactIn(
             address(pool),
             bptAmountIn,
             dai,
@@ -169,6 +171,8 @@ contract VaultLiquidityTest is BaseVaultTest {
             bytes("")
         );
         snapEnd();
+
+        (amountsOut, ) = router.getSingleInputArrayAndTokenIndex(pool, dai, amountOut);
 
         // amountsOut are correct
         assertEq(amountsOut[0], 2 * defaultAmount);

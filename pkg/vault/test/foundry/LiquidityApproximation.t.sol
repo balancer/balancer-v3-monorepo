@@ -199,7 +199,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         setSwapFeePercentage(swapFeePercentage, address(swapPool));
 
         vm.startPrank(alice);
-        uint256[] memory amountsIn = router.addLiquiditySingleTokenExactOut(
+        uint256 daiAmountIn = router.addLiquiditySingleTokenExactOut(
             address(liquidityPool),
             dai,
             1e50,
@@ -207,7 +207,6 @@ contract LiquidityApproximationTest is BaseVaultTest {
             false,
             bytes("")
         );
-        uint256 daiAmountIn = amountsIn[0];
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(liquidityPool),
@@ -237,7 +236,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         exactBptAmountOut = bound(exactBptAmountOut, 1e18, maxAmount / 2 - 1);
 
         vm.startPrank(alice);
-        uint256[] memory amountsIn = router.addLiquiditySingleTokenExactOut(
+        uint256 daiAmountIn = router.addLiquiditySingleTokenExactOut(
             address(liquidityPool),
             dai,
             1e50,
@@ -245,7 +244,6 @@ contract LiquidityApproximationTest is BaseVaultTest {
             false,
             bytes("")
         );
-        uint256 daiAmountIn = amountsIn[0];
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(liquidityPool),
@@ -495,7 +493,11 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertLe(bobToAliceRatio, 1e18 + roundingDelta, "Bob has too much USDC compare to Alice");
     }
 
-    function assertLiquidityOperation(uint256 amountOut, uint256 swapFeePercentage, bool addLiquidity) internal {
+    function assertLiquidityOperation(
+        uint256 amountOut,
+        uint256 swapFeePercentage,
+        bool addLiquidity
+    ) internal {
         // See @notice
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
 
