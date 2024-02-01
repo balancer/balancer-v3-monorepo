@@ -484,9 +484,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
 
         uint256 aliceAmountOut = usdc.balanceOf(alice) - defaultBalance;
-        console2.log("aliceAmountOut:", aliceAmountOut);
         uint256 bobAmountOut = usdc.balanceOf(bob) - defaultBalance;
-        console2.log("bobAmountOut:", bobAmountOut);
         uint256 bobToAliceRatio = (bobAmountOut * 1e18) / aliceAmountOut;
 
         // See @notice at `LiquidityApproximationTest`
@@ -517,7 +515,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertApproxEqAbs(
             aliceAmountOut,
             bobAmountOut,
-            (swapFee * swapFeePercentageDelta) / 1e8 + roundingDelta,
+            (swapFee * swapFeePercentageDelta) / 1e18 + roundingDelta,
             "Swap fee delta is too big"
         );
 
@@ -538,14 +536,5 @@ contract LiquidityApproximationTest is BaseVaultTest {
         authorizer.grantRole(vault.getActionId(IVaultExtension.setStaticSwapFeePercentage.selector), alice);
         vm.prank(alice);
         vault.setStaticSwapFeePercentage(address(pool), swapFeePercentage); // 1%
-    }
-
-    function computeSimpleInvariant(uint256[] memory balances) external pure returns (uint256) {
-        // inv = x + y
-        uint256 invariant;
-        for (uint256 index = 0; index < balances.length; index++) {
-            invariant += balances[index];
-        }
-        return invariant;
     }
 }
