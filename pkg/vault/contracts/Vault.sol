@@ -339,21 +339,29 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vars.amountCalculatedScaled18 -= vars.swapFeeAmountScaled18;
         }
 
-        // For `GivenIn` the amount calculated is leaving the Vault, so we round down.
-        // Round up when entering the Vault on `GivenOut`.
-        amountCalculated = vaultSwapParams.kind == SwapKind.GIVEN_IN
-            ? vars.amountCalculatedScaled18.toRawUndoRateRoundDown(
+        if (vaultSwapParams.kind == SwapKind.GIVEN_IN) {
+            // For `GivenIn` the amount calculated is leaving the Vault, so we round down.
+            amountCalculated = vars.amountCalculatedScaled18.toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[vars.indexOut],
                 poolData.tokenRates[vars.indexOut]
-            )
-            : vars.amountCalculatedScaled18.toRawUndoRateRoundUp(
+            );
+            (amountIn, amountOut) = (vaultSwapParams.amountGivenRaw, amountCalculated);
+
+            if (amountOut < vaultSwapParams.limitRaw) {
+                revert SwapLimit(amountOut, vaultSwapParams.limitRaw);
+            }
+        } else {
+            // Round up when entering the Vault on `GivenOut`.
+            amountCalculated = vars.amountCalculatedScaled18.toRawUndoRateRoundUp(
                 poolData.decimalScalingFactors[vars.indexIn],
                 poolData.tokenRates[vars.indexIn]
             );
+            (amountIn, amountOut) = (amountCalculated, vaultSwapParams.amountGivenRaw);
 
-        (amountIn, amountOut) = vaultSwapParams.kind == SwapKind.GIVEN_IN
-            ? (vaultSwapParams.amountGivenRaw, amountCalculated)
-            : (amountCalculated, vaultSwapParams.amountGivenRaw);
+            if (amountIn > vaultSwapParams.limitRaw) {
+                revert SwapLimit(amountIn, vaultSwapParams.limitRaw);
+            }
+        }
 
         // Charge protocolSwapFee
         if (vars.swapFeeAmountScaled18 > 0 && _protocolSwapFeePercentage > 0) {
