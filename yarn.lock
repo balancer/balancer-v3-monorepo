@@ -256,7 +256,6 @@ __metadata:
     mocha: "npm:^10.1.0"
     nodemon: "npm:^2.0.20"
     solhint: "npm:^3.4.1"
-    ts-node: "npm:^10.9.1"
   languageName: unknown
   linkType: soft
 

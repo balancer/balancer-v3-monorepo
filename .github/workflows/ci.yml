@@ -2,6 +2,7 @@ name: CI
 
 env:
   CI: true
+  MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
 
 on:
   push:
@@ -58,8 +59,6 @@ jobs:
           FORGE_SNAPSHOT_CHECK: false
       - name: Fork Test
         run: yarn workspace @balancer-labs/v3-vault test:fork
-        env:
-          MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
 
   test-hardhat-vault:
     runs-on: ubuntu-latest
