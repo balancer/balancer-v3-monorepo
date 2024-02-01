@@ -3,6 +3,7 @@
 pragma solidity ^0.8.4;
 
 import { FixedPoint } from "./FixedPoint.sol";
+import "forge-std/console2.sol";
 
 library BasePoolMath {
     using FixedPoint for uint256;
@@ -155,8 +156,7 @@ library BasePoolMath {
         // Calculate the amount of BPT to mint. This is done by multiplying the
         // total supply with the ratio of the change in invariant.
         // mulDown/divDown minize amount of pool tokens to mint.
-        return
-            totalSupply.mulDown((invariantWithFeesApplied - currentInvariant).divDown(currentInvariant));
+        return totalSupply.mulDown((invariantWithFeesApplied - currentInvariant).divDown(currentInvariant));
     }
 
     /**
@@ -185,7 +185,7 @@ library BasePoolMath {
         // Calculate new supply after minting exactBptAmountOut
         uint256 newSupply = exactBptAmountOut + totalSupply;
         // Calculate the initial amount of the input token needed for the desired amount of BPT out
-        uint256 newBalance = computeBalance(currentBalances, tokenInIndex, newSupply.divDown(totalSupply));
+        uint256 newBalance = computeBalance(currentBalances, tokenInIndex, newSupply.divUp(totalSupply));
         uint256 amountIn = newBalance - currentBalances[tokenInIndex];
 
         // Calculate the taxable amount, which is the difference
@@ -193,9 +193,11 @@ library BasePoolMath {
         uint256 nonTaxableBalance = newSupply.mulUp(currentBalances[tokenInIndex]).divDown(totalSupply);
 
         uint256 taxableAmount = (amountIn + currentBalances[tokenInIndex]) - nonTaxableBalance;
+        console2.log("taxableAmount:", taxableAmount);
 
         // Calculate the swap fee based on the taxable amount and the swap fee percentage
         uint256 fee = taxableAmount.divUp(swapFeePercentage.complement()) - taxableAmount;
+        console2.log('fee:', fee);
 
         // Return the total amount of input token needed, including the swap fee
         return amountIn + fee;

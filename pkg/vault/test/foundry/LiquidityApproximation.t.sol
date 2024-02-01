@@ -231,48 +231,88 @@ contract LiquidityApproximationTest is BaseVaultTest {
         );
 
         assertLiquidityOperation(amountOut, swapFeePercentage, true);
-     }
-  
-     /// Remove
-  
-     function testRemoveLiquiditySingleTokenExactFuzz(uint256 exactAmountOut, uint256 swapFeePercentage) public {
-         exactAmountOut = bound(exactAmountOut, 1e18, maxAmount);
-         // swap fee from 0% - 10%
-         swapFeePercentage = bound(swapFeePercentage, 0, 1e17);
-  
-         setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
-         setSwapFeePercentage(swapFeePercentage, address(swapPool));
-  
-         // Add liquidity so we have something to remove
-         vm.prank(alice);
-         uint256 bptAmountOut = router.addLiquidityUnbalanced(
-             address(liquidityPool),
-             [maxAmount, maxAmount].toMemoryArray(),
-             0,
-             false,
-             bytes("")
-         );
-  
-         vm.startPrank(alice);
-         // test removeLiquiditySingleTokenExactOut
-         router.removeLiquiditySingleTokenExactOut(
-             address(liquidityPool),
-             bptAmountOut,
-             usdc,
-             exactAmountOut,
-             false,
-             bytes("")
-         );
-  
-         // remove remaining liquidity
-         router.removeLiquidityProportional(
-             address(liquidityPool),
-             IERC20(liquidityPool).balanceOf(alice),
-             [uint256(0), uint256(0)].toMemoryArray(),
-             false,
-             bytes("")
-         );
-  
+    }
+
+    function testAddLiquiditySingleTokenExactOutNoSwapFeeFuzz(uint256 exactBptAmountOut)
+        public
+    {
+        exactBptAmountOut = bound(exactBptAmountOut, 1e18, maxAmount / 2 - 1);
+
+        vm.startPrank(alice);
+        uint256[] memory amountsIn = router.addLiquiditySingleTokenExactOut(
+            address(liquidityPool),
+            dai,
+            1e50,
+            exactBptAmountOut,
+            false,
+            bytes("")
+        );
+        uint256 daiAmountIn = amountsIn[0];
+
+        uint256[] memory amountsOut = router.removeLiquidityProportional(
+            address(liquidityPool),
+            IERC20(liquidityPool).balanceOf(alice),
+            [uint256(0), uint256(0)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        vm.prank(bob);
+        router.swapExactIn(
+            address(swapPool),
+            dai,
+            usdc,
+            daiAmountIn - amountsOut[0],
+            0,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+
+        assertLiquidityOperationNoSwapFee();
+    }
+
+    /// Remove
+
+    function testRemoveLiquiditySingleTokenExactFuzz(uint256 exactAmountOut, uint256 swapFeePercentage) public {
+        exactAmountOut = bound(exactAmountOut, 1e18, maxAmount);
+        // swap fee from 0% - 10%
+        swapFeePercentage = bound(swapFeePercentage, 0, 1e17);
+
+        setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
+        setSwapFeePercentage(swapFeePercentage, address(swapPool));
+
+        // Add liquidity so we have something to remove
+        vm.prank(alice);
+        uint256 bptAmountOut = router.addLiquidityUnbalanced(
+            address(liquidityPool),
+            [maxAmount, maxAmount].toMemoryArray(),
+            0,
+            false,
+            bytes("")
+        );
+
+        vm.startPrank(alice);
+        // test removeLiquiditySingleTokenExactOut
+        router.removeLiquiditySingleTokenExactOut(
+            address(liquidityPool),
+            bptAmountOut,
+            usdc,
+            exactAmountOut,
+            false,
+            bytes("")
+        );
+
+        // remove remaining liquidity
+        router.removeLiquidityProportional(
+            address(liquidityPool),
+            IERC20(liquidityPool).balanceOf(alice),
+            [uint256(0), uint256(0)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+
         vm.stopPrank();
 
         vm.startPrank(bob);
