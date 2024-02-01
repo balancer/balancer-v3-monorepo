@@ -117,13 +117,13 @@ contract VaultSwapTest is BaseVaultTest {
 
     function testSwapLimitGivenOut() public {
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, defaultAmount - 1, defaultAmount));
-        router.swapExactIn(
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, defaultAmount, defaultAmount - 1));
+        router.swapExactOut(
             address(pool),
             usdc,
             dai,
-            defaultAmount - 1,
             defaultAmount,
+            defaultAmount - 1,
             type(uint256).max,
             false,
             bytes("")
