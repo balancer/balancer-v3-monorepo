@@ -307,7 +307,7 @@ contract Router is IRouter, ReentrancyGuard {
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256 amountOut) {
-        (uint256[] memory maxAmountsOut, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
+        (uint256[] memory minAmountsOut, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
             pool,
             tokenOut,
             minAmountOut
@@ -320,7 +320,7 @@ contract Router is IRouter, ReentrancyGuard {
                     RemoveLiquidityCallbackParams({
                         sender: msg.sender,
                         pool: pool,
-                        minAmountsOut: maxAmountsOut,
+                        minAmountsOut: minAmountsOut,
                         maxBptAmountIn: exactBptAmountIn,
                         kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
                         wethIsEth: wethIsEth,
