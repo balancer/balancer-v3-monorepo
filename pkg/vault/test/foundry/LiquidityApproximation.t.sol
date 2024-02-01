@@ -495,11 +495,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertLe(bobToAliceRatio, 1e18 + roundingDelta, "Bob has too much USDC compare to Alice");
     }
 
-    function assertLiquidityOperation(
-        uint256 amountOut,
-        uint256 swapFeePercentage,
-        bool addLiquidity
-    ) internal {
+    function assertLiquidityOperation(uint256 amountOut, uint256 swapFeePercentage, bool addLiquidity) internal {
         // See @notice
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
 

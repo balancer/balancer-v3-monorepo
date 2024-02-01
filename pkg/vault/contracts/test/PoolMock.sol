@@ -123,11 +123,7 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
         return !failOnBeforeInitialize;
     }
 
-    function onAfterInitialize(
-        uint256[] memory,
-        uint256,
-        bytes memory
-    ) external view returns (bool) {
+    function onAfterInitialize(uint256[] memory, uint256, bytes memory) external view returns (bool) {
         return !failOnAfterInitialize;
     }
 
@@ -142,12 +138,10 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
                 : params.amountGivenScaled18.divDown(_multiplier);
     }
 
-    function onAfterSwap(IPoolCallbacks.AfterSwapParams calldata, uint256 amountCalculatedScaled18)
-        external
-        view
-        override
-        returns (bool success)
-    {
+    function onAfterSwap(
+        IPoolCallbacks.AfterSwapParams calldata,
+        uint256 amountCalculatedScaled18
+    ) external view override returns (bool success) {
         return amountCalculatedScaled18 > 0 && !failOnAfterSwapCallback;
     }
 
@@ -199,16 +193,7 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
         uint256 minBptAmountOut,
         uint256[] memory,
         bytes memory userData
-    )
-        external
-        pure
-        override
-        returns (
-            uint256[] memory amountsIn,
-            uint256 bptAmountOut,
-            bytes memory returnData
-        )
-    {
+    ) external pure override returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         amountsIn = maxAmountsIn;
         bptAmountOut = minBptAmountOut;
         returnData = userData;
@@ -220,16 +205,7 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
         uint256[] memory minAmountsOut,
         uint256[] memory,
         bytes memory userData
-    )
-        external
-        pure
-        override
-        returns (
-            uint256,
-            uint256[] memory,
-            bytes memory
-        )
-    {
+    ) external pure override returns (uint256, uint256[] memory, bytes memory) {
         return (maxBptAmountIn, minAmountsOut, userData);
     }
 
