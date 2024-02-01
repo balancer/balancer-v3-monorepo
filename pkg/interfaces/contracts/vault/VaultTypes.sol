@@ -102,6 +102,7 @@ enum SwapKind {
  * @param tokenIn The token entering the Vault (balance increases)
  * @param tokenOut The token leaving the Vault (balance decreases)
  * @param amountGivenRaw Amount specified for tokenIn or tokenOut (depending on the type of swap)
+ * @param limitRaw
  * @param userData Additional (optional) user data
  */
 struct SwapParams {
@@ -110,6 +111,7 @@ struct SwapParams {
     IERC20 tokenIn;
     IERC20 tokenOut;
     uint256 amountGivenRaw;
+    uint256 limitRaw;
     bytes userData;
 }
 

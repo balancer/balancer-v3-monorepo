@@ -374,24 +374,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultExtension
-    function getPoolTokenCountAndIndexOfToken(
-        address pool,
-        IERC20 token
-    ) external view withRegisteredPool(pool) onlyVault returns (uint256, uint256) {
-        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
-        uint256 tokenCount = poolTokenBalances.length();
-        // unchecked indexOf returns index + 1, or 0 if token is not present.
-        uint256 index = poolTokenBalances.unchecked_indexOf(token);
-        if (index == 0) {
-            revert TokenNotRegistered();
-        }
-
-        unchecked {
-            return (tokenCount, index - 1);
-        }
-    }
-
-    /// @inheritdoc IVaultExtension
     function getPoolTokenInfo(
         address pool
     )
@@ -604,20 +586,34 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultExtension
-    function getProtocolSwapFee(address token) external view onlyVault returns (uint256) {
-        return _protocolSwapFees[IERC20(token)];
+    function setProtocolYieldFeePercentage(uint256 newProtocolYieldFeePercentage) external authenticate onlyVault {
+        if (newProtocolYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
+            revert ProtocolYieldFeePercentageTooHigh();
+        }
+        _protocolYieldFeePercentage = newProtocolYieldFeePercentage;
+        emit ProtocolYieldFeePercentageChanged(newProtocolYieldFeePercentage);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getProtocolYieldFeePercentage() external view onlyVault returns (uint256) {
+        return _protocolYieldFeePercentage;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getProtocolFees(address token) external view onlyVault returns (uint256) {
+        return _protocolFees[IERC20(token)];
     }
 
     /// @inheritdoc IVaultExtension
     function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant onlyVault {
         for (uint256 index = 0; index < tokens.length; index++) {
             IERC20 token = tokens[index];
-            uint256 amount = _protocolSwapFees[token];
+            uint256 amount = _protocolFees[token];
             // checks
             if (amount > 0) {
                 // effects
                 // set fees to zero for the token
-                _protocolSwapFees[token] = 0;
+                _protocolFees[token] = 0;
                 // interactions
                 token.safeTransfer(msg.sender, amount);
                 // emit an event

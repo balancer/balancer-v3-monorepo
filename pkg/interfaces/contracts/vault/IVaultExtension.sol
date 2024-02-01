@@ -166,16 +166,6 @@ interface IVaultExtension {
     function getPoolTokens(address pool) external view returns (IERC20[] memory);
 
     /**
-     * @notice Gets the index of a token in a given pool.
-     * @dev Reverts if the pool is not registered, or if the token does not belong to the pool.
-     * @param pool Address of the pool
-     * @param token Address of the token
-     * @return tokenCount Number of tokens in the pool
-     * @return index Index corresponding to the given token in the pool's token list
-     */
-    function getPoolTokenCountAndIndexOfToken(address pool, IERC20 token) external view returns (uint256, uint256);
-
-    /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
      * @return tokens Tokens registered to the pool
      * @return tokenTypes The types of all registered tokens
@@ -356,11 +346,23 @@ interface IVaultExtension {
     function getProtocolSwapFeePercentage() external view returns (uint256);
 
     /**
-     * @notice Returns the accumulated swap fee in `token` collected by the protocol.
+     * @notice Sets a new yield fee percentage for the protocol.
+     * @param newYieldFeePercentage The new swap fee percentage to be set
+     */
+    function setProtocolYieldFeePercentage(uint256 newYieldFeePercentage) external;
+
+    /**
+     * @notice Retrieves the current protocol yield fee percentage.
+     * @return The current protocol yield fee percentage
+     */
+    function getProtocolYieldFeePercentage() external view returns (uint256);
+
+    /**
+     * @notice Returns the accumulated swap and yield fee in `token` collected by the protocol.
      * @param token The address of the token in which fees have been accumulated
      * @return The total amount of fees accumulated in the specified token
      */
-    function getProtocolSwapFee(address token) external view returns (uint256);
+    function getProtocolFees(address token) external view returns (uint256);
 
     /**
      * @notice Collects accumulated protocol fees for the specified array of tokens.

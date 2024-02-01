@@ -11,7 +11,7 @@ contract RouterMock is Router {
         address pool,
         IERC20 token,
         uint256 amountGiven
-    ) external view returns (uint256[] memory amountsGiven, uint256 index) {
+    ) external view returns (uint256[] memory amountsGiven, uint256 tokenIndex) {
         return _getSingleInputArrayAndTokenIndex(pool, token, amountGiven);
     }
 }

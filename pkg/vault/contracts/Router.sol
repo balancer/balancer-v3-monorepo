@@ -161,10 +161,14 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn) {
-        (uint256[] memory maxAmountsIn, ) = _getSingleInputArrayAndTokenIndex(pool, tokenIn, maxAmountIn);
+    ) external payable returns (uint256 amountIn) {
+        (uint256[] memory maxAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
+            pool,
+            tokenIn,
+            maxAmountIn
+        );
 
-        (amountsIn, , ) = abi.decode(
+        (uint256[] memory amountsIn, , ) = abi.decode(
             _vault.invoke{ value: msg.value }(
                 abi.encodeWithSelector(
                     Router.addLiquidityCallback.selector,
@@ -181,6 +185,8 @@ contract Router is IRouter, ReentrancyGuard {
             ),
             (uint256[], uint256, bytes)
         );
+
+        return amountsIn[tokenIndex];
     }
 
     /// @inheritdoc IRouter
@@ -300,17 +306,21 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 minAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsOut) {
-        (uint256[] memory minAmountsOut, ) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, minAmountOut);
+    ) external payable returns (uint256 amountOut) {
+        (uint256[] memory maxAmountsOut, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
+            pool,
+            tokenOut,
+            minAmountOut
+        );
 
-        (, amountsOut, ) = abi.decode(
+        (, uint256[] memory amountsOut, ) = abi.decode(
             _vault.invoke(
                 abi.encodeWithSelector(
                     Router.removeLiquidityCallback.selector,
                     RemoveLiquidityCallbackParams({
                         sender: msg.sender,
                         pool: pool,
-                        minAmountsOut: minAmountsOut,
+                        minAmountsOut: maxAmountsOut,
                         maxBptAmountIn: exactBptAmountIn,
                         kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
                         wethIsEth: wethIsEth,
@@ -320,6 +330,8 @@ contract Router is IRouter, ReentrancyGuard {
             ),
             (uint256, uint256[], bytes)
         );
+
+        return amountsOut[tokenIndex];
     }
 
     /// @inheritdoc IRouter
@@ -687,6 +699,7 @@ contract Router is IRouter, ReentrancyGuard {
                             tokenIn: tokenIn,
                             tokenOut: step.tokenOut,
                             amountGivenRaw: exactAmountIn,
+                            limitRaw: minAmountOut,
                             userData: params.userData
                         })
                     );
@@ -825,6 +838,7 @@ contract Router is IRouter, ReentrancyGuard {
                             tokenIn: tokenIn,
                             tokenOut: step.tokenOut,
                             amountGivenRaw: exactAmountOut,
+                            limitRaw: maxAmountIn,
                             userData: params.userData
                         })
                     );
@@ -858,13 +872,10 @@ contract Router is IRouter, ReentrancyGuard {
                 tokenIn: params.tokenIn,
                 tokenOut: params.tokenOut,
                 amountGivenRaw: params.amountGiven,
+                limitRaw: params.limit,
                 userData: params.userData
             })
         );
-
-        if (params.kind == SwapKind.GIVEN_IN ? amountOut < params.limit : amountIn > params.limit) {
-            revert SwapLimit(params.kind == SwapKind.GIVEN_IN ? amountOut : amountIn, params.limit);
-        }
     }
 
     /*******************************************************************************
@@ -982,10 +993,14 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 maxAmountIn,
         uint256 exactBptAmountOut,
         bytes memory userData
-    ) external returns (uint256[] memory amountsIn) {
-        (uint256[] memory maxAmountsIn, ) = _getSingleInputArrayAndTokenIndex(pool, tokenIn, maxAmountIn);
+    ) external returns (uint256 amountIn) {
+        (uint256[] memory maxAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
+            pool,
+            tokenIn,
+            maxAmountIn
+        );
 
-        (amountsIn, , ) = abi.decode(
+        (uint256[] memory amountsIn, , ) = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(
                     Router.queryAddLiquidityCallback.selector,
@@ -1004,6 +1019,8 @@ contract Router is IRouter, ReentrancyGuard {
             ),
             (uint256[], uint256, bytes)
         );
+
+        return amountsIn[tokenIndex];
     }
 
     /// @inheritdoc IRouter
@@ -1099,10 +1116,14 @@ contract Router is IRouter, ReentrancyGuard {
         IERC20 tokenOut,
         uint256 minAmountOut,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut) {
-        (uint256[] memory minAmountsOut, ) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, minAmountOut);
+    ) external returns (uint256 amountOut) {
+        (uint256[] memory minAmountsOut, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
+            pool,
+            tokenOut,
+            minAmountOut
+        );
 
-        (, amountsOut, ) = abi.decode(
+        (, uint256[] memory amountsOut, ) = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(
                     Router.queryRemoveLiquidityCallback.selector,
@@ -1121,6 +1142,8 @@ contract Router is IRouter, ReentrancyGuard {
             ),
             (uint256, uint256[], bytes)
         );
+
+        return amountsOut[tokenIndex];
     }
 
     /// @inheritdoc IRouter

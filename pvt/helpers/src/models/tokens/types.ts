@@ -2,7 +2,7 @@ import { AddressLike, BigNumberish } from 'ethers';
 
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 
-import { NAry, Account } from '../types/types';
+import { NAry } from '../types/types';
 
 export type RawTokensDeployment = number | NAry<RawTokenDeployment>;
 

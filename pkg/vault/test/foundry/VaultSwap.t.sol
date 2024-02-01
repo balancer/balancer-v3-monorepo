@@ -76,6 +76,36 @@ contract VaultSwapTest is BaseVaultTest {
         );
     }
 
+    function testSwapLimitGivenIn() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, defaultAmount - 1, defaultAmount));
+        router.swapSingleTokenExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount - 1,
+            defaultAmount,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+    }
+
+    function testSwapLimitGivenOut() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, defaultAmount, defaultAmount - 1));
+        router.swapSingleTokenExactOut(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount - 1,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+    }
+
     function testSwapSingleTokenExactIn() public {
         assertSwap(swapSingleTokenExactIn);
     }
@@ -270,7 +300,7 @@ contract VaultSwapTest is BaseVaultTest {
         vault.collectProtocolFees([address(dai)].toMemoryArray().asIERC20());
 
         // protocol fees are zero
-        assertEq(0, vault.getProtocolSwapFee(address(dai)), "Protocol fees are not zero");
+        assertEq(0, vault.getProtocolFees(address(dai)), "Protocol fees are not zero");
 
         // alice received protocol fees
         assertEq(dai.balanceOf(admin) - defaultBalance, (protocolSwapFee), "Protocol fees not collected");
@@ -294,7 +324,7 @@ contract VaultSwapTest is BaseVaultTest {
         assertEq(balances[1], 2 * defaultAmount, "Swap: Pool's [1] balance is wrong");
 
         // protocol fees are accrued
-        assertEq(protocolFee, vault.getProtocolSwapFee(address(dai)), "Swap: Protocol's fee amount is wrong");
+        assertEq(protocolFee, vault.getProtocolFees(address(dai)), "Swap: Protocol's fee amount is wrong");
 
         // vault are adjusted balances
         assertEq(dai.balanceOf(address(vault)), fee, "Swap: Vault's DAI balance is wrong");
