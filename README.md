@@ -42,6 +42,14 @@ Before any tests can be run, the repository needs to be prepared:
 $ yarn # install all dependencies
 ```
 
+You will also need to configure your environment variables to point to RPC endpoints in order to run fork tests.
+Write your preferred RPC URL to `.env`, and source it. For example:
+
+```bash
+$ sed 's,YOUR_MAINNET_RPC_URL,<YOUR_RPC_URL>' .env.example > .env
+$ source .env
+```
+
 ### Regular build
 
 ```bash
@@ -50,7 +58,7 @@ $ yarn build # compile all contracts
 
 Most tests are standalone and simply require installation of dependencies and compilation.
 
-In order to run all tests (including those with extra dependencies), run:
+In order to run all tests (including those with extra dependencies), configure your RPC endpoints by sourcing your `.env` file and run:
 
 ```bash
 $ yarn test # run all tests
