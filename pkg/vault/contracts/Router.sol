@@ -8,17 +8,10 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import {
-    AddLiquidityKind,
-    AddLiquidityParams,
-    RemoveLiquidityKind,
-    RemoveLiquidityParams,
-    SwapKind,
-    SwapParams
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 contract Router is IRouter, ReentrancyGuard {
     using Address for address payable;
@@ -58,8 +51,8 @@ contract Router is IRouter, ReentrancyGuard {
             abi.decode(
                 _vault.invoke{ value: msg.value }(
                     abi.encodeWithSelector(
-                        Router.initializeCallback.selector,
-                        InitializeCallbackParams({
+                        Router.initializeHook.selector,
+                        InitializeHookParams({
                             sender: msg.sender,
                             pool: pool,
                             tokens: tokens,
@@ -75,13 +68,13 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     /**
-     * @notice Callback for initialization.
+     * @notice Hook for initialization.
      * @dev Can only be called by the Vault.
      * @param params Initialization parameters (see IRouter for struct definition)
      * @return bptAmountOut BPT amount minted in exchange for the input tokens
      */
-    function initializeCallback(
-        InitializeCallbackParams calldata params
+    function initializeHook(
+        InitializeHookParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256 bptAmountOut) {
         bptAmountOut = _vault.initialize(
             params.pool,
@@ -128,8 +121,8 @@ contract Router is IRouter, ReentrancyGuard {
         (, bptAmountOut, ) = abi.decode(
             _vault.invoke{ value: msg.value }(
                 abi.encodeWithSelector(
-                    Router.addLiquidityCallback.selector,
-                    AddLiquidityCallbackParams({
+                    Router.addLiquidityHook.selector,
+                    AddLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
                         maxAmountsIn: exactAmountsIn,
@@ -162,8 +155,8 @@ contract Router is IRouter, ReentrancyGuard {
         (uint256[] memory amountsIn, , ) = abi.decode(
             _vault.invoke{ value: msg.value }(
                 abi.encodeWithSelector(
-                    Router.addLiquidityCallback.selector,
-                    AddLiquidityCallbackParams({
+                    Router.addLiquidityHook.selector,
+                    AddLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
                         maxAmountsIn: maxAmountsIn,
@@ -192,8 +185,8 @@ contract Router is IRouter, ReentrancyGuard {
             abi.decode(
                 _vault.invoke{ value: msg.value }(
                     abi.encodeWithSelector(
-                        Router.addLiquidityCallback.selector,
-                        AddLiquidityCallbackParams({
+                        Router.addLiquidityHook.selector,
+                        AddLiquidityHookParams({
                             sender: msg.sender,
                             pool: pool,
                             maxAmountsIn: inputAmountsIn,
@@ -209,14 +202,14 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     /**
-     * @notice Callback for adding liquidity.
+     * @notice Hook for adding liquidity.
      * @dev Can only be called by the Vault.
      * @param params Add liquidity parameters (see IRouter for struct definition)
      * @return amountsIn Actual amounts in required for the join
      * @return bptAmountOut BPT amount minted in exchange for the input tokens
      */
-    function addLiquidityCallback(
-        AddLiquidityCallbackParams calldata params
+    function addLiquidityHook(
+        AddLiquidityHookParams calldata params
     )
         external
         payable
@@ -273,8 +266,8 @@ contract Router is IRouter, ReentrancyGuard {
         (, amountsOut, ) = abi.decode(
             _vault.invoke(
                 abi.encodeWithSelector(
-                    Router.removeLiquidityCallback.selector,
-                    RemoveLiquidityCallbackParams({
+                    Router.removeLiquidityHook.selector,
+                    RemoveLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
                         minAmountsOut: minAmountsOut,
@@ -307,8 +300,8 @@ contract Router is IRouter, ReentrancyGuard {
         (, uint256[] memory amountsOut, ) = abi.decode(
             _vault.invoke(
                 abi.encodeWithSelector(
-                    Router.removeLiquidityCallback.selector,
-                    RemoveLiquidityCallbackParams({
+                    Router.removeLiquidityHook.selector,
+                    RemoveLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
                         minAmountsOut: minAmountsOut,
@@ -339,8 +332,8 @@ contract Router is IRouter, ReentrancyGuard {
         (bptAmountIn, , ) = abi.decode(
             _vault.invoke(
                 abi.encodeWithSelector(
-                    Router.removeLiquidityCallback.selector,
-                    RemoveLiquidityCallbackParams({
+                    Router.removeLiquidityHook.selector,
+                    RemoveLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
                         minAmountsOut: minAmountsOut,
@@ -369,8 +362,8 @@ contract Router is IRouter, ReentrancyGuard {
             abi.decode(
                 _vault.invoke(
                     abi.encodeWithSelector(
-                        Router.removeLiquidityCallback.selector,
-                        RemoveLiquidityCallbackParams({
+                        Router.removeLiquidityHook.selector,
+                        RemoveLiquidityHookParams({
                             sender: msg.sender,
                             pool: pool,
                             minAmountsOut: minAmountsOut,
@@ -386,15 +379,15 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     /**
-     * @notice Callback for removing liquidity.
+     * @notice Hook for removing liquidity.
      * @dev Can only be called by the Vault.
      * @param params Remove liquidity parameters (see IRouter for struct definition)
      * @return bptAmountIn BPT amount burned for the output tokens
      * @return amountsOut Actual token amounts transferred in exchange for the BPT
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
-    function removeLiquidityCallback(
-        RemoveLiquidityCallbackParams calldata params
+    function removeLiquidityHook(
+        RemoveLiquidityHookParams calldata params
     )
         external
         nonReentrant
@@ -455,8 +448,8 @@ contract Router is IRouter, ReentrancyGuard {
             abi.decode(
                 _vault.invoke{ value: msg.value }(
                     abi.encodeWithSelector(
-                        Router.swapCallback.selector,
-                        SwapCallbackParams({
+                        Router.swapHook.selector,
+                        SwapHookParams({
                             sender: msg.sender,
                             kind: SwapKind.GIVEN_IN,
                             pool: pool,
@@ -489,8 +482,8 @@ contract Router is IRouter, ReentrancyGuard {
             abi.decode(
                 _vault.invoke{ value: msg.value }(
                     abi.encodeWithSelector(
-                        Router.swapCallback.selector,
-                        SwapCallbackParams({
+                        Router.swapHook.selector,
+                        SwapHookParams({
                             sender: msg.sender,
                             kind: SwapKind.GIVEN_OUT,
                             pool: pool,
@@ -509,15 +502,15 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     /**
-     * @notice Callback for swaps.
+     * @notice Hook for swaps.
      * @dev Can only be called by the Vault. Also handles native ETH.
      * @param params Swap parameters (see IRouter for struct definition)
      * @return Token amount calculated by the pool math (e.g., amountOut for a given in swap)
      */
-    function swapCallback(
-        SwapCallbackParams calldata params
+    function swapHook(
+        SwapHookParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256) {
-        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapCallback(params);
+        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         IERC20 tokenIn = params.tokenIn;
         IERC20 tokenOut = params.tokenOut;
@@ -558,8 +551,8 @@ contract Router is IRouter, ReentrancyGuard {
         return amountCalculated;
     }
 
-    function _swapCallback(
-        SwapCallbackParams calldata params
+    function _swapHook(
+        SwapHookParams calldata params
     ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
@@ -596,8 +589,8 @@ contract Router is IRouter, ReentrancyGuard {
             abi.decode(
                 _vault.quote(
                     abi.encodeWithSelector(
-                        Router.querySwapCallback.selector,
-                        SwapCallbackParams({
+                        Router.querySwapHook.selector,
+                        SwapHookParams({
                             sender: msg.sender,
                             kind: SwapKind.GIVEN_IN,
                             pool: pool,
@@ -627,8 +620,8 @@ contract Router is IRouter, ReentrancyGuard {
             abi.decode(
                 _vault.quote(
                     abi.encodeWithSelector(
-                        Router.querySwapCallback.selector,
-                        SwapCallbackParams({
+                        Router.querySwapHook.selector,
+                        SwapHookParams({
                             sender: msg.sender,
                             kind: SwapKind.GIVEN_OUT,
                             pool: pool,
@@ -647,15 +640,15 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     /**
-     * @notice Callback for swap queries.
+     * @notice Hook for swap queries.
      * @dev Can only be called by the Vault. Also handles native ETH.
      * @param params Swap parameters (see IRouter for struct definition)
      * @return Token amount calculated by the pool math (e.g., amountOut for a given in swap)
      */
-    function querySwapCallback(
-        SwapCallbackParams calldata params
+    function querySwapHook(
+        SwapHookParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256) {
-        (uint256 amountCalculated, , ) = _swapCallback(params);
+        (uint256 amountCalculated, , ) = _swapHook(params);
 
         return amountCalculated;
     }
@@ -670,8 +663,8 @@ contract Router is IRouter, ReentrancyGuard {
         (, bptAmountOut, ) = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(
-                    Router.queryAddLiquidityCallback.selector,
-                    AddLiquidityCallbackParams({
+                    Router.queryAddLiquidityHook.selector,
+                    AddLiquidityHookParams({
                         // we use router as a sender to simplify basic query functions
                         // but it is possible to add liquidity to any recipient
                         sender: address(this),
@@ -705,8 +698,8 @@ contract Router is IRouter, ReentrancyGuard {
         (uint256[] memory amountsIn, , ) = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(
-                    Router.queryAddLiquidityCallback.selector,
-                    AddLiquidityCallbackParams({
+                    Router.queryAddLiquidityHook.selector,
+                    AddLiquidityHookParams({
                         // we use router as a sender to simplify basic query functions
                         // but it is possible to add liquidity to any recipient
                         sender: address(this),
@@ -736,8 +729,8 @@ contract Router is IRouter, ReentrancyGuard {
             abi.decode(
                 _vault.quote(
                     abi.encodeWithSelector(
-                        Router.queryAddLiquidityCallback.selector,
-                        AddLiquidityCallbackParams({
+                        Router.queryAddLiquidityHook.selector,
+                        AddLiquidityHookParams({
                             // we use router as a sender to simplify basic query functions
                             // but it is possible to add liquidity to any recipient
                             sender: address(this),
@@ -755,15 +748,15 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     /**
-     * @notice Callback for add liquidity queries.
+     * @notice Hook for add liquidity queries.
      * @dev Can only be called by the Vault.
      * @param params Add liquidity parameters (see IRouter for struct definition)
      * @return amountsIn Actual token amounts in required as inputs
      * @return bptAmountOut Expected pool tokens to be minted
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
-    function queryAddLiquidityCallback(
-        AddLiquidityCallbackParams calldata params
+    function queryAddLiquidityHook(
+        AddLiquidityHookParams calldata params
     )
         external
         payable
@@ -793,8 +786,8 @@ contract Router is IRouter, ReentrancyGuard {
         (, amountsOut, ) = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(
-                    Router.queryRemoveLiquidityCallback.selector,
-                    RemoveLiquidityCallbackParams({
+                    Router.queryRemoveLiquidityHook.selector,
+                    RemoveLiquidityHookParams({
                         // We use router as a sender to simplify basic query functions
                         // but it is possible to remove liquidity from any sender
                         sender: address(this),
@@ -828,8 +821,8 @@ contract Router is IRouter, ReentrancyGuard {
         (, uint256[] memory amountsOut, ) = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(
-                    Router.queryRemoveLiquidityCallback.selector,
-                    RemoveLiquidityCallbackParams({
+                    Router.queryRemoveLiquidityHook.selector,
+                    RemoveLiquidityHookParams({
                         // We use router as a sender to simplify basic query functions
                         // but it is possible to remove liquidity from any sender
                         sender: address(this),
@@ -861,8 +854,8 @@ contract Router is IRouter, ReentrancyGuard {
         (bptAmountIn, , ) = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(
-                    Router.queryRemoveLiquidityCallback.selector,
-                    RemoveLiquidityCallbackParams({
+                    Router.queryRemoveLiquidityHook.selector,
+                    RemoveLiquidityHookParams({
                         // We use router as a sender to simplify basic query functions
                         // but it is possible to remove liquidity from any sender
                         sender: address(this),
@@ -892,8 +885,8 @@ contract Router is IRouter, ReentrancyGuard {
             abi.decode(
                 _vault.quote(
                     abi.encodeWithSelector(
-                        Router.queryRemoveLiquidityCallback.selector,
-                        RemoveLiquidityCallbackParams({
+                        Router.queryRemoveLiquidityHook.selector,
+                        RemoveLiquidityHookParams({
                             // We use router as a sender to simplify basic query functions
                             // but it is possible to remove liquidity from any sender
                             sender: address(this),
@@ -911,15 +904,15 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     /**
-     * @notice Callback for remove liquidity queries.
+     * @notice Hook for remove liquidity queries.
      * @dev Can only be called by the Vault.
      * @param params Remove liquidity parameters (see IRouter for struct definition)
      * @return bptAmountIn Pool token amount to be burned for the output tokens
      * @return amountsOut Expected token amounts to be transferred to the sender
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
-    function queryRemoveLiquidityCallback(
-        RemoveLiquidityCallbackParams calldata params
+    function queryRemoveLiquidityHook(
+        RemoveLiquidityHookParams calldata params
     )
         external
         nonReentrant

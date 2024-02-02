@@ -108,7 +108,7 @@ interface IVaultExtension {
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param pauseManager Optional contract the Vault will allow to pause the pool
-     * @param config Flags indicating which callbacks the pool supports
+     * @param hookConfig Flags indicating which hooks the pool supports
      * @param liquidityManagement Liquidity management flags with implemented methods
      */
     function registerPool(
@@ -116,7 +116,7 @@ interface IVaultExtension {
         TokenConfig[] memory tokenConfig,
         uint256 pauseWindowEndTime,
         address pauseManager,
-        PoolCallbacks calldata config,
+        PoolHooks calldata hookConfig,
         LiquidityManagement calldata liquidityManagement
     ) external;
 
