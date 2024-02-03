@@ -507,9 +507,7 @@ contract Router is IRouter, ReentrancyGuard {
      * @param params Swap parameters (see IRouter for struct definition)
      * @return Token amount calculated by the pool math (e.g., amountOut for a given in swap)
      */
-    function swapHook(
-        SwapHookParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256) {
+    function swapHook(SwapHookParams calldata params) external payable nonReentrant onlyVault returns (uint256) {
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         IERC20 tokenIn = params.tokenIn;
@@ -645,9 +643,7 @@ contract Router is IRouter, ReentrancyGuard {
      * @param params Swap parameters (see IRouter for struct definition)
      * @return Token amount calculated by the pool math (e.g., amountOut for a given in swap)
      */
-    function querySwapHook(
-        SwapHookParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256) {
+    function querySwapHook(SwapHookParams calldata params) external payable nonReentrant onlyVault returns (uint256) {
         (uint256 amountCalculated, , ) = _swapHook(params);
 
         return amountCalculated;
