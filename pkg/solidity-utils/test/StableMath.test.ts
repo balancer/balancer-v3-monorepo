@@ -124,9 +124,9 @@ describe('StableMath', function () {
     });
   });
 
-  context('in given out', () => {
+  context('in given exact out', () => {
     context('two tokens', () => {
-      it('returns in given out', async () => {
+      it('returns in given exact out', async () => {
         const amp = bn(100);
         const balances = Array.from({ length: 2 }, () => random(8, 12)).map(fp);
         const tokenIndexIn = 0;
@@ -140,7 +140,7 @@ describe('StableMath', function () {
       });
     });
     context('three tokens', () => {
-      it('returns in given out', async () => {
+      it('returns in given exact out', async () => {
         const amp = bn(100);
         const balances = Array.from({ length: 3 }, () => random(10, 14)).map(fp);
         const tokenIndexIn = 0;
@@ -155,9 +155,9 @@ describe('StableMath', function () {
     });
   });
 
-  context('out given in', () => {
+  context('out given exact in', () => {
     context('two tokens', () => {
-      it('returns out given in', async () => {
+      it('returns out given exact in', async () => {
         const amp = bn(10);
         const balances = Array.from({ length: 2 }, () => random(10, 12)).map(fp);
         const tokenIndexIn = 0;
@@ -171,7 +171,7 @@ describe('StableMath', function () {
       });
     });
     context('three tokens', () => {
-      it('returns out given in', async () => {
+      it('returns out given exact in', async () => {
         const amp = bn(10);
         const balances = Array.from({ length: 3 }, () => random(10, 14)).map(fp);
         const tokenIndexIn = 0;

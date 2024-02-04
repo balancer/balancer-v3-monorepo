@@ -512,7 +512,7 @@ contract Router is IRouter, ReentrancyGuard {
      * @notice Callback for swaps.
      * @dev Can only be called by the Vault. Also handles native ETH.
      * @param params Swap parameters (see IRouter for struct definition)
-     * @return Token amount calculated by the pool math (e.g., amountOut for a given in swap)
+     * @return Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
      */
     function swapCallback(
         SwapCallbackParams calldata params
@@ -650,7 +650,7 @@ contract Router is IRouter, ReentrancyGuard {
      * @notice Callback for swap queries.
      * @dev Can only be called by the Vault. Also handles native ETH.
      * @param params Swap parameters (see IRouter for struct definition)
-     * @return Token amount calculated by the pool math (e.g., amountOut for a given in swap)
+     * @return Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
      */
     function querySwapCallback(
         SwapCallbackParams calldata params
