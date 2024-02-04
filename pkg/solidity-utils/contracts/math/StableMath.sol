@@ -97,7 +97,7 @@ library StableMath {
 
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the current balances.
     // The amplification parameter equals: A n^(n-1)
-    function computeOutGivenIn(
+    function computeOutGivenExactIn(
         uint256 amplificationParameter,
         uint256[] memory balances,
         uint256 tokenIndexIn,
@@ -106,7 +106,7 @@ library StableMath {
         uint256 invariant
     ) internal pure returns (uint256) {
         /**************************************************************************************************************
-        // outGivenIn token x for y - polynomial equation to solve                                                   //
+        // outGivenExactIn token x for y - polynomial equation to solve                                                   //
         // ay = amount out to calculate                                                                              //
         // by = balance token out                                                                                    //
         // y = by - ay (finalBalanceOut)                                                                             //
@@ -139,7 +139,7 @@ library StableMath {
     // Computes how many tokens must be sent to a pool if `tokenAmountOut` are sent given the
     // current balances, using the Newton-Raphson approximation.
     // The amplification parameter equals: A n^(n-1)
-    function computeInGivenOut(
+    function computeInGivenExactOut(
         uint256 amplificationParameter,
         uint256[] memory balances,
         uint256 tokenIndexIn,
@@ -148,7 +148,7 @@ library StableMath {
         uint256 invariant
     ) internal pure returns (uint256) {
         /**************************************************************************************************************
-        // inGivenOut token x for y - polynomial equation to solve                                                   //
+        // inGivenExactOut token x for y - polynomial equation to solve                                                   //
         // ax = amount in to calculate                                                                               //
         // bx = balance token in                                                                                     //
         // x = bx + ax (finalBalanceIn)                                                                              //

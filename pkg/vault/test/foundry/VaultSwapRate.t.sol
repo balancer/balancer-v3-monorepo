@@ -62,7 +62,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         assertEq(address(rateProviders[1]), address(0));
     }
 
-    function testSwapGivenInWithRate() public {
+    function testSwapExactInWithRate() public {
         uint256 rateAdjustedLimit = defaultAmount.divDown(mockRate);
         uint256 rateAdjustedAmount = defaultAmount.mulDown(mockRate);
 
@@ -95,7 +95,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         );
     }
 
-    function testSwapGivenOutWithRate() public {
+    function testSwapExactOutWithRate() public {
         uint256 rateAdjustedBalance = defaultAmount.mulDown(mockRate);
         uint256 rateAdjustedAmountGiven = defaultAmount.divDown(mockRate);
 

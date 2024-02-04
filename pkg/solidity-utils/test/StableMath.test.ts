@@ -8,8 +8,8 @@ import {
   calculateInvariant,
   calculateAnalyticalInvariantForTwoTokens,
   getTokenBalanceGivenInvariantAndAllOtherBalances,
-  calcInGivenOut,
-  calcOutGivenIn,
+  calcInGivenExactOut,
+  calcOutGivenExactIn,
   calcBptOutGivenExactTokensIn,
   calcTokenInGivenExactBptOut,
   calcTokenOutGivenExactBptIn,
@@ -133,8 +133,8 @@ describe('StableMath', function () {
         const tokenIndexOut = 1;
         const amountOut = fp(1);
 
-        const result = await mock.inGivenOut(amp * AMP_PRECISION, balances, tokenIndexIn, tokenIndexOut, amountOut);
-        const expectedAmountIn = calcInGivenOut(balances, amp, tokenIndexIn, tokenIndexOut, amountOut);
+        const result = await mock.inGivenExactOut(amp * AMP_PRECISION, balances, tokenIndexIn, tokenIndexOut, amountOut);
+        const expectedAmountIn = calcInGivenExactOut(balances, amp, tokenIndexIn, tokenIndexOut, amountOut);
 
         expectEqualWithError(result, bn(expectedAmountIn.toFixed(0)), MAX_RELATIVE_ERROR);
       });
@@ -147,8 +147,8 @@ describe('StableMath', function () {
         const tokenIndexOut = 1;
         const amountOut = fp(1);
 
-        const result = await mock.inGivenOut(amp * AMP_PRECISION, balances, tokenIndexIn, tokenIndexOut, amountOut);
-        const expectedAmountIn = calcInGivenOut(balances, amp, tokenIndexIn, tokenIndexOut, amountOut);
+        const result = await mock.inGivenExactOut(amp * AMP_PRECISION, balances, tokenIndexIn, tokenIndexOut, amountOut);
+        const expectedAmountIn = calcInGivenExactOut(balances, amp, tokenIndexIn, tokenIndexOut, amountOut);
 
         expectEqualWithError(result, bn(expectedAmountIn.toFixed(0)), MAX_RELATIVE_ERROR);
       });
@@ -164,8 +164,8 @@ describe('StableMath', function () {
         const tokenIndexOut = 1;
         const amountIn = fp(1);
 
-        const result = await mock.outGivenIn(amp * AMP_PRECISION, balances, tokenIndexIn, tokenIndexOut, amountIn);
-        const expectedAmountOut = calcOutGivenIn(balances, amp, tokenIndexIn, tokenIndexOut, amountIn);
+        const result = await mock.outGivenExactIn(amp * AMP_PRECISION, balances, tokenIndexIn, tokenIndexOut, amountIn);
+        const expectedAmountOut = calcOutGivenExactIn(balances, amp, tokenIndexIn, tokenIndexOut, amountIn);
 
         expectEqualWithError(result, bn(expectedAmountOut.toFixed(0)), MAX_RELATIVE_ERROR);
       });
@@ -178,8 +178,8 @@ describe('StableMath', function () {
         const tokenIndexOut = 1;
         const amountIn = fp(1);
 
-        const result = await mock.outGivenIn(amp * AMP_PRECISION, balances, tokenIndexIn, tokenIndexOut, amountIn);
-        const expectedAmountOut = calcOutGivenIn(balances, amp, tokenIndexIn, tokenIndexOut, amountIn);
+        const result = await mock.outGivenExactIn(amp * AMP_PRECISION, balances, tokenIndexIn, tokenIndexOut, amountIn);
+        const expectedAmountOut = calcOutGivenExactIn(balances, amp, tokenIndexIn, tokenIndexOut, amountIn);
 
         expectEqualWithError(result, bn(expectedAmountOut.toFixed(0)), MAX_RELATIVE_ERROR);
       });

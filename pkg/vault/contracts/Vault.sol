@@ -225,7 +225,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         vars.tokenInBalance = poolBalances.unchecked_valueAt(vars.indexIn);
         vars.tokenOutBalance = poolBalances.unchecked_valueAt(vars.indexOut);
 
-        // If the amountGiven is entering the pool math (GivenIn), round down, since a lower apparent amountIn leads
+        // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
         vars.amountGivenScaled18 = params.kind == SwapKind.EXACT_IN
             ? params.amountGivenRaw.toScaled18ApplyRateRoundDown(
@@ -327,7 +327,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     ) internal nonReentrant returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         // Add swap fee to the amountGiven to account for the fee taken in EXACT_OUT swap on tokenOut
         // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
-        // If it's a GivenIn swap, vars.swapFeeAmountScaled18 will be zero here, and set based on the amountCalculated.
+        // If it's an ExactIn swap, vars.swapFeeAmountScaled18 will be zero here, and set based on the amountCalculated.
 
         vars.amountCalculatedScaled18 = IBasePool(vaultSwapParams.pool).onSwap(vars.poolSwapParams);
 
@@ -340,7 +340,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         if (vaultSwapParams.kind == SwapKind.EXACT_IN) {
-            // For `GivenIn` the amount calculated is leaving the Vault, so we round down.
+            // For `ExactIn` the amount calculated is leaving the Vault, so we round down.
             amountCalculated = vars.amountCalculatedScaled18.toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[vars.indexOut],
                 poolData.tokenRates[vars.indexOut]
@@ -351,7 +351,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 revert SwapLimit(amountOut, vaultSwapParams.limitRaw);
             }
         } else {
-            // Round up when entering the Vault on `GivenOut`.
+            // Round up when entering the Vault on `ExactOut`.
             amountCalculated = vars.amountCalculatedScaled18.toRawUndoRateRoundUp(
                 poolData.decimalScalingFactors[vars.indexIn],
                 poolData.tokenRates[vars.indexIn]

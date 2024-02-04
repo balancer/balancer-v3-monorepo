@@ -102,7 +102,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];
 
         if (request.kind == SwapKind.EXACT_IN) {
-            uint256 amountOutScaled18 = WeightedMath.computeOutGivenIn(
+            uint256 amountOutScaled18 = WeightedMath.computeOutGivenExactIn(
                 balanceTokenInScaled18,
                 _getNormalizedWeight(request.indexIn),
                 balanceTokenOutScaled18,
@@ -112,7 +112,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
 
             return amountOutScaled18;
         } else {
-            uint256 amountInScaled18 = WeightedMath.computeInGivenOut(
+            uint256 amountInScaled18 = WeightedMath.computeInGivenExactOut(
                 balanceTokenInScaled18,
                 _getNormalizedWeight(request.indexIn),
                 balanceTokenOutScaled18,

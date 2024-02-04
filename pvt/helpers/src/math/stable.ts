@@ -79,7 +79,7 @@ export function calculateAnalyticalInvariantForTwoTokens(
   return fp(invariant);
 }
 
-export function calcOutGivenIn(
+export function calcOutGivenExactIn(
   fpBalances: BigNumberish[],
   amplificationParameter: BigNumberish,
   tokenIndexIn: number,
@@ -101,7 +101,7 @@ export function calcOutGivenIn(
   return toFp(balances[tokenIndexOut].sub(finalBalanceOut));
 }
 
-export function calcInGivenOut(
+export function calcInGivenExactOut(
   fpBalances: BigNumberish[],
   amplificationParameter: BigNumberish,
   tokenIndexIn: number,
