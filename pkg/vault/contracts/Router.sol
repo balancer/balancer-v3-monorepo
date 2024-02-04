@@ -458,7 +458,7 @@ contract Router is IRouter, ReentrancyGuard {
                         Router.swapCallback.selector,
                         SwapCallbackParams({
                             sender: msg.sender,
-                            kind: SwapKind.GIVEN_IN,
+                            kind: SwapKind.EXACT_IN,
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
@@ -492,7 +492,7 @@ contract Router is IRouter, ReentrancyGuard {
                         Router.swapCallback.selector,
                         SwapCallbackParams({
                             sender: msg.sender,
-                            kind: SwapKind.GIVEN_OUT,
+                            kind: SwapKind.EXACT_OUT,
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
@@ -599,7 +599,7 @@ contract Router is IRouter, ReentrancyGuard {
                         Router.querySwapCallback.selector,
                         SwapCallbackParams({
                             sender: msg.sender,
-                            kind: SwapKind.GIVEN_IN,
+                            kind: SwapKind.EXACT_IN,
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
@@ -630,7 +630,7 @@ contract Router is IRouter, ReentrancyGuard {
                         Router.querySwapCallback.selector,
                         SwapCallbackParams({
                             sender: msg.sender,
-                            kind: SwapKind.GIVEN_OUT,
+                            kind: SwapKind.EXACT_OUT,
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,

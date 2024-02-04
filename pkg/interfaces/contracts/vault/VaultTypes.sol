@@ -91,8 +91,8 @@ enum Rounding {
 *******************************************************************************/
 
 enum SwapKind {
-    GIVEN_IN,
-    GIVEN_OUT
+    EXACT_IN,
+    EXACT_OUT
 }
 
 /**

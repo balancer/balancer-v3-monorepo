@@ -101,7 +101,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         uint256 balanceTokenInScaled18 = request.balancesScaled18[request.indexIn];
         uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];
 
-        if (request.kind == SwapKind.GIVEN_IN) {
+        if (request.kind == SwapKind.EXACT_IN) {
             uint256 amountOutScaled18 = WeightedMath.computeOutGivenIn(
                 balanceTokenInScaled18,
                 _getNormalizedWeight(request.indexIn),
