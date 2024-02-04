@@ -73,7 +73,13 @@ describe('WeightedMath', function () {
       const roundedUpAmountGiven = bn(15.01e18);
       const roundedDownAmountGiven = bn(14.99e18);
 
-      const expected = computeOutGivenExactIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn);
+      const expected = computeOutGivenExactIn(
+        tokenBalanceIn,
+        tokenWeightIn,
+        tokenBalanceOut,
+        tokenWeightOut,
+        tokenAmountIn
+      );
       const result = await math.computeOutGivenExactIn(
         tokenBalanceIn,
         tokenWeightIn,
@@ -132,7 +138,13 @@ describe('WeightedMath', function () {
       const tokenWeightOut = bn(40e18);
       const tokenAmountIn = bn(10e6); // (MIN AMOUNT = 0.00000000001)
 
-      const expected = computeOutGivenExactIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn);
+      const expected = computeOutGivenExactIn(
+        tokenBalanceIn,
+        tokenWeightIn,
+        tokenBalanceOut,
+        tokenWeightOut,
+        tokenAmountIn
+      );
       const result = await math.computeOutGivenExactIn(
         tokenBalanceIn,
         tokenWeightIn,
@@ -153,7 +165,13 @@ describe('WeightedMath', function () {
       const tokenWeightOut = bn(1e18);
       const tokenAmountIn = bn(15e18);
 
-      const expected = computeOutGivenExactIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn);
+      const expected = computeOutGivenExactIn(
+        tokenBalanceIn,
+        tokenWeightIn,
+        tokenBalanceOut,
+        tokenWeightOut,
+        tokenAmountIn
+      );
       const result = await math.computeOutGivenExactIn(
         tokenBalanceIn,
         tokenWeightIn,
@@ -173,7 +191,13 @@ describe('WeightedMath', function () {
       const tokenWeightOut = bn(1e18);
       const tokenAmountIn = bn(15e18);
 
-      const expected = computeOutGivenExactIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn);
+      const expected = computeOutGivenExactIn(
+        tokenBalanceIn,
+        tokenWeightIn,
+        tokenBalanceOut,
+        tokenWeightOut,
+        tokenAmountIn
+      );
       const result = await math.computeOutGivenExactIn(
         tokenBalanceIn,
         tokenWeightIn,
