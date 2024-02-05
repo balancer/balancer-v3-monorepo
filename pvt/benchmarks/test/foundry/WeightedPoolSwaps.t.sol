@@ -113,23 +113,23 @@ contract WeightedPoolSwaps is BaseVaultTest {
         }
     }
 
-    function testSwapGivenInWithoutRate() public {
-        _testSwapGivenIn(address(weightedPool));
+    function testSwapExactInWithoutRate() public {
+        _testSwapExactIn(address(weightedPool));
     }
 
-    function testSwapGivenOutWithoutRate() public {
-        _testSwapGivenOut(address(weightedPool));
+    function testSwapExactOutWithoutRate() public {
+        _testSwapExactOut(address(weightedPool));
     }
 
-    function testSwapGivenInWithRate() public {
-        _testSwapGivenIn(address(weightedPoolWithRate));
+    function testSwapExactInWithRate() public {
+        _testSwapExactIn(address(weightedPoolWithRate));
     }
 
-    function testSwapGivenOutWithRate() public {
-        _testSwapGivenOut(address(weightedPoolWithRate));
+    function testSwapExactOutWithRate() public {
+        _testSwapExactOut(address(weightedPoolWithRate));
     }
 
-    function _testSwapGivenIn(address pool) internal {
+    function _testSwapExactIn(address pool) internal {
         uint256 amountIn = maxSwapAmount;
 
         vm.startPrank(bob);
@@ -141,7 +141,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function _testSwapGivenOut(address pool) internal {
+    function _testSwapExactOut(address pool) internal {
         uint256 amountOut = maxSwapAmount;
 
         vm.startPrank(bob);

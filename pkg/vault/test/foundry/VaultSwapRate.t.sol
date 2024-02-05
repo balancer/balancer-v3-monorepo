@@ -62,7 +62,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         assertEq(address(rateProviders[1]), address(0), "Rate provider should be 0");
     }
 
-    function testSwapGivenInWithRate() public {
+    function testSwapExactInWithRate() public {
         uint256 rateAdjustedLimit = defaultAmount.divDown(mockRate);
         uint256 rateAdjustedAmount = defaultAmount.mulDown(mockRate);
 
@@ -71,7 +71,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
-                    kind: SwapKind.GIVEN_IN,
+                    kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: [rateAdjustedAmount, defaultAmount].toMemoryArray(),
                     indexIn: 1,
@@ -95,7 +95,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         );
     }
 
-    function testSwapGivenOutWithRate() public {
+    function testSwapExactOutWithRate() public {
         uint256 rateAdjustedBalance = defaultAmount.mulDown(mockRate);
         uint256 rateAdjustedAmountGiven = defaultAmount.divDown(mockRate);
 
@@ -104,7 +104,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
-                    kind: SwapKind.GIVEN_OUT,
+                    kind: SwapKind.EXACT_OUT,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: [rateAdjustedBalance, defaultAmount].toMemoryArray(),
                     indexIn: 1,
