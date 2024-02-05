@@ -55,8 +55,8 @@ enum TokenType {
 
 /**
  * @dev Encapsulate the data required for the Vault to support a token of the given type.
- * For STANDARD or ERC4626 tokens, the rate provider address will be 0.
- * TODO: use exempt flag.
+ * For STANDARD or ERC4626 tokens, the rate provider address will be 0. By definition, ERC4626 tokens cannot be
+ * yield exempt, so the `yieldFeeExempt` flag must be false when registering them.
  *
  * @param token The token address
  * @param tokenType The token type (see the enum for supported types)

@@ -403,7 +403,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                 _protocolFees[token] += yieldFeeAmountRaw;
                 emit ProtocolYieldFeeCharged(pool, address(token), yieldFeeAmountRaw);
 
-                // Adjust raw and live balances.
+                // Adjust raw balance after yield fee applied.
                 poolTokenBalances.unchecked_setAt(i, poolData.balancesRaw[i]);
             }
             // Update last live balance
@@ -438,8 +438,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
-     * @dev Sets live balances in pool data, scaling raw balances by both decimal and token rates rounding the result
-     * in the given direction.
+     * @dev Sets live balances in pool data, scaling raw balances by both decimal and token rates,
+     * and rounding the result in the given direction.
      */
     function _setLiveBalanceFromRawForToken(
         PoolData memory poolData,
