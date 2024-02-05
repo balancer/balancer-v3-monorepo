@@ -21,12 +21,14 @@ import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { FP_ZERO, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
+import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 
 describe('ERC4626BufferPool', function () {
   const TOKEN_AMOUNT = fp(1000);
   const MIN_BPT = bn(1e6);
 
   let vault: IVaultMock;
+  let authorizer: Contract;
   let router: Router;
   let factory: Contract;
   let wrappedToken: ERC4626TestToken;
@@ -47,6 +49,9 @@ describe('ERC4626BufferPool', function () {
   sharedBeforeEach('deploy vault, router, tokens, and pool', async function () {
     const vaultMock: VaultMock = await VaultDeployer.deployMock();
     vault = await TypesConverter.toIVaultMock(vaultMock);
+
+    const authorizerAddress = await vault.getAuthorizer();
+    authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
 
     const WETH: WETHTestToken = await deploy('v3-solidity-utils/WETHTestToken');
     router = await deploy('v3-vault/Router', { args: [vault, await WETH.getAddress()] });
