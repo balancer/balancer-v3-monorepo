@@ -58,8 +58,8 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
     function testInitialRateProviderState() public {
         (, , , , IRateProvider[] memory rateProviders) = vault.getPoolTokenInfo(address(pool));
 
-        assertEq(address(rateProviders[0]), address(rateProvider));
-        assertEq(address(rateProviders[1]), address(0));
+        assertEq(address(rateProviders[0]), address(rateProvider), "Wrong rate provider");
+        assertEq(address(rateProviders[1]), address(0), "Rate provider should be 0");
     }
 
     function testSwapGivenInWithRate() public {
