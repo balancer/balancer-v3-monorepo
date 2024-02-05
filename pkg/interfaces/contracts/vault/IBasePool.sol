@@ -47,9 +47,9 @@ interface IBasePool {
 
     /**
      * @dev Data for a swap operation.
-     * @param kind Type of swap (given in or given out)
+     * @param kind Type of swap (exact in or exact out)
      * @param pool Address of the liquidity pool
-     * @param amountGivenScaled18 Amount given based on kind of the swap (e.g., tokenIn for given in)
+     * @param amountGivenScaled18 Amount given based on kind of the swap (e.g., tokenIn for exact in)
      * @param balancesScaled18 Current pool balances
      * @param indexIn Index of tokenIn
      * @param indexOut Index of tokenOut

@@ -105,7 +105,7 @@ interface IVaultExtension {
      * If the zero address is provided for the `pauseManager`, permissions for pausing the pool will default to the
      * authorizer.
      *
-     * @param pool The pool being registered
+     * @param pool The address of the pool being registered
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param pauseManager Optional contract the Vault will allow to pause the pool
