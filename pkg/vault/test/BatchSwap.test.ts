@@ -7,7 +7,7 @@ import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constan
 import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
-import { Router, Vault } from '../typechain-types';
+import { IRouter, Router, Vault } from '../typechain-types';
 import { BalanceChange, expectBalanceChange } from '@balancer-labs/v3-helpers/src/test/tokenBalance';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
@@ -157,13 +157,26 @@ describe('BatchSwap', function () {
   describe('batch swap given in', () => {
     let doSwap: () => Promise<unknown>;
     let doSwapStatic: () => Promise<unknown>;
-    let tokenIn: ERC20TestToken;
-    let tokenOut: ERC20TestToken;
+    let tokenIn: ERC20TestToken | PoolMock;
+    let tokenOut: ERC20TestToken | PoolMock;
     const pathExactAmountIn = fp(1);
     const pathMinAmountOut = fp(1);
 
     let totalAmountIn: bigint, totalAmountOut: bigint, pathAmountsOut: bigint[];
     let balanceChange: BalanceChange[];
+    let paths: IRouter.SwapPathExactAmountInStruct[];
+
+    function setUp() {
+      const _doSwap = async (isStatic: boolean) =>
+        (isStatic ? router.connect(sender).swapExactIn.staticCall : router.connect(sender).swapExactIn)(
+          paths,
+          MAX_UINT256,
+          false,
+          '0x'
+        );
+      doSwap = async () => _doSwap(false);
+      doSwapStatic = async () => _doSwap(true);
+    }
 
     function itTestsBatchSwap() {
       it('performs swap, transfers tokens', async () => {
@@ -209,26 +222,19 @@ describe('BatchSwap', function () {
               },
             },
           ];
-
-          const _doSwap = async (isStatic: boolean) =>
-            (isStatic ? router.connect(sender).swapExactIn.staticCall : router.connect(sender).swapExactIn)(
-              [
-                {
-                  tokenIn: token0,
-                  steps: [
-                    { pool: poolA, tokenOut: token1 },
-                    { pool: poolB, tokenOut: token2 },
-                  ],
-                  exactAmountIn: pathExactAmountIn,
-                  minAmountOut: pathMinAmountOut,
-                },
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
               ],
-              MAX_UINT256,
-              false,
-              '0x'
-            );
-          doSwap = async () => _doSwap(false);
-          doSwapStatic = async () => _doSwap(true);
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut,
+            },
+          ];
+
+          setUp();
         });
 
         itTestsBatchSwap();
@@ -259,32 +265,25 @@ describe('BatchSwap', function () {
               },
             },
           ];
-
-          const _doSwap = async (isStatic: boolean) =>
-            (isStatic ? router.connect(sender).swapExactIn.staticCall : router.connect(sender).swapExactIn)(
-              [
-                {
-                  tokenIn: token0,
-                  steps: [
-                    { pool: poolA, tokenOut: token1 },
-                    { pool: poolB, tokenOut: token2 },
-                  ],
-                  exactAmountIn: pathExactAmountIn,
-                  minAmountOut: pathMinAmountOut,
-                },
-                {
-                  tokenIn: token0,
-                  steps: [{ pool: poolC, tokenOut: token2 }],
-                  exactAmountIn: pathExactAmountIn,
-                  minAmountOut: pathMinAmountOut,
-                },
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
               ],
-              MAX_UINT256,
-              false,
-              '0x'
-            );
-          doSwap = async () => _doSwap(false);
-          doSwapStatic = async () => _doSwap(true);
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut,
+            },
+            {
+              tokenIn: token0,
+              steps: [{ pool: poolC, tokenOut: token2 }],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut,
+            },
+          ];
+
+          setUp();
         });
 
         itTestsBatchSwap();
@@ -318,25 +317,19 @@ describe('BatchSwap', function () {
             },
           ];
 
-          const _doSwap = async (isStatic: boolean) =>
-            (isStatic ? router.connect(sender).swapExactIn.staticCall : router.connect(sender).swapExactIn)(
-              [
-                {
-                  tokenIn: token0,
-                  steps: [
-                    { pool: poolA, tokenOut: poolA },
-                    { pool: poolAB, tokenOut: poolB },
-                  ],
-                  exactAmountIn: pathExactAmountIn,
-                  minAmountOut: pathMinAmountOut,
-                },
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: poolA },
+                { pool: poolAB, tokenOut: poolB },
               ],
-              MAX_UINT256,
-              false,
-              '0x'
-            );
-          doSwap = async () => _doSwap(false);
-          doSwapStatic = async () => _doSwap(true);
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut,
+            },
+          ];
+
+          setUp();
         });
 
         itTestsBatchSwap();
