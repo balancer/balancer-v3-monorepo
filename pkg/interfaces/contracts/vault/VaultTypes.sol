@@ -5,8 +5,8 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IRateProvider } from "./IRateProvider.sol";
 
-/// @dev Represents a pool's callbacks.
-struct PoolCallbacks {
+/// @dev Represents a pool's hooks.
+struct PoolHooks {
     bool shouldCallBeforeInitialize;
     bool shouldCallAfterInitialize;
     bool shouldCallBeforeSwap;
@@ -22,7 +22,7 @@ struct LiquidityManagement {
     bool supportsRemoveLiquidityCustom;
 }
 
-/// @dev Represents a pool's configuration, including callbacks.
+/// @dev Represents a pool's configuration, including hooks.
 struct PoolConfig {
     bool isPoolRegistered;
     bool isPoolInitialized;
@@ -32,7 +32,7 @@ struct PoolConfig {
     uint64 staticSwapFeePercentage; // stores an 18-decimal FP value (max FixedPoint.ONE)
     uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
     uint32 pauseWindowEndTime;
-    PoolCallbacks callbacks;
+    PoolHooks hooks;
     LiquidityManagement liquidityManagement;
 }
 
