@@ -5,13 +5,8 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    TokenType,
-    TokenConfig,
-    PoolCallbacks,
-    LiquidityManagement
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FactoryWidePauseWindow } from "../factories/FactoryWidePauseWindow.sol";
 
@@ -28,7 +23,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         IRateProvider[] memory rateProviders,
         bool[] memory yieldExemptFlags,
         address pauseManager,
-        PoolCallbacks calldata poolCallbacks,
+        PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external {
         _vault.registerPool(
@@ -36,7 +31,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             _buildTokenConfig(tokens, rateProviders, yieldExemptFlags),
             getNewPoolPauseWindowEndTime(),
             pauseManager,
-            poolCallbacks,
+            poolHooks,
             liquidityManagement
         );
     }
@@ -48,7 +43,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         IRateProvider[] memory rateProviders,
         bool[] memory yieldExemptFlags,
         address pauseManager,
-        PoolCallbacks calldata poolCallbacks,
+        PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement,
         uint256 timestamp
     ) external {
@@ -57,7 +52,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             _buildTokenConfig(tokens, rateProviders, yieldExemptFlags),
             timestamp,
             pauseManager,
-            poolCallbacks,
+            poolHooks,
             liquidityManagement
         );
     }

@@ -9,7 +9,7 @@ pragma solidity ^0.8.4;
  * point value so that it can be conveniently compared to other scaled values.
  *
  * "Last" refers to the final live balance as of the last time the raw balance changed (e.g., after a swap or liquidity
- * operation). The "live" balance is the balance presented to the Pool in callbacks: with any applicable decimal and
+ * operation). The "live" balance is the balance presented to the Pool in hooks: with any applicable decimal and
  * rate scaling applied, and any applicable protocol fees (swap and yield) deducted.
  *
  * We could use a Solidity struct to pack these three values together in a single storage slot, but unfortunately
