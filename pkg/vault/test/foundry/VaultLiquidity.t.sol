@@ -150,8 +150,8 @@ contract VaultLiquidityTest is BaseVaultTest {
         snapEnd();
 
         // amountsOut are correct
-        assertEq(amountsOut[0], defaultAmount);
-        assertEq(amountsOut[1], defaultAmount);
+        assertEq(amountsOut[0], defaultAmount, "Wrong AmountOut[0]");
+        assertEq(amountsOut[1], defaultAmount, "Wrong AmountOut[1]");
     }
 
     function testRemoveLiquidityProportional() public {
@@ -175,8 +175,8 @@ contract VaultLiquidityTest is BaseVaultTest {
         (amountsOut, ) = router.getSingleInputArrayAndTokenIndex(pool, dai, amountOut);
 
         // amountsOut are correct
-        assertEq(amountsOut[0], defaultAmount);
-        assertEq(amountsOut[1], 0);
+        assertEq(amountsOut[0], defaultAmount, "Wrong AmountOut[0]");
+        assertEq(amountsOut[1], 0, "AmountOut[1] > 0");
     }
 
     function testRemoveLiquiditySingleTokenExactIn() public {
@@ -212,8 +212,8 @@ contract VaultLiquidityTest is BaseVaultTest {
         );
 
         // amountsOut are correct
-        assertEq(amountsOut[0], defaultAmount);
-        assertEq(amountsOut[1], defaultAmount);
+        assertEq(amountsOut[0], defaultAmount, "Wrong AmountOut[0]");
+        assertEq(amountsOut[1], defaultAmount, "Wrong AmountOut[1]");
     }
 
     function testRemoveLiquidityCustom() public {

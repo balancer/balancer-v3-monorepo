@@ -132,7 +132,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
     function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
         return
-            params.kind == SwapKind.GIVEN_IN
+            params.kind == SwapKind.EXACT_IN
                 ? params.amountGivenScaled18.mulDown(_multiplier)
                 : params.amountGivenScaled18.divDown(_multiplier);
     }

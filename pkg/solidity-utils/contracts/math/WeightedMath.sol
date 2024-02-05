@@ -94,7 +94,7 @@ library WeightedMath {
 
     // Computes how many tokens can be taken out of a pool if `amountIn` are sent, given the
     // current balances and weights.
-    function computeOutGivenIn(
+    function computeOutGivenExactIn(
         uint256 balanceIn,
         uint256 weightIn,
         uint256 balanceOut,
@@ -102,7 +102,7 @@ library WeightedMath {
         uint256 amountIn
     ) internal pure returns (uint256) {
         /**********************************************************************************************
-        // outGivenIn                                                                                //
+        // outGivenExactIn                                                                                //
         // aO = amountOut                                                                            //
         // bO = balanceOut                                                                           //
         // bI = balanceIn              /      /            bI             \    (wI / wO) \           //
@@ -131,7 +131,7 @@ library WeightedMath {
 
     // Computes how many tokens must be sent to a pool in order to take `amountOut`, given the
     // current balances and weights.
-    function computeInGivenOut(
+    function computeInGivenExactOut(
         uint256 balanceIn,
         uint256 weightIn,
         uint256 balanceOut,
@@ -139,7 +139,7 @@ library WeightedMath {
         uint256 amountOut
     ) internal pure returns (uint256) {
         /**********************************************************************************************
-        // inGivenOut                                                                                //
+        // inGivenExactOut                                                                                //
         // aO = amountOut                                                                            //
         // bO = balanceOut                                                                           //
         // bI = balanceIn              /  /            bO             \    (wO / wI)      \          //

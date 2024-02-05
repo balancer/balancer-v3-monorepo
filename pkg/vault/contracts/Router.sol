@@ -451,7 +451,7 @@ contract Router is IRouter, ReentrancyGuard {
                         Router.swapHook.selector,
                         SwapHookParams({
                             sender: msg.sender,
-                            kind: SwapKind.GIVEN_IN,
+                            kind: SwapKind.EXACT_IN,
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
@@ -485,7 +485,7 @@ contract Router is IRouter, ReentrancyGuard {
                         Router.swapHook.selector,
                         SwapHookParams({
                             sender: msg.sender,
-                            kind: SwapKind.GIVEN_OUT,
+                            kind: SwapKind.EXACT_OUT,
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
@@ -505,7 +505,7 @@ contract Router is IRouter, ReentrancyGuard {
      * @notice Hook for swaps.
      * @dev Can only be called by the Vault. Also handles native ETH.
      * @param params Swap parameters (see IRouter for struct definition)
-     * @return Token amount calculated by the pool math (e.g., amountOut for a given in swap)
+     * @return Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
      */
     function swapHook(SwapHookParams calldata params) external payable nonReentrant onlyVault returns (uint256) {
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
@@ -590,7 +590,7 @@ contract Router is IRouter, ReentrancyGuard {
                         Router.querySwapHook.selector,
                         SwapHookParams({
                             sender: msg.sender,
-                            kind: SwapKind.GIVEN_IN,
+                            kind: SwapKind.EXACT_IN,
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
@@ -621,7 +621,7 @@ contract Router is IRouter, ReentrancyGuard {
                         Router.querySwapHook.selector,
                         SwapHookParams({
                             sender: msg.sender,
-                            kind: SwapKind.GIVEN_OUT,
+                            kind: SwapKind.EXACT_OUT,
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
@@ -641,7 +641,7 @@ contract Router is IRouter, ReentrancyGuard {
      * @notice Hook for swap queries.
      * @dev Can only be called by the Vault. Also handles native ETH.
      * @param params Swap parameters (see IRouter for struct definition)
-     * @return Token amount calculated by the pool math (e.g., amountOut for a given in swap)
+     * @return Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
      */
     function querySwapHook(SwapHookParams calldata params) external payable nonReentrant onlyVault returns (uint256) {
         (uint256 amountCalculated, , ) = _swapHook(params);
