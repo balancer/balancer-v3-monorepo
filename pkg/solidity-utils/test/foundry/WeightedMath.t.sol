@@ -27,7 +27,7 @@ contract WeightedMathTest is Test {
         mock = new WeightedMathMock();
     }
 
-    function testComputeOutGivenIn(
+    function testComputeOutGivenExactIn(
         uint64 rawWeightIn,
         uint256 rawBalanceIn,
         uint256 rawBalanceOut,
@@ -45,12 +45,12 @@ contract WeightedMathTest is Test {
 
         assertEq(weightIn + weightOut, FP_ONE);
 
-        uint256 standardResult = mock.computeOutGivenIn(balanceIn, weightIn, balanceOut, weightOut, amountGiven);
+        uint256 standardResult = mock.computeOutGivenExactIn(balanceIn, weightIn, balanceOut, weightOut, amountGiven);
 
         uint256 roundedUpAmountGiven = flipBit ? amountGiven + 1 : amountGiven;
         uint256 roundedDownAmountGiven = flipBit ? amountGiven - 1 : amountGiven;
 
-        uint256 roundedUpResult = mock.computeOutGivenIn(
+        uint256 roundedUpResult = mock.computeOutGivenExactIn(
             balanceIn,
             weightIn,
             balanceOut,
@@ -58,7 +58,7 @@ contract WeightedMathTest is Test {
             roundedUpAmountGiven
         );
 
-        uint256 roundedDownResult = mock.computeOutGivenIn(
+        uint256 roundedDownResult = mock.computeOutGivenExactIn(
             balanceIn,
             weightIn,
             balanceOut,
@@ -70,7 +70,7 @@ contract WeightedMathTest is Test {
         assertLe(roundedDownResult, standardResult);
     }
 
-    function testComputeInGivenOut(
+    function testComputeInGivenExactOut(
         uint64 rawWeightIn,
         uint256 rawBalanceIn,
         uint256 rawBalanceOut,
@@ -88,12 +88,12 @@ contract WeightedMathTest is Test {
 
         assertEq(weightIn + weightOut, FP_ONE);
 
-        uint256 standardResult = mock.computeInGivenOut(balanceIn, weightIn, balanceOut, weightOut, amountGiven);
+        uint256 standardResult = mock.computeInGivenExactOut(balanceIn, weightIn, balanceOut, weightOut, amountGiven);
 
         uint256 roundedUpAmountGiven = flipBit ? amountGiven + 1 : amountGiven;
         uint256 roundedDownAmountGiven = flipBit ? amountGiven - 1 : amountGiven;
 
-        uint256 roundedUpResult = mock.computeInGivenOut(
+        uint256 roundedUpResult = mock.computeInGivenExactOut(
             balanceIn,
             weightIn,
             balanceOut,
@@ -101,7 +101,7 @@ contract WeightedMathTest is Test {
             roundedUpAmountGiven
         );
 
-        uint256 roundedDownResult = mock.computeInGivenOut(
+        uint256 roundedDownResult = mock.computeInGivenExactOut(
             balanceIn,
             weightIn,
             balanceOut,
