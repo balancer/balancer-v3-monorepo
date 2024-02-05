@@ -480,4 +480,13 @@ interface IVaultExtension {
         address pauseManager,
         uint256 pauseWindowEndTime
     ) external;
+
+    /**
+     * @notice Rebalance an ERC4626BufferPool, outside the context of a swap.
+     * @dev This is a permissioned call intended as a way to manually rebalance a pool without requiring the funds
+     * to perform a swap. It could be used for expediency, or as an emergency measure.
+     *
+     * @param wrappedToken The token corresponding to the buffer we want to rebalance
+     */
+    function rebalanceBuffer(IERC4626 wrappedToken) external;
 }
