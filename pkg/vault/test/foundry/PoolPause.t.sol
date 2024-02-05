@@ -41,6 +41,7 @@ contract PoolPauseTest is BaseVaultTest {
                 "ERC20POOL",
                 [address(dai), address(usdc)].toMemoryArray().asIERC20(),
                 new IRateProvider[](2),
+                new bool[](2),
                 true,
                 365 days,
                 admin
@@ -54,6 +55,7 @@ contract PoolPauseTest is BaseVaultTest {
             "ERC20POOL",
             [address(dai), address(usdc)].toMemoryArray().asIERC20(),
             rateProviders,
+            new bool[](2),
             true,
             365 days,
             address(0)
@@ -65,6 +67,7 @@ contract PoolPauseTest is BaseVaultTest {
             "ERC20POOL",
             [address(dai), address(usdc)].toMemoryArray().asIERC20(),
             rateProviders,
+            new bool[](2),
             true,
             0,
             address(0)
@@ -76,6 +79,7 @@ contract PoolPauseTest is BaseVaultTest {
             "ERC20POOL",
             [address(dai), address(usdc)].toMemoryArray().asIERC20(),
             rateProviders,
+            new bool[](2),
             true,
             10000 days,
             address(0)
@@ -106,6 +110,7 @@ contract PoolPauseTest is BaseVaultTest {
             "ERC20POOL",
             [address(dai), address(usdc)].toMemoryArray().asIERC20(),
             rateProviders,
+            new bool[](2),
             true,
             maxEndTimeTimestamp + 1,
             address(0)

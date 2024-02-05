@@ -39,11 +39,25 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
                     "ERC20POOL",
                     [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
                     rateProviders,
+                    new bool[](2),
                     true,
                     365 days,
                     address(0)
                 )
             );
+    }
+
+    function testLastLiveBalanceInitialization() public {
+        // Need to set the rate before initialization for this test
+        pool = createPool();
+        rateProvider.mockRate(mockRate);
+        initPool();
+
+        uint256[] memory rawBalances = vault.getRawBalances(address(pool));
+        uint256[] memory liveBalances = vault.getLastLiveBalances(address(pool));
+
+        assertEq(FixedPoint.mulDown(rawBalances[0], mockRate), liveBalances[0]);
+        assertEq(rawBalances[1], liveBalances[1]);
     }
 
     function testAddLiquiditySingleTokenExactOutWithRate() public {
@@ -120,7 +134,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             bytes("")
         );
 
-        PoolData memory balances = vault.getPoolData(address(pool), Rounding.ROUND_DOWN);
+        PoolData memory balances = vault.computePoolDataUpdatingBalancesAndFees(address(pool), Rounding.ROUND_DOWN);
         uint256 bptAmountIn = defaultAmount * 2;
 
         vm.expectCall(
@@ -149,7 +163,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
 
         uint256 rateAdjustedAmountOut = FixedPoint.mulDown(defaultAmount, mockRate);
 
-        PoolData memory balances = vault.getPoolData(address(pool), Rounding.ROUND_DOWN);
+        PoolData memory balances = vault.computePoolDataUpdatingBalancesAndFees(address(pool), Rounding.ROUND_DOWN);
 
         vm.expectCall(
             address(pool),
