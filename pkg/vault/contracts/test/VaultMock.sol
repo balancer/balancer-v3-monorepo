@@ -69,7 +69,7 @@ contract VaultMock is IVaultMainMock, Vault {
             tokens,
             rateProviders,
             address(0),
-            PoolConfigBits.wrap(0).toPoolConfig().callbacks,
+            PoolConfigBits.wrap(0).toPoolConfig().hooks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
         );
     }
@@ -87,7 +87,7 @@ contract VaultMock is IVaultMainMock, Vault {
             tokens,
             rateProviders,
             pauseManager,
-            PoolConfigBits.wrap(0).toPoolConfig().callbacks,
+            PoolConfigBits.wrap(0).toPoolConfig().hooks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement,
             timestamp
         );

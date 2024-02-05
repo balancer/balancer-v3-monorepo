@@ -13,7 +13,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
-import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
+import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
@@ -160,10 +160,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         TokenConfig[] memory tokenConfig,
         uint256 pauseWindowEndTime,
         address pauseManager,
-        PoolCallbacks calldata poolCallbacks,
+        PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
-        _registerPool(pool, tokenConfig, pauseWindowEndTime, pauseManager, poolCallbacks, liquidityManagement);
+        _registerPool(pool, tokenConfig, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
     }
 
     /// @inheritdoc IVaultExtension
@@ -183,7 +183,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         TokenConfig[] memory tokenConfig,
         uint256 pauseWindowEndTime,
         address pauseManager,
-        PoolCallbacks memory callbackConfig,
+        PoolHooks memory hookConfig,
         LiquidityManagement memory liquidityManagement
     ) internal {
         // Ensure the pool isn't already registered
@@ -255,7 +255,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
 
         config.isPoolRegistered = true;
-        config.callbacks = callbackConfig;
+        config.hooks = hookConfig;
         config.liquidityManagement = liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = pauseWindowEndTime.toUint32();
@@ -268,7 +268,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             tokenConfig,
             pauseWindowEndTime,
             pauseManager,
-            callbackConfig,
+            hookConfig,
             liquidityManagement
         );
     }
@@ -297,17 +297,17 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             poolData.tokenRates
         );
 
-        if (poolData.config.callbacks.shouldCallBeforeInitialize) {
-            if (IPoolCallbacks(pool).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
-                revert CallbackFailed();
+        if (poolData.config.hooks.shouldCallBeforeInitialize) {
+            if (IPoolHooks(pool).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
+                revert HookFailed();
             }
         }
 
         bptAmountOut = _initialize(pool, to, poolData, tokens, exactAmountsIn, exactAmountsInScaled18, minBptAmountOut);
 
-        if (poolData.config.callbacks.shouldCallAfterInitialize) {
-            if (IPoolCallbacks(pool).onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false) {
-                revert CallbackFailed();
+        if (poolData.config.hooks.shouldCallAfterInitialize) {
+            if (IPoolHooks(pool).onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false) {
+                revert HookFailed();
             }
         }
     }
@@ -795,7 +795,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             tokenConfig,
             pauseWindowEndTime,
             pauseManager,
-            PoolCallbacks({
+            PoolHooks({
                 shouldCallBeforeInitialize: true, // ensure proportional
                 shouldCallAfterInitialize: false,
                 shouldCallBeforeAddLiquidity: true, // ensure custom
