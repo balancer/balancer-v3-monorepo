@@ -236,6 +236,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
                 if (_wrappedTokenBuffers[IERC4626(address(token))] == address(0)) {
                     revert WrappedTokenBufferNotRegistered();
                 }
+
+                // By definition, ERC4626 tokens are yield-bearing and subject to fees.
+                if (tokenData.yieldFeeExempt) {
+                    revert InvalidTokenConfiguration();
+                }
             } else {
                 revert InvalidTokenType();
             }

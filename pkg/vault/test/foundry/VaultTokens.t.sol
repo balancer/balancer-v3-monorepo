@@ -79,6 +79,43 @@ contract VaultTokenTest is BaseVaultTest {
         validateBufferPool(waUSDCBuffer, [address(waUSDC), address(usdc)].toMemoryArray());
     }
 
+    function testInvalidYieldExemptWrappedToken() public {
+        registerBuffers();
+
+        // yield-exampt ERC4626 token is invalid
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[0].token = IERC20(waDAI);
+        tokenConfig[1].token = IERC20(waUSDC);
+        tokenConfig[0].tokenType = TokenType.ERC4626;
+        tokenConfig[0].yieldFeeExempt = true;
+        tokenConfig[1].tokenType = TokenType.ERC4626;
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.InvalidTokenConfiguration.selector));
+        _registerPool(tokenConfig);
+    }
+
+    function testInvalidStandardTokenWithRateProvider() public {
+        // Standard token with a rate provider is invalid
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[0].token = IERC20(dai);
+        tokenConfig[0].rateProvider = IRateProvider(waDAI);
+        tokenConfig[1].token = IERC20(usdc);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.InvalidTokenConfiguration.selector));
+        _registerPool(tokenConfig);
+    }
+
+    function testInvalidRateTokenWithoutProvider() public {
+        // Rated token without a rate provider is invalid
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[0].token = IERC20(wsteth);
+        tokenConfig[0].tokenType = TokenType.WITH_RATE;
+        tokenConfig[1].token = IERC20(usdc);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.InvalidTokenConfiguration.selector));
+        _registerPool(tokenConfig);
+    }
+
     function registerBuffers() private {
         // Buffer Pool creation is permissioned.
         authorizer.grantRole(bufferFactory.getActionId(ERC4626BufferPoolFactory.create.selector), alice);
@@ -96,6 +133,10 @@ contract VaultTokenTest is BaseVaultTest {
         tokenConfig[0].tokenType = TokenType.ERC4626;
         tokenConfig[1].tokenType = TokenType.ERC4626;
 
+        _registerPool(tokenConfig);
+    }
+
+    function _registerPool(TokenConfig[] memory tokenConfig) private {
         poolFactory.registerGeneralPool(
             poolAddress,
             tokenConfig,
