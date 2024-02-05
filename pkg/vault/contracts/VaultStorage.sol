@@ -107,4 +107,7 @@ contract VaultStorage {
 
     // ERC4626 wrapped token -> associated Buffer Pool
     mapping(IERC4626 => address) internal _wrappedTokenBuffers;
+
+    // For convenience, store the base token for each buffer in `_wrappedTokenBuffers`
+    mapping(IERC20 => IERC20) internal _wrappedTokenBufferBaseTokens;
 }

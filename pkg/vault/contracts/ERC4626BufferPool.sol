@@ -135,8 +135,8 @@ contract ERC4626BufferPool is
     function onSwap(IBasePool.SwapParams memory request) public view onlyVault returns (uint256) {
         uint256 invariant = StableMath.computeInvariant(_amplificationParameter, request.balancesScaled18);
 
-        if (request.kind == SwapKind.GIVEN_IN) {
-            uint256 amountOutScaled18 = StableMath.computeOutGivenIn(
+        if (request.kind == SwapKind.EXACT_IN) {
+            uint256 amountOutScaled18 = StableMath.computeOutGivenExactIn(
                 _amplificationParameter,
                 request.balancesScaled18,
                 request.indexIn,
@@ -147,7 +147,7 @@ contract ERC4626BufferPool is
 
             return amountOutScaled18;
         } else {
-            uint256 amountInScaled18 = StableMath.computeInGivenOut(
+            uint256 amountInScaled18 = StableMath.computeInGivenExactOut(
                 _amplificationParameter,
                 request.balancesScaled18,
                 request.indexIn,

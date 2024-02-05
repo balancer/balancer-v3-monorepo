@@ -194,7 +194,7 @@ interface IVaultErrors {
     /// @dev A token buffer can only be registered once.
     error WrappedTokenBufferAlreadyRegistered();
 
-    /// @dev A buffer pool has not been registered for a given wrapped token.
+    /// @dev A token buffer must be registered for a token before pools can be registered with that token.
     error WrappedTokenBufferNotRegistered();
 
     /*******************************************************************************

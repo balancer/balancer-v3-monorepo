@@ -232,7 +232,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
                     revert InvalidTokenConfiguration();
                 }
             } else if (tokenData.tokenType == TokenType.ERC4626) {
-                // TODO: implement ERC4626 in later phases.
+                // Require a buffer to exist for this token
+                if (_wrappedTokenBuffers[IERC4626(address(token))] == address(0)) {
+                    revert WrappedTokenBufferNotRegistered();
+                }
             } else {
                 revert InvalidTokenType();
             }
@@ -772,11 +775,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         }
         _wrappedTokenBuffers[wrappedToken] = pool;
 
+        IERC20 baseToken = IERC20(wrappedToken.asset());
+
         // Token order is wrapped first, then base.
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[0].token = IERC20(wrappedToken);
         tokenConfig[0].tokenType = TokenType.ERC4626;
-        tokenConfig[1].token = IERC20(wrappedToken.asset());
+        tokenConfig[1].token = baseToken;
+
+        _wrappedTokenBufferBaseTokens[IERC20(wrappedToken)] = baseToken;
 
         _registerPool(
             pool,
