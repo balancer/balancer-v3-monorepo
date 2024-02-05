@@ -71,10 +71,8 @@ struct TokenConfig {
 }
 
 struct PoolData {
-    PoolConfig config;
-    IERC20[] tokens;
-    TokenType[] tokenTypes;
-    IRateProvider[] rateProviders;
+    PoolConfig poolConfig;
+    TokenConfig[] tokenConfig;
     uint256[] balancesRaw;
     uint256[] balancesLiveScaled18;
     uint256[] tokenRates;
