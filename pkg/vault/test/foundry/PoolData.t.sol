@@ -43,6 +43,7 @@ contract PoolDataTest is BaseVaultTest {
                     "ERC20POOL",
                     [address(dai), address(wsteth)].toMemoryArray().asIERC20(),
                     rateProviders,
+                    new bool[](2),
                     true,
                     365 days,
                     address(0)
@@ -57,9 +58,9 @@ contract PoolDataTest is BaseVaultTest {
         daiRateProvider.mockRate(daiRate);
         wstETHRateProvider.mockRate(wstETHRate);
 
-        // `getPoolData` and `getRawBalances` are functions in VaultMock.
+        // `computePoolDataUpdatingBalancesAndFees` and `getRawBalances` are functions in VaultMock.
 
-        PoolData memory data = vault.getPoolData(address(pool), roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN);
+        PoolData memory data = vault.computePoolDataUpdatingBalancesAndFees(address(pool), roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN);
 
         // Compute decimal scaling factors from the tokens, in the mock.
         uint256[] memory expectedScalingFactors = PoolMock(pool).getDecimalScalingFactors();
@@ -90,10 +91,10 @@ contract PoolDataTest is BaseVaultTest {
             assertEq(data.balancesLiveScaled18[i], expectedLiveBalance);
         }
 
-        assertEq(address(data.tokens[0]), address(dai));
-        assertEq(address(data.tokens[1]), address(wsteth));
+        assertEq(address(data.tokenConfig[0].token), address(dai));
+        assertEq(address(data.tokenConfig[1].token), address(wsteth));
 
-        assertEq(address(data.rateProviders[0]), address(daiRateProvider));
-        assertEq(address(data.rateProviders[1]), address(wstETHRateProvider));
+        assertEq(address(data.tokenConfig[0].rateProvider), address(daiRateProvider));
+        assertEq(address(data.tokenConfig[1].rateProvider), address(wstETHRateProvider));
     }
 }

@@ -63,11 +63,13 @@ contract VaultMock is IVaultMainMock, Vault {
     // separately, deploy it with the registration flag false, then call this function.
     function manualRegisterPool(address pool, IERC20[] memory tokens) external whenVaultNotPaused {
         IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
+        bool[] memory yieldExemptFlags = new bool[](tokens.length);
 
         _poolFactoryMock.registerPool(
             pool,
             tokens,
             rateProviders,
+            yieldExemptFlags,
             address(0),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
@@ -81,11 +83,13 @@ contract VaultMock is IVaultMainMock, Vault {
         address pauseManager
     ) external whenVaultNotPaused {
         IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
+        bool[] memory yieldExemptFlags = new bool[](tokens.length);
 
         _poolFactoryMock.registerPoolAtTimestamp(
             pool,
             tokens,
             rateProviders,
+            yieldExemptFlags,
             pauseManager,
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement,
@@ -104,8 +108,29 @@ contract VaultMock is IVaultMainMock, Vault {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function getPoolData(address pool, Rounding roundingDirection) external view returns (PoolData memory) {
-        return _getPoolData(pool, roundingDirection);
+    function computePoolDataUpdatingBalancesAndFees(
+        address pool,
+        Rounding roundingDirection
+    ) external returns (PoolData memory) {
+        return _computePoolDataUpdatingBalancesAndFees(pool, roundingDirection);
+    }
+
+    function setLiveBalanceFromRawForToken(
+        PoolData memory poolData,
+        Rounding roundingDirection,
+        uint256 tokenIndex
+    ) external pure returns (PoolData memory) {
+        _setLiveBalanceFromRawForToken(poolData, roundingDirection, tokenIndex);
+        return poolData;
+    }
+
+    function computeYieldProtocolFeesDue(
+        PoolData memory poolData,
+        uint256 lastLiveBalance,
+        uint256 tokenIndex,
+        uint256 yieldFeePercentage
+    ) external pure returns (uint256) {
+        return _computeYieldProtocolFeesDue(poolData, lastLiveBalance, tokenIndex, yieldFeePercentage);
     }
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw) {
@@ -116,6 +141,17 @@ contract VaultMock is IVaultMainMock, Vault {
 
         for (uint256 i = 0; i < numTokens; i++) {
             (, balancesRaw[i]) = poolTokenBalances.unchecked_at(i);
+        }
+    }
+
+    function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances) {
+        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _lastLivePoolTokenBalances[pool];
+
+        uint256 numTokens = poolTokenBalances.length();
+        lastLiveBalances = new uint256[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; i++) {
+            (, lastLiveBalances[i]) = poolTokenBalances.unchecked_at(i);
         }
     }
 }

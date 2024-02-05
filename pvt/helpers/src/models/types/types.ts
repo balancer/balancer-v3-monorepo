@@ -14,3 +14,10 @@ export enum TokenType {
   WITH_RATE,
   ERC4626,
 }
+
+export type TokenConfig = {
+  token: string;
+  tokenType: TokenType;
+  rateProvider: string;
+  yieldFeeExempt: boolean;
+};
