@@ -2,26 +2,26 @@
 
 pragma solidity ^0.8.4;
 
-import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
+import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { AddLiquidityKind, RemoveLiquidityKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 /**
- * @dev Pools that only implement a subset of callbacks can inherit from here instead of IPoolCallbacks,
+ * @dev Pools that only implement a subset of callbacks can inherit from here instead of IPoolHooks,
  * and only override what they need.
  */
-abstract contract BasePoolCallbacks is IPoolCallbacks {
-    /// @inheritdoc IPoolCallbacks
+abstract contract BasePoolHooks is IPoolHooks {
+    /// @inheritdoc IPoolHooks
     function onBeforeInitialize(uint256[] memory, bytes memory) external virtual returns (bool) {
         return false;
     }
 
-    /// @inheritdoc IPoolCallbacks
+    /// @inheritdoc IPoolHooks
     function onAfterInitialize(uint256[] memory, uint256, bytes memory) external virtual returns (bool) {
         return false;
     }
 
-    /// @inheritdoc IPoolCallbacks
+    /// @inheritdoc IPoolHooks
     function onBeforeAddLiquidity(
         address,
         AddLiquidityKind,
@@ -33,7 +33,7 @@ abstract contract BasePoolCallbacks is IPoolCallbacks {
         return false;
     }
 
-    /// @inheritdoc IPoolCallbacks
+    /// @inheritdoc IPoolHooks
     function onAfterAddLiquidity(
         address,
         uint256[] memory,
@@ -44,7 +44,7 @@ abstract contract BasePoolCallbacks is IPoolCallbacks {
         return false;
     }
 
-    /// @inheritdoc IPoolCallbacks
+    /// @inheritdoc IPoolHooks
     function onBeforeRemoveLiquidity(
         address,
         RemoveLiquidityKind,
@@ -56,7 +56,7 @@ abstract contract BasePoolCallbacks is IPoolCallbacks {
         return false;
     }
 
-    /// @inheritdoc IPoolCallbacks
+    /// @inheritdoc IPoolHooks
     function onAfterRemoveLiquidity(
         address,
         uint256,
@@ -67,12 +67,12 @@ abstract contract BasePoolCallbacks is IPoolCallbacks {
         return false;
     }
 
-    /// @inheritdoc IPoolCallbacks
+    /// @inheritdoc IPoolHooks
     function onBeforeSwap(IBasePool.SwapParams calldata) external virtual returns (bool) {
         return false;
     }
 
-    /// @inheritdoc IPoolCallbacks
+    /// @inheritdoc IPoolHooks
     function onAfterSwap(AfterSwapParams calldata, uint256) external virtual returns (bool) {
         return false;
     }

@@ -20,21 +20,14 @@ import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Ba
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BalancerPoolToken } from "./BalancerPoolToken.sol";
-import { BasePoolCallbacks } from "./BasePoolCallbacks.sol";
+import { BasePoolHooks } from "./BasePoolHooks.sol";
 
 /**
  * @notice ERC4626 Buffer Pool, designed to be used internally for ERC4626 token types in standard pools.
  * @dev These "pools" reuse the code for pools, but are not registered with the Vault, guaranteeing they
  * cannot be used externally. To the outside world, they don't exist.
  */
-contract ERC4626BufferPool is
-    IBasePool,
-    IBufferPool,
-    IRateProvider,
-    IPoolLiquidity,
-    BalancerPoolToken,
-    BasePoolCallbacks
-{
+contract ERC4626BufferPool is IBasePool, IBufferPool, IRateProvider, IPoolLiquidity, BalancerPoolToken, BasePoolHooks {
     uint256 private constant _DEFAULT_BUFFER_AMP_PARAMETER = 200;
     uint256 private constant _AMP_PRECISION = 1e3;
 
@@ -59,7 +52,7 @@ contract ERC4626BufferPool is
         return getVault().getPoolTokens(address(this));
     }
 
-    /// @inheritdoc BasePoolCallbacks
+    /// @inheritdoc BasePoolHooks
     function onBeforeInitialize(
         uint256[] memory exactAmountsInScaled18,
         bytes memory
@@ -68,7 +61,7 @@ contract ERC4626BufferPool is
         return exactAmountsInScaled18.length == 2 && exactAmountsInScaled18[0] == exactAmountsInScaled18[1];
     }
 
-    /// @inheritdoc BasePoolCallbacks
+    /// @inheritdoc BasePoolHooks
     function onBeforeAddLiquidity(
         address,
         AddLiquidityKind kind,
@@ -104,7 +97,7 @@ contract ERC4626BufferPool is
         amountsInScaled18 = BasePoolMath.computeProportionalAmountsIn(balancesScaled18, bptAmountOut, totalSupply());
     }
 
-    /// @inheritdoc BasePoolCallbacks
+    /// @inheritdoc BasePoolHooks
     function onBeforeRemoveLiquidity(
         address,
         RemoveLiquidityKind kind,
@@ -120,7 +113,7 @@ contract ERC4626BufferPool is
         return true;
     }
 
-    /// @inheritdoc BasePoolCallbacks
+    /// @inheritdoc BasePoolHooks
     function onBeforeSwap(IBasePool.SwapParams calldata request) external view override onlyVault returns (bool) {
         // Swaps cannot be called externally
         if (request.sender != address(getVault())) {

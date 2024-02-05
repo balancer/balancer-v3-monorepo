@@ -14,7 +14,7 @@ import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAutho
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
+import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
@@ -246,17 +246,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 vars.amountGivenScaled18;
         }
 
-        // Create the pool callback params (used for both beforeSwap, if required, and the main swap callbacks).
+        // Create the pool hook params (used for both beforeSwap, if required, and the main swap hooks).
         // Function and inclusion in SwapLocals needed to avoid "stack too deep".
-        vars.poolSwapParams = _buildSwapCallbackParams(params, vars, poolData);
+        vars.poolSwapParams = _buildSwapHookParams(params, vars, poolData);
 
-        if (poolData.config.callbacks.shouldCallBeforeSwap) {
-            if (IPoolCallbacks(params.pool).onBeforeSwap(vars.poolSwapParams) == false) {
-                revert CallbackFailed();
+        if (poolData.config.hooks.shouldCallBeforeSwap) {
+            if (IPoolHooks(params.pool).onBeforeSwap(vars.poolSwapParams) == false) {
+                revert HookFailed();
             }
 
             _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN);
-            // The call to _buildSwapCallbackParams also modifies poolSwapParams.balancesScaled18.
+            // The call to _buildSwapHookParams also modifies poolSwapParams.balancesScaled18.
             // Set here again explicitly to avoid relying on a side effect.
             // TODO: ugliness necessitated by the stack issues; revisit on any refactor to see if this can be cleaner.
             vars.poolSwapParams.balancesScaled18 = poolData.balancesLiveScaled18;
@@ -264,15 +264,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData, poolBalances);
 
-        if (poolData.config.callbacks.shouldCallAfterSwap) {
-            // Adjust balances for the AfterSwap callback.
+        if (poolData.config.hooks.shouldCallAfterSwap) {
+            // Adjust balances for the AfterSwap hook.
             (uint256 amountInScaled18, uint256 amountOutScaled18) = params.kind == SwapKind.EXACT_IN
                 ? (vars.amountGivenScaled18, vars.amountCalculatedScaled18)
                 : (vars.amountCalculatedScaled18, vars.amountGivenScaled18);
 
             if (
-                IPoolCallbacks(params.pool).onAfterSwap(
-                    IPoolCallbacks.AfterSwapParams({
+                IPoolHooks(params.pool).onAfterSwap(
+                    IPoolHooks.AfterSwapParams({
                         kind: params.kind,
                         tokenIn: params.tokenIn,
                         tokenOut: params.tokenOut,
@@ -286,7 +286,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     vars.amountCalculatedScaled18
                 ) == false
             ) {
-                revert CallbackFailed();
+                revert HookFailed();
             }
         }
 
@@ -301,7 +301,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         emit Swap(params.pool, params.tokenIn, params.tokenOut, amountIn, amountOut, swapFeeAmountRaw);
     }
 
-    function _buildSwapCallbackParams(
+    function _buildSwapHookParams(
         SwapParams memory params,
         SwapLocals memory vars,
         PoolData memory poolData
@@ -318,7 +318,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             });
     }
 
-    /// @dev Non-reentrant portion of the swap, which calls the main callback and updates accounting.
+    /// @dev Non-reentrant portion of the swap, which calls the main hook and updates accounting.
     function _swap(
         SwapParams memory vaultSwapParams,
         SwapLocals memory vars,
@@ -326,7 +326,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         EnumerableMap.IERC20ToUint256Map storage poolBalances
     ) internal nonReentrant returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         // Add swap fee to the amountGiven to account for the fee taken in EXACT_OUT swap on tokenOut
-        // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
+        // Perform the swap request hook and compute the new balances for 'token in' and 'token out' after the swap
         // If it's an ExactIn swap, vars.swapFeeAmountScaled18 will be zero here, and set based on the amountCalculated.
 
         vars.amountCalculatedScaled18 = IBasePool(vaultSwapParams.pool).onSwap(vars.poolSwapParams);
@@ -397,7 +397,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     /// @dev Returns swap fee for the pool.
     function _getSwapFeePercentage(PoolConfig memory config) internal pure returns (uint256) {
         if (config.hasDynamicSwapFee) {
-            // TODO: Fetch dynamic swap fee from the pool using callback
+            // TODO: Fetch dynamic swap fee from the pool using hook
             return 0;
         } else {
             return config.staticSwapFeePercentage;
@@ -497,9 +497,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.tokenRates
         );
 
-        if (poolData.config.callbacks.shouldCallBeforeAddLiquidity) {
+        if (poolData.config.hooks.shouldCallBeforeAddLiquidity) {
             if (
-                IPoolCallbacks(params.pool).onBeforeAddLiquidity(
+                IPoolHooks(params.pool).onBeforeAddLiquidity(
                     params.to,
                     params.kind,
                     maxAmountsInScaled18,
@@ -508,19 +508,19 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     params.userData
                 ) == false
             ) {
-                revert CallbackFailed();
+                revert HookFailed();
             }
 
-            // The callback might alter the balances, so we need to read them again to ensure that the data is
+            // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (adding liquidity, so round up) again.
             _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_UP);
         }
 
-        // The bulk of the work is done here: the corresponding Pool callback is invoked and its final balances
+        // The bulk of the work is done here: the corresponding Pool hook is invoked and its final balances
         // are computed. This function is non-reentrant, as it performs the accounting updates.
         // Note that poolData is mutated to update the Raw and Live balances, so they are accurate when passed
-        // into the AfterAddLiquidity callback.
+        // into the AfterAddLiquidity hook.
         // `amountsInScaled18` will be overwritten in the custom case, so we need to pass it back and forth to
         // encapsulate that logic in `_addLiquidity`.
         uint256[] memory amountsInScaled18;
@@ -530,9 +530,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             maxAmountsInScaled18
         );
 
-        if (poolData.config.callbacks.shouldCallAfterAddLiquidity) {
+        if (poolData.config.hooks.shouldCallAfterAddLiquidity) {
             if (
-                IPoolCallbacks(params.pool).onAfterAddLiquidity(
+                IPoolHooks(params.pool).onAfterAddLiquidity(
                     params.to,
                     amountsInScaled18,
                     bptAmountOut,
@@ -540,13 +540,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     params.userData
                 ) == false
             ) {
-                revert CallbackFailed();
+                revert HookFailed();
             }
         }
     }
 
     /**
-     * @dev Calls the appropriate pool callback and calculates the required inputs and outputs for the operation
+     * @dev Calls the appropriate pool hook and calculates the required inputs and outputs for the operation
      * considering the given kind, and updates the vault's internal accounting. This includes:
      * - Setting pool balances
      * - Taking debt from the liquidity provider
@@ -615,7 +615,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         amountsInRaw = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {
             // amountsInRaw are amounts actually entering the Pool, so we round up.
-            // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` callback
+            // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` hook
             uint256 amountInRaw = amountsInScaled18[i].toRawUndoRateRoundUp(
                 poolData.decimalScalingFactors[i],
                 poolData.tokenRates[i]
@@ -630,7 +630,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _takeDebt(poolData.tokens[i], amountInRaw, msg.sender);
 
             // We need regular balances to complete the accounting, and the upscaled balances
-            // to use in the `after` callback later on.
+            // to use in the `after` hook later on.
             poolData.balancesRaw[i] += amountInRaw;
             poolData.balancesLiveScaled18[i] += amountsInScaled18[i];
 
@@ -672,9 +672,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.tokenRates
         );
 
-        if (poolData.config.callbacks.shouldCallBeforeRemoveLiquidity) {
+        if (poolData.config.hooks.shouldCallBeforeRemoveLiquidity) {
             if (
-                IPoolCallbacks(params.pool).onBeforeRemoveLiquidity(
+                IPoolHooks(params.pool).onBeforeRemoveLiquidity(
                     params.from,
                     params.kind,
                     params.maxBptAmountIn,
@@ -683,18 +683,18 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     params.userData
                 ) == false
             ) {
-                revert CallbackFailed();
+                revert HookFailed();
             }
-            // The callback might alter the balances, so we need to read them again to ensure that the data is
+            // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (removing liquidity, so round down) again.
             _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN);
         }
 
-        // The bulk of the work is done here: the corresponding Pool callback is invoked, and its final balances
+        // The bulk of the work is done here: the corresponding Pool hook is invoked, and its final balances
         // are computed. This function is non-reentrant, as it performs the accounting updates.
         // Note that poolData is mutated to update the Raw and Live balances, so they are accurate when passed
-        // into the AfterRemoveLiquidity callback.
+        // into the AfterRemoveLiquidity hook.
         uint256[] memory amountsOutScaled18;
         (bptAmountIn, amountsOut, amountsOutScaled18, returnData) = _removeLiquidity(
             poolData,
@@ -702,9 +702,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             minAmountsOutScaled18
         );
 
-        if (poolData.config.callbacks.shouldCallAfterRemoveLiquidity) {
+        if (poolData.config.hooks.shouldCallAfterRemoveLiquidity) {
             if (
-                IPoolCallbacks(params.pool).onAfterRemoveLiquidity(
+                IPoolHooks(params.pool).onAfterRemoveLiquidity(
                     params.from,
                     bptAmountIn,
                     amountsOutScaled18,
@@ -712,7 +712,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     params.userData
                 ) == false
             ) {
-                revert CallbackFailed();
+                revert HookFailed();
             }
         }
     }
@@ -751,7 +751,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /**
-     * @dev Calls the appropriate pool callback and calculates the required inputs and outputs for the operation
+     * @dev Calls the appropriate pool hook and calculates the required inputs and outputs for the operation
      * considering the given kind, and updates the vault's internal accounting. This includes:
      * - Setting pool balances
      * - Supplying credit to the liquidity provider

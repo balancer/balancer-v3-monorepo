@@ -131,14 +131,14 @@ describe('ERC4626BufferPool', function () {
       expect(pauseManager).to.eq(ANY_ADDRESS);
 
       expect(poolConfig.pauseWindowEndTime).to.gt(currentTime);
-      expect(poolConfig.callbacks.shouldCallBeforeInitialize).to.be.true;
-      expect(poolConfig.callbacks.shouldCallAfterInitialize).to.be.false;
-      expect(poolConfig.callbacks.shouldCallBeforeAddLiquidity).to.be.true;
-      expect(poolConfig.callbacks.shouldCallAfterAddLiquidity).to.be.false;
-      expect(poolConfig.callbacks.shouldCallBeforeRemoveLiquidity).to.be.true;
-      expect(poolConfig.callbacks.shouldCallAfterRemoveLiquidity).to.be.false;
-      expect(poolConfig.callbacks.shouldCallBeforeSwap).to.be.true;
-      expect(poolConfig.callbacks.shouldCallAfterSwap).to.be.false;
+      expect(poolConfig.hooks.shouldCallBeforeInitialize).to.be.true;
+      expect(poolConfig.hooks.shouldCallAfterInitialize).to.be.false;
+      expect(poolConfig.hooks.shouldCallBeforeAddLiquidity).to.be.true;
+      expect(poolConfig.hooks.shouldCallAfterAddLiquidity).to.be.false;
+      expect(poolConfig.hooks.shouldCallBeforeRemoveLiquidity).to.be.true;
+      expect(poolConfig.hooks.shouldCallAfterRemoveLiquidity).to.be.false;
+      expect(poolConfig.hooks.shouldCallBeforeSwap).to.be.true;
+      expect(poolConfig.hooks.shouldCallAfterSwap).to.be.false;
       expect(poolConfig.liquidityManagement.supportsAddLiquidityCustom).to.be.true;
       expect(poolConfig.liquidityManagement.supportsRemoveLiquidityCustom).to.be.false;
     });
@@ -164,7 +164,7 @@ describe('ERC4626BufferPool', function () {
       // Cannot initialize disproportionately
       await expect(
         router.connect(alice).initialize(pool, tokenAddresses, [TOKEN_AMOUNT * 2n, TOKEN_AMOUNT], FP_ZERO, false, '0x')
-      ).to.be.revertedWithCustomError(vault, 'CallbackFailed');
+      ).to.be.revertedWithCustomError(vault, 'HookFailed');
 
       expect(
         await router.connect(alice).initialize(pool, tokenAddresses, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x')

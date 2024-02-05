@@ -87,8 +87,8 @@ interface IVaultErrors {
      */
     error HandlerOutOfBounds(uint256 index);
 
-    /// @dev The pool has returned false to a callback, indicating the transaction should revert.
-    error CallbackFailed();
+    /// @dev The pool has returned false to a hook, indicating the transaction should revert.
+    error HookFailed();
 
     /// @dev An unauthorized Router tried to call a permissioned function (i.e., using the Vault's token allowance).
     error RouterNotTrusted();

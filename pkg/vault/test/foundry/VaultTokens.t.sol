@@ -141,7 +141,7 @@ contract VaultTokenTest is BaseVaultTest {
             poolAddress,
             tokenConfig,
             address(0),
-            PoolCallbacks({
+            PoolHooks({
                 shouldCallBeforeInitialize: false,
                 shouldCallAfterInitialize: false,
                 shouldCallBeforeAddLiquidity: false,
