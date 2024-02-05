@@ -91,13 +91,13 @@ enum Rounding {
 *******************************************************************************/
 
 enum SwapKind {
-    GIVEN_IN,
-    GIVEN_OUT
+    EXACT_IN,
+    EXACT_OUT
 }
 
 /**
  * @dev Data for a swap operation.
- * @param kind Type of swap (Given In or Given Out)
+ * @param kind Type of swap (Exact In or Exact Out)
  * @param pool The pool with the tokens being swapped
  * @param tokenIn The token entering the Vault (balance increases)
  * @param tokenOut The token leaving the Vault (balance decreases)
