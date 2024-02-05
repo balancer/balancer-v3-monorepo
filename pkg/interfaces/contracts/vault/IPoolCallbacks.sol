@@ -117,7 +117,7 @@ interface IPoolCallbacks {
 
     /**
      * @dev Data for the callback after a swap operation.
-     * @param kind Type of swap (given in or given out)
+     * @param kind Type of swap (exact in or exact out)
      * @param tokenIn Token to be swapped from
      * @param tokenOut Token to be swapped to
      * @param amountInScaled18 Amount of tokenIn (entering the Vault)

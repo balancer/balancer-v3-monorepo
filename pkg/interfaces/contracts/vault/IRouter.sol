@@ -270,12 +270,12 @@ interface IRouter {
     /**
      * @dev Data for the swap callback.
      * @param sender Account initiating the swap operation
-     * @param kind Type of swap (given in or given out)
+     * @param kind Type of swap (exact in or exact out)
      * @param pool Address of the liquidity pool
      * @param tokenIn Token to be swapped from
      * @param tokenOut Token to be swapped to
-     * @param amountGiven Amount given based on kind of the swap (e.g., tokenIn for given in)
-     * @param limit Maximum or minimum amount based on the kind of swap (e.g., maxAmountIn for given out)
+     * @param amountGiven Amount given based on kind of the swap (e.g., tokenIn for exact in)
+     * @param limit Maximum or minimum amount based on the kind of swap (e.g., maxAmountIn for exact out)
      * @param deadline Deadline for the swap
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for the swap

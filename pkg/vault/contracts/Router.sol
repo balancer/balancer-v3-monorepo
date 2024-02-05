@@ -467,7 +467,7 @@ contract Router is IRouter, ReentrancyGuard {
                         Router.swapSingleTokenCallback.selector,
                         SwapSingleTokenCallbackParams({
                             sender: msg.sender,
-                            kind: SwapKind.GIVEN_IN,
+                            kind: SwapKind.EXACT_IN,
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
@@ -501,7 +501,7 @@ contract Router is IRouter, ReentrancyGuard {
                         Router.swapSingleTokenCallback.selector,
                         SwapSingleTokenCallbackParams({
                             sender: msg.sender,
-                            kind: SwapKind.GIVEN_OUT,
+                            kind: SwapKind.EXACT_OUT,
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
@@ -571,7 +571,7 @@ contract Router is IRouter, ReentrancyGuard {
      * @notice Callback for swaps.
      * @dev Can only be called by the Vault. Also handles native ETH.
      * @param params Swap parameters (see IRouter for struct definition)
-     * @return Token amount calculated by the pool math (e.g., amountOut for a given in swap)
+     * @return Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
      */
     function swapSingleTokenCallback(
         SwapSingleTokenCallbackParams calldata params
@@ -696,7 +696,7 @@ contract Router is IRouter, ReentrancyGuard {
                     // No BPT involved in the operation: regular swap exact in
                     (, , uint256 amountOut) = _vault.swap(
                         SwapParams({
-                            kind: SwapKind.GIVEN_IN,
+                            kind: SwapKind.EXACT_IN,
                             pool: step.pool,
                             tokenIn: tokenIn,
                             tokenOut: step.tokenOut,
@@ -835,7 +835,7 @@ contract Router is IRouter, ReentrancyGuard {
                     // No BPT involved in the operation: regular swap exact out
                     (, uint256 amountIn, ) = _vault.swap(
                         SwapParams({
-                            kind: SwapKind.GIVEN_OUT,
+                            kind: SwapKind.EXACT_OUT,
                             pool: step.pool,
                             tokenIn: tokenIn,
                             tokenOut: step.tokenOut,
@@ -899,7 +899,7 @@ contract Router is IRouter, ReentrancyGuard {
                         Router.querySwapCallback.selector,
                         SwapSingleTokenCallbackParams({
                             sender: msg.sender,
-                            kind: SwapKind.GIVEN_IN,
+                            kind: SwapKind.EXACT_IN,
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
@@ -930,7 +930,7 @@ contract Router is IRouter, ReentrancyGuard {
                         Router.querySwapCallback.selector,
                         SwapSingleTokenCallbackParams({
                             sender: msg.sender,
-                            kind: SwapKind.GIVEN_OUT,
+                            kind: SwapKind.EXACT_OUT,
                             pool: pool,
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
@@ -950,7 +950,7 @@ contract Router is IRouter, ReentrancyGuard {
      * @notice Callback for swap queries.
      * @dev Can only be called by the Vault. Also handles native ETH.
      * @param params Swap parameters (see IRouter for struct definition)
-     * @return Token amount calculated by the pool math (e.g., amountOut for a given in swap)
+     * @return Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
      */
     function querySwapCallback(
         SwapSingleTokenCallbackParams calldata params

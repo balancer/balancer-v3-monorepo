@@ -58,9 +58,9 @@ contract WeightedPool8020FactoryTest is Test {
         );
 
         uint256[] memory poolWeights = pool.getNormalizedWeights();
-        assertEq(poolWeights[0], 8e17);
-        assertEq(poolWeights[1], 2e17);
-        assertEq(pool.symbol(), "Pool8020");
+        assertEq(poolWeights[0], 8e17, "Higher weight token is not 80%");
+        assertEq(poolWeights[1], 2e17, "Lower weight token is not 20%");
+        assertEq(pool.symbol(), "Pool8020", "Wrong pool symbol");
     }
 
     function testInvalidPoolMinTokens() public {
@@ -118,8 +118,8 @@ contract WeightedPool8020FactoryTest is Test {
             )
         );
 
-        assertFalse(address(pool) == address(secondPool));
-        assertEq(address(secondPool), expectedPoolAddress);
+        assertFalse(address(pool) == address(secondPool), "Two deployed pool addresses are equal");
+        assertEq(address(secondPool), expectedPoolAddress, "Unexpected pool address");
     }
 
     function testPoolSender(bytes32 salt) public {
@@ -141,11 +141,11 @@ contract WeightedPool8020FactoryTest is Test {
                 salt
             )
         );
-        assertFalse(address(pool) == expectedPoolAddress);
+        assertFalse(address(pool) == expectedPoolAddress, "Unexpected pool address");
 
         vm.prank(alice);
         address aliceExpectedPoolAddress = factory.getDeploymentAddress(salt);
-        assertTrue(address(pool) == aliceExpectedPoolAddress);
+        assertTrue(address(pool) == aliceExpectedPoolAddress, "Unexpected pool address");
     }
 
     function testPoolCrossChainProtection(bytes32 salt, uint16 chainId) public {
@@ -179,6 +179,6 @@ contract WeightedPool8020FactoryTest is Test {
         );
 
         // Same sender and salt, should still be different because of the chainId.
-        assertFalse(address(poolL2) == address(poolMainnet));
+        assertFalse(address(poolL2) == address(poolMainnet), "L2 and mainnet pool addresses are equal");
     }
 }

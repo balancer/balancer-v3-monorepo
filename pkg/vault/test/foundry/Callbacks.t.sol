@@ -35,7 +35,7 @@ contract CallbacksTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IPoolCallbacks.onBeforeSwap.selector,
                 IBasePool.SwapParams({
-                    kind: SwapKind.GIVEN_IN,
+                    kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
                     indexIn: 1,
@@ -72,7 +72,7 @@ contract CallbacksTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
-                    kind: SwapKind.GIVEN_IN,
+                    kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
                     indexIn: 1,

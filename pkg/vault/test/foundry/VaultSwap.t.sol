@@ -91,7 +91,7 @@ contract VaultSwapTest is BaseVaultTest {
         );
     }
 
-    function testSwapLimitGivenOut() public {
+    function testSwapLimitExactOut() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, defaultAmount, defaultAmount - 1));
         router.swapSingleTokenExactOut(

@@ -9,7 +9,7 @@ contract StableMathMock {
         return StableMath.computeInvariant(amp, balances);
     }
 
-    function outGivenIn(
+    function outGivenExactIn(
         uint256 amp,
         uint256[] memory balances,
         uint256 tokenIndexIn,
@@ -17,7 +17,7 @@ contract StableMathMock {
         uint256 tokenAmountIn
     ) external pure returns (uint256) {
         return
-            StableMath.computeOutGivenIn(
+            StableMath.computeOutGivenExactIn(
                 amp,
                 balances,
                 tokenIndexIn,
@@ -27,7 +27,7 @@ contract StableMathMock {
             );
     }
 
-    function inGivenOut(
+    function inGivenExactOut(
         uint256 amp,
         uint256[] memory balances,
         uint256 tokenIndexIn,
@@ -35,7 +35,7 @@ contract StableMathMock {
         uint256 tokenAmountOut
     ) external pure returns (uint256) {
         return
-            StableMath.computeInGivenOut(
+            StableMath.computeInGivenExactOut(
                 amp,
                 balances,
                 tokenIndexIn,
