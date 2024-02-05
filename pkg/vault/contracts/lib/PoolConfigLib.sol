@@ -154,24 +154,24 @@ library PoolConfigLib {
         }
 
         {
-            configBits = configBits.insertBool(config.callbacks.shouldCallBeforeSwap, BEFORE_SWAP_OFFSET).insertBool(
-                config.callbacks.shouldCallAfterSwap,
+            configBits = configBits.insertBool(config.hooks.shouldCallBeforeSwap, BEFORE_SWAP_OFFSET).insertBool(
+                config.hooks.shouldCallAfterSwap,
                 AFTER_SWAP_OFFSET
             );
         }
 
         {
             configBits = configBits
-                .insertBool(config.callbacks.shouldCallBeforeAddLiquidity, BEFORE_ADD_LIQUIDITY_OFFSET)
-                .insertBool(config.callbacks.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET)
-                .insertBool(config.callbacks.shouldCallBeforeRemoveLiquidity, BEFORE_REMOVE_LIQUIDITY_OFFSET)
-                .insertBool(config.callbacks.shouldCallAfterRemoveLiquidity, AFTER_REMOVE_LIQUIDITY_OFFSET);
+                .insertBool(config.hooks.shouldCallBeforeAddLiquidity, BEFORE_ADD_LIQUIDITY_OFFSET)
+                .insertBool(config.hooks.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET)
+                .insertBool(config.hooks.shouldCallBeforeRemoveLiquidity, BEFORE_REMOVE_LIQUIDITY_OFFSET)
+                .insertBool(config.hooks.shouldCallAfterRemoveLiquidity, AFTER_REMOVE_LIQUIDITY_OFFSET);
         }
 
         {
             configBits = configBits
-                .insertBool(config.callbacks.shouldCallBeforeInitialize, BEFORE_INITIALIZE_OFFSET)
-                .insertBool(config.callbacks.shouldCallAfterInitialize, AFTER_INITIALIZE_OFFSET)
+                .insertBool(config.hooks.shouldCallBeforeInitialize, BEFORE_INITIALIZE_OFFSET)
+                .insertBool(config.hooks.shouldCallAfterInitialize, AFTER_INITIALIZE_OFFSET)
                 .insertBool(config.liquidityManagement.supportsAddLiquidityCustom, ADD_LIQUIDITY_CUSTOM_OFFSET)
                 .insertBool(config.liquidityManagement.supportsRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET);
         }
@@ -229,7 +229,7 @@ library PoolConfigLib {
                 staticSwapFeePercentage: config.getStaticSwapFeePercentage(),
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 pauseWindowEndTime: config.getPauseWindowEndTime(),
-                callbacks: PoolCallbacks({
+                hooks: PoolHooks({
                     shouldCallBeforeInitialize: config.shouldCallBeforeInitialize(),
                     shouldCallAfterInitialize: config.shouldCallAfterInitialize(),
                     shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),

@@ -5,7 +5,7 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
+import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
@@ -18,15 +18,15 @@ import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 
-contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToken {
+contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     using FixedPoint for uint256;
 
     uint256 public constant MIN_INIT_BPT = 1e6;
 
     bool public failOnAfterInitialize;
     bool public failOnBeforeInitialize;
-    bool public failOnBeforeSwapCallback;
-    bool public failOnAfterSwapCallback;
+    bool public failOnBeforeSwapHook;
+    bool public failOnAfterSwapHook;
     bool public failOnBeforeAddLiquidity;
     bool public failOnAfterAddLiquidity;
     bool public failOnBeforeRemoveLiquidity;
@@ -53,7 +53,7 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
                 tokens,
                 rateProviders,
                 pauseManager,
-                PoolConfigBits.wrap(0).toPoolConfig().callbacks,
+                PoolConfigBits.wrap(0).toPoolConfig().hooks,
                 PoolConfigBits.wrap(bytes32(type(uint256).max)).toPoolConfig().liquidityManagement
             );
         }
@@ -82,35 +82,35 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
         return balances[tokenInIndex].mulDown(invariantRatio);
     }
 
-    function setFailOnAfterInitializeCallback(bool fail) external {
+    function setFailOnAfterInitializeHook(bool fail) external {
         failOnAfterInitialize = fail;
     }
 
-    function setFailOnBeforeInitializeCallback(bool fail) external {
+    function setFailOnBeforeInitializeHook(bool fail) external {
         failOnBeforeInitialize = fail;
     }
 
-    function setFailOnBeforeSwapCallback(bool fail) external {
-        failOnBeforeSwapCallback = fail;
+    function setFailOnBeforeSwapHook(bool fail) external {
+        failOnBeforeSwapHook = fail;
     }
 
-    function setFailOnAfterSwapCallback(bool fail) external {
-        failOnAfterSwapCallback = fail;
+    function setFailOnAfterSwapHook(bool fail) external {
+        failOnAfterSwapHook = fail;
     }
 
-    function setFailOnBeforeAddLiquidityCallback(bool fail) external {
+    function setFailOnBeforeAddLiquidityHook(bool fail) external {
         failOnBeforeAddLiquidity = fail;
     }
 
-    function setFailOnAfterAddLiquidityCallback(bool fail) external {
+    function setFailOnAfterAddLiquidityHook(bool fail) external {
         failOnAfterAddLiquidity = fail;
     }
 
-    function setFailOnBeforeRemoveLiquidityCallback(bool fail) external {
+    function setFailOnBeforeRemoveLiquidityHook(bool fail) external {
         failOnBeforeRemoveLiquidity = fail;
     }
 
-    function setFailOnAfterRemoveLiquidityCallback(bool fail) external {
+    function setFailOnAfterRemoveLiquidityHook(bool fail) external {
         failOnAfterRemoveLiquidity = fail;
     }
 
@@ -127,7 +127,7 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
     }
 
     function onBeforeSwap(IBasePool.SwapParams calldata) external view override returns (bool success) {
-        return !failOnBeforeSwapCallback;
+        return !failOnBeforeSwapHook;
     }
 
     function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
@@ -138,13 +138,13 @@ contract PoolMock is IBasePool, IPoolCallbacks, IPoolLiquidity, BalancerPoolToke
     }
 
     function onAfterSwap(
-        IPoolCallbacks.AfterSwapParams calldata,
+        IPoolHooks.AfterSwapParams calldata,
         uint256 amountCalculatedScaled18
     ) external view override returns (bool success) {
-        return amountCalculatedScaled18 > 0 && !failOnAfterSwapCallback;
+        return amountCalculatedScaled18 > 0 && !failOnAfterSwapHook;
     }
 
-    // Liquidity lifecycle callbacks
+    // Liquidity lifecycle hooks
 
     function onBeforeAddLiquidity(
         address,
