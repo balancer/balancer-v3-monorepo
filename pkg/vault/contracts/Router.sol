@@ -678,17 +678,17 @@ contract Router is IRouter, ReentrancyGuard {
                     );
 
                     if (isLastStep) {
-                        // The amount out for the last step of the path should be recorded for the return value, and the
-                        // amount for the token should be sent back to the sender later on.
+                        // The amount out for the last step of the path should be recorded for the return value.
+                        // We do not need to register the amount out in _currentSwapTokensOutAmounts since the BPT
+                        // is minted directly to the sender, so this step can be considered settled at this point.
                         pathAmountsOut[i] = bptAmountOut;
                         _currentSwapTokensOut.add(address(step.tokenOut));
-                        _currentSwapTokensOutAmounts[address(step.tokenOut)] += bptAmountOut;
                     } else {
                         // Input for the next step is output of current step.
                         exactAmountIn = bptAmountOut;
                         // The token in for the next step is the token out of the current step.
                         tokenIn = step.tokenOut;
-                        // If this is an intermediate step, we'll need to send to send it back to the vault
+                        // If this is an intermediate step, we'll need to send it back to the vault
                         // to get credit for the BPT minted in the add liquidity operation.
                         _vault.retrieve(IERC20(step.pool), params.sender, bptAmountOut);
                     }

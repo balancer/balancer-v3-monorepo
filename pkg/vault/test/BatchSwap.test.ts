@@ -23,9 +23,7 @@ describe('BatchSwap', function () {
 
   let poolATokens: string[], poolBTokens: string[], poolCTokens: string[];
   let poolABTokens: string[], poolACTokens: string[], poolBCTokens: string[];
-  let token0: string;
-  let token1: string;
-  let token2: string;
+  let token0: string, token1: string, token2: string;
   let vaultAddress: string;
 
   before('setup signers', async () => {
@@ -178,7 +176,7 @@ describe('BatchSwap', function () {
       doSwapStatic = async () => _doSwap(true);
     }
 
-    function itTestsBatchSwap() {
+    function itTestsBatchSwap(singleTransferOut = true) {
       it('performs swap, transfers tokens', async () => {
         await expectBalanceChange(doSwap, tokens, balanceChange);
       });
@@ -187,16 +185,18 @@ describe('BatchSwap', function () {
         await expect(doSwap()).to.emit(tokenIn, 'Transfer').withArgs(sender.address, vaultAddress, totalAmountIn);
       });
 
-      it('performs single transfer for token out', async () => {
-        await expect(doSwap()).to.emit(tokenOut, 'Transfer').withArgs(vaultAddress, sender.address, totalAmountOut);
-      });
+      if (singleTransferOut) {
+        it('performs single transfer for token out', async () => {
+          await expect(doSwap()).to.emit(tokenOut, 'Transfer').withArgs(vaultAddress, sender.address, totalAmountOut);
+        });
+      }
 
       it('returns amounts out', async () => {
         expect(await doSwapStatic()).to.deep.eq(pathAmountsOut);
       });
     }
 
-    context('swaps with no nesting', () => {
+    context('pure swaps with no nesting', () => {
       context('single path', () => {
         sharedBeforeEach(async () => {
           tokenIn = tokens.get(0);
@@ -291,7 +291,7 @@ describe('BatchSwap', function () {
     });
 
     context('joinswaps (add liquidity step)', () => {
-      context('single path', () => {
+      context('single path - intermediate add liquidity step', () => {
         sharedBeforeEach(async () => {
           tokenIn = tokens.get(0);
           tokenOut = poolB;
@@ -334,6 +334,65 @@ describe('BatchSwap', function () {
 
         itTestsBatchSwap();
       });
+
+      context('multi path - intermediate and final add liquidity step', () => {
+        sharedBeforeEach(async () => {
+          tokenIn = tokens.get(0);
+          tokenOut = poolB;
+
+          totalAmountIn = pathExactAmountIn * 2n; // 2 paths
+          totalAmountOut = pathMinAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsOut = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', -totalAmountOut],
+              },
+            },
+          ];
+
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: poolA },
+                { pool: poolAB, tokenOut: poolB },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut,
+            },
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: poolB },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut,
+            },
+          ];
+
+          setUp();
+        });
+
+        // The second step of the second path is an 'add liquidity' operation, which is settled instantly.
+        // Therefore, the transfer event will not have the total amount out as argument.
+        itTestsBatchSwap(false);
+      });
+    });
+
+    context('exitswaps (remove liquidity step', () => {
+      // TODO
     });
   });
 });
