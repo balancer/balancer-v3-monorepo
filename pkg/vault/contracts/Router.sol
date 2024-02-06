@@ -766,7 +766,9 @@ contract Router is IRouter, ReentrancyGuard {
                         // TODO: This should be transient.
                         _currentSwapTokensOut.add(address(step.tokenOut));
                         _currentSwapTokensOutAmounts[address(step.tokenOut)] += exactAmountOut;
-                    } else if (isLastStep) {
+                    }
+
+                    if (isLastStep) {
                         // In backwards order, the last step is the first one in the given path.
                         // The given token in and max amount in apply for this step.
                         maxAmountIn = path.maxAmountIn;
@@ -826,12 +828,18 @@ contract Router is IRouter, ReentrancyGuard {
                     );
 
                     if (isLastStep) {
+                        // The amount out for the last step of the path should be recorded for the return value.
                         pathAmountsIn[i] = amountsIn[index];
                         _currentSwapTokensInAmounts[address(tokenIn)] += amountsIn[index];
                     } else {
                         exactAmountOut = amountsIn[index];
                     }
+                    // The last step is the first one in the order of operations.
+                    // TODO: We could skip retrieve on the first step and tweak how we settle the output token.
+                    // _currentSwapTokensOutAmounts[address(step.tokenOut)] -= exactAmountOut;
+                    _vault.retrieve(IERC20(step.pool), params.sender, exactAmountOut);
                 } else {
+                    console.log('SWAP');
                     // No BPT involved in the operation: regular swap exact out
                     (, uint256 amountIn, ) = _vault.swap(
                         SwapParams({
