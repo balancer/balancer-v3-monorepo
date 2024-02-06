@@ -65,14 +65,14 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         vault.setProtocolYieldFeePercentage(yieldFeePercentage);
     }
 
-    function testPoolDataAfterInitialization(bool roundUp) public {
+    function testPoolDataAfterInitialization__Fuzz(bool roundUp) public {
         pool = createPool();
         initPool();
 
         verifyLiveBalances(FixedPoint.ONE, FixedPoint.ONE, roundUp);
     }
 
-    function testLiveBalancesWithRates(uint256 wstethRate, uint256 daiRate, bool roundUp) public {
+    function testLiveBalancesWithRates__Fuzz(uint256 wstethRate, uint256 daiRate, bool roundUp) public {
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
 
@@ -85,7 +85,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         verifyLiveBalances(wstethRate, daiRate, roundUp);
     }
 
-    function testNoYieldFeesIfExempt(
+    function testNoYieldFeesIfExempt__Fuzz(
         uint256 wstethRate,
         uint256 daiRate,
         uint256 yieldFeePercentage,
@@ -142,7 +142,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         assertApproxEqAbs(actualProtocolFee, expectedProtocolFee, 1e3, "Actual protocol fee is not the expected one");
     }
 
-    function testSetLiveBalanceFromRawForToken(
+    function testSetLiveBalanceFromRawForToken__Fuzz(
         uint256 balanceRaw,
         uint8 decimals,
         uint256 tokenRate,
@@ -172,7 +172,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         }
     }
 
-    function testComputeYieldProtocolFeesDue(
+    function testComputeYieldProtocolFeesDue__Fuzz(
         uint256 balanceRaw,
         uint8 decimals,
         uint256 tokenRate,
@@ -203,7 +203,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         }
     }
 
-    function testYieldFeesOnSwap(uint256 wstethRate, uint256 daiRate) public {
+    function testYieldFeesOnSwap__Fuzz(uint256 wstethRate, uint256 daiRate) public {
         uint256 protocolYieldFeePercentage = 0.1e18;
         setProtocolYieldFeePercentage(protocolYieldFeePercentage); //  10%
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
