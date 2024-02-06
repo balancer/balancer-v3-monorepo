@@ -27,7 +27,7 @@ contract WeightedMathTest is Test {
         mock = new WeightedMathMock();
     }
 
-    function testComputeOutGivenExactIn(
+    function testComputeOutGivenExactIn__Fuzz(
         uint64 rawWeightIn,
         uint256 rawBalanceIn,
         uint256 rawBalanceOut,
@@ -70,7 +70,7 @@ contract WeightedMathTest is Test {
         assertLe(roundedDownResult, standardResult);
     }
 
-    function testComputeInGivenExactOut(
+    function testComputeInGivenExactOut__Fuzz(
         uint64 rawWeightIn,
         uint256 rawBalanceIn,
         uint256 rawBalanceOut,
@@ -122,7 +122,7 @@ contract WeightedMathTest is Test {
     }
 
     // TODO: Temporarily disable; fails intermittently due to math library precision
-    function skipTestComputeBptOutGivenExactTokensIn(
+    function skipTestComputeBptOutGivenExactTokensIn__Fuzz(
         uint64 rawWeight,
         uint64 rawSwapFee,
         uint256 rawTotalSupply,
@@ -174,7 +174,7 @@ contract WeightedMathTest is Test {
         assertGe(roundedDownResult, standardResult);
     }
 
-    function testComputeBptInGivenExactTokensOut(
+    function testComputeBptInGivenExactTokensOut__Fuzz(
         uint64 rawWeight,
         uint64 rawSwapFee,
         uint256 rawTotalSupply,

@@ -51,7 +51,7 @@ contract PoolDataTest is BaseVaultTest {
             );
     }
 
-    function testPoolData(uint256 daiRate, uint256 wstETHRate, bool roundUp) public {
+    function testPoolData__Fuzz(uint256 daiRate, uint256 wstETHRate, bool roundUp) public {
         daiRate = bound(daiRate, 1, 100e18);
         wstETHRate = bound(wstETHRate, 1, 100e18);
 
