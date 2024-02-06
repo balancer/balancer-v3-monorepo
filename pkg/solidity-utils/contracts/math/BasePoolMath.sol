@@ -154,7 +154,7 @@ library BasePoolMath {
 
         // Calculate the amount of BPT to mint. This is done by multiplying the
         // total supply with the ratio of the change in invariant.
-        // mulDown/divDown minize amount of pool tokens to mint.
+        // mulDown/divDown minimize amount of pool tokens to mint.
         return totalSupply.mulDown((invariantWithFeesApplied - currentInvariant).divDown(currentInvariant));
     }
 
