@@ -52,6 +52,7 @@ describe('BatchSwap', function () {
         'POOLA',
         poolATokens,
         Array(poolATokens.length).fill(ZERO_ADDRESS),
+        Array(poolATokens.length).fill(false),
         true,
         0,
         ZERO_ADDRESS,
@@ -66,6 +67,7 @@ describe('BatchSwap', function () {
         'POOLB',
         poolBTokens,
         Array(poolBTokens.length).fill(ZERO_ADDRESS),
+        Array(poolBTokens.length).fill(false),
         true,
         0,
         ZERO_ADDRESS,
@@ -80,6 +82,7 @@ describe('BatchSwap', function () {
         'POOLC',
         poolCTokens,
         Array(poolCTokens.length).fill(ZERO_ADDRESS),
+        Array(poolCTokens.length).fill(false),
         true,
         0,
         ZERO_ADDRESS,
@@ -96,6 +99,7 @@ describe('BatchSwap', function () {
         'POOL-AB',
         poolABTokens,
         Array(poolABTokens.length).fill(ZERO_ADDRESS),
+        Array(poolABTokens.length).fill(false),
         true,
         0,
         ZERO_ADDRESS,
@@ -110,6 +114,7 @@ describe('BatchSwap', function () {
         'POOL-AC',
         poolACTokens,
         Array(poolACTokens.length).fill(ZERO_ADDRESS),
+        Array(poolACTokens.length).fill(false),
         true,
         0,
         ZERO_ADDRESS,
@@ -124,6 +129,7 @@ describe('BatchSwap', function () {
         'POOL-BC',
         poolBCTokens,
         Array(poolBCTokens.length).fill(ZERO_ADDRESS),
+        Array(poolBCTokens.length).fill(false),
         true,
         0,
         ZERO_ADDRESS,
@@ -683,7 +689,7 @@ describe('BatchSwap', function () {
     });
 
     context('joinswaps (add liquidity step)', () => {
-      context.only('single path - intermediate add liquidity step', () => {
+      context('single path - first (final) add liquidity step', () => {
         sharedBeforeEach(async () => {
           tokenIn = tokens.get(0);
           tokenOut = poolB;
@@ -727,14 +733,14 @@ describe('BatchSwap', function () {
         itTestsBatchSwap();
       });
 
-      context('multi path - intermediate and final add liquidity step', () => {
+      context('multi path - first (final) and intermediate add liquidity step', () => {
         sharedBeforeEach(async () => {
           tokenIn = tokens.get(0);
           tokenOut = poolB;
 
-          totalAmountIn = pathExactAmountIn * 2n; // 2 paths
-          totalAmountOut = pathMinAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
-          pathAmountsOut = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
+          totalAmountIn = pathMaxAmountIn * 2n; // 2 paths
+          totalAmountOut = pathExactAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
 
           balanceChange = [
             {
@@ -760,8 +766,8 @@ describe('BatchSwap', function () {
                 { pool: poolA, tokenOut: poolA },
                 { pool: poolAB, tokenOut: poolB },
               ],
-              exactAmountIn: pathExactAmountIn,
-              minAmountOut: pathMinAmountOut,
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
             },
             {
               tokenIn: token0,
@@ -769,8 +775,8 @@ describe('BatchSwap', function () {
                 { pool: poolA, tokenOut: token1 },
                 { pool: poolB, tokenOut: poolB },
               ],
-              exactAmountIn: pathExactAmountIn,
-              minAmountOut: pathMinAmountOut,
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
             },
           ];
 
@@ -790,9 +796,9 @@ describe('BatchSwap', function () {
           tokenIn = tokens.get(0);
           tokenOut = tokens.get(2);
 
-          totalAmountIn = pathExactAmountIn; // 1 path
-          totalAmountOut = pathMinAmountOut; // 1 path, 1:1 ratio between inputs and outputs
-          pathAmountsOut = [totalAmountOut]; // 1 path, all tokens out
+          totalAmountIn = pathMaxAmountIn; // 1 path
+          totalAmountOut = pathExactAmountOut; // 1 path, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [totalAmountOut]; // 1 path, all tokens out
 
           balanceChange = [
             {
@@ -819,8 +825,8 @@ describe('BatchSwap', function () {
                 { pool: poolA, tokenOut: token1 },
                 { pool: poolB, tokenOut: token2 },
               ],
-              exactAmountIn: pathExactAmountIn,
-              minAmountOut: pathMinAmountOut,
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
             },
           ];
 
@@ -835,9 +841,9 @@ describe('BatchSwap', function () {
           tokenIn = tokens.get(0);
           tokenOut = tokens.get(1);
 
-          totalAmountIn = pathExactAmountIn; // 1 path
-          totalAmountOut = pathMinAmountOut; // 1 path, 1:1 ratio between inputs and outputs
-          pathAmountsOut = [totalAmountOut]; // 1 path, all tokens out
+          totalAmountIn = pathMaxAmountIn; // 1 path
+          totalAmountOut = pathExactAmountOut; // 1 path, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [totalAmountOut]; // 1 path, all tokens out
 
           balanceChange = [
             {
@@ -863,8 +869,8 @@ describe('BatchSwap', function () {
                 { pool: poolA, tokenOut: poolA },
                 { pool: poolA, tokenOut: token1 },
               ],
-              exactAmountIn: pathExactAmountIn,
-              minAmountOut: pathMinAmountOut,
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
             },
           ];
 
@@ -881,9 +887,9 @@ describe('BatchSwap', function () {
           tokenIn = tokens.get(0);
           tokenOut = tokens.get(1);
 
-          totalAmountIn = pathExactAmountIn * 1n; // 2 paths
-          totalAmountOut = pathMinAmountOut * 1n; // 2 paths, 1:1 ratio between inputs and outputs
-          pathAmountsOut = [totalAmountOut / 1n, totalAmountOut / 1n]; // 2 paths, half the output in each
+          totalAmountIn = pathMaxAmountIn * 1n; // 2 paths
+          totalAmountOut = pathExactAmountOut * 1n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [totalAmountOut / 1n, totalAmountOut / 1n]; // 2 paths, half the output in each
 
           balanceChange = [
             {
@@ -909,8 +915,8 @@ describe('BatchSwap', function () {
                 { pool: poolA, tokenOut: poolA },
                 { pool: poolA, tokenOut: token1 },
               ],
-              exactAmountIn: pathExactAmountIn,
-              minAmountOut: pathMinAmountOut,
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
             },
             {
               tokenIn: token0,
@@ -919,8 +925,8 @@ describe('BatchSwap', function () {
                 { pool: poolBC, tokenOut: poolB },
                 { pool: poolB, tokenOut: token1 },
               ],
-              exactAmountIn: pathExactAmountIn,
-              minAmountOut: pathMinAmountOut,
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
             },
           ];
 
