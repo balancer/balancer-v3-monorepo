@@ -55,6 +55,14 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
+     * @notice Expose the state of the Vault's reentrancy guard.
+     * @return True if the Vault is currently executing a nonReentrant function
+     */
+    function reentrancyGuardEntered() public view returns (bool) {
+        return _reentrancyGuardEntered();
+    }
+
+    /**
      * @notice Records the `debt` for a given handler and token.
      * @param token   The ERC20 token for which the `debt` will be accounted.
      * @param debt    The amount of `token` taken from the Vault in favor of the `handler`.
