@@ -26,7 +26,7 @@ contract VaultFactoryTest is Test {
     }
 
     /// forge-config: default.fuzz.runs = 100
-    function testFuzzCreate(bytes32 salt) public {
+    function testCreateVault__Fuzz(bytes32 salt) public {
         authorizer.grantRole(factory.getActionId(VaultFactory.create.selector), deployer);
 
         address vaultAddress = factory.getDeploymentAddress(salt);

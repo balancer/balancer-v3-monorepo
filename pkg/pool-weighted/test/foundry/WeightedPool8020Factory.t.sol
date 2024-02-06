@@ -41,7 +41,7 @@ contract WeightedPool8020FactoryTest is Test {
         assertEq(pauseWindowDuration, 365 days);
     }
 
-    function testPoolCreation(bytes32 salt) public {
+    function testPoolCreation__Fuzz(bytes32 salt) public {
         vm.assume(salt > 0);
         
         TokenConfig[] memory tokens = new TokenConfig[](2);
@@ -91,7 +91,7 @@ contract WeightedPool8020FactoryTest is Test {
             );
     }
 
-    function testPoolSalt(bytes32 salt) public {
+    function testPoolSalt__Fuzz(bytes32 salt) public {
         vm.assume(salt > 0);
 
         TokenConfig[] memory tokens = new TokenConfig[](2);
@@ -122,7 +122,7 @@ contract WeightedPool8020FactoryTest is Test {
         assertEq(address(secondPool), expectedPoolAddress, "Unexpected pool address");
     }
 
-    function testPoolSender(bytes32 salt) public {
+    function testPoolSender__Fuzz(bytes32 salt) public {
         vm.assume(salt > 0);
         address expectedPoolAddress = factory.getDeploymentAddress(salt);
 
@@ -148,7 +148,7 @@ contract WeightedPool8020FactoryTest is Test {
         assertTrue(address(pool) == aliceExpectedPoolAddress, "Unexpected pool address");
     }
 
-    function testPoolCrossChainProtection(bytes32 salt, uint16 chainId) public {
+    function testPoolCrossChainProtection__Fuzz(bytes32 salt, uint16 chainId) public {
         vm.assume(chainId > 1);
 
         TokenConfig[] memory tokens = new TokenConfig[](2);
