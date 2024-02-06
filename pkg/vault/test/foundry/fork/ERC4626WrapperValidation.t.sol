@@ -36,7 +36,7 @@ contract ERC4626WrapperValidation is BaseVaultTest {
     }
 
     // Test must have "Fork" in the name to be matched
-    function testForkFactoryCreationWithInvalidWrapper() public {
+    function testFactoryCreationWithInvalidWrapper__Fork() public {
         vm.expectRevert(abi.encodeWithSelector(ERC4626BufferPoolFactory.IncompatibleWrappedToken.selector, DAI_ADDRESS));
 
         // Try to create with regular DAI
@@ -44,7 +44,7 @@ contract ERC4626WrapperValidation is BaseVaultTest {
     }
     
     // Test must have "Fork" in the name to be matched
-    function testForkFactoryCreationWithValidWrappers() public {
+    function testFactoryCreationWithValidWrappers__Fork() public {
         // These real ones should not revert
         _createBuffer(waDAI, _generateSalt(address(waDAI)));
         _createBuffer(waUSDC, _generateSalt(address(waUSDC)));
