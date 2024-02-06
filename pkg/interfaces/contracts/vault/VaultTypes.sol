@@ -5,8 +5,8 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IRateProvider } from "./IRateProvider.sol";
 
-/// @dev Represents a pool's callbacks.
-struct PoolCallbacks {
+/// @dev Represents a pool's hooks.
+struct PoolHooks {
     bool shouldCallBeforeInitialize;
     bool shouldCallAfterInitialize;
     bool shouldCallBeforeSwap;
@@ -22,7 +22,7 @@ struct LiquidityManagement {
     bool supportsRemoveLiquidityCustom;
 }
 
-/// @dev Represents a pool's configuration, including callbacks.
+/// @dev Represents a pool's configuration, including hooks.
 struct PoolConfig {
     bool isPoolRegistered;
     bool isPoolInitialized;
@@ -32,7 +32,7 @@ struct PoolConfig {
     uint64 staticSwapFeePercentage; // stores an 18-decimal FP value (max FixedPoint.ONE)
     uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
     uint32 pauseWindowEndTime;
-    PoolCallbacks callbacks;
+    PoolHooks hooks;
     LiquidityManagement liquidityManagement;
 }
 
@@ -55,8 +55,8 @@ enum TokenType {
 
 /**
  * @dev Encapsulate the data required for the Vault to support a token of the given type.
- * For STANDARD or ERC4626 tokens, the rate provider address will be 0.
- * TODO: use exempt flag.
+ * For STANDARD or ERC4626 tokens, the rate provider address will be 0. By definition, ERC4626 tokens cannot be
+ * yield exempt, so the `yieldFeeExempt` flag must be false when registering them.
  *
  * @param token The token address
  * @param tokenType The token type (see the enum for supported types)
@@ -71,10 +71,8 @@ struct TokenConfig {
 }
 
 struct PoolData {
-    PoolConfig config;
-    IERC20[] tokens;
-    TokenType[] tokenTypes;
-    IRateProvider[] rateProviders;
+    PoolConfig poolConfig;
+    TokenConfig[] tokenConfig;
     uint256[] balancesRaw;
     uint256[] balancesLiveScaled18;
     uint256[] tokenRates;

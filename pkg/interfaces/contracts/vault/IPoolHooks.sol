@@ -8,14 +8,14 @@ import { IVault } from "./IVault.sol";
 import { SwapKind } from "./VaultTypes.sol";
 import { IBasePool } from "./IBasePool.sol";
 
-/// @notice Interface for pool callbacks
-interface IPoolCallbacks {
+/// @notice Interface for pool hooks
+interface IPoolHooks {
     /***************************************************************************
                                    Initialize
     ***************************************************************************/
 
     /**
-     * @notice Optional callback to be executed before pool initialization.
+     * @notice Optional hook to be executed before pool initialization.
      * @param exactAmountsIn Exact amounts of input tokens
      * @param userData Optional, arbitrary data with the encoded request
      * @return success True if the pool wishes to proceed with initialization
@@ -23,7 +23,7 @@ interface IPoolCallbacks {
     function onBeforeInitialize(uint256[] memory exactAmountsIn, bytes memory userData) external returns (bool);
 
     /**
-     * @notice Optional callback to be executed after pool initialization.
+     * @notice Optional hook to be executed after pool initialization.
      * @param exactAmountsIn Exact amounts of input tokens
      * @param bptAmountOut Amount of pool tokens minted during initialization
      * @param userData Optional, arbitrary data with the encoded request
@@ -40,7 +40,7 @@ interface IPoolCallbacks {
     ***************************************************************************/
 
     /**
-     * @notice Optional callback to be executed before adding liquidity.
+     * @notice Optional hook to be executed before adding liquidity.
      * @param sender Address of the sender
      * @param maxAmountsInScaled18 Maximum amounts of input tokens
      * @param minBptAmountOut Minimum amount of output pool tokens
@@ -57,7 +57,7 @@ interface IPoolCallbacks {
     ) external returns (bool success);
 
     /**
-     * @notice Optional callback to be executed after adding liquidity.
+     * @notice Optional hook to be executed after adding liquidity.
      * @param sender Address of the sender
      * @param amountsInScaled18 Actual amounts of tokens added, in the same order as the tokens registered in the pool
      * @param bptAmountOut Amount of pool tokens minted
@@ -78,7 +78,7 @@ interface IPoolCallbacks {
     ***************************************************************************/
 
     /**
-     * @notice Optional callback to be executed before removing liquidity.
+     * @notice Optional hook to be executed before removing liquidity.
      * @param sender Address of the sender
      * @param maxBptAmountIn Maximum amount of input pool tokens
      * @param minAmountsOutScaled18 Minimum output amounts, in the same order as the tokens registered in the pool
@@ -95,7 +95,7 @@ interface IPoolCallbacks {
     ) external returns (bool success);
 
     /**
-     * @notice Optional callback to be executed after removing liquidity.
+     * @notice Optional hook to be executed after removing liquidity.
      * @param sender Address of the sender
      * @param bptAmountIn Amount of pool tokens to burn
      * @param amountsOutScaled18 Amount of tokens to receive, in the same order as the tokens registered in the pool
@@ -116,7 +116,7 @@ interface IPoolCallbacks {
     ***************************************************************************/
 
     /**
-     * @dev Data for the callback after a swap operation.
+     * @dev Data for the hook after a swap operation.
      * @param kind Type of swap (exact in or exact out)
      * @param tokenIn Token to be swapped from
      * @param tokenOut Token to be swapped to

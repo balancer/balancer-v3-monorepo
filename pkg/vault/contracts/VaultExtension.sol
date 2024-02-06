@@ -12,7 +12,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
+import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
@@ -158,10 +158,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         TokenConfig[] memory tokenConfig,
         uint256 pauseWindowEndTime,
         address pauseManager,
-        PoolCallbacks calldata poolCallbacks,
+        PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
-        _registerPool(pool, tokenConfig, pauseWindowEndTime, pauseManager, poolCallbacks, liquidityManagement);
+        _registerPool(pool, tokenConfig, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
     }
 
     /// @inheritdoc IVaultExtension
@@ -181,7 +181,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         TokenConfig[] memory tokenConfig,
         uint256 pauseWindowEndTime,
         address pauseManager,
-        PoolCallbacks memory callbackConfig,
+        PoolHooks memory hookConfig,
         LiquidityManagement memory liquidityManagement
     ) internal {
         // Ensure the pool isn't already registered
@@ -189,20 +189,19 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             revert PoolAlreadyRegistered(pool);
         }
 
-        uint256 numTokens = tokenConfig.length;
-
-        if (numTokens < _MIN_TOKENS) {
+        // No room on the stack for a `numTokens` variable; have to use tokenConfig.length.
+        if (tokenConfig.length < _MIN_TOKENS) {
             revert MinTokens();
         }
-        if (numTokens > _MAX_TOKENS) {
+        if (tokenConfig.length > _MAX_TOKENS) {
             revert MaxTokens();
         }
 
         // Retrieve or create the pool's token balances mapping.
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
-        uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
+        uint8[] memory tokenDecimalDiffs = new uint8[](tokenConfig.length);
 
-        for (uint256 i = 0; i < numTokens; ++i) {
+        for (uint256 i = 0; i < tokenConfig.length; ++i) {
             TokenConfig memory tokenData = tokenConfig[i];
             IERC20 token = tokenData.token;
 
@@ -217,6 +216,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             if (poolTokenBalances.set(token, 0) == false) {
                 revert TokenAlreadyRegistered(token);
             }
+            _lastLivePoolTokenBalances[pool].set(token, 0);
 
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
             _poolTokenConfig[pool][token] = tokenData;
@@ -246,7 +246,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
 
         config.isPoolRegistered = true;
-        config.callbacks = callbackConfig;
+        config.hooks = hookConfig;
         config.liquidityManagement = liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = pauseWindowEndTime.toUint32();
@@ -259,7 +259,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             tokenConfig,
             pauseWindowEndTime,
             pauseManager,
-            callbackConfig,
+            hookConfig,
             liquidityManagement
         );
     }
@@ -273,13 +273,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         uint256 minBptAmountOut,
         bytes memory userData
     ) external withHandler withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault returns (uint256 bptAmountOut) {
-        PoolData memory poolData = _getPoolData(pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(pool, Rounding.ROUND_DOWN);
 
-        if (poolData.config.isPoolInitialized) {
+        if (poolData.poolConfig.isPoolInitialized) {
             revert PoolAlreadyInitialized(pool);
         }
+        uint256 numTokens = poolData.tokenConfig.length;
 
-        InputHelpers.ensureInputLengthMatch(poolData.tokens.length, exactAmountsIn.length);
+        InputHelpers.ensureInputLengthMatch(numTokens, exactAmountsIn.length);
 
         // Amounts are entering pool math, so round down. A lower invariant after the join means less bptOut,
         // favoring the pool.
@@ -288,17 +289,17 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             poolData.tokenRates
         );
 
-        if (poolData.config.callbacks.shouldCallBeforeInitialize) {
-            if (IPoolCallbacks(pool).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
-                revert CallbackFailed();
+        if (poolData.poolConfig.hooks.shouldCallBeforeInitialize) {
+            if (IPoolHooks(pool).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
+                revert HookFailed();
             }
         }
 
         bptAmountOut = _initialize(pool, to, poolData, tokens, exactAmountsIn, exactAmountsInScaled18, minBptAmountOut);
 
-        if (poolData.config.callbacks.shouldCallAfterInitialize) {
-            if (IPoolCallbacks(pool).onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false) {
-                revert CallbackFailed();
+        if (poolData.poolConfig.hooks.shouldCallAfterInitialize) {
+            if (IPoolHooks(pool).onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false) {
+                revert HookFailed();
             }
         }
     }
@@ -312,8 +313,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         uint256[] memory exactAmountsInScaled18,
         uint256 minBptAmountOut
     ) internal nonReentrant returns (uint256 bptAmountOut) {
-        for (uint256 i = 0; i < poolData.tokens.length; ++i) {
-            IERC20 actualToken = poolData.tokens[i];
+        for (uint256 i = 0; i < poolData.tokenConfig.length; ++i) {
+            IERC20 actualToken = poolData.tokenConfig[i].token;
 
             // Tokens passed into `initialize` are the "expected" tokens.
             if (actualToken != tokens[i]) {
@@ -326,11 +327,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
 
         // Store the new Pool balances.
         _setPoolBalances(pool, exactAmountsIn);
-        emit PoolBalanceChanged(pool, to, poolData.tokens, exactAmountsIn.unsafeCastToInt256(true));
+        // Initialize live balances, incorporating the current rate.
+        _setLastLivePoolBalances(pool, exactAmountsInScaled18);
+
+        emit PoolBalanceChanged(pool, to, tokens, exactAmountsIn.unsafeCastToInt256(true));
 
         // Store config and mark the pool as initialized
-        poolData.config.isPoolInitialized = true;
-        _poolConfig[pool] = poolData.config.fromPoolConfig();
+        poolData.poolConfig.isPoolInitialized = true;
+        _poolConfig[pool] = poolData.poolConfig.fromPoolConfig();
 
         // Pass scaled balances to the pool
         bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsInScaled18);
@@ -354,17 +358,32 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         emit PoolInitialized(pool);
     }
 
+    /**
+     * @dev Sets the live balances of a Pool's tokens to `newBalances`.
+     *
+     * WARNING: this assumes `newBalances` has the same length and order as the Pool's tokens.
+     */
+    function _setLastLivePoolBalances(address pool, uint256[] memory newBalances) internal {
+        EnumerableMap.IERC20ToUint256Map storage liveBalances = _lastLivePoolTokenBalances[pool];
+
+        for (uint256 i = 0; i < newBalances.length; ++i) {
+            // Since we assume all newBalances are properly ordered, we can simply use `unchecked_setAt`
+            // to avoid one less storage read per token.
+            liveBalances.unchecked_setAt(i, newBalances[i]);
+        }
+    }
+
     /*******************************************************************************
                                     Pool Information
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function isPoolInitialized(address pool) external view onlyVault returns (bool) {
+    function isPoolInitialized(address pool) external view withRegisteredPool(pool) onlyVault returns (bool) {
         return _isPoolInitialized(pool);
     }
 
     /// @inheritdoc IVaultExtension
-    function getPoolConfig(address pool) external view onlyVault returns (PoolConfig memory) {
+    function getPoolConfig(address pool) external view withRegisteredPool(pool) onlyVault returns (PoolConfig memory) {
         return _poolConfig[pool].toPoolConfig();
     }
 
@@ -380,7 +399,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         external
         view
         withRegisteredPool(pool)
-        onlyVault
         returns (
             IERC20[] memory tokens,
             TokenType[] memory tokenTypes,
@@ -389,8 +407,21 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             IRateProvider[] memory rateProviders
         )
     {
-        // Do not use _getPoolData, which makes external calls and could fail.
-        (tokens, tokenTypes, balancesRaw, decimalScalingFactors, rateProviders, ) = _getPoolTokenInfo(pool);
+        // Do not use _computePoolData, which makes external calls and could fail.
+        TokenConfig[] memory tokenConfig;
+        (tokenConfig, balancesRaw, decimalScalingFactors, ) = _getPoolTokenInfo(pool);
+
+        uint256 numTokens = tokenConfig.length;
+        tokens = new IERC20[](numTokens);
+        tokenTypes = new TokenType[](numTokens);
+        rateProviders = new IRateProvider[](numTokens);
+
+        // TODO consider sending TokenConfig externally; maybe parallel arrays are friendlier off-chain.
+        for (uint256 i = 0; i < numTokens; i++) {
+            tokens[i] = tokenConfig[i].token;
+            tokenTypes[i] = tokenConfig[i].tokenType;
+            rateProviders[i] = tokenConfig[i].rateProvider;
+        }
     }
 
     /// @inheritdoc IVaultExtension
@@ -647,7 +678,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultExtension
-    function getStaticSwapFeePercentage(address pool) external view onlyVault returns (uint256) {
+    function getStaticSwapFeePercentage(
+        address pool
+    ) external view withRegisteredPool(pool) onlyVault returns (uint256) {
         return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
     }
 
@@ -656,7 +689,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function isPoolInRecoveryMode(address pool) external view onlyVault returns (bool) {
+    function isPoolInRecoveryMode(address pool) external view withRegisteredPool(pool) onlyVault returns (bool) {
         return _isPoolInRecoveryMode(pool);
     }
 

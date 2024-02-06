@@ -17,7 +17,7 @@ interface IRouter {
     ***************************************************************************/
 
     /**
-     * @dev Data for the pool initialization callback
+     * @dev Data for the pool initialization hook
      * @param sender Account originating the pool initialization operation
      * @param pool Address of the liquidity pool
      * @param tokens Pool tokens
@@ -26,7 +26,7 @@ interface IRouter {
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for adding initial liquidity
      */
-    struct InitializeCallbackParams {
+    struct InitializeHookParams {
         address sender;
         address pool;
         IERC20[] tokens;
@@ -63,7 +63,7 @@ interface IRouter {
     error InsufficientEth();
 
     /**
-     * @dev Data for the add liquidity callback.
+     * @dev Data for the add liquidity hook.
      * @param sender Account originating the add liquidity operation
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
@@ -72,7 +72,7 @@ interface IRouter {
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for adding liquidity
      */
-    struct AddLiquidityCallbackParams {
+    struct AddLiquidityHookParams {
         address sender;
         address pool;
         uint256[] maxAmountsIn;
@@ -142,7 +142,7 @@ interface IRouter {
     ***************************************************************************/
 
     /**
-     * @dev Data for the remove liquidity callback.
+     * @dev Data for the remove liquidity hook.
      * @param sender Account originating the remove liquidity operation
      * @param pool Address of the liquidity pool
      * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
@@ -151,7 +151,7 @@ interface IRouter {
      * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
      * @param userData Additional (optional) data required for removing liquidity
      */
-    struct RemoveLiquidityCallbackParams {
+    struct RemoveLiquidityHookParams {
         address sender;
         address pool;
         uint256[] minAmountsOut;
@@ -268,7 +268,7 @@ interface IRouter {
     }
 
     /**
-     * @dev Data for the swap callback.
+     * @dev Data for the swap hook.
      * @param sender Account initiating the swap operation
      * @param kind Type of swap (exact in or exact out)
      * @param pool Address of the liquidity pool
@@ -280,7 +280,7 @@ interface IRouter {
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for the swap
      */
-    struct SwapSingleTokenCallbackParams {
+    struct SwapSingleTokenHookParams {
         address sender;
         SwapKind kind;
         address pool;
@@ -293,7 +293,7 @@ interface IRouter {
         bytes userData;
     }
 
-    struct SwapExactInCallbackParams {
+    struct SwapExactInHookParams {
         address sender;
         SwapPathExactAmountIn[] paths;
         uint256 deadline;
@@ -301,7 +301,7 @@ interface IRouter {
         bytes userData;
     }
 
-    struct SwapExactOutCallbackParams {
+    struct SwapExactOutHookParams {
         address sender;
         SwapPathExactAmountOut[] paths;
         uint256 deadline;

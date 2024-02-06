@@ -41,8 +41,6 @@ contract WeightedPoolTest is BaseVaultTest {
 
     uint256 constant DELTA = 1e9;
 
-    bytes32 constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
-
     WeightedPool internal weightedPool;
     uint256 internal bptAmountOut;
 

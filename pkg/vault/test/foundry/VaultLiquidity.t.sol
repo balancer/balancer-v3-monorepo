@@ -128,7 +128,7 @@ contract VaultLiquidityTest is BaseVaultTest {
             address(pool),
             dai,
             defaultAmount - 1,
-            2 * bptAmountOut,
+            bptAmountOut,
             false,
             bytes("")
         );
@@ -175,7 +175,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         (amountsOut, ) = router.getSingleInputArrayAndTokenIndex(pool, dai, amountOut);
 
         // amountsOut are correct
-        assertEq(amountsOut[0], defaultAmount, "Wrong AmountOut[0]");
+        assertEq(amountsOut[0], defaultAmount * 2, "Wrong AmountOut[0]");
         assertEq(amountsOut[1], 0, "AmountOut[1] > 0");
     }
 

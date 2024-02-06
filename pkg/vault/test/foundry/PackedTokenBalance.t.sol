@@ -7,7 +7,7 @@ import "forge-std/Test.sol";
 import { PackedTokenBalance } from "../../contracts/lib/PackedTokenBalance.sol";
 
 contract PackedTokenBalanceTest is Test {
-    function testToFromPackedBalance(uint128 raw, uint128 live) public {
+    function testToFromPackedBalance__Fuzz(uint128 raw, uint128 live) public {
         bytes32 balance = PackedTokenBalance.toPackedBalance(raw, live);
 
         (uint256 recoveredRaw, uint256 recoveredLive) = PackedTokenBalance.fromPackedBalance(balance);
@@ -16,7 +16,7 @@ contract PackedTokenBalanceTest is Test {
         assertEq(recoveredLive, live);
     }
 
-    function testPackedTokenBalanceGetters(uint128 raw, uint128 live) public {
+    function testPackedTokenBalanceGetters__Fuzz(uint128 raw, uint128 live) public {
         bytes32 balance = PackedTokenBalance.toPackedBalance(raw, live);
 
         uint256 recoveredRaw = PackedTokenBalance.getRawBalance(balance);
@@ -26,7 +26,7 @@ contract PackedTokenBalanceTest is Test {
         assertEq(recoveredLive, live);
     }
 
-    function testPackedTokenBalanceSetters(bytes32 balance, uint128 newBalanceValue) public {
+    function testPackedTokenBalanceSetters__Fuzz(bytes32 balance, uint128 newBalanceValue) public {
         (uint256 recoveredRaw, uint256 recoveredLive) = PackedTokenBalance.fromPackedBalance(balance);
 
         // Set new raw balance (should not change live).
@@ -48,7 +48,7 @@ contract PackedTokenBalanceTest is Test {
         assertEq(newRecoveredLive, newBalanceValue);
     }
 
-    function testOverflow(bytes32 balance, uint128 validBalanceValue, uint256 overMaxBalanceValue) public {
+    function testOverflow__Fuzz(bytes32 balance, uint128 validBalanceValue, uint256 overMaxBalanceValue) public {
         overMaxBalanceValue = bound(overMaxBalanceValue, uint256(2 ** (128)), type(uint256).max);
 
         vm.expectRevert(PackedTokenBalance.BalanceOverflow.selector);
