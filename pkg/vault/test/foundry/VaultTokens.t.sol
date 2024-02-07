@@ -49,7 +49,7 @@ contract VaultTokenTest is BaseVaultTest {
     }
 
     function initPool() internal override {
-        // Do nothing fo this test
+        // Do nothing for this test
     }
 
     function testERC4626PoolWithoutBuffers() public {
