@@ -246,6 +246,7 @@ describe('ERC4626BufferPool', function () {
       });
 
       it('can rebalance a buffer pool', async () => {
+        // TODO: Add real tests once it is implemented.
         await expect(vault.connect(alice).rebalanceBuffer(wrappedToken)).to.not.be.reverted;
       });
     });
