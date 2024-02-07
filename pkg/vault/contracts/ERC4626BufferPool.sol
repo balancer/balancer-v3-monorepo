@@ -15,7 +15,6 @@ import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPo
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -28,13 +27,7 @@ import { BasePoolHooks } from "./BasePoolHooks.sol";
  * cannot be used externally. To the outside world, they don't exist.
  */
 contract ERC4626BufferPool is IBasePool, IBufferPool, IRateProvider, IPoolLiquidity, BalancerPoolToken, BasePoolHooks {
-    uint256 private constant _DEFAULT_BUFFER_AMP_PARAMETER = 200;
-    uint256 private constant _AMP_PRECISION = 1e3;
-
     IERC4626 internal immutable _wrappedToken;
-
-    // TODO: At some point, allow changing this. Do we still need the rate limiting?
-    uint256 private _amplificationParameter;
 
     constructor(
         string memory name,
@@ -43,8 +36,6 @@ contract ERC4626BufferPool is IBasePool, IBufferPool, IRateProvider, IPoolLiquid
         IVault vault
     ) BalancerPoolToken(vault, name, symbol) {
         _wrappedToken = wrappedToken;
-
-        _amplificationParameter = _DEFAULT_BUFFER_AMP_PARAMETER * _AMP_PRECISION;
     }
 
     /// @inheritdoc IBasePool
@@ -126,36 +117,12 @@ contract ERC4626BufferPool is IBasePool, IBufferPool, IRateProvider, IPoolLiquid
 
     /// @inheritdoc IBasePool
     function onSwap(IBasePool.SwapParams memory request) public view onlyVault returns (uint256) {
-        uint256 invariant = StableMath.computeInvariant(_amplificationParameter, request.balancesScaled18);
-
-        if (request.kind == SwapKind.EXACT_IN) {
-            uint256 amountOutScaled18 = StableMath.computeOutGivenExactIn(
-                _amplificationParameter,
-                request.balancesScaled18,
-                request.indexIn,
-                request.indexOut,
-                request.amountGivenScaled18,
-                invariant
-            );
-
-            return amountOutScaled18;
-        } else {
-            uint256 amountInScaled18 = StableMath.computeInGivenExactOut(
-                _amplificationParameter,
-                request.balancesScaled18,
-                request.indexIn,
-                request.indexOut,
-                request.amountGivenScaled18,
-                invariant
-            );
-
-            return amountInScaled18;
-        }
+        return request.amountGivenScaled18;
     }
 
     /// @inheritdoc IBasePool
     function computeInvariant(uint256[] memory balancesLiveScaled18) public view onlyVault returns (uint256) {
-        return StableMath.computeInvariant(_amplificationParameter, balancesLiveScaled18);
+        return balancesLiveScaled18[0] + balancesLiveScaled18[1];
     }
 
     /// @inheritdoc IRateProvider
