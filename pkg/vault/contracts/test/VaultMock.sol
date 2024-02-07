@@ -154,4 +154,12 @@ contract VaultMock is IVaultMainMock, Vault {
             (, lastLiveBalances[i]) = poolTokenBalances.unchecked_at(i);
         }
     }
+
+    function guardedCheckEntered() external nonReentrant {
+        require(reentrancyGuardEntered());
+    }
+
+    function unguardedCheckNotEntered() external view {
+        require(!reentrancyGuardEntered());
+    }
 }
