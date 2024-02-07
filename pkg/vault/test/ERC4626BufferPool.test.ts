@@ -153,29 +153,35 @@ describe('ERC4626BufferPool', function () {
     sharedBeforeEach('create pool', async () => {
       pool = await createBufferPool();
 
-      wrappedToken.mint(TOKEN_AMOUNT, alice);
-      baseToken.mint(alice, TOKEN_AMOUNT);
-      baseToken.mint(wrappedToken, TOKEN_AMOUNT); // initialize assets
+      await wrappedToken.mint(TOKEN_AMOUNT, alice);
+      await baseToken.mint(alice, TOKEN_AMOUNT);
+      await baseToken.mint(wrappedToken, TOKEN_AMOUNT); // initialize assets
 
-      wrappedToken.connect(alice).approve(vault, MAX_UINT256);
-      baseToken.connect(alice).approve(vault, MAX_UINT256);
-    });
+      await wrappedToken.connect(alice).approve(vault, MAX_UINT256);
+      await baseToken.connect(alice).approve(vault, MAX_UINT256);
 
-    it('initializing emits an event and updates the state', async () => {
       // Preconditions
       expect(await wrappedToken.balanceOf(alice)).to.eq(TOKEN_AMOUNT);
       expect(await baseToken.balanceOf(alice)).to.eq(TOKEN_AMOUNT);
+    });
 
+    it('cannot be initialized disproportionately', async () => {
       // Cannot initialize disproportionately
       await expect(
         router.connect(alice).initialize(pool, tokenAddresses, [TOKEN_AMOUNT * 2n, TOKEN_AMOUNT], FP_ZERO, false, '0x')
       ).to.be.revertedWithCustomError(vault, 'HookFailed');
+    });
 
+    it('emits an event', async () => {
       expect(
         await router.connect(alice).initialize(pool, tokenAddresses, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x')
       )
         .to.emit(vault, 'PoolInitialized')
         .withArgs(pool);
+    });
+
+    it('updates the state', async () => {
+      await router.connect(alice).initialize(pool, tokenAddresses, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
 
       const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(pool);
 
@@ -189,8 +195,10 @@ describe('ERC4626BufferPool', function () {
       const [, tokenTypes, balances, ,] = await vault.getPoolTokenInfo(pool);
       expect(tokenTypes).to.deep.equal([TokenType.ERC4626, TokenType.STANDARD]);
       expect(balances).to.deep.equal([TOKEN_AMOUNT, TOKEN_AMOUNT]);
+    });
 
-      // Cannot initialize more than once
+    it('cannot be initialized twice', async () => {
+      await router.connect(alice).initialize(pool, tokenAddresses, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
       await expect(
         router.connect(alice).initialize(pool, tokenAddresses, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x')
       ).to.be.revertedWithCustomError(vault, 'PoolAlreadyInitialized');
