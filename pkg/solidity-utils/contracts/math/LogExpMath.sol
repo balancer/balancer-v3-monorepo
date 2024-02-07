@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.4;
 
+// solhint-disable
+
 /**
  * @dev Exponentiation and logarithm functions for 18 decimal fixed point numbers (both base and exponent/argument).
  *

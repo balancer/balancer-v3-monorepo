@@ -11,7 +11,6 @@ import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol"
 import { VaultExtensionMock } from "@balancer-labs/v3-vault/contracts/test/VaultExtensionMock.sol";
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
 
-
 contract WeightedPoolFactoryTest is Test {
     VaultMock vault;
     WeightedPoolFactory factory;

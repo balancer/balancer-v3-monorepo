@@ -955,6 +955,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         revert CannotReceiveEth();
     }
 
+    // solhint-disable no-complex-fallback
+
     /**
      * @inheritdoc Proxy
      * @dev Override proxy implementation of `fallback` to disallow incoming ETH transfers.
