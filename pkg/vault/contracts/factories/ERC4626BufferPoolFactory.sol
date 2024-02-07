@@ -69,55 +69,60 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
      * @param wrappedToken The proposed token to create a new buffer for
      */
     function _isValidWrappedToken(IERC4626 wrappedToken) private view returns (bool) {
-        // Wrappers must specify their underlying asset.
+        return _hasValidAsset(wrappedToken) && _hasAssetValue(wrappedToken) && _supportsRateComputation(wrappedToken);
+    }
+
+    /// @dev Wrappers must specify their underlying asset.
+    function _hasValidAsset(IERC4626 wrappedToken) private view returns (bool) {
         try wrappedToken.asset() returns (address asset) {
-            if (asset == address(0)) {
+            return asset != address(0);
+        } catch {
+            return false;
+        }
+    }
+
+    /// @dev Wrappers must contain some value
+    function _hasAssetValue(IERC4626 wrappedToken) private view returns (bool) {
+        try wrappedToken.totalAssets() returns (uint256 totalAssets) {
+            return totalAssets > 0;
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * @dev We want to check that the shares/assets rates are consistent.
+     * The easiest way to do this is preview withdrawals and redemptions with a unit asset.
+     * These values should be reciprocals of each other, so multiplying them together should
+     * equal ONE.
+     */
+    function _supportsRateComputation(IERC4626 wrappedToken) private view returns (bool) {
+        address asset = wrappedToken.asset();
+
+        // We need to pass in the unit asset in native decimals.
+        uint256 oneAsset = 10 ** IERC20Metadata(asset).decimals();
+        // Rounding with < 18 decimal tokens can cause the rate to deviate slightly from ONE,
+        // so we set a tolerance proportional to the decimal difference
+        // (e.g., 1 wei for 18-decimals; 1e12 for 6 decimals).
+        uint256 tolerance = 10 ** (18 - IERC20Metadata(asset).decimals());
+        // We scale up the returned values to 18-decimals for the multiplication.
+        uint256 assetScalingFactor = ScalingHelpers.computeScalingFactor(IERC20(asset));
+        uint256 rateTest;
+
+        try wrappedToken.previewRedeem(oneAsset) returns (uint256 redeemRate) {
+            rateTest = redeemRate.toScaled18RoundDown(assetScalingFactor);
+
+            try wrappedToken.previewWithdraw(oneAsset) returns (uint256 withdrawRate) {
+                // previewRedeem and previewWithdraw should be reciprocals,
+                // so multiplying them should equal ONE
+                rateTest = rateTest.mulDown(withdrawRate.toScaled18RoundDown(assetScalingFactor));
+
+                // Should be very close to ONE
+                uint256 diff = rateTest >= FixedPoint.ONE ? rateTest - FixedPoint.ONE : FixedPoint.ONE - rateTest;
+
+                return diff <= tolerance;
+            } catch {
                 return false;
-            } else {
-                // Wrappers must contain some value
-                try wrappedToken.totalAssets() returns (uint256 totalAssets) {
-                    if (totalAssets > 0) {
-                        // We want to check that the shares/assets rates are consistent.
-                        // The easiest way to do this is preview withdrawals and redemptions with a unit asset.
-                        // These values should be reciprocals of each other, so multiplying them together should
-                        // equal ONE.
-                        //
-                        // We need to pass in the unit asset in native decimals.
-                        uint256 oneAsset = 10 ** IERC20Metadata(asset).decimals();
-                        // Rounding with < 18 decimal tokens can cause the rate to deviate slightly from ONE,
-                        // so we set a tolerance proportional to the decimal difference
-                        // (e.g., 1 wei for 18-decimals; 1e12 for 6 decimals).
-                        uint256 tolerance = 10 ** (18 - IERC20Metadata(asset).decimals());
-                        // We scale up the returned values to 18-decimals for the multiplication.
-                        uint256 assetScalingFactor = ScalingHelpers.computeScalingFactor(IERC20(asset));
-                        uint256 rateTest;
-
-                        try wrappedToken.previewRedeem(oneAsset) returns (uint256 redeemRate) {
-                            rateTest = redeemRate.toScaled18RoundDown(assetScalingFactor);
-
-                            try wrappedToken.previewWithdraw(oneAsset) returns (uint256 withdrawRate) {
-                                // previewRedeem and previewWithdraw should be reciprocals,
-                                // so multiplying them should equal ONE
-                                rateTest = rateTest.mulDown(withdrawRate.toScaled18RoundDown(assetScalingFactor));
-
-                                // Should be very close to ONE
-                                uint256 diff = rateTest >= FixedPoint.ONE
-                                    ? rateTest - FixedPoint.ONE
-                                    : FixedPoint.ONE - rateTest;
-
-                                return diff <= tolerance;
-                            } catch {
-                                return false;
-                            }
-                        } catch {
-                            return false;
-                        }
-                    } else {
-                        return false;
-                    }
-                } catch {
-                    return false;
-                }
             }
         } catch {
             return false;
