@@ -156,6 +156,10 @@ describe('BatchSwap', function () {
     await router
       .connect(lp)
       .initialize(poolBC, poolBCTokens, Array(poolBCTokens.length).fill(fp(1000)), 0, false, '0x');
+
+    await poolA.connect(lp).transfer(sender, fp(100));
+    await poolB.connect(lp).transfer(sender, fp(100));
+    await poolC.connect(lp).transfer(sender, fp(100));
   });
 
   describe('batch swap given in', () => {
@@ -182,14 +186,16 @@ describe('BatchSwap', function () {
       doSwapStatic = async () => _doSwap(true);
     }
 
-    function itTestsBatchSwap(singleTransferOut = true) {
+    function itTestsBatchSwap(singleTransferIn = true, singleTransferOut = true) {
       it('performs swap, transfers tokens', async () => {
         await expectBalanceChange(doSwap, tokens, balanceChange);
       });
 
-      it('performs single transfer for token in', async () => {
-        await expect(doSwap()).to.emit(tokenIn, 'Transfer').withArgs(sender.address, vaultAddress, totalAmountIn);
-      });
+      if (singleTransferIn) {
+        it('performs single transfer for token in', async () => {
+          await expect(doSwap()).to.emit(tokenIn, 'Transfer').withArgs(sender.address, vaultAddress, totalAmountIn);
+        });
+      }
 
       if (singleTransferOut) {
         it('performs single transfer for token out', async () => {
@@ -247,7 +253,7 @@ describe('BatchSwap', function () {
         itTestsBatchSwap();
       });
 
-      context('multi path', () => {
+      context('multi path, SISO', () => {
         sharedBeforeEach(async () => {
           tokenIn = tokens.get(0);
           tokenOut = tokens.get(2);
@@ -294,6 +300,217 @@ describe('BatchSwap', function () {
         });
 
         itTestsBatchSwap();
+      });
+
+      context('multi path, MISO', () => {
+        sharedBeforeEach(async () => {
+          tokenIn = tokens.get(0);
+          tokenOut = tokens.get(2);
+          const secondPathTokenIn = tokens.get(1);
+
+          totalAmountIn = pathExactAmountIn * 2n; // 2 paths
+          totalAmountOut = pathMinAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsOut = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', -pathExactAmountIn],
+                [await secondPathTokenIn.symbol()]: ['equal', -pathExactAmountIn],
+                [await tokenOut.symbol()]: ['equal', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', pathMinAmountOut],
+                [await secondPathTokenIn.symbol()]: ['equal', pathMinAmountOut],
+                [await tokenOut.symbol()]: ['equal', -totalAmountOut],
+              },
+            },
+          ];
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut,
+            },
+            {
+              tokenIn: token1,
+              steps: [{ pool: poolB, tokenOut: token2 }],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap(false, true);
+      });
+
+      context('multi path, SIMO', () => {
+        sharedBeforeEach(async () => {
+          tokenIn = tokens.get(0);
+          tokenOut = tokens.get(2);
+          const secondPathTokenOut = tokens.get(1);
+
+          totalAmountIn = pathExactAmountIn * 2n; // 2 paths
+          totalAmountOut = pathMinAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsOut = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', pathMinAmountOut],
+                [await secondPathTokenOut.symbol()]: ['equal', pathMinAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', -pathMinAmountOut],
+                [await secondPathTokenOut.symbol()]: ['equal', -pathMinAmountOut],
+              },
+            },
+          ];
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut,
+            },
+            {
+              tokenIn: token0,
+              steps: [{ pool: poolA, tokenOut: token1 }],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap(true, false);
+      });
+
+      context('multi path, MIMO', () => {
+        sharedBeforeEach(async () => {
+          tokenIn = tokens.get(0);
+          tokenOut = tokens.get(2);
+          const secondPathTokenIn = poolA;
+          const secondPathTokenOut = poolC;
+
+          totalAmountIn = pathExactAmountIn * 2n; // 2 paths
+          totalAmountOut = pathMinAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsOut = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', -pathExactAmountIn],
+                [await secondPathTokenIn.symbol()]: ['equal', -pathExactAmountIn],
+                [await tokenOut.symbol()]: ['equal', pathMinAmountOut],
+                [await secondPathTokenOut.symbol()]: ['equal', pathMinAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', pathExactAmountIn],
+                [await secondPathTokenIn.symbol()]: ['equal', pathExactAmountIn],
+                [await tokenOut.symbol()]: ['equal', -pathMinAmountOut],
+                [await secondPathTokenOut.symbol()]: ['equal', -pathMinAmountOut],
+              },
+            },
+          ];
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut,
+            },
+            {
+              tokenIn: poolA,
+              steps: [
+                { pool: poolAB, tokenOut: poolB },
+                { pool: poolBC, tokenOut: poolC },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap(false, false);
+      });
+
+      context('multi path, circular inputs/outputs', () => {
+        sharedBeforeEach(async () => {
+          tokenIn = tokens.get(0);
+          tokenOut = tokens.get(2);
+
+          totalAmountIn = 0n; // 2 paths
+          totalAmountOut = 0n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsOut = [pathMinAmountOut, pathMinAmountOut]; // 2 paths, half the output in each
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', 0],
+                [await tokenOut.symbol()]: ['equal', 0],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', 0],
+                [await tokenOut.symbol()]: ['equal', 0],
+              },
+            },
+          ];
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut,
+            },
+            {
+              tokenIn: token2,
+              steps: [{ pool: poolC, tokenOut: token0 }],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap(false, false);
       });
     });
 
@@ -394,7 +611,7 @@ describe('BatchSwap', function () {
 
         // The second step of the second path is an 'add liquidity' operation, which is settled instantly.
         // Therefore, the transfer event will not have the total amount out as argument.
-        itTestsBatchSwap(false);
+        itTestsBatchSwap(true, false);
       });
     });
 
@@ -573,14 +790,16 @@ describe('BatchSwap', function () {
       doSwapStatic = async () => _doSwap(true);
     }
 
-    function itTestsBatchSwap(singleTransferOut = true) {
+    function itTestsBatchSwap(singleTransferIn = true, singleTransferOut = true) {
       it('performs swap, transfers tokens', async () => {
         await expectBalanceChange(doSwap, tokens, balanceChange);
       });
 
-      it('performs single transfer for token in', async () => {
-        await expect(doSwap()).to.emit(tokenIn, 'Transfer').withArgs(sender.address, vaultAddress, totalAmountIn);
-      });
+      if (singleTransferIn) {
+        it('performs single transfer for token in', async () => {
+          await expect(doSwap()).to.emit(tokenIn, 'Transfer').withArgs(sender.address, vaultAddress, totalAmountIn);
+        });
+      }
 
       if (singleTransferOut) {
         it('performs single transfer for token out', async () => {
@@ -785,7 +1004,7 @@ describe('BatchSwap', function () {
 
         // The second step of the second path is an 'add liquidity' operation, which is settled instantly.
         // Therefore, the transfer event will not have the total amount out as argument.
-        itTestsBatchSwap(false);
+        itTestsBatchSwap(true, false);
       });
     });
 
@@ -879,7 +1098,7 @@ describe('BatchSwap', function () {
 
         // The first step of first path is an 'add liquidity' operation, which is settled instantly.
         // Therefore, the transfer event will not have the total amount out as argument.
-        itTestsBatchSwap(false);
+        itTestsBatchSwap(true, false);
       });
 
       context('multi path - final remove liquidity step', () => {
@@ -935,7 +1154,7 @@ describe('BatchSwap', function () {
 
         // The first step of first path is an 'add liquidity' operation, which is settled instantly.
         // Therefore, the transfer event will not have the total amount out as argument.
-        itTestsBatchSwap(false);
+        itTestsBatchSwap(true, false);
       });
     });
   });
