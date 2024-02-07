@@ -188,7 +188,16 @@ describe('WeightedPool', function () {
       await expect(
         await router
           .connect(alice)
-          .swapExactIn(realPoolAddress, tokenAAddress, tokenBAddress, SWAP_AMOUNT, 0, MAX_UINT256, false, '0x')
+          .swapSingleTokenExactIn(
+            realPoolAddress,
+            tokenAAddress,
+            tokenBAddress,
+            SWAP_AMOUNT,
+            0,
+            MAX_UINT256,
+            false,
+            '0x'
+          )
       ).to.emit(vault, 'ProtocolSwapFeeCharged');
     });
   });
