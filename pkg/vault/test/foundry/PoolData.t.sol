@@ -60,7 +60,10 @@ contract PoolDataTest is BaseVaultTest {
 
         // `computePoolDataUpdatingBalancesAndFees` and `getRawBalances` are functions in VaultMock.
 
-        PoolData memory data = vault.computePoolDataUpdatingBalancesAndFees(address(pool), roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN);
+        PoolData memory data = vault.computePoolDataUpdatingBalancesAndFees(
+            address(pool),
+            roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN
+        );
 
         // Compute decimal scaling factors from the tokens, in the mock.
         uint256[] memory expectedScalingFactors = PoolMock(pool).getDecimalScalingFactors();

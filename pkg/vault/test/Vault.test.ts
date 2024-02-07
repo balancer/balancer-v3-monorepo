@@ -547,4 +547,14 @@ describe('Vault', function () {
       });
     });
   });
+
+  describe('reentrancy guard state', () => {
+    it('reentrancy guard should be false when not in Vault context', async () => {
+      expect(await vault.unguardedCheckNotEntered()).to.not.be.reverted;
+    });
+
+    it('reentrancy guard should be true when in Vault context', async () => {
+      expect(await vault.guardedCheckEntered()).to.not.be.reverted;
+    });
+  });
 });

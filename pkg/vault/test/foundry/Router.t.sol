@@ -51,7 +51,7 @@ contract RouterTest is BaseVaultTest {
     function createPool() internal override returns (address) {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         bool[] memory yieldExemptFlags = new bool[](2);
-        
+
         PoolMock newPool = new PoolMock(
             IVault(address(vault)),
             "ERC20 Pool",
