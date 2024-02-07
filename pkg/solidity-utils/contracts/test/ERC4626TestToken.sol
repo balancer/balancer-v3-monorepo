@@ -23,7 +23,7 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
         _wrappedTokenDecimals = tokenDecimals;
     }
 
-    function decimals() public view virtual override returns (uint8) {
+    function decimals() public view override returns (uint8) {
         return _wrappedTokenDecimals;
     }
 
@@ -31,9 +31,17 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
         return _convertToAssets(FixedPoint.ONE, Math.Rounding.Floor);
     }
 
-    function mint(uint256 shares, address receiver) public virtual override returns (uint256) {
+    function mint(uint256 shares, address receiver) public override returns (uint256) {
         _mint(receiver, shares);
 
         return shares;
+    }
+
+    // Pass buffer checks
+    function totalAssets() public view override returns (uint256) {
+        uint256 assets = super.totalAssets();
+
+        // Don't return 0
+        return assets == 0 ? FixedPoint.ONE : assets;
     }
 }
