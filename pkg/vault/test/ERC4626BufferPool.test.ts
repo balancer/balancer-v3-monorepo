@@ -68,7 +68,7 @@ describe('ERC4626BufferPool', function () {
     factory = await deploy('v3-vault/ERC4626BufferPoolFactory', { args: [vault, 12 * MONTH] });
   });
 
-  async function createPool(): Promise<Contract> {
+  async function createBufferPool(): Promise<Contract> {
     const tx = await factory.connect(alice).create(wrappedToken, ANY_ADDRESS, ZERO_BYTES32);
     const receipt = await tx.wait();
 
@@ -79,8 +79,8 @@ describe('ERC4626BufferPool', function () {
     return await deployedAt('ERC4626BufferPool', poolAddress);
   }
 
-  async function createAndInitializePool(): Promise<Contract> {
-    pool = await createPool();
+  async function createAndInitializeBufferPool(): Promise<Contract> {
+    pool = await createBufferPool();
 
     wrappedToken.mint(TOKEN_AMOUNT, alice);
     baseToken.mint(alice, TOKEN_AMOUNT);
@@ -96,7 +96,7 @@ describe('ERC4626BufferPool', function () {
 
   describe('registration', () => {
     sharedBeforeEach('create pool', async () => {
-      pool = await createPool();
+      pool = await createBufferPool();
     });
 
     it('creates a pool', async () => {
@@ -151,7 +151,7 @@ describe('ERC4626BufferPool', function () {
 
   describe('initialization', () => {
     sharedBeforeEach('create pool', async () => {
-      pool = await createPool();
+      pool = await createBufferPool();
 
       wrappedToken.mint(TOKEN_AMOUNT, alice);
       baseToken.mint(alice, TOKEN_AMOUNT);
@@ -199,7 +199,7 @@ describe('ERC4626BufferPool', function () {
 
   describe('swaps', () => {
     sharedBeforeEach('create and initialize pool', async () => {
-      pool = await createAndInitializePool();
+      pool = await createAndInitializeBufferPool();
     });
 
     it('does not allow external swaps', async () => {
@@ -213,7 +213,7 @@ describe('ERC4626BufferPool', function () {
 
   describe('rebalancing', () => {
     sharedBeforeEach('create and initialize pool', async () => {
-      pool = await createAndInitializePool();
+      pool = await createAndInitializeBufferPool();
     });
 
     context('external call', () => {
@@ -253,7 +253,7 @@ describe('ERC4626BufferPool', function () {
 
   describe('add liquidity', () => {
     sharedBeforeEach('create and initialize pool', async () => {
-      pool = await createAndInitializePool();
+      pool = await createAndInitializeBufferPool();
     });
 
     context('invalid kinds', () => {
@@ -288,7 +288,7 @@ describe('ERC4626BufferPool', function () {
 
   describe('remove liquidity', () => {
     sharedBeforeEach('create and initialize pool', async () => {
-      pool = await createAndInitializePool();
+      pool = await createAndInitializeBufferPool();
     });
 
     it('satisfies preconditions', async () => {
