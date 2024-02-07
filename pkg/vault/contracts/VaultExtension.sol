@@ -74,6 +74,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             revert PauseBufferPeriodDurationTooLarge();
         }
 
+        // solhint-disable-next-line not-rely-on-time
         uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
 
         _vaultPauseWindowEndTime = pauseWindowEndTime;
@@ -510,6 +511,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         } else {
             if (pausing) {
                 // Not already paused; we can pause within the window.
+                // solhint-disable-next-line not-rely-on-time
                 if (block.timestamp >= _vaultPauseWindowEndTime) {
                     revert VaultPauseWindowExpired();
                 }
@@ -582,6 +584,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         } else {
             if (pausing) {
                 // Not already paused; we can pause within the window.
+                // solhint-disable-next-line not-rely-on-time
                 if (block.timestamp >= config.pauseWindowEndTime) {
                     revert PoolPauseWindowExpired(pool);
                 }

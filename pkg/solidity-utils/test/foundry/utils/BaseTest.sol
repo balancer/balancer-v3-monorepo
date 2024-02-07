@@ -27,7 +27,6 @@ abstract contract BaseTest is Test, GasSnapshot {
     // Broke user.
     address payable broke;
 
-
     // ERC20 tokens used for tests.
     ERC20TestToken internal dai;
     ERC20TestToken internal usdc;
