@@ -99,6 +99,7 @@ library BasePoolMath {
      * @param swapFeePercentage The swap fee percentage applied to the transaction
      * @param computeInvariant A function pointer to the invariant calculation function
      * @return bptAmountOut The amount of pool tokens (BPT) that will be minted as a result of the liquidity addition
+     * @return swapFeeAmounts Swap fee amounts charge on each token
      */
     function computeAddLiquidityUnbalanced(
         uint256[] memory currentBalances,
@@ -106,12 +107,14 @@ library BasePoolMath {
         uint256 totalSupply,
         uint256 swapFeePercentage,
         function(uint256[] memory) external view returns (uint256) computeInvariant
-    ) internal view returns (uint256) {
+    ) internal view returns (uint256 bptAmountOut, uint256[] memory swapFeeAmounts) {
         // Determine the number of tokens in the pool.
         uint256 numTokens = currentBalances.length;
 
         // Create a new array to hold the updated balances after the addition.
         uint256[] memory newBalances = new uint256[](numTokens);
+        // Create a new array to hold the swap fee amount for each balance.
+        swapFeeAmounts = new uint256[](numTokens);
 
         // Loop through each token, updating the balance with the added amount.
         for (uint256 index = 0; index < currentBalances.length; index++) {
@@ -129,7 +132,8 @@ library BasePoolMath {
             // Check if the new balance is greater than the proportional balance.
             // If so, calculate the taxable amount.
             if (newBalances[index] > invariantRatio.mulUp(currentBalances[index])) {
-                uint256 taxableAmount = newBalances[index] - invariantRatio.mulUp(currentBalances[index]);
+                swapFeeAmounts[index] = invariantRatio.mulUp(currentBalances[index]);
+                uint256 taxableAmount = newBalances[index] - swapFeeAmounts[index];
                 // Subtract the fee from the new balance.
                 // We are essentially imposing swap fees on non-proportional incoming amounts.
                 newBalances[index] = newBalances[index] - taxableAmount.mulUp(swapFeePercentage);
@@ -142,7 +146,10 @@ library BasePoolMath {
         // Calculate the amount of BPT to mint. This is done by multiplying the
         // total supply with the ratio of the change in invariant.
         //  mulDown/divDown minize amount of pool tokens to mint.
-        return totalSupply.mulDown((invariantWithFeesApplied - currentInvariant).divDown(currentInvariant));
+        return (
+            totalSupply.mulDown((invariantWithFeesApplied - currentInvariant).divDown(currentInvariant)),
+            swapFeeAmounts
+        );
     }
 
     /**
@@ -159,6 +166,7 @@ library BasePoolMath {
      * @param swapFeePercentage The swap fee percentage applied to the taxable amount
      * @param computeBalance A function pointer to the balance calculation function
      * @return amountInWithFee The amount of input token needed, including the swap fee, to receive the exact BPT amount
+     * @return swapFeeAmounts Swap fee amounts charge on each token
      */
     function computeAddLiquiditySingleTokenExactOut(
         uint256[] memory currentBalances,
@@ -167,7 +175,7 @@ library BasePoolMath {
         uint256 totalSupply,
         uint256 swapFeePercentage,
         function(uint256[] memory, uint256, uint256) external view returns (uint256) computeBalance
-    ) internal view returns (uint256) {
+    ) internal view returns (uint256 amountInWithFee, uint256[] memory swapFeeAmounts) {
         // Calculate new supply after minting exactBptAmountOut
         uint256 newSupply = exactBptAmountOut + totalSupply;
         // Calculate the initial amount of the input token needed for the desired amount of BPT out
@@ -183,8 +191,12 @@ library BasePoolMath {
         // Calculate the swap fee based on the taxable amount and the swap fee percentage
         uint256 fee = taxableAmount.divUp(swapFeePercentage.complement()) - taxableAmount;
 
+        // Create swap fees amount array and set the single fee we charge
+        swapFeeAmounts = new uint256[](currentBalances.length);
+        swapFeeAmounts[tokenInIndex] = fee;
+
         // Return the total amount of input token needed, including the swap fee
-        return amountIn + fee;
+        amountInWithFee = amountIn + fee;
     }
 
     /**

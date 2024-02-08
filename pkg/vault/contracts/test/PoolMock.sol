@@ -191,14 +191,25 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
     function onAddLiquidityCustom(
         address,
-        uint256[] memory maxAmountsIn,
+        uint256[] memory maxAmountsInScaled18,
         uint256 minBptAmountOut,
         uint256[] memory,
         bytes memory userData
-    ) external pure override returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
-        amountsIn = maxAmountsIn;
+    )
+        external
+        pure
+        override
+        returns (
+            uint256[] memory amountsIn,
+            uint256 bptAmountOut,
+            uint256[] memory swapFeeAmountsScaled18,
+            bytes memory returnData
+        )
+    {
+        amountsIn = maxAmountsInScaled18;
         bptAmountOut = minBptAmountOut;
         returnData = userData;
+        swapFeeAmountsScaled18 = new uint256[](maxAmountsInScaled18.length);
     }
 
     function onRemoveLiquidityCustom(
