@@ -18,7 +18,7 @@ import {
 import { PoolConfigStructOutput, VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
-import { FP_ZERO, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { FP_ONE, FP_ZERO, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
@@ -133,6 +133,7 @@ describe('ERC4626BufferPool', function () {
 
       const [paused, , , pauseManager] = await vault.getPoolPausedState(pool);
       expect(paused).to.be.false;
+      expect(poolConfig.isBufferPool).to.be.true;
       expect(pauseManager).to.eq(ANY_ADDRESS);
 
       expect(poolConfig.pauseWindowEndTime).to.gt(currentTime);
@@ -210,11 +211,27 @@ describe('ERC4626BufferPool', function () {
       pool = await createAndInitializeBufferPool();
     });
 
-    it('does not allow external swaps', async () => {
+    it('does not allow buffer pool swaps through a router', async () => {
       await expect(
         router
           .connect(alice)
           .swapExactIn(pool, baseTokenAddress, wrappedTokenAddress, TOKEN_AMOUNT, 0, MAX_UINT256, false, '0x')
+      )
+        .to.be.revertedWithCustomError(vault, 'CannotSwapWithBufferPool')
+        .withArgs(await pool.getAddress());
+    });
+
+    it('does not allow external swaps', async () => {
+      await expect(
+        pool.connect(alice).onSwap({
+          kind: 0,
+          amountGivenScaled18: FP_ONE,
+          balancesScaled18: [FP_ONE, FP_ONE],
+          indexIn: 0,
+          indexOut: 1,
+          sender: alice,
+          userData: '0x',
+        })
       ).to.be.revertedWithCustomError(vault, 'SenderIsNotVault');
     });
   });

@@ -105,12 +105,10 @@ contract ERC4626BufferPool is IBasePool, IBufferPool, IRateProvider, IPoolLiquid
     }
 
     /// @inheritdoc BasePoolHooks
-    function onBeforeSwap(IBasePool.SwapParams calldata request) external view override onlyVault returns (bool) {
-        // Swaps cannot be called externally
-        // TODO: Note that the integrity of request.sender depends on the router. Limit to trusted routers?
-        if (request.sender != address(getVault())) {
-            revert IVaultErrors.SenderIsNotVault(request.sender);
-        }
+    function onBeforeSwap(IBasePool.SwapParams calldata) external view override onlyVault returns (bool) {
+        // Swaps cannot be called externally - only the Vault can call this.
+        // Since routers might still try to trade directly with buffer pools (either maliciously or accidentally),
+        // the Vault also explicitly blocks any swaps with buffer pools.
 
         // TODO implement - check for / perform rebalancing; call _rebalance() if needed
         return true;

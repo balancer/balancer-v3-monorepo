@@ -843,6 +843,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             }),
             LiquidityManagement({ supportsAddLiquidityCustom: true, supportsRemoveLiquidityCustom: false })
         );
+
+        // Set isBufferPool flag
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        config.isBufferPool = true;
+        _poolConfig[pool] = config.fromPoolConfig();
     }
 
     /// @inheritdoc IVaultExtension
