@@ -27,8 +27,8 @@ contract Router is IRouter, ReentrancyGuard {
     // Transient storage
     EnumerableSet.AddressSet private _currentSwapTokensIn;
     EnumerableSet.AddressSet private _currentSwapTokensOut;
-    mapping(address => uint256) _currentSwapTokensInAmounts;
-    mapping(address => uint256) _currentSwapTokensOutAmounts;
+    mapping(address => uint256) private _currentSwapTokensInAmounts;
+    mapping(address => uint256) private _currentSwapTokensOutAmounts;
 
     modifier onlyVault() {
         if (msg.sender != address(_vault)) {
@@ -1354,6 +1354,6 @@ contract Router is IRouter, ReentrancyGuard {
         }
 
         // Return the rest of ETH to sender
-        returnEth(sender, ethAmountIn);
+        _returnEth(sender, ethAmountIn);
     }
 }
