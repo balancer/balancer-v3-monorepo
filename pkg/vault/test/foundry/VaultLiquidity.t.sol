@@ -124,14 +124,7 @@ contract VaultLiquidityTest is BaseVaultTest {
             )
         );
         vm.prank(alice);
-        router.addLiquiditySingleTokenExactOut(
-            address(pool),
-            dai,
-            defaultAmount - 1,
-            bptAmountOut,
-            false,
-            bytes("")
-        );
+        router.addLiquiditySingleTokenExactOut(address(pool), dai, defaultAmount - 1, bptAmountOut, false, bytes(""));
     }
 
     /// Remove

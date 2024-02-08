@@ -139,6 +139,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * timestamp, the expression short-circuits false, and the Vault is permanently unpaused.
      */
     function _isVaultPaused() internal view returns (bool) {
+        // solhint-disable-next-line not-rely-on-time
         return block.timestamp <= _vaultBufferPeriodEndTime && _vaultPaused;
     }
 
@@ -175,6 +176,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         (bool pauseBit, uint256 pauseWindowEndTime) = PoolConfigLib.getPoolPausedState(_poolConfig[pool]);
 
         // Use the Vault's buffer period.
+        // solhint-disable-next-line not-rely-on-time
         return (pauseBit && block.timestamp <= pauseWindowEndTime + _vaultBufferPeriodDuration, pauseWindowEndTime);
     }
 
@@ -318,6 +320,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             } else if (tokenType == TokenType.WITH_RATE) {
                 tokenRates[i] = poolTokenConfig[token].rateProvider.getRate();
             } else if (tokenType == TokenType.ERC4626) {
+                // solhint-disable-previous-line no-empty-blocks
                 // TODO: implement ERC4626 in later phases.
             } else {
                 revert InvalidTokenConfiguration();

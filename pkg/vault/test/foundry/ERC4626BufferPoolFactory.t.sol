@@ -10,7 +10,6 @@ import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/Va
 import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
 import { ERC4626BufferPoolFactory } from "@balancer-labs/v3-vault/contracts/factories/ERC4626BufferPoolFactory.sol";
 
-
 contract ERC4626BufferPoolFactoryTest is Test {
     VaultMock vault;
     ERC4626BufferPoolFactory factory;

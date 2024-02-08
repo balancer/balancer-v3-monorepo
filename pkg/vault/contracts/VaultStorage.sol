@@ -14,6 +14,8 @@ import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openze
 
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
 
+// solhint-disable max-states-count
+
 /**
  * @dev Storage layout for Vault. This contract has no code.
  */

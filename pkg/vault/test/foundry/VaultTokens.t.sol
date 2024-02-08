@@ -35,8 +35,8 @@ contract VaultTokenTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        waDAI = new ERC4626TestToken(dai, 'Wrapped aDAI', 'waDAI', 18);
-        waUSDC = new ERC4626TestToken(usdc, 'Wrapped aUSDC', 'waUSDC', 6);
+        waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
+        waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 6);
 
         poolFactory = new PoolFactoryMock(vault, 365 days);
         bufferFactory = new ERC4626BufferPoolFactory(vault, 365 days);
@@ -159,7 +159,7 @@ contract VaultTokenTest is BaseVaultTest {
         return bytes32(uint256(uint160(addr)));
     }
 
-    function validateBufferPool(address pool, address[] memory expectedTokens) private{
+    function validateBufferPool(address pool, address[] memory expectedTokens) private {
         IERC20[] memory actualTokens = vault.getPoolTokens(pool);
 
         assertEq(actualTokens.length, expectedTokens.length);

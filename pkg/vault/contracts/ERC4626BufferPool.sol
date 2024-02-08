@@ -137,6 +137,7 @@ contract ERC4626BufferPool is IBasePool, IBufferPool, IRateProvider, IPoolLiquid
     }
 
     function _rebalance() private {
+        // solhint-disable-previous-line no-empty-blocks
         // TODO: implement - can be called by the pool during a swap, or from the Vault directly
     }
 

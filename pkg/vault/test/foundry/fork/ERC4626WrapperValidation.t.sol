@@ -19,7 +19,7 @@ import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 // IMPORTANT: this is a fork test. Make sure the env variable MAINNET_RPC_URL is set!
 contract ERC4626WrapperValidation is BaseVaultTest {
     ERC4626BufferPoolFactory factory;
-    
+
     IERC4626 waDAI = IERC4626(0x098256c06ab24F5655C5506A6488781BD711c14b);
     IERC4626 waUSDC = IERC4626(0x57d20c946A7A3812a7225B881CdcD8431D23431C);
 
@@ -37,12 +37,14 @@ contract ERC4626WrapperValidation is BaseVaultTest {
 
     // Test must have "Fork" in the name to be matched
     function testFactoryCreationWithInvalidWrapper__Fork() public {
-        vm.expectRevert(abi.encodeWithSelector(ERC4626BufferPoolFactory.IncompatibleWrappedToken.selector, DAI_ADDRESS));
+        vm.expectRevert(
+            abi.encodeWithSelector(ERC4626BufferPoolFactory.IncompatibleWrappedToken.selector, DAI_ADDRESS)
+        );
 
         // Try to create with regular DAI
         factory.create(IERC4626(DAI_ADDRESS), address(0), _generateSalt(DAI_ADDRESS));
     }
-    
+
     // Test must have "Fork" in the name to be matched
     function testFactoryCreationWithValidWrappers__Fork() public {
         // These real ones should not revert
