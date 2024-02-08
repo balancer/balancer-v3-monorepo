@@ -19,9 +19,7 @@ contract VaultSwapTest is BaseVaultTest {
     using ArrayHelpers for *;
 
     PoolMock internal noInitPool;
-    uint256 internal swapFeePercentage = 0.01e18; // 1%
     uint256 internal swapFee = defaultAmount / 100; // 1%
-    uint256 internal protocolSwapFeePercentage = 0.50e18; // 50%
     uint256 internal protocolSwapFee = swapFee / 2; // 50%
 
     function setUp() public virtual override {

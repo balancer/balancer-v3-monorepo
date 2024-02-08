@@ -59,6 +59,10 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     uint256 internal poolInitAmount = 1e3 * 1e18;
     // Default rate for the rate provider mock.
     uint256 internal mockRate = 2e18;
+    // Default swap fee percentage.
+    uint256 internal swapFeePercentage = 0.01e18; // 1%
+    // Default protocol swap fee percentage.
+    uint256 internal protocolSwapFeePercentage = 0.50e18; // 50%
 
     function setUp() public virtual override {
         BaseTest.setUp();
