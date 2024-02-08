@@ -176,7 +176,7 @@ contract Router is IRouter, ReentrancyGuard {
     /// @inheritdoc IRouter
     function addLiquidityCustom(
         address pool,
-        uint256[] memory inputAmountsIn,
+        uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         bool wethIsEth,
         bytes memory userData
@@ -189,7 +189,7 @@ contract Router is IRouter, ReentrancyGuard {
                         AddLiquidityHookParams({
                             sender: msg.sender,
                             pool: pool,
-                            maxAmountsIn: inputAmountsIn,
+                            maxAmountsIn: maxAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             kind: AddLiquidityKind.CUSTOM,
                             wethIsEth: wethIsEth,
@@ -717,7 +717,7 @@ contract Router is IRouter, ReentrancyGuard {
     /// @inheritdoc IRouter
     function queryAddLiquidityCustom(
         address pool,
-        uint256[] memory inputAmountsIn,
+        uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
@@ -731,7 +731,7 @@ contract Router is IRouter, ReentrancyGuard {
                             // but it is possible to add liquidity to any recipient
                             sender: address(this),
                             pool: pool,
-                            maxAmountsIn: inputAmountsIn,
+                            maxAmountsIn: maxAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             kind: AddLiquidityKind.CUSTOM,
                             wethIsEth: false,
