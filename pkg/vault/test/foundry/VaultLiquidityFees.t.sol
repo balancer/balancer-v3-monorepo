@@ -81,6 +81,59 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
     /// Remove
 
+    function removeLiquiditySingleTokenExactIn()
+        public
+        returns (uint256[] memory amountsOut, uint256 bptAmountIn, uint256[] memory protocolSwapFees)
+    {
+        bptAmountIn = defaultAmount * 2;
+        // protocol swap fee = 2 * (defaultAmount * 1% / 2 ) * 50%
+        protocolSwapFees = [uint256((defaultAmount) / 200), 0].toMemoryArray();
+
+        uint256 amountOut = router.removeLiquiditySingleTokenExactIn(
+            address(pool),
+            bptAmountIn,
+            dai,
+            defaultAmount,
+            false,
+            bytes("")
+        );
+
+        (amountsOut, ) = router.getSingleInputArrayAndTokenIndex(pool, dai, amountOut);
+
+        // amountsOut are correct
+        // 2 * amount - (amount * swapFee%)
+        assertEq(amountsOut[0], defaultAmount * 2 - defaultAmount / 100, "Wrong AmountOut[0]");
+        assertEq(amountsOut[1], 0, "AmountOut[1] > 0");
+    }
+
+    function testRemoveLiquiditySingleTokenExactIn() public {
+        assertRemoveLiquidity(removeLiquiditySingleTokenExactIn);
+    }
+
+    function removeLiquiditySingleTokenExactOut()
+        public
+        returns (uint256[] memory amountsOut, uint256 bptAmountIn, uint256[] memory protocolSwapFees)
+    {
+        amountsOut = [defaultAmount, 0].toMemoryArray();
+        // protocol swap fee = (defaultAmount / 99% / 2 ) * 50% + 1
+        protocolSwapFees = [uint256((defaultAmount / 99) / 4 + 1), 0].toMemoryArray();
+
+        bptAmountIn = router.removeLiquiditySingleTokenExactOut(
+            address(pool),
+            2 * defaultAmount,
+            dai,
+            uint256(defaultAmount),
+            false,
+            bytes("")
+        );
+        // amount + (amount / ( 100% - swapFee%)) / 2 + 1
+        assertEq(bptAmountIn, defaultAmount + (defaultAmount / 99) / 2 + 1, "Wrong bptAmountIn");
+    }
+
+    function testRemoveLiquiditySingleTokenExactOut() public {
+        assertRemoveLiquidity(removeLiquiditySingleTokenExactOut);
+    }
+
     /// Utils
 
     function getBalances(address user) internal view returns (Balances memory balances) {
@@ -135,7 +188,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         assertEq(balancesAfter.userBpt, bptAmountOut, "Add - User BPT balance after");
     }
 
-    function assertRemoveLiquidity(function() returns (uint256[] memory, uint256) testFunc) internal {
+    function assertRemoveLiquidity(function() returns (uint256[] memory, uint256, uint256[] memory) testFunc) internal {
         vm.startPrank(alice);
 
         router.addLiquidityUnbalanced(
@@ -148,7 +201,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         Balances memory balancesBefore = getBalances(alice);
 
-        (uint256[] memory amountsOut, uint256 bptAmountIn) = testFunc();
+        (uint256[] memory amountsOut, uint256 bptAmountIn, uint256[] memory protocolSwapFees) = testFunc();
 
         vm.stopPrank();
 
@@ -178,8 +231,11 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             "Remove - Pool balance: token 1"
         );
 
+        // Protocols fees are charged
+        assertEq(protocolSwapFees[0], vault.getProtocolFees(address(dai)), "Protocol's fee amount is wrong");
+        assertEq(protocolSwapFees[1], vault.getProtocolFees(address(usdc)), "Protocol's fee amount is wrong");
+
         // User has burnt the correct amount of BPT
-        assertEq(balancesBefore.userBpt, bptAmountIn, "Remove - User BPT balance before");
-        assertEq(balancesAfter.userBpt, 0, "Remove - User BPT balance after");
+        assertEq(balancesBefore.userBpt - balancesAfter.userBpt, bptAmountIn, "Wrong amount of BPT burned");
     }
 }
