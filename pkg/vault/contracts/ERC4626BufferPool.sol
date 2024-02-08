@@ -126,6 +126,10 @@ contract ERC4626BufferPool is IBasePool, IBufferPool, IRateProvider, IPoolLiquid
 
     /// @inheritdoc IRateProvider
     function getRate() external view onlyVault returns (uint256) {
+        // TODO: This is really just a placeholder for now. We will need to think more carefully about this.
+        // e.g., it will probably need to be scaled according to the asset value decimals. There may be
+        // special cases with 0 supply. Wrappers may implement this differently, so maybe we need to calculate
+        // the rate directly instead of relying on the wrapper implementation, etc.
         return _wrappedToken.convertToAssets(FixedPoint.ONE);
     }
 
