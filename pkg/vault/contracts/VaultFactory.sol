@@ -10,6 +10,7 @@ import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
 import { Vault } from "./Vault.sol";
+import { VaultAdmin } from "./VaultAdmin.sol";
 import { VaultExtension } from "./VaultExtension.sol";
 
 /**
@@ -67,8 +68,14 @@ contract VaultFactory is Authentication {
             revert VaultAddressMismatch();
         }
 
+        VaultAdmin vaultAdmin = new VaultAdmin(IVault(vaultAddress),
+            _pauseWindowDuration,
+            _bufferPeriodDuration
+        );
+
         VaultExtension vaultExtension = new VaultExtension(
             IVault(vaultAddress),
+            vaultAdmin,
             _pauseWindowDuration,
             _bufferPeriodDuration
         );
