@@ -100,7 +100,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function settle(IERC20 token) public nonReentrant withHandler returns (uint256 paid) {
+    function settle(IERC20 token) external nonReentrant withHandler returns (uint256 paid) {
+        return _settle(token);
+    }
+
+    /// @dev Only use for BPT.
+    function _settle(IERC20 token) internal returns (uint256 paid) {
         uint256 reservesBefore = _tokenReserves[token];
         _tokenReserves[token] = token.balanceOf(address(this));
         paid = _tokenReserves[token] - reservesBefore;
@@ -648,8 +653,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _setPoolBalances(params.pool, poolData.balancesRaw);
 
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
-        // as the pool's math relies on totalSupply.
-        _mint(address(params.pool), params.to, bptAmountOut);
+        // as the pool's math relies on totalSupply. We keep them in the vault so that they can be wired out later.
+        _mint(address(params.pool), address(this), bptAmountOut);
+        _settle(IERC20(params.pool));
 
         emit PoolBalanceChanged(params.pool, params.to, tokens, amountsInRaw.unsafeCastToInt256(true));
     }

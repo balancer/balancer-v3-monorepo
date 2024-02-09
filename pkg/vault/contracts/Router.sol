@@ -259,6 +259,7 @@ contract Router is IRouter, ReentrancyGuard {
                 _vault.retrieve(token, params.sender, amountIn);
             }
         }
+        _vault.wire(IERC20(params.pool), params.sender, bptAmountOut);
 
         // Send remaining ETH to the user
         _returnEth(params.sender, ethAmountIn);
@@ -672,18 +673,14 @@ contract Router is IRouter, ReentrancyGuard {
 
                     if (isLastStep) {
                         // The amount out for the last step of the path should be recorded for the return value.
-                        // We do not need to register the amount out in _currentSwapTokensOutAmounts since the BPT
-                        // is minted directly to the sender, so this step can be considered settled at this point.
                         pathAmountsOut[i] = bptAmountOut;
                         _currentSwapTokensOut.add(address(step.tokenOut));
+                        _currentSwapTokensOutAmounts[address(step.tokenOut)] += bptAmountOut;
                     } else {
                         // Input for the next step is output of current step.
                         exactAmountIn = bptAmountOut;
                         // The token in for the next step is the token out of the current step.
                         tokenIn = step.tokenOut;
-                        // If this is an intermediate step, we'll need to send it back to the vault
-                        // to get credit for the BPT minted in the add liquidity operation.
-                        _vault.retrieve(IERC20(step.pool), params.sender, bptAmountOut);
                     }
                 } else {
                     // No BPT involved in the operation: regular swap exact in
@@ -827,10 +824,6 @@ contract Router is IRouter, ReentrancyGuard {
                     } else {
                         exactAmountOut = amountsIn[index];
                     }
-                    // The last step is the first one in the order of operations.
-                    // TODO: We could skip retrieve on the first step and tweak how we settle the output token.
-                    // _currentSwapTokensOutAmounts[address(step.tokenOut)] -= exactAmountOut;
-                    _vault.retrieve(IERC20(step.pool), params.sender, exactAmountOut);
                 } else {
                     // No BPT involved in the operation: regular swap exact out
                     (, uint256 amountIn, ) = _vault.swap(
