@@ -16,7 +16,6 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract VaultLiquidityWithFeesTest is BaseVaultTest {
     using ArrayHelpers for *;
 
-
     function setUp() public virtual override {
         BaseVaultTest.setUp();
         setSwapFeePercentage(swapFeePercentage);
@@ -130,7 +129,6 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
     }
 
     /// Utils
-
 
     function assertAddLiquidity(function() returns (uint256[] memory, uint256, uint256[] memory) testFunc) internal {
         Balances memory balancesBefore = getBalances(alice);
