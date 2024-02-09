@@ -253,8 +253,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
-            (tokens[i], ) = poolTokenBalances.unchecked_at(i);
-            IERC20 token = tokens[i];
+            (IERC20 token, ) = poolTokenBalances.unchecked_at(i);
 
             // Translate tokens of type ERC4626 to base tokens (except for buffer pools)
             if (
@@ -262,6 +261,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                 _wrappedTokenBuffers[IERC4626(address(token))] != pool
             ) {
                 tokens[i] = _wrappedTokenBufferBaseTokens[token];
+            } else {
+                tokens[i] = token;
             }
         }
     }
