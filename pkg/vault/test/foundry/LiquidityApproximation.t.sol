@@ -33,7 +33,7 @@ import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Ba
  * Bob, starting with the same balances [100, 0], performs a swapExactIn(34).
  * We determine the amount Alice indirectly traded as 34 (100 - 66 = 34),
  * enabling us to compare the swap fees incurred on the trade.
- * This comparison ensures that the fees for a direct swap remain higher than those for an indirect swap.
+ * This comparison ensures that the fees for a direct swap remain lower than those for an indirect swap.
  * Finally, we assess the final balances of Alice and Bob. Two criteria must be satisfied:
  *   a. The initial coin balances for the trade should be identical,
  *      meaning Alice's [66, ...] should correspond to Bob's [66, ...].
