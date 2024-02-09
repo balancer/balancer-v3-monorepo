@@ -17,7 +17,7 @@ interface IPoolLiquidity {
      * @param userData Arbitrary data with the encoded request
      * @return amountsInScaled18 Input token amounts, in the same order as the tokens registered in the pool
      * @return bptAmountOut Calculated pool token amount to receive
-     * @return swapFeeAmountsScaled18 Swap fee amounts charge on each token
+     * @return swapFeeAmountsScaled18 The amount of swap fees charged for each token
      * @return returnData Arbitrary data with encoded response from the pool
      */
     function onAddLiquidityCustom(
@@ -44,7 +44,7 @@ interface IPoolLiquidity {
      * @param userData Arbitrary data with the encoded request
      * @return bptAmountIn Calculated pool token amount to burn
      * @return amountsOutScaled18 Amount of tokens to receive, in the same order as the tokens registered in the pool
-     * @return swapFeeAmountsScaled18 Swap fee amounts charge on each token
+     * @return swapFeeAmountsScaled18 The amount of swap fees charged for each token
      * @return returnData Arbitrary data with encoded response from the pool
      */
     function onRemoveLiquidityCustom(

@@ -3,7 +3,6 @@
 pragma solidity ^0.8.4;
 
 import { FixedPoint } from "./FixedPoint.sol";
-import "forge-std/console2.sol";
 
 library BasePoolMath {
     using FixedPoint for uint256;
@@ -100,7 +99,7 @@ library BasePoolMath {
      * @param swapFeePercentage The swap fee percentage applied to the transaction
      * @param computeInvariant A function pointer to the invariant calculation function
      * @return bptAmountOut The amount of pool tokens (BPT) that will be minted as a result of the liquidity addition
-     * @return swapFeeAmounts Swap fee amounts charge on each token
+     * @return swapFeeAmounts The amount of swap fees charged for each token
      */
     function computeAddLiquidityUnbalanced(
         uint256[] memory currentBalances,
@@ -165,7 +164,7 @@ library BasePoolMath {
      * @param swapFeePercentage The swap fee percentage applied to the taxable amount
      * @param computeBalance A function pointer to the balance calculation function
      * @return amountInWithFee The amount of input token needed, including the swap fee, to receive the exact BPT amount
-     * @return swapFeeAmounts Swap fee amounts charge on each token
+     * @return swapFeeAmounts The amount of swap fees charged for each token
      */
     function computeAddLiquiditySingleTokenExactOut(
         uint256[] memory currentBalances,
@@ -206,7 +205,7 @@ library BasePoolMath {
      * @param totalSupply Current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the taxable amount
      * @return bptAmountIn Amount of pool tokens to burn
-     * @return swapFeeAmounts Swap fee amounts charge on each token
+     * @return swapFeeAmounts The amount of swap fees charged for each token
      */
     function computeRemoveLiquiditySingleTokenExactOut(
         uint256[] memory currentBalances,
