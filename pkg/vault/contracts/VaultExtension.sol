@@ -822,6 +822,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[0].token = IERC20(wrappedToken);
         tokenConfig[0].tokenType = TokenType.ERC4626;
+        // We are assuming the baseToken is STANDARD (the default type, with enum value 0).
         tokenConfig[1].token = baseToken;
 
         _wrappedTokenBufferBaseTokens[IERC20(wrappedToken)] = baseToken;
