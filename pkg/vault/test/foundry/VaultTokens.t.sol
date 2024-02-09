@@ -120,6 +120,12 @@ contract VaultTokenTest is BaseVaultTest {
         // Buffer Pool creation is permissioned.
         authorizer.grantRole(bufferFactory.getActionId(ERC4626BufferPoolFactory.create.selector), alice);
 
+        // Establish assets and supply so that buffer creation doesn't fail
+        dai.mint(address(waDAI), 1000e18);
+        waDAI.mint(1000e18, alice);
+        usdc.mint(address(waUSDC), 1000e18);
+        waUSDC.mint(1000e18, alice);
+
         vm.startPrank(alice);
         waDAIBuffer = bufferFactory.create(waDAI, address(0), getSalt(address(waDAI)));
         waUSDCBuffer = bufferFactory.create(waUSDC, address(0), getSalt(address(waUSDC)));

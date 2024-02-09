@@ -69,6 +69,10 @@ describe('ERC4626BufferPool', function () {
   });
 
   async function createBufferPool(): Promise<Contract> {
+    // initialize assets and supply
+    await baseToken.mint(wrappedToken, TOKEN_AMOUNT);
+    await wrappedToken.mint(TOKEN_AMOUNT, alice);
+
     const tx = await factory.connect(alice).create(wrappedToken, ANY_ADDRESS, ZERO_BYTES32);
     const receipt = await tx.wait();
 
@@ -82,9 +86,7 @@ describe('ERC4626BufferPool', function () {
   async function createAndInitializeBufferPool(): Promise<Contract> {
     pool = await createBufferPool();
 
-    wrappedToken.mint(TOKEN_AMOUNT, alice);
-    baseToken.mint(alice, TOKEN_AMOUNT);
-    baseToken.mint(wrappedToken, TOKEN_AMOUNT); // initialize assets
+    await baseToken.mint(alice, TOKEN_AMOUNT);
 
     wrappedToken.connect(alice).approve(vault, MAX_UINT256);
     baseToken.connect(alice).approve(vault, MAX_UINT256);
@@ -154,14 +156,13 @@ describe('ERC4626BufferPool', function () {
     sharedBeforeEach('create pool', async () => {
       pool = await createBufferPool();
 
-      await wrappedToken.mint(TOKEN_AMOUNT, alice);
       await baseToken.mint(alice, TOKEN_AMOUNT);
-      await baseToken.mint(wrappedToken, TOKEN_AMOUNT); // initialize assets
 
       await wrappedToken.connect(alice).approve(vault, MAX_UINT256);
       await baseToken.connect(alice).approve(vault, MAX_UINT256);
+    });
 
-      // Preconditions
+    it('satisfies preconditions', async () => {
       expect(await wrappedToken.balanceOf(alice)).to.eq(TOKEN_AMOUNT);
       expect(await baseToken.balanceOf(alice)).to.eq(TOKEN_AMOUNT);
     });
