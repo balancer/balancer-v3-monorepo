@@ -122,6 +122,8 @@ contract ERC4626BufferPool is
         // the Vault also explicitly blocks any swaps with buffer pools.
 
         // TODO implement - check for / perform rebalancing; call _rebalance() if needed
+        // Exact mechanism TBD. Might call back to the Vault with a special operation (that can only be called from
+        // a Buffer Pool) to move the token balances, asset manager style.
         return true;
     }
 
@@ -152,7 +154,7 @@ contract ERC4626BufferPool is
     /// @dev Non-reentrant to ensure we don't try to externally rebalance during an internal rebalance.
     function _rebalance() internal nonReentrant {
         // solhint-disable-previous-line no-empty-blocks
-        // TODO: implement - can be called by the pool during a swap, or from the Vault directly
+        // TODO: implement - can be called by the pool during a swap, or from an external permissioned call.
     }
 
     // Unsupported functions that unconditionally revert
