@@ -101,21 +101,25 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
 
         // We need to pass in the unit asset in native decimals.
         uint256 oneAsset = 10 ** IERC20Metadata(asset).decimals();
+        uint256 oneShare = 10 ** wrappedToken.decimals();
+
         // Rounding with < 18 decimal tokens can cause the rate to deviate slightly from ONE,
         // so we set a tolerance proportional to the decimal difference
         // (e.g., 1 wei for 18-decimals; 1e12 for 6 decimals).
         uint256 tolerance = 10 ** (18 - IERC20Metadata(asset).decimals());
+
         // We scale up the returned values to 18-decimals for the multiplication.
         uint256 assetScalingFactor = ScalingHelpers.computeScalingFactor(IERC20(asset));
+        uint256 shareScalingFactor = ScalingHelpers.computeScalingFactor(IERC20(wrappedToken));
         uint256 rateTest;
 
-        try wrappedToken.previewRedeem(oneAsset) returns (uint256 redeemRate) {
-            rateTest = redeemRate.toScaled18RoundDown(assetScalingFactor);
+        try wrappedToken.previewRedeem(oneShare) returns (uint256 redeemedAssets) {
+            rateTest = redeemedAssets.toScaled18RoundDown(assetScalingFactor);
 
-            try wrappedToken.previewWithdraw(oneAsset) returns (uint256 withdrawRate) {
+            try wrappedToken.previewWithdraw(oneAsset) returns (uint256 redeemedShares) {
                 // previewRedeem and previewWithdraw should be reciprocals,
                 // so multiplying them should equal ONE
-                rateTest = rateTest.mulDown(withdrawRate.toScaled18RoundDown(assetScalingFactor));
+                rateTest = rateTest.mulDown(redeemedShares.toScaled18RoundUp(shareScalingFactor));
 
                 // Should be very close to ONE
                 uint256 diff = rateTest >= FixedPoint.ONE ? rateTest - FixedPoint.ONE : FixedPoint.ONE - rateTest;
