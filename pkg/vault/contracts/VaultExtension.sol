@@ -12,7 +12,6 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -849,17 +848,5 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
         config.isBufferPool = true;
         _poolConfig[pool] = config.fromPoolConfig();
-    }
-
-    /// @inheritdoc IVaultExtension
-    function rebalanceBuffer(IERC4626 wrappedToken) external authenticate nonReentrant whenVaultNotPaused onlyVault {
-        // Ensure buffer exists.
-        address bufferPool = _wrappedTokenBuffers[wrappedToken];
-
-        if (bufferPool == address(0)) {
-            revert WrappedTokenBufferNotRegistered();
-        }
-
-        IBufferPool(bufferPool).rebalance();
     }
 }

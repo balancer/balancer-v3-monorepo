@@ -242,38 +242,22 @@ describe('ERC4626BufferPool', function () {
       pool = await createAndInitializeBufferPool();
     });
 
-    context('external call', () => {
-      it('calls to rebalance revert if called externally', async () => {
-        await expect(pool.connect(alice).rebalance()).to.be.revertedWithCustomError(vault, 'SenderIsNotVault');
-      });
-    });
-
     context('without permission', () => {
       it('calls to rebalance revert without permission', async () => {
-        await expect(vault.connect(alice).rebalanceBuffer(ANY_ADDRESS)).to.be.revertedWithCustomError(
-          vault,
-          'SenderNotAllowed'
-        );
+        await expect(pool.connect(alice).rebalance()).to.be.revertedWithCustomError(vault, 'SenderNotAllowed');
       });
     });
 
     context('with permission', () => {
       sharedBeforeEach('grant permission', async () => {
-        const rebalanceAction = await actionId(vault, 'rebalanceBuffer');
+        const rebalanceAction = await actionId(pool, 'rebalance');
 
         await authorizer.grantRole(rebalanceAction, alice.address);
       });
 
-      it('fails if the buffer does not exist', async () => {
-        await expect(vault.connect(alice).rebalanceBuffer(ANY_ADDRESS)).to.be.revertedWithCustomError(
-          vault,
-          'WrappedTokenBufferNotRegistered'
-        );
-      });
-
       it('can rebalance a buffer pool', async () => {
         // TODO: Add real tests once it is implemented.
-        await expect(vault.connect(alice).rebalanceBuffer(wrappedToken)).to.not.be.reverted;
+        await expect(pool.connect(alice).rebalance()).to.not.be.reverted;
       });
     });
   });

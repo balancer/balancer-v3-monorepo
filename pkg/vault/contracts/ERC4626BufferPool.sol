@@ -3,6 +3,7 @@
 pragma solidity ^0.8.4;
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -15,6 +16,7 @@ import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPo
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -26,7 +28,16 @@ import { BasePoolHooks } from "./BasePoolHooks.sol";
  * @dev These "pools" reuse the code for pools, but are not registered with the Vault, guaranteeing they
  * cannot be used externally. To the outside world, they don't exist.
  */
-contract ERC4626BufferPool is IBasePool, IBufferPool, IRateProvider, IPoolLiquidity, BalancerPoolToken, BasePoolHooks {
+contract ERC4626BufferPool is
+    IBasePool,
+    IBufferPool,
+    IRateProvider,
+    IPoolLiquidity,
+    BalancerPoolToken,
+    BasePoolHooks,
+    Authentication,
+    ReentrancyGuard
+{
     IERC4626 internal immutable _wrappedToken;
 
     constructor(
@@ -34,7 +45,7 @@ contract ERC4626BufferPool is IBasePool, IBufferPool, IRateProvider, IPoolLiquid
         string memory symbol,
         IERC4626 wrappedToken,
         IVault vault
-    ) BalancerPoolToken(vault, name, symbol) {
+    ) BalancerPoolToken(vault, name, symbol) Authentication(bytes32(uint256(uint160(address(vault))))) {
         _wrappedToken = wrappedToken;
     }
 
@@ -134,11 +145,12 @@ contract ERC4626BufferPool is IBasePool, IBufferPool, IRateProvider, IPoolLiquid
     }
 
     /// @inheritdoc IBufferPool
-    function rebalance() external onlyVault {
+    function rebalance() external authenticate {
         _rebalance();
     }
 
-    function _rebalance() private {
+    /// @dev Non-reentrant to ensure we don't try to externally rebalance during an internal rebalance.
+    function _rebalance() internal nonReentrant {
         // solhint-disable-previous-line no-empty-blocks
         // TODO: implement - can be called by the pool during a swap, or from the Vault directly
     }
@@ -166,5 +178,10 @@ contract ERC4626BufferPool is IBasePool, IBufferPool, IRateProvider, IPoolLiquid
     ) external pure returns (uint256, uint256[] memory, bytes memory) {
         // Should throw `DoesNotSupportRemoveLiquidityCustom` before getting here, but need to implement the interface.
         revert IVaultErrors.OperationNotSupported();
+    }
+
+    /// @dev Access control is delegated to the Authorizer
+    function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
+        return getVault().getAuthorizer().canPerform(actionId, user, address(this));
     }
 }
