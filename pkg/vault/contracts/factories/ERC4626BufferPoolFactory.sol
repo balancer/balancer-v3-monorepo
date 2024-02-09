@@ -95,6 +95,11 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
      * The easiest way to do this is preview withdrawals and redemptions with a unit asset.
      * These values should be reciprocals of each other, so multiplying them together should
      * equal ONE.
+     *
+     * There is a deep assumption here that although the ERC4626 standard does not define `getRate` directly,
+     * we can derive a rate in this fashion that behaves like all other rate providers. Specifically, we mean
+     * that, at least conceptually, there is a stable underlying "rate" that is constant over the full range
+     * of input values. For instance, convertToAssets(60) + converToAssets(40) = convertToAssets(100).
      */
     function _supportsRateComputation(IERC4626 wrappedToken) private view returns (bool) {
         address asset = wrappedToken.asset();
