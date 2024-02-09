@@ -72,11 +72,8 @@ contract ERC4626BufferPool is
         uint256[] memory,
         bytes memory
     ) external view override onlyVault returns (bool) {
-        if (kind != AddLiquidityKind.CUSTOM) {
-            revert IVaultErrors.OperationNotSupported();
-        }
-
-        return true;
+        // Only support custom add liquidity.
+        return kind == AddLiquidityKind.CUSTOM;
     }
 
     /// @inheritdoc IPoolLiquidity
@@ -108,11 +105,8 @@ contract ERC4626BufferPool is
         uint256[] memory,
         bytes memory
     ) external view override onlyVault returns (bool) {
-        if (kind != RemoveLiquidityKind.PROPORTIONAL) {
-            revert IVaultErrors.OperationNotSupported();
-        }
-
-        return true;
+        // Only support proportional remove liquidity.
+        return kind == RemoveLiquidityKind.PROPORTIONAL;
     }
 
     /// @inheritdoc BasePoolHooks
