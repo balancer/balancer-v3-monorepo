@@ -36,12 +36,4 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
 
         return shares;
     }
-
-    // Pass buffer checks
-    function totalAssets() public view override returns (uint256) {
-        uint256 assets = super.totalAssets();
-
-        // Don't return 0
-        return assets == 0 ? FixedPoint.ONE : assets;
-    }
 }
