@@ -16,11 +16,6 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract VaultLiquidityWithFeesTest is BaseVaultTest {
     using ArrayHelpers for *;
 
-    struct Balances {
-        uint256[] userTokens;
-        uint256 userBpt;
-        uint256[] poolTokens;
-    }
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -136,17 +131,6 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
     /// Utils
 
-    function getBalances(address user) internal view returns (Balances memory balances) {
-        balances.userTokens = new uint256[](2);
-
-        balances.userTokens[0] = dai.balanceOf(user);
-        balances.userTokens[1] = usdc.balanceOf(user);
-        balances.userBpt = PoolMock(pool).balanceOf(user);
-
-        (, , uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(pool));
-        balances.poolTokens = poolBalances;
-        console2.log("poolBalances[0]:", poolBalances[0]);
-    }
 
     function assertAddLiquidity(function() returns (uint256[] memory, uint256, uint256[] memory) testFunc) internal {
         Balances memory balancesBefore = getBalances(alice);

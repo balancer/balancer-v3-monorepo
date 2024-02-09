@@ -30,6 +30,12 @@ import { VaultMockDeployer } from "./VaultMockDeployer.sol";
 abstract contract BaseVaultTest is VaultStorage, BaseTest {
     using ArrayHelpers for *;
 
+    struct Balances {
+        uint256[] userTokens;
+        uint256 userBpt;
+        uint256[] poolTokens;
+    }
+
     bytes32 constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
     // Vault mock.
@@ -125,5 +131,16 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
         authorizer.grantRole(vault.getActionId(IVaultExtension.setProtocolSwapFeePercentage.selector), admin);
         vm.prank(admin);
         vault.setProtocolSwapFeePercentage(percentage);
+    }
+
+    function getBalances(address user) internal view returns (Balances memory balances) {
+        balances.userTokens = new uint256[](2);
+
+        balances.userTokens[0] = dai.balanceOf(user);
+        balances.userTokens[1] = usdc.balanceOf(user);
+        balances.userBpt = PoolMock(pool).balanceOf(user);
+
+        (, , uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(pool));
+        balances.poolTokens = poolBalances;
     }
 }
