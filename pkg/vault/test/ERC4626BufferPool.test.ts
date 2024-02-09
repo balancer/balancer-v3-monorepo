@@ -171,7 +171,7 @@ describe('ERC4626BufferPool', function () {
       // Cannot initialize disproportionately
       await expect(
         router.connect(alice).initialize(pool, tokenAddresses, [TOKEN_AMOUNT * 2n, TOKEN_AMOUNT], FP_ZERO, false, '0x')
-      ).to.be.revertedWithCustomError(vault, 'HookFailed');
+      ).to.be.revertedWithCustomError(vault, 'BeforeInitializeHookFailed');
     });
 
     it('emits an event', async () => {
@@ -271,7 +271,7 @@ describe('ERC4626BufferPool', function () {
       it('cannot add liquidity unbalanced', async () => {
         await expect(
           router.connect(alice).addLiquidityUnbalanced(pool, [0, TOKEN_AMOUNT], 0, false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'HookFailed');
+        ).to.be.revertedWithCustomError(vault, 'BeforeAddLiquidityHookFailed');
       });
 
       it('cannot add liquidity single token exact out', async () => {
@@ -279,7 +279,7 @@ describe('ERC4626BufferPool', function () {
           router
             .connect(alice)
             .addLiquiditySingleTokenExactOut(pool, baseTokenAddress, TOKEN_AMOUNT, TOKEN_AMOUNT, false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'HookFailed');
+        ).to.be.revertedWithCustomError(vault, 'BeforeAddLiquidityHookFailed');
       });
     });
 
@@ -315,7 +315,7 @@ describe('ERC4626BufferPool', function () {
       it('cannot remove liquidity single token exact in', async () => {
         await expect(
           router.connect(alice).removeLiquiditySingleTokenExactIn(pool, TOKEN_AMOUNT, baseTokenAddress, 0, false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'HookFailed');
+        ).to.be.revertedWithCustomError(vault, 'BeforeRemoveLiquidityHookFailed');
       });
 
       it('cannot remove liquidity single token exact out', async () => {
@@ -323,13 +323,13 @@ describe('ERC4626BufferPool', function () {
           router
             .connect(alice)
             .removeLiquiditySingleTokenExactOut(pool, TOKEN_AMOUNT, baseTokenAddress, TOKEN_AMOUNT, false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'HookFailed');
+        ).to.be.revertedWithCustomError(vault, 'BeforeRemoveLiquidityHookFailed');
       });
 
       it('cannot remove liquidity custom', async () => {
         await expect(
           router.connect(alice).removeLiquidityCustom(pool, TOKEN_AMOUNT, [0, 0], false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'HookFailed');
+        ).to.be.revertedWithCustomError(vault, 'BeforeRemoveLiquidityHookFailed');
       });
     });
 

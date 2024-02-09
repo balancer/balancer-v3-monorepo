@@ -300,7 +300,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
 
         if (poolData.poolConfig.hooks.shouldCallBeforeInitialize) {
             if (IPoolHooks(pool).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
-                revert HookFailed();
+                revert BeforeInitializeHookFailed();
             }
         }
 
@@ -308,7 +308,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
 
         if (poolData.poolConfig.hooks.shouldCallAfterInitialize) {
             if (IPoolHooks(pool).onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false) {
-                revert HookFailed();
+                revert AfterInitializeHookFailed();
             }
         }
     }

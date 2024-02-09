@@ -259,7 +259,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (poolData.poolConfig.hooks.shouldCallBeforeSwap) {
             if (IPoolHooks(params.pool).onBeforeSwap(vars.poolSwapParams) == false) {
-                revert HookFailed();
+                revert BeforeSwapHookFailed();
             }
 
             _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN);
@@ -294,7 +294,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     vars.amountCalculatedScaled18
                 ) == false
             ) {
-                revert HookFailed();
+                revert AfterSwapHookFailed();
             }
         }
 
@@ -516,7 +516,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     params.userData
                 ) == false
             ) {
-                revert HookFailed();
+                revert BeforeAddLiquidityHookFailed();
             }
 
             // The hook might alter the balances, so we need to read them again to ensure that the data is
@@ -548,7 +548,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     params.userData
                 ) == false
             ) {
-                revert HookFailed();
+                revert AfterAddLiquidityHookFailed();
             }
         }
     }
@@ -695,7 +695,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     params.userData
                 ) == false
             ) {
-                revert HookFailed();
+                revert BeforeRemoveLiquidityHookFailed();
             }
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
@@ -724,7 +724,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     params.userData
                 ) == false
             ) {
-                revert HookFailed();
+                revert AfterRemoveLiquidityHookFailed();
             }
         }
     }

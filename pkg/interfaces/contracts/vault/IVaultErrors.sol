@@ -87,8 +87,29 @@ interface IVaultErrors {
      */
     error HandlerOutOfBounds(uint256 index);
 
-    /// @dev The pool has returned false to a hook, indicating the transaction should revert.
-    error HookFailed();
+    /// @dev The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
+    error BeforeSwapHookFailed();
+
+    /// @dev The pool has returned false to the afterSwap hook, indicating the transaction should revert.
+    error AfterSwapHookFailed();
+
+    /// @dev The pool has returned false to the beforeInitialize hook, indicating the transaction should revert.
+    error BeforeInitializeHookFailed();
+
+    /// @dev The pool has returned false to the afterInitialize hook, indicating the transaction should revert.
+    error AfterInitializeHookFailed();
+
+    /// @dev The pool has returned false to the beforeAddLiquidity hook, indicating the transaction should revert.
+    error BeforeAddLiquidityHookFailed();
+
+    /// @dev The pool has returned false to the afterAddLiquidity hook, indicating the transaction should revert.
+    error AfterAddLiquidityHookFailed();
+
+    /// @dev The pool has returned false to the beforeRemoveLiquidity hook, indicating the transaction should revert.
+    error BeforeRemoveLiquidityHookFailed();
+
+    /// @dev The pool has returned false to the afterRemoveLiquidity hook, indicating the transaction should revert.
+    error AfterRemoveLiquidityHookFailed();
 
     /// @dev An unauthorized Router tried to call a permissioned function (i.e., using the Vault's token allowance).
     error RouterNotTrusted();
