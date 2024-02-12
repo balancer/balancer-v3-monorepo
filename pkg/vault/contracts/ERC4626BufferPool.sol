@@ -40,12 +40,13 @@ contract ERC4626BufferPool is
 {
     IERC4626 internal immutable _wrappedToken;
 
+    // Uses the factory as the Authentication disambiguator.
     constructor(
         string memory name,
         string memory symbol,
         IERC4626 wrappedToken,
         IVault vault
-    ) BalancerPoolToken(vault, name, symbol) Authentication(bytes32(uint256(uint160(address(vault))))) {
+    ) BalancerPoolToken(vault, name, symbol) Authentication(bytes32(uint256(uint160(msg.sender)))) {
         _wrappedToken = wrappedToken;
     }
 
