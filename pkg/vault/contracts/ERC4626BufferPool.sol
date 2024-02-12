@@ -16,10 +16,10 @@ import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPo
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { BasePoolAuthentication } from "./BasePoolAuthentication.sol";
 import { BalancerPoolToken } from "./BalancerPoolToken.sol";
 import { BasePoolHooks } from "./BasePoolHooks.sol";
 
@@ -35,7 +35,7 @@ contract ERC4626BufferPool is
     IPoolLiquidity,
     BalancerPoolToken,
     BasePoolHooks,
-    Authentication,
+    BasePoolAuthentication,
     ReentrancyGuard
 {
     IERC4626 internal immutable _wrappedToken;
@@ -46,7 +46,7 @@ contract ERC4626BufferPool is
         string memory symbol,
         IERC4626 wrappedToken,
         IVault vault
-    ) BalancerPoolToken(vault, name, symbol) Authentication(bytes32(uint256(uint160(msg.sender)))) {
+    ) BalancerPoolToken(vault, name, symbol) BasePoolAuthentication(vault, msg.sender) {
         _wrappedToken = wrappedToken;
     }
 
@@ -175,10 +175,5 @@ contract ERC4626BufferPool is
     ) external pure returns (uint256, uint256[] memory, bytes memory) {
         // Should throw `DoesNotSupportRemoveLiquidityCustom` before getting here, but need to implement the interface.
         revert IVaultErrors.OperationNotSupported();
-    }
-
-    /// @dev Access control is delegated to the Authorizer
-    function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
-        return getVault().getAuthorizer().canPerform(actionId, user, address(this));
     }
 }
