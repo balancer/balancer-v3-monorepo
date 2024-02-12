@@ -123,7 +123,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     /// Add
 
-    function testAddLiquidityUnbalancedFuzz(uint256 daiAmountIn, uint256 swapFeePercentage) public {
+    function testAddLiquidityUnbalanced__Fuzz(uint256 daiAmountIn, uint256 swapFeePercentage) public {
         daiAmountIn = bound(daiAmountIn, 1e18, maxAmount);
         // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, 1e17);
@@ -160,7 +160,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertLiquidityOperation(amountOut, swapFeePercentage, true);
     }
 
-    function testAddLiquidityUnbalancedNoSwapFeeFuzz(uint256 daiAmountIn) public {
+    function testAddLiquidityUnbalancedNoSwapFee__Fuzz(uint256 daiAmountIn) public {
         daiAmountIn = bound(daiAmountIn, 1e18, maxAmount);
 
         uint256[] memory amountsIn = [uint256(daiAmountIn), 0].toMemoryArray();
@@ -192,7 +192,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertLiquidityOperationNoSwapFee();
     }
 
-    function testAddLiquiditySingleTokenExactOutFuzz(uint256 exactBptAmountOut, uint256 swapFeePercentage) public {
+    function testAddLiquiditySingleTokenExactOut__Fuzz(uint256 exactBptAmountOut, uint256 swapFeePercentage) public {
         exactBptAmountOut = bound(exactBptAmountOut, 1e18, maxAmount / 2 - 1);
         // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, 1e17);
@@ -234,7 +234,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertLiquidityOperation(amountOut, swapFeePercentage, true);
     }
 
-    function testAddLiquiditySingleTokenExactOutNoSwapFeeFuzz(uint256 exactBptAmountOut) public {
+    function testAddLiquiditySingleTokenExactOutNoSwapFee__Fuzz(uint256 exactBptAmountOut) public {
         exactBptAmountOut = bound(exactBptAmountOut, 1e18, maxAmount / 2 - 1);
 
         vm.startPrank(alice);
@@ -273,7 +273,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     /// Remove
 
-    function testRemoveLiquiditySingleTokenExactFuzz(uint256 exactAmountOut, uint256 swapFeePercentage) public {
+    function testRemoveLiquiditySingleTokenExact__Fuzz(uint256 exactAmountOut, uint256 swapFeePercentage) public {
         exactAmountOut = bound(exactAmountOut, 1e18, maxAmount);
         // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, 1e17);
@@ -330,7 +330,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 
-    function testRemoveLiquiditySingleTokenExactNoSwapFeeFuzz(uint256 exactAmountOut) public {
+    function testRemoveLiquiditySingleTokenExactNoSwapFee__Fuzz(uint256 exactAmountOut) public {
         exactAmountOut = bound(exactAmountOut, 1e18, maxAmount);
 
         // Add liquidity so we have something to remove
@@ -382,7 +382,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertLiquidityOperationNoSwapFee();
     }
 
-    function testRemoveLiquiditySingleTokenExactInFuzz(uint256 exactBptAmountIn, uint256 swapFeePercentage) public {
+    function testRemoveLiquiditySingleTokenExactIn__Fuzz(uint256 exactBptAmountIn, uint256 swapFeePercentage) public {
         exactBptAmountIn = bound(exactBptAmountIn, 1e18, maxAmount / 2 - 1);
         // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, 1e17);
@@ -432,7 +432,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 
-    function testRemoveLiquiditySingleTokenExactInNoSwapFeeFuzz(uint256 exactBptAmountIn) public {
+    function testRemoveLiquiditySingleTokenExactInNoSwapFee__Fuzz(uint256 exactBptAmountIn) public {
         exactBptAmountIn = bound(exactBptAmountIn, 1e18, maxAmount / 2 - 1);
 
         // Add liquidity so we have something to remove
