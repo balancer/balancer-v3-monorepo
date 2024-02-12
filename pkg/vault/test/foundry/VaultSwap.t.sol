@@ -67,11 +67,11 @@ contract VaultSwapTest is BaseVaultTest {
         );
     }
 
-    function testSwapGivenIn() public {
-        assertSwap(swapGivenIn);
+    function testSwapExactIn() public {
+        assertSwap(swapExactIn);
     }
 
-    function swapGivenIn() public returns (uint256 fee, uint256 protocolFee) {
+    function swapExactIn() public returns (uint256 fee, uint256 protocolFee) {
         vm.prank(alice);
         snapStart("vaultSwapExactIn");
         router.swapExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
@@ -79,11 +79,11 @@ contract VaultSwapTest is BaseVaultTest {
         return (0, 0);
     }
 
-    function testSwapGivenOut() public {
-        assertSwap(swapGivenOut);
+    function testSwapExactOut() public {
+        assertSwap(swapExactOut);
     }
 
-    function swapGivenOut() public returns (uint256 fee, uint256 protocolFee) {
+    function swapExactOut() public returns (uint256 fee, uint256 protocolFee) {
         vm.prank(alice);
         snapStart("vaultSwapExactIn");
         router.swapExactOut(
@@ -100,7 +100,7 @@ contract VaultSwapTest is BaseVaultTest {
         return (0, 0);
     }
 
-    function testSwapLimitGivenIn() public {
+    function testSwapLimitExactIn() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, defaultAmount - 1, defaultAmount));
         router.swapExactIn(
@@ -115,7 +115,7 @@ contract VaultSwapTest is BaseVaultTest {
         );
     }
 
-    function testSwapLimitGivenOut() public {
+    function testSwapLimitExactOut() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, defaultAmount, defaultAmount - 1));
         router.swapExactOut(
@@ -130,15 +130,15 @@ contract VaultSwapTest is BaseVaultTest {
         );
     }
 
-    function testSwapFeeGivenIn() public {
-        assertSwap(swapFeeGivenIn);
+    function testSwapFeeExactIn() public {
+        assertSwap(swapFeeExactIn);
     }
 
-    function swapFeeGivenIn() public returns (uint256 fee, uint256 protocolFee) {
+    function swapFeeExactIn() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage();
 
         vm.prank(alice);
-        snapStart("vaultSwapFeeGivenIn");
+        snapStart("vaultSwapFeeExactIn");
         router.swapExactIn(
             address(pool),
             usdc,
@@ -154,16 +154,16 @@ contract VaultSwapTest is BaseVaultTest {
         return (swapFee, 0);
     }
 
-    function testProtocolSwapFeeGivenIn() public {
-        assertSwap(protocolSwapFeeGivenIn);
+    function testProtocolSwapFeeExactIn() public {
+        assertSwap(protocolSwapFeeExactIn);
     }
 
-    function protocolSwapFeeGivenIn() public returns (uint256 fee, uint256 protocolFee) {
+    function protocolSwapFeeExactIn() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage();
         setProtocolSwapFeePercentage();
 
         vm.prank(alice);
-        snapStart("vaultProtocolSwapFeeGivenIn");
+        snapStart("vaultProtocolSwapFeeExactIn");
         router.swapExactIn(
             address(pool),
             usdc,
@@ -179,11 +179,11 @@ contract VaultSwapTest is BaseVaultTest {
         return (swapFee, protocolSwapFee);
     }
 
-    function testSwapFeeGivenOut() public {
-        assertSwap(swapFeeGivenOut);
+    function testSwapFeeExactOut() public {
+        assertSwap(swapFeeExactOut);
     }
 
-    function swapFeeGivenOut() public returns (uint256 fee, uint256 protocolFee) {
+    function swapFeeExactOut() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage();
 
         vm.prank(alice);
@@ -201,11 +201,11 @@ contract VaultSwapTest is BaseVaultTest {
         return (swapFee, 0);
     }
 
-    function testProtocolSwapFeeGivenOut() public {
-        assertSwap(protocolSwapFeeGivenOut);
+    function testProtocolSwapFeeExactOut() public {
+        assertSwap(protocolSwapFeeExactOut);
     }
 
-    function protocolSwapFeeGivenOut() public returns (uint256 fee, uint256 protocolFee) {
+    function protocolSwapFeeExactOut() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage();
         setProtocolSwapFeePercentage();
 

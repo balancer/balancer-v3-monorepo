@@ -29,7 +29,29 @@ interface IVaultMainMock {
 
     function recoveryModeExit(address pool) external view;
 
-    function getPoolData(address pool, Rounding roundingDirection) external view returns (PoolData memory);
+    function computePoolDataUpdatingBalancesAndFees(
+        address pool,
+        Rounding roundingDirection
+    ) external returns (PoolData memory);
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw);
+
+    function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances);
+
+    function setLiveBalanceFromRawForToken(
+        PoolData memory poolData,
+        Rounding roundingDirection,
+        uint256 tokenIndex
+    ) external pure returns (PoolData memory);
+
+    function computeYieldProtocolFeesDue(
+        PoolData memory poolData,
+        uint256 lastLiveBalance,
+        uint256 tokenIndex,
+        uint256 yieldFeePercentage
+    ) external pure returns (uint256);
+
+    function guardedCheckEntered() external;
+
+    function unguardedCheckNotEntered() external view;
 }

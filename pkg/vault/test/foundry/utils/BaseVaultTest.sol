@@ -20,13 +20,16 @@ import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
 import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
 import { Router } from "../../../contracts/Router.sol";
+import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 
 import { VaultMockDeployer } from "./VaultMockDeployer.sol";
 
-abstract contract BaseVaultTest is BaseTest {
+abstract contract BaseVaultTest is VaultStorage, BaseTest {
     using ArrayHelpers for *;
+
+    bytes32 constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
     // Vault mock.
     IVaultMock internal vault;
@@ -101,6 +104,7 @@ abstract contract BaseVaultTest is BaseTest {
             "ERC20POOL",
             [address(dai), address(usdc)].toMemoryArray().asIERC20(),
             new IRateProvider[](2),
+            new bool[](2),
             true,
             365 days,
             address(0)

@@ -39,6 +39,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
                     "ERC20POOL",
                     [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
                     rateProviders,
+                    new bool[](2),
                     true,
                     365 days,
                     address(0)
@@ -58,11 +59,11 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
     function testInitialRateProviderState() public {
         (, , , , IRateProvider[] memory rateProviders) = vault.getPoolTokenInfo(address(pool));
 
-        assertEq(address(rateProviders[0]), address(rateProvider));
-        assertEq(address(rateProviders[1]), address(0));
+        assertEq(address(rateProviders[0]), address(rateProvider), "Wrong rate provider");
+        assertEq(address(rateProviders[1]), address(0), "Rate provider should be 0");
     }
 
-    function testSwapGivenInWithRate() public {
+    function testSwapExactInWithRate() public {
         uint256 rateAdjustedLimit = defaultAmount.divDown(mockRate);
         uint256 rateAdjustedAmount = defaultAmount.mulDown(mockRate);
 
@@ -71,7 +72,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
-                    kind: SwapKind.GIVEN_IN,
+                    kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: [rateAdjustedAmount, defaultAmount].toMemoryArray(),
                     indexIn: 1,
@@ -95,7 +96,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         );
     }
 
-    function testSwapGivenOutWithRate() public {
+    function testSwapExactOutWithRate() public {
         uint256 rateAdjustedBalance = defaultAmount.mulDown(mockRate);
         uint256 rateAdjustedAmountGiven = defaultAmount.divDown(mockRate);
 
@@ -104,7 +105,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
                 IBasePool.SwapParams({
-                    kind: SwapKind.GIVEN_OUT,
+                    kind: SwapKind.EXACT_OUT,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: [rateAdjustedBalance, defaultAmount].toMemoryArray(),
                     indexIn: 1,

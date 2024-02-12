@@ -78,6 +78,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
                 "ERC20POOL",
                 [address(dai), address(usdc)].toMemoryArray().asIERC20(),
                 new IRateProvider[](2),
+                new bool[](2),
                 true,
                 365 days,
                 address(0)
@@ -92,6 +93,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
                 "ERC20POOL",
                 [address(dai), address(usdc)].toMemoryArray().asIERC20(),
                 new IRateProvider[](2),
+                new bool[](2),
                 true,
                 365 days,
                 address(0)
@@ -493,11 +495,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertLe(bobToAliceRatio, 1e18 + roundingDelta, "Bob has too much USDC compare to Alice");
     }
 
-    function assertLiquidityOperation(
-        uint256 amountOut,
-        uint256 swapFeePercentage,
-        bool addLiquidity
-    ) internal {
+    function assertLiquidityOperation(uint256 amountOut, uint256 swapFeePercentage, bool addLiquidity) internal {
         // See @notice
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
 

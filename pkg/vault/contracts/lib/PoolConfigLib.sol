@@ -3,11 +3,9 @@
 pragma solidity ^0.8.4;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {
-    PoolConfig,
-    PoolCallbacks,
-    LiquidityManagement
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -18,12 +16,6 @@ type PoolConfigBits is bytes32;
 using PoolConfigLib for PoolConfigBits global;
 
 library PoolConfigLib {
-    /// @dev Pool does not support adding liquidity with a customized input.
-    error DoesNotSupportAddLiquidityCustom();
-
-    /// @dev Pool does not support removing liquidity with a customized input.
-    error DoesNotSupportRemoveLiquidityCustom();
-
     using WordCodec for bytes32;
     using SafeCast for uint256;
 
@@ -41,9 +33,10 @@ library PoolConfigLib {
     uint8 public constant BEFORE_INITIALIZE_OFFSET = AFTER_REMOVE_LIQUIDITY_OFFSET + 1;
     uint8 public constant AFTER_INITIALIZE_OFFSET = BEFORE_INITIALIZE_OFFSET + 1;
     uint8 public constant POOL_RECOVERY_MODE_OFFSET = AFTER_INITIALIZE_OFFSET + 1;
+    uint8 public constant BUFFER_POOL_OFFSET = POOL_RECOVERY_MODE_OFFSET + 1;
 
     // Supported liquidity API bit offsets
-    uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = POOL_RECOVERY_MODE_OFFSET + 1;
+    uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = BUFFER_POOL_OFFSET + 1;
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
 
     uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
@@ -74,6 +67,10 @@ library PoolConfigLib {
 
     function isPoolPaused(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_PAUSED_OFFSET);
+    }
+
+    function isBufferPool(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(BUFFER_POOL_OFFSET);
     }
 
     function hasDynamicSwapFee(PoolConfigBits config) internal pure returns (bool) {
@@ -134,7 +131,7 @@ library PoolConfigLib {
 
     function requireSupportsAddLiquidityCustom(PoolConfigBits config) internal pure {
         if (config.supportsAddLiquidityCustom() == false) {
-            revert DoesNotSupportAddLiquidityCustom();
+            revert IVaultErrors.DoesNotSupportAddLiquidityCustom();
         }
     }
 
@@ -144,7 +141,7 @@ library PoolConfigLib {
 
     function requireSupportsRemoveLiquidityCustom(PoolConfigBits config) internal pure {
         if (config.supportsRemoveLiquidityCustom() == false) {
-            revert DoesNotSupportRemoveLiquidityCustom();
+            revert IVaultErrors.DoesNotSupportRemoveLiquidityCustom();
         }
     }
 
@@ -162,24 +159,24 @@ library PoolConfigLib {
         }
 
         {
-            configBits = configBits.insertBool(config.callbacks.shouldCallBeforeSwap, BEFORE_SWAP_OFFSET).insertBool(
-                config.callbacks.shouldCallAfterSwap,
-                AFTER_SWAP_OFFSET
-            );
+            configBits = configBits
+                .insertBool(config.hooks.shouldCallBeforeSwap, BEFORE_SWAP_OFFSET)
+                .insertBool(config.hooks.shouldCallAfterSwap, AFTER_SWAP_OFFSET)
+                .insertBool(config.isBufferPool, BUFFER_POOL_OFFSET);
         }
 
         {
             configBits = configBits
-                .insertBool(config.callbacks.shouldCallBeforeAddLiquidity, BEFORE_ADD_LIQUIDITY_OFFSET)
-                .insertBool(config.callbacks.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET)
-                .insertBool(config.callbacks.shouldCallBeforeRemoveLiquidity, BEFORE_REMOVE_LIQUIDITY_OFFSET)
-                .insertBool(config.callbacks.shouldCallAfterRemoveLiquidity, AFTER_REMOVE_LIQUIDITY_OFFSET);
+                .insertBool(config.hooks.shouldCallBeforeAddLiquidity, BEFORE_ADD_LIQUIDITY_OFFSET)
+                .insertBool(config.hooks.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET)
+                .insertBool(config.hooks.shouldCallBeforeRemoveLiquidity, BEFORE_REMOVE_LIQUIDITY_OFFSET)
+                .insertBool(config.hooks.shouldCallAfterRemoveLiquidity, AFTER_REMOVE_LIQUIDITY_OFFSET);
         }
 
         {
             configBits = configBits
-                .insertBool(config.callbacks.shouldCallBeforeInitialize, BEFORE_INITIALIZE_OFFSET)
-                .insertBool(config.callbacks.shouldCallAfterInitialize, AFTER_INITIALIZE_OFFSET)
+                .insertBool(config.hooks.shouldCallBeforeInitialize, BEFORE_INITIALIZE_OFFSET)
+                .insertBool(config.hooks.shouldCallAfterInitialize, AFTER_INITIALIZE_OFFSET)
                 .insertBool(config.liquidityManagement.supportsAddLiquidityCustom, ADD_LIQUIDITY_CUSTOM_OFFSET)
                 .insertBool(config.liquidityManagement.supportsRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET);
         }
@@ -233,11 +230,12 @@ library PoolConfigLib {
                 isPoolInitialized: config.isPoolInitialized(),
                 isPoolPaused: config.isPoolPaused(),
                 isPoolInRecoveryMode: config.isPoolInRecoveryMode(),
+                isBufferPool: config.isBufferPool(),
                 hasDynamicSwapFee: config.hasDynamicSwapFee(),
                 staticSwapFeePercentage: config.getStaticSwapFeePercentage(),
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 pauseWindowEndTime: config.getPauseWindowEndTime(),
-                callbacks: PoolCallbacks({
+                hooks: PoolHooks({
                     shouldCallBeforeInitialize: config.shouldCallBeforeInitialize(),
                     shouldCallAfterInitialize: config.shouldCallAfterInitialize(),
                     shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),

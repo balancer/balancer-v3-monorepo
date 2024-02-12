@@ -41,26 +41,19 @@ contract WeightedPool8020FactoryTest is Test {
         assertEq(pauseWindowDuration, 365 days);
     }
 
-    function testPoolCreation(bytes32 salt) public {
+    function testPoolCreation__Fuzz(bytes32 salt) public {
         vm.assume(salt > 0);
-        
+
         TokenConfig[] memory tokens = new TokenConfig[](2);
         tokens[0].token = tokenA;
         tokens[1].token = tokenB;
 
-        WeightedPool pool = WeightedPool(
-            factory.create(
-                "Balancer 80/20 Pool",
-                "Pool8020",
-                tokens,
-                bytes32(0)
-            )
-        );
+        WeightedPool pool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens, bytes32(0)));
 
         uint256[] memory poolWeights = pool.getNormalizedWeights();
-        assertEq(poolWeights[0], 8e17);
-        assertEq(poolWeights[1], 2e17);
-        assertEq(pool.symbol(), "Pool8020");
+        assertEq(poolWeights[0], 8e17, "Higher weight token is not 80%");
+        assertEq(poolWeights[1], 2e17, "Lower weight token is not 20%");
+        assertEq(pool.symbol(), "Pool8020", "Wrong pool symbol");
     }
 
     function testInvalidPoolMinTokens() public {
@@ -68,12 +61,7 @@ contract WeightedPool8020FactoryTest is Test {
         tokens[0].token = tokenA;
 
         vm.expectRevert(WeightedPool8020Factory.NotTwoTokens.selector);
-        factory.create(
-                "Balancer 80/20 Pool",
-                "Pool8020",
-                tokens,
-                bytes32(0)
-            );
+        factory.create("Balancer 80/20 Pool", "Pool8020", tokens, bytes32(0));
     }
 
     function testInvalidPoolMaxTokens() public {
@@ -83,15 +71,10 @@ contract WeightedPool8020FactoryTest is Test {
         tokens[2].token = new ERC20TestToken("Token C", "TKNC", 18);
 
         vm.expectRevert(WeightedPool8020Factory.NotTwoTokens.selector);
-        factory.create(
-                "Balancer 80/20 Pool",
-                "Pool8020",
-                tokens,
-                bytes32(0)
-            );
+        factory.create("Balancer 80/20 Pool", "Pool8020", tokens, bytes32(0));
     }
 
-    function testPoolSalt(bytes32 salt) public {
+    function testPoolSalt__Fuzz(bytes32 salt) public {
         vm.assume(salt > 0);
 
         TokenConfig[] memory tokens = new TokenConfig[](2);
@@ -99,30 +82,16 @@ contract WeightedPool8020FactoryTest is Test {
         tokens[1].token = tokenB;
         tokens[0].rateProvider = rateProvider;
 
-        WeightedPool pool = WeightedPool(
-            factory.create(
-                "Balancer 80/20 Pool",
-                "Pool8020",
-                tokens,
-                bytes32(0)
-            )
-        );
+        WeightedPool pool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens, bytes32(0)));
         address expectedPoolAddress = factory.getDeploymentAddress(salt);
 
-        WeightedPool secondPool = WeightedPool(
-            factory.create(
-                "Balancer 80/20 Pool",
-                "Pool8020",
-                tokens,
-                salt
-            )
-        );
+        WeightedPool secondPool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens, salt));
 
-        assertFalse(address(pool) == address(secondPool));
-        assertEq(address(secondPool), expectedPoolAddress);
+        assertFalse(address(pool) == address(secondPool), "Two deployed pool addresses are equal");
+        assertEq(address(secondPool), expectedPoolAddress, "Unexpected pool address");
     }
 
-    function testPoolSender(bytes32 salt) public {
+    function testPoolSender__Fuzz(bytes32 salt) public {
         vm.assume(salt > 0);
         address expectedPoolAddress = factory.getDeploymentAddress(salt);
 
@@ -133,22 +102,15 @@ contract WeightedPool8020FactoryTest is Test {
 
         // Different sender should change the address of the pool, given the same salt value
         vm.prank(alice);
-        WeightedPool pool = WeightedPool(
-            factory.create(
-                "Balancer 80/20 Pool",
-                "Pool8020",
-                tokens,
-                salt
-            )
-        );
-        assertFalse(address(pool) == expectedPoolAddress);
+        WeightedPool pool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens, salt));
+        assertFalse(address(pool) == expectedPoolAddress, "Unexpected pool address");
 
         vm.prank(alice);
         address aliceExpectedPoolAddress = factory.getDeploymentAddress(salt);
-        assertTrue(address(pool) == aliceExpectedPoolAddress);
+        assertTrue(address(pool) == aliceExpectedPoolAddress, "Unexpected pool address");
     }
 
-    function testPoolCrossChainProtection(bytes32 salt, uint16 chainId) public {
+    function testPoolCrossChainProtection__Fuzz(bytes32 salt, uint16 chainId) public {
         vm.assume(chainId > 1);
 
         TokenConfig[] memory tokens = new TokenConfig[](2);
@@ -157,28 +119,14 @@ contract WeightedPool8020FactoryTest is Test {
         tokens[0].rateProvider = rateProvider;
 
         vm.prank(alice);
-        WeightedPool poolMainnet = WeightedPool(
-            factory.create(
-                "Balancer 80/20 Pool",
-                "Pool8020",
-                tokens,
-                salt
-            )
-        );
+        WeightedPool poolMainnet = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens, salt));
 
         vm.chainId(chainId);
 
         vm.prank(alice);
-        WeightedPool poolL2 = WeightedPool(
-            factory.create(
-                "Balancer 80/20 Pool",
-                "Pool8020",
-                tokens,
-                salt
-            )
-        );
+        WeightedPool poolL2 = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens, salt));
 
         // Same sender and salt, should still be different because of the chainId.
-        assertFalse(address(poolL2) == address(poolMainnet));
+        assertFalse(address(poolL2) == address(poolMainnet), "L2 and mainnet pool addresses are equal");
     }
 }

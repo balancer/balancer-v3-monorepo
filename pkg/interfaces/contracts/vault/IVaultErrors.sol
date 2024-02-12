@@ -87,8 +87,29 @@ interface IVaultErrors {
      */
     error HandlerOutOfBounds(uint256 index);
 
-    /// @dev The pool has returned false to a callback, indicating the transaction should revert.
-    error CallbackFailed();
+    /// @dev The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
+    error BeforeSwapHookFailed();
+
+    /// @dev The pool has returned false to the afterSwap hook, indicating the transaction should revert.
+    error AfterSwapHookFailed();
+
+    /// @dev The pool has returned false to the beforeInitialize hook, indicating the transaction should revert.
+    error BeforeInitializeHookFailed();
+
+    /// @dev The pool has returned false to the afterInitialize hook, indicating the transaction should revert.
+    error AfterInitializeHookFailed();
+
+    /// @dev The pool has returned false to the beforeAddLiquidity hook, indicating the transaction should revert.
+    error BeforeAddLiquidityHookFailed();
+
+    /// @dev The pool has returned false to the afterAddLiquidity hook, indicating the transaction should revert.
+    error AfterAddLiquidityHookFailed();
+
+    /// @dev The pool has returned false to the beforeRemoveLiquidity hook, indicating the transaction should revert.
+    error BeforeRemoveLiquidityHookFailed();
+
+    /// @dev The pool has returned false to the afterRemoveLiquidity hook, indicating the transaction should revert.
+    error AfterRemoveLiquidityHookFailed();
 
     /// @dev An unauthorized Router tried to call a permissioned function (i.e., using the Vault's token allowance).
     error RouterNotTrusted();
@@ -122,6 +143,9 @@ interface IVaultErrors {
     /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
     error BptAmountOutBelowMin(uint256 amount, uint256 limit);
 
+    /// @dev Pool does not support adding liquidity with a customized input.
+    error DoesNotSupportAddLiquidityCustom();
+
     /*******************************************************************************
                                     Remove Liquidity
     *******************************************************************************/
@@ -134,6 +158,9 @@ interface IVaultErrors {
 
     /// @dev The required BPT amount in exceeds the maximum limit specified for the operation.
     error BptAmountInAboveMax(uint256 amount, uint256 limit);
+
+    /// @dev Pool does not support removing liquidity with a customized input.
+    error DoesNotSupportRemoveLiquidityCustom();
 
     /*******************************************************************************
                                      Fees
@@ -180,6 +207,19 @@ interface IVaultErrors {
      * @param sender The account attempting to call a permissioned function
      */
     error SenderIsNotVault(address sender);
+
+    /*******************************************************************************
+                                ERC4626 Buffers
+    *******************************************************************************/
+
+    /// @dev A token buffer can only be registered once.
+    error WrappedTokenBufferAlreadyRegistered();
+
+    /// @dev A token buffer must be registered for a token before pools can be registered with that token.
+    error WrappedTokenBufferNotRegistered();
+
+    /// @dev An external caller (i.e., through a router) is attempting to swap with a Buffer Pools.
+    error CannotSwapWithBufferPool(address bufferPool);
 
     /*******************************************************************************
                                         Pausing
@@ -236,6 +276,9 @@ interface IVaultErrors {
 
     /// @dev The Vault extension was called by an account directly; it can only be called by the Vault via delegatecall.
     error NotVaultDelegateCall();
+
+    /// @dev Error thrown when a function is not supported.
+    error OperationNotSupported();
 
     /// @dev The vault extension was configured with an incorrect Vault address.
     error WrongVaultExtensionDeployment();

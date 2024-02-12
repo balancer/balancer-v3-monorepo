@@ -18,7 +18,9 @@ import { RateProviderMock, VaultExtensionMock } from '../typechain-types';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
+import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
+import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -97,7 +99,7 @@ describe('Vault', function () {
     });
 
     it('pools are initially not in recovery mode', async () => {
-      expect(await vault.isPoolInRecoveryMode(poolBAddress)).to.be.false;
+      expect(await vault.isPoolInRecoveryMode(poolA)).to.be.false;
     });
 
     it('pools are initially unpaused', async () => {
@@ -105,15 +107,9 @@ describe('Vault', function () {
     });
 
     it('registering a pool emits an event', async () => {
-      enum TOKEN_TYPE {
-        STANDARD = 0,
-        WITH_RATE,
-        ERC4626,
-      }
-
       const tokenConfig = Array.from({ length: poolBTokens.length }, (_, i) => [
         poolBTokens[i],
-        TOKEN_TYPE.STANDARD.toString(),
+        TokenType.STANDARD.toString(),
         ZERO_ADDRESS,
         false,
       ]);
@@ -127,7 +123,7 @@ describe('Vault', function () {
         tokenConfig,
         pauseWindowEndTime: pauseWindowEndTime.toString(),
         pauseManager: ANY_ADDRESS,
-        callbacks: [false, false, false, false, false, false, false, false],
+        hooks: [false, false, false, false, false, false, false, false],
         liquidityManagement: [true, true],
       };
 
@@ -247,7 +243,17 @@ describe('Vault', function () {
         expectedRates = Array(poolATokens.length).fill(FP_ONE);
 
         poolC = await deploy('v3-vault/PoolMock', {
-          args: [vault, 'Pool C', 'POOLC', poolATokens, rateProviders, true, 365 * 24 * 3600, ZERO_ADDRESS],
+          args: [
+            vault,
+            'Pool C',
+            'POOLC',
+            poolATokens,
+            rateProviders,
+            [false, false],
+            true,
+            365 * 24 * 3600,
+            ZERO_ADDRESS,
+          ],
         });
       });
 
@@ -282,6 +288,7 @@ describe('Vault', function () {
             'POOLX',
             poolATokens,
             Array(poolATokens.length).fill(ZERO_ADDRESS),
+            Array(poolATokens.length).fill(false),
             true,
             365 * 24 * 3600,
             ZERO_ADDRESS,
@@ -539,6 +546,16 @@ describe('Vault', function () {
           .to.emit(vault, 'PoolRecoveryModeStateChanged')
           .withArgs(poolBAddress, true);
       });
+    });
+  });
+
+  describe('reentrancy guard state', () => {
+    it('reentrancy guard should be false when not in Vault context', async () => {
+      expect(await vault.unguardedCheckNotEntered()).to.not.be.reverted;
+    });
+
+    it('reentrancy guard should be true when in Vault context', async () => {
+      expect(await vault.guardedCheckEntered()).to.not.be.reverted;
     });
   });
 });
