@@ -10,8 +10,7 @@ import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpe
  * @dev Building block for performing access control on external functions within pools.
  *
  * This contract is used via the `authenticate` modifier (or the `_authenticateCaller` function), which can be applied
- * to external functions to only make them callable by authorized accounts. For pools, we should use the pool factory
- * as the disambiguator; otherwise, permissions would conflict if different pools reused function names.
+ * to external functions to only make them callable by authorized accounts.
  *
  * Derived contracts must implement the `_canPerform` function, which holds the actual access control logic.
  */
@@ -27,6 +26,9 @@ abstract contract BasePoolAuthentication is Authentication {
      *    unique. The contract's own address is a good option.
      *  - if the contract belongs to a family that shares action identifiers for the same functions, an identifier
      *    shared by the entire family (and no other contract) should be used instead.
+     *
+     * Pools are an example of the second type, so we should use the pool factory as the disambiguator; otherwise,
+     * permissions would conflict if different pools reused function names.
      */
     constructor(IVault vault, address factory) Authentication(bytes32(uint256(uint160(factory)))) {
         _vault = vault;
