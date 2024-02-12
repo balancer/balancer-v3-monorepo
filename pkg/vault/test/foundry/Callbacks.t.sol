@@ -8,7 +8,7 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { PoolConfig, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -52,7 +52,7 @@ contract HooksTest is BaseVaultTest {
         // should fail
         PoolMock(pool).setFailOnBeforeSwapHook(true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.HookFailed.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeSwapHookFailed.selector));
         router.swapExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
     }
 
@@ -80,7 +80,7 @@ contract HooksTest is BaseVaultTest {
         // should fail
         PoolMock(pool).setFailOnAfterSwapHook(true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.HookFailed.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.AfterSwapHookFailed.selector));
         router.swapExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
     }
 
@@ -111,6 +111,7 @@ contract HooksTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IPoolHooks.onBeforeAddLiquidity.selector,
                 bob,
+                AddLiquidityKind.UNBALANCED,
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 bptAmountRoundDown,
                 [defaultAmount, defaultAmount].toMemoryArray(),
@@ -169,6 +170,7 @@ contract HooksTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IPoolHooks.onBeforeRemoveLiquidity.selector,
                 alice,
+                RemoveLiquidityKind.PROPORTIONAL,
                 bptAmount,
                 [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
                 [2 * defaultAmount, 2 * defaultAmount].toMemoryArray(),

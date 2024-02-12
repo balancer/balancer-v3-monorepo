@@ -18,6 +18,7 @@ import { RateProviderMock, VaultExtensionMock } from '../typechain-types';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
+import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 

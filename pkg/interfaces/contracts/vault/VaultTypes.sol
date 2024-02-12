@@ -28,6 +28,7 @@ struct PoolConfig {
     bool isPoolInitialized;
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
+    bool isBufferPool;
     bool hasDynamicSwapFee;
     uint64 staticSwapFeePercentage; // stores an 18-decimal FP value (max FixedPoint.ONE)
     uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
@@ -46,6 +47,8 @@ struct PoolConfig {
  * a subset of IERC4626, and functions as its own rate provider. To the outside world (e.g., callers of
  * `getPoolTokens`), the pool will appear to contain the underlying base token (DAI, for waDAI), though the
  * wrapped token will be registered and stored in the pool's balance in the Vault.
+ *
+ * NB: STANDARD must always be the first enum element, so that newly initialized data structures default to Standard.
  */
 enum TokenType {
     STANDARD,
