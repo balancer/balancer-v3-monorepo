@@ -26,8 +26,6 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     using ArrayHelpers for *;
     using FixedPoint for *;
 
-    bytes32 constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
-
     function setUp() public virtual override {
         LiquidityApproximationTest.setUp();
     }
