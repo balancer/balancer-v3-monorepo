@@ -61,7 +61,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
     address internal liquidityPool;
     // Allows small roundingDelta to account for rounding
     uint256 internal roundingDelta = 1e12;
-    uint256 internal liquidityPercentageDelta = 25e15; // 2.5%
+    uint256 internal liquidityPercentageDelta = 25e16; // 25%
     uint256 internal swapFeePercentageDelta = 20e16; // 20%
     uint256 internal maxAmount = 3e8 * 1e18 - 1;
 
@@ -483,7 +483,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         uint256 aliceAmountOut = usdc.balanceOf(alice) - defaultBalance;
         uint256 bobAmountOut = usdc.balanceOf(bob) - defaultBalance;
-        uint256 bobToAliceRatio = (bobAmountOut * 1e18) / aliceAmountOut;
+        uint256 bobToAliceRatio = bobAmountOut.divDown(aliceAmountOut);
 
         // See @notice at `LiquidityApproximationTest`
         assertApproxEqAbs(aliceAmountOut, bobAmountOut, roundingDelta, "Swap fee delta is too big");
@@ -493,15 +493,19 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertLe(bobToAliceRatio, 1e18 + roundingDelta, "Bob has too much USDC compare to Alice");
     }
 
-    function assertLiquidityOperation(uint256 amountOut, uint256 swapFeePercentage, bool addLiquidity) internal {
+    function assertLiquidityOperation(
+        uint256 amountOut,
+        uint256 swapFeePercentage,
+        bool addLiquidity
+    ) internal {
         // See @notice
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
 
         uint256 aliceAmountOut = usdc.balanceOf(alice) - defaultBalance;
         uint256 bobAmountOut = usdc.balanceOf(bob) - defaultBalance;
-        uint256 bobToAliceRatio = (bobAmountOut * 1e18) / aliceAmountOut;
+        uint256 bobToAliceRatio = bobAmountOut.divDown(aliceAmountOut);
 
-        uint256 liquidityTaxPercentage = (liquidityPercentageDelta * swapFeePercentage) / 1e17;
+        uint256 liquidityTaxPercentage = liquidityPercentageDelta.mulDown(swapFeePercentage);
 
         uint256 swapFee = amountOut.divUp(1e18 - swapFeePercentage) - amountOut;
 
@@ -509,7 +513,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertApproxEqAbs(
             aliceAmountOut,
             bobAmountOut,
-            (swapFee * swapFeePercentageDelta) / 1e18 + roundingDelta,
+            swapFee.mulDown(swapFeePercentageDelta) + roundingDelta,
             "Swap fee delta is too big"
         );
 
