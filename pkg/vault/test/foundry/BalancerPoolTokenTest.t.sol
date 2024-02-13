@@ -8,6 +8,7 @@ import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/I
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
@@ -23,10 +24,12 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     uint256 private constant CURRENT_NONCE = 0;
     uint256 internal privateKey = 0xBEEF;
     address user = vm.addr(privateKey);
+    uint40 internal constant MAY_1_2023 = 1_682_899_200;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
         poolToken = PoolMock(pool);
+        vm.warp(MAY_1_2023);
     }
 
     function initPool() internal override {
@@ -118,7 +121,16 @@ contract BalancerPoolTokenTest is BaseVaultTest {
                 abi.encodePacked(
                     "\x19\x01",
                     poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, CURRENT_NONCE, block.timestamp))
+                    keccak256(
+                        abi.encode(
+                            PERMIT_TYPEHASH,
+                            user,
+                            address(0xCAFE),
+                            defaultAmount,
+                            CURRENT_NONCE,
+                            block.timestamp
+                        )
+                    )
                 )
             )
         );
@@ -129,6 +141,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         assertEq(poolToken.nonces(user), CURRENT_NONCE + 1);
     }
 
+    // @dev Just test for general fail as it is hard to compute error arguments
     function testFailPermitBadNonce() public {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
             privateKey,
@@ -136,15 +149,25 @@ contract BalancerPoolTokenTest is BaseVaultTest {
                 abi.encodePacked(
                     "\x19\x01",
                     poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE),
-                                         defaultAmount, CURRENT_NONCE + 1, block.timestamp))
+                    keccak256(
+                        abi.encode(
+                            PERMIT_TYPEHASH,
+                            user,
+                            address(0xCAFE),
+                            defaultAmount,
+                            CURRENT_NONCE + 1,
+                            block.timestamp
+                        )
+                    )
                 )
             )
         );
 
+        vm.expectRevert(bytes(""));
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v, r, s);
     }
 
+    // @dev Just test for general fail as it is hard to compute error arguments
     function testFailPermitBadDeadline() public {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
             privateKey,
@@ -152,7 +175,16 @@ contract BalancerPoolTokenTest is BaseVaultTest {
                 abi.encodePacked(
                     "\x19\x01",
                     poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, CURRENT_NONCE, block.timestamp))
+                    keccak256(
+                        abi.encode(
+                            PERMIT_TYPEHASH,
+                            user,
+                            address(0xCAFE),
+                            defaultAmount,
+                            CURRENT_NONCE,
+                            block.timestamp
+                        )
+                    )
                 )
             )
         );
@@ -160,6 +192,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp + 1, v, r, s);
     }
 
+    // @dev Just test for general fail as it is hard to compute error arguments
     function testFailPermitPastDeadline() public {
         uint256 oldTimestamp = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
@@ -168,7 +201,9 @@ contract BalancerPoolTokenTest is BaseVaultTest {
                 abi.encodePacked(
                     "\x19\x01",
                     poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, CURRENT_NONCE, oldTimestamp))
+                    keccak256(
+                        abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, CURRENT_NONCE, oldTimestamp)
+                    )
                 )
             )
         );
@@ -177,6 +212,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), defaultAmount, oldTimestamp, v, r, s);
     }
 
+    // @dev Just test for general fail as it is hard to compute error arguments
     function testFailPermitReplay() public {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
             privateKey,
@@ -184,7 +220,16 @@ contract BalancerPoolTokenTest is BaseVaultTest {
                 abi.encodePacked(
                     "\x19\x01",
                     poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, CURRENT_NONCE, block.timestamp))
+                    keccak256(
+                        abi.encode(
+                            PERMIT_TYPEHASH,
+                            user,
+                            address(0xCAFE),
+                            defaultAmount,
+                            CURRENT_NONCE,
+                            block.timestamp
+                        )
+                    )
                 )
             )
         );
@@ -194,9 +239,9 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     function testPermit__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
-        if (deadline < block.timestamp) deadline = block.timestamp;
-        if (privKey == 0) privKey = 1;
-        if (to == address(0)) to = address(1);
+        deadline = bound(deadline, block.timestamp, type(uint256).max);
+        vm.assume(privKey != 0);
+        vm.assume(to != address(0));
 
         address usr = vm.addr(privKey);
 
@@ -217,6 +262,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         assertEq(poolToken.nonces(usr), CURRENT_NONCE + 1);
     }
 
+    // @dev Just test for general fail as it is hard to compute error arguments
     function testFailPermitBadNonce__Fuzz(
         uint256 privKey,
         address to,
@@ -224,9 +270,10 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         uint256 deadline,
         uint256 nonce
     ) public {
-        if (deadline < block.timestamp) deadline = block.timestamp;
-        if (privKey == 0) privKey = 1;
-        if (nonce == 0) nonce = 1;
+        deadline = bound(deadline, block.timestamp, type(uint256).max);
+        vm.assume(privKey != 0);
+        vm.assume(to != address(0));
+        vm.assume(nonce != 0);
 
         address usr = vm.addr(privKey);
 
@@ -244,9 +291,11 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(usr, to, amount, deadline, v, r, s);
     }
 
-    function testFailPermitBadDeadline__Fuzz(uint256 privKey, address to, uint256 amount, uint256 deadline) public {
-        if (deadline < block.timestamp) deadline = block.timestamp;
-        if (privKey == 0) privKey = 1;
+    // @dev Just test for general fail as it is hard to compute error arguments
+    function testFailPermitBadDeadline__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
+        deadline = bound(deadline, 0, block.timestamp - 1);
+        vm.assume(privKey != 0);
+        vm.assume(to != address(0));
 
         address usr = vm.addr(privKey);
 
@@ -264,9 +313,10 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(usr, to, amount, deadline + 1, v, r, s);
     }
 
-    function testFailPermitPastDeadline__Fuzz(uint256 privKey, address to, uint256 amount, uint256 deadline) public {
+    function testPermitPastDeadline__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
+        vm.assume(privKey != 0);
+        vm.assume(to != address(0));
         deadline = bound(deadline, 0, block.timestamp - 1);
-        if (privKey == 0) privKey = 1;
 
         address usr = vm.addr(privKey);
 
@@ -281,12 +331,15 @@ contract BalancerPoolTokenTest is BaseVaultTest {
             )
         );
 
+        vm.expectRevert(abi.encodeWithSelector(BalancerPoolToken.ERC2612ExpiredSignature.selector, deadline));
         poolToken.permit(usr, to, amount, deadline, v, r, s);
     }
 
-    function testFailPermitReplay__Fuzz(uint256 privKey, address to, uint256 amount, uint256 deadline) public {
-        if (deadline < block.timestamp) deadline = block.timestamp;
-        if (privKey == 0) privKey = 1;
+    // @dev Just test for general fail as it is hard to compute error arguments
+    function testFailPermitReplay__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
+        vm.assume(privKey != 0);
+        vm.assume(to != address(0));
+        deadline = bound(deadline, block.timestamp, type(uint256).max);
 
         address usr = vm.addr(privKey);
 
