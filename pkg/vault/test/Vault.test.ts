@@ -9,7 +9,7 @@ import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/sign
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { FP_ONE, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
-import { setupEnvironment } from './poolSetup';
+import { buildTokenConfig, setupEnvironment } from './poolSetup';
 import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
@@ -20,7 +20,6 @@ import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
-import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -247,9 +246,7 @@ describe('Vault', function () {
             vault,
             'Pool C',
             'POOLC',
-            poolATokens,
-            rateProviders,
-            [false, false],
+            buildTokenConfig(poolATokens, rateProviders),
             true,
             365 * 24 * 3600,
             ZERO_ADDRESS,
@@ -282,17 +279,7 @@ describe('Vault', function () {
 
       sharedBeforeEach('deploy pool', async () => {
         pool = await deploy('v3-vault/PoolMock', {
-          args: [
-            vault,
-            'Pool X',
-            'POOLX',
-            poolATokens,
-            Array(poolATokens.length).fill(ZERO_ADDRESS),
-            Array(poolATokens.length).fill(false),
-            true,
-            365 * 24 * 3600,
-            ZERO_ADDRESS,
-          ],
+          args: [vault, 'Pool X', 'POOLX', buildTokenConfig(poolATokens), true, 365 * 24 * 3600, ZERO_ADDRESS],
         });
         poolAddress = await pool.getAddress();
       });
