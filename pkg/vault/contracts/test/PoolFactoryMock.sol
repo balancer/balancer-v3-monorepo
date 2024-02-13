@@ -19,25 +19,6 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
 
     function registerPool(
         address pool,
-        IERC20[] memory tokens,
-        IRateProvider[] memory rateProviders,
-        bool[] memory yieldExemptFlags,
-        address pauseManager,
-        PoolHooks calldata poolHooks,
-        LiquidityManagement calldata liquidityManagement
-    ) external {
-        _vault.registerPool(
-            pool,
-            _buildTokenConfig(tokens, rateProviders, yieldExemptFlags),
-            getNewPoolPauseWindowEndTime(),
-            pauseManager,
-            poolHooks,
-            liquidityManagement
-        );
-    }
-
-    function registerGeneralPool(
-        address pool,
         TokenConfig[] memory tokenConfig,
         address pauseManager,
         PoolHooks calldata poolHooks,
@@ -56,40 +37,12 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
     // For tests; otherwise can't get the exact event arguments.
     function registerPoolAtTimestamp(
         address pool,
-        IERC20[] memory tokens,
-        IRateProvider[] memory rateProviders,
-        bool[] memory yieldExemptFlags,
+        TokenConfig[] memory tokenConfig,
         address pauseManager,
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement,
         uint256 timestamp
     ) external {
-        _vault.registerPool(
-            pool,
-            _buildTokenConfig(tokens, rateProviders, yieldExemptFlags),
-            timestamp,
-            pauseManager,
-            poolHooks,
-            liquidityManagement
-        );
-    }
-
-    function _buildTokenConfig(
-        IERC20[] memory tokens,
-        IRateProvider[] memory rateProviders,
-        bool[] memory yieldExemptFlags
-    ) private pure returns (TokenConfig[] memory tokenData) {
-        tokenData = new TokenConfig[](tokens.length);
-        // Assume standard tokens
-        for (uint256 i = 0; i < tokens.length; i++) {
-            tokenData[i].token = tokens[i];
-            tokenData[i].rateProvider = rateProviders[i];
-            if (rateProviders[i] == IRateProvider(address(0))) {
-                tokenData[i].tokenType = TokenType.STANDARD;
-            } else {
-                tokenData[i].tokenType = TokenType.WITH_RATE;
-                tokenData[i].yieldFeeExempt = yieldExemptFlags[i];
-            }
-        }
+        _vault.registerPool(pool, tokenConfig, timestamp, pauseManager, poolHooks, liquidityManagement);
     }
 }
