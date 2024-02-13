@@ -9,7 +9,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -27,21 +27,16 @@ contract PoolPauseTest is BaseVaultTest {
     PoolMock internal infinityPool;
 
     PoolFactoryMock internal factory;
-    IRateProvider[] internal rateProviders;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-
-        rateProviders = new IRateProvider[](2);
 
         pool = address(
             new PoolMock(
                 IVault(address(vault)),
                 "ERC20 Pool",
                 "ERC20POOL",
-                [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-                new IRateProvider[](2),
-                new bool[](2),
+                vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
                 true,
                 365 days,
                 admin
@@ -53,9 +48,7 @@ contract PoolPauseTest is BaseVaultTest {
             IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
-            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-            rateProviders,
-            new bool[](2),
+            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             true,
             365 days,
             address(0)
@@ -65,9 +58,7 @@ contract PoolPauseTest is BaseVaultTest {
             IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
-            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-            rateProviders,
-            new bool[](2),
+            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             true,
             0,
             address(0)
@@ -77,9 +68,7 @@ contract PoolPauseTest is BaseVaultTest {
             IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
-            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-            rateProviders,
-            new bool[](2),
+            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             true,
             10000 days,
             address(0)
@@ -103,14 +92,17 @@ contract PoolPauseTest is BaseVaultTest {
     function testInvalidDuration() public {
         uint256 maxEndTimeTimestamp = type(uint32).max - block.timestamp;
 
+        // Have to call separately, or it will be the call the vm expects to revert.
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(usdc)].toMemoryArray().asIERC20()
+        );
+
         vm.expectRevert(FactoryWidePauseWindow.PoolPauseWindowDurationOverflow.selector);
         new PoolMock(
             IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
-            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-            rateProviders,
-            new bool[](2),
+            tokenConfig,
             true,
             maxEndTimeTimestamp + 1,
             address(0)
