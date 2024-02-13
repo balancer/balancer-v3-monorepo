@@ -894,7 +894,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             amountsOutRaw
         );
 
-        // Cannot do this in `_removeLiquidityUpdateAccounting`, as it is also called in recovery mode, where we won't have the rates.
+        // Cannot do this in `_removeLiquidityUpdateAccounting`, as it is also called in recovery mode,
+        // where we won't have the rates.
         uint256[] memory newScaled18Balances = poolData.balancesRaw.copyToScaled18ApplyRateRoundDownArray(
             poolData.decimalScalingFactors,
             poolData.tokenRates
