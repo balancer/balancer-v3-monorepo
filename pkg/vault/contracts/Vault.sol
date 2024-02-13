@@ -372,7 +372,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         // Charge protocolSwapFee
-        if (vars.swapFeeAmountScaled18 > 0 && _protocolSwapFeePercentage > 0) {
+        if (
+            vars.swapFeeAmountScaled18 > 0 &&
+            _protocolSwapFeePercentage > 0 &&
+            poolData.poolConfig.isPoolInRecoveryMode == false
+        ) {
             // Always charge fees on tokenOut. Store amount in native decimals.
             // Since the swapFeeAmountScaled18 (derived from scaling up either the amountGiven or amountCalculated)
             // also contains the rate, undo it when converting to raw.

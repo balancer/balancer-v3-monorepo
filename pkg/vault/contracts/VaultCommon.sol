@@ -372,11 +372,12 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         for (uint256 i = 0; i < numTokens; ++i) {
             TokenType tokenType = poolData.tokenConfig[i].tokenType;
 
-            // Do not charge yield fees until the pool is initialized.
+            // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
             // ERC4626 tokens always pay yield fees; WITH_RATE tokens pay unless exempt.
             bool subjectToYieldProtocolFees = poolData.poolConfig.isPoolInitialized &&
                 (tokenType == TokenType.ERC4626 ||
-                    (tokenType == TokenType.WITH_RATE && poolData.tokenConfig[i].yieldFeeExempt == false));
+                    (tokenType == TokenType.WITH_RATE && poolData.tokenConfig[i].yieldFeeExempt == false)) &&
+                poolData.poolConfig.isPoolInRecoveryMode == false;
 
             if (tokenType == TokenType.STANDARD) {
                 poolData.tokenRates[i] = FixedPoint.ONE;
