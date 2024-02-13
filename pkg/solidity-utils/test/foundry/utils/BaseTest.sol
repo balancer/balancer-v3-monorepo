@@ -43,8 +43,11 @@ abstract contract BaseTest is Test, GasSnapshot {
     uint256 internal defaultBalance;
 
     function setUp() public virtual {
-        // Set block.timestamp to something better than 0
-        vm.warp(START_TIMESTAMP);
+        // Set timestamp only if testing locally
+        if (block.chainid == 31337) {
+            // Set block.timestamp to something better than 0
+            vm.warp(START_TIMESTAMP);
+        }
 
         // Set default balance to 1mil
         defaultBalance = 1e6 * 1e18;
