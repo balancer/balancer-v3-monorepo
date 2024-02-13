@@ -15,7 +15,7 @@ abstract contract BaseTest is Test, GasSnapshot {
     using ArrayHelpers for *;
 
     // Reasonable block.timestamp `MAY_1_2023`
-    uint40 internal constant START_TIMESTAMP = 1_682_899_200;
+    uint32 internal constant START_TIMESTAMP = 1_682_899_200;
 
     // Default admin.
     address payable admin;
