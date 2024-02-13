@@ -119,6 +119,21 @@ contract VaultMock is IVaultMainMock, Vault {
         }
     }
 
+    function buildTokenConfig(
+        IERC20[] memory tokens,
+        TokenType[] memory tokenTypes,
+        IRateProvider[] memory rateProviders,
+        bool[] memory yieldExemptFlags
+    ) public pure returns (TokenConfig[] memory tokenConfig) {
+        tokenConfig = new TokenConfig[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            tokenConfig[i].token = tokens[i];
+            tokenConfig[i].tokenType = tokenTypes[i];
+            tokenConfig[i].rateProvider = rateProviders[i];
+            tokenConfig[i].yieldFeeExempt = yieldExemptFlags[i];
+        }
+    }
+
     function getDecimalScalingFactors(address pool) external view returns (uint256[] memory) {
         PoolConfig memory config = _poolConfig[pool].toPoolConfig();
         IERC20[] memory tokens = _getPoolTokens(pool);
