@@ -14,6 +14,9 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 abstract contract BaseTest is Test, GasSnapshot {
     using ArrayHelpers for *;
 
+    // Reasonable block.timestamp
+    uint40 internal constant MAY_1_2023 = 1_682_899_200;
+
     // Default admin.
     address payable admin;
     // Default liquidity provider.
@@ -40,6 +43,9 @@ abstract contract BaseTest is Test, GasSnapshot {
     uint256 internal defaultBalance;
 
     function setUp() public virtual {
+        // Set block.timestamp to something better than 0
+        vm.warp(MAY_1_2023);
+
         // Set default balance to 1mil
         defaultBalance = 1e6 * 1e18;
 

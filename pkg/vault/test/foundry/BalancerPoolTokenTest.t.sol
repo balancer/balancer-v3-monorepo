@@ -24,12 +24,10 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     uint256 private constant CURRENT_NONCE = 0;
     uint256 internal privateKey = 0xBEEF;
     address user = vm.addr(privateKey);
-    uint40 internal constant MAY_1_2023 = 1_682_899_200;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
         poolToken = PoolMock(pool);
-        vm.warp(MAY_1_2023);
     }
 
     function initPool() internal override {
