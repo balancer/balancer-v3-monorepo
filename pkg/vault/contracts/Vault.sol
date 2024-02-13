@@ -393,8 +393,29 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         // Use `unchecked_setAt` to save storage reads.
-        poolBalances.unchecked_setAt(vars.indexIn, vars.tokenInBalance + amountIn);
-        poolBalances.unchecked_setAt(vars.indexOut, vars.tokenOutBalance - amountOut - vars.protocolSwapFeeAmountRaw);
+        uint256 newBalanceInRaw = vars.tokenInBalance + amountIn;
+        uint256 newBalanceOutRaw = vars.tokenOutBalance - amountOut - vars.protocolSwapFeeAmountRaw;
+
+        poolBalances.unchecked_setAt(vars.indexIn, newBalanceInRaw);
+        poolBalances.unchecked_setAt(vars.indexOut, newBalanceOutRaw);
+
+        // Update lastLiveBalances
+        EnumerableMap.IERC20ToUint256Map storage lastLiveBalances = _lastLivePoolTokenBalances[vaultSwapParams.pool];
+
+        lastLiveBalances.unchecked_setAt(
+            vars.indexIn,
+            newBalanceInRaw.toScaled18ApplyRateRoundDown(
+                poolData.decimalScalingFactors[vars.indexIn],
+                poolData.tokenRates[vars.indexIn]
+            )
+        );
+        lastLiveBalances.unchecked_setAt(
+            vars.indexOut,
+            newBalanceOutRaw.toScaled18ApplyRateRoundDown(
+                poolData.decimalScalingFactors[vars.indexOut],
+                poolData.tokenRates[vars.indexOut]
+            )
+        );
 
         // Account amountIn of tokenIn
         _takeDebt(vaultSwapParams.tokenIn, amountIn, msg.sender);
@@ -651,6 +672,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // Store the new pool balances.
         _setPoolBalances(params.pool, poolData.balancesRaw);
+        uint256[] memory newScaled18Balances = poolData.balancesRaw.copyToScaled18ApplyRateRoundDownArray(
+            poolData.decimalScalingFactors,
+            poolData.tokenRates
+        );
+        _setLastLivePoolBalances(params.pool, newScaled18Balances);
 
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
@@ -867,6 +893,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             bptAmountIn,
             amountsOutRaw
         );
+
+        // Cannot do this in `_removeLiquidityUpdateAccounting`, as it is also called in recovery mode, where we won't have the rates.
+        uint256[] memory newScaled18Balances = poolData.balancesRaw.copyToScaled18ApplyRateRoundDownArray(
+            poolData.decimalScalingFactors,
+            poolData.tokenRates
+        );
+        _setLastLivePoolBalances(params.pool, newScaled18Balances);
     }
 
     /**
