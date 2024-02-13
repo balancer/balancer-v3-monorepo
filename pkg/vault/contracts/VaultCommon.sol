@@ -234,6 +234,21 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
+     * @dev Sets the live balances of a Pool's tokens to `newBalances`.
+     *
+     * WARNING: this assumes `newBalances` has the same length and order as the Pool's tokens.
+     */
+    function _setLastLivePoolBalances(address pool, uint256[] memory newBalances) internal {
+        EnumerableMap.IERC20ToUint256Map storage liveBalances = _lastLivePoolTokenBalances[pool];
+
+        for (uint256 i = 0; i < newBalances.length; ++i) {
+            // Since we assume all newBalances are properly ordered, we can simply use `unchecked_setAt`
+            // to avoid one less storage read per token.
+            liveBalances.unchecked_setAt(i, newBalances[i]);
+        }
+    }
+
+    /**
      * @notice Fetches the tokens and their corresponding balances for a given pool.
      * @dev Utilizes an enumerable map to obtain pool token balances.
      * The function is structured to minimize storage reads by leveraging the `unchecked_at` method.
