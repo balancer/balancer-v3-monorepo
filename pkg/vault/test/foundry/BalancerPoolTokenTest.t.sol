@@ -20,6 +20,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     bytes32 private constant PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
+    uint256 private constant CURRENT_NONCE = 0;
     uint256 internal privateKey = 0xBEEF;
     address user = vm.addr(privateKey);
 
@@ -117,7 +118,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
                 abi.encodePacked(
                     "\x19\x01",
                     poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, 0, block.timestamp))
+                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, CURRENT_NONCE, block.timestamp))
                 )
             )
         );
@@ -125,7 +126,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v, r, s);
 
         assertEq(poolToken.allowance(user, address(0xCAFE)), defaultAmount);
-        assertEq(poolToken.nonces(user), 1);
+        assertEq(poolToken.nonces(user), CURRENT_NONCE + 1);
     }
 
     function testFailPermitBadNonce() public {
@@ -135,7 +136,8 @@ contract BalancerPoolTokenTest is BaseVaultTest {
                 abi.encodePacked(
                     "\x19\x01",
                     poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, 1, block.timestamp))
+                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE),
+                                         defaultAmount, CURRENT_NONCE + 1, block.timestamp))
                 )
             )
         );
@@ -150,7 +152,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
                 abi.encodePacked(
                     "\x19\x01",
                     poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, 0, block.timestamp))
+                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, CURRENT_NONCE, block.timestamp))
                 )
             )
         );
@@ -166,7 +168,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
                 abi.encodePacked(
                     "\x19\x01",
                     poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, 0, oldTimestamp))
+                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, CURRENT_NONCE, oldTimestamp))
                 )
             )
         );
@@ -182,7 +184,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
                 abi.encodePacked(
                     "\x19\x01",
                     poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, 0, block.timestamp))
+                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, CURRENT_NONCE, block.timestamp))
                 )
             )
         );
@@ -204,7 +206,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
                 abi.encodePacked(
                     "\x19\x01",
                     poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, usr, to, amount, 0, deadline))
+                    keccak256(abi.encode(PERMIT_TYPEHASH, usr, to, amount, CURRENT_NONCE, deadline))
                 )
             )
         );
@@ -212,7 +214,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(usr, to, amount, deadline, v, r, s);
 
         assertEq(poolToken.allowance(usr, to), amount);
-        assertEq(poolToken.nonces(usr), 1);
+        assertEq(poolToken.nonces(usr), CURRENT_NONCE + 1);
     }
 
     function testFailPermitBadNonce__Fuzz(
@@ -254,7 +256,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
                 abi.encodePacked(
                     "\x19\x01",
                     poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, usr, to, amount, 0, deadline))
+                    keccak256(abi.encode(PERMIT_TYPEHASH, usr, to, amount, CURRENT_NONCE, deadline))
                 )
             )
         );
@@ -274,7 +276,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
                 abi.encodePacked(
                     "\x19\x01",
                     poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, usr, to, amount, 0, deadline))
+                    keccak256(abi.encode(PERMIT_TYPEHASH, usr, to, amount, CURRENT_NONCE, deadline))
                 )
             )
         );
@@ -294,7 +296,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
                 abi.encodePacked(
                     "\x19\x01",
                     poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, usr, to, amount, 0, deadline))
+                    keccak256(abi.encode(PERMIT_TYPEHASH, usr, to, amount, CURRENT_NONCE, deadline))
                 )
             )
         );
