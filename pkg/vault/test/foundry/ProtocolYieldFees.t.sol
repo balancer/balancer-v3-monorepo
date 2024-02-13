@@ -46,9 +46,11 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
             IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
-            [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
-            rateProviders,
-            yieldExemptFlags,
+            vault.buildTokenConfig(
+                [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
+                rateProviders,
+                yieldExemptFlags
+            ),
             true,
             365 days,
             address(0)
