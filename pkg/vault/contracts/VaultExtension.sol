@@ -714,6 +714,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         config.isPoolInRecoveryMode = recoveryMode;
         _poolConfig[pool] = config.fromPoolConfig();
 
+        if (recoveryMode == false) {
+            // Update last live balances if we're re-enabling normal operation
+            (, uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors, ) = _getPoolTokenInfo(pool);
+
+            _setLastLivePoolBalances(
+                pool,
+                balancesRaw.copyToScaled18ApplyRateRoundDownArray(decimalScalingFactors, _getPoolTokenRates(pool))
+            );
+        }
+
         emit PoolRecoveryModeStateChanged(pool, recoveryMode);
     }
 
