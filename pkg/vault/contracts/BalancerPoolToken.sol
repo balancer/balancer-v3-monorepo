@@ -20,7 +20,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
  * https://eips.ethereum.org/EIPS/eip-2612[ERC-2612].
  */
 contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonces {
-    bytes32 private constant PERMIT_TYPEHASH =
+    bytes32 private constant _PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     /**
@@ -134,11 +134,14 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonc
         bytes32 r,
         bytes32 s
     ) public virtual {
+        // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > deadline) {
             revert ERC2612ExpiredSignature(deadline);
         }
 
-        bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, amount, _useNonce(owner), deadline));
+        bytes32 structHash = keccak256(
+            abi.encode(_PERMIT_TYPEHASH, owner, spender, amount, _useNonce(owner), deadline)
+        );
 
         bytes32 hash = _hashTypedDataV4(structHash);
 
