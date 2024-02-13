@@ -72,13 +72,13 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     function testTransfer() public {
-        vault.mintERC20(address(pool), address(this), 1e18);
+        vault.mintERC20(address(pool), address(this), defaultAmount);
 
-        assertTrue(poolToken.transfer(address(0xBEEF), 1e18));
-        assertEq(poolToken.totalSupply(), 1e18);
+        assertTrue(poolToken.transfer(address(0xBEEF), defaultAmount));
+        assertEq(poolToken.totalSupply(), defaultAmount);
 
         assertEq(poolToken.balanceOf(address(this)), 0);
-        assertEq(poolToken.balanceOf(address(0xBEEF)), 1e18);
+        assertEq(poolToken.balanceOf(address(0xBEEF)), defaultAmount);
     }
 
     function testTransferFrom() public {
@@ -117,14 +117,14 @@ contract BalancerPoolTokenTest is BaseVaultTest {
                 abi.encodePacked(
                     "\x19\x01",
                     poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), 1e18, 0, block.timestamp))
+                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, 0, block.timestamp))
                 )
             )
         );
 
-        poolToken.permit(user, address(0xCAFE), 1e18, block.timestamp, v, r, s);
+        poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v, r, s);
 
-        assertEq(poolToken.allowance(user, address(0xCAFE)), 1e18);
+        assertEq(poolToken.allowance(user, address(0xCAFE)), defaultAmount);
         assertEq(poolToken.nonces(user), 1);
     }
 
@@ -135,12 +135,12 @@ contract BalancerPoolTokenTest is BaseVaultTest {
                 abi.encodePacked(
                     "\x19\x01",
                     poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), 1e18, 1, block.timestamp))
+                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, 1, block.timestamp))
                 )
             )
         );
 
-        poolToken.permit(user, address(0xCAFE), 1e18, block.timestamp, v, r, s);
+        poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v, r, s);
     }
 
     function testFailPermitBadDeadline() public {
@@ -150,12 +150,12 @@ contract BalancerPoolTokenTest is BaseVaultTest {
                 abi.encodePacked(
                     "\x19\x01",
                     poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), 1e18, 0, block.timestamp))
+                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, 0, block.timestamp))
                 )
             )
         );
 
-        poolToken.permit(user, address(0xCAFE), 1e18, block.timestamp + 1, v, r, s);
+        poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp + 1, v, r, s);
     }
 
     function testFailPermitPastDeadline() public {
@@ -166,13 +166,13 @@ contract BalancerPoolTokenTest is BaseVaultTest {
                 abi.encodePacked(
                     "\x19\x01",
                     poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), 1e18, 0, oldTimestamp))
+                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, 0, oldTimestamp))
                 )
             )
         );
 
         vm.warp(block.timestamp + 1);
-        poolToken.permit(user, address(0xCAFE), 1e18, oldTimestamp, v, r, s);
+        poolToken.permit(user, address(0xCAFE), defaultAmount, oldTimestamp, v, r, s);
     }
 
     function testFailPermitReplay() public {
@@ -182,13 +182,13 @@ contract BalancerPoolTokenTest is BaseVaultTest {
                 abi.encodePacked(
                     "\x19\x01",
                     poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), 1e18, 0, block.timestamp))
+                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, 0, block.timestamp))
                 )
             )
         );
 
-        poolToken.permit(user, address(0xCAFE), 1e18, block.timestamp, v, r, s);
-        poolToken.permit(user, address(0xCAFE), 1e18, block.timestamp, v, r, s);
+        poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v, r, s);
+        poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v, r, s);
     }
 
     function testPermit__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
