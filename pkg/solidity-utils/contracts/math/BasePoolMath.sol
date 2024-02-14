@@ -233,7 +233,7 @@ library BasePoolMath {
         uint256 currentInvariant = computeInvariant(currentBalances);
 
         // Calculate the new invariant ratio by dividing the new invariant by the current invariant.
-        // Calculate taxable amount by substracting the new balance from proportional balance
+        // Calculate the taxable amount by subtracting the new balance from the equivalent proportional balance.
         uint256 taxableAmount = computeInvariant(newBalances).divUp(currentInvariant).mulUp(
             currentBalances[tokenOutIndex]
         ) - newBalances[tokenOutIndex];
