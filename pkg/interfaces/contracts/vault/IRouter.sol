@@ -359,7 +359,7 @@ interface IRouter {
     ) external payable returns (uint256 amountIn);
 
     /**
-     * @notice Executes a swap operation involving multiplepaths and / or steps, specifying exact input token amounts.
+     * @notice Executes a swap operation involving multiple paths (steps), specifying exact input token amounts.
      * @param paths Swap paths from token in to token out, specifying exact amounts in.
      * @param deadline Deadline for the swap
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
@@ -374,8 +374,8 @@ interface IRouter {
     ) external payable returns (uint256[] memory amountsOut);
 
     /**
-     * @notice Executes a swap operation involving multiplepaths and / or steps, specifying exact output token amounts.
-     * @param paths Swap paths from token in to token out, specifying exact amounts in.
+     * @notice Executes a swap operation involving multiple paths (steps), specifying exact output token amounts.
+     * @param paths Swap paths from token in to token out, specifying exact amounts out
      * @param deadline Deadline for the swap
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for the swap
