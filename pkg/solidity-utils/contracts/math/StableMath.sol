@@ -106,7 +106,7 @@ library StableMath {
         uint256 invariant
     ) internal pure returns (uint256) {
         /**************************************************************************************************************
-        // outGivenExactIn token x for y - polynomial equation to solve                                                   //
+        // outGivenExactIn token x for y - polynomial equation to solve                                              //
         // ay = amount out to calculate                                                                              //
         // by = balance token out                                                                                    //
         // y = by - ay (finalBalanceOut)                                                                             //
@@ -148,7 +148,7 @@ library StableMath {
         uint256 invariant
     ) internal pure returns (uint256) {
         /**************************************************************************************************************
-        // inGivenExactOut token x for y - polynomial equation to solve                                                   //
+        // inGivenExactOut token x for y - polynomial equation to solve                                              //
         // ax = amount in to calculate                                                                               //
         // bx = balance token in                                                                                     //
         // x = bx + ax (finalBalanceIn)                                                                              //

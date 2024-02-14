@@ -107,7 +107,7 @@ contract Router is IRouter, ReentrancyGuard {
         }
 
         // return ETH dust
-        returnEth(params.sender, ethAmountIn);
+        _returnEth(params.sender, ethAmountIn);
     }
 
     /// @inheritdoc IRouter
@@ -176,7 +176,7 @@ contract Router is IRouter, ReentrancyGuard {
     /// @inheritdoc IRouter
     function addLiquidityCustom(
         address pool,
-        uint256[] memory inputAmountsIn,
+        uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         bool wethIsEth,
         bytes memory userData
@@ -189,7 +189,7 @@ contract Router is IRouter, ReentrancyGuard {
                         AddLiquidityHookParams({
                             sender: msg.sender,
                             pool: pool,
-                            maxAmountsIn: inputAmountsIn,
+                            maxAmountsIn: maxAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             kind: AddLiquidityKind.CUSTOM,
                             wethIsEth: wethIsEth,
@@ -252,7 +252,7 @@ contract Router is IRouter, ReentrancyGuard {
         }
 
         // Send remaining ETH to the user
-        returnEth(params.sender, ethAmountIn);
+        _returnEth(params.sender, ethAmountIn);
     }
 
     /// @inheritdoc IRouter
@@ -543,7 +543,7 @@ contract Router is IRouter, ReentrancyGuard {
 
         if (tokenIn == _weth) {
             // Return the rest of ETH to sender
-            returnEth(params.sender, ethAmountIn);
+            _returnEth(params.sender, ethAmountIn);
         }
 
         return amountCalculated;
@@ -717,7 +717,7 @@ contract Router is IRouter, ReentrancyGuard {
     /// @inheritdoc IRouter
     function queryAddLiquidityCustom(
         address pool,
-        uint256[] memory inputAmountsIn,
+        uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
@@ -731,7 +731,7 @@ contract Router is IRouter, ReentrancyGuard {
                             // but it is possible to add liquidity to any recipient
                             sender: address(this),
                             pool: pool,
-                            maxAmountsIn: inputAmountsIn,
+                            maxAmountsIn: maxAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             kind: AddLiquidityKind.CUSTOM,
                             wethIsEth: false,
@@ -937,7 +937,7 @@ contract Router is IRouter, ReentrancyGuard {
      * not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
      * returned ETH.
      */
-    function returnEth(address sender, uint256 amountUsed) internal {
+    function _returnEth(address sender, uint256 amountUsed) internal {
         if (msg.value < amountUsed) {
             revert InsufficientEth();
         }

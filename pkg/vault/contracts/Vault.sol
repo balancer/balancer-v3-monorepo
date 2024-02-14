@@ -24,7 +24,6 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
-import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 
@@ -204,6 +203,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // change these balances, we cannot simply store the pending yield fees (and balance changes) in the poolData
         // struct, to be settled in non-reentrant _swap with the rest of the accounting.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN);
+
+        if (poolData.poolConfig.isBufferPool) {
+            revert CannotSwapWithBufferPool(params.pool);
+        }
+
         // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
         EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolTokenBalances[params.pool];
         SwapLocals memory vars;
@@ -255,7 +259,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (poolData.poolConfig.hooks.shouldCallBeforeSwap) {
             if (IPoolHooks(params.pool).onBeforeSwap(vars.poolSwapParams) == false) {
-                revert HookFailed();
+                revert BeforeSwapHookFailed();
             }
 
             _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN);
@@ -290,7 +294,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     vars.amountCalculatedScaled18
                 ) == false
             ) {
-                revert HookFailed();
+                revert AfterSwapHookFailed();
             }
         }
 
@@ -442,8 +446,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 poolData.tokenRates[i] = FixedPoint.ONE;
             } else if (tokenType == TokenType.WITH_RATE) {
                 poolData.tokenRates[i] = poolTokenConfig[token].rateProvider.getRate();
-            } else {
-                // TODO implement ERC4626 at a later stage.
+            } else if (tokenType != TokenType.ERC4626) {
+                // TODO: implement ERC4626 at a later stage
                 revert InvalidTokenConfiguration();
             }
 
@@ -493,13 +497,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             if (
                 IPoolHooks(params.pool).onBeforeAddLiquidity(
                     params.to,
+                    params.kind,
                     maxAmountsInScaled18,
                     params.minBptAmountOut,
                     poolData.balancesLiveScaled18,
                     params.userData
                 ) == false
             ) {
-                revert HookFailed();
+                revert BeforeAddLiquidityHookFailed();
             }
 
             // The hook might alter the balances, so we need to read them again to ensure that the data is
@@ -531,7 +536,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     params.userData
                 ) == false
             ) {
-                revert HookFailed();
+                revert AfterAddLiquidityHookFailed();
             }
         }
     }
@@ -686,13 +691,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             if (
                 IPoolHooks(params.pool).onBeforeRemoveLiquidity(
                     params.from,
+                    params.kind,
                     params.maxBptAmountIn,
                     minAmountsOutScaled18,
                     poolData.balancesLiveScaled18,
                     params.userData
                 ) == false
             ) {
-                revert HookFailed();
+                revert BeforeRemoveLiquidityHookFailed();
             }
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
@@ -721,7 +727,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     params.userData
                 ) == false
             ) {
-                revert HookFailed();
+                revert AfterRemoveLiquidityHookFailed();
             }
         }
     }
@@ -822,6 +828,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == RemoveLiquidityKind.CUSTOM) {
+            _poolConfig[params.pool].requireSupportsRemoveLiquidityCustom();
             (bptAmountIn, amountsOutScaled18, swapFeeAmountsScaled18, returnData) = IPoolLiquidity(params.pool)
                 .onRemoveLiquidityCustom(
                     params.from,
@@ -995,6 +1002,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     receive() external payable {
         revert CannotReceiveEth();
     }
+
+    // solhint-disable no-complex-fallback
 
     /**
      * @inheritdoc Proxy

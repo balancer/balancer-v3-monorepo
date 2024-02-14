@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.4;
 
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -9,7 +10,6 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
@@ -22,6 +22,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
@@ -74,6 +75,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             revert PauseBufferPeriodDurationTooLarge();
         }
 
+        // solhint-disable-next-line not-rely-on-time
         uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
 
         _vaultPauseWindowEndTime = pauseWindowEndTime;
@@ -230,8 +232,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
                     revert InvalidTokenConfiguration();
                 }
             } else if (tokenData.tokenType == TokenType.ERC4626) {
-                // TODO implement in later phases.
-                revert InvalidTokenConfiguration();
+                // Require a buffer to exist for this token
+                if (_wrappedTokenBuffers[IERC4626(address(token))] == address(0)) {
+                    revert WrappedTokenBufferNotRegistered();
+                }
+
+                // By definition, ERC4626 tokens are yield-bearing and subject to fees.
+                if (tokenData.yieldFeeExempt) {
+                    revert InvalidTokenConfiguration();
+                }
             } else {
                 revert InvalidTokenType();
             }
@@ -291,7 +300,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
 
         if (poolData.poolConfig.hooks.shouldCallBeforeInitialize) {
             if (IPoolHooks(pool).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
-                revert HookFailed();
+                revert BeforeInitializeHookFailed();
             }
         }
 
@@ -299,7 +308,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
 
         if (poolData.poolConfig.hooks.shouldCallAfterInitialize) {
             if (IPoolHooks(pool).onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false) {
-                revert HookFailed();
+                revert AfterInitializeHookFailed();
             }
         }
     }
@@ -510,6 +519,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         } else {
             if (pausing) {
                 // Not already paused; we can pause within the window.
+                // solhint-disable-next-line not-rely-on-time
                 if (block.timestamp >= _vaultPauseWindowEndTime) {
                     revert VaultPauseWindowExpired();
                 }
@@ -582,6 +592,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         } else {
             if (pausing) {
                 // Not already paused; we can pause within the window.
+                // solhint-disable-next-line not-rely-on-time
                 if (block.timestamp >= config.pauseWindowEndTime) {
                     revert PoolPauseWindowExpired(pool);
                 }
@@ -785,5 +796,57 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     /// @dev Access control is delegated to the Authorizer
     function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
         return _authorizer.canPerform(actionId, user, address(this));
+    }
+
+    /*******************************************************************************
+-                                ERC4626 Buffers
+     *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
+    function registerBuffer(
+        IERC4626 wrappedToken,
+        address pool,
+        address pauseManager,
+        uint256 pauseWindowEndTime
+    ) external nonReentrant whenVaultNotPaused onlyVault {
+        // Ensure buffer does not already exist.
+        if (_wrappedTokenBuffers[wrappedToken] != address(0)) {
+            revert WrappedTokenBufferAlreadyRegistered();
+        }
+        _wrappedTokenBuffers[wrappedToken] = pool;
+
+        IERC20 baseToken = IERC20(wrappedToken.asset());
+
+        // Token order is wrapped first, then base.
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[0].token = IERC20(wrappedToken);
+        tokenConfig[0].tokenType = TokenType.ERC4626;
+        // We are assuming the baseToken is STANDARD (the default type, with enum value 0).
+        tokenConfig[1].token = baseToken;
+
+        _wrappedTokenBufferBaseTokens[IERC20(wrappedToken)] = baseToken;
+
+        _registerPool(
+            pool,
+            tokenConfig,
+            pauseWindowEndTime,
+            pauseManager,
+            PoolHooks({
+                shouldCallBeforeInitialize: true, // ensure proportional
+                shouldCallAfterInitialize: false,
+                shouldCallBeforeAddLiquidity: true, // ensure custom
+                shouldCallAfterAddLiquidity: false,
+                shouldCallBeforeRemoveLiquidity: true, // ensure proportional
+                shouldCallAfterRemoveLiquidity: false,
+                shouldCallBeforeSwap: true, // rebalancing
+                shouldCallAfterSwap: false
+            }),
+            LiquidityManagement({ supportsAddLiquidityCustom: true, supportsRemoveLiquidityCustom: false })
+        );
+
+        // Set isBufferPool flag
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        config.isBufferPool = true;
+        _poolConfig[pool] = config.fromPoolConfig();
     }
 }

@@ -50,4 +50,32 @@ interface IVaultMainMock {
         uint256 tokenIndex,
         uint256 yieldFeePercentage
     ) external pure returns (uint256);
+
+    function guardedCheckEntered() external;
+
+    function unguardedCheckNotEntered() external view;
+
+    // Convenience functions for constructing TokenConfig arrays
+
+    function buildTokenConfig(IERC20[] memory tokens) external pure returns (TokenConfig[] memory tokenConfig);
+
+    /// @dev Infers TokenType (STANDARD or WITH_RATE) from the presence or absence of the rate provider.
+    function buildTokenConfig(
+        IERC20[] memory tokens,
+        IRateProvider[] memory rateProviders
+    ) external pure returns (TokenConfig[] memory tokenConfig);
+
+    /// @dev Infers TokenType (STANDARD or WITH_RATE) from the presence or absence of the rate provider.
+    function buildTokenConfig(
+        IERC20[] memory tokens,
+        IRateProvider[] memory rateProviders,
+        bool[] memory yieldExemptFlags
+    ) external pure returns (TokenConfig[] memory tokenConfig);
+
+    function buildTokenConfig(
+        IERC20[] memory tokens,
+        TokenType[] memory tokenTypes,
+        IRateProvider[] memory rateProviders,
+        bool[] memory yieldExemptFlags
+    ) external pure returns (TokenConfig[] memory tokenConfig);
 }

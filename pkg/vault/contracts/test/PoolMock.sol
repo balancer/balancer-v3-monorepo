@@ -8,8 +8,8 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { PoolConfig, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
@@ -39,9 +39,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         IVault vault,
         string memory name,
         string memory symbol,
-        IERC20[] memory tokens,
-        IRateProvider[] memory rateProviders,
-        bool[] memory yieldExemptFlags,
+        TokenConfig[] memory tokenConfig,
         bool registerPool,
         uint256 pauseWindowDuration,
         address pauseManager
@@ -51,9 +49,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
             factory.registerPool(
                 address(this),
-                tokens,
-                rateProviders,
-                yieldExemptFlags,
+                tokenConfig,
                 pauseManager,
                 PoolConfigBits.wrap(0).toPoolConfig().hooks,
                 PoolConfigBits.wrap(bytes32(type(uint256).max)).toPoolConfig().liquidityManagement
@@ -151,6 +147,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
     function onBeforeAddLiquidity(
         address,
+        AddLiquidityKind,
         uint256[] memory,
         uint256,
         uint256[] memory,
@@ -161,6 +158,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
     function onBeforeRemoveLiquidity(
         address,
+        RemoveLiquidityKind,
         uint256,
         uint256[] memory,
         uint256[] memory,

@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.4;
 
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
@@ -12,6 +13,8 @@ import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IV
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
+
+// solhint-disable max-states-count
 
 /**
  * @dev Storage layout for Vault. This contract has no code.
@@ -108,4 +111,10 @@ contract VaultStorage {
     uint256 internal immutable _vaultBufferPeriodDuration;
 
     bool internal _vaultPaused;
+
+    // ERC4626 wrapped token -> associated Buffer Pool
+    mapping(IERC4626 => address) internal _wrappedTokenBuffers;
+
+    // For convenience, store the base token for each buffer in `_wrappedTokenBuffers`
+    mapping(IERC20 => IERC20) internal _wrappedTokenBufferBaseTokens;
 }

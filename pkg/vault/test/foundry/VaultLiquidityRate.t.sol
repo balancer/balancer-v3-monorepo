@@ -37,9 +37,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
                     IVault(address(vault)),
                     "ERC20 Pool",
                     "ERC20POOL",
-                    [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
-                    rateProviders,
-                    new bool[](2),
+                    vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
                     true,
                     365 days,
                     address(0)
