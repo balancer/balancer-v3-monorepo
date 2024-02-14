@@ -113,7 +113,7 @@ library BasePoolMath {
 
         // Create a new array to hold the updated balances after the addition.
         uint256[] memory newBalances = new uint256[](numTokens);
-        // Create a new array to hold the swap fee amount for each balance.
+        // Create a new array to hold the swap fee amount for each token.
         swapFeeAmounts = new uint256[](numTokens);
 
         // Loop through each token, updating the balance with the added amount.
