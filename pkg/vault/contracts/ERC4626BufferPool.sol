@@ -100,6 +100,7 @@ contract ERC4626BufferPool is
         returnData = "";
 
         amountsInScaled18 = BasePoolMath.computeProportionalAmountsIn(balancesScaled18, bptAmountOut, totalSupply());
+        swapFeeAmountsScaled18 = new uint256[](balancesScaled18.length);
     }
 
     /// @inheritdoc BasePoolHooks
