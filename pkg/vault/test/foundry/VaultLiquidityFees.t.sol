@@ -204,12 +204,12 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         // Tokens are no longer in the vault / pool
         assertEq(
             balancesAfter.poolTokens[0],
-            balancesBefore.poolTokens[0] - amountsOut[0],
+            balancesBefore.poolTokens[0] - amountsOut[0] - protocolSwapFees[0],
             "Remove - Pool balance: token 0"
         );
         assertEq(
             balancesAfter.poolTokens[1],
-            balancesBefore.poolTokens[1] - amountsOut[1],
+            balancesBefore.poolTokens[1] - amountsOut[1] - protocolSwapFees[1],
             "Remove - Pool balance: token 1"
         );
 

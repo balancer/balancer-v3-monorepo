@@ -845,10 +845,19 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         for (uint256 i = 0; i < numTokens; ++i) {
             IERC20 token = poolData.tokenConfig[i].token;
             // Compute and charge protocol fees
-            _computeAndChargeProtocolFees(poolData, swapFeeAmountsScaled18[i], params.pool, token, i);
+            uint256 protocolSwapFeeAmountRaw = _computeAndChargeProtocolFees(
+                poolData,
+                swapFeeAmountsScaled18[i],
+                params.pool,
+                token,
+                i
+            );
 
+            // Substract protocol fees charged from the pool's balances
             // Note that poolData.balancesRaw will also be updated in `_removeLiquidityUpdateAccounting`
-            poolData.balancesLiveScaled18[i] -= amountsOutScaled18[i];
+            poolData.balancesRaw[i] -= protocolSwapFeeAmountRaw;
+            poolData.balancesLiveScaled18[i] -= (amountsOutScaled18[i] +
+                swapFeeAmountsScaled18[i].mulUp(_protocolSwapFeePercentage));
             tokens[i] = token;
 
             // amountsOut are amounts exiting the Pool, so we round down.
