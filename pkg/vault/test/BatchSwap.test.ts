@@ -616,10 +616,11 @@ describe('BatchSwap', function () {
     });
 
     // TODO: this requires #246 to be solved
-    context.skip('exitswaps (remove liquidity step)', () => {
+    context.only('exitswaps (remove liquidity step)', () => {
+      // TODO: test first, intermediate, and end steps.
       context('single path - intermediate remove liquidity step', () => {
         sharedBeforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokenIn = poolA;
           tokenOut = tokens.get(2);
 
           totalAmountIn = pathExactAmountIn; // 1 path
@@ -645,9 +646,8 @@ describe('BatchSwap', function () {
 
           paths = [
             {
-              tokenIn: token0,
+              tokenIn: poolA,
               steps: [
-                { pool: poolA, tokenOut: poolA },
                 { pool: poolA, tokenOut: token1 },
                 { pool: poolB, tokenOut: token2 },
               ],
@@ -659,10 +659,10 @@ describe('BatchSwap', function () {
           setUp();
         });
 
-        itTestsBatchSwap();
+        itTestsBatchSwap(false, true);
       });
 
-      context('single path - final remove liquidity step', () => {
+      context.only('single path - final remove liquidity step', () => {
         sharedBeforeEach(async () => {
           tokenIn = tokens.get(0);
           tokenOut = tokens.get(1);
@@ -1008,8 +1008,7 @@ describe('BatchSwap', function () {
       });
     });
 
-    // TODO: this requires #246 to be solved
-    context.skip('exitswaps (remove liquidity step)', () => {
+    context('exitswaps (remove liquidity step)', () => {
       context('single path - intermediate remove liquidity step', () => {
         sharedBeforeEach(async () => {
           tokenIn = tokens.get(0);

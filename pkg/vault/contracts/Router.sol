@@ -618,6 +618,17 @@ contract Router is IRouter, ReentrancyGuard {
                 SwapPathStep memory step = path.steps[j];
 
                 if (address(tokenIn) == step.pool) {
+                    // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
+                    // required amount when performing the operation. These tokens might be the output of a previous
+                    // step, in which case the user will have a BPT credit.
+                    if (IVault(_vault).getTokenDelta(address(this), tokenIn) < 0) {
+                        _vault.wire(IERC20(step.pool), params.sender, exactAmountIn);
+                    }
+                    // BPT is burnt instantly, so we don't need to send it back later.
+                    if (_currentSwapTokenInAmounts[address(tokenIn)] > 0) {
+                        _currentSwapTokenInAmounts[address(tokenIn)] -= path.exactAmountIn;
+                    }
+
                     // Token in is BPT: remove liquidity - Single token exact in
                     // minAmountOut cannot be 0 in this case, as that would send an array of 0s to the Vault, which
                     // wouldn't know which token to use.
@@ -776,6 +787,13 @@ contract Router is IRouter, ReentrancyGuard {
                 }
 
                 if (address(tokenIn) == step.pool) {
+                    // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
+                    // required amount when performing the operation. These tokens might be the output of a previous
+                    // step, in which case the user will have a BPT credit.
+                    if (IVault(_vault).getTokenDelta(address(this), IERC20(step.pool)) < 0) {
+                        _vault.wire(IERC20(step.pool), params.sender, maxAmountIn);
+                    }
+
                     // Token in is BPT: remove liquidity - Single token exact out
                     (uint256[] memory exactAmountsOut, ) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
@@ -795,8 +813,8 @@ contract Router is IRouter, ReentrancyGuard {
                     );
 
                     if (isLastStep) {
+                        // BPT is burnt instantly, so we don't need to send it to the Vault during settlement.
                         pathAmountsIn[i] = bptAmountIn;
-                        _currentSwapTokenInAmounts[address(tokenIn)] += bptAmountIn;
                     } else {
                         // Output for the step (j - 1) is the input of step (j).
                         exactAmountOut = bptAmountIn;
