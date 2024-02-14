@@ -621,7 +621,7 @@ contract Router is IRouter, ReentrancyGuard {
                     // Token in is BPT: remove liquidity - Single token exact in
                     // minAmountOut cannot be 0 in this case, as that would send an array of 0s to the Vault, which
                     // wouldn't know which token to use.
-                    (uint256[] memory amountsOut, uint256 index) = _getSingleInputArrayAndTokenIndex(
+                    (uint256[] memory amountsOut, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
                         step.tokenOut,
                         minAmountOut == 0 ? 1 : minAmountOut
@@ -642,12 +642,12 @@ contract Router is IRouter, ReentrancyGuard {
                     if (isLastStep) {
                         // The amount out for the last step of the path should be recorded for the return value, and the
                         // amount for the token should be sent back to the sender later on.
-                        pathAmountsOut[i] = amountsOut[index];
+                        pathAmountsOut[i] = amountsOut[tokenIndex];
                         _currentSwapTokensOut.add(address(step.tokenOut));
-                        _currentSwapTokenOutAmounts[address(step.tokenOut)] += amountsOut[index];
+                        _currentSwapTokenOutAmounts[address(step.tokenOut)] += amountsOut[tokenIndex];
                     } else {
                         // Input for the next step is output of current step.
-                        exactAmountIn = amountsOut[index];
+                        exactAmountIn = amountsOut[tokenIndex];
                         // The token in for the next step is the token out of the current step.
                         tokenIn = step.tokenOut;
                     }
@@ -803,7 +803,7 @@ contract Router is IRouter, ReentrancyGuard {
                     }
                 } else if (address(step.tokenOut) == step.pool) {
                     // Token out is BPT: add liquidity - Single token exact out
-                    (uint256[] memory amountsIn, uint256 index) = _getSingleInputArrayAndTokenIndex(
+                    (uint256[] memory amountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
                         tokenIn,
                         maxAmountIn
@@ -823,10 +823,10 @@ contract Router is IRouter, ReentrancyGuard {
 
                     if (isLastStep) {
                         // The amount out for the last step of the path should be recorded for the return value.
-                        pathAmountsIn[i] = amountsIn[index];
-                        _currentSwapTokenInAmounts[address(tokenIn)] += amountsIn[index];
+                        pathAmountsIn[i] = amountsIn[tokenIndex];
+                        _currentSwapTokenInAmounts[address(tokenIn)] += amountsIn[tokenIndex];
                     } else {
-                        exactAmountOut = amountsIn[index];
+                        exactAmountOut = amountsIn[tokenIndex];
                     }
                     // The last step is the first one in the order of operations.
                     // TODO: We could skip retrieve on the first step and tweak how we settle the output token.
