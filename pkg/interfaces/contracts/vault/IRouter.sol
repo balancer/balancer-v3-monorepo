@@ -103,7 +103,7 @@ interface IRouter {
      * @notice Adds with a single token to a pool, receiving an exact amount of pool tokens.
      * @param pool Address of the liquidity pool
      * @param tokenIn Token used to add liquidity
-     * @param maxAmountIn Max amount tokens to be added
+     * @param maxAmountIn Maximum amount of tokens to be added
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for adding liquidity
@@ -120,8 +120,10 @@ interface IRouter {
 
     /**
      * @notice Adds liquidity to a pool with a custom request.
+     * @dev The given maximum and minimum amounts given may be interpreted as exact depending on the pool type.
+     * In any case the caller can expect them to be hard boundaries for the request.
      * @param pool Address of the liquidity pool
-     * @param amountsInScaled18 Amounts of tokens to be added, sorted in token registration order
+     * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for adding liquidity
@@ -131,7 +133,7 @@ interface IRouter {
      */
     function addLiquidityCustom(
         address pool,
-        uint256[] memory amountsInScaled18,
+        uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         bool wethIsEth,
         bytes memory userData
@@ -221,6 +223,8 @@ interface IRouter {
 
     /**
      * @notice Removes liquidity from a pool with a custom request.
+     * @dev The given maximum and minimum amounts given may be interpreted as exact depending on the pool type.
+     * In any case the caller can expect them to be hard boundaries for the request.
      * @param pool Address of the liquidity pool
      * @param maxBptAmountIn Maximum amount of pool tokens provided
      * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
@@ -341,7 +345,7 @@ interface IRouter {
      * @param tokenIn Token to be swapped from
      * @param tokenOut Token to be swapped to
      * @param exactAmountOut Exact amounts of input tokens to receive
-     * @param maxAmountIn Max amount tokens to be sent
+     * @param maxAmountIn Maximum amount of tokens to be sent
      * @param deadline Deadline for the swap
      * @param userData Additional (optional) data required for the swap
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
@@ -411,7 +415,7 @@ interface IRouter {
      * @notice Queries an `addLiquiditySingleTokenExactOut` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param tokenIn Token used to add liquidity
-     * @param maxAmountIn Max amount tokens to be added
+     * @param maxAmountIn Maximum amount of tokens to be added
      * @param exactBptAmountOut Expected exact amount of pool tokens to receive
      * @param userData Additional (optional) data required for the query
      * @return amountIn Expected amount of tokens to add
@@ -427,7 +431,7 @@ interface IRouter {
     /**
      * @notice Adds liquidity to a pool with a custom request.
      * @param pool Address of the liquidity pool
-     * @param amountsInScaled18 Amounts of tokens to be added, sorted in token registration order
+     * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Expected minimum amount of pool tokens to receive
      * @param userData Additional (optional) data required for the query
      * @return amountsIn Expected amounts of tokens to add, sorted in token registration order
@@ -436,7 +440,7 @@ interface IRouter {
      */
     function queryAddLiquidityCustom(
         address pool,
-        uint256[] memory amountsInScaled18,
+        uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);

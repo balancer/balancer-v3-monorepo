@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.4;
 
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -243,6 +244,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     function _getPoolTokens(address pool) internal view returns (IERC20[] memory tokens) {
         // Retrieve the mapping of tokens and their balances for the specified pool.
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(IERC20 => TokenConfig) storage poolTokenConfig = _poolTokenConfig[pool];
 
         // Initialize arrays to store tokens based on the number of tokens in the pool.
         tokens = new IERC20[](poolTokenBalances.length());
@@ -251,7 +253,17 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
-            (tokens[i], ) = poolTokenBalances.unchecked_at(i);
+            (IERC20 token, ) = poolTokenBalances.unchecked_at(i);
+
+            // Translate tokens of type ERC4626 to base tokens (except for buffer pools)
+            if (
+                poolTokenConfig[token].tokenType == TokenType.ERC4626 &&
+                _wrappedTokenBuffers[IERC4626(address(token))] != pool
+            ) {
+                tokens[i] = _wrappedTokenBufferBaseTokens[token];
+            } else {
+                tokens[i] = token;
+            }
         }
     }
 
@@ -308,8 +320,10 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                 tokenRates[i] = FixedPoint.ONE;
             } else if (tokenType == TokenType.WITH_RATE) {
                 tokenRates[i] = poolTokenConfig[token].rateProvider.getRate();
+            } else if (tokenType == TokenType.ERC4626) {
+                // solhint-disable-previous-line no-empty-blocks
+                // TODO: implement ERC4626 in later phases.
             } else {
-                // TODO implement ERC4626 at a later stage.
                 revert InvalidTokenConfiguration();
             }
         }
@@ -353,8 +367,12 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                 poolData.tokenRates[i] = FixedPoint.ONE;
             } else if (tokenType == TokenType.WITH_RATE) {
                 poolData.tokenRates[i] = poolData.tokenConfig[i].rateProvider.getRate();
+            } else if (tokenType == TokenType.ERC4626) {
+                // Get rate from associated buffer
+                poolData.tokenRates[i] = IRateProvider(
+                    _wrappedTokenBuffers[IERC4626(address(poolData.tokenConfig[i].token))]
+                ).getRate();
             } else {
-                // TODO implement ERC4626 at a later stage. Not coming from user input, so can only be these three.
                 revert InvalidTokenConfiguration();
             }
 

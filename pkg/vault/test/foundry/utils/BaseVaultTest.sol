@@ -99,9 +99,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
             IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
-            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-            new IRateProvider[](2),
-            new bool[](2),
+            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             true,
             365 days,
             address(0)
