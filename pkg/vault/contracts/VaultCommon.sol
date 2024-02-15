@@ -7,22 +7,26 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultStorage } from "./VaultStorage.sol";
 import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
+import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 
 /**
  * @dev Storage layout for Vault. This contract has no code except for common utilities in the inheritance chain
  * that require storage to work and will be required in both the main Vault and its extension.
  */
 abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, ReentrancyGuard, ERC20MultiToken {
-    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
+    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using PackedTokenBalance for bytes32;
     using ScalingHelpers for *;
     using SafeCast for *;
     using FixedPoint for *;
@@ -219,32 +223,26 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     *******************************************************************************/
 
     /**
-     * @dev Sets the balances of a Pool's tokens to `newBalances`.
+     * @dev Sets the raw balances of a Pool's tokens to the current values in poolData.balancesRaw, then also
+     * computes and stores the last live balances in the same slot.
      *
-     * WARNING: this assumes `newBalances` has the same length and order as the Pool's tokens.
+     * NB: Mutates poolData so that the live balances match the stored values.
      */
-    function _setPoolBalances(address pool, uint256[] memory newBalances) internal {
-        EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolTokenBalances[pool];
+    function _setPoolBalances(address pool, PoolData memory poolData) internal {
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
 
-        for (uint256 i = 0; i < newBalances.length; ++i) {
+        poolData.balancesLiveScaled18 = poolData.balancesRaw.copyToScaled18ApplyRateRoundDownArray(
+            poolData.decimalScalingFactors,
+            poolData.tokenRates
+        );
+
+        for (uint256 i = 0; i < poolData.balancesRaw.length; ++i) {
             // Since we assume all newBalances are properly ordered, we can simply use `unchecked_setAt`
             // to avoid one less storage read per token.
-            poolBalances.unchecked_setAt(i, newBalances[i]);
-        }
-    }
-
-    /**
-     * @dev Sets the live balances of a Pool's tokens to `newBalances`.
-     *
-     * WARNING: this assumes `newBalances` has the same length and order as the Pool's tokens.
-     */
-    function _setLastLivePoolBalances(address pool, uint256[] memory newBalances) internal {
-        EnumerableMap.IERC20ToUint256Map storage liveBalances = _lastLivePoolTokenBalances[pool];
-
-        for (uint256 i = 0; i < newBalances.length; ++i) {
-            // Since we assume all newBalances are properly ordered, we can simply use `unchecked_setAt`
-            // to avoid one less storage read per token.
-            liveBalances.unchecked_setAt(i, newBalances[i]);
+            poolBalances.unchecked_setAt(
+                i,
+                PackedTokenBalance.toPackedBalance(poolData.balancesRaw[i], poolData.balancesLiveScaled18[i])
+            );
         }
     }
 
@@ -258,7 +256,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _getPoolTokens(address pool) internal view returns (IERC20[] memory tokens) {
         // Retrieve the mapping of tokens and their balances for the specified pool.
-        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
         mapping(IERC20 => TokenConfig) storage poolTokenConfig = _poolTokenConfig[pool];
 
         // Initialize arrays to store tokens based on the number of tokens in the pool.
@@ -294,7 +292,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             PoolConfig memory poolConfig
         )
     {
-        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
         mapping(IERC20 => TokenConfig) storage poolTokenConfig = _poolTokenConfig[pool];
 
         uint256 numTokens = poolTokenBalances.length();
@@ -303,127 +301,20 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         tokenConfig = new TokenConfig[](numTokens);
         balancesRaw = new uint256[](numTokens);
         decimalScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolConfig, numTokens);
+        bytes32 packedBalance;
         IERC20 token;
 
         for (uint256 i = 0; i < numTokens; i++) {
-            (token, balancesRaw[i]) = poolTokenBalances.unchecked_at(i);
+            (token, packedBalance) = poolTokenBalances.unchecked_at(i);
+            balancesRaw[i] = packedBalance.getRawBalance();
             tokenConfig[i] = poolTokenConfig[token];
         }
     }
 
     /**
-     * @dev Called by the external `getPoolTokenRates` function, and internally during pool operations,
-     * this will make external calls for tokens that have rate providers.
-     */
-    function _getPoolTokenRates(address pool) internal view returns (uint256[] memory tokenRates) {
-        // Retrieve the mapping of tokens for the specified pool.
-        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
-        mapping(IERC20 => TokenConfig) storage poolTokenConfig = _poolTokenConfig[pool];
-
-        // Initialize arrays to store tokens based on the number of tokens in the pool.
-        tokenRates = new uint256[](poolTokenBalances.length());
-        IERC20 token;
-
-        for (uint256 i = 0; i < tokenRates.length; ++i) {
-            // Because the iteration is bounded by `tokenRates.length`, which matches the EnumerableMap's
-            // length, we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
-            // storage reads.
-            (token, ) = poolTokenBalances.unchecked_at(i);
-            TokenType tokenType = poolTokenConfig[token].tokenType;
-
-            if (tokenType == TokenType.STANDARD) {
-                tokenRates[i] = FixedPoint.ONE;
-            } else if (tokenType == TokenType.WITH_RATE) {
-                tokenRates[i] = poolTokenConfig[token].rateProvider.getRate();
-            } else if (tokenType == TokenType.ERC4626) {
-                // solhint-disable-previous-line no-empty-blocks
-                // TODO: implement ERC4626 in later phases.
-            } else {
-                revert InvalidTokenConfiguration();
-            }
-        }
-    }
-
-    /**
-     * @dev Get poolData and compute protocol yield fees due, without changing any state.
-     */
-    function _getPoolDataAndYieldFees(
-        address pool,
-        Rounding roundingDirection
-    ) internal view returns (PoolData memory poolData, uint256[] memory dueProtocolYieldFees) {
-        (
-            poolData.tokenConfig,
-            poolData.balancesRaw,
-            poolData.decimalScalingFactors,
-            poolData.poolConfig
-        ) = _getPoolTokenInfo(pool);
-
-        EnumerableMap.IERC20ToUint256Map storage lastLiveBalances = _lastLivePoolTokenBalances[pool];
-        uint256 numTokens = poolData.tokenConfig.length;
-
-        dueProtocolYieldFees = new uint256[](numTokens);
-
-        // Initialize arrays to store balances and rates based on the number of tokens in the pool.
-        // Will be read raw, then upscaled and rounded as directed.
-        poolData.balancesLiveScaled18 = new uint256[](numTokens);
-        poolData.tokenRates = new uint256[](numTokens);
-        uint256 yieldFeePercentage = _protocolYieldFeePercentage;
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            TokenType tokenType = poolData.tokenConfig[i].tokenType;
-
-            // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
-            // ERC4626 tokens always pay yield fees; WITH_RATE tokens pay unless exempt.
-            bool subjectToYieldProtocolFees = poolData.poolConfig.isPoolInitialized &&
-                (tokenType == TokenType.ERC4626 ||
-                    (tokenType == TokenType.WITH_RATE && poolData.tokenConfig[i].yieldFeeExempt == false)) &&
-                poolData.poolConfig.isPoolInRecoveryMode == false;
-
-            if (tokenType == TokenType.STANDARD) {
-                poolData.tokenRates[i] = FixedPoint.ONE;
-            } else if (tokenType == TokenType.WITH_RATE) {
-                poolData.tokenRates[i] = poolData.tokenConfig[i].rateProvider.getRate();
-            } else if (tokenType == TokenType.ERC4626) {
-                // Get rate from associated buffer
-                poolData.tokenRates[i] = IRateProvider(
-                    _wrappedTokenBuffers[IERC4626(address(poolData.tokenConfig[i].token))]
-                ).getRate();
-            } else {
-                revert InvalidTokenConfiguration();
-            }
-
-            // This sets the live balance from the raw balance, applying scaling and rates,
-            // and respecting the rounding direction. Charging a yield fee changes the raw
-            // balance, in which case the safest and most numerically precise way to adjust
-            // the live balance is to simply repeat the scaling (hence the second call below).
-            _setLiveBalanceFromRawForToken(poolData, roundingDirection, i);
-
-            // Check for yield protocol fees after initialization
-            if (subjectToYieldProtocolFees) {
-                if (yieldFeePercentage > 0) {
-                    uint256 yieldFeeAmountRaw = _computeYieldProtocolFeesDue(
-                        poolData,
-                        lastLiveBalances.unchecked_valueAt(i),
-                        i,
-                        yieldFeePercentage
-                    );
-
-                    if (yieldFeeAmountRaw > 0) {
-                        dueProtocolYieldFees[i] = yieldFeeAmountRaw;
-
-                        // Adjust raw and live balances.
-                        poolData.balancesRaw[i] -= yieldFeeAmountRaw;
-                        _setLiveBalanceFromRawForToken(poolData, roundingDirection, i);
-                    }
-                }
-            }
-        }
-    }
-
-    /**
      * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
-     * This function modifies protocol fees and last live balance storage. Since it modifies storage and makes
-     * external calls, it must be nonReentrant.
+     * This function modifies protocol fees and balance storage. Since it modifies storage and makes external
+     * calls, it must be nonReentrant.
      */
     function _computePoolDataUpdatingBalancesAndFees(
         address pool,
@@ -432,11 +323,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         uint256[] memory dueProtocolYieldFees;
 
         (poolData, dueProtocolYieldFees) = _getPoolDataAndYieldFees(pool, roundingDirection);
-
-        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
-        EnumerableMap.IERC20ToUint256Map storage lastLiveBalances = _lastLivePoolTokenBalances[pool];
-
-        uint256 numTokens = poolData.tokenConfig.length;
+        uint256 numTokens = dueProtocolYieldFees.length;
 
         for (uint256 i = 0; i < numTokens; ++i) {
             IERC20 token = poolData.tokenConfig[i].token;
@@ -446,12 +333,101 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                 // Charge protocol fee.
                 _protocolFees[token] += yieldFeeAmountRaw;
                 emit ProtocolYieldFeeCharged(pool, address(token), yieldFeeAmountRaw);
-
-                // Adjust raw balance after yield fee applied.
-                poolTokenBalances.unchecked_setAt(i, poolData.balancesRaw[i]);
             }
-            // Update last live balance
-            lastLiveBalances.unchecked_setAt(i, poolData.balancesLiveScaled18[i]);
+        }
+
+        // Update raw and last live pool balances, as computed by `_getPoolDataAndYieldFees`
+        _setPoolBalances(pool, poolData);
+    }
+
+    /**
+     * @dev Get poolData and compute protocol yield fees due, without changing any state.
+     * Returns poolData with both raw and live balances updated to reflect the fees.
+     */
+    function _getPoolDataAndYieldFees(
+        address pool,
+        Rounding roundingDirection
+    ) internal view returns (PoolData memory poolData, uint256[] memory dueProtocolYieldFees) {
+        // Initialize poolData with base information for subsequent calculations.
+        (
+            poolData.tokenConfig,
+            poolData.balancesRaw,
+            poolData.decimalScalingFactors,
+            poolData.poolConfig
+        ) = _getPoolTokenInfo(pool);
+
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
+        uint256 numTokens = poolBalances.length();
+
+        dueProtocolYieldFees = new uint256[](numTokens);
+
+        // Initialize arrays to store balances and rates based on the number of tokens in the pool.
+        // Will be read raw, then upscaled and rounded as directed.
+        poolData.balancesLiveScaled18 = new uint256[](numTokens);
+        uint256 yieldFeePercentage = _protocolYieldFeePercentage;
+
+        // Fill in the tokenRates inside poolData (needed for `_setLiveBalanceFromRawForToken`).
+        _setPoolTokenRates(poolData);
+
+        for (uint256 i = 0; i < numTokens; ++i) {
+            TokenType tokenType = poolData.tokenConfig[i].tokenType;
+
+            // This sets the live balance in poolData from the raw balance, applying scaling and rates,
+            // and respecting the rounding direction. Charging a yield fee changes the raw
+            // balance, in which case the safest and most numerically precise way to adjust
+            // the live balance is to simply repeat the scaling (hence the second call below).
+            _setLiveBalanceFromRawForToken(poolData, roundingDirection, i);
+
+            // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
+            // ERC4626 tokens always pay yield fees; WITH_RATE tokens pay unless exempt.
+            if (
+                poolData.poolConfig.isPoolInitialized &&
+                (tokenType == TokenType.ERC4626 ||
+                    (tokenType == TokenType.WITH_RATE && poolData.tokenConfig[i].yieldFeeExempt == false)) &&
+                yieldFeePercentage > 0 &&
+                poolData.poolConfig.isPoolInRecoveryMode == false
+            ) {
+                uint256 yieldFeeAmountRaw = _computeYieldProtocolFeesDue(
+                    poolData,
+                    poolBalances.unchecked_valueAt(i).getLastLiveBalanceScaled18(),
+                    i,
+                    yieldFeePercentage
+                );
+
+                if (yieldFeeAmountRaw > 0) {
+                    dueProtocolYieldFees[i] = yieldFeeAmountRaw;
+
+                    // Adjust raw and live balances.
+                    poolData.balancesRaw[i] -= yieldFeeAmountRaw;
+                    _setLiveBalanceFromRawForToken(poolData, roundingDirection, i);
+                }
+            }
+        }
+    }
+
+    /**
+     * @dev Mutates poolData to add token rates. Assumes tokenConfig is already set.
+     */
+    function _setPoolTokenRates(PoolData memory poolData) internal view {
+        uint256 numTokens = poolData.tokenConfig.length;
+
+        // Initialize arrays to store tokens based on the number of tokens in the pool.
+        poolData.tokenRates = new uint256[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; ++i) {
+            TokenType tokenType = poolData.tokenConfig[i].tokenType;
+
+            if (tokenType == TokenType.STANDARD) {
+                poolData.tokenRates[i] = FixedPoint.ONE;
+            } else if (tokenType == TokenType.WITH_RATE) {
+                poolData.tokenRates[i] = poolData.tokenConfig[i].rateProvider.getRate();
+            } else if (tokenType == TokenType.ERC4626) {
+                poolData.tokenRates[i] = IRateProvider(
+                    _wrappedTokenBuffers[IERC4626(address(poolData.tokenConfig[i].token))]
+                ).getRate();
+            } else {
+                revert InvalidTokenConfiguration();
+            }
         }
     }
 
@@ -482,8 +458,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
-     * @dev Sets live balances in pool data, scaling raw balances by both decimal and token rates,
-     * and rounding the result in the given direction.
+     * @dev Sets live balances in poolData, scaling raw balances by both decimal and token rates,
+     * and rounding the result in the given direction. Assumes raw balances, scaling factors, and rates
+     * are already present.
      */
     function _setLiveBalanceFromRawForToken(
         PoolData memory poolData,

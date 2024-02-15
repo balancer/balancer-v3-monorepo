@@ -28,10 +28,12 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
+import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 
 contract Vault is IVaultMain, VaultCommon, Proxy {
-    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
+    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using PackedTokenBalance for bytes32;
     using InputHelpers for uint256;
     using FixedPoint for *;
     using ArrayHelpers for uint256[];
@@ -209,7 +211,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
-        EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolTokenBalances[params.pool];
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[params.pool];
         SwapLocals memory vars;
 
         // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value for non-existence.
@@ -270,14 +272,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         // Non-reentrant call that updates accounting.
-        (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData, poolBalances);
+        (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData);
 
         if (poolData.poolConfig.hooks.shouldCallAfterSwap) {
             // Adjust balances for the AfterSwap hook.
             (uint256 amountInScaled18, uint256 amountOutScaled18) = params.kind == SwapKind.EXACT_IN
                 ? (vars.amountGivenScaled18, vars.amountCalculatedScaled18)
                 : (vars.amountCalculatedScaled18, vars.amountGivenScaled18);
-
             if (
                 IPoolHooks(params.pool).onAfterSwap(
                     IPoolHooks.AfterSwapParams({
@@ -286,8 +287,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                         tokenOut: params.tokenOut,
                         amountInScaled18: amountInScaled18,
                         amountOutScaled18: amountOutScaled18,
-                        tokenInBalanceScaled18: poolData.balancesLiveScaled18[vars.indexIn] + amountInScaled18,
-                        tokenOutBalanceScaled18: poolData.balancesLiveScaled18[vars.indexOut] - amountOutScaled18,
+                        tokenInBalanceScaled18: poolData.balancesLiveScaled18[vars.indexIn],
+                        tokenOutBalanceScaled18: poolData.balancesLiveScaled18[vars.indexOut],
                         sender: msg.sender,
                         userData: params.userData
                     }),
@@ -330,8 +331,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function _swap(
         SwapParams memory vaultSwapParams,
         SwapLocals memory vars,
-        PoolData memory poolData,
-        EnumerableMap.IERC20ToUint256Map storage poolBalances
+        PoolData memory poolData
     ) internal nonReentrant returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         // Add swap fee to the amountGiven to account for the fee taken in EXACT_OUT swap on tokenOut
         // Perform the swap request hook and compute the new balances for 'token in' and 'token out' after the swap
@@ -396,30 +396,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
         }
 
-        // Use `unchecked_setAt` to save storage reads.
-        uint256 newBalanceInRaw = vars.tokenInBalance + amountIn;
-        uint256 newBalanceOutRaw = vars.tokenOutBalance - amountOut - vars.protocolSwapFeeAmountRaw;
+        poolData.balancesRaw[vars.indexIn] = vars.tokenInBalance + amountIn;
+        poolData.balancesRaw[vars.indexOut] = vars.tokenOutBalance - amountOut - vars.protocolSwapFeeAmountRaw;
 
-        poolBalances.unchecked_setAt(vars.indexIn, newBalanceInRaw);
-        poolBalances.unchecked_setAt(vars.indexOut, newBalanceOutRaw);
-
-        // Update lastLiveBalances
-        EnumerableMap.IERC20ToUint256Map storage lastLiveBalances = _lastLivePoolTokenBalances[vaultSwapParams.pool];
-
-        lastLiveBalances.unchecked_setAt(
-            vars.indexIn,
-            newBalanceInRaw.toScaled18ApplyRateRoundDown(
-                poolData.decimalScalingFactors[vars.indexIn],
-                poolData.tokenRates[vars.indexIn]
-            )
-        );
-        lastLiveBalances.unchecked_setAt(
-            vars.indexOut,
-            newBalanceOutRaw.toScaled18ApplyRateRoundDown(
-                poolData.decimalScalingFactors[vars.indexOut],
-                poolData.tokenRates[vars.indexOut]
-            )
-        );
+        // Set both raw and last live balances.
+        _setPoolBalances(vaultSwapParams.pool, poolData);
 
         // Account amountIn of tokenIn
         _takeDebt(vaultSwapParams.tokenIn, amountIn, msg.sender);
@@ -466,7 +447,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Retrieve the mapping of tokens and their balances for the specified pool.
         // poolData already contains rawBalances, but they could be stale, so fetch from the Vault.
         // Likewise, the rates could also have changed.
-        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
         mapping(IERC20 => TokenConfig) storage poolTokenConfig = _poolTokenConfig[pool];
         uint256 numTokens = poolTokenBalances.length();
         uint256 balanceRaw;
@@ -476,8 +457,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
-            (token, balanceRaw) = poolTokenBalances.unchecked_at(i);
+            bytes32 packedBalances;
+
+            (token, packedBalances) = poolTokenBalances.unchecked_at(i);
             TokenType tokenType = poolTokenConfig[token].tokenType;
+            balanceRaw = packedBalances.getRawBalance();
 
             if (tokenType == TokenType.STANDARD) {
                 poolData.tokenRates[i] = FixedPoint.ONE;
@@ -674,13 +658,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             amountsInRaw[i] = amountInRaw;
         }
 
-        // Store the new pool balances.
-        _setPoolBalances(params.pool, poolData.balancesRaw);
-        uint256[] memory newScaled18Balances = poolData.balancesRaw.copyToScaled18ApplyRateRoundDownArray(
-            poolData.decimalScalingFactors,
-            poolData.tokenRates
-        );
-        _setLastLivePoolBalances(params.pool, newScaled18Balances);
+        // Store the new raw and last live pool balances.
+        _setPoolBalances(params.pool, poolData);
 
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
@@ -773,18 +752,20 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         returns (uint256[] memory amountsOutRaw)
     {
         // Retrieve the mapping of tokens and their balances for the specified pool.
-        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
         uint256 numTokens = poolTokenBalances.length();
 
         // Initialize arrays to store tokens and balances based on the number of tokens in the pool.
         IERC20[] memory tokens = new IERC20[](numTokens);
         uint256[] memory balancesRaw = new uint256[](numTokens);
+        bytes32 packedBalances;
 
         for (uint256 i = 0; i < numTokens; ++i) {
             // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
-            (tokens[i], balancesRaw[i]) = poolTokenBalances.unchecked_at(i);
+            (tokens[i], packedBalances) = poolTokenBalances.unchecked_at(i);
+            balancesRaw[i] = packedBalances.getRawBalance();
         }
 
         amountsOutRaw = BasePoolMath.computeProportionalAmountsOut(balancesRaw, _totalSupply(pool), exactBptAmountIn);
@@ -900,11 +881,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // Cannot do this in `_removeLiquidityUpdateAccounting`, as it is also called in recovery mode,
         // where we won't have the rates.
-        uint256[] memory newScaled18Balances = poolData.balancesRaw.copyToScaled18ApplyRateRoundDownArray(
-            poolData.decimalScalingFactors,
-            poolData.tokenRates
-        );
-        _setLastLivePoolBalances(params.pool, newScaled18Balances);
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[params.pool];
+
+        for (uint256 i = 0; i < numTokens; ++i) {
+            bytes32 packedBalances = poolBalances.unchecked_valueAt(i);
+            poolBalances.unchecked_setAt(
+                i,
+                packedBalances.setLastLiveBalanceScaled18(poolData.balancesLiveScaled18[i])
+            );
+        }
     }
 
     /**
@@ -925,16 +910,26 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 bptAmountIn,
         uint256[] memory amountsOutRaw
     ) internal {
-        for (uint256 i = 0; i < tokens.length; ++i) {
+        uint256 numTokens = tokens.length;
+
+        for (uint256 i = 0; i < numTokens; ++i) {
             // Credit token[i] for amountOut
             _supplyCredit(tokens[i], amountsOutRaw[i], msg.sender);
 
-            // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
+            // Compute the new Pool balances. A Pool's token balance always decreases after an exit
+            // (potentially by 0).
             balancesRaw[i] -= amountsOutRaw[i];
         }
 
-        // Store the new pool balances.
-        _setPoolBalances(pool, balancesRaw);
+        // Store the new pool balances - raw only, as this is also called in RecoveryMode, where we don't have rates.
+        // In Recovery Mode, raw and last live balances will get out of sync. This is corrected when the pool is taken
+        // out of Recovery Mode.
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
+
+        for (uint256 i = 0; i < numTokens; ++i) {
+            bytes32 packedBalances = poolBalances.unchecked_valueAt(i);
+            poolBalances.unchecked_setAt(i, packedBalances.setRawBalance(balancesRaw[i]));
+        }
 
         // Trusted routers use Vault's allowances, which are infinite anyways for pool tokens.
         if (!_isTrustedRouter(msg.sender)) {
@@ -980,7 +975,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         address pool,
         IERC20 token
     ) external view withRegisteredPool(pool) returns (uint256, uint256) {
-        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
         uint256 tokenCount = poolTokenBalances.length();
         // unchecked indexOf returns index + 1, or 0 if token is not present.
         uint256 index = poolTokenBalances.unchecked_indexOf(token);

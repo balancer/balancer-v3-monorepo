@@ -26,6 +26,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
+import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 
 /**
  * @dev Bytecode extension for Vault.
@@ -40,7 +41,7 @@ import { VaultCommon } from "./VaultCommon.sol";
 contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     using Address for *;
     using ArrayHelpers for uint256[];
-    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
+    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
     using SafeERC20 for IERC20;
@@ -200,7 +201,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         }
 
         // Retrieve or create the pool's token balances mapping.
-        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
         uint8[] memory tokenDecimalDiffs = new uint8[](tokenConfig.length);
 
         for (uint256 i = 0; i < tokenConfig.length; ++i) {
@@ -215,10 +216,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             // Register the token with an initial balance of zero.
             // Ensure the token isn't already registered for the pool.
             // Note: EnumerableMaps require an explicit initial value when creating a key-value pair.
-            if (poolTokenBalances.set(token, 0) == false) {
+            if (poolTokenBalances.set(token, bytes32(0)) == false) {
                 revert TokenAlreadyRegistered(token);
             }
-            _lastLivePoolTokenBalances[pool].set(token, 0);
 
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
             _poolTokenConfig[pool][token] = tokenData;
@@ -322,6 +322,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         uint256[] memory exactAmountsInScaled18,
         uint256 minBptAmountOut
     ) internal nonReentrant returns (uint256 bptAmountOut) {
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
+
         for (uint256 i = 0; i < poolData.tokenConfig.length; ++i) {
             IERC20 actualToken = poolData.tokenConfig[i].token;
 
@@ -332,12 +334,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
 
             // Debit of token[i] for amountIn
             _takeDebt(actualToken, exactAmountsIn[i], msg.sender);
-        }
 
-        // Store the new Pool balances.
-        _setPoolBalances(pool, exactAmountsIn);
-        // Initialize live balances, incorporating the current rate.
-        _setLastLivePoolBalances(pool, exactAmountsInScaled18);
+            // Store the new Pool balances (and initial last live balances).
+            poolBalances.unchecked_setAt(
+                i,
+                PackedTokenBalance.toPackedBalance(exactAmountsIn[i], exactAmountsInScaled18[i])
+            );
+        }
 
         emit PoolBalanceChanged(pool, to, tokens, exactAmountsIn.unsafeCastToInt256(true));
 
@@ -422,7 +425,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     function getPoolTokenRates(
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (uint256[] memory) {
-        return _getPoolTokenRates(pool);
+        return _getPoolData(pool).tokenRates;
     }
 
     /*******************************************************************************
@@ -715,16 +718,22 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         _poolConfig[pool] = config.fromPoolConfig();
 
         if (recoveryMode == false) {
-            // Update last live balances if we're re-enabling normal operation
-            (, uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors, ) = _getPoolTokenInfo(pool);
-
-            _setLastLivePoolBalances(
-                pool,
-                balancesRaw.copyToScaled18ApplyRateRoundDownArray(decimalScalingFactors, _getPoolTokenRates(pool))
-            );
+            _setPoolBalances(pool, _getPoolData(pool));
         }
 
         emit PoolRecoveryModeStateChanged(pool, recoveryMode);
+    }
+
+    /// @dev Factored out as it is reused.
+    function _getPoolData(address pool) internal view returns (PoolData memory poolData) {
+        (
+            poolData.tokenConfig,
+            poolData.balancesRaw,
+            poolData.decimalScalingFactors,
+            poolData.poolConfig
+        ) = _getPoolTokenInfo(pool);
+
+        _setPoolTokenRates(poolData);
     }
 
     /**
