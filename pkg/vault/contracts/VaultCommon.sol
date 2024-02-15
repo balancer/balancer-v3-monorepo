@@ -163,7 +163,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /*******************************************************************************
-                                    Vault Pausing
+                                     Pool Pausing
     *******************************************************************************/
 
     /// @dev Modifier to make a function callable only when the Vault and Pool are not paused.
@@ -333,32 +333,29 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
-     * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
-     * This function modifies protocol fees and balance storage. Since it modifies storage and makes external
-     * calls, it must be nonReentrant.
+     * @dev Mutates poolData to add token rates. Assumes tokenConfig is already set.
      */
-    function _computePoolDataUpdatingBalancesAndFees(
-        address pool,
-        Rounding roundingDirection
-    ) internal nonReentrant returns (PoolData memory poolData) {
-        uint256[] memory dueProtocolYieldFees;
+    function _setPoolTokenRates(PoolData memory poolData) internal view {
+        uint256 numTokens = poolData.tokenConfig.length;
 
-        (poolData, dueProtocolYieldFees) = _getPoolDataAndYieldFees(pool, roundingDirection);
-        uint256 numTokens = dueProtocolYieldFees.length;
+        // Initialize arrays to store tokens based on the number of tokens in the pool.
+        poolData.tokenRates = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            IERC20 token = poolData.tokenConfig[i].token;
-            uint256 yieldFeeAmountRaw = dueProtocolYieldFees[i];
+            TokenType tokenType = poolData.tokenConfig[i].tokenType;
 
-            if (yieldFeeAmountRaw > 0) {
-                // Charge protocol fee.
-                _protocolFees[token] += yieldFeeAmountRaw;
-                emit ProtocolYieldFeeCharged(pool, address(token), yieldFeeAmountRaw);
+            if (tokenType == TokenType.STANDARD) {
+                poolData.tokenRates[i] = FixedPoint.ONE;
+            } else if (tokenType == TokenType.WITH_RATE) {
+                poolData.tokenRates[i] = poolData.tokenConfig[i].rateProvider.getRate();
+            } else if (tokenType == TokenType.ERC4626) {
+                poolData.tokenRates[i] = IRateProvider(
+                    _wrappedTokenBuffers[IERC4626(address(poolData.tokenConfig[i].token))]
+                ).getRate();
+            } else {
+                revert InvalidTokenConfiguration();
             }
         }
-
-        // Update raw and last live pool balances, as computed by `_getPoolDataAndYieldFees`
-        _setPoolBalances(pool, poolData);
     }
 
     /**
@@ -429,29 +426,32 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
-     * @dev Mutates poolData to add token rates. Assumes tokenConfig is already set.
+     * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
+     * This function modifies protocol fees and balance storage. Since it modifies storage and makes external
+     * calls, it must be nonReentrant.
      */
-    function _setPoolTokenRates(PoolData memory poolData) internal view {
-        uint256 numTokens = poolData.tokenConfig.length;
+    function _computePoolDataUpdatingBalancesAndFees(
+        address pool,
+        Rounding roundingDirection
+    ) internal nonReentrant returns (PoolData memory poolData) {
+        uint256[] memory dueProtocolYieldFees;
 
-        // Initialize arrays to store tokens based on the number of tokens in the pool.
-        poolData.tokenRates = new uint256[](numTokens);
+        (poolData, dueProtocolYieldFees) = _getPoolDataAndYieldFees(pool, roundingDirection);
+        uint256 numTokens = dueProtocolYieldFees.length;
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            TokenType tokenType = poolData.tokenConfig[i].tokenType;
+            IERC20 token = poolData.tokenConfig[i].token;
+            uint256 yieldFeeAmountRaw = dueProtocolYieldFees[i];
 
-            if (tokenType == TokenType.STANDARD) {
-                poolData.tokenRates[i] = FixedPoint.ONE;
-            } else if (tokenType == TokenType.WITH_RATE) {
-                poolData.tokenRates[i] = poolData.tokenConfig[i].rateProvider.getRate();
-            } else if (tokenType == TokenType.ERC4626) {
-                poolData.tokenRates[i] = IRateProvider(
-                    _wrappedTokenBuffers[IERC4626(address(poolData.tokenConfig[i].token))]
-                ).getRate();
-            } else {
-                revert InvalidTokenConfiguration();
+            if (yieldFeeAmountRaw > 0) {
+                // Charge protocol fee.
+                _protocolFees[token] += yieldFeeAmountRaw;
+                emit ProtocolYieldFeeCharged(pool, address(token), yieldFeeAmountRaw);
             }
         }
+
+        // Update raw and last live pool balances, as computed by `_getPoolDataAndYieldFees`
+        _setPoolBalances(pool, poolData);
     }
 
     function _computeYieldProtocolFeesDue(
