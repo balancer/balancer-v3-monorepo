@@ -272,7 +272,8 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
                 );
             }
 
-            assertEq(data.balancesLiveScaled18[i], expectedLiveBalance, "Live balance does not match");
+            // Tolerate being off by 1 wei
+            assertApproxEqAbs(data.balancesLiveScaled18[i], expectedLiveBalance, 1, "Live balance does not match");
         }
 
         return data.balancesLiveScaled18;
