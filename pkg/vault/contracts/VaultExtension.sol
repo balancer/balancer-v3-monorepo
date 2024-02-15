@@ -677,6 +677,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     }
 
     function _setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) internal virtual {
+        if (swapFeePercentage < _MIN_SWAP_FEE_PERCENTAGE) {
+            revert SwapFeePercentageTooLow();
+        }
         if (swapFeePercentage > _MAX_SWAP_FEE_PERCENTAGE) {
             revert SwapFeePercentageTooHigh();
         }

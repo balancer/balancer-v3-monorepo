@@ -29,14 +29,17 @@ contract VaultStorage {
     uint256 internal constant _MAX_TOKENS = 4;
 
     // Maximum protocol swap fee percentage. 1e18 corresponds to a 100% fee.
-    uint256 internal constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
+    uint256 internal constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 0.5e18; // 50%
 
     // Maximum protocol yield fee percentage.
     // TODO Optimize storage; could pack fees into one slot (potentially a single vaultConfig slot).
-    uint256 internal constant _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 20e16; // 20%
+    uint256 internal constant _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 0.2e18; // 20%
+
+    // Minimum pool swap fee percentage.
+    uint256 internal constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
 
     // Maximum pool swap fee percentage.
-    uint256 internal constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
+    uint256 internal constant _MAX_SWAP_FEE_PERCENTAGE = 0.1e18; // 10%
 
     // Code extension for Vault.
     IVaultExtension internal immutable _vaultExtension;
