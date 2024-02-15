@@ -28,20 +28,6 @@ contract VaultSwapTest is BaseVaultTest {
         noInitPool = PoolMock(createPool());
     }
 
-    /// Utils
-
-    function setSwapFeePercentage() internal {
-        authorizer.grantRole(vault.getActionId(IVaultExtension.setStaticSwapFeePercentage.selector), alice);
-        vm.prank(alice);
-        vault.setStaticSwapFeePercentage(address(pool), 1e16); // 1%
-    }
-
-    function setProtocolSwapFeePercentage() internal {
-        authorizer.grantRole(vault.getActionId(IVaultExtension.setProtocolSwapFeePercentage.selector), alice);
-        vm.prank(alice);
-        vault.setProtocolSwapFeePercentage(50e16); // %50
-    }
-
     /// Swap
 
     function testCannotSwapWhenPaused() public {
@@ -135,7 +121,7 @@ contract VaultSwapTest is BaseVaultTest {
     }
 
     function swapFeeExactIn() public returns (uint256 fee, uint256 protocolFee) {
-        setSwapFeePercentage();
+        setSwapFeePercentage(swapFeePercentage);
 
         vm.prank(alice);
         snapStart("vaultSwapFeeExactIn");
@@ -159,8 +145,8 @@ contract VaultSwapTest is BaseVaultTest {
     }
 
     function protocolSwapFeeExactIn() public returns (uint256 fee, uint256 protocolFee) {
-        setSwapFeePercentage();
-        setProtocolSwapFeePercentage();
+        setSwapFeePercentage(swapFeePercentage);
+        setProtocolSwapFeePercentage(protocolSwapFeePercentage);
 
         vm.prank(alice);
         snapStart("vaultProtocolSwapFeeExactIn");
@@ -184,7 +170,7 @@ contract VaultSwapTest is BaseVaultTest {
     }
 
     function swapFeeExactOut() public returns (uint256 fee, uint256 protocolFee) {
-        setSwapFeePercentage();
+        setSwapFeePercentage(swapFeePercentage);
 
         vm.prank(alice);
         router.swapExactOut(
@@ -206,8 +192,8 @@ contract VaultSwapTest is BaseVaultTest {
     }
 
     function protocolSwapFeeExactOut() public returns (uint256 fee, uint256 protocolFee) {
-        setSwapFeePercentage();
-        setProtocolSwapFeePercentage();
+        setSwapFeePercentage(swapFeePercentage);
+        setProtocolSwapFeePercentage(protocolSwapFeePercentage);
 
         vm.prank(alice);
         router.swapExactOut(
@@ -229,8 +215,8 @@ contract VaultSwapTest is BaseVaultTest {
     }
 
     function protocolSwapFeeAccumulation() public returns (uint256 fee, uint256 protocolFee) {
-        setSwapFeePercentage();
-        setProtocolSwapFeePercentage();
+        setSwapFeePercentage(swapFeePercentage);
+        setProtocolSwapFeePercentage(protocolSwapFeePercentage);
 
         vm.prank(alice);
         router.swapExactIn(
@@ -262,8 +248,8 @@ contract VaultSwapTest is BaseVaultTest {
     function testCollectProtocolFees() public {
         usdc.mint(bob, defaultAmount);
 
-        setSwapFeePercentage();
-        setProtocolSwapFeePercentage();
+        setSwapFeePercentage(swapFeePercentage);
+        setProtocolSwapFeePercentage(protocolSwapFeePercentage);
 
         vm.prank(bob);
         router.swapExactIn(
