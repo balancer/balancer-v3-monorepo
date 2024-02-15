@@ -88,13 +88,19 @@ contract ERC4626BufferPool is
         external
         view
         onlyVault
-        returns (uint256[] memory amountsInScaled18, uint256 bptAmountOut, bytes memory returnData)
+        returns (
+            uint256[] memory amountsInScaled18,
+            uint256 bptAmountOut,
+            uint256[] memory swapFeeAmountsScaled18,
+            bytes memory returnData
+        )
     {
         // This is a proportional join
         bptAmountOut = exactBptAmountOut;
         returnData = "";
 
         amountsInScaled18 = BasePoolMath.computeProportionalAmountsIn(balancesScaled18, bptAmountOut, totalSupply());
+        swapFeeAmountsScaled18 = new uint256[](balancesScaled18.length);
     }
 
     /// @inheritdoc BasePoolHooks
@@ -172,7 +178,7 @@ contract ERC4626BufferPool is
         uint256[] memory,
         uint256[] memory,
         bytes memory
-    ) external pure returns (uint256, uint256[] memory, bytes memory) {
+    ) external pure returns (uint256, uint256[] memory, uint256[] memory, bytes memory) {
         // Should throw `DoesNotSupportRemoveLiquidityCustom` before getting here, but need to implement the interface.
         revert IVaultErrors.OperationNotSupported();
     }
