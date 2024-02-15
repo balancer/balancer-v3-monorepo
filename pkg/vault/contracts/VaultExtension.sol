@@ -158,12 +158,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     function registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
+        uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
-        _registerPool(pool, tokenConfig, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
+        _registerPool(pool, tokenConfig, swapFeePercentage, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
     }
 
     /// @inheritdoc IVaultExtension
@@ -181,6 +182,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     function _registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
+        uint256 staticSwapFeePercentage,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolHooks memory hookConfig,
@@ -259,7 +261,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         config.liquidityManagement = liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = pauseWindowEndTime.toUint32();
+        // There is a minimum static swap fee; passing zero means this pool will have dynamic swap fees.
+        config.hasDynamicSwapFee = staticSwapFeePercentage == 0;
         _poolConfig[pool] = config.fromPoolConfig();
+
+        if (staticSwapFeePercentage > 0) {
+            _setStaticSwapFeePercentage(pool, staticSwapFeePercentage);
+        }
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
         emit PoolRegistered(

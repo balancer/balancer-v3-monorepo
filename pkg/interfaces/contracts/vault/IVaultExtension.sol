@@ -105,8 +105,12 @@ interface IVaultExtension {
      * If the zero address is provided for the `pauseManager`, permissions for pausing the pool will default to the
      * authorizer.
      *
+     * Since there is a minimum static swap fee, supplying a zero staticSwapFeePercentage means the pool will have
+     * dynamic swap fees.
+     *
      * @param pool The address of the pool being registered
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
+     * @param staticSwapFeePercentage The static swap fee percentage, or 0 if dynamic
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param pauseManager Optional contract the Vault will allow to pause the pool
      * @param hookConfig Flags indicating which hooks the pool supports
@@ -115,6 +119,7 @@ interface IVaultExtension {
     function registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
+        uint256 staticSwapFeePercentage,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolHooks calldata hookConfig,
