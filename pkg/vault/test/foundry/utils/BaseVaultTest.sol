@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -28,6 +29,12 @@ import { VaultMockDeployer } from "./VaultMockDeployer.sol";
 
 abstract contract BaseVaultTest is VaultStorage, BaseTest {
     using ArrayHelpers for *;
+
+    struct Balances {
+        uint256[] userTokens;
+        uint256 userBpt;
+        uint256[] poolTokens;
+    }
 
     bytes32 constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
@@ -58,6 +65,10 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     uint256 internal poolInitAmount = 1e3 * 1e18;
     // Default rate for the rate provider mock.
     uint256 internal mockRate = 2e18;
+    // Default swap fee percentage.
+    uint256 internal swapFeePercentage = 0.01e18; // 1%
+    // Default protocol swap fee percentage.
+    uint256 internal protocolSwapFeePercentage = 0.50e18; // 50%
 
     function setUp() public virtual override {
         BaseTest.setUp();
@@ -106,5 +117,28 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
         );
         vm.label(address(newPool), "pool");
         return address(newPool);
+    }
+
+    function setSwapFeePercentage(uint256 percentage) internal {
+        authorizer.grantRole(vault.getActionId(IVaultExtension.setStaticSwapFeePercentage.selector), admin);
+        vm.prank(admin);
+        vault.setStaticSwapFeePercentage(address(pool), percentage);
+    }
+
+    function setProtocolSwapFeePercentage(uint256 percentage) internal {
+        authorizer.grantRole(vault.getActionId(IVaultExtension.setProtocolSwapFeePercentage.selector), admin);
+        vm.prank(admin);
+        vault.setProtocolSwapFeePercentage(percentage);
+    }
+
+    function getBalances(address user) internal view returns (Balances memory balances) {
+        balances.userTokens = new uint256[](2);
+
+        balances.userTokens[0] = dai.balanceOf(user);
+        balances.userTokens[1] = usdc.balanceOf(user);
+        balances.userBpt = PoolMock(pool).balanceOf(user);
+
+        (, , uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(pool));
+        balances.poolTokens = poolBalances;
     }
 }
