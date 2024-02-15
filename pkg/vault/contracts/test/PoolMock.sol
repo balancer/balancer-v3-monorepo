@@ -189,14 +189,12 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
     function onAddLiquidityCustom(
         address,
-        uint256[] memory maxAmountsIn,
+        uint256[] memory maxAmountsInScaled18,
         uint256 minBptAmountOut,
         uint256[] memory,
         bytes memory userData
-    ) external pure override returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
-        amountsIn = maxAmountsIn;
-        bptAmountOut = minBptAmountOut;
-        returnData = userData;
+    ) external pure override returns (uint256[] memory, uint256, uint256[] memory, bytes memory) {
+        return (maxAmountsInScaled18, minBptAmountOut, new uint256[](maxAmountsInScaled18.length), userData);
     }
 
     function onRemoveLiquidityCustom(
@@ -205,8 +203,8 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         uint256[] memory minAmountsOut,
         uint256[] memory,
         bytes memory userData
-    ) external pure override returns (uint256, uint256[] memory, bytes memory) {
-        return (maxBptAmountIn, minAmountsOut, userData);
+    ) external pure override returns (uint256, uint256[] memory, uint256[] memory, bytes memory) {
+        return (maxBptAmountIn, minAmountsOut, new uint256[](minAmountsOut.length), userData);
     }
 
     /// @dev Even though pools do not handle scaling, we still need this for the tests.
