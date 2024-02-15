@@ -472,6 +472,59 @@ describe('Vault', function () {
     });
   });
 
+  describe('swap fees', () => {
+    const MIN_STATIC_SWAP_FEE = bn(1e12);
+    const MAX_STATIC_SWAP_FEE = fp(0.1);
+
+    context('without permission', () => {
+      it('protocol fees are initialized to zero', async () => {
+        expect(await vault.getStaticSwapFeePercentage(poolA)).to.eq(0);
+      });
+
+      it('requires permission to set swap fees', async () => {
+        await expect(vault.setStaticSwapFeePercentage(poolA, MAX_STATIC_SWAP_FEE)).to.be.revertedWithCustomError(
+          vault,
+          'SenderNotAllowed'
+        );
+      });
+    });
+
+    context('with permission', () => {
+      let authorizer: Contract;
+
+      sharedBeforeEach('grant permission', async () => {
+        const setSwapFeeAction = await actionId(vault, 'setStaticSwapFeePercentage');
+        const authorizerAddress = await vault.getAuthorizer();
+        authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
+
+        await authorizer.grantRole(setSwapFeeAction, alice.address);
+      });
+
+      it('can set swap fees', async () => {
+        await vault.connect(alice).setStaticSwapFeePercentage(poolA, MAX_STATIC_SWAP_FEE);
+
+        expect(await vault.getStaticSwapFeePercentage(poolA)).to.eq(MAX_STATIC_SWAP_FEE);
+      });
+
+      it('cannot exceed swap fee limits', async () => {
+        await expect(
+          vault.connect(alice).setStaticSwapFeePercentage(poolA, MIN_STATIC_SWAP_FEE - 1n)
+        ).to.be.revertedWithCustomError(vault, 'SwapFeePercentageTooLow');
+        await expect(
+          vault.connect(alice).setStaticSwapFeePercentage(poolA, MAX_STATIC_SWAP_FEE + 1n)
+        ).to.be.revertedWithCustomError(vault, 'SwapFeePercentageTooHigh');
+
+        expect(await vault.getStaticSwapFeePercentage(poolA)).to.eq(0);
+      });
+
+      it('setting protocol fees emits an event', async () => {
+        await expect(vault.connect(alice).setStaticSwapFeePercentage(poolA, MAX_STATIC_SWAP_FEE))
+          .to.emit(vault, 'SwapFeePercentageChanged')
+          .withArgs(await poolA.getAddress(), MAX_STATIC_SWAP_FEE);
+      });
+    });
+  });
+
   describe('recovery mode', () => {
     sharedBeforeEach('register pool', async () => {
       await vault.manualRegisterPool(poolB, poolBTokens);

@@ -18,7 +18,7 @@ contract WeightedMathTest is Test {
     uint256 constant MAX_IN_RATIO = 0.3e18;
     uint256 constant MAX_OUT_RATIO = 0.3e18;
 
-    uint256 constant MIN_SWAP_FEE = 0;
+    uint256 constant MIN_SWAP_FEE = 1e12;
     uint256 constant MAX_SWAP_FEE = 0.8e18;
 
     WeightedMathMock mock;
