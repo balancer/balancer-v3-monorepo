@@ -60,6 +60,7 @@ contract WeightedPoolTest is BaseVaultTest {
                 "ERC20POOL",
                 tokens,
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                0,
                 ZERO_BYTES32
             )
         );
