@@ -11,8 +11,11 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { FactoryWidePauseWindow } from "../factories/FactoryWidePauseWindow.sol";
 
 contract PoolFactoryMock is FactoryWidePauseWindow {
-    // Since there is a minimum swap fee, this will actually set the pool to have dynamic fees.
-    // As the current implementation returns 0 for dynamic fees, this is a way to bypass the minimum fee for tests.
+    // Since there is a minimum static swap fee, sending zero will actually set the pool to have dynamic fees.
+    // As dynamic fees are not currently implemented, this is a way to bypass the minimum for testing purposes.
+    // The current implementation ignores the dynamic fee flag and always returns the static swap fee, which
+    // initializes to zero. That way, it will return 0 in this case, yet can be overridden for tests that require
+    // non-zero swap fees.
     uint256 private constant DEFAULT_SWAP_FEE = 0;
 
     IVault private immutable _vault;

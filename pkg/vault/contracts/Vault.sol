@@ -392,12 +392,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /// @dev Returns swap fee for the pool.
     function _getSwapFeePercentage(PoolConfig memory config) internal pure returns (uint256) {
-        if (config.hasDynamicSwapFee) {
-            // TODO: Fetch dynamic swap fee from the pool using hook
-            return 0;
-        } else {
-            return config.staticSwapFeePercentage;
-        }
+        // TODO: Check for dynamic swap fee, and fetch from the pool using a hook
+        return config.staticSwapFeePercentage;
     }
 
     /*******************************************************************************
