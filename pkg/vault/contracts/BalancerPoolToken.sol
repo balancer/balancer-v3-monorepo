@@ -135,9 +135,7 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonc
             revert ERC2612ExpiredSignature(deadline);
         }
 
-        bytes32 structHash = keccak256(
-            abi.encode(PERMIT_TYPEHASH, owner, spender, amount, _useNonce(owner), deadline)
-        );
+        bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, amount, _useNonce(owner), deadline));
 
         bytes32 hash = _hashTypedDataV4(structHash);
 
