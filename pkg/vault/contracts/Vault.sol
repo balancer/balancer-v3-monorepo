@@ -832,11 +832,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             if (amountsOutRaw[i] < params.minAmountsOut[i]) {
                 revert AmountOutBelowMin(tokens[i], amountsOutRaw[i], params.minAmountsOut[i]);
             }
-        }
 
-        // Update accounting
-
-        for (uint256 i = 0; i < numTokens; ++i) {
             // Credit token[i] for amountOut
             _supplyCredit(tokens[i], amountsOutRaw[i], msg.sender);
 
