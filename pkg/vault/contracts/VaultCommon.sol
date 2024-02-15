@@ -390,6 +390,10 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         // Fill in the tokenRates inside poolData (needed for `_setLiveBalanceFromRawForToken`).
         _setPoolTokenRates(poolData);
 
+        bool subjectToYieldFees = poolData.poolConfig.isPoolInitialized &&
+            yieldFeePercentage > 0 &&
+            poolData.poolConfig.isPoolInRecoveryMode == false;
+
         for (uint256 i = 0; i < numTokens; ++i) {
             TokenType tokenType = poolData.tokenConfig[i].tokenType;
 
@@ -402,11 +406,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
             // ERC4626 tokens always pay yield fees; WITH_RATE tokens pay unless exempt.
             if (
-                poolData.poolConfig.isPoolInitialized &&
+                subjectToYieldFees &&
                 (tokenType == TokenType.ERC4626 ||
-                    (tokenType == TokenType.WITH_RATE && poolData.tokenConfig[i].yieldFeeExempt == false)) &&
-                yieldFeePercentage > 0 &&
-                poolData.poolConfig.isPoolInRecoveryMode == false
+                    (tokenType == TokenType.WITH_RATE && poolData.tokenConfig[i].yieldFeeExempt == false))
             ) {
                 uint256 yieldFeeAmountRaw = _computeYieldProtocolFeesDue(
                     poolData,
