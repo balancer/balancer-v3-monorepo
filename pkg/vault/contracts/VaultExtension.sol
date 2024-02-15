@@ -22,6 +22,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -42,6 +43,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     using Address for *;
     using ArrayHelpers for uint256[];
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using PackedTokenBalance for bytes32;
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
     using SafeERC20 for IERC20;
@@ -744,6 +746,77 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         if (_isPoolInRecoveryMode(pool)) {
             revert PoolInRecoveryMode(pool);
         }
+    }
+
+    /// @inheritdoc IVaultExtension
+    function removeLiquidityRecovery(
+        address pool,
+        address from,
+        uint256 exactBptAmountIn
+    )
+        external
+        withHandler
+        nonReentrant
+        withInitializedPool(pool)
+        onlyInRecoveryMode(pool)
+        returns (uint256[] memory amountsOutRaw)
+    {
+        // Retrieve the mapping of tokens and their balances for the specified pool.
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        uint256 numTokens = poolTokenBalances.length();
+
+        // Initialize arrays to store tokens and balances based on the number of tokens in the pool.
+        IERC20[] memory tokens = new IERC20[](numTokens);
+        uint256[] memory balancesRaw = new uint256[](numTokens);
+        bytes32 packedBalances;
+
+        for (uint256 i = 0; i < numTokens; ++i) {
+            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
+            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
+            // storage reads.
+            (tokens[i], packedBalances) = poolTokenBalances.unchecked_at(i);
+            balancesRaw[i] = packedBalances.getRawBalance();
+        }
+
+        amountsOutRaw = BasePoolMath.computeProportionalAmountsOut(balancesRaw, _totalSupply(pool), exactBptAmountIn);
+
+        for (uint256 i = 0; i < numTokens; ++i) {
+            // Credit token[i] for amountOut
+            _supplyCredit(tokens[i], amountsOutRaw[i], msg.sender);
+
+            // Compute the new Pool balances. A Pool's token balance always decreases after an exit
+            // (potentially by 0).
+            balancesRaw[i] -= amountsOutRaw[i];
+        }
+
+        // Store the new pool balances - raw only, since we don't have rates in Recovery Mode.
+        // In Recovery Mode, raw and last live balances will get out of sync. This is corrected when the pool is taken
+        // out of Recovery Mode.
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
+
+        for (uint256 i = 0; i < numTokens; ++i) {
+            packedBalances = poolBalances.unchecked_valueAt(i);
+            poolBalances.unchecked_setAt(i, packedBalances.setRawBalance(balancesRaw[i]));
+        }
+
+        // Trusted routers use Vault's allowances, which are infinite anyways for pool tokens.
+        if (!_isTrustedRouter(msg.sender)) {
+            _spendAllowance(address(pool), from, msg.sender, exactBptAmountIn);
+        }
+
+        // When removing liquidity, we must burn tokens concurrently with updating pool balances,
+        // as the pool's math relies on totalSupply.
+        // Burning will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
+        _burn(address(pool), from, exactBptAmountIn);
+
+        emit PoolBalanceChanged(
+            pool,
+            from,
+            tokens,
+            // We can unsafely cast to int256 because balances are actually stored as uint112
+            // TODO No they aren't anymore (stored as uint112)! Review this.
+            amountsOutRaw.unsafeCastToInt256(false)
+        );
     }
 
     /*******************************************************************************

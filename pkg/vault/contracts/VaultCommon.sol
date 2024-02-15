@@ -68,6 +68,16 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
+     * @notice Records the `credit` for a given handler and token.
+     * @param token   The ERC20 token for which the 'credit' will be accounted.
+     * @param credit  The amount of `token` supplied to the Vault in favor of the `handler`.
+     * @param handler The account credited with the amount.
+     */
+    function _supplyCredit(IERC20 token, uint256 credit, address handler) internal {
+        _accountDelta(token, -credit.toInt256(), handler);
+    }
+
+    /**
      * @notice Records the `debt` for a given handler and token.
      * @param token   The ERC20 token for which the `debt` will be accounted.
      * @param debt    The amount of `token` taken from the Vault in favor of the `handler`.
@@ -119,6 +129,11 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
         // Update the delta for this token and handler.
         _tokenDeltas[handler][token] = next;
+    }
+
+    function _isTrustedRouter(address) internal pure returns (bool) {
+        //TODO: Implement based on approval by governance and user
+        return true;
     }
 
     /*******************************************************************************
@@ -191,6 +206,12 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     /// @dev Reverts unless `pool` corresponds to a registered Pool.
     modifier withRegisteredPool(address pool) {
         _ensureRegisteredPool(pool);
+        _;
+    }
+
+    /// @dev Reverts unless `pool` corresponds to an intialized Pool.
+    modifier withInitializedPool(address pool) {
+        _ensureInitializedPool(pool);
         _;
     }
 

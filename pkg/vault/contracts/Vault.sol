@@ -127,16 +127,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         token.safeTransferFrom(from, address(this), amount);
     }
 
-    /**
-     * @notice Records the `credit` for a given handler and token.
-     * @param token   The ERC20 token for which the 'credit' will be accounted.
-     * @param credit  The amount of `token` supplied to the Vault in favor of the `handler`.
-     * @param handler The account credited with the amount.
-     */
-    function _supplyCredit(IERC20 token, uint256 credit, address handler) internal {
-        _accountDelta(token, -credit.toInt256(), handler);
-    }
-
     /*******************************************************************************
                                     Pool Operations
     *******************************************************************************/
@@ -421,12 +411,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     /*******************************************************************************
                             Pool Registration and Initialization
     *******************************************************************************/
-
-    /// @dev Reverts unless `pool` corresponds to an initialized Pool.
-    modifier withInitializedPool(address pool) {
-        _ensureInitializedPool(pool);
-        _;
-    }
 
     /**
      * @notice Fetches the balances for a given pool, with decimal and rate scaling factors applied.
@@ -738,41 +722,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
     }
 
-    /// @inheritdoc IVaultMain
-    function removeLiquidityRecovery(
-        address pool,
-        address from,
-        uint256 exactBptAmountIn
-    )
-        external
-        withHandler
-        nonReentrant
-        withInitializedPool(pool)
-        onlyInRecoveryMode(pool)
-        returns (uint256[] memory amountsOutRaw)
-    {
-        // Retrieve the mapping of tokens and their balances for the specified pool.
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        uint256 numTokens = poolTokenBalances.length();
-
-        // Initialize arrays to store tokens and balances based on the number of tokens in the pool.
-        IERC20[] memory tokens = new IERC20[](numTokens);
-        uint256[] memory balancesRaw = new uint256[](numTokens);
-        bytes32 packedBalances;
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
-            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
-            // storage reads.
-            (tokens[i], packedBalances) = poolTokenBalances.unchecked_at(i);
-            balancesRaw[i] = packedBalances.getRawBalance();
-        }
-
-        amountsOutRaw = BasePoolMath.computeProportionalAmountsOut(balancesRaw, _totalSupply(pool), exactBptAmountIn);
-
-        _removeLiquidityUpdateAccounting(pool, from, tokens, balancesRaw, exactBptAmountIn, amountsOutRaw);
-    }
-
     /**
      * @dev Calls the appropriate pool hook and calculates the required inputs and outputs for the operation
      * considering the given kind, and updates the vault's internal accounting. This includes:
@@ -870,47 +819,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
         }
 
-        _removeLiquidityUpdateAccounting(
-            params.pool,
-            params.from,
-            tokens,
-            poolData.balancesRaw,
-            bptAmountIn,
-            amountsOutRaw
-        );
-
-        // Cannot do this in `_removeLiquidityUpdateAccounting`, as it is also called in recovery mode,
-        // where we won't have the rates.
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[params.pool];
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            bytes32 packedBalances = poolBalances.unchecked_valueAt(i);
-            poolBalances.unchecked_setAt(
-                i,
-                packedBalances.setLastLiveBalanceScaled18(poolData.balancesLiveScaled18[i])
-            );
-        }
-    }
-
-    /**
-     * @dev Updates the vault's accounting within a `removeLiquidity` operation. This includes:
-     * - Setting pool balances
-     * - Supplying credit to the liquidity provider
-     * - Burning pool tokens
-     * - Emitting events
-     *
-     * This function also supports queries as a special case, where the pool tokens from the sender are not required.
-     * It must be called in a non-reentrant context.
-     */
-    function _removeLiquidityUpdateAccounting(
-        address pool,
-        address from,
-        IERC20[] memory tokens,
-        uint256[] memory balancesRaw,
-        uint256 bptAmountIn,
-        uint256[] memory amountsOutRaw
-    ) internal {
-        uint256 numTokens = tokens.length;
+        // Update accounting
 
         for (uint256 i = 0; i < numTokens; ++i) {
             // Credit token[i] for amountOut
@@ -918,36 +827,28 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit
             // (potentially by 0).
-            balancesRaw[i] -= amountsOutRaw[i];
+            poolData.balancesRaw[i] -= amountsOutRaw[i];
         }
 
-        // Store the new pool balances - raw only, as this is also called in RecoveryMode, where we don't have rates.
-        // In Recovery Mode, raw and last live balances will get out of sync. This is corrected when the pool is taken
-        // out of Recovery Mode.
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            bytes32 packedBalances = poolBalances.unchecked_valueAt(i);
-            poolBalances.unchecked_setAt(i, packedBalances.setRawBalance(balancesRaw[i]));
-        }
+        _setPoolBalances(params.pool, poolData);
 
         // Trusted routers use Vault's allowances, which are infinite anyways for pool tokens.
         if (!_isTrustedRouter(msg.sender)) {
-            _spendAllowance(address(pool), from, msg.sender, bptAmountIn);
+            _spendAllowance(address(params.pool), params.from, msg.sender, bptAmountIn);
         }
 
         if (!_isQueryDisabled && EVMCallModeHelpers.isStaticCall()) {
             // Increase `from` balance to ensure the burn function succeeds.
-            _queryModeBalanceIncrease(pool, from, bptAmountIn);
+            _queryModeBalanceIncrease(params.pool, params.from, bptAmountIn);
         }
         // When removing liquidity, we must burn tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
         // Burning will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
-        _burn(address(pool), from, bptAmountIn);
+        _burn(address(params.pool), params.from, bptAmountIn);
 
         emit PoolBalanceChanged(
-            pool,
-            from,
+            params.pool,
+            params.from,
             tokens,
             // We can unsafely cast to int256 because balances are actually stored as uint112
             // TODO No they aren't anymore (stored as uint112)! Review this.
@@ -959,11 +860,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (!_isTrustedRouter(sender)) {
             revert RouterNotTrusted();
         }
-    }
-
-    function _isTrustedRouter(address) internal pure returns (bool) {
-        //TODO: Implement based on approval by governance and user
-        return true;
     }
 
     /*******************************************************************************
