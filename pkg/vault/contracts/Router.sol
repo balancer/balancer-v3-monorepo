@@ -24,10 +24,14 @@ contract Router is IRouter, ReentrancyGuard {
     // solhint-disable-next-line var-name-mixedcase
     IWETH private immutable _weth;
 
-    // Transient storage
+    // Transient storage used to track tokens and amount flowing in and out within a batch swap.
+    // Set of input tokens involved in a batch swap.
     EnumerableSet.AddressSet private _currentSwapTokensIn;
+    // Set of output tokens involved in a batch swap.
     EnumerableSet.AddressSet private _currentSwapTokensOut;
+    // token in -> amount: tracks token in amounts within a batch swap.
     mapping(address => uint256) private _currentSwapTokenInAmounts;
+    // token out -> amount: tracks token out amounts within a batch swap.
     mapping(address => uint256) private _currentSwapTokenOutAmounts;
 
     modifier onlyVault() {
@@ -185,7 +189,7 @@ contract Router is IRouter, ReentrancyGuard {
     /// @inheritdoc IRouter
     function addLiquidityCustom(
         address pool,
-        uint256[] memory inputAmountsIn,
+        uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         bool wethIsEth,
         bytes memory userData
@@ -198,7 +202,7 @@ contract Router is IRouter, ReentrancyGuard {
                         AddLiquidityHookParams({
                             sender: msg.sender,
                             pool: pool,
-                            maxAmountsIn: inputAmountsIn,
+                            maxAmountsIn: maxAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             kind: AddLiquidityKind.CUSTOM,
                             wethIsEth: wethIsEth,
@@ -632,7 +636,7 @@ contract Router is IRouter, ReentrancyGuard {
                     // Token in is BPT: remove liquidity - Single token exact in
                     // minAmountOut cannot be 0 in this case, as that would send an array of 0s to the Vault, which
                     // wouldn't know which token to use.
-                    (uint256[] memory amountsOut, uint256 index) = _getSingleInputArrayAndTokenIndex(
+                    (uint256[] memory amountsOut, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
                         step.tokenOut,
                         minAmountOut == 0 ? 1 : minAmountOut
@@ -653,12 +657,12 @@ contract Router is IRouter, ReentrancyGuard {
                     if (isLastStep) {
                         // The amount out for the last step of the path should be recorded for the return value, and the
                         // amount for the token should be sent back to the sender later on.
-                        pathAmountsOut[i] = amountsOut[index];
+                        pathAmountsOut[i] = amountsOut[tokenIndex];
                         _currentSwapTokensOut.add(address(step.tokenOut));
-                        _currentSwapTokenOutAmounts[address(step.tokenOut)] += amountsOut[index];
+                        _currentSwapTokenOutAmounts[address(step.tokenOut)] += amountsOut[tokenIndex];
                     } else {
                         // Input for the next step is output of current step.
-                        exactAmountIn = amountsOut[index];
+                        exactAmountIn = amountsOut[tokenIndex];
                         // The token in for the next step is the token out of the current step.
                         tokenIn = step.tokenOut;
                     }
@@ -821,7 +825,7 @@ contract Router is IRouter, ReentrancyGuard {
                     }
                 } else if (address(step.tokenOut) == step.pool) {
                     // Token out is BPT: add liquidity - Single token exact out
-                    (uint256[] memory amountsIn, uint256 index) = _getSingleInputArrayAndTokenIndex(
+                    (uint256[] memory amountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
                         tokenIn,
                         maxAmountIn
@@ -841,10 +845,10 @@ contract Router is IRouter, ReentrancyGuard {
 
                     if (isLastStep) {
                         // The amount out for the last step of the path should be recorded for the return value.
-                        pathAmountsIn[i] = amountsIn[index];
-                        _currentSwapTokenInAmounts[address(tokenIn)] += amountsIn[index];
+                        pathAmountsIn[i] = amountsIn[tokenIndex];
+                        _currentSwapTokenInAmounts[address(tokenIn)] += amountsIn[tokenIndex];
                     } else {
-                        exactAmountOut = amountsIn[index];
+                        exactAmountOut = amountsIn[tokenIndex];
                     }
                     // The last step is the first one in the order of operations.
                     // TODO: We could skip retrieve on the first step and tweak how we settle the output token.
@@ -1047,7 +1051,7 @@ contract Router is IRouter, ReentrancyGuard {
     /// @inheritdoc IRouter
     function queryAddLiquidityCustom(
         address pool,
-        uint256[] memory inputAmountsIn,
+        uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
@@ -1061,7 +1065,7 @@ contract Router is IRouter, ReentrancyGuard {
                             // but it is possible to add liquidity to any recipient
                             sender: address(this),
                             pool: pool,
-                            maxAmountsIn: inputAmountsIn,
+                            maxAmountsIn: maxAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             kind: AddLiquidityKind.CUSTOM,
                             wethIsEth: false,
@@ -1353,12 +1357,10 @@ contract Router is IRouter, ReentrancyGuard {
 
         // Iterate backwards, from the last element to 0 (included).
         // Removing the last element from a set is cheaper than removing the first one.
-        // TODO: If clearing out the set and the mapping is not required, this can be replaced with a forward iteration.
         for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
             address tokenIn = _currentSwapTokensIn.unchecked_at(uint256(i));
             ethAmountIn += _retrieveTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts[tokenIn], wethIsEth);
 
-            // TODO: This should be transient. It shouldn't need to be cleared out.
             _currentSwapTokensIn.remove(tokenIn);
             _currentSwapTokenInAmounts[tokenIn] = 0;
         }
@@ -1367,7 +1369,6 @@ contract Router is IRouter, ReentrancyGuard {
             address tokenOut = _currentSwapTokensOut.unchecked_at(uint256(i));
             _wireTokenOut(sender, IERC20(tokenOut), _currentSwapTokenOutAmounts[tokenOut], wethIsEth);
 
-            // TODO: This should be transient. It shouldn't need to be cleared out.
             _currentSwapTokensOut.remove(tokenOut);
             _currentSwapTokenOutAmounts[tokenOut] = 0;
         }

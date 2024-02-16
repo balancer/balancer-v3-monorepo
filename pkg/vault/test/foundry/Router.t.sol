@@ -14,7 +14,6 @@ import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IV
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
@@ -49,16 +48,11 @@ contract RouterTest is BaseVaultTest {
     }
 
     function createPool() internal override returns (address) {
-        IRateProvider[] memory rateProviders = new IRateProvider[](2);
-        bool[] memory yieldExemptFlags = new bool[](2);
-
         PoolMock newPool = new PoolMock(
             IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
-            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-            rateProviders,
-            yieldExemptFlags,
+            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             true,
             365 days,
             address(0)
@@ -69,9 +63,7 @@ contract RouterTest is BaseVaultTest {
             IVault(address(vault)),
             "ERC20 weth Pool",
             "ERC20POOL",
-            [address(weth), address(dai)].toMemoryArray().asIERC20(),
-            rateProviders,
-            yieldExemptFlags,
+            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
             true,
             365 days,
             address(0)
@@ -82,9 +74,7 @@ contract RouterTest is BaseVaultTest {
             IVault(address(vault)),
             "ERC20 weth Pool",
             "ERC20POOL",
-            [address(weth), address(dai)].toMemoryArray().asIERC20(),
-            rateProviders,
-            yieldExemptFlags,
+            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
             true,
             365 days,
             address(0)
@@ -396,7 +386,7 @@ contract RouterTest is BaseVaultTest {
         bool wethIsEth = false;
 
         vm.prank(alice);
-        snapStart("routerSwapExactInWETH");
+        snapStart("routerSwapSingleTokenExactInWETH");
         uint256 outputTokenAmount = router.swapSingleTokenExactIn(
             address(wethPool),
             weth,
@@ -440,7 +430,7 @@ contract RouterTest is BaseVaultTest {
         bool wethIsEth = true;
 
         vm.prank(alice);
-        snapStart("routerSwapExactInNative");
+        snapStart("routerSwapSingleTokenExactInNative");
         router.swapSingleTokenExactIn{ value: ethAmountIn }(
             address(wethPool),
             weth,

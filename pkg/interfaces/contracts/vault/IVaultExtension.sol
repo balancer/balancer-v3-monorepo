@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.4;
 
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthorizer } from "./IAuthorizer.sol";
@@ -461,4 +462,22 @@ interface IVaultExtension {
      * Emits an `AuthorizerChanged` event.
      */
     function setAuthorizer(IAuthorizer newAuthorizer) external;
+
+    /*******************************************************************************
+-                                ERC4626 Buffers
+     *******************************************************************************/
+
+    /**
+     * @notice Register an ERC4626BufferPool, an "internal" pool to maintain a buffer of base tokens for swaps.
+     * @param wrappedToken The ERC4626 token to be buffered
+     * @param pool The pool associated with the buffer
+     * @param pauseManager The pause manager associated with the pool
+     * @param pauseWindowEndTime The pool's pause window end time
+     */
+    function registerBuffer(
+        IERC4626 wrappedToken,
+        address pool,
+        address pauseManager,
+        uint256 pauseWindowEndTime
+    ) external;
 }
