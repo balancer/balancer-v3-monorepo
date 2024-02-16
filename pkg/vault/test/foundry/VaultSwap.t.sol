@@ -235,7 +235,6 @@ contract VaultSwapTest is BaseVaultTest {
         (fee, ) = swapSingleTokenExactOutWithProtocolFee();
     }
 
-
     function swapSingleTokenExactOutWithProtocolFee() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage(swapFeePercentage);
         setProtocolSwapFeePercentage(protocolSwapFeePercentage);
