@@ -386,7 +386,7 @@ contract RouterTest is BaseVaultTest {
         bool wethIsEth = false;
 
         vm.prank(alice);
-        snapStart("routerSwapExactInWETH");
+        snapStart("routerSwapSingleTokenExactInWETH");
         uint256 outputTokenAmount = router.swapSingleTokenExactIn(
             address(wethPool),
             weth,
@@ -430,7 +430,7 @@ contract RouterTest is BaseVaultTest {
         bool wethIsEth = true;
 
         vm.prank(alice);
-        snapStart("routerSwapExactInNative");
+        snapStart("routerSwapSingleTokenExactInNative");
         router.swapSingleTokenExactIn{ value: ethAmountIn }(
             address(wethPool),
             weth,
