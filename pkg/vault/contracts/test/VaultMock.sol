@@ -66,6 +66,22 @@ contract VaultMock is IVaultMainMock, Vault {
         );
     }
 
+    function manualRegisterPoolWithSwapFee(
+        address pool,
+        IERC20[] memory tokens,
+        uint256 staticSwapFeePercentage,
+        address pauseManager
+    ) external whenVaultNotPaused {
+        _poolFactoryMock.registerPoolWithSwapFee(
+            pool,
+            buildTokenConfig(tokens),
+            staticSwapFeePercentage,
+            pauseManager,
+            PoolConfigBits.wrap(0).toPoolConfig().hooks,
+            PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
+        );
+    }
+
     function manualRegisterPoolAtTimestamp(
         address pool,
         IERC20[] memory tokens,

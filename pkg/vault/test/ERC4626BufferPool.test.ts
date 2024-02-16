@@ -96,6 +96,25 @@ describe('ERC4626BufferPool', function () {
     return pool;
   }
 
+  describe('swap fees', () => {
+    sharedBeforeEach('grant permission', async () => {
+      pool = await createBufferPool();
+
+      const setSwapFeeAction = await actionId(vault, 'setStaticSwapFeePercentage');
+      const authorizerAddress = await vault.getAuthorizer();
+      authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
+
+      await authorizer.grantRole(setSwapFeeAction, alice.address);
+    });
+
+    it('cannot set swap fee', async () => {
+      await expect(vault.connect(alice).setStaticSwapFeePercentage(pool, fp(0.01))).to.be.revertedWithCustomError(
+        vault,
+        'OperationNotSupported'
+      );
+    });
+  });
+
   describe('registration', () => {
     sharedBeforeEach('create pool', async () => {
       pool = await createBufferPool();

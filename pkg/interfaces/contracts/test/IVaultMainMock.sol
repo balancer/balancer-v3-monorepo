@@ -25,6 +25,13 @@ interface IVaultMainMock {
         address pauseManager
     ) external;
 
+    function manualRegisterPoolWithSwapFee(
+        address pool,
+        IERC20[] memory tokens,
+        uint256 staticSwapFeePercentage,
+        address pauseManager
+    ) external;
+
     function getDecimalScalingFactors(address pool) external view returns (uint256[] memory);
 
     function recoveryModeExit(address pool) external view;

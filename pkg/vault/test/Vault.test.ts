@@ -475,10 +475,22 @@ describe('Vault', function () {
   describe('swap fees', () => {
     const MIN_STATIC_SWAP_FEE = bn(1e12);
     const MAX_STATIC_SWAP_FEE = fp(0.1);
+    const DEFAULT_STATIC_SWAP_FEE = fp(0.01);
 
     context('without permission', () => {
-      it('protocol fees are initialized to zero', async () => {
+      // Note that what's actually happening in the current code is it's sending 0 for the staticSwapFeePercentage,
+      // which is interpreted as setting dynamic fees, and does not set the dynamic swap fee: so it remains 0 as
+      // auto-initialized. However, the getStaticSwapFeePercentage implementation ignores the dynamic setting and
+      // always returns the static swap fee (i.e., always 0 here, unless overridden with setStaticSwapFeePercentage).
+      it('swap fees are initialized to zero', async () => {
         expect(await vault.getStaticSwapFeePercentage(poolA)).to.eq(0);
+      });
+
+      it('thinks the fees are dynamic', async () => {
+        // See explanation above.
+        const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(poolA);
+
+        expect(poolConfig.hasDynamicSwapFee).to.be.true;
       });
 
       it('requires permission to set swap fees', async () => {
@@ -486,6 +498,32 @@ describe('Vault', function () {
           vault,
           'SenderNotAllowed'
         );
+      });
+
+      it('can register a pool with static swap fees', async () => {
+        await vault.manualRegisterPoolWithSwapFee(poolB, poolBTokens, DEFAULT_STATIC_SWAP_FEE, ANY_ADDRESS);
+
+        expect(await vault.getStaticSwapFeePercentage(poolB)).to.eq(DEFAULT_STATIC_SWAP_FEE);
+
+        const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(poolB);
+
+        expect(poolConfig.hasDynamicSwapFee).to.be.false;
+      });
+
+      it('respects the limits on registration', async () => {
+        await expect(
+          vault.manualRegisterPoolWithSwapFee(poolB, poolBTokens, MIN_STATIC_SWAP_FEE - 1n, ANY_ADDRESS)
+        ).to.be.revertedWithCustomError(vault, 'SwapFeePercentageTooLow');
+
+        await expect(
+          vault.manualRegisterPoolWithSwapFee(poolB, poolBTokens, MAX_STATIC_SWAP_FEE + 1n, ANY_ADDRESS)
+        ).to.be.revertedWithCustomError(vault, 'SwapFeePercentageTooHigh');
+      });
+
+      it('registering with swap fees emits an event', async () => {
+        await expect(vault.manualRegisterPoolWithSwapFee(poolB, poolBTokens, DEFAULT_STATIC_SWAP_FEE, ANY_ADDRESS))
+          .to.emit(vault, 'SwapFeePercentageChanged')
+          .withArgs(await poolB.getAddress(), DEFAULT_STATIC_SWAP_FEE);
       });
     });
 
@@ -510,6 +548,7 @@ describe('Vault', function () {
         await expect(
           vault.connect(alice).setStaticSwapFeePercentage(poolA, MIN_STATIC_SWAP_FEE - 1n)
         ).to.be.revertedWithCustomError(vault, 'SwapFeePercentageTooLow');
+
         await expect(
           vault.connect(alice).setStaticSwapFeePercentage(poolA, MAX_STATIC_SWAP_FEE + 1n)
         ).to.be.revertedWithCustomError(vault, 'SwapFeePercentageTooHigh');
@@ -517,7 +556,7 @@ describe('Vault', function () {
         expect(await vault.getStaticSwapFeePercentage(poolA)).to.eq(0);
       });
 
-      it('setting protocol fees emits an event', async () => {
+      it('setting swap fees emits an event', async () => {
         await expect(vault.connect(alice).setStaticSwapFeePercentage(poolA, MAX_STATIC_SWAP_FEE))
           .to.emit(vault, 'SwapFeePercentageChanged')
           .withArgs(await poolA.getAddress(), MAX_STATIC_SWAP_FEE);
