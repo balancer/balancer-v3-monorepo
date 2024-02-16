@@ -183,7 +183,7 @@ contract WeightedPoolTest is BaseVaultTest {
 
     function testSwap() public {
         vm.prank(bob);
-        uint256 amountCalculated = router.swapExactIn(
+        uint256 amountCalculated = router.swapSingleTokenExactIn(
             address(pool),
             dai,
             usdc,
