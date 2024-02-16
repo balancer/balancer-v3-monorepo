@@ -144,6 +144,13 @@ contract VaultSwapTest is BaseVaultTest {
         assertSwap(protocolSwapFeeExactIn);
     }
 
+    function testProtocolSwapFeeRecoveryModeExactIn() public {
+        // Put pool in recovery mode
+        vault.manualEnableRecoveryMode(pool);
+
+        assertSwap(protocolSwapFeeRecoveryModeExactIn);
+    }
+
     function protocolSwapFeeExactIn() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage(swapFeePercentage);
         setProtocolSwapFeePercentage(protocolSwapFeePercentage);
@@ -163,6 +170,12 @@ contract VaultSwapTest is BaseVaultTest {
         snapEnd();
 
         return (swapFee, protocolSwapFee);
+    }
+
+    function protocolSwapFeeRecoveryModeExactIn() public returns (uint256 fee, uint256 protocolFee) {
+        // Call regular function (which sets the protocol swap fee), but return a fee of 0 to the validation function.
+        protocolFee = 0;
+        (fee, ) = protocolSwapFeeExactIn();
     }
 
     function testSwapFeeExactOut() public {
@@ -191,6 +204,13 @@ contract VaultSwapTest is BaseVaultTest {
         assertSwap(protocolSwapFeeExactOut);
     }
 
+    function testProtocolSwapFeeRecoveryModeExactOut() public {
+        // Put pool in recovery mode
+        vault.manualEnableRecoveryMode(pool);
+
+        assertSwap(protocolSwapFeeRecoveryModeExactOut);
+    }
+
     function protocolSwapFeeExactOut() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage(swapFeePercentage);
         setProtocolSwapFeePercentage(protocolSwapFeePercentage);
@@ -208,6 +228,12 @@ contract VaultSwapTest is BaseVaultTest {
         );
 
         return (swapFee, protocolSwapFee);
+    }
+
+    function protocolSwapFeeRecoveryModeExactOut() public returns (uint256 fee, uint256 protocolFee) {
+        // Call regular function (which sets the protocol swap fee), but return a fee of 0 to the validation function.
+        protocolFee = 0;
+        (fee, ) = protocolSwapFeeExactOut();
     }
 
     function testProtocolSwapFeeAccumulation() public {
