@@ -144,7 +144,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         assertApproxEqAbs(actualProtocolFee, expectedProtocolFee, 1e3, "Actual protocol fee is not the expected one");
     }
 
-    function testUpdateLiveBalanceInPoolDataForToken__Fuzz(
+    function testUpdateLiveTokenBalanceInPoolData__Fuzz(
         uint256 balanceRaw,
         uint8 decimals,
         uint256 tokenRate,
@@ -158,14 +158,14 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         PoolData memory poolData = _simplePoolData(balanceRaw, decimalScalingFactor, tokenRate);
 
         if (roundUp) {
-            poolData = vault.updateLiveBalanceInPoolDataForToken(poolData, Rounding.ROUND_UP, 0);
+            poolData = vault.updateLiveTokenBalanceInPoolData(poolData, Rounding.ROUND_UP, 0);
             assertEq(
                 poolData.balancesLiveScaled18[0],
                 balanceRaw.mulUp(decimalScalingFactor).mulUp(tokenRate),
                 "Live scaled balance does not match (round up)"
             );
         } else {
-            poolData = vault.updateLiveBalanceInPoolDataForToken(poolData, Rounding.ROUND_DOWN, 0);
+            poolData = vault.updateLiveTokenBalanceInPoolData(poolData, Rounding.ROUND_DOWN, 0);
             assertEq(
                 poolData.balancesLiveScaled18[0],
                 balanceRaw.mulDown(decimalScalingFactor).mulDown(tokenRate),

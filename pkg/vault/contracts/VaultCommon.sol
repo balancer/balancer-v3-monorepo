@@ -384,7 +384,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         poolData.balancesLiveScaled18 = new uint256[](numTokens);
         uint256 yieldFeePercentage = _protocolYieldFeePercentage;
 
-        // Fill in the tokenRates inside poolData (needed for `_updateLiveBalanceInPoolDataForToken`).
+        // Fill in the tokenRates inside poolData (needed for `_updateLiveTokenBalanceInPoolData`).
         _updateRatesInPoolData(poolData);
 
         bool poolSubjectToYieldFees = poolData.poolConfig.isPoolInitialized &&
@@ -398,7 +398,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             // and respecting the rounding direction. Charging a yield fee changes the raw
             // balance, in which case the safest and most numerically precise way to adjust
             // the live balance is to simply repeat the scaling (hence the second call below).
-            _updateLiveBalanceInPoolDataForToken(poolData, roundingDirection, i);
+            _updateLiveTokenBalanceInPoolData(poolData, roundingDirection, i);
 
             bool tokenSubjectToYieldFees = tokenType == TokenType.ERC4626 ||
                 (tokenType == TokenType.WITH_RATE && poolData.tokenConfig[i].yieldFeeExempt == false);
@@ -418,7 +418,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
                     // Adjust raw and live balances.
                     poolData.balancesRaw[i] -= yieldFeeAmountRaw;
-                    _updateLiveBalanceInPoolDataForToken(poolData, roundingDirection, i);
+                    _updateLiveTokenBalanceInPoolData(poolData, roundingDirection, i);
                 }
             }
         }
@@ -480,11 +480,11 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
-     * @dev Sets live balances in poolData, scaling raw balances by both decimal and token rates,
-     * and rounding the result in the given direction. Assumes raw balances, scaling factors, and rates
-     * are already present.
+     * @dev Updates the live balance of a given token in poolData, scaling the raw balance by both decimal
+     * and token rates, and rounding the result in the given direction. Assumes raw balances, scaling factors,
+     * and rates are current in PoolData.
      */
-    function _updateLiveBalanceInPoolDataForToken(
+    function _updateLiveTokenBalanceInPoolData(
         PoolData memory poolData,
         Rounding roundingDirection,
         uint256 tokenIndex
