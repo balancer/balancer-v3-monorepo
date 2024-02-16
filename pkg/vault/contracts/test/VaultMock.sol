@@ -13,6 +13,7 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
@@ -22,6 +23,7 @@ import { PackedTokenBalance } from "../lib/PackedTokenBalance.sol";
 
 contract VaultMock is IVaultMainMock, Vault {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using ScalingHelpers for uint256;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
 
@@ -182,6 +184,32 @@ contract VaultMock is IVaultMainMock, Vault {
         for (uint256 i = 0; i < numTokens; i++) {
             (, packedBalances) = poolTokenBalances.unchecked_at(i);
             balancesRaw[i] = packedBalances.getRawBalance();
+        }
+    }
+
+    function getCurrentLiveBalances(address pool) external view returns (uint256[] memory currentLiveBalances) {
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        PoolData memory poolData;
+
+        (
+            poolData.tokenConfig,
+            poolData.balancesRaw,
+            poolData.decimalScalingFactors,
+            poolData.poolConfig
+        ) = _getPoolTokenInfo(pool);
+
+        _updateRatesInPoolData(poolData);
+
+        uint256 numTokens = poolTokenBalances.length();
+        currentLiveBalances = new uint256[](numTokens);
+        bytes32 packedBalances;
+
+        for (uint256 i = 0; i < numTokens; i++) {
+            (, packedBalances) = poolTokenBalances.unchecked_at(i);
+            currentLiveBalances[i] = packedBalances.getRawBalance().toScaled18ApplyRateRoundDown(
+                poolData.decimalScalingFactors[i],
+                poolData.tokenRates[i]
+            );
         }
     }
 

@@ -323,5 +323,13 @@ contract VaultSwapTest is BaseVaultTest {
         // vault are adjusted balances
         assertEq(dai.balanceOf(address(vault)), fee, "Swap: Vault's DAI balance is wrong");
         assertEq(usdc.balanceOf(address(vault)), 2 * defaultAmount, "Swap: Vault's USDC balance is wrong");
+
+        // Ensure raw and last live balances are in sync after the operation
+        uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
+        uint256[] memory lastLiveBalances = vault.getLastLiveBalances(pool);
+
+        for (uint256 i = 0; i < 2; i++) {
+            assertEq(currentLiveBalances[i], lastLiveBalances[i]);
+        }
     }
 }
