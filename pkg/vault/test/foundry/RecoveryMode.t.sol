@@ -25,8 +25,7 @@ contract RecoveryModeTest is BaseVaultTest {
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
         vm.prank(alice);
-        //uint256 bptAmountOut =
-        router.addLiquidityUnbalanced(address(pool), amountsIn, defaultAmount, false, bytes(""));
+        uint256 bptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, defaultAmount, false, bytes(""));
 
         // Raw and live should be in sync
         assertRawAndLiveBalanceRelationship(true);
@@ -34,9 +33,9 @@ contract RecoveryModeTest is BaseVaultTest {
         // Put pool in recovery mode
         vault.manualEnableRecoveryMode(address(pool));
 
-        // TODO
-        /* Do a recovery withdrawal
-        vault.removeLiquidityRecovery(pool, alice, bptAmountOut / 2);
+        // Do a recovery withdrawal
+        vm.prank(alice);
+        router.removeLiquidityRecovery(address(pool), bptAmountOut / 2);
 
         // Raw and live should be out of sync
         assertRawAndLiveBalanceRelationship(false);
@@ -44,7 +43,7 @@ contract RecoveryModeTest is BaseVaultTest {
         vault.manualDisableRecoveryMode(address(pool));
 
         // Raw and live should be back in sync
-        assertRawAndLiveBalanceRelationship(true);*/
+        assertRawAndLiveBalanceRelationship(true);
     }
 
     function assertRawAndLiveBalanceRelationship(bool shouldBeEqual) internal {
