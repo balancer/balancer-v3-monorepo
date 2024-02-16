@@ -24,10 +24,14 @@ contract Router is IRouter, ReentrancyGuard {
     // solhint-disable-next-line var-name-mixedcase
     IWETH private immutable _weth;
 
-    // Transient storage
+    // Transient storage used to track tokens and amount flowing in and out within a batch swap.
+    // Set of input tokens involved in a batch swap.
     EnumerableSet.AddressSet private _currentSwapTokensIn;
+    // Set of output tokens involved in a batch swap.
     EnumerableSet.AddressSet private _currentSwapTokensOut;
+    // token in -> amount: tracks token in amounts within a batch swap.
     mapping(address => uint256) private _currentSwapTokenInAmounts;
+    // token out -> amount: tracks token out amounts within a batch swap.
     mapping(address => uint256) private _currentSwapTokenOutAmounts;
 
     modifier onlyVault() {
