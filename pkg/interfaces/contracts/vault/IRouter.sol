@@ -251,7 +251,7 @@ interface IRouter {
     function removeLiquidityRecovery(
         address pool,
         uint256 exactBptAmountIn
-    ) external payable returns (uint256[] memory amountsOut);
+    ) external returns (uint256[] memory amountsOut);
 
     /***************************************************************************
                                        Swaps

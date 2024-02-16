@@ -395,7 +395,7 @@ contract Router is IRouter, ReentrancyGuard {
     function removeLiquidityRecovery(
         address pool,
         uint256 exactBptAmountIn
-    ) external payable returns (uint256[] memory amountsOut) {
+    ) external returns (uint256[] memory amountsOut) {
         amountsOut = abi.decode(
             _vault.invoke(
                 abi.encodeWithSelector(Router.removeLiquidityRecoveryHook.selector, pool, msg.sender, exactBptAmountIn)
