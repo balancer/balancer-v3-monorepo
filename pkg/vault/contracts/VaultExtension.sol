@@ -22,6 +22,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -41,6 +42,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     using Address for *;
     using ArrayHelpers for uint256[];
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
+    using EnumerableSet for EnumerableSet.AddressSet;
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
     using SafeERC20 for IERC20;
@@ -259,6 +261,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         config.liquidityManagement = liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = pauseWindowEndTime.toUint32();
+        config.isBufferPool = _bufferPools.contains(pool);
         _poolConfig[pool] = config.fromPoolConfig();
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
@@ -814,6 +817,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             revert WrappedTokenBufferAlreadyRegistered();
         }
         _wrappedTokenBuffers[wrappedToken] = pool;
+        // The pool address must be added before calling _registerPool, as it is used to set the `isBufferPool`
+        // flag in the PoolConfig.
+        _bufferPools.add(pool);
 
         IERC20 baseToken = IERC20(wrappedToken.asset());
 
@@ -843,10 +849,5 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             }),
             LiquidityManagement({ supportsAddLiquidityCustom: true, supportsRemoveLiquidityCustom: false })
         );
-
-        // Set isBufferPool flag
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.isBufferPool = true;
-        _poolConfig[pool] = config.fromPoolConfig();
     }
 }
