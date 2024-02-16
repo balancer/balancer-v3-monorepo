@@ -860,7 +860,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 i
             );
 
-            // Substract protocol fees charged from the pool's balances
+            // Subtract protocol fees charged from the pool's balances
             // Note that poolData.balancesRaw will also be updated in `_removeLiquidityUpdateAccounting`
             poolData.balancesRaw[i] -= protocolSwapFeeAmountRaw;
             poolData.balancesLiveScaled18[i] -= (amountsOutScaled18[i] +
