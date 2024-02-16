@@ -335,7 +335,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     /**
      * @dev Mutates poolData to add token rates. Assumes tokenConfig is already set.
      */
-    function _setPoolTokenRates(PoolData memory poolData) internal view {
+    function _updateRatesInPoolData(PoolData memory poolData) internal view {
         uint256 numTokens = poolData.tokenConfig.length;
 
         // Initialize arrays to store tokens based on the number of tokens in the pool.
@@ -385,7 +385,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         uint256 yieldFeePercentage = _protocolYieldFeePercentage;
 
         // Fill in the tokenRates inside poolData (needed for `_updateLiveBalanceInPoolDataForToken`).
-        _setPoolTokenRates(poolData);
+        _updateRatesInPoolData(poolData);
 
         bool poolSubjectToYieldFees = poolData.poolConfig.isPoolInitialized &&
             yieldFeePercentage > 0 &&
