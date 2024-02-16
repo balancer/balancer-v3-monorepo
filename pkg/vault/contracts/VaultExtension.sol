@@ -283,6 +283,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         config.hasDynamicSwapFee = params.staticSwapFeePercentage == 0 && config.isBufferPool == false;
         _poolConfig[pool] = config.fromPoolConfig();
 
+        // Must be done *after* writing back to storage, as `_setStaticSwapFeePercentage` will update it again.
         if (params.staticSwapFeePercentage > 0) {
             _setStaticSwapFeePercentage(pool, params.staticSwapFeePercentage);
         }
