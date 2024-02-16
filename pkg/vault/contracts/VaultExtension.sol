@@ -184,6 +184,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         return _isPoolRegistered(pool);
     }
 
+    // Required to avoid "stack too deep"
     struct PoolRegistrationParams {
         TokenConfig[] tokenConfig;
         uint256 staticSwapFeePercentage;
@@ -269,7 +270,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
 
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        bool isBufferPool = _bufferPools.contains(pool);
 
         config.isPoolRegistered = true;
         config.hooks = params.poolHooks;
@@ -278,7 +278,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         config.pauseWindowEndTime = params.pauseWindowEndTime.toUint32();
         // There is a minimum static swap fee for standard pools. Passing zero on registration of a regular pool means
         // that it will have dynamic swap fees. Buffer pools always have 0 swap fees.
-        config.hasDynamicSwapFee = params.staticSwapFeePercentage == 0 && isBufferPool == false;
+        // The pool address is added _bufferPools by `registerBuffer` before registration, so is available here.
+        config.isBufferPool = _bufferPools.contains(pool);
+        config.hasDynamicSwapFee = params.staticSwapFeePercentage == 0 && config.isBufferPool == false;
         _poolConfig[pool] = config.fromPoolConfig();
 
         if (params.staticSwapFeePercentage > 0) {
@@ -846,6 +848,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             revert WrappedTokenBufferAlreadyRegistered();
         }
         _wrappedTokenBuffers[wrappedToken] = pool;
+        // The pool address must be added before calling _registerPool, as it is used to set the `isBufferPool`
+        // flag in the PoolConfig.
         _bufferPools.add(pool);
 
         IERC20 baseToken = IERC20(wrappedToken.asset());
@@ -882,10 +886,5 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
                 })
             })
         );
-
-        // Set isBufferPool flag
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.isBufferPool = true;
-        _poolConfig[pool] = config.fromPoolConfig();
     }
 }
