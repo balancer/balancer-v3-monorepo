@@ -735,7 +735,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             poolData.poolConfig
         ) = _getPoolTokenInfo(pool);
 
-        _updateRatesInPoolData(poolData);
+        _updateTokenRatesInPoolData(poolData);
     }
 
     /**
