@@ -11,6 +11,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 /**
  * @notice A fully ERC20-compatible token to be used as the base contract for Balancer Pools,
@@ -19,7 +20,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
  * @dev Implementation of the ERC-20 Permit extension allowing approvals to be made via signatures, as defined in
  * https://eips.ethereum.org/EIPS/eip-2612[ERC-2612].
  */
-contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonces {
+contract BalancerPoolToken is IERC20, IERC20Metadata, IRateProvider, IERC20Permit, EIP712, Nonces {
     bytes32 public constant PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
@@ -101,6 +102,11 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonc
         // Vault will perform the transfer and call emitTransfer to emit the event from this contract.
         _vault.transferFrom(msg.sender, from, to, amount);
         return true;
+    }
+
+    /// @inheritdoc IRateProvider
+    function getRate(uint256 shares) external view virtual returns (uint256) {
+        return _vault.getRate(address(this), shares);
     }
 
     /// Accounting is centralized in the MultiToken contract, and the actual transfers and approvals

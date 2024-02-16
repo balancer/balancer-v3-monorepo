@@ -8,6 +8,8 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
 import { Vault } from "../../contracts/Vault.sol";
 import { VaultExtensionMock } from "../../contracts/test/VaultExtensionMock.sol";
 
@@ -37,7 +39,7 @@ contract VaultDefaultHandlers is BaseVaultTest {
 
     function testDefaultHandlerNonExistingFunction() public {
         vm.expectRevert();
-        IRateProvider(address(vault)).getRate();
+        IRateProvider(address(vault)).getRate(FixedPoint.ONE);
     }
 
     function testOnlyVault() public {

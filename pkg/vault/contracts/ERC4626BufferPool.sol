@@ -11,7 +11,6 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -31,13 +30,14 @@ import { BasePoolHooks } from "./BasePoolHooks.sol";
 contract ERC4626BufferPool is
     IBasePool,
     IBufferPool,
-    IRateProvider,
     IPoolLiquidity,
     BalancerPoolToken,
     BasePoolHooks,
     BasePoolAuthentication,
     ReentrancyGuard
 {
+    using FixedPoint for uint256;
+
     IERC4626 internal immutable _wrappedToken;
 
     // Uses the factory as the Authentication disambiguator.
@@ -138,13 +138,14 @@ contract ERC4626BufferPool is
         return balancesLiveScaled18[0] + balancesLiveScaled18[1];
     }
 
-    /// @inheritdoc IRateProvider
-    function getRate() external view onlyVault returns (uint256) {
+    /// @inheritdoc BalancerPoolToken
+    function getRate(uint256 shares) external view override returns (uint256) {
         // TODO: This is really just a placeholder for now. We will need to think more carefully about this.
-        // e.g., it will probably need to be scaled according to the asset value decimals. There may be
-        // special cases with 0 supply. Wrappers may implement this differently, so maybe we need to calculate
-        // the rate directly instead of relying on the wrapper implementation, etc.
-        return _wrappedToken.convertToAssets(FixedPoint.ONE);
+        // e.g., it will probably need to be scaled according to the share value decimals. There may be
+        // special cases with 0 supply. We might need a "default" somewhere for cases when the shares value
+        // would be unknown, etc.
+
+        return _wrappedToken.convertToAssets(shares).divDown(shares);
     }
 
     /// @inheritdoc IBufferPool

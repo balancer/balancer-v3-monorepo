@@ -12,6 +12,8 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import { FixedPoint } from "../math/FixedPoint.sol";
 
 contract ERC4626TestToken is ERC4626, IRateProvider {
+    using FixedPoint for uint256;
+
     uint8 private immutable _wrappedTokenDecimals;
 
     constructor(
@@ -27,8 +29,8 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
         return _wrappedTokenDecimals;
     }
 
-    function getRate() external view returns (uint256) {
-        return _convertToAssets(FixedPoint.ONE, Math.Rounding.Floor);
+    function getRate(uint256 shares) external view returns (uint256) {
+        return _convertToAssets(shares, Math.Rounding.Floor).divDown(shares);
     }
 
     function mint(uint256 shares, address receiver) public override returns (uint256) {

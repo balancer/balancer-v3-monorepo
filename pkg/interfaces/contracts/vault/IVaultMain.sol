@@ -154,6 +154,14 @@ interface IVaultMain {
      */
     function getPoolTokenCountAndIndexOfToken(address pool, IERC20 token) external view returns (uint256, uint256);
 
+    /**
+     * @notice Get the current rate of a pool.
+     * @param pool Address of the pool
+     * @param shares Number of shares in the proposed operation (to handle providers with non-constant rates)
+     * @return rate The current rate as an 18-decimal FP value
+     */
+    function getRate(address pool, uint256 shares) external view returns (uint256);
+
     /*******************************************************************************
                                      Miscellaneous
     *******************************************************************************/

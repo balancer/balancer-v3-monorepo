@@ -319,7 +319,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             if (tokenType == TokenType.STANDARD) {
                 tokenRates[i] = FixedPoint.ONE;
             } else if (tokenType == TokenType.WITH_RATE) {
-                tokenRates[i] = poolTokenConfig[token].rateProvider.getRate();
+                tokenRates[i] = poolTokenConfig[token].rateProvider.getRate(FixedPoint.ONE);
             } else if (tokenType == TokenType.ERC4626) {
                 // solhint-disable-previous-line no-empty-blocks
                 // TODO: implement ERC4626 in later phases.
@@ -366,12 +366,12 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             if (tokenType == TokenType.STANDARD) {
                 poolData.tokenRates[i] = FixedPoint.ONE;
             } else if (tokenType == TokenType.WITH_RATE) {
-                poolData.tokenRates[i] = poolData.tokenConfig[i].rateProvider.getRate();
+                poolData.tokenRates[i] = poolData.tokenConfig[i].rateProvider.getRate(FixedPoint.ONE);
             } else if (tokenType == TokenType.ERC4626) {
                 // Get rate from associated buffer
                 poolData.tokenRates[i] = IRateProvider(
                     _wrappedTokenBuffers[IERC4626(address(poolData.tokenConfig[i].token))]
-                ).getRate();
+                ).getRate(FixedPoint.ONE);
             } else {
                 revert InvalidTokenConfiguration();
             }

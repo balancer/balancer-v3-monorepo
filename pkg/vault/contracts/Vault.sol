@@ -445,7 +445,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             if (tokenType == TokenType.STANDARD) {
                 poolData.tokenRates[i] = FixedPoint.ONE;
             } else if (tokenType == TokenType.WITH_RATE) {
-                poolData.tokenRates[i] = poolTokenConfig[token].rateProvider.getRate();
+                poolData.tokenRates[i] = poolTokenConfig[token].rateProvider.getRate(FixedPoint.ONE);
             } else if (tokenType != TokenType.ERC4626) {
                 // TODO: implement ERC4626 at a later stage
                 revert InvalidTokenConfiguration();
@@ -992,6 +992,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         unchecked {
             return (tokenCount, index - 1);
+        }
+    }
+
+    /// @inheritdoc IVaultMain
+    function getRate(address pool, uint256 shares) public view withInitializedPool(pool) returns (uint256 rate) {
+        (PoolData memory poolData, ) = _getPoolDataAndYieldFees(pool, Rounding.ROUND_DOWN);
+
+        if (poolData.poolConfig.isBufferPool) {
+            rate = IRateProvider(pool).getRate(shares);
+        } else {
+            rate = IBasePool(pool).computeInvariant(poolData.balancesLiveScaled18).divDown(_totalSupply(pool));
         }
     }
 

@@ -14,7 +14,7 @@ contract RateProviderMock is IRateProvider {
     }
 
     /// @inheritdoc IRateProvider
-    function getRate() external view override returns (uint256) {
+    function getRate(uint256) external view override returns (uint256) {
         return _rate;
     }
 
