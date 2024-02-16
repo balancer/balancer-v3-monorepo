@@ -68,34 +68,32 @@ describe('Queries', function () {
 
   // TODO: query a pool that has an actual invariant (introduced in #145)
   describe('swap', () => {
-    it('queries a swap correctly', async () => {
-      const DAI_AMOUNT_OUT = fp(250);
+    const DAI_AMOUNT_OUT = fp(250);
 
-      it('queries a swap exact in correctly', async () => {
-        const amountCalculated = await router
-          .connect(zero)
-          .querySwapExactIn.staticCall(pool, USDC, DAI, USDC_AMOUNT_IN, '0x');
-        expect(amountCalculated).to.be.eq(DAI_AMOUNT_IN);
-      });
+    it('queries a swap exact in correctly', async () => {
+      const amountCalculated = await router
+        .connect(zero)
+        .querySwapSingleTokenExactIn.staticCall(pool, USDC, DAI, USDC_AMOUNT_IN, '0x');
+      expect(amountCalculated).to.be.eq(DAI_AMOUNT_IN);
+    });
 
-      it('queries a swap exact out correctly', async () => {
-        const amountCalculated = await router
-          .connect(zero)
-          .querySwapExactOut.staticCall(pool, USDC, DAI, DAI_AMOUNT_OUT, '0x');
-        expect(amountCalculated).to.be.eq(DAI_AMOUNT_OUT);
-      });
+    it('queries a swap exact out correctly', async () => {
+      const amountCalculated = await router
+        .connect(zero)
+        .querySwapSingleTokenExactOut.staticCall(pool, USDC, DAI, DAI_AMOUNT_OUT, '0x');
+      expect(amountCalculated).to.be.eq(DAI_AMOUNT_OUT);
+    });
 
-      it('reverts if not a static call (exact in)', async () => {
-        await expect(
-          router.querySwapExactIn.staticCall(pool, USDC, DAI, USDC_AMOUNT_IN, '0x')
-        ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
-      });
+    it('reverts if not a static call (exact in)', async () => {
+      await expect(
+        router.querySwapSingleTokenExactIn.staticCall(pool, USDC, DAI, USDC_AMOUNT_IN, '0x')
+      ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
+    });
 
-      it('reverts if not a static call (exact in)', async () => {
-        await expect(
-          router.querySwapExactIn.staticCall(pool, USDC, DAI, DAI_AMOUNT_OUT, '0x')
-        ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
-      });
+    it('reverts if not a static call (exact out)', async () => {
+      await expect(
+        router.querySwapSingleTokenExactOut.staticCall(pool, USDC, DAI, DAI_AMOUNT_OUT, '0x')
+      ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
     });
   });
 

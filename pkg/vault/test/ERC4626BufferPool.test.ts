@@ -235,7 +235,16 @@ describe('ERC4626BufferPool', function () {
       await expect(
         router
           .connect(alice)
-          .swapExactIn(pool, baseTokenAddress, wrappedTokenAddress, TOKEN_AMOUNT, 0, MAX_UINT256, false, '0x')
+          .swapSingleTokenExactIn(
+            pool,
+            baseTokenAddress,
+            wrappedTokenAddress,
+            TOKEN_AMOUNT,
+            0,
+            MAX_UINT256,
+            false,
+            '0x'
+          )
       )
         .to.be.revertedWithCustomError(vault, 'CannotSwapWithBufferPool')
         .withArgs(await pool.getAddress());
