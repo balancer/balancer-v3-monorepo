@@ -154,12 +154,12 @@ contract VaultMock is IVaultMainMock, Vault {
         return _computePoolDataUpdatingBalancesAndFees(pool, roundingDirection);
     }
 
-    function setLiveBalanceFromRawForToken(
+    function updateLiveBalanceInPoolDataForToken(
         PoolData memory poolData,
         Rounding roundingDirection,
         uint256 tokenIndex
     ) external pure returns (PoolData memory) {
-        _setLiveBalanceFromRawForToken(poolData, roundingDirection, tokenIndex);
+        _updateLiveBalanceInPoolDataForToken(poolData, roundingDirection, tokenIndex);
         return poolData;
     }
 

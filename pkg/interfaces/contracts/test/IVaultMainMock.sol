@@ -38,7 +38,7 @@ interface IVaultMainMock {
 
     function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances);
 
-    function setLiveBalanceFromRawForToken(
+    function updateLiveBalanceInPoolDataForToken(
         PoolData memory poolData,
         Rounding roundingDirection,
         uint256 tokenIndex
