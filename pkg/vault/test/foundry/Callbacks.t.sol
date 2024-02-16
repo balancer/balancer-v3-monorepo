@@ -45,7 +45,7 @@ contract HooksTest is BaseVaultTest {
                 })
             )
         );
-        router.swapExactIn(address(pool), usdc, dai, defaultAmount, 0, type(uint256).max, false, bytes(""));
+        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, type(uint256).max, false, bytes(""));
     }
 
     function testOnBeforeSwapHookRevert() public {
@@ -53,7 +53,16 @@ contract HooksTest is BaseVaultTest {
         PoolMock(pool).setFailOnBeforeSwapHook(true);
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeSwapHookFailed.selector));
-        router.swapExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
+        router.swapSingleTokenExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
     }
 
     function testOnAfterSwapHook() public {
@@ -73,7 +82,7 @@ contract HooksTest is BaseVaultTest {
                 })
             )
         );
-        router.swapExactIn(address(pool), usdc, dai, defaultAmount, 0, type(uint256).max, false, bytes(""));
+        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, type(uint256).max, false, bytes(""));
     }
 
     function testOnAfterSwapHookRevert() public {
@@ -81,7 +90,16 @@ contract HooksTest is BaseVaultTest {
         PoolMock(pool).setFailOnAfterSwapHook(true);
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.AfterSwapHookFailed.selector));
-        router.swapExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
+        router.swapSingleTokenExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
     }
 
     // Before add
