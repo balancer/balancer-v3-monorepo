@@ -473,6 +473,16 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 exactBptAmountIn
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
         amountsOut = _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn);
+
+        IERC20[] memory tokens = _vault.getPoolTokens(pool);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            uint256 amountOut = amountsOut[i];
+            IERC20 token = tokens[i];
+
+            // Wire the token to the sender (amountOut)
+            _vault.wire(token, sender, amountOut);
+        }
     }
 
     /// @inheritdoc IRouter
