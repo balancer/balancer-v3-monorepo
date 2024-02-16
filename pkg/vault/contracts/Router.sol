@@ -1335,12 +1335,10 @@ contract Router is IRouter, ReentrancyGuard {
 
         // Iterate backwards, from the last element to 0 (included).
         // Removing the last element from a set is cheaper than removing the first one.
-        // TODO: If clearing out the set and the mapping is not required, this can be replaced with a forward iteration.
         for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
             address tokenIn = _currentSwapTokensIn.unchecked_at(uint256(i));
             ethAmountIn += _retrieveTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts[tokenIn], wethIsEth);
 
-            // TODO: This should be transient. It shouldn't need to be cleared out.
             _currentSwapTokensIn.remove(tokenIn);
             _currentSwapTokenInAmounts[tokenIn] = 0;
         }
@@ -1349,7 +1347,6 @@ contract Router is IRouter, ReentrancyGuard {
             address tokenOut = _currentSwapTokensOut.unchecked_at(uint256(i));
             _wireTokenOut(sender, IERC20(tokenOut), _currentSwapTokenOutAmounts[tokenOut], wethIsEth);
 
-            // TODO: This should be transient. It shouldn't need to be cleared out.
             _currentSwapTokensOut.remove(tokenOut);
             _currentSwapTokenOutAmounts[tokenOut] = 0;
         }
