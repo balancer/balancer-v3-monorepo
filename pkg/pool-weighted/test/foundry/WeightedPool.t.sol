@@ -107,7 +107,7 @@ contract WeightedPoolTest is BaseVaultTest {
                 symbol: "NOVA",
                 tokens: [address(dai), address(usdc)].toMemoryArray().asIERC20(),
                 normalizedWeights: [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
-                swapFeePercentage: 0
+                swapFeePercentage: 0 // Try to pass a zero swap fee
             }),
             vault
         );

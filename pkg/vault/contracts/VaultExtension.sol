@@ -217,7 +217,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
         uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
 
-        for (uint256 i = 0; i < params.tokenConfig.length; ++i) {
+        for (uint256 i = 0; i < numTokens; ++i) {
             TokenConfig memory tokenData = params.tokenConfig[i];
             IERC20 token = tokenData.token;
 
@@ -275,6 +275,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         config.pauseWindowEndTime = params.pauseWindowEndTime.toUint32();
         _poolConfig[pool] = config.fromPoolConfig();
 
+        // Validates against the maximum swap fee, and emits an event.
+        // Must be done after storing _poolConfig[pool], since it reads/updates it again here.
         _setStaticSwapFeePercentage(pool, params.staticSwapFeePercentage);
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
