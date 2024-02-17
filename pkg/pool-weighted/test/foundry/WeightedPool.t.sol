@@ -39,6 +39,8 @@ contract WeightedPoolTest is BaseVaultTest {
     uint256 constant DAI_AMOUNT_IN = 1 * 1e18;
     uint256 constant USDC_AMOUNT_OUT = 1 * 1e18;
 
+    uint256 constant MIN_SWAP_FEE = 1e12;
+
     uint256 constant DELTA = 1e9;
 
     WeightedPool internal weightedPool;
@@ -60,6 +62,7 @@ contract WeightedPoolTest is BaseVaultTest {
                 "ERC20POOL",
                 tokens,
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                MIN_SWAP_FEE,
                 ZERO_BYTES32
             )
         );
@@ -182,6 +185,9 @@ contract WeightedPoolTest is BaseVaultTest {
     }
 
     function testSwap() public {
+        // Set swap fee to zero for this test.
+        vault.setSwapFeeDisabled(pool, true);
+
         vm.prank(bob);
         uint256 amountCalculated = router.swapSingleTokenExactIn(
             address(pool),

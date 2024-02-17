@@ -135,7 +135,7 @@ describe('WeightedPool', function () {
         { token: tokenBAddress, tokenType: TokenType.STANDARD, rateProvider: ZERO_ADDRESS, yieldFeeExempt: false },
       ];
 
-      const tx = await factory.create('WeightedPool', 'Test', tokenConfig, WEIGHTS, ZERO_BYTES32);
+      const tx = await factory.create('WeightedPool', 'Test', tokenConfig, WEIGHTS, POOL_SWAP_FEE, ZERO_BYTES32);
       const receipt = await tx.wait();
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
 

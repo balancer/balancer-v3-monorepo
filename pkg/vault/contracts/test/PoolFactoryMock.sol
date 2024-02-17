@@ -11,6 +11,8 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { FactoryWidePauseWindow } from "../factories/FactoryWidePauseWindow.sol";
 
 contract PoolFactoryMock is FactoryWidePauseWindow {
+    uint256 private constant DEFAULT_SWAP_FEE = 0;
+
     IVault private immutable _vault;
 
     constructor(IVault vault, uint256 pauseWindowDuration) FactoryWidePauseWindow(pauseWindowDuration) {
@@ -27,6 +29,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         _vault.registerPool(
             pool,
             tokenConfig,
+            DEFAULT_SWAP_FEE,
             getNewPoolPauseWindowEndTime(),
             pauseManager,
             poolHooks,
@@ -43,6 +46,14 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         LiquidityManagement calldata liquidityManagement,
         uint256 timestamp
     ) external {
-        _vault.registerPool(pool, tokenConfig, timestamp, pauseManager, poolHooks, liquidityManagement);
+        _vault.registerPool(
+            pool,
+            tokenConfig,
+            DEFAULT_SWAP_FEE,
+            timestamp,
+            pauseManager,
+            poolHooks,
+            liquidityManagement
+        );
     }
 }

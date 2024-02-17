@@ -14,4 +14,6 @@ interface IVaultExtensionMock {
     function manualEnableRecoveryMode(address pool) external;
 
     function manualDisableRecoveryMode(address pool) external;
+
+    function setSwapFeeDisabled(address pool, bool swapFeeDisabled) external;
 }
