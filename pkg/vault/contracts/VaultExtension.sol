@@ -158,17 +158,38 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     function registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
+        uint256 staticSwapFeePercentage,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
-        _registerPool(pool, tokenConfig, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
+        _registerPool(
+            pool,
+            PoolRegistrationParams({
+                tokenConfig: tokenConfig,
+                staticSwapFeePercentage: staticSwapFeePercentage,
+                pauseWindowEndTime: pauseWindowEndTime,
+                pauseManager: pauseManager,
+                poolHooks: poolHooks,
+                liquidityManagement: liquidityManagement
+            })
+        );
     }
 
     /// @inheritdoc IVaultExtension
     function isPoolRegistered(address pool) external view onlyVault returns (bool) {
         return _isPoolRegistered(pool);
+    }
+
+    // Required to avoid "stack too deep"
+    struct PoolRegistrationParams {
+        TokenConfig[] tokenConfig;
+        uint256 staticSwapFeePercentage;
+        uint256 pauseWindowEndTime;
+        address pauseManager;
+        PoolHooks poolHooks;
+        LiquidityManagement liquidityManagement;
     }
 
     /**
@@ -178,33 +199,26 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
      *
      * Emits a `PoolRegistered` event upon successful registration.
      */
-    function _registerPool(
-        address pool,
-        TokenConfig[] memory tokenConfig,
-        uint256 pauseWindowEndTime,
-        address pauseManager,
-        PoolHooks memory hookConfig,
-        LiquidityManagement memory liquidityManagement
-    ) internal {
+    function _registerPool(address pool, PoolRegistrationParams memory params) internal {
         // Ensure the pool isn't already registered
         if (_isPoolRegistered(pool)) {
             revert PoolAlreadyRegistered(pool);
         }
 
-        // No room on the stack for a `numTokens` variable; have to use tokenConfig.length.
-        if (tokenConfig.length < _MIN_TOKENS) {
+        uint256 numTokens = params.tokenConfig.length;
+        if (numTokens < _MIN_TOKENS) {
             revert MinTokens();
         }
-        if (tokenConfig.length > _MAX_TOKENS) {
+        if (numTokens > _MAX_TOKENS) {
             revert MaxTokens();
         }
 
         // Retrieve or create the pool's token balances mapping.
         EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
-        uint8[] memory tokenDecimalDiffs = new uint8[](tokenConfig.length);
+        uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
 
-        for (uint256 i = 0; i < tokenConfig.length; ++i) {
-            TokenConfig memory tokenData = tokenConfig[i];
+        for (uint256 i = 0; i < params.tokenConfig.length; ++i) {
+            TokenConfig memory tokenData = params.tokenConfig[i];
             IERC20 token = tokenData.token;
 
             // Ensure that the token address is valid
@@ -249,27 +263,29 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         }
 
         // Store the pause manager. A zero address means default to the authorizer.
-        _poolPauseManagers[pool] = pauseManager;
+        _poolPauseManagers[pool] = params.pauseManager;
 
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
 
         config.isPoolRegistered = true;
-        config.hooks = hookConfig;
-        config.liquidityManagement = liquidityManagement;
+        config.hooks = params.poolHooks;
+        config.liquidityManagement = params.liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
-        config.pauseWindowEndTime = pauseWindowEndTime.toUint32();
+        config.pauseWindowEndTime = params.pauseWindowEndTime.toUint32();
         _poolConfig[pool] = config.fromPoolConfig();
+
+        _setStaticSwapFeePercentage(pool, params.staticSwapFeePercentage);
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
         emit PoolRegistered(
             pool,
             msg.sender,
-            tokenConfig,
-            pauseWindowEndTime,
-            pauseManager,
-            hookConfig,
-            liquidityManagement
+            params.tokenConfig,
+            params.pauseWindowEndTime,
+            params.pauseManager,
+            params.poolHooks,
+            params.liquidityManagement
         );
     }
 
@@ -828,20 +844,26 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
 
         _registerPool(
             pool,
-            tokenConfig,
-            pauseWindowEndTime,
-            pauseManager,
-            PoolHooks({
-                shouldCallBeforeInitialize: true, // ensure proportional
-                shouldCallAfterInitialize: false,
-                shouldCallBeforeAddLiquidity: true, // ensure custom
-                shouldCallAfterAddLiquidity: false,
-                shouldCallBeforeRemoveLiquidity: true, // ensure proportional
-                shouldCallAfterRemoveLiquidity: false,
-                shouldCallBeforeSwap: true, // rebalancing
-                shouldCallAfterSwap: false
-            }),
-            LiquidityManagement({ supportsAddLiquidityCustom: true, supportsRemoveLiquidityCustom: false })
+            PoolRegistrationParams({
+                tokenConfig: tokenConfig,
+                staticSwapFeePercentage: 0, // Buffer pools always have a swap fee of zero
+                pauseWindowEndTime: pauseWindowEndTime,
+                pauseManager: pauseManager,
+                poolHooks: PoolHooks({
+                    shouldCallBeforeInitialize: true, // ensure proportional
+                    shouldCallAfterInitialize: false,
+                    shouldCallBeforeAddLiquidity: true, // ensure custom
+                    shouldCallAfterAddLiquidity: false,
+                    shouldCallBeforeRemoveLiquidity: true, // ensure proportional
+                    shouldCallAfterRemoveLiquidity: false,
+                    shouldCallBeforeSwap: true, // rebalancing
+                    shouldCallAfterSwap: false
+                }),
+                liquidityManagement: LiquidityManagement({
+                    supportsAddLiquidityCustom: true,
+                    supportsRemoveLiquidityCustom: false
+                })
+            })
         );
 
         // Set isBufferPool flag

@@ -32,6 +32,7 @@ contract WeightedPoolFactory is BasePoolFactory {
      * @param symbol The symbol of the pool
      * @param tokens An array of descriptors for the tokens the pool will manage
      * @param normalizedWeights The pool weights (must add to FixedPoint.ONE)
+     * @param swapFeePercentage The initial static swap fee percentage
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
@@ -39,24 +40,30 @@ contract WeightedPoolFactory is BasePoolFactory {
         string memory symbol,
         TokenConfig[] memory tokens,
         uint256[] memory normalizedWeights,
+        uint256 swapFeePercentage,
         bytes32 salt
     ) external returns (address pool) {
+        // The pool will validate the swap fee against the minimum value.
         pool = _create(
             abi.encode(
                 WeightedPool.NewPoolParams({
                     name: name,
                     symbol: symbol,
                     tokens: _extractTokensFromTokenConfig(tokens),
-                    normalizedWeights: normalizedWeights
+                    normalizedWeights: normalizedWeights,
+                    swapFeePercentage: swapFeePercentage
                 }),
                 getVault()
             ),
             salt
         );
 
+        // Must pass the same amount to the Vault, which will validate it against the maximum,
+        // and store it in the pool config.
         getVault().registerPool(
             pool,
             tokens,
+            swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
             address(0), // no pause manager
             PoolHooks({

@@ -33,12 +33,14 @@ contract WeightedPool8020Factory is BasePoolFactory {
      * @param name Name of the pool
      * @param symbol Symbol of the pool
      * @param tokenConfig The token configuration of the pool: must be two-token
+     * @param swapFeePercentage The initial static swap fee percentage
      * @param salt Value passed to create3, used to create the address
      */
     function create(
         string memory name,
         string memory symbol,
         TokenConfig[] memory tokenConfig,
+        uint256 swapFeePercentage,
         bytes32 salt
     ) external returns (address pool) {
         if (tokenConfig.length != 2) {
@@ -49,22 +51,27 @@ contract WeightedPool8020Factory is BasePoolFactory {
         weights[0] = _EIGHTY;
         weights[1] = _TWENTY;
 
+        // The pool will validate the swap fee against the minimum value.
         pool = _create(
             abi.encode(
                 WeightedPool.NewPoolParams({
                     name: name,
                     symbol: symbol,
                     tokens: _extractTokensFromTokenConfig(tokenConfig),
-                    normalizedWeights: weights
+                    normalizedWeights: weights,
+                    swapFeePercentage: swapFeePercentage
                 }),
                 getVault()
             ),
             salt
         );
 
+        // Must pass the same amount to the Vault, which will validate it against the maximum,
+        // and store it in the pool config.
         getVault().registerPool(
             pool,
             tokenConfig,
+            swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
             address(0), // no pause manager
             PoolHooks({

@@ -16,6 +16,11 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 /// @notice Basic Weighted Pool with immutable weights.
 contract WeightedPool is IBasePool, BalancerPoolToken {
+    /// @dev The swap fee provided is too low.
+    error SwapFeePercentageTooLow();
+
+    uint256 public constant MIN_SWAP_FEE = 1e12; // 0.0001%
+
     uint256 private immutable _totalTokens;
 
     uint256 internal immutable _normalizedWeight0;
@@ -28,6 +33,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         string symbol;
         IERC20[] tokens;
         uint256[] normalizedWeights;
+        uint256 swapFeePercentage;
     }
 
     /// @dev Indicates that one of the pool tokens' weight is below the minimum allowed.
@@ -39,6 +45,10 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
     constructor(NewPoolParams memory params, IVault vault) BalancerPoolToken(vault, params.name, params.symbol) {
         uint256 numTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
+
+        if (params.swapFeePercentage < MIN_SWAP_FEE) {
+            revert SwapFeePercentageTooLow();
+        }
 
         _totalTokens = numTokens;
 
