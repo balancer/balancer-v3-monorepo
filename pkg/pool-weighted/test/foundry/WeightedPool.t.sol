@@ -83,6 +83,36 @@ contract WeightedPoolTest is BaseVaultTest {
         );
     }
 
+    function testFailFactoryCreateWithInvalidSwapFee() public {
+        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
+        TokenConfig[] memory tokens = new TokenConfig[](2);
+        tokens[0].token = IERC20(dai);
+        tokens[1].token = IERC20(usdc);
+
+        factory.create(
+            "ERC20 Pool",
+            "ERC20POOL",
+            tokens,
+            [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+            0, // Try to pass a zero swap fee
+            ZERO_BYTES32
+        );
+    }
+
+    function testDeployWithInvalidSwapFee() public {
+        vm.expectRevert(abi.encodeWithSelector(WeightedPool.SwapFeePercentageTooLow.selector));
+        new WeightedPool(
+            WeightedPool.NewPoolParams({
+                name: "BAD POOL",
+                symbol: "NOVA",
+                tokens: [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+                normalizedWeights: [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                swapFeePercentage: 0
+            }),
+            vault
+        );
+    }
+
     function testPoolPausedState() public {
         (bool paused, uint256 pauseWindow, uint256 bufferPeriod, address pauseManager) = vault.getPoolPausedState(
             address(pool)

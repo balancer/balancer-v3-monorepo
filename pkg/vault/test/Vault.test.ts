@@ -24,6 +24,7 @@ import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
+  const POOL_SWAP_FEE = fp(0.01);
 
   let vault: IVaultMock;
   let vaultExtension: VaultExtensionMock;
@@ -129,6 +130,12 @@ describe('Vault', function () {
       // Use expectEvent here to prevent errors with structs of arrays with hardhat matchers.
       const tx = await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS);
       expectEvent.inReceipt(await tx.wait(), 'PoolRegistered', expectedArgs);
+    });
+
+    it('registering a pool with a swap fee emits an event', async () => {
+      await expect(vault.manualRegisterPoolWithSwapFee(poolB, poolBTokens, POOL_SWAP_FEE))
+        .to.emit(vault, 'SwapFeePercentageChanged')
+        .withArgs(poolBAddress, POOL_SWAP_FEE);
     });
 
     it('cannot register a pool twice', async () => {

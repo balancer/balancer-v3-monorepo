@@ -18,6 +18,8 @@ interface IVaultMainMock {
 
     function manualRegisterPool(address pool, IERC20[] memory tokens) external;
 
+    function manualRegisterPoolWithSwapFee(address pool, IERC20[] memory tokens, uint256 swapFeePercentage) external;
+
     function manualRegisterPoolAtTimestamp(
         address pool,
         IERC20[] memory tokens,

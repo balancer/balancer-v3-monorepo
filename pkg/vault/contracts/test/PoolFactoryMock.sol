@@ -37,6 +37,25 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         );
     }
 
+    function registerPoolWithSwapFee(
+        address pool,
+        TokenConfig[] memory tokenConfig,
+        uint256 swapFeePercentage,
+        address pauseManager,
+        PoolHooks calldata poolHooks,
+        LiquidityManagement calldata liquidityManagement
+    ) external {
+        _vault.registerPool(
+            pool,
+            tokenConfig,
+            swapFeePercentage,
+            getNewPoolPauseWindowEndTime(),
+            pauseManager,
+            poolHooks,
+            liquidityManagement
+        );
+    }
+
     // For tests; otherwise can't get the exact event arguments.
     function registerPoolAtTimestamp(
         address pool,
