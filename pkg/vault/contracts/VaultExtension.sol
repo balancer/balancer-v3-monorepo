@@ -676,6 +676,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         address pool,
         uint256 swapFeePercentage
     ) external authenticate withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault {
+        // Buffer pools always have 0 swap fees; this cannot be changed.
+        if (_bufferPools.contains(pool)) {
+            revert OperationNotSupported();
+        }
+
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 
