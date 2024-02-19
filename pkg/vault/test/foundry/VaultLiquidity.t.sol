@@ -297,7 +297,9 @@ contract VaultLiquidityTest is BaseVaultTest {
         uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
         uint256[] memory lastLiveBalances = vault.getLastLiveBalances(pool);
 
-        for (uint256 i = 0; i < 2; i++) {
+        assertEq(currentLiveBalances.length, lastLiveBalances.length);
+
+        for (uint256 i = 0; i < currentLiveBalances.length; i++) {
             assertEq(currentLiveBalances[i], lastLiveBalances[i]);
         }
     }
@@ -353,7 +355,9 @@ contract VaultLiquidityTest is BaseVaultTest {
         uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
         uint256[] memory lastLiveBalances = vault.getLastLiveBalances(pool);
 
-        for (uint256 i = 0; i < 2; i++) {
+        assertEq(currentLiveBalances.length, lastLiveBalances.length);
+
+        for (uint256 i = 0; i < currentLiveBalances.length; i++) {
             assertEq(currentLiveBalances[i], lastLiveBalances[i]);
         }
     }
