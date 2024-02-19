@@ -7,6 +7,8 @@ import { ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
+import { TokenConfigStruct } from '../typechain-types/contracts/Vault';
+import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 
 // This deploys a Vault, then creates 3 tokens and 2 pools. The first pool (A) is registered; the second (B) )s not,
 // which, along with a registration flag in the Pool mock, permits separate testing of registration functions.
@@ -35,32 +37,30 @@ export async function setupEnvironment(pauseWindowDuration: number): Promise<{
   const poolBTokens = [tokenAAddress, tokenCAddress];
 
   const poolA: PoolMock = await deploy('v3-vault/PoolMock', {
-    args: [
-      vaultAddress,
-      'Pool A',
-      'POOLA',
-      poolATokens,
-      Array(poolATokens.length).fill(ZERO_ADDRESS),
-      Array(poolATokens.length).fill(false),
-      true,
-      365 * 24 * 3600,
-      ZERO_ADDRESS,
-    ],
+    args: [vaultAddress, 'Pool A', 'POOLA', buildTokenConfig(poolATokens), true, 365 * 24 * 3600, ZERO_ADDRESS],
   });
 
   const poolB: PoolMock = await deploy('v3-vault/PoolMock', {
-    args: [
-      vaultAddress,
-      'Pool B',
-      'POOLB',
-      poolBTokens,
-      Array(poolBTokens.length).fill(ZERO_ADDRESS),
-      Array(poolATokens.length).fill(false),
-      false,
-      365 * 24 * 3600,
-      ZERO_ADDRESS,
-    ],
+    args: [vaultAddress, 'Pool B', 'POOLB', buildTokenConfig(poolBTokens), false, 365 * 24 * 3600, ZERO_ADDRESS],
   });
 
   return { vault: await TypesConverter.toIVaultMock(vault), tokens: [tokenA, tokenB, tokenC], pools: [poolA, poolB] };
+}
+
+export function buildTokenConfig(tokens: string[], rateProviders: string[] = []): TokenConfigStruct[] {
+  const result: TokenConfigStruct[] = [];
+  if (rateProviders.length == 0) {
+    rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
+  }
+
+  tokens.map((token, i) => {
+    result[i] = {
+      token: token,
+      tokenType: rateProviders[i] == ZERO_ADDRESS ? TokenType.STANDARD : TokenType.WITH_RATE,
+      rateProvider: rateProviders[i],
+      yieldFeeExempt: false,
+    };
+  });
+
+  return result;
 }
