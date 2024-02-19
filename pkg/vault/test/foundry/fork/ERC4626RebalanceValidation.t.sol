@@ -51,8 +51,8 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
 
     address payable donor;
 
-    uint256 constant INIT_DAI_AMOUNT = 1e3 * 1e18;
-    uint256 constant INIT_A_DAI_AMOUNT = INIT_DAI_AMOUNT * 2;
+    uint256 constant INIT_DAI_AMOUNT = 1e4 * 1e18;
+    uint256 constant INIT_A_DAI_AMOUNT = INIT_DAI_AMOUNT / 10;
     uint256 initADaiAmount;
 
     uint256 constant DELTA = 1e12;
@@ -104,7 +104,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             address userAddress = usersToTransfer[index];
 
             vm.startPrank(donor);
-            daiMainnet.transfer(userAddress, 10 * INIT_DAI_AMOUNT);
+            daiMainnet.transfer(userAddress, 50 * INIT_DAI_AMOUNT);
             vm.stopPrank();
 
             vm.startPrank(userAddress);

@@ -168,7 +168,15 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IBasePool
     function onSwap(IBasePool.SwapParams memory request) public view onlyVault returns (uint256) {
-        return request.amountGivenScaled18;
+
+        if (request.kind == SwapKind.EXACT_IN) {
+            return request.amountGivenScaled18;
+        } else {
+            // TODO EXACT_OUT has rounding issues with _getRate(). When getRate() function uses shares,
+            // this code must be removed and shoukd return the same number as EXACT_IN.
+            uint256 wrappedRate = _getRate();
+            return request.amountGivenScaled18.divDown(wrappedRate).mulDown(wrappedRate - 1);
+        }
     }
 
     /// @inheritdoc IBasePool
@@ -193,7 +201,7 @@ contract ERC4626BufferPool is
         // Get balance of tokens
         (IERC20[] memory tokens, , uint256[] memory rawBalances, , ) = getVault().getPoolTokenInfo(poolAddress);
 
-        uint256 scaledBalanceWrapped = rawBalances[0].mulDown(_getRate());
+        uint256 scaledBalanceWrapped = _wrappedToken.previewRedeem(rawBalances[0]);
         uint256 balanceUnderlying = rawBalances[1];
 
         if (scaledBalanceWrapped > balanceUnderlying) {
@@ -205,12 +213,12 @@ contract ERC4626BufferPool is
                         ERC4626BufferPool.rebalanceHook.selector,
                         SwapHookParams({
                             sender: msg.sender,
-                            kind: SwapKind.EXACT_OUT,
+                            kind: SwapKind.EXACT_IN,
                             pool: poolAddress,
-                            tokenIn: tokens[0],
-                            tokenOut: tokens[1],
+                            tokenIn: tokens[1],
+                            tokenOut: tokens[0],
                             amountGiven: assetsToUnwrap,
-                            limit: assetsToUnwrap * 2, // TODO Review limit
+                            limit: assetsToUnwrap / 2, // TODO Review limit
                             deadline: type(uint256).max,
                             wethIsEth: true,
                             userData: new bytes(0)
@@ -221,7 +229,7 @@ contract ERC4626BufferPool is
             );
 
         } else if (balanceUnderlying > scaledBalanceWrapped) {
-            uint256 assetsToWrap = (balanceUnderlying - scaledBalanceWrapped) / 2;
+            uint256 assetsToWrap = (balanceUnderlying - scaledBalanceWrapped)/ 2;
 
             abi.decode(
                 getVault().invoke{ value: msg.value }(
@@ -229,12 +237,12 @@ contract ERC4626BufferPool is
                         ERC4626BufferPool.rebalanceHook.selector,
                         SwapHookParams({
                             sender: msg.sender,
-                            kind: SwapKind.EXACT_IN,
+                            kind: SwapKind.EXACT_OUT,
                             pool: poolAddress,
-                            tokenIn: tokens[1],
-                            tokenOut: tokens[0],
+                            tokenIn: tokens[0],
+                            tokenOut: tokens[1],
                             amountGiven: assetsToWrap,
-                            limit: assetsToWrap / 2, // TODO Review limit
+                            limit: assetsToWrap * 2, // TODO Review limit
                             deadline: type(uint256).max,
                             wethIsEth: true,
                             userData: new bytes(0)
@@ -244,6 +252,12 @@ contract ERC4626BufferPool is
                 (uint256)
             );
         }
+
+        // Get balance of tokens
+        (, , uint256[] memory newRawBalances, , ) = getVault().getPoolTokenInfo(poolAddress);
+
+        uint256 newScaledBalanceWrapped = _wrappedToken.previewRedeem(newRawBalances[0]);
+        uint256 newBalanceUnderlying = newRawBalances[1];
     }
 
     // Unsupported functions that unconditionally revert
@@ -274,30 +288,26 @@ contract ERC4626BufferPool is
     function rebalanceHook(SwapHookParams calldata params) external payable onlyVault returns (uint256) { // TODO Check why it's reentrant
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
-        console.log('tokenIn balance: ', params.tokenIn.balanceOf(address(this)));
-        console.log('tokenOut balance: ', params.tokenOut.balanceOf(address(this)));
-
         if (params.kind == SwapKind.EXACT_IN) {
             IERC20 underlyingToken = params.tokenIn;
             IERC20 wrappedToken = params.tokenOut;
 
             getVault().wire(wrappedToken, address(this), amountOut);
             IERC4626(address(wrappedToken)).withdraw(amountIn, address(this), address(this));
+            uint256 underlyingTokenBalance = underlyingToken.balanceOf(address(this));
             underlyingToken.approve(address(getVault()), amountIn);
             getVault().retrieve(underlyingToken, address(this), amountIn);
         } else {
             IERC20 underlyingToken = params.tokenOut;
             IERC20 wrappedToken = params.tokenIn;
 
-            getVault().wire(underlyingToken, address(this), amountIn);
-            underlyingToken.approve(address(wrappedToken), amountIn);
-            IERC4626(address(wrappedToken)).deposit(amountIn, address(this));
-            wrappedToken.approve(address(getVault()), amountOut);
-            getVault().retrieve(wrappedToken, address(this), amountOut);
+            getVault().wire(underlyingToken, address(this), amountOut);
+            underlyingToken.approve(address(wrappedToken), amountOut);
+            IERC4626(address(wrappedToken)).deposit(amountOut, address(this));
+            uint256 wrappedTokenBalance = wrappedToken.balanceOf(address(this));
+            wrappedToken.approve(address(getVault()), amountIn);
+            getVault().retrieve(wrappedToken, address(this), amountIn);
         }
-
-        console.log('tokenIn balance: ', params.tokenIn.balanceOf(address(this)));
-        console.log('tokenOut balance: ', params.tokenOut.balanceOf(address(this)));
 
         return amountCalculated;
     }
@@ -325,10 +335,6 @@ contract ERC4626BufferPool is
     }
 
     function _getRate() private view returns (uint256) {
-        // TODO: This is really just a placeholder for now. We will need to think more carefully about this.
-        // e.g., it will probably need to be scaled according to the asset value decimals. There may be
-        // special cases with 0 supply. Wrappers may implement this differently, so maybe we need to calculate
-        // the rate directly instead of relying on the wrapper implementation, etc.
         return _wrappedToken.convertToAssets(FixedPoint.ONE);
     }
 }
