@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.4;
 
-import "forge-std/console.sol";
-
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -151,14 +149,15 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IBasePool
     function onSwap(IBasePool.SwapParams memory request) public view onlyVault returns (uint256) {
+        // TODO amountGivenScaled18 has rounding issues with _getRate(). When getRate() function uses shares,
+        // this code must be removed and should return amountGivenScaled18 only.
+        uint8 decimals = _wrappedToken.decimals();
+        uint256 wrappedRate = _getRate();
 
         if (request.kind == SwapKind.EXACT_IN) {
-            return request.amountGivenScaled18;
+            return request.amountGivenScaled18.divDown(wrappedRate).mulDown(wrappedRate + 10**(18-decimals));
         } else {
-            // TODO EXACT_OUT has rounding issues with _getRate(). When getRate() function uses shares,
-            // this code must be removed and should return the same number as EXACT_IN.
-            uint256 wrappedRate = _getRate();
-            return request.amountGivenScaled18.divDown(wrappedRate).mulDown(wrappedRate - 1);
+            return request.amountGivenScaled18.divDown(wrappedRate).mulDown(wrappedRate - 10**(18-decimals));
         }
     }
 

@@ -32,11 +32,18 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     using ArrayHelpers for *;
 
     ERC4626BufferPoolFactoryMock factory;
-    ERC4626BufferPoolMock internal bufferPool;
+    ERC4626BufferPoolMock internal bufferPoolMoreWrapped;
+    ERC4626BufferPoolMock internal bufferPoolMoreUnderlying;
 
     IERC20 daiMainnet;
     IERC20 aDaiMainnet;
     IERC4626 waDAI;
+
+    IERC20 usdcMainnet;
+    IERC20 aUsdcMainnet;
+    IERC4626 waUSDC;
+
+    uint256 saltCounter = 0;
 
     // uint256 constant BLOCK_NUMBER = 18985254;
     // Using older block number because convertToAssets function is bricked in the new version of the aToken wrapper
@@ -44,20 +51,27 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     uint256 POOL_AMPLIFICATION = 1e18;
 
     address constant aDAI_ADDRESS = 0x098256c06ab24F5655C5506A6488781BD711c14b;
+    address constant aUSDC_ADDRESS = 0x57d20c946A7A3812a7225B881CdcD8431D23431C;
     address constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
     // Owner of DAI and USDC in Mainnet
     address constant DONOR_WALLET_ADDRESS = 0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503;
 
     address payable donor;
 
-    uint256 constant INIT_DAI_AMOUNT = 1e4 * 1e18;
-    uint256 constant INIT_A_DAI_AMOUNT = INIT_DAI_AMOUNT / 10;
-    uint256 initADaiAmount;
+    uint256 constant BUFFER_WITH_UNDERLYING_DAI = 1e4 * 1e18;
+    uint256 constant BUFFER_WITH_UNDERLYING_ADAI = BUFFER_WITH_UNDERLYING_DAI / 10;
+    uint256 bufferWithUnderlyingADaiUnscaled; // Not converted to underlying value
+
+    uint256 constant BUFFER_WITH_WRAPPED_USDC = 1e3 * 1e6;
+    uint256 constant BUFFER_WITH_WRAPPED_AUSDC = BUFFER_WITH_WRAPPED_USDC * 10;
+    uint256 bufferWithWrappedAUsdcUnscaled; // Not converted to underlying value
 
     uint256 constant DELTA = 1e12;
 
-    uint256 internal bptAmountOut;
+    uint256 internal bptAmountOutUnderlying;
+    uint256 internal bptAmountOutWrapped;
 
     function setUp() public virtual override {
         vm.createSelectFork({ blockNumber: BLOCK_NUMBER, urlOrAlias: "mainnet" });
@@ -69,28 +83,50 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         aDaiMainnet = IERC20(aDAI_ADDRESS);
         waDAI = IERC4626(aDAI_ADDRESS);
 
+        usdcMainnet = IERC20(USDC_ADDRESS);
+        aUsdcMainnet = IERC20(aUSDC_ADDRESS);
+        waUSDC = IERC4626(aUSDC_ADDRESS);
+
         BaseVaultTest.setUp();
     }
 
     function createPool() internal override returns (address) {
         factory = new ERC4626BufferPoolFactoryMock(IVault(address(vault)), 365 days);
-        bufferPool = ERC4626BufferPoolMock(_createBuffer(waDAI));
-        return address(bufferPool);
+
+        bufferPoolMoreUnderlying = ERC4626BufferPoolMock(_createBuffer(waDAI));
+        bufferPoolMoreWrapped = ERC4626BufferPoolMock(_createBuffer(waUSDC));
+
+        return address(bufferPoolMoreUnderlying);
     }
 
     function initPool() internal override {
         transferTokensFromDonorToUsers();
 
         vm.startPrank(lp);
-        initADaiAmount = waDAI.convertToShares(INIT_A_DAI_AMOUNT);
-        waDAI.deposit(INIT_A_DAI_AMOUNT, address(lp));
-        uint256[] memory amountsIn = [uint256(initADaiAmount), uint256(INIT_DAI_AMOUNT)].toMemoryArray();
-        bptAmountOut = router.initialize(
-            address(bufferPool),
+        // Creating Unbalanced Buffer with more underlying tokens
+        bufferWithUnderlyingADaiUnscaled = waDAI.convertToShares(BUFFER_WITH_UNDERLYING_ADAI);
+        waDAI.deposit(BUFFER_WITH_UNDERLYING_ADAI, address(lp));
+        uint256[] memory amountsInMoreUnderlying = [uint256(bufferWithUnderlyingADaiUnscaled), uint256(BUFFER_WITH_UNDERLYING_DAI)].toMemoryArray();
+        bptAmountOutUnderlying = router.initialize(
+            address(bufferPoolMoreUnderlying),
             [aDAI_ADDRESS, DAI_ADDRESS].toMemoryArray().asIERC20(),
-            amountsIn,
+            amountsInMoreUnderlying,
             // Account for the precision loss
-            INIT_DAI_AMOUNT - DELTA - 1e6,
+            BUFFER_WITH_UNDERLYING_DAI - DELTA - 1e6,
+            false,
+            bytes("")
+        );
+
+        // Creating Unbalanced Buffer with more wrapped tokens
+        bufferWithWrappedAUsdcUnscaled = waUSDC.convertToShares(BUFFER_WITH_WRAPPED_AUSDC);
+        waUSDC.deposit(BUFFER_WITH_WRAPPED_AUSDC, address(lp));
+        uint256[] memory amountsInMoreWrapped = [uint256(bufferWithWrappedAUsdcUnscaled), uint256(BUFFER_WITH_WRAPPED_USDC)].toMemoryArray();
+        bptAmountOutWrapped = router.initialize(
+            address(bufferPoolMoreWrapped),
+            [aUSDC_ADDRESS, USDC_ADDRESS].toMemoryArray().asIERC20(),
+            amountsInMoreWrapped,
+            // Account for the precision loss
+            BUFFER_WITH_WRAPPED_USDC - 1e6,
             false,
             bytes("")
         );
@@ -104,35 +140,56 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             address userAddress = usersToTransfer[index];
 
             vm.startPrank(donor);
-            daiMainnet.transfer(userAddress, 50 * INIT_DAI_AMOUNT);
+            daiMainnet.transfer(userAddress, 50 * BUFFER_WITH_UNDERLYING_DAI);
+            usdcMainnet.transfer(userAddress, 50 * BUFFER_WITH_WRAPPED_USDC);
             vm.stopPrank();
 
             vm.startPrank(userAddress);
             daiMainnet.approve(address(vault), type(uint256).max);
             aDaiMainnet.approve(address(vault), type(uint256).max);
             daiMainnet.approve(address(waDAI), type(uint256).max);
+
+            usdcMainnet.approve(address(vault), type(uint256).max);
+            aUsdcMainnet.approve(address(vault), type(uint256).max);
+            usdcMainnet.approve(address(waUSDC), type(uint256).max);
             vm.stopPrank();
         }
     }
 
     function testInitialize() public {
         // Tokens are stored in the Vault
-        assertEq(aDaiMainnet.balanceOf(address(vault)), initADaiAmount);
-        assertEq(daiMainnet.balanceOf(address(vault)), INIT_DAI_AMOUNT);
+        assertEq(aDaiMainnet.balanceOf(address(vault)), bufferWithUnderlyingADaiUnscaled);
+        assertEq(daiMainnet.balanceOf(address(vault)), BUFFER_WITH_UNDERLYING_DAI);
+        assertEq(aUsdcMainnet.balanceOf(address(vault)), bufferWithWrappedAUsdcUnscaled);
+        assertEq(usdcMainnet.balanceOf(address(vault)), BUFFER_WITH_WRAPPED_USDC);
 
-        // Tokens are deposited to the pool
-        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(bufferPool));
-        assertEq(balances[0], initADaiAmount);
-        assertEq(balances[1], INIT_DAI_AMOUNT);
+        // Tokens are deposited to the pool with more underlying
+        (, , uint256[] memory moreUnderlyingBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolMoreUnderlying));
+        assertEq(moreUnderlyingBalances[0], bufferWithUnderlyingADaiUnscaled);
+        assertEq(moreUnderlyingBalances[1], BUFFER_WITH_UNDERLYING_DAI);
 
-        // should mint correct amount of BPT tokens
+        // Tokens are deposited to the pool with more wrapped
+        (, , uint256[] memory moreWrappedBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolMoreWrapped));
+        assertEq(moreWrappedBalances[0], bufferWithWrappedAUsdcUnscaled);
+        assertEq(moreWrappedBalances[1], BUFFER_WITH_WRAPPED_USDC);
+
+        // should mint correct amount of BPT tokens for buffer with more underlying
         // Account for the precision loss
-        assertApproxEqAbs(bufferPool.balanceOf(lp), bptAmountOut, DELTA);
-        assertApproxEqAbs(bptAmountOut, INIT_DAI_AMOUNT + INIT_A_DAI_AMOUNT, DELTA);
+        assertApproxEqAbs(bufferPoolMoreUnderlying.balanceOf(lp), bptAmountOutUnderlying, DELTA);
+        assertApproxEqAbs(bptAmountOutUnderlying, BUFFER_WITH_UNDERLYING_DAI + BUFFER_WITH_UNDERLYING_ADAI, DELTA);
+
+        // should mint correct amount of BPT tokens for buffer with more wrapped
+        // Account for the precision loss
+        assertApproxEqAbs(bufferPoolMoreWrapped.balanceOf(lp), bptAmountOutWrapped, DELTA);
+        assertApproxEqAbs(bptAmountOutWrapped, (BUFFER_WITH_WRAPPED_USDC + BUFFER_WITH_WRAPPED_AUSDC) * 1e12, DELTA);
     }
 
-    function testRebalance() public {
-        bufferPool.rebalance();
+    function testRebalanceForBufferWithMoreUnderlying() public {
+        bufferPoolMoreUnderlying.rebalance();
+    }
+
+    function testRebalanceForBufferWithMoreWrapped() public {
+        bufferPoolMoreWrapped.rebalance();
     }
 
     //    function testSwapDaiToUsdcGivenIn() public {
@@ -286,7 +343,8 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     }
 
     // Need a unique salt for deployments to work; just use the token address
-    function _generateSalt(address token) private pure returns (bytes32) {
-        return bytes32(uint256(uint160(token)));
+    function _generateSalt(address token) private returns (bytes32) {
+        saltCounter++;
+        return bytes32(uint256(uint160(token)) + saltCounter);
     }
 }
