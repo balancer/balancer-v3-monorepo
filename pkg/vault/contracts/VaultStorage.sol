@@ -48,13 +48,10 @@ contract VaultStorage {
     // Store pool pause managers.
     mapping(address => address) internal _poolPauseManagers;
 
-    // Pool -> (token -> balance): Pool's ERC20 tokens balances stored at the Vault.
-    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolTokenBalances;
-
-    // Pool -> (token -> balance): Pool's last live balances, used for yield fee computation
-    // Note that since these have rates applied, they are stored as "scaled" 18-decimal FP values.
-    // TODO - storage will be optimized later (e.g., both balances can be stored in 128 bits each)
-    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _lastLivePoolTokenBalances;
+    // Pool -> (token -> PackedTokenBalance): structure containing the current raw and "last live" scaled balances.
+    // Last live balances are used for yield fee computation, and since these have rates applied, they are stored
+    // as scaled 18-decimal FP values. Each value takes up half the storage slot (i.e., 128 bits).
+    mapping(address => EnumerableMap.IERC20ToBytes32Map) internal _poolTokenBalances;
 
     // Pool -> (token -> TokenConfig): The token configuration of each Pool's tokens.
     mapping(address => mapping(IERC20 => TokenConfig)) internal _poolTokenConfig;
