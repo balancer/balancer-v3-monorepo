@@ -477,11 +477,8 @@ contract Router is IRouter, ReentrancyGuard {
         IERC20[] memory tokens = _vault.getPoolTokens(pool);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            uint256 amountOut = amountsOut[i];
-            IERC20 token = tokens[i];
-
             // Wire the token to the sender (amountOut)
-            _vault.wire(token, sender, amountOut);
+            _vault.wire(tokens[i], sender, amountsOut[i]);
         }
     }
 
