@@ -80,26 +80,9 @@ contract ERC4626BufferPool is
     function onBeforeInitialize(
         uint256[] memory exactAmountsInScaled18,
         bytes memory
-    ) external view override onlyVault returns (bool) {
-        //        console.log(exactAmountsInScaled18[0]);
-        //        console.log(exactAmountsInScaled18[1]);
-        //
-        //        if (
-        //            exactAmountsInScaled18[0] > exactAmountsInScaled18[1] &&
-        //            exactAmountsInScaled18[0] - exactAmountsInScaled18[1] > 1e4
-        //        ) {
-        //            return false;
-        //        }
-        //
-        //        if (
-        //            exactAmountsInScaled18[1] > exactAmountsInScaled18[0] &&
-        //            exactAmountsInScaled18[1] - exactAmountsInScaled18[0] > 1e4
-        //        ) {
-        //            return false;
-        //        }
-
+    ) external view override virtual onlyVault returns (bool) {
         // Enforce proportionality - might need to say exactAmountsIn[0].mulDown(getRate()) to compare equal value?
-        return exactAmountsInScaled18.length == 2;
+        return exactAmountsInScaled18.length == 2 && exactAmountsInScaled18[0] > exactAmountsInScaled18[1];
     }
 
     /// @inheritdoc BasePoolHooks
@@ -173,7 +156,7 @@ contract ERC4626BufferPool is
             return request.amountGivenScaled18;
         } else {
             // TODO EXACT_OUT has rounding issues with _getRate(). When getRate() function uses shares,
-            // this code must be removed and shoukd return the same number as EXACT_IN.
+            // this code must be removed and should return the same number as EXACT_IN.
             uint256 wrappedRate = _getRate();
             return request.amountGivenScaled18.divDown(wrappedRate).mulDown(wrappedRate - 1);
         }
@@ -218,7 +201,7 @@ contract ERC4626BufferPool is
                             tokenIn: tokens[1],
                             tokenOut: tokens[0],
                             amountGiven: assetsToUnwrap,
-                            limit: assetsToUnwrap / 2, // TODO Review limit
+                            limit: assetsToUnwrap / 2, // TODO Review limit and deadline
                             deadline: type(uint256).max,
                             wethIsEth: true,
                             userData: new bytes(0)
@@ -242,7 +225,7 @@ contract ERC4626BufferPool is
                             tokenIn: tokens[0],
                             tokenOut: tokens[1],
                             amountGiven: assetsToWrap,
-                            limit: assetsToWrap * 2, // TODO Review limit
+                            limit: assetsToWrap * 2, // TODO Review limit and deadline
                             deadline: type(uint256).max,
                             wethIsEth: true,
                             userData: new bytes(0)
@@ -252,12 +235,6 @@ contract ERC4626BufferPool is
                 (uint256)
             );
         }
-
-        // Get balance of tokens
-        (, , uint256[] memory newRawBalances, , ) = getVault().getPoolTokenInfo(poolAddress);
-
-        uint256 newScaledBalanceWrapped = _wrappedToken.previewRedeem(newRawBalances[0]);
-        uint256 newBalanceUnderlying = newRawBalances[1];
     }
 
     // Unsupported functions that unconditionally revert
@@ -285,7 +262,8 @@ contract ERC4626BufferPool is
         revert IVaultErrors.OperationNotSupported();
     }
 
-    function rebalanceHook(SwapHookParams calldata params) external payable onlyVault returns (uint256) { // TODO Check why it's reentrant
+    // TODO Check why nonReentrant modifier fails in this hook. Where is the reentrancy?
+    function rebalanceHook(SwapHookParams calldata params) external payable onlyVault returns (uint256) {
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         if (params.kind == SwapKind.EXACT_IN) {
@@ -294,7 +272,6 @@ contract ERC4626BufferPool is
 
             getVault().wire(wrappedToken, address(this), amountOut);
             IERC4626(address(wrappedToken)).withdraw(amountIn, address(this), address(this));
-            uint256 underlyingTokenBalance = underlyingToken.balanceOf(address(this));
             underlyingToken.approve(address(getVault()), amountIn);
             getVault().retrieve(underlyingToken, address(this), amountIn);
         } else {
@@ -304,7 +281,6 @@ contract ERC4626BufferPool is
             getVault().wire(underlyingToken, address(this), amountOut);
             underlyingToken.approve(address(wrappedToken), amountOut);
             IERC4626(address(wrappedToken)).deposit(amountOut, address(this));
-            uint256 wrappedTokenBalance = wrappedToken.balanceOf(address(this));
             wrappedToken.approve(address(getVault()), amountIn);
             getVault().retrieve(wrappedToken, address(this), amountIn);
         }

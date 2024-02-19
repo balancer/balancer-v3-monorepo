@@ -19,8 +19,8 @@ import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 
-import { ERC4626BufferPoolFactory } from "@balancer-labs/v3-vault/contracts/factories/ERC4626BufferPoolFactory.sol";
-import { ERC4626BufferPool } from "@balancer-labs/v3-vault/contracts/ERC4626BufferPool.sol";
+import { ERC4626BufferPoolFactoryMock } from "../utils/ERC4626BufferPoolFactoryMock.sol";
+import { ERC4626BufferPoolMock } from "../utils/ERC4626BufferPoolMock.sol";
 import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
 import { Router } from "@balancer-labs/v3-vault/contracts/Router.sol";
 import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
@@ -31,8 +31,8 @@ import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 contract ERC4626RebalanceValidation is BaseVaultTest {
     using ArrayHelpers for *;
 
-    ERC4626BufferPoolFactory factory;
-    ERC4626BufferPool internal bufferPool;
+    ERC4626BufferPoolFactoryMock factory;
+    ERC4626BufferPoolMock internal bufferPool;
 
     IERC20 daiMainnet;
     IERC20 aDaiMainnet;
@@ -73,8 +73,8 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     }
 
     function createPool() internal override returns (address) {
-        factory = new ERC4626BufferPoolFactory(IVault(address(vault)), 365 days);
-        bufferPool = ERC4626BufferPool(_createBuffer(waDAI));
+        factory = new ERC4626BufferPoolFactoryMock(IVault(address(vault)), 365 days);
+        bufferPool = ERC4626BufferPoolMock(_createBuffer(waDAI));
         return address(bufferPool);
     }
 
