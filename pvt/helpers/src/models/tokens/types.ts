@@ -1,8 +1,8 @@
-import { BigNumberish } from 'ethers';
+import { AddressLike, BigNumberish } from 'ethers';
 
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 
-import { NAry, Account } from '../types/types';
+import { NAry } from '../types/types';
 
 export type RawTokensDeployment = number | NAry<RawTokenDeployment>;
 
@@ -29,25 +29,25 @@ export type TokenDeployment = {
 };
 
 export type RawTokenMint = NAry<{
-  to: NAry<Account>;
+  to: NAry<AddressLike>;
   from?: SignerWithAddress;
-  amount?: BigNumberish;
+  amount: BigNumberish;
 }>;
 
 export type TokenMint = {
-  to: Account;
+  to: AddressLike;
   from?: SignerWithAddress;
-  amount?: BigNumberish;
+  amount: BigNumberish;
 };
 
 export type RawTokenApproval = NAry<{
-  to: NAry<Account>;
-  from?: NAry<SignerWithAddress>;
-  amount?: BigNumberish;
+  to: NAry<AddressLike>;
+  from: NAry<SignerWithAddress>;
+  amount: BigNumberish;
 }>;
 
 export type TokenApproval = {
-  to: Account;
-  from?: SignerWithAddress;
-  amount?: BigNumberish;
+  to: AddressLike;
+  from: SignerWithAddress;
+  amount: BigNumberish;
 };

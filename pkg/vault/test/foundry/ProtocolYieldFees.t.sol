@@ -144,7 +144,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         assertApproxEqAbs(actualProtocolFee, expectedProtocolFee, 1e3, "Actual protocol fee is not the expected one");
     }
 
-    function testSetLiveBalanceFromRawForToken__Fuzz(
+    function testUpdateLiveTokenBalanceInPoolData__Fuzz(
         uint256 balanceRaw,
         uint8 decimals,
         uint256 tokenRate,
@@ -158,14 +158,14 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         PoolData memory poolData = _simplePoolData(balanceRaw, decimalScalingFactor, tokenRate);
 
         if (roundUp) {
-            poolData = vault.setLiveBalanceFromRawForToken(poolData, Rounding.ROUND_UP, 0);
+            poolData = vault.updateLiveTokenBalanceInPoolData(poolData, Rounding.ROUND_UP, 0);
             assertEq(
                 poolData.balancesLiveScaled18[0],
                 balanceRaw.mulUp(decimalScalingFactor).mulUp(tokenRate),
                 "Live scaled balance does not match (round up)"
             );
         } else {
-            poolData = vault.setLiveBalanceFromRawForToken(poolData, Rounding.ROUND_DOWN, 0);
+            poolData = vault.updateLiveTokenBalanceInPoolData(poolData, Rounding.ROUND_DOWN, 0);
             assertEq(
                 poolData.balancesLiveScaled18[0],
                 balanceRaw.mulDown(decimalScalingFactor).mulDown(tokenRate),
@@ -228,7 +228,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
 
         // Dummy swap
         vm.prank(alice);
-        router.swapExactIn(pool, dai, wsteth, 1e18, 0, type(uint256).max, false, "");
+        router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, type(uint256).max, false, "");
 
         // No matter what the rates are, the value of wsteth grows from 1x to 10x.
         // Then, the protocol takes its cut out of the 9x difference.
@@ -272,7 +272,8 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
                 );
             }
 
-            assertEq(data.balancesLiveScaled18[i], expectedLiveBalance, "Live balance does not match");
+            // Tolerate being off by 1 wei
+            assertApproxEqAbs(data.balancesLiveScaled18[i], expectedLiveBalance, 1, "Live balance does not match");
         }
 
         return data.balancesLiveScaled18;

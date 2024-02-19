@@ -292,6 +292,16 @@ contract VaultLiquidityTest is BaseVaultTest {
         // User now has BPT
         assertEq(balancesBefore.userBpt, 0, "Add - User BPT balance before");
         assertEq(balancesAfter.userBpt, bptAmountOut, "Add - User BPT balance after");
+
+        // Ensure raw and last live balances are in sync after the operation
+        uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
+        uint256[] memory lastLiveBalances = vault.getLastLiveBalances(pool);
+
+        assertEq(currentLiveBalances.length, lastLiveBalances.length);
+
+        for (uint256 i = 0; i < currentLiveBalances.length; i++) {
+            assertEq(currentLiveBalances[i], lastLiveBalances[i]);
+        }
     }
 
     function assertRemoveLiquidity(function() returns (uint256[] memory, uint256) testFunc) internal {
@@ -340,5 +350,15 @@ contract VaultLiquidityTest is BaseVaultTest {
         // User has burnt the correct amount of BPT
         assertEq(balancesBefore.userBpt, bptAmountIn, "Remove - User BPT balance before");
         assertEq(balancesAfter.userBpt, 0, "Remove - User BPT balance after");
+
+        // Ensure raw and last live balances are in sync after the operation
+        uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
+        uint256[] memory lastLiveBalances = vault.getLastLiveBalances(pool);
+
+        assertEq(currentLiveBalances.length, lastLiveBalances.length);
+
+        for (uint256 i = 0; i < currentLiveBalances.length; i++) {
+            assertEq(currentLiveBalances[i], lastLiveBalances[i]);
+        }
     }
 }
