@@ -52,6 +52,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     address payable donor;
 
     uint256 constant INIT_DAI_AMOUNT = 1e3 * 1e18;
+    uint256 constant INIT_A_DAI_AMOUNT = INIT_DAI_AMOUNT * 2;
     uint256 initADaiAmount;
 
     uint256 constant DELTA = 1e12;
@@ -81,8 +82,8 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         transferTokensFromDonorToUsers();
 
         vm.startPrank(lp);
-        initADaiAmount = waDAI.convertToShares(INIT_DAI_AMOUNT / 2);
-        waDAI.deposit(INIT_DAI_AMOUNT / 2, address(lp));
+        initADaiAmount = waDAI.convertToShares(INIT_A_DAI_AMOUNT);
+        waDAI.deposit(INIT_A_DAI_AMOUNT, address(lp));
         uint256[] memory amountsIn = [uint256(initADaiAmount), uint256(INIT_DAI_AMOUNT)].toMemoryArray();
         bptAmountOut = router.initialize(
             address(bufferPool),
@@ -127,7 +128,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         // should mint correct amount of BPT tokens
         // Account for the precision loss
         assertApproxEqAbs(bufferPool.balanceOf(lp), bptAmountOut, DELTA);
-        assertApproxEqAbs(bptAmountOut, INIT_DAI_AMOUNT + INIT_DAI_AMOUNT / 2, DELTA);
+        assertApproxEqAbs(bptAmountOut, INIT_DAI_AMOUNT + INIT_A_DAI_AMOUNT, DELTA);
     }
 
     function testRebalance() public {

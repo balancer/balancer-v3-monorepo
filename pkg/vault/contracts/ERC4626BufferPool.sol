@@ -196,41 +196,54 @@ contract ERC4626BufferPool is
         uint256 scaledBalanceWrapped = rawBalances[0].mulDown(_getRate());
         uint256 balanceUnderlying = rawBalances[1];
 
-        console.log("scaledBalanceWrapped", scaledBalanceWrapped);
-        console.log("balanceUnderlying", balanceUnderlying);
-
         if (scaledBalanceWrapped > balanceUnderlying) {
             uint256 assetsToUnwrap = (scaledBalanceWrapped - balanceUnderlying) / 2;
-            console.log("assetsToUnwrap", assetsToUnwrap);
-            // Call Swap!
-            (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = getVault().swap(
-                VaultSwapParams({
-                    kind: SwapKind.EXACT_OUT,
-                    pool: address(this),
-                    tokenIn: tokens[0],
-                    tokenOut: tokens[1],
-                    amountGivenRaw: assetsToUnwrap,
-                    limitRaw: 2 * assetsToUnwrap,
-                    userData: new bytes(0)
-                })
+
+            abi.decode(
+                getVault().invoke{ value: msg.value }(
+                    abi.encodeWithSelector(
+                        ERC4626BufferPool.rebalanceHook.selector,
+                        SwapHookParams({
+                            sender: msg.sender,
+                            kind: SwapKind.EXACT_OUT,
+                            pool: poolAddress,
+                            tokenIn: tokens[0],
+                            tokenOut: tokens[1],
+                            amountGiven: assetsToUnwrap,
+                            limit: assetsToUnwrap * 2, // TODO Review limit
+                            deadline: type(uint256).max,
+                            wethIsEth: true,
+                            userData: new bytes(0)
+                        })
+                    )
+                ),
+                (uint256)
             );
 
-            console.log("amountCalculated", amountCalculated);
-            console.log("amountIn", amountIn);
-            console.log("amountOut", amountOut);
         } else if (balanceUnderlying > scaledBalanceWrapped) {
             uint256 assetsToWrap = (balanceUnderlying - scaledBalanceWrapped) / 2;
-            console.log("assetsToWrap", assetsToWrap);
 
-            // Call Swap!
-            _swapWithWrap(tokens, assetsToWrap);
+            abi.decode(
+                getVault().invoke{ value: msg.value }(
+                    abi.encodeWithSelector(
+                        ERC4626BufferPool.rebalanceHook.selector,
+                        SwapHookParams({
+                            sender: msg.sender,
+                            kind: SwapKind.EXACT_IN,
+                            pool: poolAddress,
+                            tokenIn: tokens[1],
+                            tokenOut: tokens[0],
+                            amountGiven: assetsToWrap,
+                            limit: assetsToWrap / 2, // TODO Review limit
+                            deadline: type(uint256).max,
+                            wethIsEth: true,
+                            userData: new bytes(0)
+                        })
+                    )
+                ),
+                (uint256)
+            );
         }
-
-        // If wrapped > unwrapped
-        // unwraps quantity
-
-        // else if unwrapped > wrapped
-        // wraps quantity
     }
 
     // Unsupported functions that unconditionally revert
@@ -258,37 +271,35 @@ contract ERC4626BufferPool is
         revert IVaultErrors.OperationNotSupported();
     }
 
-    function _swapWithWrap(IERC20[] memory tokens, uint256 assetsToWrap) private {
-        address poolAddress = address(this);
-
-        abi.decode(
-            getVault().invoke{ value: msg.value }(
-                abi.encodeWithSelector(
-                    ERC4626BufferPool.swapHook.selector,
-                    SwapHookParams({
-                        sender: msg.sender,
-                        kind: SwapKind.EXACT_IN,
-                        pool: poolAddress,
-                        tokenIn: tokens[1],
-                        tokenOut: tokens[0],
-                        amountGiven: assetsToWrap,
-                        limit: assetsToWrap / 2,
-                        deadline: type(uint256).max,
-                        wethIsEth: true,
-                        userData: new bytes(0)
-                    })
-                )
-            ),
-            (uint256)
-        );
-    }
-
-    function swapHook(SwapHookParams calldata params) external payable onlyVault { // TODO Check why it's reentrant
+    function rebalanceHook(SwapHookParams calldata params) external payable onlyVault returns (uint256) { // TODO Check why it's reentrant
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
-        console.log("amountCalculated", amountCalculated);
-        console.log("amountIn", amountIn);
-        console.log("amountOut", amountOut);
+        console.log('tokenIn balance: ', params.tokenIn.balanceOf(address(this)));
+        console.log('tokenOut balance: ', params.tokenOut.balanceOf(address(this)));
+
+        if (params.kind == SwapKind.EXACT_IN) {
+            IERC20 underlyingToken = params.tokenIn;
+            IERC20 wrappedToken = params.tokenOut;
+
+            getVault().wire(wrappedToken, address(this), amountOut);
+            IERC4626(address(wrappedToken)).withdraw(amountIn, address(this), address(this));
+            underlyingToken.approve(address(getVault()), amountIn);
+            getVault().retrieve(underlyingToken, address(this), amountIn);
+        } else {
+            IERC20 underlyingToken = params.tokenOut;
+            IERC20 wrappedToken = params.tokenIn;
+
+            getVault().wire(underlyingToken, address(this), amountIn);
+            underlyingToken.approve(address(wrappedToken), amountIn);
+            IERC4626(address(wrappedToken)).deposit(amountIn, address(this));
+            wrappedToken.approve(address(getVault()), amountOut);
+            getVault().retrieve(wrappedToken, address(this), amountOut);
+        }
+
+        console.log('tokenIn balance: ', params.tokenIn.balanceOf(address(this)));
+        console.log('tokenOut balance: ', params.tokenOut.balanceOf(address(this)));
+
+        return amountCalculated;
     }
 
     function _swapHook(
@@ -296,9 +307,9 @@ contract ERC4626BufferPool is
     ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
-        //        if (block.timestamp > params.deadline) {
-        //            revert SwapDeadline();
-        //        }
+//        if (block.timestamp > params.deadline) {
+//            revert SwapDeadline();
+//        }
 
         (amountCalculated, amountIn, amountOut) = getVault().swap(
             VaultSwapParams({
