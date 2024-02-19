@@ -52,7 +52,7 @@ contract RecoveryModeTest is BaseVaultTest {
         uint256[] memory lastLiveBalances = vault.getLastLiveBalances(pool);
 
         assertEq(currentLiveBalances.length, lastLiveBalances.length);
-        
+
         for (uint256 i = 0; i < currentLiveBalances.length; i++) {
             bool areEqual = currentLiveBalances[i] == lastLiveBalances[i];
 
