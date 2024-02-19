@@ -38,7 +38,9 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     IERC20 aDaiMainnet;
     IERC4626 waDAI;
 
-    uint256 constant BLOCK_NUMBER = 18985254;
+    // uint256 constant BLOCK_NUMBER = 18985254;
+    // Using older block number because convertToAssets function is bricked in the new version of the aToken wrapper
+    uint256 constant BLOCK_NUMBER = 17965150;
     uint256 POOL_AMPLIFICATION = 1e18;
 
     address constant aDAI_ADDRESS = 0x098256c06ab24F5655C5506A6488781BD711c14b;
@@ -49,7 +51,8 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
 
     address payable donor;
 
-    uint256 constant DAI_AMOUNT = 1e3 * 1e18;
+    uint256 constant INIT_DAI_AMOUNT = 1e3 * 1e18;
+    uint256 initADaiAmount;
 
     uint256 constant DELTA = 1e12;
 
@@ -70,7 +73,6 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
 
     function createPool() internal override returns (address) {
         factory = new ERC4626BufferPoolFactory(IVault(address(vault)), 365 days);
-
         bufferPool = ERC4626BufferPool(_createBuffer(waDAI));
         return address(bufferPool);
     }
@@ -79,12 +81,15 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         transferTokensFromDonorToUsers();
 
         vm.startPrank(lp);
-        uint256[] memory amountsIn = [DAI_AMOUNT, DAI_AMOUNT].toMemoryArray();
+        initADaiAmount = waDAI.convertToShares(INIT_DAI_AMOUNT / 2);
+        waDAI.deposit(INIT_DAI_AMOUNT / 2, address(lp));
+        uint256[] memory amountsIn = [uint256(initADaiAmount), uint256(INIT_DAI_AMOUNT)].toMemoryArray();
         bptAmountOut = router.initialize(
             address(bufferPool),
             [aDAI_ADDRESS, DAI_ADDRESS].toMemoryArray().asIERC20(),
             amountsIn,
-            0,
+            // Account for the precision loss
+            INIT_DAI_AMOUNT - DELTA - 1e6,
             false,
             bytes("")
         );
@@ -92,178 +97,180 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     }
 
     function transferTokensFromDonorToUsers() internal {
-        address[] memory usersToTransfer = [address(lp), address(bob)].toMemoryArray();
+        address[] memory usersToTransfer = [address(bob), address(lp)].toMemoryArray();
 
         for (uint256 index = 0; index < usersToTransfer.length; index++) {
             address userAddress = usersToTransfer[index];
 
             vm.startPrank(donor);
-            daiMainnet.transfer(userAddress, 10 * DAI_AMOUNT);
+            daiMainnet.transfer(userAddress, 10 * INIT_DAI_AMOUNT);
             vm.stopPrank();
 
             vm.startPrank(userAddress);
             daiMainnet.approve(address(vault), type(uint256).max);
+            aDaiMainnet.approve(address(vault), type(uint256).max);
+            daiMainnet.approve(address(waDAI), type(uint256).max);
             vm.stopPrank();
         }
     }
 
     function testInitialize() public {
-        uint256 depositedADai = waDAI.convertToShares(DAI_AMOUNT);
-
         // Tokens are stored in the Vault
-        assertEq(aDaiMainnet.balanceOf(address(vault)), depositedADai);
-        assertEq(daiMainnet.balanceOf(address(vault)), DAI_AMOUNT);
+        assertEq(aDaiMainnet.balanceOf(address(vault)), initADaiAmount);
+        assertEq(daiMainnet.balanceOf(address(vault)), INIT_DAI_AMOUNT);
 
         // Tokens are deposited to the pool
         (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(bufferPool));
-        assertEq(balances[0], depositedADai);
-        assertEq(balances[1], DAI_AMOUNT);
+        assertEq(balances[0], initADaiAmount);
+        assertEq(balances[1], INIT_DAI_AMOUNT);
 
         // should mint correct amount of BPT tokens
         // Account for the precision loss
-        // TODO Check BPT
-//        assertApproxEqAbs(bufferPool.balanceOf(lp), bptAmountOut, DELTA);
-//
-//        assertApproxEqAbs(bptAmountOut, depositedDai + depositedADai, DELTA);
+        assertApproxEqAbs(bufferPool.balanceOf(lp), bptAmountOut, DELTA);
+        assertApproxEqAbs(bptAmountOut, INIT_DAI_AMOUNT + INIT_DAI_AMOUNT / 2, DELTA);
     }
 
-//    function testSwapDaiToUsdcGivenIn() public {
-//        uint256 DAI_AMOUNT_IN = 100 * 1e18;
-//        uint256 USDC_AMOUNT_OUT = 100 * 1e6;
-//
-//        uint256 bobInitialUsdcBalance = usdcMainnet.balanceOf(bob);
-//        uint256 bobInitialDaiBalance = daiMainnet.balanceOf(bob);
-//
-//        uint256 vaultInitialWrappedUsdcBalance = aUsdcMainnet.balanceOf(address(vault));
-//        uint256 vaultInitialWrappedDaiBalance = aDaiMainnet.balanceOf(address(vault));
-//
-//        vm.prank(bob);
-//        uint256 amountCalculated = router.swapExactIn(
-//            address(stablePool),
-//            daiMainnet,
-//            usdcMainnet,
-//            DAI_AMOUNT_IN,
-//            less(USDC_AMOUNT_OUT, 1e3),
-//            type(uint256).max,
-//            false,
-//            bytes("")
-//        );
-//
-//        uint256 wrappedDaiIn = waDAI.convertToShares(DAI_AMOUNT_IN);
-//        uint256 wrappedUsdcOut = waUSDC.convertToShares(amountCalculated);
-//
-//        // Tokens are transferred from Bob
-//        assertEq(usdcMainnet.balanceOf(bob), bobInitialUsdcBalance + amountCalculated);
-//        assertEq(daiMainnet.balanceOf(bob), bobInitialDaiBalance - DAI_AMOUNT_IN);
-//
-//        // Assert that the amount received is close from expected
-//        assertApproxEqAbs(amountCalculated, USDC_AMOUNT_OUT, 1e3);
-//
-//        // Underlying tokens were wrapped and are not in the vault
-//        assertApproxEqAbs(usdcMainnet.balanceOf(address(vault)), 0, 1);
-//        assertApproxEqAbs(daiMainnet.balanceOf(address(vault)), 0, 1);
-//
-//        // Wrapped tokens are stored in the vault
-//        assertApproxEqAbs(aUsdcMainnet.balanceOf(address(vault)), vaultInitialWrappedUsdcBalance - wrappedUsdcOut, 1);
-//        assertApproxEqAbs(aDaiMainnet.balanceOf(address(vault)), vaultInitialWrappedDaiBalance + wrappedDaiIn, 1);
-//
-//        // Tokens are deposited to the pool
-//        (, , , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(stablePool));
-//        assertEq(balances[0], vaultInitialWrappedDaiBalance + wrappedDaiIn);
-//        assertEq(balances[1], vaultInitialWrappedUsdcBalance - wrappedUsdcOut);
-//    }
-//
-//    function testSwapUsdcToDaiGivenIn() public {
-//        uint256 USDC_AMOUNT_IN = 300 * 1e6;
-//        uint256 DAI_AMOUNT_OUT = 300 * 1e18;
-//
-//        uint256 bobInitialUsdcBalance = usdcMainnet.balanceOf(bob);
-//        uint256 bobInitialDaiBalance = daiMainnet.balanceOf(bob);
-//
-//        uint256 vaultInitialWrappedUsdcBalance = aUsdcMainnet.balanceOf(address(vault));
-//        uint256 vaultInitialWrappedDaiBalance = aDaiMainnet.balanceOf(address(vault));
-//
-//        vm.prank(bob);
-//        uint256 amountCalculated = router.swapExactIn(
-//            address(stablePool),
-//            usdcMainnet,
-//            daiMainnet,
-//            USDC_AMOUNT_IN,
-//            less(DAI_AMOUNT_OUT, 1e3),
-//            type(uint256).max,
-//            false,
-//            bytes("")
-//        );
-//
-//        uint256 wrappedUsdcIn = waUSDC.convertToShares(USDC_AMOUNT_IN);
-//        uint256 wrappedDaiOut = waDAI.convertToShares(amountCalculated);
-//
-//        // Tokens are transferred from Bob
-//        assertEq(usdcMainnet.balanceOf(bob), bobInitialUsdcBalance - USDC_AMOUNT_IN);
-//        assertEq(daiMainnet.balanceOf(bob), bobInitialDaiBalance + amountCalculated);
-//
-//        // Assert that the amount received is close from expected
-//        assertApproxEqAbs(amountCalculated, DAI_AMOUNT_OUT, 1e9);
-//
-//        // Underlying tokens were wrapped and are not in the vault
-//        assertApproxEqAbs(usdcMainnet.balanceOf(address(vault)), 0, 1);
-//        assertApproxEqAbs(daiMainnet.balanceOf(address(vault)), 0, 1);
-//
-//        // Wrapped tokens are stored in the vault
-//        assertApproxEqAbs(aUsdcMainnet.balanceOf(address(vault)), vaultInitialWrappedUsdcBalance + wrappedUsdcIn, 1);
-//        assertApproxEqAbs(aDaiMainnet.balanceOf(address(vault)), vaultInitialWrappedDaiBalance - wrappedDaiOut, 1);
-//
-//        // Tokens are deposited to the pool
-//        (, , , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(stablePool));
-//        assertEq(balances[0], vaultInitialWrappedDaiBalance - wrappedDaiOut);
-//        assertEq(balances[1], vaultInitialWrappedUsdcBalance + wrappedUsdcIn);
-//    }
-//
-//    function testSwapDaiToUsdcGivenOut() public {
-//        uint256 DAI_AMOUNT_IN = 100 * 1e18;
-//        uint256 USDC_AMOUNT_OUT = 100 * 1e6;
-//
-//        uint256 bobInitialUsdcBalance = usdcMainnet.balanceOf(bob);
-//        uint256 bobInitialDaiBalance = daiMainnet.balanceOf(bob);
-//
-//        uint256 vaultInitialWrappedUsdcBalance = aUsdcMainnet.balanceOf(address(vault));
-//        uint256 vaultInitialWrappedDaiBalance = aDaiMainnet.balanceOf(address(vault));
-//
-//        vm.prank(bob);
-//        uint256 amountCalculated = router.swapExactOut(
-//            address(stablePool),
-//            daiMainnet,
-//            usdcMainnet,
-//            USDC_AMOUNT_OUT,
-//            more(DAI_AMOUNT_IN, 1e3),
-//            type(uint256).max,
-//            false,
-//            bytes("")
-//        );
-//
-//        uint256 wrappedDaiIn = waDAI.convertToShares(amountCalculated);
-//        uint256 wrappedUsdcOut = waUSDC.convertToShares(USDC_AMOUNT_OUT);
-//
-//        // Tokens are transferred from Bob
-//        assertEq(usdcMainnet.balanceOf(bob), bobInitialUsdcBalance + USDC_AMOUNT_OUT);
-//        assertEq(daiMainnet.balanceOf(bob), bobInitialDaiBalance - amountCalculated);
-//
-//        // Assert that the amount deposited is close from expected
-//        assertApproxEqAbs(amountCalculated, DAI_AMOUNT_IN, 1e9);
-//
-//        // Underlying tokens were wrapped and are not in the vault
-//        assertApproxEqAbs(usdcMainnet.balanceOf(address(vault)), 0, 1);
-//        assertApproxEqAbs(daiMainnet.balanceOf(address(vault)), 0, 1);
-//
-//        // Wrapped tokens are stored in the vault
-//        assertApproxEqAbs(aUsdcMainnet.balanceOf(address(vault)), vaultInitialWrappedUsdcBalance - wrappedUsdcOut, 1);
-//        assertApproxEqAbs(aDaiMainnet.balanceOf(address(vault)), vaultInitialWrappedDaiBalance + wrappedDaiIn, 1);
-//
-//        // Tokens are deposited to the pool
-//        (, , , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(stablePool));
-//        assertEq(balances[0], vaultInitialWrappedDaiBalance + wrappedDaiIn);
-//        assertEq(balances[1], vaultInitialWrappedUsdcBalance - wrappedUsdcOut);
-//    }
+    function testRebalance() public {
+        bufferPool.rebalance();
+    }
+
+    //    function testSwapDaiToUsdcGivenIn() public {
+    //        uint256 DAI_AMOUNT_IN = 100 * 1e18;
+    //        uint256 USDC_AMOUNT_OUT = 100 * 1e6;
+    //
+    //        uint256 bobInitialUsdcBalance = usdcMainnet.balanceOf(bob);
+    //        uint256 bobInitialDaiBalance = daiMainnet.balanceOf(bob);
+    //
+    //        uint256 vaultInitialWrappedUsdcBalance = aUsdcMainnet.balanceOf(address(vault));
+    //        uint256 vaultInitialWrappedDaiBalance = aDaiMainnet.balanceOf(address(vault));
+    //
+    //        vm.prank(bob);
+    //        uint256 amountCalculated = router.swapExactIn(
+    //            address(stablePool),
+    //            daiMainnet,
+    //            usdcMainnet,
+    //            DAI_AMOUNT_IN,
+    //            less(USDC_AMOUNT_OUT, 1e3),
+    //            type(uint256).max,
+    //            false,
+    //            bytes("")
+    //        );
+    //
+    //        uint256 wrappedDaiIn = waDAI.convertToShares(DAI_AMOUNT_IN);
+    //        uint256 wrappedUsdcOut = waUSDC.convertToShares(amountCalculated);
+    //
+    //        // Tokens are transferred from Bob
+    //        assertEq(usdcMainnet.balanceOf(bob), bobInitialUsdcBalance + amountCalculated);
+    //        assertEq(daiMainnet.balanceOf(bob), bobInitialDaiBalance - DAI_AMOUNT_IN);
+    //
+    //        // Assert that the amount received is close from expected
+    //        assertApproxEqAbs(amountCalculated, USDC_AMOUNT_OUT, 1e3);
+    //
+    //        // Underlying tokens were wrapped and are not in the vault
+    //        assertApproxEqAbs(usdcMainnet.balanceOf(address(vault)), 0, 1);
+    //        assertApproxEqAbs(daiMainnet.balanceOf(address(vault)), 0, 1);
+    //
+    //        // Wrapped tokens are stored in the vault
+    //        assertApproxEqAbs(aUsdcMainnet.balanceOf(address(vault)), vaultInitialWrappedUsdcBalance - wrappedUsdcOut, 1);
+    //        assertApproxEqAbs(aDaiMainnet.balanceOf(address(vault)), vaultInitialWrappedDaiBalance + wrappedDaiIn, 1);
+    //
+    //        // Tokens are deposited to the pool
+    //        (, , , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(stablePool));
+    //        assertEq(balances[0], vaultInitialWrappedDaiBalance + wrappedDaiIn);
+    //        assertEq(balances[1], vaultInitialWrappedUsdcBalance - wrappedUsdcOut);
+    //    }
+    //
+    //    function testSwapUsdcToDaiGivenIn() public {
+    //        uint256 USDC_AMOUNT_IN = 300 * 1e6;
+    //        uint256 DAI_AMOUNT_OUT = 300 * 1e18;
+    //
+    //        uint256 bobInitialUsdcBalance = usdcMainnet.balanceOf(bob);
+    //        uint256 bobInitialDaiBalance = daiMainnet.balanceOf(bob);
+    //
+    //        uint256 vaultInitialWrappedUsdcBalance = aUsdcMainnet.balanceOf(address(vault));
+    //        uint256 vaultInitialWrappedDaiBalance = aDaiMainnet.balanceOf(address(vault));
+    //
+    //        vm.prank(bob);
+    //        uint256 amountCalculated = router.swapExactIn(
+    //            address(stablePool),
+    //            usdcMainnet,
+    //            daiMainnet,
+    //            USDC_AMOUNT_IN,
+    //            less(DAI_AMOUNT_OUT, 1e3),
+    //            type(uint256).max,
+    //            false,
+    //            bytes("")
+    //        );
+    //
+    //        uint256 wrappedUsdcIn = waUSDC.convertToShares(USDC_AMOUNT_IN);
+    //        uint256 wrappedDaiOut = waDAI.convertToShares(amountCalculated);
+    //
+    //        // Tokens are transferred from Bob
+    //        assertEq(usdcMainnet.balanceOf(bob), bobInitialUsdcBalance - USDC_AMOUNT_IN);
+    //        assertEq(daiMainnet.balanceOf(bob), bobInitialDaiBalance + amountCalculated);
+    //
+    //        // Assert that the amount received is close from expected
+    //        assertApproxEqAbs(amountCalculated, DAI_AMOUNT_OUT, 1e9);
+    //
+    //        // Underlying tokens were wrapped and are not in the vault
+    //        assertApproxEqAbs(usdcMainnet.balanceOf(address(vault)), 0, 1);
+    //        assertApproxEqAbs(daiMainnet.balanceOf(address(vault)), 0, 1);
+    //
+    //        // Wrapped tokens are stored in the vault
+    //        assertApproxEqAbs(aUsdcMainnet.balanceOf(address(vault)), vaultInitialWrappedUsdcBalance + wrappedUsdcIn, 1);
+    //        assertApproxEqAbs(aDaiMainnet.balanceOf(address(vault)), vaultInitialWrappedDaiBalance - wrappedDaiOut, 1);
+    //
+    //        // Tokens are deposited to the pool
+    //        (, , , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(stablePool));
+    //        assertEq(balances[0], vaultInitialWrappedDaiBalance - wrappedDaiOut);
+    //        assertEq(balances[1], vaultInitialWrappedUsdcBalance + wrappedUsdcIn);
+    //    }
+    //
+    //    function testSwapDaiToUsdcGivenOut() public {
+    //        uint256 DAI_AMOUNT_IN = 100 * 1e18;
+    //        uint256 USDC_AMOUNT_OUT = 100 * 1e6;
+    //
+    //        uint256 bobInitialUsdcBalance = usdcMainnet.balanceOf(bob);
+    //        uint256 bobInitialDaiBalance = daiMainnet.balanceOf(bob);
+    //
+    //        uint256 vaultInitialWrappedUsdcBalance = aUsdcMainnet.balanceOf(address(vault));
+    //        uint256 vaultInitialWrappedDaiBalance = aDaiMainnet.balanceOf(address(vault));
+    //
+    //        vm.prank(bob);
+    //        uint256 amountCalculated = router.swapExactOut(
+    //            address(stablePool),
+    //            daiMainnet,
+    //            usdcMainnet,
+    //            USDC_AMOUNT_OUT,
+    //            more(DAI_AMOUNT_IN, 1e3),
+    //            type(uint256).max,
+    //            false,
+    //            bytes("")
+    //        );
+    //
+    //        uint256 wrappedDaiIn = waDAI.convertToShares(amountCalculated);
+    //        uint256 wrappedUsdcOut = waUSDC.convertToShares(USDC_AMOUNT_OUT);
+    //
+    //        // Tokens are transferred from Bob
+    //        assertEq(usdcMainnet.balanceOf(bob), bobInitialUsdcBalance + USDC_AMOUNT_OUT);
+    //        assertEq(daiMainnet.balanceOf(bob), bobInitialDaiBalance - amountCalculated);
+    //
+    //        // Assert that the amount deposited is close from expected
+    //        assertApproxEqAbs(amountCalculated, DAI_AMOUNT_IN, 1e9);
+    //
+    //        // Underlying tokens were wrapped and are not in the vault
+    //        assertApproxEqAbs(usdcMainnet.balanceOf(address(vault)), 0, 1);
+    //        assertApproxEqAbs(daiMainnet.balanceOf(address(vault)), 0, 1);
+    //
+    //        // Wrapped tokens are stored in the vault
+    //        assertApproxEqAbs(aUsdcMainnet.balanceOf(address(vault)), vaultInitialWrappedUsdcBalance - wrappedUsdcOut, 1);
+    //        assertApproxEqAbs(aDaiMainnet.balanceOf(address(vault)), vaultInitialWrappedDaiBalance + wrappedDaiIn, 1);
+    //
+    //        // Tokens are deposited to the pool
+    //        (, , , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(stablePool));
+    //        assertEq(balances[0], vaultInitialWrappedDaiBalance + wrappedDaiIn);
+    //        assertEq(balances[1], vaultInitialWrappedUsdcBalance - wrappedUsdcOut);
+    //    }
 
     function less(uint256 amount, uint256 base) internal pure returns (uint256) {
         return (amount * (base - 1)) / base;

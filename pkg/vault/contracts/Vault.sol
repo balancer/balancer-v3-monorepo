@@ -204,9 +204,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // struct, to be settled in non-reentrant _swap with the rest of the accounting.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN);
 
-        if (poolData.poolConfig.isBufferPool) {
-            revert CannotSwapWithBufferPool(params.pool);
-        }
+        // TODO review this part, since buffer pool is using a swap
+//        if (poolData.poolConfig.isBufferPool) {
+//            revert CannotSwapWithBufferPool(params.pool);
+//        }
 
         // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
         EnumerableMap.IERC20ToUint256Map storage poolBalances = _poolTokenBalances[params.pool];

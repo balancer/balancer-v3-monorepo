@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.4;
 
+import "forge-std/console.sol";
+
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -10,11 +12,15 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
-import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    AddLiquidityKind,
+    RemoveLiquidityKind,
+    SwapParams as VaultSwapParams,
+    SwapKind
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -22,6 +28,19 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BasePoolAuthentication } from "./BasePoolAuthentication.sol";
 import { BalancerPoolToken } from "./BalancerPoolToken.sol";
 import { BasePoolHooks } from "./BasePoolHooks.sol";
+
+struct SwapHookParams {
+    address sender;
+    SwapKind kind;
+    address pool;
+    IERC20 tokenIn;
+    IERC20 tokenOut;
+    uint256 amountGiven;
+    uint256 limit;
+    uint256 deadline;
+    bool wethIsEth;
+    bytes userData;
+}
 
 /**
  * @notice ERC4626 Buffer Pool, designed to be used internally for ERC4626 token types in standard pools.
@@ -38,6 +57,8 @@ contract ERC4626BufferPool is
     BasePoolAuthentication,
     ReentrancyGuard
 {
+    using FixedPoint for uint256;
+
     IERC4626 internal immutable _wrappedToken;
 
     // Uses the factory as the Authentication disambiguator.
@@ -60,8 +81,25 @@ contract ERC4626BufferPool is
         uint256[] memory exactAmountsInScaled18,
         bytes memory
     ) external view override onlyVault returns (bool) {
+        //        console.log(exactAmountsInScaled18[0]);
+        //        console.log(exactAmountsInScaled18[1]);
+        //
+        //        if (
+        //            exactAmountsInScaled18[0] > exactAmountsInScaled18[1] &&
+        //            exactAmountsInScaled18[0] - exactAmountsInScaled18[1] > 1e4
+        //        ) {
+        //            return false;
+        //        }
+        //
+        //        if (
+        //            exactAmountsInScaled18[1] > exactAmountsInScaled18[0] &&
+        //            exactAmountsInScaled18[1] - exactAmountsInScaled18[0] > 1e4
+        //        ) {
+        //            return false;
+        //        }
+
         // Enforce proportionality - might need to say exactAmountsIn[0].mulDown(getRate()) to compare equal value?
-        return exactAmountsInScaled18.length == 2 && exactAmountsInScaled18[0] == exactAmountsInScaled18[1];
+        return exactAmountsInScaled18.length == 2;
     }
 
     /// @inheritdoc BasePoolHooks
@@ -140,22 +178,59 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IRateProvider
     function getRate() external view onlyVault returns (uint256) {
-        // TODO: This is really just a placeholder for now. We will need to think more carefully about this.
-        // e.g., it will probably need to be scaled according to the asset value decimals. There may be
-        // special cases with 0 supply. Wrappers may implement this differently, so maybe we need to calculate
-        // the rate directly instead of relying on the wrapper implementation, etc.
-        return _wrappedToken.convertToAssets(FixedPoint.ONE);
+        return _getRate();
     }
 
     /// @inheritdoc IBufferPool
-    function rebalance() external authenticate {
+    function rebalance() external {
         _rebalance();
     }
 
     /// @dev Non-reentrant to ensure we don't try to externally rebalance during an internal rebalance.
     function _rebalance() internal nonReentrant {
-        // solhint-disable-previous-line no-empty-blocks
-        // TODO: implement - can be called by the pool during a swap, or from an external permissioned call.
+        address poolAddress = address(this);
+
+        // Get balance of tokens
+        (IERC20[] memory tokens, , uint256[] memory rawBalances, , ) = getVault().getPoolTokenInfo(poolAddress);
+
+        uint256 scaledBalanceWrapped = rawBalances[0].mulDown(_getRate());
+        uint256 balanceUnderlying = rawBalances[1];
+
+        console.log("scaledBalanceWrapped", scaledBalanceWrapped);
+        console.log("balanceUnderlying", balanceUnderlying);
+
+        if (scaledBalanceWrapped > balanceUnderlying) {
+            uint256 assetsToUnwrap = (scaledBalanceWrapped - balanceUnderlying) / 2;
+            console.log("assetsToUnwrap", assetsToUnwrap);
+            // Call Swap!
+            (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = getVault().swap(
+                VaultSwapParams({
+                    kind: SwapKind.EXACT_OUT,
+                    pool: address(this),
+                    tokenIn: tokens[0],
+                    tokenOut: tokens[1],
+                    amountGivenRaw: assetsToUnwrap,
+                    limitRaw: 2 * assetsToUnwrap,
+                    userData: new bytes(0)
+                })
+            );
+
+            console.log("amountCalculated", amountCalculated);
+            console.log("amountIn", amountIn);
+            console.log("amountOut", amountOut);
+        } else if (balanceUnderlying > scaledBalanceWrapped) {
+            uint256 assetsToWrap = (balanceUnderlying - scaledBalanceWrapped) / 2;
+            console.log("assetsToWrap", assetsToWrap);
+
+            // Call Swap!
+            _swapWithWrap(tokens, assetsToWrap);
+        }
+
+        // If wrapped > unwrapped
+        // unwraps quantity
+
+        // else if unwrapped > wrapped
+        // wraps quantity
     }
 
     // Unsupported functions that unconditionally revert
@@ -181,5 +256,68 @@ contract ERC4626BufferPool is
     ) external pure returns (uint256, uint256[] memory, uint256[] memory, bytes memory) {
         // Should throw `DoesNotSupportRemoveLiquidityCustom` before getting here, but need to implement the interface.
         revert IVaultErrors.OperationNotSupported();
+    }
+
+    function _swapWithWrap(IERC20[] memory tokens, uint256 assetsToWrap) private {
+        address poolAddress = address(this);
+
+        abi.decode(
+            getVault().invoke{ value: msg.value }(
+                abi.encodeWithSelector(
+                    ERC4626BufferPool.swapHook.selector,
+                    SwapHookParams({
+                        sender: msg.sender,
+                        kind: SwapKind.EXACT_IN,
+                        pool: poolAddress,
+                        tokenIn: tokens[1],
+                        tokenOut: tokens[0],
+                        amountGiven: assetsToWrap,
+                        limit: assetsToWrap / 2,
+                        deadline: type(uint256).max,
+                        wethIsEth: true,
+                        userData: new bytes(0)
+                    })
+                )
+            ),
+            (uint256)
+        );
+    }
+
+    function swapHook(SwapHookParams calldata params) external payable onlyVault { // TODO Check why it's reentrant
+        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
+
+        console.log("amountCalculated", amountCalculated);
+        console.log("amountIn", amountIn);
+        console.log("amountOut", amountOut);
+    }
+
+    function _swapHook(
+        SwapHookParams calldata params
+    ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
+        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
+        // solhint-disable-next-line not-rely-on-time
+        //        if (block.timestamp > params.deadline) {
+        //            revert SwapDeadline();
+        //        }
+
+        (amountCalculated, amountIn, amountOut) = getVault().swap(
+            VaultSwapParams({
+                kind: params.kind,
+                pool: params.pool,
+                tokenIn: params.tokenIn,
+                tokenOut: params.tokenOut,
+                amountGivenRaw: params.amountGiven,
+                limitRaw: params.limit,
+                userData: params.userData
+            })
+        );
+    }
+
+    function _getRate() private view returns (uint256) {
+        // TODO: This is really just a placeholder for now. We will need to think more carefully about this.
+        // e.g., it will probably need to be scaled according to the asset value decimals. There may be
+        // special cases with 0 supply. Wrappers may implement this differently, so maybe we need to calculate
+        // the rate directly instead of relying on the wrapper implementation, etc.
+        return _wrappedToken.convertToAssets(FixedPoint.ONE);
     }
 }
