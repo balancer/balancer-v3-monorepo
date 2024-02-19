@@ -425,7 +425,7 @@ interface IVaultExtension {
      * @param pool Address of the pool
      * @param from Address of user to burn pool tokens from
      * @param exactBptAmountIn Input pool token amount
-     * @return amountsOut Actual calculated amounts of output tokens
+     * @return amountsOut Actual calculated amounts of output tokens, sorted in token registration order
      */
     function removeLiquidityRecovery(
         address pool,
