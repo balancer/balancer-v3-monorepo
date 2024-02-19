@@ -813,8 +813,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             pool,
             from,
             tokens,
-            // We can unsafely cast to int256 because balances are actually stored as uint112
-            // TODO No they aren't anymore (stored as uint112)! Review this.
+            // We can unsafely cast to int256 because balances are stored as uint128 (see PackedTokenBalance).
             amountsOutRaw.unsafeCastToInt256(false)
         );
     }
