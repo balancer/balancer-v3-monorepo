@@ -175,6 +175,15 @@ interface IVaultErrors {
     /// @dev Error raised when the swap fee percentage exceeds the maximum allowed value.
     error SwapFeePercentageTooHigh();
 
+    /**
+     * @dev  Error raised when the swap fee percentage is less than the minimum allowed value.
+     * The Vault itself does not impose a minimum. Rather, it checks with each pool to see whether
+     * it requires a minimum, and imposes it if found.
+     *
+     * Pools with dynamic fees do not check for a lower limit.
+     */
+    error SwapFeePercentageTooLow();
+
     /*******************************************************************************
                                     Queries
     *******************************************************************************/
