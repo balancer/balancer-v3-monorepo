@@ -1,9 +1,10 @@
-import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import * as tdly from '@tenderly/hardhat-tenderly';
 import './skipFoundryTests.ts';
 import { task } from 'hardhat/config';
 
-require('dotenv').config({ path: '../../.env' });
+import dotenv from 'dotenv';
+
+dotenv.config({ path: '../../.env' });
 
 let { SEPOLIA_RPC_URL } = process.env;
 SEPOLIA_RPC_URL = SEPOLIA_RPC_URL || '';
