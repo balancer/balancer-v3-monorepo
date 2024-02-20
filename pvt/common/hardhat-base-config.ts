@@ -5,7 +5,7 @@ import { task } from 'hardhat/config';
 
 require('dotenv').config({ path: '../../.env' });
 
-const { SEPOLIA_RPC_URL } = process.env;
+const { SEPOLIA_RPC_URL } = process.env || '';
 
 tdly.setup({ automaticVerifications: false });
 
