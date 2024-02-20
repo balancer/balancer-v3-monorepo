@@ -161,12 +161,21 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     function registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
+        uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
-        _registerPool(pool, tokenConfig, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
+        _registerPool(
+            pool,
+            tokenConfig,
+            swapFeePercentage,
+            pauseWindowEndTime,
+            pauseManager,
+            poolHooks,
+            liquidityManagement
+        );
     }
 
     /// @inheritdoc IVaultExtension
@@ -184,6 +193,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     function _registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
+        uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolHooks memory hookConfig,
@@ -262,6 +272,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = pauseWindowEndTime.toUint32();
         _poolConfig[pool] = config.fromPoolConfig();
+
+        _setStaticSwapFeePercentage(pool, swapFeePercentage);
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
         emit PoolRegistered(
@@ -662,7 +674,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     function setStaticSwapFeePercentage(
         address pool,
         uint256 swapFeePercentage
-    ) external authenticate withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault {
+    ) external authenticate withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault nonReentrant {
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 
@@ -905,6 +917,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         _registerPool(
             pool,
             tokenConfig,
+            0, // Buffer Pools always have a zero swap fee.
             pauseWindowEndTime,
             pauseManager,
             PoolHooks({
