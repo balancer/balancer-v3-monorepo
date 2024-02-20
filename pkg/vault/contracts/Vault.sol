@@ -416,29 +416,18 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // poolData already contains rawBalances, but they could be stale, so fetch from the Vault.
         // Likewise, the rates could also have changed.
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        mapping(IERC20 => TokenConfig) storage poolTokenConfig = _poolTokenConfig[pool];
-        uint256 numTokens = poolTokenBalances.length();
         uint256 balanceRaw;
-        IERC20 token;
 
-        for (uint256 i = 0; i < numTokens; ++i) {
+        _updateTokenRatesInPoolData(poolData);
+
+        for (uint256 i = 0; i < poolData.tokenConfig.length; ++i) {
             // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
             bytes32 packedBalances;
 
-            (token, packedBalances) = poolTokenBalances.unchecked_at(i);
-            TokenType tokenType = poolTokenConfig[token].tokenType;
+            (, packedBalances) = poolTokenBalances.unchecked_at(i);
             balanceRaw = packedBalances.getRawBalance();
-
-            if (tokenType == TokenType.STANDARD) {
-                poolData.tokenRates[i] = FixedPoint.ONE;
-            } else if (tokenType == TokenType.WITH_RATE) {
-                poolData.tokenRates[i] = poolTokenConfig[token].rateProvider.getRate();
-            } else if (tokenType != TokenType.ERC4626) {
-                // TODO: implement ERC4626 at a later stage
-                revert InvalidTokenConfiguration();
-            }
 
             poolData.balancesLiveScaled18[i] = roundingDirection == Rounding.ROUND_UP
                 ? balanceRaw.toScaled18ApplyRateRoundUp(poolData.decimalScalingFactors[i], poolData.tokenRates[i])
@@ -817,7 +806,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
 
             // Subtract protocol fees charged from the pool's balances
-            // Note that poolData.balancesRaw will also be updated in `_removeLiquidityUpdateAccounting`
             poolData.balancesRaw[i] -= protocolSwapFeeAmountRaw;
             poolData.balancesLiveScaled18[i] -= (amountsOutScaled18[i] +
                 swapFeeAmountsScaled18[i].mulUp(_protocolSwapFeePercentage));
