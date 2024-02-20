@@ -183,6 +183,7 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IBufferPool
     function rebalance() external {
+        // TODO reinsert authenticate modifier
         _rebalance();
     }
 
