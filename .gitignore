@@ -39,3 +39,6 @@ slither/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Dotenv
+.env

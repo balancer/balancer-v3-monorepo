@@ -1,4 +1,13 @@
+import { HardhatRuntimeEnvironment } from 'hardhat/types';
+import * as tdly from '@tenderly/hardhat-tenderly';
 import './skipFoundryTests.ts';
+import { task } from 'hardhat/config';
+
+require('dotenv').config();
+
+const { SEPOLIA_RPC_URL } = process.env;
+
+tdly.setup({ automaticVerifications: false });
 
 type SolcConfig = {
   version: string;
@@ -56,6 +65,12 @@ export const warnings = {
   },
 };
 
+export const networks = {
+  sepolia: {
+    url: SEPOLIA_RPC_URL,
+  },
+};
+
 export const overrides = (packageName: string): Record<string, SolcConfig> => {
   const overrides: Record<string, SolcConfig> = {};
 
@@ -73,3 +88,12 @@ export const overrides = (packageName: string): Record<string, SolcConfig> => {
 
   return overrides;
 };
+
+task('verify:tenderly', 'Verifies contract on Tenderly')
+  .addParam('address', "The contract's address")
+  .addParam('name', "The contract's name")
+  .setAction(async (taskArgs, hre) => {
+    const { address, name } = taskArgs;
+    console.log(`Verifying contract ${name} at address ${address}...`);
+    await hre.tenderly.verify({ address, name });
+  });
