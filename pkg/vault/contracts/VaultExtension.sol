@@ -883,7 +883,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     }
 
     /*******************************************************************************
--                                ERC4626 Buffers
+                                 ERC4626 Buffers
      *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
