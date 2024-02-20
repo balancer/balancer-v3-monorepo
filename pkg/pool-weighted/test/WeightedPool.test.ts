@@ -123,6 +123,8 @@ describe('WeightedPool', function () {
     const REAL_POOL_INITIAL_BALANCES = [TOKEN_AMOUNT, TOKEN_AMOUNT];
     const SWAP_AMOUNT = fp(20);
 
+    const SWAP_FEE = 0;
+
     let factory: WeightedPoolFactory;
     let realPool: Contract;
     let realPoolAddress: string;
@@ -135,7 +137,7 @@ describe('WeightedPool', function () {
         { token: tokenBAddress, tokenType: TokenType.STANDARD, rateProvider: ZERO_ADDRESS, yieldFeeExempt: false },
       ];
 
-      const tx = await factory.create('WeightedPool', 'Test', tokenConfig, WEIGHTS, ZERO_BYTES32);
+      const tx = await factory.create('WeightedPool', 'Test', tokenConfig, WEIGHTS, SWAP_FEE, ZERO_BYTES32);
       const receipt = await tx.wait();
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
 

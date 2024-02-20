@@ -33,12 +33,14 @@ contract WeightedPool8020Factory is BasePoolFactory {
      * @param name Name of the pool
      * @param symbol Symbol of the pool
      * @param tokenConfig The token configuration of the pool: must be two-token
+     * @param swapFeePercentage Initial swap fee percentage
      * @param salt Value passed to create3, used to create the address
      */
     function create(
         string memory name,
         string memory symbol,
         TokenConfig[] memory tokenConfig,
+        uint256 swapFeePercentage,
         bytes32 salt
     ) external returns (address pool) {
         if (tokenConfig.length != 2) {
@@ -65,6 +67,7 @@ contract WeightedPool8020Factory is BasePoolFactory {
         getVault().registerPool(
             pool,
             tokenConfig,
+            swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
             address(0), // no pause manager
             PoolHooks({

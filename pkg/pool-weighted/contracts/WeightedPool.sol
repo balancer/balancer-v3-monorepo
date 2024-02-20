@@ -3,11 +3,13 @@
 pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IMinimumSwapFee } from "@balancer-labs/v3-interfaces/contracts/vault/IMinimumSwapFee.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -15,7 +17,9 @@ import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/We
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 /// @notice Basic Weighted Pool with immutable weights.
-contract WeightedPool is IBasePool, BalancerPoolToken {
+contract WeightedPool is IBasePool, IMinimumSwapFee, BalancerPoolToken {
+    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
+
     uint256 private immutable _totalTokens;
 
     uint256 internal immutable _normalizedWeight0;
@@ -156,5 +160,15 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         }
 
         return normalizedWeights;
+    }
+
+    /// @inheritdoc ERC165
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IMinimumSwapFee).interfaceId || super.supportsInterface(interfaceId);
+    }
+
+    /// @inheritdoc IMinimumSwapFee
+    function getMinimumSwapFeePercentage() external pure returns (uint256) {
+        return _MIN_SWAP_FEE_PERCENTAGE;
     }
 }
