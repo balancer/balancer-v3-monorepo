@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import { ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -19,7 +20,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
  * @dev Implementation of the ERC-20 Permit extension allowing approvals to be made via signatures, as defined in
  * https://eips.ethereum.org/EIPS/eip-2612[ERC-2612].
  */
-contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonces {
+contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonces, ERC165 {
     bytes32 public constant PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
