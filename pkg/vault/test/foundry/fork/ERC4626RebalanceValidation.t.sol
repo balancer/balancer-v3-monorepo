@@ -185,11 +185,45 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     }
 
     function testRebalanceForBufferWithMoreUnderlying() public {
+        // Check if the pool is unbalanced before
+        (, , uint256[] memory moreUnderlyingBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolMoreUnderlying));
+        assertEq(moreUnderlyingBalances[0], bufferWithUnderlyingADaiUnscaled);
+        assertEq(moreUnderlyingBalances[1], BUFFER_WITH_UNDERLYING_DAI);
+
         bufferPoolMoreUnderlying.rebalance();
+
+        // Check if the pool is balanced after
+        (, , uint256[] memory rebalancedBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolMoreUnderlying));
+        uint256 unwrappedAmountADai = waDAI.previewRedeem(rebalancedBalances[0]);
+        uint8 decimals = waDAI.decimals();
+//        console.log('More Underlying Tests:');
+//        console.log(unwrappedAmountADai, ' = ', (BUFFER_WITH_UNDERLYING_DAI + BUFFER_WITH_UNDERLYING_ADAI) / 2);
+//        console.log(rebalancedBalances[1], ' = ', (BUFFER_WITH_UNDERLYING_DAI + BUFFER_WITH_UNDERLYING_ADAI) / 2);
+        assertApproxEqAbs(unwrappedAmountADai, (BUFFER_WITH_UNDERLYING_DAI + BUFFER_WITH_UNDERLYING_ADAI) / 2, 10**(decimals/2));
+        assertApproxEqAbs(rebalancedBalances[1], (BUFFER_WITH_UNDERLYING_DAI + BUFFER_WITH_UNDERLYING_ADAI) / 2, 10**(decimals/2));
+
+        // Check the remaining tokens in the pool
     }
 
     function testRebalanceForBufferWithMoreWrapped() public {
+        // Check if the pool is unbalanced before
+        (, , uint256[] memory moreWrappedBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolMoreWrapped));
+        assertEq(moreWrappedBalances[0], bufferWithWrappedAUsdcUnscaled);
+        assertEq(moreWrappedBalances[1], BUFFER_WITH_WRAPPED_USDC);
+
         bufferPoolMoreWrapped.rebalance();
+
+        // Check if the pool is balanced after
+        (, , uint256[] memory rebalancedBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolMoreWrapped));
+        uint256 unwrappedAmountAUsdc = waUSDC.previewRedeem(rebalancedBalances[0]);
+        uint8 decimals = waUSDC.decimals();
+//        console.log('More Wrapped Tests:');
+//        console.log(unwrappedAmountAUsdc, ' = ', (BUFFER_WITH_WRAPPED_USDC + BUFFER_WITH_WRAPPED_AUSDC) / 2);
+//        console.log(rebalancedBalances[1], ' = ', (BUFFER_WITH_WRAPPED_USDC + BUFFER_WITH_WRAPPED_AUSDC) / 2);
+        assertApproxEqAbs(unwrappedAmountAUsdc, (BUFFER_WITH_WRAPPED_USDC + BUFFER_WITH_WRAPPED_AUSDC) / 2, 10**(decimals/2));
+        assertApproxEqAbs(rebalancedBalances[1], (BUFFER_WITH_WRAPPED_USDC + BUFFER_WITH_WRAPPED_AUSDC) / 2, 10**(decimals/2));
+
+        // Check the remaining tokens in the pool
     }
 
     //    function testSwapDaiToUsdcGivenIn() public {

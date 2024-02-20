@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.4;
 
+import "forge-std/console.sol";
+
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -154,6 +156,14 @@ contract ERC4626BufferPool is
         uint8 decimals = _wrappedToken.decimals();
         uint256 wrappedRate = _getRate();
 
+        // USDC
+//        if (request.kind == SwapKind.EXACT_IN) {
+//            return request.amountGivenScaled18 + 10**(18-decimals);
+//        } else {
+//            return request.amountGivenScaled18 - 10**(18-decimals);
+//        }
+
+        // DAI and USDC, less precise
         if (request.kind == SwapKind.EXACT_IN) {
             return request.amountGivenScaled18.divDown(wrappedRate).mulDown(wrappedRate + 10**(18-decimals));
         } else {
@@ -272,7 +282,16 @@ contract ERC4626BufferPool is
             getVault().wire(wrappedToken, address(this), amountOut);
             IERC4626(address(wrappedToken)).withdraw(amountIn, address(this), address(this));
             underlyingToken.approve(address(getVault()), amountIn);
+
+            console.log('EXACT_IN - Amounts In');
+            console.log(underlyingToken.balanceOf(address(this)));
+            console.log(amountIn);
+
             getVault().retrieve(underlyingToken, address(this), amountIn);
+
+            console.log('EXACT_IN - Remaining tokens');
+            console.log(underlyingToken.balanceOf(address(this)));
+            console.log(wrappedToken.balanceOf(address(this)));
         } else {
             IERC20 underlyingToken = params.tokenOut;
             IERC20 wrappedToken = params.tokenIn;
@@ -281,7 +300,16 @@ contract ERC4626BufferPool is
             underlyingToken.approve(address(wrappedToken), amountOut);
             IERC4626(address(wrappedToken)).deposit(amountOut, address(this));
             wrappedToken.approve(address(getVault()), amountIn);
+
+            console.log('EXACT_OUT - Amounts In');
+            console.log(wrappedToken.balanceOf(address(this)));
+            console.log(amountIn);
+
             getVault().retrieve(wrappedToken, address(this), amountIn);
+
+            console.log('EXACT_OUT - Remaining tokens');
+            console.log(underlyingToken.balanceOf(address(this)));
+            console.log(wrappedToken.balanceOf(address(this)));
         }
 
         return amountCalculated;
