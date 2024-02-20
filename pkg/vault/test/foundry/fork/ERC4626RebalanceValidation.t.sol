@@ -10,6 +10,7 @@ import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
 import { TokenConfig, PoolConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
@@ -99,10 +100,11 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     }
 
     function initPool() internal override {
-        transferTokensFromDonorToUsers();
+        _transferTokensFromDonorToUsers();
         // The swap calculation of the buffer is a bit imprecise to save gas,
         // so it needs to have some ERC20 to rebalance
-        transferTokensFromDonorToBuffers();
+        _transferTokensFromDonorToBuffers();
+        _setPermissions();
 
         vm.startPrank(lp);
         // Creating Unbalanced Buffer with more underlying tokens
@@ -133,60 +135,6 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             bytes("")
         );
         vm.stopPrank();
-    }
-
-    function transferTokensFromDonorToUsers() internal {
-        address[] memory usersToTransfer = [address(bob), address(lp)].toMemoryArray();
-
-        for (uint256 index = 0; index < usersToTransfer.length; index++) {
-            address userAddress = usersToTransfer[index];
-
-            vm.startPrank(donor);
-            daiMainnet.transfer(userAddress, 50 * BUFFER_WITH_UNDERLYING_DAI);
-            usdcMainnet.transfer(userAddress, 50 * BUFFER_WITH_WRAPPED_USDC);
-            vm.stopPrank();
-
-            vm.startPrank(userAddress);
-            daiMainnet.approve(address(vault), type(uint256).max);
-            aDaiMainnet.approve(address(vault), type(uint256).max);
-            daiMainnet.approve(address(waDAI), type(uint256).max);
-
-            usdcMainnet.approve(address(vault), type(uint256).max);
-            aUsdcMainnet.approve(address(vault), type(uint256).max);
-            usdcMainnet.approve(address(waUSDC), type(uint256).max);
-            vm.stopPrank();
-        }
-    }
-
-    function transferTokensFromDonorToBuffers() internal {
-        address[] memory buffersToTransfer = [
-            address(bufferPoolMoreWrapped),
-            address(bufferPoolMoreUnderlying)
-        ].toMemoryArray();
-
-        for (uint256 index = 0; index < buffersToTransfer.length; index++) {
-            address bufferAddress = buffersToTransfer[index];
-
-            vm.startPrank(donor);
-            uint256 daiToConvert = waDAI.previewRedeem(1e18);
-            daiMainnet.transfer(bufferAddress, daiToConvert + 1e18);
-            uint256 usdcToConvert = waUSDC.previewRedeem(1e6);
-            usdcMainnet.transfer(bufferAddress, usdcToConvert + 1e6);
-            vm.stopPrank();
-
-            vm.startPrank(bufferAddress);
-            daiMainnet.approve(address(vault), type(uint256).max);
-            aDaiMainnet.approve(address(vault), type(uint256).max);
-            daiMainnet.approve(address(waDAI), type(uint256).max);
-            waDAI.deposit(daiToConvert, bufferAddress);
-
-            usdcMainnet.approve(address(vault), type(uint256).max);
-            aUsdcMainnet.approve(address(vault), type(uint256).max);
-            usdcMainnet.approve(address(waUSDC), type(uint256).max);
-
-            waUSDC.deposit(usdcToConvert, bufferAddress);
-            vm.stopPrank();
-        }
     }
 
     function testInitialize() public {
@@ -226,6 +174,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         assertEq(moreUnderlyingBalances[0], bufferWithUnderlyingADaiUnscaled);
         assertEq(moreUnderlyingBalances[1], BUFFER_WITH_UNDERLYING_DAI);
 
+        vm.prank(admin);
         bufferPoolMoreUnderlying.rebalance();
 
         // Check if the pool is balanced after
@@ -255,6 +204,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         assertEq(moreWrappedBalances[0], bufferWithWrappedAUsdcUnscaled);
         assertEq(moreWrappedBalances[1], BUFFER_WITH_WRAPPED_USDC);
 
+        vm.prank(admin);
         bufferPoolMoreWrapped.rebalance();
 
         // Check if the pool is balanced after
@@ -283,5 +233,64 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     function _generateSalt(address token) private returns (bytes32) {
         saltCounter++;
         return bytes32(uint256(uint160(token)) + saltCounter);
+    }
+
+    function _transferTokensFromDonorToUsers() private {
+        address[] memory usersToTransfer = [address(bob), address(lp)].toMemoryArray();
+
+        for (uint256 index = 0; index < usersToTransfer.length; index++) {
+            address userAddress = usersToTransfer[index];
+
+            vm.startPrank(donor);
+            daiMainnet.transfer(userAddress, 50 * BUFFER_WITH_UNDERLYING_DAI);
+            usdcMainnet.transfer(userAddress, 50 * BUFFER_WITH_WRAPPED_USDC);
+            vm.stopPrank();
+
+            vm.startPrank(userAddress);
+            daiMainnet.approve(address(vault), type(uint256).max);
+            aDaiMainnet.approve(address(vault), type(uint256).max);
+            daiMainnet.approve(address(waDAI), type(uint256).max);
+
+            usdcMainnet.approve(address(vault), type(uint256).max);
+            aUsdcMainnet.approve(address(vault), type(uint256).max);
+            usdcMainnet.approve(address(waUSDC), type(uint256).max);
+            vm.stopPrank();
+        }
+    }
+
+    function _transferTokensFromDonorToBuffers() private {
+        address[] memory buffersToTransfer = [
+        address(bufferPoolMoreWrapped),
+        address(bufferPoolMoreUnderlying)
+        ].toMemoryArray();
+
+        for (uint256 index = 0; index < buffersToTransfer.length; index++) {
+            address bufferAddress = buffersToTransfer[index];
+
+            vm.startPrank(donor);
+            uint256 daiToConvert = waDAI.previewRedeem(1e18);
+            daiMainnet.transfer(bufferAddress, daiToConvert + 1e18);
+            uint256 usdcToConvert = waUSDC.previewRedeem(1e6);
+            usdcMainnet.transfer(bufferAddress, usdcToConvert + 1e6);
+            vm.stopPrank();
+
+            vm.startPrank(bufferAddress);
+            daiMainnet.approve(address(vault), type(uint256).max);
+            aDaiMainnet.approve(address(vault), type(uint256).max);
+            daiMainnet.approve(address(waDAI), type(uint256).max);
+            waDAI.deposit(daiToConvert, bufferAddress);
+
+            usdcMainnet.approve(address(vault), type(uint256).max);
+            aUsdcMainnet.approve(address(vault), type(uint256).max);
+            usdcMainnet.approve(address(waUSDC), type(uint256).max);
+
+            waUSDC.deposit(usdcToConvert, bufferAddress);
+            vm.stopPrank();
+        }
+    }
+
+    function _setPermissions() private {
+        authorizer.grantRole(bufferPoolMoreUnderlying.getActionId(IBufferPool.rebalance.selector), admin);
+        authorizer.grantRole(bufferPoolMoreWrapped.getActionId(IBufferPool.rebalance.selector), admin);
     }
 }
