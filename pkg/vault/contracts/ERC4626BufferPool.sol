@@ -146,7 +146,7 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IRateProvider
     function getRate() external view onlyVault returns (uint256) {
-        return _getRate();
+        return _wrappedToken.convertToAssets(FixedPoint.ONE);
     }
 
     /// @inheritdoc IBufferPool
@@ -279,9 +279,5 @@ contract ERC4626BufferPool is
                 userData: new bytes(0)
             })
         );
-    }
-
-    function _getRate() private view returns (uint256) {
-        return _wrappedToken.convertToAssets(FixedPoint.ONE);
     }
 }
