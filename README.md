@@ -8,6 +8,10 @@
 
 This repository contains the Balancer Protocol V3 core smart contracts, including the `Vault` and standard Pools, along with their tests, configuration, and deployment information.
 
+## Installation
+
+Copy the `.env.example` file to the `.env` file and update values as needed.
+
 ## Structure
 
 This is a Yarn monorepo, with the packages meant to be published in the [`pkg`](./pkg) directory. Newly developed packages may not be published yet.
@@ -110,6 +114,21 @@ $ yarn coverage
 ```
 
 The `coverage` command generates a coverage report for each package found in the `./package/coverage/index.html` directory. The `coverage.sh` script is used to merge HardHat and Forge coverage reports into a unified report, leveraging the lcov command-line utility.
+
+### Verify
+
+To privately verify on Tenderly, execute the bash command below. Ensure that the commit corresponds to the on-chain bytecode.
+
+```bash
+yarn hardhat verify:tenderly --address 0xContractAddress --name ContractName --network Network
+```
+
+For example:
+
+```bash
+yarn hardhat verify:tenderly --address 0x03CBccbe8d2073A1dC186aE6Bcd95390Fcdff36f --name Router --network sepolia
+
+```
 
 ## Security
 

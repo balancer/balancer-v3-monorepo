@@ -3,7 +3,7 @@ import * as tdly from '@tenderly/hardhat-tenderly';
 import './skipFoundryTests.ts';
 import { task } from 'hardhat/config';
 
-require('dotenv').config();
+require('dotenv').config({ path: '../../.env' });
 
 const { SEPOLIA_RPC_URL } = process.env;
 
