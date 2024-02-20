@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.4;
 
-import "forge-std/console.sol";
-
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -11,7 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
+import { IBufferPool, RebalanceHookParams } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
 import {
     AddLiquidityKind,
     RemoveLiquidityKind,
@@ -28,19 +26,6 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BasePoolAuthentication } from "./BasePoolAuthentication.sol";
 import { BalancerPoolToken } from "./BalancerPoolToken.sol";
 import { BasePoolHooks } from "./BasePoolHooks.sol";
-
-struct SwapHookParams {
-    address sender;
-    SwapKind kind;
-    address pool;
-    IERC20 tokenIn;
-    IERC20 tokenOut;
-    uint256 amountGiven;
-    uint256 limit;
-    uint256 deadline;
-    bool wethIsEth;
-    bytes userData;
-}
 
 /**
  * @notice ERC4626 Buffer Pool, designed to be used internally for ERC4626 token types in standard pools.
@@ -80,7 +65,7 @@ contract ERC4626BufferPool is
     function onBeforeInitialize(
         uint256[] memory exactAmountsInScaled18,
         bytes memory
-    ) external view override virtual onlyVault returns (bool) {
+    ) external view virtual override onlyVault returns (bool) {
         // Enforce proportionality - might need to say exactAmountsIn[0].mulDown(getRate()) to compare equal value?
         return exactAmountsInScaled18.length == 2 && exactAmountsInScaled18[0] == exactAmountsInScaled18[1];
     }
@@ -151,24 +136,7 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IBasePool
     function onSwap(IBasePool.SwapParams memory request) public view onlyVault returns (uint256) {
-        // TODO amountGivenScaled18 has rounding issues with _getRate(). When getRate() function uses shares,
-        // this code must be removed and should return amountGivenScaled18 only.
-        uint8 decimals = _wrappedToken.decimals();
-        uint256 wrappedRate = _getRate();
-
-        // USDC
-//        if (request.kind == SwapKind.EXACT_IN) {
-//            return request.amountGivenScaled18 + 10**(18-decimals);
-//        } else {
-//            return request.amountGivenScaled18 - 10**(18-decimals);
-//        }
-
-        // DAI and USDC, less precise
-        if (request.kind == SwapKind.EXACT_IN) {
-            return request.amountGivenScaled18.divDown(wrappedRate).mulDown(wrappedRate + 10**(18-decimals));
-        } else {
-            return request.amountGivenScaled18.divDown(wrappedRate).mulDown(wrappedRate - 10**(18-decimals));
-        }
+        return request.amountGivenScaled18;
     }
 
     /// @inheritdoc IBasePool
@@ -204,41 +172,34 @@ contract ERC4626BufferPool is
                 getVault().invoke{ value: msg.value }(
                     abi.encodeWithSelector(
                         ERC4626BufferPool.rebalanceHook.selector,
-                        SwapHookParams({
+                        RebalanceHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_IN,
                             pool: poolAddress,
                             tokenIn: tokens[1],
                             tokenOut: tokens[0],
                             amountGiven: assetsToUnwrap,
-                            limit: assetsToUnwrap / 2, // TODO Review limit and deadline
-                            deadline: type(uint256).max,
-                            wethIsEth: true,
-                            userData: new bytes(0)
+                            limit: assetsToUnwrap / 2 // TODO Review limit and deadline
                         })
                     )
                 ),
                 (uint256)
             );
-
         } else if (balanceUnderlying > scaledBalanceWrapped) {
-            uint256 assetsToWrap = (balanceUnderlying - scaledBalanceWrapped)/ 2;
+            uint256 assetsToWrap = (balanceUnderlying - scaledBalanceWrapped) / 2;
 
             abi.decode(
                 getVault().invoke{ value: msg.value }(
                     abi.encodeWithSelector(
                         ERC4626BufferPool.rebalanceHook.selector,
-                        SwapHookParams({
+                        RebalanceHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_OUT,
                             pool: poolAddress,
                             tokenIn: tokens[0],
                             tokenOut: tokens[1],
                             amountGiven: assetsToWrap,
-                            limit: assetsToWrap * 2, // TODO Review limit and deadline
-                            deadline: type(uint256).max,
-                            wethIsEth: true,
-                            userData: new bytes(0)
+                            limit: assetsToWrap * 2 // TODO Review limit and deadline
                         })
                     )
                 ),
@@ -273,7 +234,7 @@ contract ERC4626BufferPool is
     }
 
     // TODO Check why nonReentrant modifier fails in this hook. Where is the reentrancy?
-    function rebalanceHook(SwapHookParams calldata params) external payable onlyVault returns (uint256) {
+    function rebalanceHook(RebalanceHookParams calldata params) external payable onlyVault returns (uint256) {
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         if (params.kind == SwapKind.EXACT_IN) {
@@ -283,16 +244,7 @@ contract ERC4626BufferPool is
             getVault().wire(wrappedToken, address(this), amountOut);
             IERC4626(address(wrappedToken)).withdraw(amountIn, address(this), address(this));
             underlyingToken.approve(address(getVault()), amountIn);
-
-            console.log('EXACT_IN - Amounts In');
-            console.log(underlyingToken.balanceOf(address(this)));
-            console.log(amountIn);
-
             getVault().retrieve(underlyingToken, address(this), amountIn);
-
-            console.log('EXACT_IN - Remaining tokens');
-            console.log(underlyingToken.balanceOf(address(this)));
-            console.log(wrappedToken.balanceOf(address(this)));
         } else {
             IERC20 underlyingToken = params.tokenOut;
             IERC20 wrappedToken = params.tokenIn;
@@ -301,29 +253,20 @@ contract ERC4626BufferPool is
             underlyingToken.approve(address(wrappedToken), amountOut);
             IERC4626(address(wrappedToken)).deposit(amountOut, address(this));
             wrappedToken.approve(address(getVault()), amountIn);
-
-            console.log('EXACT_OUT - Amounts In');
-            console.log(wrappedToken.balanceOf(address(this)));
-            console.log(amountIn);
-
             getVault().retrieve(wrappedToken, address(this), amountIn);
-
-            console.log('EXACT_OUT - Remaining tokens');
-            console.log(underlyingToken.balanceOf(address(this)));
-            console.log(wrappedToken.balanceOf(address(this)));
         }
 
         return amountCalculated;
     }
 
     function _swapHook(
-        SwapHookParams calldata params
+        RebalanceHookParams calldata params
     ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
-//        if (block.timestamp > params.deadline) {
-//            revert SwapDeadline();
-//        }
+        //        if (block.timestamp > params.deadline) {
+        //            revert SwapDeadline();
+        //        }
 
         (amountCalculated, amountIn, amountOut) = getVault().swap(
             VaultSwapParams({
@@ -333,7 +276,7 @@ contract ERC4626BufferPool is
                 tokenOut: params.tokenOut,
                 amountGivenRaw: params.amountGiven,
                 limitRaw: params.limit,
-                userData: params.userData
+                userData: new bytes(0)
             })
         );
     }
