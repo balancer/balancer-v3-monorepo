@@ -10,7 +10,6 @@ import 'hardhat/config';
 import { name } from './package.json';
 import { hardhatBaseConfig } from '@balancer-labs/v3-common';
 
-
 export default {
   networks: {
     hardhat: {
