@@ -416,7 +416,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // poolData already contains rawBalances, but they could be stale, so fetch from the Vault.
         // Likewise, the rates could also have changed.
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        uint256 balanceRaw;
 
         _updateTokenRatesInPoolData(poolData);
 
@@ -424,10 +423,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
-            bytes32 packedBalances;
-
-            (, packedBalances) = poolTokenBalances.unchecked_at(i);
-            balanceRaw = packedBalances.getRawBalance();
+            uint256 balanceRaw = poolTokenBalances.unchecked_valueAt(i).getRawBalance();
 
             poolData.balancesLiveScaled18[i] = roundingDirection == Rounding.ROUND_UP
                 ? balanceRaw.toScaled18ApplyRateRoundUp(poolData.decimalScalingFactors[i], poolData.tokenRates[i])
