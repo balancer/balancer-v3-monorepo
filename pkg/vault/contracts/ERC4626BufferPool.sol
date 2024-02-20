@@ -82,7 +82,7 @@ contract ERC4626BufferPool is
         bytes memory
     ) external view override virtual onlyVault returns (bool) {
         // Enforce proportionality - might need to say exactAmountsIn[0].mulDown(getRate()) to compare equal value?
-        return exactAmountsInScaled18.length == 2 && exactAmountsInScaled18[0] > exactAmountsInScaled18[1];
+        return exactAmountsInScaled18.length == 2 && exactAmountsInScaled18[0] == exactAmountsInScaled18[1];
     }
 
     /// @inheritdoc BasePoolHooks
