@@ -7,6 +7,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -196,10 +197,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // struct, to be settled in non-reentrant _swap with the rest of the accounting.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN);
 
-        // TODO review this part, since buffer pool is using a swap
-        //        if (poolData.poolConfig.isBufferPool) {
-        //            revert CannotSwapWithBufferPool(params.pool);
-        //        }
+        if (
+            poolData.poolConfig.isBufferPool &&
+            _wrappedTokenBuffers[IERC4626(address(poolData.tokenConfig[0].token))] != msg.sender
+        ) {
+            revert CannotSwapWithBufferPool(params.pool);
+        }
 
         // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[params.pool];
