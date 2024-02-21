@@ -24,6 +24,7 @@ import { Router } from "../../../contracts/Router.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
+import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
 
 import { VaultMockDeployer } from "./VaultMockDeployer.sol";
 
@@ -50,6 +51,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     address internal pool;
     // Rate provider mock.
     RateProviderMock internal rateProvider;
+    // Pool Factory
+    PoolFactoryMock internal factoryMock;
 
     // Default amount to use in tests for user operations.
     uint256 internal defaultAmount = 1e3 * 1e18;
@@ -75,6 +78,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
 
         vault = IVaultMock(address(VaultMockDeployer.deploy()));
         authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
+        factoryMock = PoolFactoryMock(address(vault.getPoolFactoryMock()));
         router = new RouterMock(IVault(address(vault)), weth);
         pool = createPool();
 
@@ -106,16 +110,14 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     }
 
     function createPool() internal virtual returns (address) {
-        PoolMock newPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            true,
-            365 days,
-            address(0)
-        );
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
+
+        factoryMock.registerTestPool(
+            address(newPool),
+            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20())
+        );
+
         return address(newPool);
     }
 
