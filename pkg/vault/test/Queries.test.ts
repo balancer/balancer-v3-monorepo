@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { MAX_UINT256 } from '@balancer-labs/v3-helpers/src/constants';
 import { Router } from '../typechain-types/contracts/Router';
 import { ERC20PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/ERC20PoolMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
@@ -49,10 +49,7 @@ describe('Queries', function () {
 
     factory = await deploy('PoolFactoryMock', { args: [vaultAddress, 12 * MONTH] });
 
-    await factory.registerTestPool(
-      pool,
-      buildTokenConfig([await DAI.getAddress(), await USDC.getAddress()])
-    );
+    await factory.registerTestPool(pool, buildTokenConfig([await DAI.getAddress(), await USDC.getAddress()]));
 
     await USDC.mint(alice, 2n * USDC_AMOUNT_IN);
     await DAI.mint(alice, 2n * DAI_AMOUNT_IN);
