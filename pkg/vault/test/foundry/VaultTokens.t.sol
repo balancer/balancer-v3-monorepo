@@ -143,7 +143,7 @@ contract VaultTokenTest is BaseVaultTest {
     }
 
     function _registerPool(TokenConfig[] memory tokenConfig) private {
-        poolFactory.registerGeneralPool(
+        poolFactory.registerPool(
             poolAddress,
             tokenConfig,
             address(0),

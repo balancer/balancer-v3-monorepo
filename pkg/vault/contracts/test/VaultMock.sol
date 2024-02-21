@@ -6,26 +6,25 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    TokenConfig,
-    PoolConfig,
-    PoolData,
-    Rounding
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMainMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMainMock.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
+import { PackedTokenBalance } from "../lib/PackedTokenBalance.sol";
 
 contract VaultMock is IVaultMainMock, Vault {
-    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
+    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using ScalingHelpers for uint256;
+    using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
 
     PoolFactoryMock private immutable _poolFactoryMock;
@@ -62,14 +61,9 @@ contract VaultMock is IVaultMainMock, Vault {
     // The Mock pool has an argument for whether or not to register on deployment. To call register pool
     // separately, deploy it with the registration flag false, then call this function.
     function manualRegisterPool(address pool, IERC20[] memory tokens) external whenVaultNotPaused {
-        IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
-        bool[] memory yieldExemptFlags = new bool[](tokens.length);
-
         _poolFactoryMock.registerPool(
             pool,
-            tokens,
-            rateProviders,
-            yieldExemptFlags,
+            buildTokenConfig(tokens),
             address(0),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
@@ -82,19 +76,66 @@ contract VaultMock is IVaultMainMock, Vault {
         uint256 timestamp,
         address pauseManager
     ) external whenVaultNotPaused {
-        IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
-        bool[] memory yieldExemptFlags = new bool[](tokens.length);
-
         _poolFactoryMock.registerPoolAtTimestamp(
             pool,
-            tokens,
-            rateProviders,
-            yieldExemptFlags,
+            buildTokenConfig(tokens),
             pauseManager,
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement,
             timestamp
         );
+    }
+
+    function buildTokenConfig(IERC20[] memory tokens) public pure returns (TokenConfig[] memory tokenConfig) {
+        tokenConfig = new TokenConfig[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            tokenConfig[i].token = tokens[i];
+        }
+    }
+
+    function buildTokenConfig(
+        IERC20[] memory tokens,
+        IRateProvider[] memory rateProviders
+    ) public pure returns (TokenConfig[] memory tokenConfig) {
+        tokenConfig = new TokenConfig[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            tokenConfig[i].token = tokens[i];
+            tokenConfig[i].rateProvider = rateProviders[i];
+            tokenConfig[i].tokenType = rateProviders[i] == IRateProvider(address(0))
+                ? TokenType.STANDARD
+                : TokenType.WITH_RATE;
+        }
+    }
+
+    function buildTokenConfig(
+        IERC20[] memory tokens,
+        IRateProvider[] memory rateProviders,
+        bool[] memory yieldExemptFlags
+    ) public pure returns (TokenConfig[] memory tokenConfig) {
+        tokenConfig = new TokenConfig[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            tokenConfig[i].token = tokens[i];
+            tokenConfig[i].rateProvider = rateProviders[i];
+            tokenConfig[i].tokenType = rateProviders[i] == IRateProvider(address(0))
+                ? TokenType.STANDARD
+                : TokenType.WITH_RATE;
+            tokenConfig[i].yieldFeeExempt = yieldExemptFlags[i];
+        }
+    }
+
+    function buildTokenConfig(
+        IERC20[] memory tokens,
+        TokenType[] memory tokenTypes,
+        IRateProvider[] memory rateProviders,
+        bool[] memory yieldExemptFlags
+    ) public pure returns (TokenConfig[] memory tokenConfig) {
+        tokenConfig = new TokenConfig[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            tokenConfig[i].token = tokens[i];
+            tokenConfig[i].tokenType = tokenTypes[i];
+            tokenConfig[i].rateProvider = rateProviders[i];
+            tokenConfig[i].yieldFeeExempt = yieldExemptFlags[i];
+        }
     }
 
     function getDecimalScalingFactors(address pool) external view returns (uint256[] memory) {
@@ -115,12 +156,12 @@ contract VaultMock is IVaultMainMock, Vault {
         return _computePoolDataUpdatingBalancesAndFees(pool, roundingDirection);
     }
 
-    function setLiveBalanceFromRawForToken(
+    function updateLiveTokenBalanceInPoolData(
         PoolData memory poolData,
         Rounding roundingDirection,
         uint256 tokenIndex
     ) external pure returns (PoolData memory) {
-        _setLiveBalanceFromRawForToken(poolData, roundingDirection, tokenIndex);
+        _updateLiveTokenBalanceInPoolData(poolData, roundingDirection, tokenIndex);
         return poolData;
     }
 
@@ -134,24 +175,54 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw) {
-        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
 
         uint256 numTokens = poolTokenBalances.length();
         balancesRaw = new uint256[](numTokens);
+        bytes32 packedBalances;
 
         for (uint256 i = 0; i < numTokens; i++) {
-            (, balancesRaw[i]) = poolTokenBalances.unchecked_at(i);
+            (, packedBalances) = poolTokenBalances.unchecked_at(i);
+            balancesRaw[i] = packedBalances.getRawBalance();
+        }
+    }
+
+    function getCurrentLiveBalances(address pool) external view returns (uint256[] memory currentLiveBalances) {
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        PoolData memory poolData;
+
+        (
+            poolData.tokenConfig,
+            poolData.balancesRaw,
+            poolData.decimalScalingFactors,
+            poolData.poolConfig
+        ) = _getPoolTokenInfo(pool);
+
+        _updateTokenRatesInPoolData(poolData);
+
+        uint256 numTokens = poolTokenBalances.length();
+        currentLiveBalances = new uint256[](numTokens);
+        bytes32 packedBalances;
+
+        for (uint256 i = 0; i < numTokens; i++) {
+            (, packedBalances) = poolTokenBalances.unchecked_at(i);
+            currentLiveBalances[i] = packedBalances.getRawBalance().toScaled18ApplyRateRoundDown(
+                poolData.decimalScalingFactors[i],
+                poolData.tokenRates[i]
+            );
         }
     }
 
     function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances) {
-        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _lastLivePoolTokenBalances[pool];
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
 
         uint256 numTokens = poolTokenBalances.length();
         lastLiveBalances = new uint256[](numTokens);
+        bytes32 packedBalances;
 
         for (uint256 i = 0; i < numTokens; i++) {
-            (, lastLiveBalances[i]) = poolTokenBalances.unchecked_at(i);
+            (, packedBalances) = poolTokenBalances.unchecked_at(i);
+            lastLiveBalances[i] = packedBalances.getLastLiveBalanceScaled18();
         }
     }
 

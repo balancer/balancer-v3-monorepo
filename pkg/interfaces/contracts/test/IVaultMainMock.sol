@@ -36,9 +36,11 @@ interface IVaultMainMock {
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw);
 
+    function getCurrentLiveBalances(address pool) external view returns (uint256[] memory currentLiveBalances);
+
     function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances);
 
-    function setLiveBalanceFromRawForToken(
+    function updateLiveTokenBalanceInPoolData(
         PoolData memory poolData,
         Rounding roundingDirection,
         uint256 tokenIndex
@@ -54,4 +56,28 @@ interface IVaultMainMock {
     function guardedCheckEntered() external;
 
     function unguardedCheckNotEntered() external view;
+
+    // Convenience functions for constructing TokenConfig arrays
+
+    function buildTokenConfig(IERC20[] memory tokens) external pure returns (TokenConfig[] memory tokenConfig);
+
+    /// @dev Infers TokenType (STANDARD or WITH_RATE) from the presence or absence of the rate provider.
+    function buildTokenConfig(
+        IERC20[] memory tokens,
+        IRateProvider[] memory rateProviders
+    ) external pure returns (TokenConfig[] memory tokenConfig);
+
+    /// @dev Infers TokenType (STANDARD or WITH_RATE) from the presence or absence of the rate provider.
+    function buildTokenConfig(
+        IERC20[] memory tokens,
+        IRateProvider[] memory rateProviders,
+        bool[] memory yieldExemptFlags
+    ) external pure returns (TokenConfig[] memory tokenConfig);
+
+    function buildTokenConfig(
+        IERC20[] memory tokens,
+        TokenType[] memory tokenTypes,
+        IRateProvider[] memory rateProviders,
+        bool[] memory yieldExemptFlags
+    ) external pure returns (TokenConfig[] memory tokenConfig);
 }

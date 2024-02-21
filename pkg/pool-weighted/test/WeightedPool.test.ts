@@ -13,7 +13,10 @@ import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v3-helpe
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
-import { PoolConfigStructOutput } from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
+import {
+  PoolConfigStructOutput,
+  TokenConfigStruct,
+} from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
 import { WeightedPoolFactory } from '../typechain-types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
@@ -60,11 +63,9 @@ describe('WeightedPool', function () {
     tokenCAddress = await tokenC.getAddress();
 
     poolTokens = [tokenAAddress, tokenBAddress, tokenCAddress];
-    const rateProviders = [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
-    const yieldFlags = [false, false, false];
 
     pool = await deploy('v3-vault/PoolMock', {
-      args: [vault, 'Pool', 'POOL', poolTokens, rateProviders, yieldFlags, true, 365 * 24 * 3600, ZERO_ADDRESS],
+      args: [vault, 'Pool', 'POOL', buildTokenConfig(poolTokens), true, 365 * 24 * 3600, ZERO_ADDRESS],
     });
   });
 
@@ -189,8 +190,32 @@ describe('WeightedPool', function () {
       await expect(
         await router
           .connect(alice)
-          .swapExactIn(realPoolAddress, tokenAAddress, tokenBAddress, SWAP_AMOUNT, 0, MAX_UINT256, false, '0x')
+          .swapSingleTokenExactIn(
+            realPoolAddress,
+            tokenAAddress,
+            tokenBAddress,
+            SWAP_AMOUNT,
+            0,
+            MAX_UINT256,
+            false,
+            '0x'
+          )
       ).to.emit(vault, 'ProtocolSwapFeeCharged');
     });
   });
+
+  function buildTokenConfig(tokens: string[]): TokenConfigStruct[] {
+    const result: TokenConfigStruct[] = [];
+
+    tokens.map((token, i) => {
+      result[i] = {
+        token: token,
+        tokenType: TokenType.STANDARD,
+        rateProvider: ZERO_ADDRESS,
+        yieldFeeExempt: false,
+      };
+    });
+
+    return result;
+  }
 });

@@ -86,8 +86,8 @@ contract WeightedPoolTest is BaseVaultTest {
         );
 
         assertFalse(paused);
-        assertApproxEqAbs(pauseWindow, 365 days, 1);
-        assertApproxEqAbs(bufferPeriod, 365 days + 30 days, 1);
+        assertApproxEqAbs(pauseWindow, START_TIMESTAMP + 365 days, 1);
+        assertApproxEqAbs(bufferPeriod, START_TIMESTAMP + 365 days + 30 days, 1);
         assertEq(pauseManager, address(0));
     }
 
@@ -183,7 +183,7 @@ contract WeightedPoolTest is BaseVaultTest {
 
     function testSwap() public {
         vm.prank(bob);
-        uint256 amountCalculated = router.swapExactIn(
+        uint256 amountCalculated = router.swapSingleTokenExactIn(
             address(pool),
             dai,
             usdc,

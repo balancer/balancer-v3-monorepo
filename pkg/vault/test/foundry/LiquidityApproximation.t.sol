@@ -81,9 +81,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
                 IVault(address(vault)),
                 "ERC20 Pool",
                 "ERC20POOL",
-                [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-                new IRateProvider[](2),
-                new bool[](2),
+                vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20(), new IRateProvider[](2)),
                 true,
                 365 days,
                 address(0)
@@ -96,9 +94,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
                 IVault(address(vault)),
                 "ERC20 Pool",
                 "ERC20POOL",
-                [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-                new IRateProvider[](2),
-                new bool[](2),
+                vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20(), new IRateProvider[](2)),
                 true,
                 365 days,
                 address(0)
@@ -151,7 +147,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.stopPrank();
 
         vm.prank(bob);
-        uint256 amountOut = router.swapExactIn(
+        uint256 amountOut = router.swapSingleTokenExactIn(
             address(swapPool),
             dai,
             usdc,
@@ -183,7 +179,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.stopPrank();
 
         vm.prank(bob);
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(swapPool),
             dai,
             usdc,
@@ -225,7 +221,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.stopPrank();
 
         vm.prank(bob);
-        uint256 amountOut = router.swapExactIn(
+        uint256 amountOut = router.swapSingleTokenExactIn(
             address(swapPool),
             dai,
             usdc,
@@ -262,7 +258,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.stopPrank();
 
         vm.prank(bob);
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(swapPool),
             dai,
             usdc,
@@ -320,7 +316,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         vm.startPrank(bob);
         // simulate the same outcome with a pure swap
-        uint256 amountOut = router.swapExactIn(
+        uint256 amountOut = router.swapSingleTokenExactIn(
             address(swapPool),
             dai,
             usdc,
@@ -372,7 +368,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         vm.startPrank(bob);
         // simulate the same outcome with a pure swap
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(swapPool),
             dai,
             usdc,
@@ -422,7 +418,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         vm.startPrank(bob);
         // simulate the same outcome with a pure swap
-        uint256 amountOut = router.swapExactIn(
+        uint256 amountOut = router.swapSingleTokenExactIn(
             address(swapPool),
             dai,
             usdc,
@@ -467,7 +463,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         vm.startPrank(bob);
         // simulate the same outcome with a pure swap
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(swapPool),
             dai,
             usdc,

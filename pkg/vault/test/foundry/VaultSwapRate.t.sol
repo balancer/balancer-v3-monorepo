@@ -37,9 +37,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
                     IVault(address(vault)),
                     "ERC20 Pool",
                     "ERC20POOL",
-                    [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
-                    rateProviders,
-                    new bool[](2),
+                    vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
                     true,
                     365 days,
                     address(0)
@@ -63,7 +61,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         assertEq(address(rateProviders[1]), address(0), "Rate provider should be 0");
     }
 
-    function testSwapExactInWithRate() public {
+    function testSwapSingleTokenExactIWithRate() public {
         uint256 rateAdjustedLimit = defaultAmount.divDown(mockRate);
         uint256 rateAdjustedAmount = defaultAmount.mulDown(mockRate);
 
@@ -84,7 +82,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         );
 
         vm.prank(bob);
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(pool),
             dai,
             wsteth,
@@ -96,7 +94,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         );
     }
 
-    function testSwapExactOutWithRate() public {
+    function testSwapSingleTokenExactOutWithRate() public {
         uint256 rateAdjustedBalance = defaultAmount.mulDown(mockRate);
         uint256 rateAdjustedAmountGiven = defaultAmount.divDown(mockRate);
 
@@ -117,7 +115,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         );
 
         vm.prank(bob);
-        router.swapExactOut(
+        router.swapSingleTokenExactOut(
             address(pool),
             dai,
             wsteth,
