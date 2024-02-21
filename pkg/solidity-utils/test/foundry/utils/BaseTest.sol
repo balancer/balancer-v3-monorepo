@@ -14,6 +14,9 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 abstract contract BaseTest is Test, GasSnapshot {
     using ArrayHelpers for *;
 
+    // Reasonable block.timestamp `MAY_1_2023`
+    uint32 internal constant START_TIMESTAMP = 1_682_899_200;
+
     // Default admin.
     address payable admin;
     // Default liquidity provider.
@@ -37,11 +40,14 @@ abstract contract BaseTest is Test, GasSnapshot {
     IERC20[] internal tokens;
 
     // Default balance for accounts
-    uint256 internal defaultBalance;
+    uint256 internal defaultBalance = 1e6 * 1e18;
 
     function setUp() public virtual {
-        // Set default balance to 1mil
-        defaultBalance = 1e6 * 1e18;
+        // Set timestamp only if testing locally
+        if (block.chainid == 31337) {
+            // Set block.timestamp to something better than 0
+            vm.warp(START_TIMESTAMP);
+        }
 
         // Deploy the base test contracts.
         dai = createERC20("DAI", 18);

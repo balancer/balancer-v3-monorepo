@@ -13,14 +13,18 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
+import { PackedTokenBalance } from "../lib/PackedTokenBalance.sol";
 
 contract VaultMock is IVaultMainMock, Vault {
-    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
+    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using ScalingHelpers for uint256;
+    using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
 
     PoolFactoryMock private immutable _poolFactoryMock;
@@ -152,12 +156,12 @@ contract VaultMock is IVaultMainMock, Vault {
         return _computePoolDataUpdatingBalancesAndFees(pool, roundingDirection);
     }
 
-    function setLiveBalanceFromRawForToken(
+    function updateLiveTokenBalanceInPoolData(
         PoolData memory poolData,
         Rounding roundingDirection,
         uint256 tokenIndex
     ) external pure returns (PoolData memory) {
-        _setLiveBalanceFromRawForToken(poolData, roundingDirection, tokenIndex);
+        _updateLiveTokenBalanceInPoolData(poolData, roundingDirection, tokenIndex);
         return poolData;
     }
 
@@ -171,24 +175,54 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw) {
-        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _poolTokenBalances[pool];
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
 
         uint256 numTokens = poolTokenBalances.length();
         balancesRaw = new uint256[](numTokens);
+        bytes32 packedBalances;
 
         for (uint256 i = 0; i < numTokens; i++) {
-            (, balancesRaw[i]) = poolTokenBalances.unchecked_at(i);
+            (, packedBalances) = poolTokenBalances.unchecked_at(i);
+            balancesRaw[i] = packedBalances.getRawBalance();
+        }
+    }
+
+    function getCurrentLiveBalances(address pool) external view returns (uint256[] memory currentLiveBalances) {
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        PoolData memory poolData;
+
+        (
+            poolData.tokenConfig,
+            poolData.balancesRaw,
+            poolData.decimalScalingFactors,
+            poolData.poolConfig
+        ) = _getPoolTokenInfo(pool);
+
+        _updateTokenRatesInPoolData(poolData);
+
+        uint256 numTokens = poolTokenBalances.length();
+        currentLiveBalances = new uint256[](numTokens);
+        bytes32 packedBalances;
+
+        for (uint256 i = 0; i < numTokens; i++) {
+            (, packedBalances) = poolTokenBalances.unchecked_at(i);
+            currentLiveBalances[i] = packedBalances.getRawBalance().toScaled18ApplyRateRoundDown(
+                poolData.decimalScalingFactors[i],
+                poolData.tokenRates[i]
+            );
         }
     }
 
     function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances) {
-        EnumerableMap.IERC20ToUint256Map storage poolTokenBalances = _lastLivePoolTokenBalances[pool];
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
 
         uint256 numTokens = poolTokenBalances.length();
         lastLiveBalances = new uint256[](numTokens);
+        bytes32 packedBalances;
 
         for (uint256 i = 0; i < numTokens; i++) {
-            (, lastLiveBalances[i]) = poolTokenBalances.unchecked_at(i);
+            (, packedBalances) = poolTokenBalances.unchecked_at(i);
+            lastLiveBalances[i] = packedBalances.getLastLiveBalanceScaled18();
         }
     }
 

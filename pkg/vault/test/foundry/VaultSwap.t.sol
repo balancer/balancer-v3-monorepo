@@ -36,12 +36,21 @@ contract VaultSwapTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, address(pool)));
 
         vm.prank(bob);
-        router.swapExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
+        router.swapSingleTokenExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
     }
 
     function testSwapNotInitialized() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, address(noInitPool)));
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(noInitPool),
             usdc,
             dai,
@@ -53,43 +62,10 @@ contract VaultSwapTest is BaseVaultTest {
         );
     }
 
-    function testSwapExactIn() public {
-        assertSwap(swapExactIn);
-    }
-
-    function swapExactIn() public returns (uint256 fee, uint256 protocolFee) {
-        vm.prank(alice);
-        snapStart("vaultSwapExactIn");
-        router.swapExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
-        snapEnd();
-        return (0, 0);
-    }
-
-    function testSwapExactOut() public {
-        assertSwap(swapExactOut);
-    }
-
-    function swapExactOut() public returns (uint256 fee, uint256 protocolFee) {
-        vm.prank(alice);
-        snapStart("vaultSwapExactIn");
-        router.swapExactOut(
-            address(pool),
-            usdc,
-            dai,
-            defaultAmount,
-            defaultAmount,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
-        snapEnd();
-        return (0, 0);
-    }
-
-    function testSwapLimitExactIn() public {
+    function testSwapLimitGivenIn() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, defaultAmount - 1, defaultAmount));
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(pool),
             usdc,
             dai,
@@ -104,7 +80,7 @@ contract VaultSwapTest is BaseVaultTest {
     function testSwapLimitExactOut() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, defaultAmount, defaultAmount - 1));
-        router.swapExactOut(
+        router.swapSingleTokenExactOut(
             address(pool),
             usdc,
             dai,
@@ -116,16 +92,58 @@ contract VaultSwapTest is BaseVaultTest {
         );
     }
 
-    function testSwapFeeExactIn() public {
-        assertSwap(swapFeeExactIn);
+    function testSwapSingleTokenExactIn() public {
+        assertSwap(swapSingleTokenExactIn);
     }
 
-    function swapFeeExactIn() public returns (uint256 fee, uint256 protocolFee) {
+    function swapSingleTokenExactIn() public returns (uint256 fee, uint256 protocolFee) {
+        vm.prank(alice);
+        snapStart("vaultSwapSingleTokenExactIn");
+        router.swapSingleTokenExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+        snapEnd();
+        return (0, 0);
+    }
+
+    function testSwapSingleTokenExactOut() public {
+        assertSwap(swapSingleTokenExactOut);
+    }
+
+    function swapSingleTokenExactOut() public returns (uint256 fee, uint256 protocolFee) {
+        vm.prank(alice);
+        snapStart("vaultSwapSingleTokenExactOut");
+        router.swapSingleTokenExactOut(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+        snapEnd();
+        return (0, 0);
+    }
+
+    function testSwapSingleTokenExactInWithFee() public {
+        assertSwap(swapSingleTokenExactInWithFee);
+    }
+
+    function swapSingleTokenExactInWithFee() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage(swapFeePercentage);
 
         vm.prank(alice);
-        snapStart("vaultSwapFeeExactIn");
-        router.swapExactIn(
+        snapStart("vaultSwapSingleTokenExactInWithFee");
+        router.swapSingleTokenExactIn(
             address(pool),
             usdc,
             dai,
@@ -140,17 +158,30 @@ contract VaultSwapTest is BaseVaultTest {
         return (swapFee, 0);
     }
 
-    function testProtocolSwapFeeExactIn() public {
-        assertSwap(protocolSwapFeeExactIn);
+    function testSwapSingleTokenExactInWithProtocolFee() public {
+        assertSwap(swapSingleTokenExactInWithProtocolFee);
     }
 
-    function protocolSwapFeeExactIn() public returns (uint256 fee, uint256 protocolFee) {
+    function testSwapSingleTokenExactInWithFeeInRecoveryMode() public {
+        // Put pool in recovery mode
+        vault.manualEnableRecoveryMode(pool);
+
+        assertSwap(swapSingleTokenExactInWithFeeInRecoveryMode);
+    }
+
+    function swapSingleTokenExactInWithFeeInRecoveryMode() public returns (uint256 fee, uint256 protocolFee) {
+        // Call regular function (which sets the protocol swap fee), but return a fee of 0 to the validation function.
+        protocolFee = 0;
+        (fee, ) = swapSingleTokenExactInWithProtocolFee();
+    }
+
+    function swapSingleTokenExactInWithProtocolFee() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage(swapFeePercentage);
         setProtocolSwapFeePercentage(protocolSwapFeePercentage);
 
         vm.prank(alice);
-        snapStart("vaultProtocolSwapFeeExactIn");
-        router.swapExactIn(
+        snapStart("vaultSwapSingleTokenExactInWithProtocolFee");
+        router.swapSingleTokenExactIn(
             address(pool),
             usdc,
             dai,
@@ -165,15 +196,15 @@ contract VaultSwapTest is BaseVaultTest {
         return (swapFee, protocolSwapFee);
     }
 
-    function testSwapFeeExactOut() public {
-        assertSwap(swapFeeExactOut);
+    function testSwapSingleTokenExactOutWithFee() public {
+        assertSwap(swapSingleTokenExactOutWithFee);
     }
 
-    function swapFeeExactOut() public returns (uint256 fee, uint256 protocolFee) {
+    function swapSingleTokenExactOutWithFee() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage(swapFeePercentage);
 
         vm.prank(alice);
-        router.swapExactOut(
+        router.swapSingleTokenExactOut(
             address(pool),
             usdc,
             dai,
@@ -187,16 +218,29 @@ contract VaultSwapTest is BaseVaultTest {
         return (swapFee, 0);
     }
 
-    function testProtocolSwapFeeExactOut() public {
-        assertSwap(protocolSwapFeeExactOut);
+    function testSwapSingleTokenExactOutWithProtocolFee() public {
+        assertSwap(swapSingleTokenExactOutWithProtocolFee);
     }
 
-    function protocolSwapFeeExactOut() public returns (uint256 fee, uint256 protocolFee) {
+    function testSwapSingleTokenExactOutWithFeeInRecoveryMode() public {
+        // Put pool in recovery mode
+        vault.manualEnableRecoveryMode(pool);
+
+        assertSwap(swapSingleTokenExactOutWithFeeInRecoveryMode);
+    }
+
+    function swapSingleTokenExactOutWithFeeInRecoveryMode() public returns (uint256 fee, uint256 protocolFee) {
+        // Call regular function (which sets the protocol swap fee), but return a fee of 0 to the validation function.
+        protocolFee = 0;
+        (fee, ) = swapSingleTokenExactOutWithProtocolFee();
+    }
+
+    function swapSingleTokenExactOutWithProtocolFee() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage(swapFeePercentage);
         setProtocolSwapFeePercentage(protocolSwapFeePercentage);
 
         vm.prank(alice);
-        router.swapExactOut(
+        router.swapSingleTokenExactOut(
             address(pool),
             usdc,
             dai,
@@ -219,7 +263,7 @@ contract VaultSwapTest is BaseVaultTest {
         setProtocolSwapFeePercentage(protocolSwapFeePercentage);
 
         vm.prank(alice);
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(pool),
             usdc,
             dai,
@@ -231,7 +275,7 @@ contract VaultSwapTest is BaseVaultTest {
         );
 
         vm.prank(alice);
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(pool),
             usdc,
             dai,
@@ -252,7 +296,7 @@ contract VaultSwapTest is BaseVaultTest {
         setProtocolSwapFeePercentage(protocolSwapFeePercentage);
 
         vm.prank(bob);
-        router.swapExactIn(
+        router.swapSingleTokenExactIn(
             address(pool),
             usdc,
             dai,
@@ -297,5 +341,15 @@ contract VaultSwapTest is BaseVaultTest {
         // vault are adjusted balances
         assertEq(dai.balanceOf(address(vault)), fee, "Swap: Vault's DAI balance is wrong");
         assertEq(usdc.balanceOf(address(vault)), 2 * defaultAmount, "Swap: Vault's USDC balance is wrong");
+
+        // Ensure raw and last live balances are in sync after the operation
+        uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
+        uint256[] memory lastLiveBalances = vault.getLastLiveBalances(pool);
+
+        assertEq(currentLiveBalances.length, lastLiveBalances.length);
+
+        for (uint256 i = 0; i < currentLiveBalances.length; i++) {
+            assertEq(currentLiveBalances[i], lastLiveBalances[i]);
+        }
     }
 }

@@ -360,6 +360,22 @@ interface IVaultExtension {
      */
     function disableRecoveryMode(address pool) external;
 
+    /**
+     * @notice Remove liquidity from a pool specifying exact pool tokens in, with proportional token amounts out.
+     * The request is implemented by the Vault without any interaction with the pool, ensuring that
+     * it works the same for all pools, and cannot be disabled by a new pool type.
+     *
+     * @param pool Address of the pool
+     * @param from Address of user to burn pool tokens from
+     * @param exactBptAmountIn Input pool token amount
+     * @return amountsOut Actual calculated amounts of output tokens, sorted in token registration order
+     */
+    function removeLiquidityRecovery(
+        address pool,
+        address from,
+        uint256 exactBptAmountIn
+    ) external returns (uint256[] memory amountsOut);
+
     /*******************************************************************************
                                     Queries
     *******************************************************************************/

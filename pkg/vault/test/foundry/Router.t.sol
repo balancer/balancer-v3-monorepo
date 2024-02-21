@@ -104,7 +104,7 @@ contract RouterTest is BaseVaultTest {
     function testQuerySwap() public {
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(EVMCallModeHelpers.NotStaticCall.selector));
-        router.querySwapExactIn(address(pool), usdc, dai, usdcAmountIn, bytes(""));
+        router.querySwapSingleTokenExactIn(address(pool), usdc, dai, usdcAmountIn, bytes(""));
     }
 
     function testDisableQueries() public {
@@ -123,7 +123,7 @@ contract RouterTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.QueriesDisabled.selector));
 
         vm.prank(address(0), address(0));
-        router.querySwapExactIn(address(pool), usdc, dai, usdcAmountIn, bytes(""));
+        router.querySwapSingleTokenExactIn(address(pool), usdc, dai, usdcAmountIn, bytes(""));
     }
 
     function testInitializeBelowMinimum() public {
@@ -386,8 +386,8 @@ contract RouterTest is BaseVaultTest {
         bool wethIsEth = false;
 
         vm.prank(alice);
-        snapStart("routerSwapExactInWETH");
-        uint256 outputTokenAmount = router.swapExactIn(
+        snapStart("routerSwapSingleTokenExactInWETH");
+        uint256 outputTokenAmount = router.swapSingleTokenExactIn(
             address(wethPool),
             weth,
             dai,
@@ -408,7 +408,7 @@ contract RouterTest is BaseVaultTest {
         bool wethIsEth = false;
 
         vm.prank(alice);
-        uint256 outputTokenAmount = router.swapExactOut(
+        uint256 outputTokenAmount = router.swapSingleTokenExactOut(
             address(wethPool),
             weth,
             dai,
@@ -430,8 +430,8 @@ contract RouterTest is BaseVaultTest {
         bool wethIsEth = true;
 
         vm.prank(alice);
-        snapStart("routerSwapExactInNative");
-        router.swapExactIn{ value: ethAmountIn }(
+        snapStart("routerSwapSingleTokenExactInNative");
+        router.swapSingleTokenExactIn{ value: ethAmountIn }(
             address(wethPool),
             weth,
             dai,
@@ -455,7 +455,7 @@ contract RouterTest is BaseVaultTest {
         bool wethIsEth = true;
 
         vm.prank(alice);
-        router.swapExactOut{ value: daiAmountOut }(
+        router.swapSingleTokenExactOut{ value: daiAmountOut }(
             address(wethPool),
             weth,
             dai,
@@ -478,7 +478,7 @@ contract RouterTest is BaseVaultTest {
         bool wethIsEth = true;
 
         vm.startPrank(alice);
-        router.swapExactIn{ value: defaultBalance }(
+        router.swapSingleTokenExactIn{ value: defaultBalance }(
             address(wethPool),
             weth,
             dai,
