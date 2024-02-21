@@ -16,6 +16,7 @@ import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultM
 import { TokenConfig, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
@@ -34,7 +35,8 @@ import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/W
 contract WeightedPoolTest is BaseVaultTest {
     using ArrayHelpers for *;
 
-    uint256 constant DEFAULT_SWAP_FEE = 0;
+    uint256 constant DEFAULT_SWAP_FEE = 1e16; // 1%
+    uint256 constant MIN_SWAP_FEE = 1e12; // 0.00001%
 
     WeightedPoolFactory factory;
 
@@ -188,6 +190,9 @@ contract WeightedPoolTest is BaseVaultTest {
     }
 
     function testSwap() public {
+        // Set swap fee to zero for this test.
+        vault.setSwapFeeDisabled(pool, true);
+
         vm.prank(bob);
         uint256 amountCalculated = router.swapSingleTokenExactIn(
             address(pool),
@@ -232,5 +237,34 @@ contract WeightedPoolTest is BaseVaultTest {
     function testSupportsIERC165() public {
         assertTrue(weightedPool.supportsInterface(type(IERC165).interfaceId));
         assertTrue(weightedPool.supportsInterface(type(IMinimumSwapFee).interfaceId));
+    }
+
+    function testMinimumSwapFee() public {
+        assertEq(weightedPool.getMinimumSwapFeePercentage(), MIN_SWAP_FEE);
+    }
+
+    function testFailSwapFeeTooLow() public {
+        TokenConfig[] memory tokens = new TokenConfig[](2);
+        tokens[0].token = IERC20(dai);
+        tokens[1].token = IERC20(usdc);
+
+        address lowFeeWeightedPool = factory.create(
+            "ERC20 Pool",
+            "ERC20POOL",
+            tokens,
+            [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+            MIN_SWAP_FEE - 1, // Swap fee too low
+            ZERO_BYTES32
+        );
+
+        factoryMock.registerTestPool(lowFeeWeightedPool, tokens);
+    }
+
+    function testSetSwapFeeTooLow() public {
+        authorizer.grantRole(vault.getActionId(IVaultExtension.setStaticSwapFeePercentage.selector), alice);
+        vm.prank(alice);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapFeePercentageTooLow.selector));
+        vault.setStaticSwapFeePercentage(address(pool), MIN_SWAP_FEE - 1);
     }
 }

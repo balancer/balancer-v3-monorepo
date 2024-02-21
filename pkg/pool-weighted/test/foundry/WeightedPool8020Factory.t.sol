@@ -20,7 +20,7 @@ import { WeightedPool8020Factory } from "../../contracts/WeightedPool8020Factory
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
 
 contract WeightedPool8020FactoryTest is Test {
-    uint256 private constant _DEFAULT_SWAP_FEE = 0;
+    uint256 internal DEFAULT_SWAP_FEE = 1e16; // 1%
 
     VaultMock vault;
     WeightedPool8020Factory factory;
@@ -51,7 +51,7 @@ contract WeightedPool8020FactoryTest is Test {
         tokens[1].token = tokenB;
 
         WeightedPool pool = WeightedPool(
-            factory.create("Balancer 80/20 Pool", "Pool8020", tokens, _DEFAULT_SWAP_FEE, bytes32(0))
+            factory.create("Balancer 80/20 Pool", "Pool8020", tokens, DEFAULT_SWAP_FEE, bytes32(0))
         );
 
         uint256[] memory poolWeights = pool.getNormalizedWeights();
@@ -65,7 +65,7 @@ contract WeightedPool8020FactoryTest is Test {
         tokens[0].token = tokenA;
 
         vm.expectRevert(WeightedPool8020Factory.NotTwoTokens.selector);
-        factory.create("Balancer 80/20 Pool", "Pool8020", tokens, _DEFAULT_SWAP_FEE, bytes32(0));
+        factory.create("Balancer 80/20 Pool", "Pool8020", tokens, DEFAULT_SWAP_FEE, bytes32(0));
     }
 
     function testInvalidPoolMaxTokens() public {
@@ -75,7 +75,7 @@ contract WeightedPool8020FactoryTest is Test {
         tokens[2].token = new ERC20TestToken("Token C", "TKNC", 18);
 
         vm.expectRevert(WeightedPool8020Factory.NotTwoTokens.selector);
-        factory.create("Balancer 80/20 Pool", "Pool8020", tokens, _DEFAULT_SWAP_FEE, bytes32(0));
+        factory.create("Balancer 80/20 Pool", "Pool8020", tokens, DEFAULT_SWAP_FEE, bytes32(0));
     }
 
     function testPoolSalt__Fuzz(bytes32 salt) public {
@@ -87,12 +87,12 @@ contract WeightedPool8020FactoryTest is Test {
         tokens[0].rateProvider = rateProvider;
 
         WeightedPool pool = WeightedPool(
-            factory.create("Balancer 80/20 Pool", "Pool8020", tokens, _DEFAULT_SWAP_FEE, bytes32(0))
+            factory.create("Balancer 80/20 Pool", "Pool8020", tokens, DEFAULT_SWAP_FEE, bytes32(0))
         );
         address expectedPoolAddress = factory.getDeploymentAddress(salt);
 
         WeightedPool secondPool = WeightedPool(
-            factory.create("Balancer 80/20 Pool", "Pool8020", tokens, _DEFAULT_SWAP_FEE, salt)
+            factory.create("Balancer 80/20 Pool", "Pool8020", tokens, DEFAULT_SWAP_FEE, salt)
         );
 
         assertFalse(address(pool) == address(secondPool), "Two deployed pool addresses are equal");
@@ -111,7 +111,7 @@ contract WeightedPool8020FactoryTest is Test {
         // Different sender should change the address of the pool, given the same salt value
         vm.prank(alice);
         WeightedPool pool = WeightedPool(
-            factory.create("Balancer 80/20 Pool", "Pool8020", tokens, _DEFAULT_SWAP_FEE, salt)
+            factory.create("Balancer 80/20 Pool", "Pool8020", tokens, DEFAULT_SWAP_FEE, salt)
         );
         assertFalse(address(pool) == expectedPoolAddress, "Unexpected pool address");
 
@@ -130,14 +130,14 @@ contract WeightedPool8020FactoryTest is Test {
 
         vm.prank(alice);
         WeightedPool poolMainnet = WeightedPool(
-            factory.create("Balancer 80/20 Pool", "Pool8020", tokens, _DEFAULT_SWAP_FEE, salt)
+            factory.create("Balancer 80/20 Pool", "Pool8020", tokens, DEFAULT_SWAP_FEE, salt)
         );
 
         vm.chainId(chainId);
 
         vm.prank(alice);
         WeightedPool poolL2 = WeightedPool(
-            factory.create("Balancer 80/20 Pool", "Pool8020", tokens, _DEFAULT_SWAP_FEE, salt)
+            factory.create("Balancer 80/20 Pool", "Pool8020", tokens, DEFAULT_SWAP_FEE, salt)
         );
 
         // Same sender and salt, should still be different because of the chainId.
