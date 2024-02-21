@@ -9,6 +9,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -23,6 +24,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
+import { IMinimumSwapFee } from "@balancer-labs/v3-interfaces/contracts/vault/IMinimumSwapFee.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -196,7 +198,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         address pauseManager,
-        PoolHooks memory hookConfig,
+        PoolHooks memory poolHooks,
         LiquidityManagement memory liquidityManagement
     ) internal {
         // Ensure the pool isn't already registered
@@ -267,7 +269,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
 
         config.isPoolRegistered = true;
-        config.hooks = hookConfig;
+        config.hooks = poolHooks;
         config.liquidityManagement = liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = pauseWindowEndTime.toUint32();
@@ -282,7 +284,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             tokenConfig,
             pauseWindowEndTime,
             pauseManager,
-            hookConfig,
+            poolHooks,
             liquidityManagement
         );
     }
@@ -681,6 +683,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     function _setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) internal virtual {
         if (swapFeePercentage > _MAX_SWAP_FEE_PERCENTAGE) {
             revert SwapFeePercentageTooHigh();
+        }
+
+        // This cannot be called during pool construction. Pools must be deployed first, then registered.
+        if (IERC165(pool).supportsInterface(type(IMinimumSwapFee).interfaceId)) {
+            if (swapFeePercentage < IMinimumSwapFee(pool).getMinimumSwapFeePercentage()) {
+                revert SwapFeePercentageTooLow();
+            }
         }
 
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
