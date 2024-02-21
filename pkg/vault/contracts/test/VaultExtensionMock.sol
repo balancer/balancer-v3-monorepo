@@ -8,6 +8,11 @@ import { IVaultExtensionMock } from "@balancer-labs/v3-interfaces/contracts/test
 import "../VaultExtension.sol";
 
 contract VaultExtensionMock is IVaultExtensionMock, VaultExtension {
+    using PoolConfigLib for PoolConfig;
+
+    // Keep track of old swap fees, so that they can be restored in setSwapFeeDisabled.
+    mapping(address => uint64) private _poolSwapFees;
+
     constructor(
         IVault vault,
         uint256 pauseWindowDuration,
@@ -42,5 +47,22 @@ contract VaultExtensionMock is IVaultExtensionMock, VaultExtension {
     function manualDisableRecoveryMode(address pool) external {
         _ensurePoolInRecoveryMode(pool);
         _setPoolRecoveryMode(pool, false);
+    }
+
+    function setSwapFeeDisabled(address pool, bool swapFeeDisabled) external {
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        uint64 newSwapFee = 0;
+
+        if (swapFeeDisabled) {
+            // Store current fee.
+            _poolSwapFees[pool] = config.staticSwapFeePercentage;
+        } else {
+            // Recover original fee, if re-enabling.
+            newSwapFee = _poolSwapFees[pool];
+        }
+        config.staticSwapFeePercentage = newSwapFee;
+
+        // Write back to the poolConfig.
+        _poolConfig[pool] = config.fromPoolConfig();
     }
 }
