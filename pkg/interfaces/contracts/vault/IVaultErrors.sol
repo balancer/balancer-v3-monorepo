@@ -177,8 +177,9 @@ interface IVaultErrors {
 
     /**
      * @dev  Error raised when the swap fee percentage is less than the minimum allowed value.
-     * The Vault itself does not impose a minimum. Rather, it checks with each pool to see whether
-     * it requires a minimum, and imposes it if found.
+     * The Vault itself does not impose a universal minimum. Rather, it asks each pool whether
+     * it supports the `IMinimumSwapFee` interface. If it does, the Vault validates against the
+     * minimum value returned by the pool.
      *
      * Pools with dynamic fees do not check for a lower limit.
      */
