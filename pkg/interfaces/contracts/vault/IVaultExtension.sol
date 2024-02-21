@@ -110,7 +110,7 @@ interface IVaultExtension {
      * @param swapFeePercentage Initial value of the swap fee
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param pauseManager Optional contract the Vault will allow to pause the pool
-     * @param hookConfig Flags indicating which hooks the pool supports
+     * @param poolHooks Flags indicating which hooks the pool supports
      * @param liquidityManagement Liquidity management flags with implemented methods
      */
     function registerPool(
@@ -119,7 +119,7 @@ interface IVaultExtension {
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         address pauseManager,
-        PoolHooks calldata hookConfig,
+        PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external;
 
