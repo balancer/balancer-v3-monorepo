@@ -15,6 +15,8 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
+import "hardhat/console.sol";
+
 contract Router is IRouter, ReentrancyGuard {
     using Address for address payable;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -791,12 +793,12 @@ contract Router is IRouter, ReentrancyGuard {
                 }
 
                 if (address(tokenIn) == step.pool) {
+                    console.log('remove');
                     // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
-                    // required amount when performing the operation. These tokens might be the output of a previous
-                    // step, in which case the user will have a BPT credit.
-                    if (IVault(_vault).getTokenDelta(address(this), IERC20(step.pool)) < 0) {
-                        _vault.wire(IERC20(step.pool), params.sender, maxAmountIn);
-                    }
+                    // required amount when performing the operation. In this case, the BPT amount needed for the
+                    // operation is not known in advance, so we take a flashloan for all the available reserves.
+                    maxAmountIn = _vault.getTokenReserve(tokenIn);
+                    _vault.wire(IERC20(step.pool), params.sender, maxAmountIn);
 
                     // Token in is BPT: remove liquidity - Single token exact out
                     (uint256[] memory exactAmountsOut, ) = _getSingleInputArrayAndTokenIndex(
@@ -823,7 +825,13 @@ contract Router is IRouter, ReentrancyGuard {
                         // Output for the step (j - 1) is the input of step (j).
                         exactAmountOut = bptAmountIn;
                     }
+
+                    // Refund unused portion of BPT flashloan to the Vault
+                    if (bptAmountIn < maxAmountIn) {
+                        _vault.retrieve(tokenIn, params.sender, maxAmountIn - bptAmountIn);
+                    }
                 } else if (address(step.tokenOut) == step.pool) {
+                    console.log('add');
                     // Token out is BPT: add liquidity - Single token exact out
                     (uint256[] memory amountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
@@ -855,6 +863,7 @@ contract Router is IRouter, ReentrancyGuard {
                     // _currentSwapTokenOutAmounts[address(step.tokenOut)] -= exactAmountOut;
                     _vault.retrieve(IERC20(step.pool), params.sender, exactAmountOut);
                 } else {
+                    console.log('swap');
                     // No BPT involved in the operation: regular swap exact out
                     (, uint256 amountIn, ) = _vault.swap(
                         SwapParams({
@@ -879,6 +888,7 @@ contract Router is IRouter, ReentrancyGuard {
         }
 
         _settlePaths(params.sender, params.wethIsEth);
+        console.log('### FINISH');
     }
 
     function _swapHook(
@@ -1351,13 +1361,16 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     function _settlePaths(address sender, bool wethIsEth) internal {
-        uint256 numTokensIn = _currentSwapTokensIn.length();
-        uint256 numTokensOut = _currentSwapTokensOut.length();
+        int256 numTokensIn = int256(_currentSwapTokensIn.length());
+        int256 numTokensOut = int256(_currentSwapTokensOut.length());
         uint256 ethAmountIn = 0;
+        console.log('num tokens in: ', uint256(numTokensIn));
+        console.log('num tokens out: ', uint256(numTokensOut));
 
         // Iterate backwards, from the last element to 0 (included).
         // Removing the last element from a set is cheaper than removing the first one.
         for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
+            console.log('token in: ', uint256(i));
             address tokenIn = _currentSwapTokensIn.unchecked_at(uint256(i));
             ethAmountIn += _retrieveTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts[tokenIn], wethIsEth);
 
@@ -1366,6 +1379,7 @@ contract Router is IRouter, ReentrancyGuard {
         }
 
         for (int256 i = int256(numTokensOut - 1); i >= 0; --i) {
+            console.log('token out: ', uint256(i));
             address tokenOut = _currentSwapTokensOut.unchecked_at(uint256(i));
             _wireTokenOut(sender, IERC20(tokenOut), _currentSwapTokenOutAmounts[tokenOut], wethIsEth);
 
@@ -1373,6 +1387,7 @@ contract Router is IRouter, ReentrancyGuard {
             _currentSwapTokenOutAmounts[tokenOut] = 0;
         }
 
+        console.log('about to return eth');
         // Return the rest of ETH to sender
         _returnEth(sender, ethAmountIn);
     }
