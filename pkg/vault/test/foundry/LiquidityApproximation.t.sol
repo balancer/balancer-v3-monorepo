@@ -505,7 +505,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         uint256 liquidityTaxPercentage = liquidityPercentageDelta.mulDown(swapFeePercentage);
 
-        uint256 swapFee = amountOut.divUp(1e18 - swapFeePercentage) - amountOut;
+        uint256 swapFee = amountOut.divUp(swapFeePercentage.complement()) - amountOut;
 
         // See @notice at `LiquidityApproximationTest`
         assertApproxEqAbs(
