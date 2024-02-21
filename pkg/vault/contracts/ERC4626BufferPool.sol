@@ -171,42 +171,36 @@ contract ERC4626BufferPool is
         if (scaledBalanceWrapped > balanceUnderlying) {
             uint256 assetsToUnwrap = (scaledBalanceWrapped - balanceUnderlying) / 2;
 
-            abi.decode(
-                getVault().invoke{ value: msg.value }(
-                    abi.encodeWithSelector(
-                        ERC4626BufferPool.rebalanceHook.selector,
-                        RebalanceHookParams({
-                            sender: msg.sender,
-                            kind: SwapKind.EXACT_IN,
-                            pool: poolAddress,
-                            tokenIn: tokens[1],
-                            tokenOut: tokens[0],
-                            amountGiven: assetsToUnwrap,
-                            limit: assetsToUnwrap / 2 // TODO Review limit and deadline
-                        })
-                    )
-                ),
-                (uint256)
+            getVault().invoke{ value: msg.value }(
+                abi.encodeWithSelector(
+                    ERC4626BufferPool.rebalanceHook.selector,
+                    RebalanceHookParams({
+                        sender: msg.sender,
+                        kind: SwapKind.EXACT_IN,
+                        pool: poolAddress,
+                        tokenIn: tokens[1],
+                        tokenOut: tokens[0],
+                        amountGiven: assetsToUnwrap,
+                        limit: assetsToUnwrap / 2 // TODO Review limit and deadline
+                    })
+                )
             );
         } else if (balanceUnderlying > scaledBalanceWrapped) {
             uint256 assetsToWrap = (balanceUnderlying - scaledBalanceWrapped) / 2;
 
-            abi.decode(
-                getVault().invoke{ value: msg.value }(
-                    abi.encodeWithSelector(
-                        ERC4626BufferPool.rebalanceHook.selector,
-                        RebalanceHookParams({
-                            sender: msg.sender,
-                            kind: SwapKind.EXACT_OUT,
-                            pool: poolAddress,
-                            tokenIn: tokens[0],
-                            tokenOut: tokens[1],
-                            amountGiven: assetsToWrap,
-                            limit: assetsToWrap * 2 // TODO Review limit and deadline
-                        })
-                    )
-                ),
-                (uint256)
+            getVault().invoke{ value: msg.value }(
+                abi.encodeWithSelector(
+                    ERC4626BufferPool.rebalanceHook.selector,
+                    RebalanceHookParams({
+                        sender: msg.sender,
+                        kind: SwapKind.EXACT_OUT,
+                        pool: poolAddress,
+                        tokenIn: tokens[0],
+                        tokenOut: tokens[1],
+                        amountGiven: assetsToWrap,
+                        limit: assetsToWrap * 2 // TODO Review limit and deadline
+                    })
+                )
             );
         }
     }
@@ -236,7 +230,6 @@ contract ERC4626BufferPool is
         revert IVaultErrors.OperationNotSupported();
     }
 
-    // TODO Check why nonReentrant modifier fails in this hook. Where is the reentrancy?
     function rebalanceHook(RebalanceHookParams calldata params) external payable onlyVault returns (uint256) {
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
@@ -246,8 +239,8 @@ contract ERC4626BufferPool is
 
             getVault().wire(wrappedToken, address(this), amountOut);
             IERC4626(address(wrappedToken)).withdraw(amountIn, address(this), address(this));
-            underlyingToken.approve(address(getVault()), amountIn);
-            getVault().retrieve(underlyingToken, address(this), amountIn);
+            underlyingToken.transfer(address(getVault()), amountIn);
+            getVault().settle(underlyingToken);
         } else {
             IERC20 underlyingToken = params.tokenOut;
             IERC20 wrappedToken = params.tokenIn;
@@ -255,8 +248,8 @@ contract ERC4626BufferPool is
             getVault().wire(underlyingToken, address(this), amountOut);
             underlyingToken.approve(address(wrappedToken), amountOut);
             IERC4626(address(wrappedToken)).deposit(amountOut, address(this));
-            wrappedToken.approve(address(getVault()), amountIn);
-            getVault().retrieve(wrappedToken, address(this), amountIn);
+            wrappedToken.transfer(address(getVault()), amountIn);
+            getVault().settle(wrappedToken);
         }
 
         return amountCalculated;
