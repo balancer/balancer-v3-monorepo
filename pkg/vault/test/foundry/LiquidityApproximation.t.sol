@@ -81,7 +81,10 @@ contract LiquidityApproximationTest is BaseVaultTest {
                 IVault(address(vault)),
                 "ERC20 Pool",
                 "ERC20POOL",
-                vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20(), new IRateProvider[](2)),
+                vault.buildTokenConfig(
+                    [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+                    new IRateProvider[](2)
+                ),
                 true,
                 365 days,
                 address(0)
@@ -94,7 +97,10 @@ contract LiquidityApproximationTest is BaseVaultTest {
                 IVault(address(vault)),
                 "ERC20 Pool",
                 "ERC20POOL",
-                vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20(), new IRateProvider[](2)),
+                vault.buildTokenConfig(
+                    [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+                    new IRateProvider[](2)
+                ),
                 true,
                 365 days,
                 address(0)
