@@ -48,38 +48,29 @@ contract RouterTest is BaseVaultTest {
     }
 
     function createPool() internal override returns (address) {
-        PoolMock newPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            true,
-            365 days,
-            address(0)
-        );
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
 
-        wethPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 weth Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
-            true,
-            365 days,
-            address(0)
+        factoryMock.registerTestPool(
+            address(newPool),
+            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20())
         );
+
+        wethPool = new PoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
         vm.label(address(wethPool), "wethPool");
 
-        wethPoolNoInit = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 weth Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
-            true,
-            365 days,
-            address(0)
+        factoryMock.registerTestPool(
+            address(wethPool),
+            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20())
         );
+
+        wethPoolNoInit = new PoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
         vm.label(address(wethPoolNoInit), "wethPoolNoInit");
+
+        factoryMock.registerTestPool(
+            address(wethPoolNoInit),
+            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20())
+        );
 
         return address(newPool);
     }

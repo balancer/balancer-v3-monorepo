@@ -15,6 +15,7 @@ import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/tes
 
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 import { ERC4626BufferPoolFactory } from "../../contracts/factories/ERC4626BufferPoolFactory.sol";
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -43,7 +44,10 @@ contract VaultTokenTest is BaseVaultTest {
     }
 
     function createPool() internal override returns (address) {
-        poolAddress = vm.addr(1);
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        vm.label(address(newPool), "pool");
+
+        poolAddress = address(newPool);
 
         return poolAddress;
     }
