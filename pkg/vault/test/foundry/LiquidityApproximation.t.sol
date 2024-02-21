@@ -61,6 +61,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
     address internal liquidityPool;
     // Allows small roundingDelta to account for rounding
     uint256 internal roundingDelta = 1e12;
+    // The percentage delta of the swap fee, which is sufficiently large to compensate for
+    // inaccuracies in liquidity approximations within the specified limits for these tests
     uint256 internal liquidityPercentageDelta = 25e16; // 25%
     uint256 internal swapFeePercentageDelta = 20e16; // 20%
     uint256 internal maxSwapFeePercentage = 0.1e18; // 10%
