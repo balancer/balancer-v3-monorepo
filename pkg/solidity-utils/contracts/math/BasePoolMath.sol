@@ -110,8 +110,8 @@ library BasePoolMath {
         /***********************************************************************
         //                                                                    //
         // s = totalSupply                                 (iFees - iCur)     //
-        // b = tokenBalance                  btpOut = s *  --------------     //
-        // btpOut = bptAmountOut                                iCur          //
+        // b = tokenBalance                  bptOut = s *  --------------     //
+        // bptOut = bptAmountOut                                iCur          //
         // iFees = invariantWithFeesApplied                                   //
         // iCur = currentInvariant                                            //
         // iNew = newInvariant                                                //
