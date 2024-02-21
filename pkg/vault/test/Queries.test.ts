@@ -10,12 +10,14 @@ import { VoidSigner } from 'ethers';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
-import { Vault } from '@balancer-labs/v3-vault/typechain-types';
 import { buildTokenConfig } from './poolSetup';
+import { MONTH } from '@balancer-labs/v3-helpers/src/time';
+import { Vault, PoolFactoryMock } from '../typechain-types';
 
 describe('Queries', function () {
   let vault: Vault;
   let router: Router;
+  let factory: PoolFactoryMock;
   let pool: ERC20PoolMock;
   let DAI: ERC20TestToken;
   let USDC: ERC20TestToken;
@@ -42,16 +44,15 @@ describe('Queries', function () {
     USDC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['USDC', 'USDC', 18] });
 
     pool = await deploy('v3-vault/PoolMock', {
-      args: [
-        vaultAddress,
-        'Pool',
-        'POOL',
-        buildTokenConfig([await DAI.getAddress(), await USDC.getAddress()]),
-        true,
-        365 * 24 * 3600,
-        ZERO_ADDRESS,
-      ],
+      args: [vaultAddress, 'Pool', 'POOL'],
     });
+
+    factory = await deploy('PoolFactoryMock', { args: [vaultAddress, 12 * MONTH] });
+
+    await factory.registerTestPool(
+      pool,
+      buildTokenConfig([await DAI.getAddress(), await USDC.getAddress()])
+    );
 
     await USDC.mint(alice, 2n * USDC_AMOUNT_IN);
     await DAI.mint(alice, 2n * DAI_AMOUNT_IN);

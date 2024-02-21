@@ -14,7 +14,7 @@ import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
-import { RateProviderMock, VaultExtensionMock } from '../typechain-types';
+import { PoolFactoryMock, RateProviderMock, VaultExtensionMock } from '../typechain-types';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
@@ -28,6 +28,8 @@ describe('Vault', function () {
 
   let vault: IVaultMock;
   let vaultExtension: VaultExtensionMock;
+  let factory: PoolFactoryMock;
+
   let poolA: PoolMock;
   let poolB: PoolMock;
   let tokenA: ERC20TestToken;
@@ -57,6 +59,8 @@ describe('Vault', function () {
       'VaultExtensionMock',
       await vault.getVaultExtension()
     )) as unknown as VaultExtensionMock;
+
+    factory = await deploy('PoolFactoryMock', { args: [vault, 12 * MONTH] });
 
     tokenA = tokens[0];
     tokenB = tokens[1];
@@ -249,16 +253,10 @@ describe('Vault', function () {
         expectedRates = Array(poolATokens.length).fill(FP_ONE);
 
         poolC = await deploy('v3-vault/PoolMock', {
-          args: [
-            vault,
-            'Pool C',
-            'POOLC',
-            buildTokenConfig(poolATokens, rateProviders),
-            true,
-            365 * 24 * 3600,
-            ZERO_ADDRESS,
-          ],
+          args: [vault, 'Pool C', 'POOLC'],
         });
+
+        await factory.registerTestPool(poolC, buildTokenConfig(poolATokens, rateProviders));
       });
 
       it('has rate providers', async () => {
@@ -286,9 +284,11 @@ describe('Vault', function () {
 
       sharedBeforeEach('deploy pool', async () => {
         pool = await deploy('v3-vault/PoolMock', {
-          args: [vault, 'Pool X', 'POOLX', buildTokenConfig(poolATokens), true, 365 * 24 * 3600, ZERO_ADDRESS],
+          args: [vault, 'Pool X', 'POOLX'],
         });
         poolAddress = await pool.getAddress();
+
+        await factory.registerTestPool(poolAddress, buildTokenConfig(poolATokens));
       });
 
       it('Pools are temporarily pausable', async () => {
