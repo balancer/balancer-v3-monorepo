@@ -117,10 +117,10 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     function testAddLiquidityUnbalanced__Fuzz(uint256 daiAmountIn, uint256 swapFeePercentage) public {
         daiAmountIn = bound(daiAmountIn, 1e18, maxAmount);
-        // swap fee from 0% - 10% (0 if below minimum)
+        // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
-        swapFeePercentage = setSwapFees(swapFeePercentage);
+        setSwapFees(swapFeePercentage);
 
         uint256[] memory amountsIn = [uint256(daiAmountIn), 0].toMemoryArray();
 
@@ -152,8 +152,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
     }
 
     function testAddLiquidityUnbalancedNoSwapFee__Fuzz(uint256 daiAmountIn) public {
-        vault.setSwapFeeDisabled(liquidityPool, true);
-        vault.setSwapFeeDisabled(swapPool, true);
+        vault.manuallySetSwapFee(liquidityPool, 0);
+        vault.manuallySetSwapFee(swapPool, 0);
 
         daiAmountIn = bound(daiAmountIn, 1e18, maxAmount);
 
@@ -188,10 +188,10 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     function testAddLiquiditySingleTokenExactOut__Fuzz(uint256 exactBptAmountOut, uint256 swapFeePercentage) public {
         exactBptAmountOut = bound(exactBptAmountOut, 1e18, maxAmount / 2 - 1);
-        // swap fee from 0% - 10% (0 if below minimum)
+        // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
-        swapFeePercentage = setSwapFees(swapFeePercentage);
+        setSwapFees(swapFeePercentage);
 
         vm.startPrank(alice);
         uint256 daiAmountIn = router.addLiquiditySingleTokenExactOut(
@@ -228,8 +228,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
     }
 
     function testAddLiquiditySingleTokenExactOutNoSwapFee__Fuzz(uint256 exactBptAmountOut) public {
-        vault.setSwapFeeDisabled(liquidityPool, true);
-        vault.setSwapFeeDisabled(swapPool, true);
+        vault.manuallySetSwapFee(liquidityPool, 0);
+        vault.manuallySetSwapFee(swapPool, 0);
 
         exactBptAmountOut = bound(exactBptAmountOut, 1e18, maxAmount / 2 - 1);
 
@@ -271,10 +271,10 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     function testRemoveLiquiditySingleTokenExact__Fuzz(uint256 exactAmountOut, uint256 swapFeePercentage) public {
         exactAmountOut = bound(exactAmountOut, 1e18, maxAmount);
-        // swap fee from 0% - 10% (0 if below minimum)
+        // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
-        swapFeePercentage = setSwapFees(swapFeePercentage);
+        setSwapFees(swapFeePercentage);
 
         // Add liquidity so we have something to remove
         vm.prank(alice);
@@ -326,8 +326,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
     }
 
     function testRemoveLiquiditySingleTokenExactNoSwapFee__Fuzz(uint256 exactAmountOut) public {
-        vault.setSwapFeeDisabled(liquidityPool, true);
-        vault.setSwapFeeDisabled(swapPool, true);
+        vault.manuallySetSwapFee(liquidityPool, 0);
+        vault.manuallySetSwapFee(swapPool, 0);
 
         exactAmountOut = bound(exactAmountOut, 1e18, maxAmount);
 
@@ -382,10 +382,10 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     function testRemoveLiquiditySingleTokenExactIn__Fuzz(uint256 exactBptAmountIn, uint256 swapFeePercentage) public {
         exactBptAmountIn = bound(exactBptAmountIn, 1e18, maxAmount / 2 - 1);
-        // swap fee from 0% - 10% (0 if below minimum)
+        // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
-        swapFeePercentage = setSwapFees(swapFeePercentage);
+        setSwapFees(swapFeePercentage);
 
         // Add liquidity so we have something to remove
         vm.prank(alice);
@@ -430,8 +430,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
     }
 
     function testRemoveLiquiditySingleTokenExactInNoSwapFee__Fuzz(uint256 exactBptAmountIn) public {
-        vault.setSwapFeeDisabled(liquidityPool, true);
-        vault.setSwapFeeDisabled(swapPool, true);
+        vault.manuallySetSwapFee(liquidityPool, 0);
+        vault.manuallySetSwapFee(swapPool, 0);
 
         exactBptAmountIn = bound(exactBptAmountIn, 1e18, maxAmount / 2 - 1);
 
@@ -480,8 +480,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
     /// Utils
 
     function assertLiquidityOperationNoSwapFee() internal {
-        vault.setSwapFeeDisabled(liquidityPool, true);
-        vault.setSwapFeeDisabled(swapPool, true);
+        vault.manuallySetSwapFee(liquidityPool, 0);
+        vault.manuallySetSwapFee(swapPool, 0);
 
         // See @notice
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
@@ -537,22 +537,14 @@ contract LiquidityApproximationTest is BaseVaultTest {
         );
     }
 
-    // Can't test amounts between 0 and the MIN_SWAP_FEE. If it would be too low, make it zero.
-    // Otherwise, use the fee as given.
-    function setSwapFees(uint256 swapFeePercentage) internal returns (uint256 finalSwapFee) {
+    // Manually setting the swap fee bypasses the minimum swap fee check.
+    function setSwapFees(uint256 swapFeePercentage) internal {
         if (swapFeePercentage < MIN_SWAP_FEE) {
-            vault.setSwapFeeDisabled(liquidityPool, true);
-            vault.setSwapFeeDisabled(swapPool, true);
-
-            finalSwapFee = 0;
+            vault.manuallySetSwapFee(liquidityPool, swapFeePercentage);
+            vault.manuallySetSwapFee(swapPool, swapFeePercentage);
         } else {
-            vault.setSwapFeeDisabled(liquidityPool, false);
-            vault.setSwapFeeDisabled(swapPool, false);
-
             setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
             setSwapFeePercentage(swapFeePercentage, address(swapPool));
-
-            finalSwapFee = swapFeePercentage;
         }
     }
 

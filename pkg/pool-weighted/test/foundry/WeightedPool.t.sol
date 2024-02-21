@@ -191,7 +191,7 @@ contract WeightedPoolTest is BaseVaultTest {
 
     function testSwap() public {
         // Set swap fee to zero for this test.
-        vault.setSwapFeeDisabled(pool, true);
+        vault.manuallySetSwapFee(pool, 0);
 
         vm.prank(bob);
         uint256 amountCalculated = router.swapSingleTokenExactIn(
