@@ -69,6 +69,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
     function setUp() public virtual override {
         defaultBalance = 1e10 * 1e18;
         BaseVaultTest.setUp();
+
+        assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
     }
 
     function createPool() internal virtual override returns (address) {
@@ -494,6 +496,12 @@ contract LiquidityApproximationTest is BaseVaultTest {
         // See @notice at `LiquidityApproximationTest`
         assertGe(bobToAliceRatio, 1e18, "Bob has less USDC compare to Alice");
         assertLe(bobToAliceRatio, 1e18 + roundingDelta, "Bob has too much USDC compare to Alice");
+
+        // Alice and Bob have no BPT tokens
+        assertEq(PoolMock(swapPool).balanceOf(alice), 0, "Alice should have 0 BPT");
+        assertEq(PoolMock(liquidityPool).balanceOf(alice), 0, "Alice should have 0 BPT");
+        assertEq(PoolMock(swapPool).balanceOf(bob), 0, "Bob should have 0 BPT");
+        assertEq(PoolMock(liquidityPool).balanceOf(bob), 0, "Bob should have 0 BPT");
     }
 
     function assertLiquidityOperation(uint256 amountOut, uint256 swapFeePercentage, bool addLiquidity) internal {
