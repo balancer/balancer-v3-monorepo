@@ -63,6 +63,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
     uint256 internal roundingDelta = 1e12;
     uint256 internal liquidityPercentageDelta = 25e16; // 25%
     uint256 internal swapFeePercentageDelta = 20e16; // 20%
+    uint256 internal maxSwapFeePercentage = 0.1e18; // 10%
     uint256 internal maxAmount = 3e8 * 1e18 - 1;
 
     function setUp() public virtual override {
@@ -126,7 +127,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
     function testAddLiquidityUnbalanced__Fuzz(uint256 daiAmountIn, uint256 swapFeePercentage) public {
         daiAmountIn = bound(daiAmountIn, 1e18, maxAmount);
         // swap fee from 0% - 10%
-        swapFeePercentage = bound(swapFeePercentage, 0, 1e17);
+        swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
         setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
         setSwapFeePercentage(swapFeePercentage, address(swapPool));
@@ -195,7 +196,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
     function testAddLiquiditySingleTokenExactOut__Fuzz(uint256 exactBptAmountOut, uint256 swapFeePercentage) public {
         exactBptAmountOut = bound(exactBptAmountOut, 1e18, maxAmount / 2 - 1);
         // swap fee from 0% - 10%
-        swapFeePercentage = bound(swapFeePercentage, 0, 1e17);
+        swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
         setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
         setSwapFeePercentage(swapFeePercentage, address(swapPool));
@@ -276,7 +277,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
     function testRemoveLiquiditySingleTokenExact__Fuzz(uint256 exactAmountOut, uint256 swapFeePercentage) public {
         exactAmountOut = bound(exactAmountOut, 1e18, maxAmount);
         // swap fee from 0% - 10%
-        swapFeePercentage = bound(swapFeePercentage, 0, 1e17);
+        swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
         setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
         setSwapFeePercentage(swapFeePercentage, address(swapPool));
@@ -385,7 +386,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
     function testRemoveLiquiditySingleTokenExactIn__Fuzz(uint256 exactBptAmountIn, uint256 swapFeePercentage) public {
         exactBptAmountIn = bound(exactBptAmountIn, 1e18, maxAmount / 2 - 1);
         // swap fee from 0% - 10%
-        swapFeePercentage = bound(swapFeePercentage, 0, 1e17);
+        swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
         setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
         setSwapFeePercentage(swapFeePercentage, address(swapPool));
