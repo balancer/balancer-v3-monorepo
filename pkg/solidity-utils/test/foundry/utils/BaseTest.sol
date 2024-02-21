@@ -40,7 +40,7 @@ abstract contract BaseTest is Test, GasSnapshot {
     IERC20[] internal tokens;
 
     // Default balance for accounts
-    uint256 internal defaultBalance;
+    uint256 internal defaultBalance = 1e6 * 1e18;
 
     function setUp() public virtual {
         // Set timestamp only if testing locally
@@ -48,9 +48,6 @@ abstract contract BaseTest is Test, GasSnapshot {
             // Set block.timestamp to something better than 0
             vm.warp(START_TIMESTAMP);
         }
-
-        // Set default balance to 1mil
-        defaultBalance = 1e6 * 1e18;
 
         // Deploy the base test contracts.
         dai = createERC20("DAI", 18);
