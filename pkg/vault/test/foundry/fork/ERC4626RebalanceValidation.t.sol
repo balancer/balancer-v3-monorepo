@@ -3,37 +3,41 @@
 pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
+import "forge-std/console.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
-import { TokenConfig, PoolConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { TokenConfig, PoolConfig, SwapKind, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 
-import { ERC4626BufferPoolFactoryMock } from "../utils/ERC4626BufferPoolFactoryMock.sol";
-import { ERC4626BufferPoolMock } from "../utils/ERC4626BufferPoolMock.sol";
 import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
 import { Router } from "@balancer-labs/v3-vault/contracts/Router.sol";
 import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
 import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
+import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
-import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
+import { ERC4626BufferPoolFactoryMock } from "../utils/ERC4626BufferPoolFactoryMock.sol";
+import { ERC4626BufferPoolMock } from "../utils/ERC4626BufferPoolMock.sol";
 
 contract ERC4626RebalanceValidation is BaseVaultTest {
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
 
     ERC4626BufferPoolFactoryMock factory;
-    ERC4626BufferPoolMock internal bufferPoolMoreWrapped;
-    ERC4626BufferPoolMock internal bufferPoolMoreUnderlying;
+    ERC4626BufferPoolMock internal bufferPoolUsdc;
+    ERC4626BufferPoolMock internal bufferPoolDai;
 
     IERC20 daiMainnet;
     IERC20 aDaiMainnet;
@@ -60,13 +64,11 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
 
     address payable donor;
 
-    uint256 constant BUFFER_WITH_UNDERLYING_DAI = 1e4 * 1e18;
-    uint256 constant BUFFER_WITH_UNDERLYING_ADAI = BUFFER_WITH_UNDERLYING_DAI / 10;
-    uint256 bufferWithUnderlyingADaiUnscaled; // Not converted to underlying value
+    uint256 constant BUFFER_DAI_UNDERLYING = 1e5 * 1e18;
+    uint256 bufferDaiWrapped;
 
-    uint256 constant BUFFER_WITH_WRAPPED_USDC = 1e3 * 1e6;
-    uint256 constant BUFFER_WITH_WRAPPED_AUSDC = BUFFER_WITH_WRAPPED_USDC * 10;
-    uint256 bufferWithWrappedAUsdcUnscaled; // Not converted to underlying value
+    uint256 constant BUFFER_USDC_UNDERLYING = 1e5 * 1e6;
+    uint256 bufferUsdcWrapped;
 
     uint256 constant DELTA = 1e12;
 
@@ -93,10 +95,10 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     function createPool() internal override returns (address) {
         factory = new ERC4626BufferPoolFactoryMock(IVault(address(vault)), 365 days);
 
-        bufferPoolMoreUnderlying = ERC4626BufferPoolMock(_createBuffer(waDAI));
-        bufferPoolMoreWrapped = ERC4626BufferPoolMock(_createBuffer(waUSDC));
+        bufferPoolDai = ERC4626BufferPoolMock(_createBuffer(waDAI));
+        bufferPoolUsdc = ERC4626BufferPoolMock(_createBuffer(waUSDC));
 
-        return address(bufferPoolMoreUnderlying);
+        return address(bufferPoolDai);
     }
 
     function initPool() internal override {
@@ -107,36 +109,40 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         _setPermissions();
 
         vm.startPrank(lp);
+
         // Creating Unbalanced Buffer with more underlying tokens
-        bufferWithUnderlyingADaiUnscaled = waDAI.convertToShares(BUFFER_WITH_UNDERLYING_ADAI);
-        waDAI.deposit(BUFFER_WITH_UNDERLYING_ADAI, address(lp));
+        bufferDaiWrapped = waDAI.convertToShares(BUFFER_DAI_UNDERLYING);
+        waDAI.deposit(BUFFER_DAI_UNDERLYING, address(lp));
         uint256[] memory amountsInMoreUnderlying = [
-            uint256(bufferWithUnderlyingADaiUnscaled),
-            uint256(BUFFER_WITH_UNDERLYING_DAI)
+            uint256(bufferDaiWrapped),
+            uint256(BUFFER_DAI_UNDERLYING)
         ].toMemoryArray();
         bptAmountOutUnderlying = router.initialize(
-            address(bufferPoolMoreUnderlying),
+            address(bufferPoolDai),
             [aDAI_ADDRESS, DAI_ADDRESS].toMemoryArray().asIERC20(),
             amountsInMoreUnderlying,
             // Account for the precision loss
-            BUFFER_WITH_UNDERLYING_DAI - DELTA - 1e6,
+            BUFFER_DAI_UNDERLYING - DELTA - 1e6,
             false,
             bytes("")
         );
 
         // Creating Unbalanced Buffer with more wrapped tokens
-        bufferWithWrappedAUsdcUnscaled = waUSDC.convertToShares(BUFFER_WITH_WRAPPED_AUSDC);
-        waUSDC.deposit(BUFFER_WITH_WRAPPED_AUSDC, address(lp));
+
+        // NOTE: using assets / rate, instead of convertToShares(assets), because that's how we scale the
+        // values in the vault to check if the buffer initializes balanced
+        bufferUsdcWrapped = waUSDC.convertToShares(BUFFER_USDC_UNDERLYING);
+        waUSDC.deposit(BUFFER_USDC_UNDERLYING, address(lp));
         uint256[] memory amountsInMoreWrapped = [
-            uint256(bufferWithWrappedAUsdcUnscaled),
-            uint256(BUFFER_WITH_WRAPPED_USDC)
+            uint256(bufferUsdcWrapped),
+            uint256(BUFFER_USDC_UNDERLYING)
         ].toMemoryArray();
         bptAmountOutWrapped = router.initialize(
-            address(bufferPoolMoreWrapped),
+            address(bufferPoolUsdc),
             [aUSDC_ADDRESS, USDC_ADDRESS].toMemoryArray().asIERC20(),
             amountsInMoreWrapped,
             // Account for the precision loss
-            BUFFER_WITH_WRAPPED_USDC - 1e6,
+            BUFFER_USDC_UNDERLYING - 1e6,
             false,
             bytes("")
         );
@@ -145,106 +151,166 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
 
     function testInitialize() public {
         // Tokens are stored in the Vault
-        assertEq(aDaiMainnet.balanceOf(address(vault)), bufferWithUnderlyingADaiUnscaled);
-        assertEq(daiMainnet.balanceOf(address(vault)), BUFFER_WITH_UNDERLYING_DAI);
-        assertEq(aUsdcMainnet.balanceOf(address(vault)), bufferWithWrappedAUsdcUnscaled);
-        assertEq(usdcMainnet.balanceOf(address(vault)), BUFFER_WITH_WRAPPED_USDC);
+        assertEq(aDaiMainnet.balanceOf(address(vault)), bufferDaiWrapped);
+        assertEq(daiMainnet.balanceOf(address(vault)), BUFFER_DAI_UNDERLYING);
+        assertEq(aUsdcMainnet.balanceOf(address(vault)), bufferUsdcWrapped);
+        assertEq(usdcMainnet.balanceOf(address(vault)), BUFFER_USDC_UNDERLYING);
 
         // Tokens are deposited to the pool with more underlying
-        (, , uint256[] memory moreUnderlyingBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolMoreUnderlying));
-        assertEq(moreUnderlyingBalances[0], bufferWithUnderlyingADaiUnscaled);
-        assertEq(moreUnderlyingBalances[1], BUFFER_WITH_UNDERLYING_DAI);
+        (, , uint256[] memory moreUnderlyingBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolDai));
+        assertEq(moreUnderlyingBalances[0], bufferDaiWrapped);
+        assertEq(moreUnderlyingBalances[1], BUFFER_DAI_UNDERLYING);
 
         // Tokens are deposited to the pool with more wrapped
-        (, , uint256[] memory moreWrappedBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolMoreWrapped));
-        assertEq(moreWrappedBalances[0], bufferWithWrappedAUsdcUnscaled);
-        assertEq(moreWrappedBalances[1], BUFFER_WITH_WRAPPED_USDC);
+        (, , uint256[] memory moreWrappedBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolUsdc));
+        assertEq(moreWrappedBalances[0], bufferUsdcWrapped);
+        assertEq(moreWrappedBalances[1], BUFFER_USDC_UNDERLYING);
 
         // should mint correct amount of BPT tokens for buffer with more underlying
         // Account for the precision loss
-        assertApproxEqAbs(bufferPoolMoreUnderlying.balanceOf(lp), bptAmountOutUnderlying, DELTA);
-        assertApproxEqAbs(bptAmountOutUnderlying, BUFFER_WITH_UNDERLYING_DAI + BUFFER_WITH_UNDERLYING_ADAI, DELTA);
+        assertApproxEqAbs(bufferPoolDai.balanceOf(lp), bptAmountOutUnderlying, DELTA);
+        assertApproxEqAbs(bptAmountOutUnderlying, 2 * BUFFER_DAI_UNDERLYING, DELTA);
 
         // should mint correct amount of BPT tokens for buffer with more wrapped
         // Account for the precision loss
-        assertApproxEqAbs(bufferPoolMoreWrapped.balanceOf(lp), bptAmountOutWrapped, DELTA);
-        assertApproxEqAbs(bptAmountOutWrapped, (BUFFER_WITH_WRAPPED_USDC + BUFFER_WITH_WRAPPED_AUSDC) * 1e12, DELTA);
+        assertApproxEqAbs(bufferPoolUsdc.balanceOf(lp), bptAmountOutWrapped, DELTA);
+        assertApproxEqAbs(bptAmountOutWrapped, 2 * BUFFER_USDC_UNDERLYING * 1e12, DELTA);
     }
 
-    function testRebalanceForBufferWithMoreUnderlying() public {
-        uint256 daiBalanceBeforeRebalance = daiMainnet.balanceOf(address(bufferPoolMoreUnderlying));
-        uint256 aDaiBalanceBeforeRebalance = aDaiMainnet.balanceOf(address(bufferPoolMoreUnderlying));
+    function testRebalanceForDaiWithMoreUnderlying() public {
+        uint8 decimals = waDAI.decimals();
+
+        uint256 assetsToTransfer = 5e4*1e18;
+        bufferPoolDai.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_IN);
+
+        uint256 daiBalanceBeforeRebalance = daiMainnet.balanceOf(address(bufferPoolDai));
+        uint256 aDaiBalanceBeforeRebalance = aDaiMainnet.balanceOf(address(bufferPoolDai));
 
         // Check if the pool is unbalanced before
-        (, , uint256[] memory moreUnderlyingBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolMoreUnderlying));
-        assertEq(moreUnderlyingBalances[0], bufferWithUnderlyingADaiUnscaled);
-        assertEq(moreUnderlyingBalances[1], BUFFER_WITH_UNDERLYING_DAI);
+        (, , uint256[] memory originalBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolDai));
+        assertApproxEqAbs(originalBalances[0], bufferDaiWrapped - waDAI.convertToShares(assetsToTransfer), 10 ** (decimals / 2));
+        assertEq(originalBalances[1], BUFFER_DAI_UNDERLYING + assetsToTransfer);
 
         vm.prank(admin);
-        bufferPoolMoreUnderlying.rebalance();
+        bufferPoolDai.rebalance();
 
         // Check if the pool is balanced after
-        (, , uint256[] memory rebalancedBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolMoreUnderlying));
+        (, , uint256[] memory rebalancedBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolDai));
         uint256 unwrappedAmountADai = waDAI.previewRedeem(rebalancedBalances[0]);
-        uint8 decimals = waDAI.decimals();
         assertApproxEqAbs(
             unwrappedAmountADai,
-            (BUFFER_WITH_UNDERLYING_DAI + BUFFER_WITH_UNDERLYING_ADAI) / 2,
+            BUFFER_DAI_UNDERLYING,
             10 ** (decimals / 2)
         );
         assertApproxEqAbs(
             rebalancedBalances[1],
-            (BUFFER_WITH_UNDERLYING_DAI + BUFFER_WITH_UNDERLYING_ADAI) / 2,
+            BUFFER_DAI_UNDERLYING,
             10 ** (decimals / 2)
         );
 
         // Check the remaining tokens in the pool
-        uint256 daiBalanceAfterRebalance = daiMainnet.balanceOf(address(bufferPoolMoreUnderlying));
-        uint256 aDaiBalanceAfterRebalance = aDaiMainnet.balanceOf(address(bufferPoolMoreUnderlying));
+        uint256 daiBalanceAfterRebalance = daiMainnet.balanceOf(address(bufferPoolDai));
+        uint256 aDaiBalanceAfterRebalance = aDaiMainnet.balanceOf(address(bufferPoolDai));
 
         // Makes sure that the balance of DAI of the buffer contract wasn't changed
         assertEq(daiBalanceBeforeRebalance == daiBalanceAfterRebalance, true);
-        assertEq(aDaiBalanceBeforeRebalance >= aDaiBalanceAfterRebalance, true);
         // Makes sure that 1e18 aDAI in the pool can make at least 100.000 rebalance calls
-        assertEq(aDaiBalanceBeforeRebalance / (aDaiBalanceBeforeRebalance - aDaiBalanceAfterRebalance) > 1e5, true);
+        assertEq(
+            aDaiBalanceBeforeRebalance == aDaiBalanceAfterRebalance ||
+            aDaiBalanceBeforeRebalance / (aDaiBalanceBeforeRebalance - aDaiBalanceAfterRebalance) > 1e5,
+            true
+        );
     }
 
-    function testRebalanceForBufferWithMoreWrapped() public {
-        uint256 usdcBalanceBeforeRebalance = usdcMainnet.balanceOf(address(bufferPoolMoreWrapped));
-        uint256 ausdcBalanceBeforeRebalance = aUsdcMainnet.balanceOf(address(bufferPoolMoreWrapped));
+    function testRebalanceForDaiWithMoreWrapped() public {
+        uint8 decimals = waDAI.decimals();
+
+        uint256 assetsToTransfer = 5e4*1e18;
+        bufferPoolDai.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_OUT);
+
+        uint256 daiBalanceBeforeRebalance = daiMainnet.balanceOf(address(bufferPoolDai));
+        uint256 aDaiBalanceBeforeRebalance = aDaiMainnet.balanceOf(address(bufferPoolDai));
 
         // Check if the pool is unbalanced before
-        (, , uint256[] memory moreWrappedBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolMoreWrapped));
-        assertEq(moreWrappedBalances[0], bufferWithWrappedAUsdcUnscaled);
-        assertEq(moreWrappedBalances[1], BUFFER_WITH_WRAPPED_USDC);
+        (, , uint256[] memory originalBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolDai));
+        assertApproxEqAbs(originalBalances[0], bufferDaiWrapped + waDAI.convertToShares(assetsToTransfer), 10 ** (decimals / 2));
+        assertEq(originalBalances[1], BUFFER_DAI_UNDERLYING - assetsToTransfer);
 
         vm.prank(admin);
-        bufferPoolMoreWrapped.rebalance();
+        bufferPoolDai.rebalance();
 
         // Check if the pool is balanced after
-        (, , uint256[] memory rebalancedBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolMoreWrapped));
-        uint256 unwrappedAmountAUsdc = waUSDC.previewRedeem(rebalancedBalances[0]);
-        uint8 decimals = waUSDC.decimals();
+        (, , uint256[] memory rebalancedBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolDai));
+        uint256 unwrappedAmountADai = waDAI.previewRedeem(rebalancedBalances[0]);
         assertApproxEqAbs(
-            unwrappedAmountAUsdc,
-            (BUFFER_WITH_WRAPPED_USDC + BUFFER_WITH_WRAPPED_AUSDC) / 2,
+            unwrappedAmountADai,
+            BUFFER_DAI_UNDERLYING,
             10 ** (decimals / 2)
         );
         assertApproxEqAbs(
             rebalancedBalances[1],
-            (BUFFER_WITH_WRAPPED_USDC + BUFFER_WITH_WRAPPED_AUSDC) / 2,
+            BUFFER_DAI_UNDERLYING,
             10 ** (decimals / 2)
         );
 
         // Check the remaining tokens in the pool
-        uint256 usdcBalanceAfterRebalance = usdcMainnet.balanceOf(address(bufferPoolMoreWrapped));
-        uint256 ausdcBalanceAfterRebalance = aUsdcMainnet.balanceOf(address(bufferPoolMoreWrapped));
+        uint256 daiBalanceAfterRebalance = daiMainnet.balanceOf(address(bufferPoolDai));
+        uint256 aDaiBalanceAfterRebalance = aDaiMainnet.balanceOf(address(bufferPoolDai));
+
+        // Makes sure that the balance of DAI of the buffer contract wasn't changed
+        assertEq(daiBalanceBeforeRebalance == daiBalanceAfterRebalance, true);
+        // Makes sure that 1e18 aDAI in the pool can make at least 100.000 rebalance calls
+        assertEq(
+            aDaiBalanceBeforeRebalance == aDaiBalanceAfterRebalance ||
+            aDaiBalanceBeforeRebalance / (aDaiBalanceBeforeRebalance - aDaiBalanceAfterRebalance) > 1e5,
+            true
+        );
+    }
+
+    function testRebalanceForUsdcWithMoreWrapped() public {
+        uint8 decimals = waUSDC.decimals();
+
+        uint256 assetsToTransfer = 5e4*1e6;
+        bufferPoolUsdc.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_OUT);
+
+        uint256 usdcBalanceBeforeRebalance = usdcMainnet.balanceOf(address(bufferPoolUsdc));
+        uint256 ausdcBalanceBeforeRebalance = aUsdcMainnet.balanceOf(address(bufferPoolUsdc));
+
+        // Check if the pool is unbalanced before
+        (, , uint256[] memory originalBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolUsdc));
+        assertApproxEqAbs(originalBalances[0], bufferUsdcWrapped + waUSDC.convertToShares(assetsToTransfer), 10 ** (decimals / 2));
+        assertEq(originalBalances[1], BUFFER_USDC_UNDERLYING - assetsToTransfer);
+
+        vm.prank(admin);
+        bufferPoolUsdc.rebalance();
+
+        // Check if the pool is balanced after
+        (, , uint256[] memory rebalancedBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolUsdc));
+        uint256 unwrappedAmountAUsdc = waUSDC.previewRedeem(rebalancedBalances[0]);
+        assertApproxEqAbs(
+            unwrappedAmountAUsdc,
+            BUFFER_USDC_UNDERLYING,
+            10 ** (decimals / 2)
+        );
+        assertApproxEqAbs(
+            rebalancedBalances[1],
+            BUFFER_USDC_UNDERLYING,
+            10 ** (decimals / 2)
+        );
+
+        // Check the remaining tokens in the pool
+        uint256 usdcBalanceAfterRebalance = usdcMainnet.balanceOf(address(bufferPoolUsdc));
+        uint256 ausdcBalanceAfterRebalance = aUsdcMainnet.balanceOf(address(bufferPoolUsdc));
 
         // Makes sure that the balance of USDC of the buffer contract wasn't changed
         assertEq(usdcBalanceBeforeRebalance == usdcBalanceAfterRebalance, true);
         assertEq(ausdcBalanceBeforeRebalance >= ausdcBalanceAfterRebalance, true);
         // Makes sure that 1e6 waUSDC in the pool can make at least 100.000 rebalance calls
-        assertEq(ausdcBalanceBeforeRebalance / (ausdcBalanceBeforeRebalance - ausdcBalanceAfterRebalance) > 1e5, true);
+        assertEq(
+            ausdcBalanceBeforeRebalance == ausdcBalanceAfterRebalance ||
+            ausdcBalanceBeforeRebalance / (ausdcBalanceBeforeRebalance - ausdcBalanceAfterRebalance) > 1e5,
+            true
+        );
     }
 
     function _createBuffer(IERC4626 wrappedToken) private returns (address) {
@@ -264,8 +330,8 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             address userAddress = usersToTransfer[index];
 
             vm.startPrank(donor);
-            daiMainnet.transfer(userAddress, 50 * BUFFER_WITH_UNDERLYING_DAI);
-            usdcMainnet.transfer(userAddress, 50 * BUFFER_WITH_WRAPPED_USDC);
+            daiMainnet.transfer(userAddress, 50 * BUFFER_DAI_UNDERLYING);
+            usdcMainnet.transfer(userAddress, 50 * BUFFER_USDC_UNDERLYING);
             vm.stopPrank();
 
             vm.startPrank(userAddress);
@@ -281,7 +347,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     }
 
     function _transferTokensFromDonorToBuffers() private {
-        address[] memory buffersToTransfer = [address(bufferPoolMoreWrapped), address(bufferPoolMoreUnderlying)]
+        address[] memory buffersToTransfer = [address(bufferPoolUsdc), address(bufferPoolDai)]
             .toMemoryArray();
 
         for (uint256 index = 0; index < buffersToTransfer.length; index++) {
@@ -310,7 +376,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     }
 
     function _setPermissions() private {
-        authorizer.grantRole(bufferPoolMoreUnderlying.getActionId(IBufferPool.rebalance.selector), admin);
-        authorizer.grantRole(bufferPoolMoreWrapped.getActionId(IBufferPool.rebalance.selector), admin);
+        authorizer.grantRole(bufferPoolDai.getActionId(IBufferPool.rebalance.selector), admin);
+        authorizer.grantRole(bufferPoolUsdc.getActionId(IBufferPool.rebalance.selector), admin);
     }
 }

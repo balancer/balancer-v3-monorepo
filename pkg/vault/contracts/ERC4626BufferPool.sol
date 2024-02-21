@@ -65,9 +65,8 @@ contract ERC4626BufferPool is
     function onBeforeInitialize(
         uint256[] memory exactAmountsInScaled18,
         bytes memory
-    ) external view virtual override onlyVault returns (bool) {
-        // Enforce proportionality - might need to say exactAmountsIn[0].mulDown(getRate()) to compare equal value?
-        return exactAmountsInScaled18.length == 2 && exactAmountsInScaled18[0] == exactAmountsInScaled18[1];
+    ) external view override onlyVault returns (bool) {
+        return exactAmountsInScaled18.length == 2 && _isBufferPoolBalanced(exactAmountsInScaled18);
     }
 
     /// @inheritdoc BasePoolHooks
@@ -163,10 +162,18 @@ contract ERC4626BufferPool is
         address poolAddress = address(this);
 
         // Get balance of tokens
-        (IERC20[] memory tokens, , uint256[] memory rawBalances, , ) = getVault().getPoolTokenInfo(poolAddress);
+        (IERC20[] memory tokens, , uint256[] memory rawBalances, uint256[] memory decimalScalingFactors, ) = getVault().getPoolTokenInfo(poolAddress);
 
         uint256 scaledBalanceWrapped = _wrappedToken.previewRedeem(rawBalances[0]);
         uint256 balanceUnderlying = rawBalances[1];
+
+        uint256[] memory balancesScaled18 = new uint256[](2);
+        balancesScaled18[0] = scaledBalanceWrapped.mulDown(decimalScalingFactors[0]);
+        balancesScaled18[1] = balanceUnderlying.mulDown(decimalScalingFactors[1]);
+
+        if (_isBufferPoolBalanced(balancesScaled18)) {
+            return;
+        }
 
         if (scaledBalanceWrapped > balanceUnderlying) {
             uint256 assetsToUnwrap = (scaledBalanceWrapped - balanceUnderlying) / 2;
@@ -230,8 +237,8 @@ contract ERC4626BufferPool is
         revert IVaultErrors.OperationNotSupported();
     }
 
-    function rebalanceHook(RebalanceHookParams calldata params) external payable onlyVault returns (uint256) {
-        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
+    function rebalanceHook(RebalanceHookParams calldata params) external payable onlyVault {
+        (, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         if (params.kind == SwapKind.EXACT_IN) {
             IERC20 underlyingToken = params.tokenIn;
@@ -239,8 +246,8 @@ contract ERC4626BufferPool is
 
             getVault().wire(wrappedToken, address(this), amountOut);
             IERC4626(address(wrappedToken)).withdraw(amountIn, address(this), address(this));
-            underlyingToken.transfer(address(getVault()), amountIn);
-            getVault().settle(underlyingToken);
+            underlyingToken.approve(address(getVault()), amountIn);
+            getVault().retrieve(underlyingToken, address(this), amountIn);
         } else {
             IERC20 underlyingToken = params.tokenOut;
             IERC20 wrappedToken = params.tokenIn;
@@ -248,11 +255,9 @@ contract ERC4626BufferPool is
             getVault().wire(underlyingToken, address(this), amountOut);
             underlyingToken.approve(address(wrappedToken), amountOut);
             IERC4626(address(wrappedToken)).deposit(amountOut, address(this));
-            wrappedToken.transfer(address(getVault()), amountIn);
-            getVault().settle(wrappedToken);
+            wrappedToken.approve(address(getVault()), amountIn);
+            getVault().retrieve(wrappedToken, address(this), amountIn);
         }
-
-        return amountCalculated;
     }
 
     function _swapHook(
@@ -269,5 +274,30 @@ contract ERC4626BufferPool is
                 userData: new bytes(0)
             })
         );
+    }
+
+    function _isBufferPoolBalanced(uint256[] memory scaledBalances) private view returns (bool) {
+        // Enforce proportionality - might need to say exactAmountsIn[0].mulDown(getRate()) to compare equal value?
+        if (scaledBalances[0] == scaledBalances[1]) {
+            return true;
+        }
+
+        // If not perfectly proportional, makes sure that the difference is within tolerance.
+        // The tolerance depends on the decimals of the token, because it introduces imprecisions to the rate
+        // calculation, and on the initial balance of the pool (since exactAmountsInScaled18 has 18 decimals,
+        // it's divided by FixedPoint.ONE so we get only the integer part of the number)
+        uint8 decimals = _wrappedToken.decimals();
+
+        if (scaledBalances[0] >= scaledBalances[1]) {
+            uint256 tolerance = 10**(18-decimals)*(scaledBalances[0]/FixedPoint.ONE);
+            return scaledBalances[0] - scaledBalances[1] < tolerance;
+        }
+
+        if (scaledBalances[1] >= scaledBalances[0]) {
+            uint256 tolerance = 10**(18-decimals)*(scaledBalances[1]/FixedPoint.ONE);
+            return scaledBalances[1] - scaledBalances[0] < tolerance;
+        }
+
+        return false;
     }
 }
