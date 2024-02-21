@@ -258,12 +258,6 @@ contract ERC4626BufferPool is
     function _swapHook(
         RebalanceHookParams calldata params
     ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
-        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
-        // solhint-disable-next-line not-rely-on-time
-        //        if (block.timestamp > params.deadline) {
-        //            revert SwapDeadline();
-        //        }
-
         (amountCalculated, amountIn, amountOut) = getVault().swap(
             VaultSwapParams({
                 kind: params.kind,
