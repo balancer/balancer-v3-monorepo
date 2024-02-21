@@ -110,7 +110,10 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         // Creating Unbalanced Buffer with more underlying tokens
         bufferWithUnderlyingADaiUnscaled = waDAI.convertToShares(BUFFER_WITH_UNDERLYING_ADAI);
         waDAI.deposit(BUFFER_WITH_UNDERLYING_ADAI, address(lp));
-        uint256[] memory amountsInMoreUnderlying = [uint256(bufferWithUnderlyingADaiUnscaled), uint256(BUFFER_WITH_UNDERLYING_DAI)].toMemoryArray();
+        uint256[] memory amountsInMoreUnderlying = [
+            uint256(bufferWithUnderlyingADaiUnscaled),
+            uint256(BUFFER_WITH_UNDERLYING_DAI)
+        ].toMemoryArray();
         bptAmountOutUnderlying = router.initialize(
             address(bufferPoolMoreUnderlying),
             [aDAI_ADDRESS, DAI_ADDRESS].toMemoryArray().asIERC20(),
@@ -124,7 +127,10 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         // Creating Unbalanced Buffer with more wrapped tokens
         bufferWithWrappedAUsdcUnscaled = waUSDC.convertToShares(BUFFER_WITH_WRAPPED_AUSDC);
         waUSDC.deposit(BUFFER_WITH_WRAPPED_AUSDC, address(lp));
-        uint256[] memory amountsInMoreWrapped = [uint256(bufferWithWrappedAUsdcUnscaled), uint256(BUFFER_WITH_WRAPPED_USDC)].toMemoryArray();
+        uint256[] memory amountsInMoreWrapped = [
+            uint256(bufferWithWrappedAUsdcUnscaled),
+            uint256(BUFFER_WITH_WRAPPED_USDC)
+        ].toMemoryArray();
         bptAmountOutWrapped = router.initialize(
             address(bufferPoolMoreWrapped),
             [aUSDC_ADDRESS, USDC_ADDRESS].toMemoryArray().asIERC20(),
@@ -181,8 +187,16 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         (, , uint256[] memory rebalancedBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolMoreUnderlying));
         uint256 unwrappedAmountADai = waDAI.previewRedeem(rebalancedBalances[0]);
         uint8 decimals = waDAI.decimals();
-        assertApproxEqAbs(unwrappedAmountADai, (BUFFER_WITH_UNDERLYING_DAI + BUFFER_WITH_UNDERLYING_ADAI) / 2, 10**(decimals/2));
-        assertApproxEqAbs(rebalancedBalances[1], (BUFFER_WITH_UNDERLYING_DAI + BUFFER_WITH_UNDERLYING_ADAI) / 2, 10**(decimals/2));
+        assertApproxEqAbs(
+            unwrappedAmountADai,
+            (BUFFER_WITH_UNDERLYING_DAI + BUFFER_WITH_UNDERLYING_ADAI) / 2,
+            10 ** (decimals / 2)
+        );
+        assertApproxEqAbs(
+            rebalancedBalances[1],
+            (BUFFER_WITH_UNDERLYING_DAI + BUFFER_WITH_UNDERLYING_ADAI) / 2,
+            10 ** (decimals / 2)
+        );
 
         // Check the remaining tokens in the pool
         uint256 daiBalanceAfterRebalance = daiMainnet.balanceOf(address(bufferPoolMoreUnderlying));
@@ -211,8 +225,16 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         (, , uint256[] memory rebalancedBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolMoreWrapped));
         uint256 unwrappedAmountAUsdc = waUSDC.previewRedeem(rebalancedBalances[0]);
         uint8 decimals = waUSDC.decimals();
-        assertApproxEqAbs(unwrappedAmountAUsdc, (BUFFER_WITH_WRAPPED_USDC + BUFFER_WITH_WRAPPED_AUSDC) / 2, 10**(decimals/2));
-        assertApproxEqAbs(rebalancedBalances[1], (BUFFER_WITH_WRAPPED_USDC + BUFFER_WITH_WRAPPED_AUSDC) / 2, 10**(decimals/2));
+        assertApproxEqAbs(
+            unwrappedAmountAUsdc,
+            (BUFFER_WITH_WRAPPED_USDC + BUFFER_WITH_WRAPPED_AUSDC) / 2,
+            10 ** (decimals / 2)
+        );
+        assertApproxEqAbs(
+            rebalancedBalances[1],
+            (BUFFER_WITH_WRAPPED_USDC + BUFFER_WITH_WRAPPED_AUSDC) / 2,
+            10 ** (decimals / 2)
+        );
 
         // Check the remaining tokens in the pool
         uint256 usdcBalanceAfterRebalance = usdcMainnet.balanceOf(address(bufferPoolMoreWrapped));
@@ -259,10 +281,8 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     }
 
     function _transferTokensFromDonorToBuffers() private {
-        address[] memory buffersToTransfer = [
-        address(bufferPoolMoreWrapped),
-        address(bufferPoolMoreUnderlying)
-        ].toMemoryArray();
+        address[] memory buffersToTransfer = [address(bufferPoolMoreWrapped), address(bufferPoolMoreUnderlying)]
+            .toMemoryArray();
 
         for (uint256 index = 0; index < buffersToTransfer.length; index++) {
             address bufferAddress = buffersToTransfer[index];
