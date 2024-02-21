@@ -32,40 +32,24 @@ contract PoolPauseTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        TokenConfig[] memory tokenConfig = vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20());
-
-        pool = address(
-            new PoolMock(
-                IVault(address(vault)),
-                "ERC20 Pool",
-                "ERC20POOL"
-            )
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
+
+        pool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
         factoryMock.registerGeneralTestPool(pool, tokenConfig, 0, 365 days, admin);
 
         // Pass zero for the pause manager
-        unmanagedPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL"
-        );
+        unmanagedPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
 
         factoryMock.registerGeneralTestPool(address(unmanagedPool), tokenConfig, 0, 365 days, address(0));
 
-        permissionlessPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL"
-        );
+        permissionlessPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
 
         factoryMock.registerGeneralTestPool(address(permissionlessPool), tokenConfig, 0, 0, address(0));
 
-        infinityPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL"
-        );
+        infinityPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
 
         factoryMock.registerGeneralTestPool(address(infinityPool), tokenConfig, 0, 10000 days, address(0));
 
