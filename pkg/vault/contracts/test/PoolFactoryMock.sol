@@ -9,6 +9,7 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FactoryWidePauseWindow } from "../factories/FactoryWidePauseWindow.sol";
+import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 
 contract PoolFactoryMock is FactoryWidePauseWindow {
     uint256 private constant DEFAULT_SWAP_FEE = 0;
@@ -17,6 +18,36 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
 
     constructor(IVault vault, uint256 pauseWindowDuration) FactoryWidePauseWindow(pauseWindowDuration) {
         _vault = vault;
+    }
+
+    function registerTestPool(address pool, TokenConfig[] memory tokenConfig) external {
+        _vault.registerPool(
+            pool,
+            tokenConfig,
+            DEFAULT_SWAP_FEE,
+            getNewPoolPauseWindowEndTime(),
+            address(0),
+            PoolConfigBits.wrap(0).toPoolConfig().hooks,
+            PoolConfigBits.wrap(bytes32(type(uint256).max)).toPoolConfig().liquidityManagement
+        );
+    }
+
+    function registerGeneralTestPool(
+        address pool,
+        TokenConfig[] memory tokenConfig,
+        uint256 swapFee,
+        uint256 pauseWindowDuration,
+        address pauseManager
+    ) external {
+        _vault.registerPool(
+            pool,
+            tokenConfig,
+            swapFee,
+            block.timestamp + pauseWindowDuration,
+            pauseManager,
+            PoolConfigBits.wrap(0).toPoolConfig().hooks,
+            PoolConfigBits.wrap(bytes32(type(uint256).max)).toPoolConfig().liquidityManagement
+        );
     }
 
     function registerPool(
