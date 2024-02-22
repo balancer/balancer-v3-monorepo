@@ -43,10 +43,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(IERC4626 wrappedToken, address pauseManager, bytes32 salt) external returns (address pool) {
-        // Ensure the wrappedToken is compatible with the Vault
-        if (_isValidWrappedToken(wrappedToken) == false) {
-            revert IncompatibleWrappedToken(address(wrappedToken));
-        }
+        ensureValidWrappedToken(wrappedToken);
 
         pool = _create(
             abi.encode(
@@ -62,6 +59,17 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         _registerPoolWithFactory(pool);
 
         getVault().registerBuffer(wrappedToken, pool, pauseManager, getNewPoolPauseWindowEndTime());
+    }
+
+    /**
+     * @notice Ensure the given wrapped token is compatible with the Vault.
+     * @dev Reverts if the token is not compatible.
+     * @param wrappedToken The token to check for compatibility
+     */
+    function ensureValidWrappedToken(IERC4626 wrappedToken) public view {
+        if (_isValidWrappedToken(wrappedToken) == false) {
+            revert IncompatibleWrappedToken(address(wrappedToken));
+        }
     }
 
     /**
