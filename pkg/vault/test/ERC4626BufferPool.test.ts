@@ -148,7 +148,7 @@ describe('ERC4626BufferPool', function () {
   });
 
   describe('registration', () => {
-    sharedBeforeEach('allow factory and create pool', async () => {
+    sharedBeforeEach('register factory and create pool', async () => {
       await grantFactoryPermissions();
       await vault.connect(alice).registerBufferPoolFactory(factory);
 

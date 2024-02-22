@@ -46,7 +46,7 @@ contract ERC4626WrapperValidation is BaseVaultTest {
     }
 
     // Test must have "Fork" in the name to be matched
-    function testFactoryCreationWithValidWrappers__Fork() public view {
+    function testFactoryWithValidWrappers__Fork() public view {
         // These real ones should not revert
         factory.ensureValidWrappedToken(waDAI);
         factory.ensureValidWrappedToken(waUSDC);
