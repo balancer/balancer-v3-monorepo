@@ -144,9 +144,9 @@ contract ERC4626BufferPool is
         uint8 decimals = _wrappedToken.decimals();
         uint256 wrappedRate = _wrappedToken.convertToAssets(FixedPoint.ONE);
 
-        uint256 unscaledSharesAmount = request.amountGivenScaled18.divDown(wrappedRate) / 10**(18-decimals);
+        uint256 unscaledSharesAmount = request.amountGivenScaled18.divDown(wrappedRate) / 10 ** (18 - decimals);
         uint256 unscaledAssetsAmount = _wrappedToken.previewRedeem(unscaledSharesAmount) + 1;
-        uint256 preciseAmountScaled18 = unscaledAssetsAmount * 10**(18-decimals);
+        uint256 preciseAmountScaled18 = unscaledAssetsAmount * 10 ** (18 - decimals);
 
         // amountGivenScaled18 has some imprecision when calculating the rate.
         // So, we need to return the linear math value (amountGivenScaled18), but subtract the error introduced by
@@ -182,7 +182,8 @@ contract ERC4626BufferPool is
         address poolAddress = address(this);
 
         // Get balance of tokens
-        (IERC20[] memory tokens, , uint256[] memory rawBalances, uint256[] memory decimalScalingFactors, ) = getVault().getPoolTokenInfo(poolAddress);
+        (IERC20[] memory tokens, , uint256[] memory rawBalances, uint256[] memory decimalScalingFactors, ) = getVault()
+            .getPoolTokenInfo(poolAddress);
 
         uint256 scaledBalanceWrapped = _wrappedToken.previewRedeem(rawBalances[0]);
         uint256 balanceUnderlying = rawBalances[1];
@@ -309,12 +310,12 @@ contract ERC4626BufferPool is
         uint8 decimals = _wrappedToken.decimals();
 
         if (scaledBalances[0] >= scaledBalances[1]) {
-            uint256 tolerance = 10**(18-decimals)*(scaledBalances[0]/FixedPoint.ONE);
+            uint256 tolerance = 10 ** (18 - decimals) * (scaledBalances[0] / FixedPoint.ONE);
             return scaledBalances[0] - scaledBalances[1] < tolerance;
         }
 
         if (scaledBalances[1] >= scaledBalances[0]) {
-            uint256 tolerance = 10**(18-decimals)*(scaledBalances[1]/FixedPoint.ONE);
+            uint256 tolerance = 10 ** (18 - decimals) * (scaledBalances[1] / FixedPoint.ONE);
             return scaledBalances[1] - scaledBalances[0] < tolerance;
         }
 
