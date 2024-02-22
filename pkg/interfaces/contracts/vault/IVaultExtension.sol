@@ -509,7 +509,7 @@ interface IVaultExtension {
      *
      * @param factory The factory to add to the allowlist
      */
-    function allowBufferPoolFactory(address factory) external;
+    function registerBufferPoolFactory(address factory) external;
 
     /**
      * @notice Remove an ERC4626 Buffer Pool factory from the allowlist for registering buffers.
@@ -518,5 +518,5 @@ interface IVaultExtension {
      * 
      * @param factory The factory to remove from the allowlist
      */
-    function denyBufferPoolFactory(address factory) external;
+    function deregisterBufferPoolFactory(address factory) external;
 }

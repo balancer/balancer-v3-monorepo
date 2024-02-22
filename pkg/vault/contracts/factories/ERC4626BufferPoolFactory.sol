@@ -69,12 +69,12 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
      * well-behaved and compatible with the Vault. Of course, there are no guarantees, but we perform some basic checks.
      * @param wrappedToken The proposed token to create a new buffer for
      */
-    function _isValidWrappedToken(IERC4626 wrappedToken) private view returns (bool) {
+    function _isValidWrappedToken(IERC4626 wrappedToken) internal view returns (bool) {
         return _hasValidAsset(wrappedToken) && _hasAssetValue(wrappedToken) && _supportsRateComputation(wrappedToken);
     }
 
     /// @dev Wrappers must specify their underlying asset.
-    function _hasValidAsset(IERC4626 wrappedToken) private view returns (bool) {
+    function _hasValidAsset(IERC4626 wrappedToken) internal view returns (bool) {
         try wrappedToken.asset() returns (address asset) {
             return asset != address(0);
         } catch {
@@ -83,7 +83,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
     }
 
     /// @dev Wrappers must contain some value
-    function _hasAssetValue(IERC4626 wrappedToken) private view returns (bool) {
+    function _hasAssetValue(IERC4626 wrappedToken) internal view returns (bool) {
         try wrappedToken.totalAssets() returns (uint256 totalAssets) {
             return totalAssets > 0;
         } catch {
@@ -102,7 +102,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
      * that, at least conceptually, there is a stable underlying "rate" that is constant over the full range
      * of input values. For instance, convertToAssets(60) + converToAssets(40) = convertToAssets(100).
      */
-    function _supportsRateComputation(IERC4626 wrappedToken) private view returns (bool) {
+    function _supportsRateComputation(IERC4626 wrappedToken) internal view returns (bool) {
         address asset = wrappedToken.asset();
 
         // We need to pass in the unit asset in native decimals.

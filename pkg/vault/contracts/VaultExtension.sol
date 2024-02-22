@@ -882,7 +882,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
      *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function allowBufferPoolFactory(address factory) external authenticate {
+    function registerBufferPoolFactory(address factory) external authenticate {
         bool added = _bufferPoolFactories.add(factory);
 
         if (added == false) {
@@ -891,7 +891,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultExtension
-    function denyBufferPoolFactory(address factory) external authenticate {
+    function deregisterBufferPoolFactory(address factory) external authenticate {
         bool removed = _bufferPoolFactories.remove(factory);
 
         if (removed == false) {
@@ -922,7 +922,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         }
 
         if (factoryAllowed == false) {
-            revert UnrecognizedBufferPoolFactory();
+            revert UnregisteredBufferPoolFactory();
         }
 
         _wrappedTokenBuffers[wrappedToken] = pool;
