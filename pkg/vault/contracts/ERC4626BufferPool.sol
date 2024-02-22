@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.4;
 
+import "forge-std/console.sol";
+
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -135,7 +137,25 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IBasePool
     function onSwap(IBasePool.SwapParams memory request) public view onlyVault returns (uint256) {
-        return request.amountGivenScaled18;
+        // TODO If onSwap wasn't triggered by the rebalance function, uses linear math
+        // return request.amountGivenScaled18;
+
+        // If onSwap was triggered by the rebalance function, fixes the rate (gas expensive, but more precise approach)
+        uint8 decimals = _wrappedToken.decimals();
+        uint256 wrappedRate = _wrappedToken.convertToAssets(FixedPoint.ONE);
+
+        uint256 unscaledSharesAmount = request.amountGivenScaled18.divDown(wrappedRate) / 10**(18-decimals);
+        uint256 unscaledAssetsAmount = _wrappedToken.previewRedeem(unscaledSharesAmount) + 1;
+        uint256 preciseAmountScaled18 = unscaledAssetsAmount * 10**(18-decimals);
+
+        // amountGivenScaled18 has some imprecision when calculating the rate.
+        // So, we need to return the linear math value (amountGivenScaled18), but subtract the error introduced by
+        // the rate difference, which is calculated by (amountGivenScaled18 - preciseAmountScaled18), i.e.:
+        //
+        // amountGivenScaled18 - (error)
+        //
+        //     where error is (amountGivenScaled18 - preciseAmountScaled18)
+        return 2 * request.amountGivenScaled18 - preciseAmountScaled18;
     }
 
     /// @inheritdoc IBasePool
@@ -271,7 +291,7 @@ contract ERC4626BufferPool is
                 tokenOut: params.tokenOut,
                 amountGivenRaw: params.amountGiven,
                 limitRaw: params.limit,
-                userData: new bytes(0)
+                userData: ""
             })
         );
     }
