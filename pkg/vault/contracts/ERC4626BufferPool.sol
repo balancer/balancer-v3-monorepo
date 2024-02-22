@@ -286,7 +286,8 @@ contract ERC4626BufferPool is
     }
 
     function _isBufferPoolBalanced(uint256[] memory balancesScaled) private view returns (bool) {
-        // Enforce proportionality - might need to say exactAmountsIn[WRAPPED_TOKEN_INDEX].mulDown(getRate()) to compare equal value?
+        // Enforce proportionality - might need to say exactAmountsIn[WRAPPED_TOKEN_INDEX].mulDown(getRate())
+        // to compare equal value?
         if (balancesScaled[WRAPPED_TOKEN_INDEX] == balancesScaled[BASE_TOKEN_INDEX]) {
             return true;
         }
