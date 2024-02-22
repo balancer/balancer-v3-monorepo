@@ -513,8 +513,8 @@ interface IVaultExtension {
 
     /**
      * @notice Remove an ERC4626 Buffer Pool factory from the allowlist for registering buffers.
-     * @dev For maximum flexibility, there are separate functions for allowing and denying, so that permissions
-     * can be assigned separately.
+     * @dev For maximum flexibility, there are separate functions for registration and deregistration,
+     * so that permissions can be assigned separately.
      * 
      * @param factory The factory to remove from the allowlist
      */
