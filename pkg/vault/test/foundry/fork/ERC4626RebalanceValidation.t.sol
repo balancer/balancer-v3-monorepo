@@ -3,7 +3,6 @@
 pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
-import "forge-std/console.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -209,10 +208,10 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         uint256 daiBalanceAfterRebalance = daiMainnet.balanceOf(address(bufferPoolDai));
         uint256 aDaiBalanceAfterRebalance = aDaiMainnet.balanceOf(address(bufferPoolDai));
 
-        // TODO refactor these comments
-        // Makes sure that the balance of DAI of the buffer contract wasn't changed
+        // Makes sure DAI balance didn't change in the pool contract by more than 1 unit
+        // (ERC4626 deposit sometimes leave 1 token behind)
         assertApproxEqAbs(daiBalanceBeforeRebalance, daiBalanceAfterRebalance, 1);
-        // Makes sure that 1e18 waUSDC in the pool can make at least 100.000 rebalance calls
+        // Makes sure that 1e18 waDAI in the pool can make at least 1e17 rebalance calls (max draining of 10 aDAI)
         assertApproxEqAbs(aDaiBalanceBeforeRebalance - aDaiBalanceAfterRebalance, 0, 10);
     }
 
@@ -247,10 +246,10 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         uint256 daiBalanceAfterRebalance = daiMainnet.balanceOf(address(bufferPoolDai));
         uint256 aDaiBalanceAfterRebalance = aDaiMainnet.balanceOf(address(bufferPoolDai));
 
-        // TODO refactor these comments
-        // Makes sure that the balance of DAI of the buffer contract wasn't changed
+        // Makes sure DAI balance didn't change in the pool contract by more than 1 unit
+        // (ERC4626 deposit sometimes leave 1 token behind)
         assertApproxEqAbs(daiBalanceBeforeRebalance, daiBalanceAfterRebalance, 1);
-        // Makes sure that 1e18 waUSDC in the pool can make at least 100.000 rebalance calls
+        // Makes sure that 1e18 waDAI in the pool can make at least 1e17 rebalance calls (max draining of 10 aDAI)
         assertApproxEqAbs(aDaiBalanceBeforeRebalance - aDaiBalanceAfterRebalance, 0, 10);
     }
 
@@ -285,11 +284,11 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         uint256 usdcBalanceAfterRebalance = usdcMainnet.balanceOf(address(bufferPoolUsdc));
         uint256 ausdcBalanceAfterRebalance = aUsdcMainnet.balanceOf(address(bufferPoolUsdc));
 
-        // TODO refactor these comments
-        // Makes sure that the balance of DAI of the buffer contract wasn't changed
+        // Makes sure USDC balance didn't change in the pool contract by more than 1 unit
+        // (ERC4626 deposit sometimes leave 1 token behind)
         assertApproxEqAbs(usdcBalanceBeforeRebalance, usdcBalanceAfterRebalance, 1);
-        // Makes sure that 1e6 waUSDC in the pool can make at least 100.000 rebalance calls
-        assertApproxEqAbs(ausdcBalanceBeforeRebalance - ausdcBalanceAfterRebalance, 0, 10);
+        // Makes sure that 1e6 waUSDC in the pool can make at least 5e5 rebalance calls (max draining of 2 aUSDC)
+        assertApproxEqAbs(ausdcBalanceBeforeRebalance - ausdcBalanceAfterRebalance, 0, 2);
     }
 
     function testRebalanceForUsdcWithMoreWrapped__Fuzz(uint256 assetsToTransfer) public {
@@ -323,11 +322,11 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         uint256 usdcBalanceAfterRebalance = usdcMainnet.balanceOf(address(bufferPoolUsdc));
         uint256 ausdcBalanceAfterRebalance = aUsdcMainnet.balanceOf(address(bufferPoolUsdc));
 
-        // TODO refactor these comments
-        // Makes sure that the balance of DAI of the buffer contract wasn't changed
+        // Makes sure USDC balance didn't change in the pool contract by more than 1 unit
+        // (ERC4626 deposit sometimes leave 1 token behind)
         assertApproxEqAbs(usdcBalanceBeforeRebalance, usdcBalanceAfterRebalance, 1);
-        // Makes sure that 1e6 waUSDC in the pool can make at least 100.000 rebalance calls
-        assertApproxEqAbs(ausdcBalanceBeforeRebalance - ausdcBalanceAfterRebalance, 0, 10);
+        // Makes sure that 1e6 waUSDC in the pool can make at least 5e5 rebalance calls (max draining of 2 aUSDC)
+        assertApproxEqAbs(ausdcBalanceBeforeRebalance - ausdcBalanceAfterRebalance, 0, 2);
     }
 
     function _createBuffer(IERC4626 wrappedToken) private returns (address) {

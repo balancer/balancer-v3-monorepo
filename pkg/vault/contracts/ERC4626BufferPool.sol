@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.4;
 
-import "forge-std/console.sol";
-
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -145,6 +143,9 @@ contract ERC4626BufferPool is
         uint256 wrappedRate = _wrappedToken.convertToAssets(FixedPoint.ONE);
 
         uint256 unscaledSharesAmount = request.amountGivenScaled18.divDown(wrappedRate) / 10 ** (18 - decimals);
+        // Add 1 to assets amount so we make sure we're always returning more assets than needed to wrap.
+        // It ensures that any error in the calculation of the rate will be charged from the buffer,
+        // and not from the vault
         uint256 unscaledAssetsAmount = _wrappedToken.previewRedeem(unscaledSharesAmount) + 1;
         uint256 preciseAmountScaled18 = unscaledAssetsAmount * 10 ** (18 - decimals);
 
