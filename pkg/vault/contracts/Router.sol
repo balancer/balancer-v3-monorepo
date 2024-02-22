@@ -391,6 +391,19 @@ contract Router is IRouter, ReentrancyGuard {
             );
     }
 
+    /// @inheritdoc IRouter
+    function removeLiquidityRecovery(
+        address pool,
+        uint256 exactBptAmountIn
+    ) external returns (uint256[] memory amountsOut) {
+        amountsOut = abi.decode(
+            _vault.invoke(
+                abi.encodeWithSelector(Router.removeLiquidityRecoveryHook.selector, pool, msg.sender, exactBptAmountIn)
+            ),
+            (uint256[])
+        );
+    }
+
     /**
      * @notice Hook for removing liquidity.
      * @dev Can only be called by the Vault.
@@ -444,6 +457,29 @@ contract Router is IRouter, ReentrancyGuard {
 
         // Send ETH to sender
         payable(params.sender).sendValue(ethAmountOut);
+    }
+
+    /**
+     * @notice Hook for removing liquidity in Recovery Mode.
+     * @dev Can only be called by the Vault, when the pool is in Recovery Mode.
+     * @param pool Address of the liquidity pool
+     * @param sender Account originating the remove liquidity operation
+     * @param exactBptAmountIn BPT amount burned for the output tokens
+     * @return amountsOut Actual token amounts transferred in exchange for the BPT
+     */
+    function removeLiquidityRecoveryHook(
+        address pool,
+        address sender,
+        uint256 exactBptAmountIn
+    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
+        amountsOut = _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn);
+
+        IERC20[] memory tokens = _vault.getPoolTokens(pool);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            // Wire the token to the sender (amountOut)
+            _vault.wire(tokens[i], sender, amountsOut[i]);
+        }
     }
 
     /// @inheritdoc IRouter
@@ -1238,6 +1274,25 @@ contract Router is IRouter, ReentrancyGuard {
             );
     }
 
+    /// @inheritdoc IRouter
+    function queryRemoveLiquidityRecovery(
+        address pool,
+        uint256 exactBptAmountIn
+    ) external returns (uint256[] memory amountsOut) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeWithSelector(
+                        Router.queryRemoveLiquidityRecoveryHook.selector,
+                        pool,
+                        address(this),
+                        exactBptAmountIn
+                    )
+                ),
+                (uint256[])
+            );
+    }
+
     /**
      * @notice Hook for remove liquidity queries.
      * @dev Can only be called by the Vault.
@@ -1265,6 +1320,22 @@ contract Router is IRouter, ReentrancyGuard {
                     userData: params.userData
                 })
             );
+    }
+
+    /**
+     * @notice Hook for remove liquidity queries.
+     * @dev Can only be called by the Vault.
+     * @param pool The liquidity pool
+     * @param sender Account originating the remove liquidity operation
+     * @param exactBptAmountIn Pool token amount to be burned for the output tokens
+     * @return amountsOut Expected token amounts to be transferred to the sender
+     */
+    function queryRemoveLiquidityRecoveryHook(
+        address pool,
+        address sender,
+        uint256 exactBptAmountIn
+    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
+        return _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn);
     }
 
     /**

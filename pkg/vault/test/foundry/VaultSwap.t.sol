@@ -162,6 +162,19 @@ contract VaultSwapTest is BaseVaultTest {
         assertSwap(swapSingleTokenExactInWithProtocolFee);
     }
 
+    function testSwapSingleTokenExactInWithFeeInRecoveryMode() public {
+        // Put pool in recovery mode
+        vault.manualEnableRecoveryMode(pool);
+
+        assertSwap(swapSingleTokenExactInWithFeeInRecoveryMode);
+    }
+
+    function swapSingleTokenExactInWithFeeInRecoveryMode() public returns (uint256 fee, uint256 protocolFee) {
+        // Call regular function (which sets the protocol swap fee), but return a fee of 0 to the validation function.
+        protocolFee = 0;
+        (fee, ) = swapSingleTokenExactInWithProtocolFee();
+    }
+
     function swapSingleTokenExactInWithProtocolFee() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage(swapFeePercentage);
         setProtocolSwapFeePercentage(protocolSwapFeePercentage);
@@ -207,6 +220,19 @@ contract VaultSwapTest is BaseVaultTest {
 
     function testSwapSingleTokenExactOutWithProtocolFee() public {
         assertSwap(swapSingleTokenExactOutWithProtocolFee);
+    }
+
+    function testSwapSingleTokenExactOutWithFeeInRecoveryMode() public {
+        // Put pool in recovery mode
+        vault.manualEnableRecoveryMode(pool);
+
+        assertSwap(swapSingleTokenExactOutWithFeeInRecoveryMode);
+    }
+
+    function swapSingleTokenExactOutWithFeeInRecoveryMode() public returns (uint256 fee, uint256 protocolFee) {
+        // Call regular function (which sets the protocol swap fee), but return a fee of 0 to the validation function.
+        protocolFee = 0;
+        (fee, ) = swapSingleTokenExactOutWithProtocolFee();
     }
 
     function swapSingleTokenExactOutWithProtocolFee() public returns (uint256 fee, uint256 protocolFee) {
@@ -315,5 +341,15 @@ contract VaultSwapTest is BaseVaultTest {
         // vault are adjusted balances
         assertEq(dai.balanceOf(address(vault)), fee, "Swap: Vault's DAI balance is wrong");
         assertEq(usdc.balanceOf(address(vault)), 2 * defaultAmount, "Swap: Vault's USDC balance is wrong");
+
+        // Ensure raw and last live balances are in sync after the operation
+        uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
+        uint256[] memory lastLiveBalances = vault.getLastLiveBalances(pool);
+
+        assertEq(currentLiveBalances.length, lastLiveBalances.length);
+
+        for (uint256 i = 0; i < currentLiveBalances.length; i++) {
+            assertEq(currentLiveBalances[i], lastLiveBalances[i]);
+        }
     }
 }

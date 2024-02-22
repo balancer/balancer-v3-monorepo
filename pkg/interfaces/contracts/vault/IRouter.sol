@@ -242,6 +242,17 @@ interface IRouter {
         bytes memory userData
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 
+    /**
+     * @notice Removes liquidity proportionally, burning an exact pool token amount. Only available in Recovery Mode.
+     * @param pool Address of the liquidity pool
+     * @param exactBptAmountIn Exact amount of pool tokens provided
+     * @return amountsOut Actual amounts of tokens received, sorted in token registration order
+     */
+    function removeLiquidityRecovery(
+        address pool,
+        uint256 exactBptAmountIn
+    ) external returns (uint256[] memory amountsOut);
+
     /***************************************************************************
                                        Swaps
     ***************************************************************************/
@@ -510,6 +521,17 @@ interface IRouter {
         uint256[] memory minAmountsOut,
         bytes memory userData
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
+
+    /**
+     * @notice Queries `removeLiquidityRecovery` operation without actually executing it.
+     * @param pool Address of the liquidity pool
+     * @param exactBptAmountIn Exact amount of pool tokens provided for the query
+     * @return amountsOut Expected amounts of tokens to receive, sorted in token registration order
+     */
+    function queryRemoveLiquidityRecovery(
+        address pool,
+        uint256 exactBptAmountIn
+    ) external returns (uint256[] memory amountsOut);
 
     /**
      * @notice Queries a swap operation specifying an exact input token amount without actually executing it.
