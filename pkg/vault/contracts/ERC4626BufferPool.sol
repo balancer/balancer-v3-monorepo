@@ -155,7 +155,8 @@ contract ERC4626BufferPool is
         uint256 unscaledAssetsAmount = _wrappedToken.previewRedeem(unscaledSharesAmount) + 1;
         uint256 preciseAmountScaled18 = unscaledAssetsAmount * 10 ** (18 - decimals);
 
-        // amountGivenScaled18 has some imprecision when calculating the rate.
+        // amountGivenScaled18 has some imprecision when calculating the rate (we store only 18 decimals of rate,
+        // therefore it's less precise than using preview or convertToAssets directly).
         // So, we need to return the linear math value (amountGivenScaled18), but subtract the error introduced by
         // the rate difference, which is calculated by (amountGivenScaled18 - preciseAmountScaled18), i.e.:
         //
