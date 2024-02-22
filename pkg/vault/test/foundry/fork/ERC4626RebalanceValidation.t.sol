@@ -68,10 +68,10 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
 
     address payable donor;
 
-    uint256 constant BUFFER_DAI_UNDERLYING = 1e5 * 1e18;
+    uint256 constant BUFFER_DAI_UNDERLYING = 1e6 * 1e18;
     uint256 bufferDaiWrapped;
 
-    uint256 constant BUFFER_USDC_UNDERLYING = 1e5 * 1e6;
+    uint256 constant BUFFER_USDC_UNDERLYING = 1e6 * 1e6;
     uint256 bufferUsdcWrapped;
 
     uint256 constant DELTA = 1e12;
@@ -180,7 +180,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     function testRebalanceForDaiWithMoreUnderlying__Fuzz(uint256 assetsToTransfer) public {
         uint8 decimals = waDAI.decimals();
 
-        assetsToTransfer = bound(assetsToTransfer, BUFFER_DAI_UNDERLYING / 100, (95 * BUFFER_DAI_UNDERLYING) / 100);
+        assetsToTransfer = bound(assetsToTransfer, BUFFER_DAI_UNDERLYING / 100000, (95 * BUFFER_DAI_UNDERLYING) / 100);
         bufferPoolDai.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_IN);
 
         uint256 daiBalanceBeforeRebalance = daiMainnet.balanceOf(address(bufferPoolDai));
@@ -218,7 +218,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     function testRebalanceForDaiWithMoreWrapped__Fuzz(uint256 assetsToTransfer) public {
         uint8 decimals = waDAI.decimals();
 
-        assetsToTransfer = bound(assetsToTransfer, BUFFER_DAI_UNDERLYING / 100, (95 * BUFFER_DAI_UNDERLYING) / 100);
+        assetsToTransfer = bound(assetsToTransfer, BUFFER_DAI_UNDERLYING / 100000, (95 * BUFFER_DAI_UNDERLYING) / 100);
         bufferPoolDai.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_OUT);
 
         uint256 daiBalanceBeforeRebalance = daiMainnet.balanceOf(address(bufferPoolDai));
@@ -256,7 +256,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     function testRebalanceForUsdcWithMoreUnderlying__Fuzz(uint256 assetsToTransfer) public {
         uint8 decimals = waUSDC.decimals();
 
-        assetsToTransfer = bound(assetsToTransfer, BUFFER_USDC_UNDERLYING / 100, (95 * BUFFER_USDC_UNDERLYING) / 100);
+        assetsToTransfer = bound(assetsToTransfer, BUFFER_USDC_UNDERLYING / 100000, (95 * BUFFER_USDC_UNDERLYING) / 100);
         bufferPoolUsdc.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_IN);
 
         uint256 usdcBalanceBeforeRebalance = usdcMainnet.balanceOf(address(bufferPoolUsdc));
@@ -294,7 +294,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     function testRebalanceForUsdcWithMoreWrapped__Fuzz(uint256 assetsToTransfer) public {
         uint8 decimals = waUSDC.decimals();
 
-        assetsToTransfer = bound(assetsToTransfer, BUFFER_USDC_UNDERLYING / 100, (95 * BUFFER_USDC_UNDERLYING) / 100);
+        assetsToTransfer = bound(assetsToTransfer, BUFFER_USDC_UNDERLYING / 100000, (95 * BUFFER_USDC_UNDERLYING) / 100);
         bufferPoolUsdc.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_OUT);
 
         uint256 usdcBalanceBeforeRebalance = usdcMainnet.balanceOf(address(bufferPoolUsdc));
@@ -340,14 +340,14 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     }
 
     function _transferTokensFromDonorToUsers() private {
-        address[] memory usersToTransfer = [address(bob), address(lp)].toMemoryArray();
+        address[] memory usersToTransfer = [address(lp)].toMemoryArray();
 
         for (uint256 index = 0; index < usersToTransfer.length; index++) {
             address userAddress = usersToTransfer[index];
 
             vm.startPrank(donor);
-            daiMainnet.transfer(userAddress, 50 * BUFFER_DAI_UNDERLYING);
-            usdcMainnet.transfer(userAddress, 50 * BUFFER_USDC_UNDERLYING);
+            daiMainnet.transfer(userAddress, 4 * BUFFER_DAI_UNDERLYING);
+            usdcMainnet.transfer(userAddress, 4 * BUFFER_USDC_UNDERLYING);
             vm.stopPrank();
 
             vm.startPrank(userAddress);

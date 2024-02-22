@@ -140,7 +140,8 @@ contract ERC4626BufferPool is
 
         // If onSwap was triggered by the rebalance function, fixes the rate (gas expensive, but more precise approach)
         uint8 decimals = _wrappedToken.decimals();
-        uint256 wrappedRate = _wrappedToken.convertToAssets(FixedPoint.ONE);
+        // Rate used by the vault to scale values
+        uint256 wrappedRate = _getRate();
 
         uint256 unscaledSharesAmount = request.amountGivenScaled18.divDown(wrappedRate) / 10 ** (18 - decimals);
         // Add 1 to assets amount so we make sure we're always returning more assets than needed to wrap.
@@ -166,11 +167,7 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IRateProvider
     function getRate() external view onlyVault returns (uint256) {
-        // TODO: This is really just a placeholder for now. We will need to think more carefully about this.
-        // e.g., it will probably need to be scaled according to the asset value decimals. There may be
-        // special cases with 0 supply. Wrappers may implement this differently, so maybe we need to calculate
-        // the rate directly instead of relying on the wrapper implementation, etc.
-        return _wrappedToken.convertToAssets(FixedPoint.ONE);
+        return _getRate();
     }
 
     /// @inheritdoc IBufferPool
@@ -199,6 +196,8 @@ contract ERC4626BufferPool is
 
         if (scaledBalanceWrapped > balanceUnderlying) {
             uint256 assetsToUnwrap = (scaledBalanceWrapped - balanceUnderlying) / 2;
+            // limiting the amount of lost wTokens to a maximum of 5
+            uint256 limit = _wrappedToken.convertToShares(assetsToUnwrap)-5;
 
             getVault().invoke{ value: msg.value }(
                 abi.encodeWithSelector(
@@ -210,12 +209,14 @@ contract ERC4626BufferPool is
                         tokenIn: tokens[1],
                         tokenOut: tokens[0],
                         amountGiven: assetsToUnwrap,
-                        limit: assetsToUnwrap / 2 // TODO Review limit and deadline
+                        limit: limit
                     })
                 )
             );
         } else if (balanceUnderlying > scaledBalanceWrapped) {
             uint256 assetsToWrap = (balanceUnderlying - scaledBalanceWrapped) / 2;
+            // limiting the amount of lost wTokens to a maximum of 5
+            uint256 limit = _wrappedToken.convertToShares(assetsToWrap)+5;
 
             getVault().invoke{ value: msg.value }(
                 abi.encodeWithSelector(
@@ -227,7 +228,7 @@ contract ERC4626BufferPool is
                         tokenIn: tokens[0],
                         tokenOut: tokens[1],
                         amountGiven: assetsToWrap,
-                        limit: assetsToWrap * 2 // TODO Review limit and deadline
+                        limit: limit
                     })
                 )
             );
@@ -321,5 +322,13 @@ contract ERC4626BufferPool is
         }
 
         return false;
+    }
+
+    function _getRate() private view returns (uint256) {
+        // TODO: This is really just a placeholder for now. We will need to think more carefully about this.
+        // e.g., it will probably need to be scaled according to the asset value decimals. There may be
+        // special cases with 0 supply. Wrappers may implement this differently, so maybe we need to calculate
+        // the rate directly instead of relying on the wrapper implementation, etc.
+        return _wrappedToken.convertToAssets(FixedPoint.ONE);
     }
 }
