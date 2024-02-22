@@ -200,10 +200,12 @@ contract ERC4626BufferPool is
             return;
         }
 
+        uint256 exchangeAmount;
+        uint256 limit;
         if (balanceWrappedAssets > balanceUnwrappedAssets) {
-            uint256 assetsToUnwrap = (balanceWrappedAssets - balanceUnwrappedAssets) / 2;
+            exchangeAmount = (balanceWrappedAssets - balanceUnwrappedAssets) / 2;
             // limiting the amount of lost wTokens to a maximum of 5
-            uint256 limit = _wrappedToken.convertToShares(assetsToUnwrap) - 5;
+            limit = _wrappedToken.convertToShares(exchangeAmount) - 5;
 
             getVault().invoke(
                 abi.encodeWithSelector(
@@ -214,15 +216,15 @@ contract ERC4626BufferPool is
                         pool: poolAddress,
                         tokenIn: tokens[BASE_TOKEN_INDEX],
                         tokenOut: tokens[WRAPPED_TOKEN_INDEX],
-                        amountGiven: assetsToUnwrap,
+                        amountGiven: exchangeAmount,
                         limit: limit
                     })
                 )
             );
         } else if (balanceUnwrappedAssets > balanceWrappedAssets) {
-            uint256 assetsToWrap = (balanceUnwrappedAssets - balanceWrappedAssets) / 2;
+            exchangeAmount = (balanceUnwrappedAssets - balanceWrappedAssets) / 2;
             // limiting the amount of lost wTokens to a maximum of 5
-            uint256 limit = _wrappedToken.convertToShares(assetsToWrap) + 5;
+            limit = _wrappedToken.convertToShares(exchangeAmount) + 5;
 
             getVault().invoke(
                 abi.encodeWithSelector(
@@ -233,7 +235,7 @@ contract ERC4626BufferPool is
                         pool: poolAddress,
                         tokenIn: tokens[WRAPPED_TOKEN_INDEX],
                         tokenOut: tokens[BASE_TOKEN_INDEX],
-                        amountGiven: assetsToWrap,
+                        amountGiven: exchangeAmount,
                         limit: limit
                     })
                 )
