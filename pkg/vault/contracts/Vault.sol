@@ -30,8 +30,6 @@ import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Ba
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 
-import "hardhat/console.sol";
-
 contract Vault is IVaultMain, VaultCommon, Proxy {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using InputHelpers for uint256;
@@ -113,9 +111,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function wire(IERC20 token, address to, uint256 amount) public nonReentrant withHandler {
         // effects
         _takeDebt(token, amount, msg.sender);
-        console.log('about to touch token reserves');
         _tokenReserves[token] -= amount;
-        console.log('token reserves done');
         // interactions
         token.safeTransfer(to, amount);
     }

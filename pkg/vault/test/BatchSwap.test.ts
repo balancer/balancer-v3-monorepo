@@ -194,6 +194,52 @@ describe('BatchSwap', function () {
         itTestsBatchSwap();
       });
 
+      context('single path, first - intermediate - final steps', () => {
+        sharedBeforeEach(async () => {
+          tokenIn = tokens.get(0);
+          tokenOut = tokens.get(2);
+
+          totalAmountIn = pathExactAmountIn; // 1 path
+          totalAmountOut = pathMinAmountOut; // 1 path, 1:1 ratio between inputs and outputs
+          pathAmountsOut = [totalAmountOut]; // 1 path, all tokens out
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', -totalAmountOut],
+              },
+            },
+          ];
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
+                { pool: poolC, tokenOut: token0 },
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap();
+      });
+
       context('multi path, SISO', () => {
         sharedBeforeEach(async () => {
           tokenIn = tokens.get(0);
@@ -456,7 +502,7 @@ describe('BatchSwap', function () {
     });
 
     context('joinswaps (add liquidity step)', () => {
-      context('single path - intermediate add liquidity step', () => {
+      context('single path - initial add liquidity step', () => {
         sharedBeforeEach(async () => {
           tokenIn = tokens.get(0);
           tokenOut = poolB;
@@ -500,7 +546,52 @@ describe('BatchSwap', function () {
         itTestsBatchSwap();
       });
 
-      context('multi path - intermediate and final add liquidity step', () => {
+      context('single path - intermediate add liquidity step', () => {
+        sharedBeforeEach(async () => {
+          tokenIn = tokens.get(0);
+          tokenOut = poolC;
+
+          totalAmountIn = pathExactAmountIn; // 1 path
+          totalAmountOut = pathMinAmountOut; // 1 path, 1:1 ratio between inputs and outputs
+          pathAmountsOut = [totalAmountOut]; // 1 path, all tokens out
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', -totalAmountOut],
+              },
+            },
+          ];
+
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: poolB },
+                { pool: poolBC, tokenOut: poolC },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap();
+      });
+
+      context('multi path - initial and final add liquidity step', () => {
         sharedBeforeEach(async () => {
           tokenIn = tokens.get(0);
           tokenOut = poolB;
@@ -557,8 +648,7 @@ describe('BatchSwap', function () {
     });
 
     context('exitswaps (remove liquidity step)', () => {
-      // TODO: test first, intermediate, and end steps.
-      context('single path - intermediate remove liquidity step', () => {
+      context('single path - initial remove liquidity step', () => {
         sharedBeforeEach(async () => {
           tokenIn = poolA;
           tokenOut = tokens.get(2);
@@ -600,6 +690,51 @@ describe('BatchSwap', function () {
         });
 
         itTestsBatchSwap(false, true);
+      });
+
+      context('single path - intermediate remove liquidity step', () => {
+        sharedBeforeEach(async () => {
+          tokenIn = tokens.get(0);
+          tokenOut = tokens.get(2);
+
+          totalAmountIn = pathExactAmountIn; // 1 path
+          totalAmountOut = pathMinAmountOut; // 1 path, 1:1 ratio between inputs and outputs
+          pathAmountsOut = [totalAmountOut]; // 1 path, all tokens out
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokenOut.symbol()]: ['very-near', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokenOut.symbol()]: ['very-near', -totalAmountOut],
+              },
+            },
+          ];
+
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: poolA },
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut,
+            },
+          ];
+
+          setUp();
+        });
+        // There are rounding issues in the output transfer, so we skip it.
+        itTestsBatchSwap(true, false);
       });
 
       context('single path - final remove liquidity step', () => {
@@ -950,7 +1085,7 @@ describe('BatchSwap', function () {
       });
     });
 
-    context.only('exitswaps (remove liquidity step)', () => {
+    context('exitswaps (remove liquidity step)', () => {
       context('single path - intermediate remove liquidity step', () => {
         sharedBeforeEach(async () => {
           tokenIn = poolA;
@@ -999,7 +1134,7 @@ describe('BatchSwap', function () {
         });
       });
 
-      context.only('single path - final remove liquidity step', () => {
+      context('single path - final remove liquidity step', () => {
         sharedBeforeEach(async () => {
           tokenIn = poolA;
           tokenOut = tokens.get(1);
@@ -1040,8 +1175,7 @@ describe('BatchSwap', function () {
           setUp();
         });
 
-        // The first step of first path is an 'add liquidity' operation, which is settled instantly.
-        // Therefore, the transfer event will not have the total amount out as argument.
+        // Rounding errors don't allow testing precise transfers for amount out.
         itTestsBatchSwap(true, false);
       });
 
@@ -1050,9 +1184,9 @@ describe('BatchSwap', function () {
           tokenIn = tokens.get(0);
           tokenOut = tokens.get(1);
 
-          totalAmountIn = pathMaxAmountIn * 1n; // 2 paths
-          totalAmountOut = pathExactAmountOut * 1n; // 2 paths, 1:1 ratio between inputs and outputs
-          pathAmountsIn = [totalAmountOut / 1n, totalAmountOut / 1n]; // 2 paths, half the output in each
+          totalAmountIn = pathMaxAmountIn * 2n; // 2 paths
+          totalAmountOut = pathExactAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
 
           balanceChange = [
             {
@@ -1096,9 +1230,10 @@ describe('BatchSwap', function () {
           setUp();
         });
 
-        // The first step of first path is an 'add liquidity' operation, which is settled instantly.
-        // Therefore, the transfer event will not have the total amount out as argument.
-        itTestsBatchSwap(true, false);
+        // The first step of both paths are an 'add liquidity' operation, which is settled instantly.
+        // Therefore, the transfer event will not have the total amount in as argument.
+        // Rounding errors make the output inexact, so we skip the transfer checks.
+        itTestsBatchSwap(false, false);
       });
     });
   });
