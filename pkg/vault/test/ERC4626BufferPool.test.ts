@@ -100,11 +100,11 @@ describe('ERC4626BufferPool', function () {
   }
 
   async function grantFactoryPermissions() {
-    const allowFactoryAction = await actionId(vault, 'registerBufferPoolFactory');
-    const denyFactoryAction = await actionId(vault, 'deregisterBufferPoolFactory');
+    const registerFactoryAction = await actionId(vault, 'registerBufferPoolFactory');
+    const deregisterFactoryAction = await actionId(vault, 'deregisterBufferPoolFactory');
 
-    await authorizer.grantRole(allowFactoryAction, alice.address);
-    await authorizer.grantRole(denyFactoryAction, alice.address);
+    await authorizer.grantRole(registerFactoryAction, alice.address);
+    await authorizer.grantRole(deregisterFactoryAction, alice.address);
   }
 
   describe('factory permissions', () => {
