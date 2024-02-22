@@ -496,4 +496,27 @@ interface IVaultExtension {
         address pauseManager,
         uint256 pauseWindowEndTime
     ) external;
+
+    /**
+     * @notice Add an ERC4626 Buffer Pool factory to the allowlist for registering buffers.
+     * @dev Since creating buffers is permissionless, and buffers are mapped 1-to-1 to pools (and cannot
+     * be removed), it would be possible to register a malicious buffer pool for a desirable wrapped token,
+     * blocking registration of the legitimate one.
+     *
+     * This way, we can validate Buffer Pool contracts and prevent the issue described above, while retaining
+     * the flexibility to upgrade the Buffer Pool implementation, and support partner innovation, in case a
+     * wrapper arises that is incompatible with the standard Buffer Pool.
+     *
+     * @param factory The factory to add to the allowlist
+     */
+    function allowBufferPoolFactory(address factory) external;
+
+    /**
+     * @notice Remove an ERC4626 Buffer Pool factory from the allowlist for registering buffers.
+     * @dev For maximum flexibility, there are separate functions for allowing and denying, so that permissions
+     * can be assigned separately.
+     * 
+     * @param factory The factory to remove from the allowlist
+     */
+    function denyBufferPoolFactory(address factory) external;
 }

@@ -58,9 +58,10 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
             salt
         );
 
-        getVault().registerBuffer(wrappedToken, pool, pauseManager, getNewPoolPauseWindowEndTime());
-
+        // This must be done first, since `registerBuffer` checks that the pool comes from this factory.
         _registerPoolWithFactory(pool);
+
+        getVault().registerBuffer(wrappedToken, pool, pauseManager, getNewPoolPauseWindowEndTime());
     }
 
     /**

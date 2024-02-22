@@ -12,6 +12,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -22,6 +23,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -43,6 +45,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     using Address for *;
     using ArrayHelpers for uint256[];
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using EnumerableSet for EnumerableSet.AddressSet;
     using PackedTokenBalance for bytes32;
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
@@ -879,6 +882,24 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
      *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
+    function allowBufferPoolFactory(address factory) external authenticate {
+        bool added = _bufferPoolFactories.add(factory);
+
+        if (added == false) {
+            revert BufferPoolFactoryAlreadyRegistered();
+        }
+    }
+
+    /// @inheritdoc IVaultExtension
+    function denyBufferPoolFactory(address factory) external authenticate {
+        bool removed = _bufferPoolFactories.remove(factory);
+
+        if (removed == false) {
+            revert BufferPoolFactoryNotRegistered();
+        }
+    }
+
+    /// @inheritdoc IVaultExtension
     function registerBuffer(
         IERC4626 wrappedToken,
         address pool,
@@ -889,7 +910,23 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         if (_wrappedTokenBuffers[wrappedToken] != address(0)) {
             revert WrappedTokenBufferAlreadyRegistered();
         }
+
+        // Ensure the buffer pool is from an allowed factory
+        bool factoryAllowed = false;
+
+        for (uint256 i = 0; i < _bufferPoolFactories.length(); i++) {
+            if (IBasePoolFactory(_bufferPoolFactories.unchecked_at(i)).isPoolFromFactory(pool)) {
+                factoryAllowed = true;
+                break;
+            }
+        }
+
+        if (factoryAllowed == false) {
+            revert UnrecognizedBufferPoolFactory();
+        }
+
         _wrappedTokenBuffers[wrappedToken] = pool;
+        _bufferPools.add(pool);
 
         IERC20 baseToken = IERC20(wrappedToken.asset());
 
@@ -899,8 +936,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         tokenConfig[0].tokenType = TokenType.ERC4626;
         // We are assuming the baseToken is STANDARD (the default type, with enum value 0).
         tokenConfig[1].token = baseToken;
-
-        _wrappedTokenBufferBaseTokens[IERC20(wrappedToken)] = baseToken;
 
         _registerPool(
             pool,
@@ -919,10 +954,5 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             }),
             LiquidityManagement({ supportsAddLiquidityCustom: true, supportsRemoveLiquidityCustom: false })
         );
-
-        // Set isBufferPool flag
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.isBufferPool = true;
-        _poolConfig[pool] = config.fromPoolConfig();
     }
 }
