@@ -108,6 +108,16 @@ library BasePoolMath {
         uint256 swapFeePercentage,
         function(uint256[] memory) external view returns (uint256) computeInvariant
     ) internal view returns (uint256 bptAmountOut, uint256[] memory swapFeeAmounts) {
+        /***********************************************************************
+        //                                                                    //
+        // s = totalSupply                                 (iFees - iCur)     //
+        // b = tokenBalance                  bptOut = s *  --------------     //
+        // bptOut = bptAmountOut                                iCur          //
+        // iFees = invariantWithFeesApplied                                   //
+        // iCur = currentInvariant                                            //
+        // iNew = newInvariant                                                //
+        ***********************************************************************/
+
         // Determine the number of tokens in the pool.
         uint256 numTokens = currentBalances.length;
 
@@ -124,8 +134,11 @@ library BasePoolMath {
         // Calculate the invariant using the current balances (before the addition).
         uint256 currentInvariant = computeInvariant(currentBalances);
 
+        // Calculate the new invariant using the new balances (after the addition).
+        uint256 newInvariant = computeInvariant(newBalances);
+
         // Calculate the new invariant ratio by dividing the new invariant by the old invariant.
-        uint256 invariantRatio = computeInvariant(newBalances).divDown(currentInvariant);
+        uint256 invariantRatio = newInvariant.divDown(currentInvariant);
 
         // Loop through each token to apply fees if necessary.
         for (uint256 index = 0; index < currentBalances.length; index++) {
@@ -146,7 +159,7 @@ library BasePoolMath {
 
         // Calculate the amount of BPT to mint. This is done by multiplying the
         // total supply with the ratio of the change in invariant.
-        //  mulDown/divDown minize amount of pool tokens to mint.
+        // mulDown/divDown minize amount of pool tokens to mint.
         bptAmountOut = totalSupply.mulDown((invariantWithFeesApplied - currentInvariant).divDown(currentInvariant));
     }
 
@@ -177,7 +190,9 @@ library BasePoolMath {
         // Calculate new supply after minting exactBptAmountOut
         uint256 newSupply = exactBptAmountOut + totalSupply;
         // Calculate the initial amount of the input token needed for the desired amount of BPT out
-        uint256 newBalance = computeBalance(currentBalances, tokenInIndex, newSupply.divDown(totalSupply));
+        // "divUp" leads to a higher "newBalance," which in turn results in a larger "amountIn."
+        // This leads to receiving more tokens for the same amount of BTP minted.
+        uint256 newBalance = computeBalance(currentBalances, tokenInIndex, newSupply.divUp(totalSupply));
         uint256 amountIn = newBalance - currentBalances[tokenInIndex];
 
         // Calculate the taxable amount, which is the difference
@@ -278,7 +293,9 @@ library BasePoolMath {
         // Calculate new supply accounting for burning exactBptAmountIn
         uint256 newSupply = totalSupply - exactBptAmountIn;
         // Calculate the new balance of the output token after the BPT burn.
-        uint256 newBalance = computeBalance(currentBalances, tokenOutIndex, newSupply.divDown(totalSupply));
+        // "divUp" leads to a higher "newBalance," which in turn results in a lower "amountOut."
+        // This leads to giving less tokens for the same amount of BTP burned.
+        uint256 newBalance = computeBalance(currentBalances, tokenOutIndex, newSupply.divUp(totalSupply));
 
         // Compute the amount to be withdrawn from the pool.
         uint256 amountOut = currentBalances[tokenOutIndex] - newBalance;
