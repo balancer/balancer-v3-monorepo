@@ -254,7 +254,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 revert BeforeSwapHookFailed();
             }
 
-            _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN);
+            _updatePoolDataLiveBalancesAndRates(poolData, Rounding.ROUND_DOWN);
             // The call to _buildSwapHookParams also modifies poolSwapParams.balancesScaled18.
             // Set here again explicitly to avoid relying on a side effect.
             // TODO: ugliness necessitated by the stack issues; revisit on any refactor to see if this can be cleaner.
@@ -403,46 +403,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * It is typically called after a reentrant callback (e.g., a "before" liquidity operation callback),
      * to refresh the poolData struct with any balances (or rates) that might have changed.
      *
-     * @param pool The address of the pool
      * @param poolData The corresponding poolData to be read and updated
      * @param roundingDirection Whether balance scaling should round up or down
      */
-    function _updatePoolDataLiveBalancesAndRates(
-        address pool,
-        PoolData memory poolData,
-        Rounding roundingDirection
-    ) internal view {
-        // Retrieve the mapping of tokens and their balances for the specified pool.
-        // poolData already contains rawBalances, but they could be stale, so fetch from the Vault.
-        // Likewise, the rates could also have changed.
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        mapping(IERC20 => TokenConfig) storage poolTokenConfig = _poolTokenConfig[pool];
-        uint256 numTokens = poolTokenBalances.length();
-        uint256 balanceRaw;
-        IERC20 token;
+    function _updatePoolDataLiveBalancesAndRates(PoolData memory poolData, Rounding roundingDirection) internal view {
+        _updateTokenRatesInPoolData(poolData);
 
-        for (uint256 i = 0; i < numTokens; ++i) {
-            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
-            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
-            // storage reads.
-            bytes32 packedBalances;
-
-            (token, packedBalances) = poolTokenBalances.unchecked_at(i);
-            TokenType tokenType = poolTokenConfig[token].tokenType;
-            balanceRaw = packedBalances.getRawBalance();
-
-            if (tokenType == TokenType.STANDARD) {
-                poolData.tokenRates[i] = FixedPoint.ONE;
-            } else if (tokenType == TokenType.WITH_RATE) {
-                poolData.tokenRates[i] = poolTokenConfig[token].rateProvider.getRate();
-            } else if (tokenType != TokenType.ERC4626) {
-                // TODO: implement ERC4626 at a later stage
-                revert InvalidTokenConfiguration();
-            }
-
-            poolData.balancesLiveScaled18[i] = roundingDirection == Rounding.ROUND_UP
-                ? balanceRaw.toScaled18ApplyRateRoundUp(poolData.decimalScalingFactors[i], poolData.tokenRates[i])
-                : balanceRaw.toScaled18ApplyRateRoundDown(poolData.decimalScalingFactors[i], poolData.tokenRates[i]);
+        for (uint256 i = 0; i < poolData.tokenConfig.length; ++i) {
+            _updateLiveTokenBalanceInPoolData(poolData, roundingDirection, i);
         }
     }
 
@@ -499,7 +467,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (adding liquidity, so round up) again.
-            _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_UP);
+            _updatePoolDataLiveBalancesAndRates(poolData, Rounding.ROUND_UP);
         }
 
         // The bulk of the work is done here: the corresponding Pool hook is invoked and its final balances
@@ -692,7 +660,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (removing liquidity, so round down) again.
-            _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN);
+            _updatePoolDataLiveBalancesAndRates(poolData, Rounding.ROUND_DOWN);
         }
 
         // The bulk of the work is done here: the corresponding Pool hook is invoked, and its final balances
@@ -817,7 +785,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
 
             // Subtract protocol fees charged from the pool's balances
-            // Note that poolData.balancesRaw will also be updated in `_removeLiquidityUpdateAccounting`
             poolData.balancesRaw[i] -= protocolSwapFeeAmountRaw;
             poolData.balancesLiveScaled18[i] -= (amountsOutScaled18[i] +
                 swapFeeAmountsScaled18[i].mulUp(_protocolSwapFeePercentage));
