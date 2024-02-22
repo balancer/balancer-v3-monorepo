@@ -246,17 +246,20 @@ contract ERC4626BufferPool is
     function rebalanceHook(RebalanceHookParams calldata params) external payable onlyVault {
         (, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
+        IERC20 underlyingToken;
+        IERC20 wrappedToken;
+
         if (params.kind == SwapKind.EXACT_IN) {
-            IERC20 underlyingToken = params.tokenIn;
-            IERC20 wrappedToken = params.tokenOut;
+            underlyingToken = params.tokenIn;
+            wrappedToken = params.tokenOut;
 
             getVault().wire(wrappedToken, address(this), amountOut);
             IERC4626(address(wrappedToken)).withdraw(amountIn, address(this), address(this));
             underlyingToken.approve(address(getVault()), amountIn);
             getVault().retrieve(underlyingToken, address(this), amountIn);
         } else {
-            IERC20 underlyingToken = params.tokenOut;
-            IERC20 wrappedToken = params.tokenIn;
+            underlyingToken = params.tokenOut;
+            wrappedToken = params.tokenIn;
 
             getVault().wire(underlyingToken, address(this), amountOut);
             underlyingToken.approve(address(wrappedToken), amountOut);
