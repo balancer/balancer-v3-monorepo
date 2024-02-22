@@ -911,7 +911,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             revert WrappedTokenBufferAlreadyRegistered();
         }
 
-        // Ensure the buffer pool is from an allowed factory
+        // Ensure the buffer pool is from a registered factory
         bool factoryAllowed = false;
 
         for (uint256 i = 0; i < _bufferPoolFactories.length(); i++) {
