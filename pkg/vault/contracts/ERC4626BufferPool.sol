@@ -205,7 +205,7 @@ contract ERC4626BufferPool is
             // limiting the amount of lost wTokens to a maximum of 5
             uint256 limit = _wrappedToken.convertToShares(assetsToUnwrap) - 5;
 
-            getVault().invoke{ value: msg.value }(
+            getVault().invoke(
                 abi.encodeWithSelector(
                     ERC4626BufferPool.rebalanceHook.selector,
                     RebalanceHookParams({
@@ -224,7 +224,7 @@ contract ERC4626BufferPool is
             // limiting the amount of lost wTokens to a maximum of 5
             uint256 limit = _wrappedToken.convertToShares(assetsToWrap) + 5;
 
-            getVault().invoke{ value: msg.value }(
+            getVault().invoke(
                 abi.encodeWithSelector(
                     ERC4626BufferPool.rebalanceHook.selector,
                     RebalanceHookParams({
