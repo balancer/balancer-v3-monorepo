@@ -45,7 +45,7 @@ contract ERC4626BufferPool is
     using FixedPoint for uint256;
 
     uint256 public constant WRAPPED_TOKEN_INDEX = 0;
-    uint256 public constant BASE_TOKEN_INDEX = 0;
+    uint256 public constant BASE_TOKEN_INDEX = 1;
 
     IERC4626 internal immutable _wrappedToken;
 
