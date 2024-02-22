@@ -33,10 +33,9 @@ library PoolConfigLib {
     uint8 public constant BEFORE_INITIALIZE_OFFSET = AFTER_REMOVE_LIQUIDITY_OFFSET + 1;
     uint8 public constant AFTER_INITIALIZE_OFFSET = BEFORE_INITIALIZE_OFFSET + 1;
     uint8 public constant POOL_RECOVERY_MODE_OFFSET = AFTER_INITIALIZE_OFFSET + 1;
-    uint8 public constant BUFFER_POOL_OFFSET = POOL_RECOVERY_MODE_OFFSET + 1;
 
     // Supported liquidity API bit offsets
-    uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = BUFFER_POOL_OFFSET + 1;
+    uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = POOL_RECOVERY_MODE_OFFSET + 1;
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
 
     uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
@@ -67,10 +66,6 @@ library PoolConfigLib {
 
     function isPoolPaused(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_PAUSED_OFFSET);
-    }
-
-    function isBufferPool(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(BUFFER_POOL_OFFSET);
     }
 
     function hasDynamicSwapFee(PoolConfigBits config) internal pure returns (bool) {
@@ -159,10 +154,10 @@ library PoolConfigLib {
         }
 
         {
-            configBits = configBits
-                .insertBool(config.hooks.shouldCallBeforeSwap, BEFORE_SWAP_OFFSET)
-                .insertBool(config.hooks.shouldCallAfterSwap, AFTER_SWAP_OFFSET)
-                .insertBool(config.isBufferPool, BUFFER_POOL_OFFSET);
+            configBits = configBits.insertBool(config.hooks.shouldCallBeforeSwap, BEFORE_SWAP_OFFSET).insertBool(
+                config.hooks.shouldCallAfterSwap,
+                AFTER_SWAP_OFFSET
+            );
         }
 
         {
@@ -230,7 +225,6 @@ library PoolConfigLib {
                 isPoolInitialized: config.isPoolInitialized(),
                 isPoolPaused: config.isPoolPaused(),
                 isPoolInRecoveryMode: config.isPoolInRecoveryMode(),
-                isBufferPool: config.isBufferPool(),
                 hasDynamicSwapFee: config.hasDynamicSwapFee(),
                 staticSwapFeePercentage: config.getStaticSwapFeePercentage(),
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
