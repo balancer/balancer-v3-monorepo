@@ -5,7 +5,13 @@ import * as contract from '../../contract';
 import { VaultDeploymentInputParams, VaultDeploymentParams } from './types';
 
 import TypesConverter from '../types/TypesConverter';
-import { Vault, VaultAdmin, VaultAdminMock, VaultExtension, VaultExtensionMock } from '@balancer-labs/v3-vault/typechain-types';
+import {
+  Vault,
+  VaultAdmin,
+  VaultAdminMock,
+  VaultExtension,
+  VaultExtensionMock,
+} from '@balancer-labs/v3-vault/typechain-types';
 import { VaultMock } from '@balancer-labs/v3-vault/typechain-types';
 import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
