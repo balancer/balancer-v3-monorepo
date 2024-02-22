@@ -4,7 +4,7 @@ pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
 
-import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -60,7 +60,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     }
 
     function setProtocolYieldFeePercentage(uint256 yieldFeePercentage) internal {
-        bytes32 setFeeRole = vault.getActionId(IVaultExtension.setProtocolYieldFeePercentage.selector);
+        bytes32 setFeeRole = vault.getActionId(IVaultAdmin.setProtocolYieldFeePercentage.selector);
         authorizer.grantRole(setFeeRole, alice);
 
         vm.prank(alice);
