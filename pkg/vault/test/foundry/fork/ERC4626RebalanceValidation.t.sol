@@ -256,7 +256,11 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     function testRebalanceForUsdcWithMoreUnderlying__Fuzz(uint256 assetsToTransfer) public {
         uint8 decimals = waUSDC.decimals();
 
-        assetsToTransfer = bound(assetsToTransfer, BUFFER_USDC_UNDERLYING / 100000, (95 * BUFFER_USDC_UNDERLYING) / 100);
+        assetsToTransfer = bound(
+            assetsToTransfer,
+            BUFFER_USDC_UNDERLYING / 100000,
+            (95 * BUFFER_USDC_UNDERLYING) / 100
+        );
         bufferPoolUsdc.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_IN);
 
         uint256 usdcBalanceBeforeRebalance = usdcMainnet.balanceOf(address(bufferPoolUsdc));
@@ -294,7 +298,11 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     function testRebalanceForUsdcWithMoreWrapped__Fuzz(uint256 assetsToTransfer) public {
         uint8 decimals = waUSDC.decimals();
 
-        assetsToTransfer = bound(assetsToTransfer, BUFFER_USDC_UNDERLYING / 100000, (95 * BUFFER_USDC_UNDERLYING) / 100);
+        assetsToTransfer = bound(
+            assetsToTransfer,
+            BUFFER_USDC_UNDERLYING / 100000,
+            (95 * BUFFER_USDC_UNDERLYING) / 100
+        );
         bufferPoolUsdc.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_OUT);
 
         uint256 usdcBalanceBeforeRebalance = usdcMainnet.balanceOf(address(bufferPoolUsdc));

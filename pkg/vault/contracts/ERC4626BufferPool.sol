@@ -44,6 +44,9 @@ contract ERC4626BufferPool is
 {
     using FixedPoint for uint256;
 
+    uint256 public constant WRAPPED_TOKEN_INDEX = 0;
+    uint256 public constant BASE_TOKEN_INDEX = 0;
+
     IERC4626 internal immutable _wrappedToken;
 
     // Uses the factory as the Authentication disambiguator.
@@ -162,7 +165,7 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IBasePool
     function computeInvariant(uint256[] memory balancesLiveScaled18) public view onlyVault returns (uint256) {
-        return balancesLiveScaled18[0] + balancesLiveScaled18[1];
+        return balancesLiveScaled18[WRAPPED_TOKEN_INDEX] + balancesLiveScaled18[BASE_TOKEN_INDEX];
     }
 
     /// @inheritdoc IRateProvider
@@ -180,24 +183,27 @@ contract ERC4626BufferPool is
         address poolAddress = address(this);
 
         // Get balance of tokens
-        (IERC20[] memory tokens, , uint256[] memory rawBalances, uint256[] memory decimalScalingFactors, ) = getVault()
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors, ) = getVault()
             .getPoolTokenInfo(poolAddress);
 
-        uint256 scaledBalanceWrapped = _wrappedToken.previewRedeem(rawBalances[0]);
-        uint256 balanceUnderlying = rawBalances[1];
+        // PreviewRedeem converts a wrapped amount into an underlying (base) amount
+        uint256 balanceWrappedAssets = _wrappedToken.previewRedeem(balancesRaw[WRAPPED_TOKEN_INDEX]);
+        uint256 balanceUnwrappedAssets = balancesRaw[BASE_TOKEN_INDEX];
 
         uint256[] memory balancesScaled18 = new uint256[](2);
-        balancesScaled18[0] = scaledBalanceWrapped.mulDown(decimalScalingFactors[0]);
-        balancesScaled18[1] = balanceUnderlying.mulDown(decimalScalingFactors[1]);
+        balancesScaled18[WRAPPED_TOKEN_INDEX] = balanceWrappedAssets.mulDown(
+            decimalScalingFactors[WRAPPED_TOKEN_INDEX]
+        );
+        balancesScaled18[BASE_TOKEN_INDEX] = balanceUnwrappedAssets.mulDown(decimalScalingFactors[BASE_TOKEN_INDEX]);
 
         if (_isBufferPoolBalanced(balancesScaled18)) {
             return;
         }
 
-        if (scaledBalanceWrapped > balanceUnderlying) {
-            uint256 assetsToUnwrap = (scaledBalanceWrapped - balanceUnderlying) / 2;
+        if (balanceWrappedAssets > balanceUnwrappedAssets) {
+            uint256 assetsToUnwrap = (balanceWrappedAssets - balanceUnwrappedAssets) / 2;
             // limiting the amount of lost wTokens to a maximum of 5
-            uint256 limit = _wrappedToken.convertToShares(assetsToUnwrap)-5;
+            uint256 limit = _wrappedToken.convertToShares(assetsToUnwrap) - 5;
 
             getVault().invoke{ value: msg.value }(
                 abi.encodeWithSelector(
@@ -206,17 +212,17 @@ contract ERC4626BufferPool is
                         sender: msg.sender,
                         kind: SwapKind.EXACT_IN,
                         pool: poolAddress,
-                        tokenIn: tokens[1],
-                        tokenOut: tokens[0],
+                        tokenIn: tokens[BASE_TOKEN_INDEX],
+                        tokenOut: tokens[WRAPPED_TOKEN_INDEX],
                         amountGiven: assetsToUnwrap,
                         limit: limit
                     })
                 )
             );
-        } else if (balanceUnderlying > scaledBalanceWrapped) {
-            uint256 assetsToWrap = (balanceUnderlying - scaledBalanceWrapped) / 2;
+        } else if (balanceUnwrappedAssets > balanceWrappedAssets) {
+            uint256 assetsToWrap = (balanceUnwrappedAssets - balanceWrappedAssets) / 2;
             // limiting the amount of lost wTokens to a maximum of 5
-            uint256 limit = _wrappedToken.convertToShares(assetsToWrap)+5;
+            uint256 limit = _wrappedToken.convertToShares(assetsToWrap) + 5;
 
             getVault().invoke{ value: msg.value }(
                 abi.encodeWithSelector(
@@ -225,39 +231,14 @@ contract ERC4626BufferPool is
                         sender: msg.sender,
                         kind: SwapKind.EXACT_OUT,
                         pool: poolAddress,
-                        tokenIn: tokens[0],
-                        tokenOut: tokens[1],
+                        tokenIn: tokens[WRAPPED_TOKEN_INDEX],
+                        tokenOut: tokens[BASE_TOKEN_INDEX],
                         amountGiven: assetsToWrap,
                         limit: limit
                     })
                 )
             );
         }
-    }
-
-    // Unsupported functions that unconditionally revert
-
-    /// @inheritdoc IBasePool
-    function computeBalance(
-        uint256[] memory, // balancesLiveScaled18,
-        uint256, // tokenInIndex,
-        uint256 // invariantRatio
-    ) external pure returns (uint256) {
-        // This pool doesn't support single token add/remove liquidity, so this function is not needed.
-        // Should never get here, but need to implement the interface.
-        revert IVaultErrors.OperationNotSupported();
-    }
-
-    /// @inheritdoc IPoolLiquidity
-    function onRemoveLiquidityCustom(
-        address,
-        uint256,
-        uint256[] memory,
-        uint256[] memory,
-        bytes memory
-    ) external pure returns (uint256, uint256[] memory, uint256[] memory, bytes memory) {
-        // Should throw `DoesNotSupportRemoveLiquidityCustom` before getting here, but need to implement the interface.
-        revert IVaultErrors.OperationNotSupported();
     }
 
     function rebalanceHook(RebalanceHookParams calldata params) external payable onlyVault {
@@ -299,9 +280,9 @@ contract ERC4626BufferPool is
         );
     }
 
-    function _isBufferPoolBalanced(uint256[] memory scaledBalances) private view returns (bool) {
-        // Enforce proportionality - might need to say exactAmountsIn[0].mulDown(getRate()) to compare equal value?
-        if (scaledBalances[0] == scaledBalances[1]) {
+    function _isBufferPoolBalanced(uint256[] memory balancesScaled) private view returns (bool) {
+        // Enforce proportionality - might need to say exactAmountsIn[WRAPPED_TOKEN_INDEX].mulDown(getRate()) to compare equal value?
+        if (balancesScaled[WRAPPED_TOKEN_INDEX] == balancesScaled[BASE_TOKEN_INDEX]) {
             return true;
         }
 
@@ -311,14 +292,14 @@ contract ERC4626BufferPool is
         // it's divided by FixedPoint.ONE so we get only the integer part of the number)
         uint8 decimals = _wrappedToken.decimals();
 
-        if (scaledBalances[0] >= scaledBalances[1]) {
-            uint256 tolerance = 10 ** (18 - decimals) * (scaledBalances[0] / FixedPoint.ONE);
-            return scaledBalances[0] - scaledBalances[1] < tolerance;
+        if (balancesScaled[WRAPPED_TOKEN_INDEX] >= balancesScaled[BASE_TOKEN_INDEX]) {
+            uint256 tolerance = 10 ** (18 - decimals) * (balancesScaled[WRAPPED_TOKEN_INDEX] / FixedPoint.ONE);
+            return balancesScaled[WRAPPED_TOKEN_INDEX] - balancesScaled[BASE_TOKEN_INDEX] < tolerance;
         }
 
-        if (scaledBalances[1] >= scaledBalances[0]) {
-            uint256 tolerance = 10 ** (18 - decimals) * (scaledBalances[1] / FixedPoint.ONE);
-            return scaledBalances[1] - scaledBalances[0] < tolerance;
+        if (balancesScaled[BASE_TOKEN_INDEX] >= balancesScaled[WRAPPED_TOKEN_INDEX]) {
+            uint256 tolerance = 10 ** (18 - decimals) * (balancesScaled[BASE_TOKEN_INDEX] / FixedPoint.ONE);
+            return balancesScaled[BASE_TOKEN_INDEX] - balancesScaled[WRAPPED_TOKEN_INDEX] < tolerance;
         }
 
         return false;
@@ -330,5 +311,30 @@ contract ERC4626BufferPool is
         // special cases with 0 supply. Wrappers may implement this differently, so maybe we need to calculate
         // the rate directly instead of relying on the wrapper implementation, etc.
         return _wrappedToken.convertToAssets(FixedPoint.ONE);
+    }
+
+    // Unsupported functions that unconditionally revert
+
+    /// @inheritdoc IBasePool
+    function computeBalance(
+        uint256[] memory, // balancesLiveScaled18,
+        uint256, // tokenInIndex,
+        uint256 // invariantRatio
+    ) external pure returns (uint256) {
+        // This pool doesn't support single token add/remove liquidity, so this function is not needed.
+        // Should never get here, but need to implement the interface.
+        revert IVaultErrors.OperationNotSupported();
+    }
+
+    /// @inheritdoc IPoolLiquidity
+    function onRemoveLiquidityCustom(
+        address,
+        uint256,
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
+    ) external pure returns (uint256, uint256[] memory, uint256[] memory, bytes memory) {
+        // Should throw `DoesNotSupportRemoveLiquidityCustom` before getting here, but need to implement the interface.
+        revert IVaultErrors.OperationNotSupported();
     }
 }
