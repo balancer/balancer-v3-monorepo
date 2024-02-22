@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.4;
 
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -43,6 +44,7 @@ contract ERC4626BufferPool is
     ReentrancyGuard
 {
     using FixedPoint for uint256;
+    using SafeERC20 for IERC20;
 
     uint256 public constant WRAPPED_TOKEN_INDEX = 0;
     uint256 public constant BASE_TOKEN_INDEX = 1;
@@ -255,8 +257,8 @@ contract ERC4626BufferPool is
 
             getVault().wire(wrappedToken, address(this), amountOut);
             IERC4626(address(wrappedToken)).withdraw(amountIn, address(this), address(this));
-            underlyingToken.approve(address(getVault()), amountIn);
-            getVault().retrieve(underlyingToken, address(this), amountIn);
+            underlyingToken.safeTransfer(address(getVault()), amountIn);
+            getVault().settle(underlyingToken);
         } else {
             underlyingToken = params.tokenOut;
             wrappedToken = params.tokenIn;
@@ -264,8 +266,8 @@ contract ERC4626BufferPool is
             getVault().wire(underlyingToken, address(this), amountOut);
             underlyingToken.approve(address(wrappedToken), amountOut);
             IERC4626(address(wrappedToken)).deposit(amountOut, address(this));
-            wrappedToken.approve(address(getVault()), amountIn);
-            getVault().retrieve(wrappedToken, address(this), amountIn);
+            wrappedToken.safeTransfer(address(getVault()), amountIn);
+            getVault().settle(wrappedToken);
         }
     }
 
