@@ -28,7 +28,7 @@ import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 
 /**
- * @dev Bytecode extension for Vault.
+ * @dev Bytecode extension for the Vault containing permissioned functions. Complementary to the `VaultExtension`.
  * Has access to the same storage layout as the main vault.
  *
  * The functions in this contract are not meant to be called directly ever. They should just be called by the Vault

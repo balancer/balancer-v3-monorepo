@@ -725,7 +725,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
     }
 
     /*******************************************************************************
-                                    Queries
+                                        Queries
     *******************************************************************************/
 
     /// @dev Ensure that only static calls are made to the functions with this modifier.
@@ -760,7 +760,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
     }
 
     /*******************************************************************************
-                                Authentication
+                                    Authentication
     *******************************************************************************/
 
     /// @dev Access control is delegated to the Authorizer
@@ -769,7 +769,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
     }
 
     /*******************************************************************************
--                                ERC4626 Buffers
+-                                   ERC4626 Buffers
      *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
