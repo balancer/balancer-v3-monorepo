@@ -149,7 +149,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function testInitialize() public {
+    function testInitialize__Fork() public {
         // Tokens are stored in the Vault
         assertEq(aDaiMainnet.balanceOf(address(vault)), bufferDaiWrapped);
         assertEq(daiMainnet.balanceOf(address(vault)), BUFFER_DAI_UNDERLYING);
@@ -177,7 +177,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         assertApproxEqAbs(bptAmountOutWrapped, 2 * BUFFER_USDC_UNDERLYING * 1e12, DELTA);
     }
 
-    function testRebalanceForDaiWithMoreUnderlying__Fuzz(uint256 assetsToTransfer) public {
+    function testRebalanceForDaiWithMoreUnderlying__Fuzz__Fork(uint256 assetsToTransfer) public {
         uint8 decimals = waDAI.decimals();
 
         assetsToTransfer = bound(assetsToTransfer, BUFFER_DAI_UNDERLYING / 100000, (95 * BUFFER_DAI_UNDERLYING) / 100);
@@ -215,7 +215,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         assertApproxEqAbs(aDaiBalanceBeforeRebalance - aDaiBalanceAfterRebalance, 0, 10);
     }
 
-    function testRebalanceForDaiWithMoreWrapped__Fuzz(uint256 assetsToTransfer) public {
+    function testRebalanceForDaiWithMoreWrapped__Fuzz__Fork(uint256 assetsToTransfer) public {
         uint8 decimals = waDAI.decimals();
 
         assetsToTransfer = bound(assetsToTransfer, BUFFER_DAI_UNDERLYING / 100000, (95 * BUFFER_DAI_UNDERLYING) / 100);
@@ -253,7 +253,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         assertApproxEqAbs(aDaiBalanceBeforeRebalance - aDaiBalanceAfterRebalance, 0, 10);
     }
 
-    function testRebalanceForUsdcWithMoreUnderlying__Fuzz(uint256 assetsToTransfer) public {
+    function testRebalanceForUsdcWithMoreUnderlying__Fuzz__Fork(uint256 assetsToTransfer) public {
         uint8 decimals = waUSDC.decimals();
 
         assetsToTransfer = bound(
@@ -295,7 +295,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         assertApproxEqAbs(ausdcBalanceBeforeRebalance - ausdcBalanceAfterRebalance, 0, 2);
     }
 
-    function testRebalanceForUsdcWithMoreWrapped__Fuzz(uint256 assetsToTransfer) public {
+    function testRebalanceForUsdcWithMoreWrapped__Fuzz__Fork(uint256 assetsToTransfer) public {
         uint8 decimals = waUSDC.decimals();
 
         assetsToTransfer = bound(
@@ -338,7 +338,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     }
 
     function _createBuffer(IERC4626 wrappedToken) private returns (address) {
-        return factory.create(wrappedToken, address(0), _generateSalt(address(wrappedToken)));
+        return factory.createMocked(wrappedToken);
     }
 
     // Need a unique salt for deployments to work; just use the token address
