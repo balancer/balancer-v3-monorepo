@@ -218,11 +218,11 @@ contract ERC4626BufferPool is
             return;
         }
 
-        uint256 exchangeAmount;
+        uint256 exchangeAmountRaw;
         uint256 limit;
         if (balanceWrappedAssets > balanceUnwrappedAssets) {
-            exchangeAmount = (balanceWrappedAssets - balanceUnwrappedAssets) / 2;
-            limit = _wrappedToken.convertToShares(exchangeAmount) - MAXIMUM_DIFF_WTOKENS;
+            exchangeAmountRaw = (balanceWrappedAssets - balanceUnwrappedAssets) / 2;
+            limit = _wrappedToken.convertToShares(exchangeAmountRaw) - MAXIMUM_DIFF_WTOKENS;
 
             getVault().invoke(
                 abi.encodeWithSelector(
@@ -233,14 +233,14 @@ contract ERC4626BufferPool is
                         pool: poolAddress,
                         tokenIn: tokens[BASE_TOKEN_INDEX],
                         tokenOut: tokens[WRAPPED_TOKEN_INDEX],
-                        amountGiven: exchangeAmount,
+                        amountGivenRaw: exchangeAmountRaw,
                         limit: limit
                     })
                 )
             );
         } else if (balanceUnwrappedAssets > balanceWrappedAssets) {
-            exchangeAmount = (balanceUnwrappedAssets - balanceWrappedAssets) / 2;
-            limit = _wrappedToken.convertToShares(exchangeAmount) + MAXIMUM_DIFF_WTOKENS;
+            exchangeAmountRaw = (balanceUnwrappedAssets - balanceWrappedAssets) / 2;
+            limit = _wrappedToken.convertToShares(exchangeAmountRaw) + MAXIMUM_DIFF_WTOKENS;
 
             getVault().invoke(
                 abi.encodeWithSelector(
@@ -251,7 +251,7 @@ contract ERC4626BufferPool is
                         pool: poolAddress,
                         tokenIn: tokens[WRAPPED_TOKEN_INDEX],
                         tokenOut: tokens[BASE_TOKEN_INDEX],
-                        amountGiven: exchangeAmount,
+                        amountGivenRaw: exchangeAmountRaw,
                         limit: limit
                     })
                 )
@@ -294,7 +294,7 @@ contract ERC4626BufferPool is
                 pool: params.pool,
                 tokenIn: params.tokenIn,
                 tokenOut: params.tokenOut,
-                amountGivenRaw: params.amountGiven,
+                amountGivenRaw: params.amountGivenRaw,
                 limitRaw: params.limit,
                 userData: ""
             })

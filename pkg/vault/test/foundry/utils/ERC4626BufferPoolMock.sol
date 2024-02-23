@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -13,6 +14,8 @@ import { ERC4626BufferPool } from "@balancer-labs/v3-vault/contracts/ERC4626Buff
 import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.sol";
 
 contract ERC4626BufferPoolMock is ERC4626BufferPool {
+    using SafeERC20 for IERC20;
+
     constructor(
         string memory name,
         string memory symbol,
@@ -21,12 +24,21 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
     ) ERC4626BufferPool(name, symbol, wrappedToken, vault) {}
 
     // If EXACT_IN, assets will be wrapped. Else, assets will be unwrapped
-    function unbalanceThePool(uint256 assetsToTransfer, SwapKind kind) external {
+    function unbalanceThePool(uint256 assetsToTransferRaw, SwapKind kind) external {
+        (IERC20[] memory tokens, , , , ) = getVault().getPoolTokenInfo(address(this));
+
         uint8 indexIn = kind == SwapKind.EXACT_IN ? 1 : 0;
         uint8 indexOut = kind == SwapKind.EXACT_IN ? 0 : 1;
-        uint256 limit = kind == SwapKind.EXACT_IN ? assetsToTransfer / 2 : assetsToTransfer * 2;
 
-        (IERC20[] memory tokens, , , , ) = getVault().getPoolTokenInfo(address(this));
+        uint256 limit = _wrappedToken.convertToShares(assetsToTransferRaw);
+
+        // Since it's a normal swap, it's passing through linear math and the rates have more errors.
+        // Limiting the slippage to 1% of the calculated wrapped amount out, for testing purposes
+        if (kind == SwapKind.EXACT_IN) {
+            limit -= limit / 100;
+        } else {
+            limit += limit / 100;
+        }
 
         getVault().invoke(
             abi.encodeWithSelector(
@@ -37,7 +49,7 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
                     pool: address(this),
                     tokenIn: tokens[indexIn],
                     tokenOut: tokens[indexOut],
-                    amountGiven: assetsToTransfer,
+                    amountGivenRaw: assetsToTransferRaw,
                     limit: limit
                 })
             )
@@ -47,23 +59,25 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
     function unbalanceHook(RebalanceHookParams calldata params) external payable onlyVault {
         (, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
+        IERC20 underlyingToken;
+        IERC20 wrappedToken;
         if (params.kind == SwapKind.EXACT_IN) {
-            IERC20 underlyingToken = params.tokenIn;
-            IERC20 wrappedToken = params.tokenOut;
+            underlyingToken = params.tokenIn;
+            wrappedToken = params.tokenOut;
 
             getVault().wire(wrappedToken, address(this), amountOut);
             IERC4626(address(wrappedToken)).withdraw(amountIn, address(this), address(this));
-            underlyingToken.approve(address(getVault()), amountIn);
-            getVault().retrieve(underlyingToken, address(this), amountIn);
+            underlyingToken.safeTransfer(address(getVault()), amountIn);
+            getVault().settle(underlyingToken);
         } else {
-            IERC20 underlyingToken = params.tokenOut;
-            IERC20 wrappedToken = params.tokenIn;
+            underlyingToken = params.tokenOut;
+            wrappedToken = params.tokenIn;
 
             getVault().wire(underlyingToken, address(this), amountOut);
             underlyingToken.approve(address(wrappedToken), amountOut);
             IERC4626(address(wrappedToken)).deposit(amountOut, address(this));
-            wrappedToken.approve(address(getVault()), amountIn);
-            getVault().retrieve(wrappedToken, address(this), amountIn);
+            wrappedToken.safeTransfer(address(getVault()), amountIn);
+            getVault().settle(wrappedToken);
         }
     }
 }

@@ -17,6 +17,6 @@ struct RebalanceHookParams {
     SwapKind kind;
     IERC20 tokenIn;
     IERC20 tokenOut;
-    uint256 amountGiven;
+    uint256 amountGivenRaw;
     uint256 limit;
 }
