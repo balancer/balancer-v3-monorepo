@@ -295,7 +295,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                 poolTokenConfig[token].tokenType == TokenType.ERC4626 &&
                 _wrappedTokenBuffers[IERC4626(address(token))] != pool
             ) {
-                tokens[i] = _wrappedTokenBufferBaseTokens[token];
+                tokens[i] = IERC20(IERC4626(address(token)).asset());
             } else {
                 tokens[i] = token;
             }
