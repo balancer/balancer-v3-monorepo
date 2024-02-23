@@ -51,6 +51,11 @@ contract ERC4626BufferPool is
     uint256 public constant WRAPPED_TOKEN_INDEX = 0;
     uint256 public constant BASE_TOKEN_INDEX = 1;
 
+    // Due to rounding issues, the swap operation of the rebalance function can miss the amount of tokens by 1 or 2.
+    // These extra tokens are sent to the pool balances or stays in the buffer contract, when the swap is settled.
+    // We are limiting the amount of this error to 2 units of the wrapped token.
+    uint256 public constant MAXIMUM_DIFF_WTOKENS = 2;
+
     IERC4626 internal immutable _wrappedToken;
     uint256 internal immutable _wrappedTokenScalingFactor;
 
@@ -217,8 +222,7 @@ contract ERC4626BufferPool is
         uint256 limit;
         if (balanceWrappedAssets > balanceUnwrappedAssets) {
             exchangeAmount = (balanceWrappedAssets - balanceUnwrappedAssets) / 2;
-            // limiting the amount of lost wTokens to a maximum of 5
-            limit = _wrappedToken.convertToShares(exchangeAmount) - 5;
+            limit = _wrappedToken.convertToShares(exchangeAmount) - MAXIMUM_DIFF_WTOKENS;
 
             getVault().invoke(
                 abi.encodeWithSelector(
@@ -236,8 +240,7 @@ contract ERC4626BufferPool is
             );
         } else if (balanceUnwrappedAssets > balanceWrappedAssets) {
             exchangeAmount = (balanceUnwrappedAssets - balanceWrappedAssets) / 2;
-            // limiting the amount of lost wTokens to a maximum of 5
-            limit = _wrappedToken.convertToShares(exchangeAmount) + 5;
+            limit = _wrappedToken.convertToShares(exchangeAmount) + MAXIMUM_DIFF_WTOKENS;
 
             getVault().invoke(
                 abi.encodeWithSelector(
