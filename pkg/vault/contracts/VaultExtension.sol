@@ -3,6 +3,7 @@
 pragma solidity ^0.8.4;
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -16,6 +17,7 @@ import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/I
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -28,6 +30,7 @@ import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Ba
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
+import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 
@@ -41,7 +44,7 @@ import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
  *
  * The storage of this contract is in practice unused.
  */
-contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
+contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
     using Address for *;
     using ArrayHelpers for uint256[];
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -52,8 +55,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     using SafeERC20 for IERC20;
     using InputHelpers for uint256;
     using ScalingHelpers for *;
+    using VaultExtensionsLib for IVault;
 
     IVault private immutable _vault;
+    IVaultAdmin private immutable _vaultAdmin;
 
     /// @dev Functions with this modifier can only be delegate-called by the vault.
     modifier onlyVault() {
@@ -62,18 +67,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     }
 
     function _ensureVaultDelegateCall() internal view {
-        // If this is a delegate call from the vault, the address of the contract should be the Vault's,
-        // not the extension.
-        if (address(this) != address(_vault)) {
-            revert NotVaultDelegateCall();
-        }
+        _vault.ensureVaultDelegateCall();
     }
 
     constructor(
         IVault mainVault,
+        IVaultAdmin vaultAdmin,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
     ) Authentication(bytes32(uint256(uint160(address(mainVault))))) {
+        // TODO: remove constructor code in favor of vault admin.
         if (pauseWindowDuration > MAX_PAUSE_WINDOW_DURATION) {
             revert VaultPauseWindowDurationTooLarge();
         }
@@ -89,6 +92,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
 
         _vault = mainVault;
+        _vaultAdmin = vaultAdmin;
     }
 
     /*******************************************************************************
@@ -472,62 +476,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     }
 
     /*******************************************************************************
-                                    Vault Pausing
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultExtension
-    function isVaultPaused() external view onlyVault returns (bool) {
-        return _isVaultPaused();
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getVaultPausedState() external view onlyVault returns (bool, uint256, uint256) {
-        return (_isVaultPaused(), _vaultPauseWindowEndTime, _vaultBufferPeriodEndTime);
-    }
-
-    /// @inheritdoc IVaultExtension
-    function pauseVault() external authenticate onlyVault {
-        _setVaultPaused(true);
-    }
-
-    /// @inheritdoc IVaultExtension
-    function unpauseVault() external authenticate onlyVault {
-        _setVaultPaused(false);
-    }
-
-    /**
-     * @dev The contract can only be paused until the end of the Pause Window, and
-     * unpaused until the end of the Buffer Period.
-     */
-    function _setVaultPaused(bool pausing) internal {
-        if (_isVaultPaused()) {
-            if (pausing) {
-                // Already paused, and we're trying to pause it again.
-                revert VaultPaused();
-            }
-
-            // The Vault can always be unpaused while it's paused.
-            // When the buffer period expires, `_isVaultPaused` will return false, so we would be in the outside
-            // else clause, where trying to unpause will revert unconditionally.
-        } else {
-            if (pausing) {
-                // Not already paused; we can pause within the window.
-                // solhint-disable-next-line not-rely-on-time
-                if (block.timestamp >= _vaultPauseWindowEndTime) {
-                    revert VaultPauseWindowExpired();
-                }
-            } else {
-                // Not paused, and we're trying to unpause it.
-                revert VaultNotPaused();
-            }
-        }
-
-        _vaultPaused = pausing;
-
-        emit VaultPausedStateChanged(pausing);
-    }
-
-    /*******************************************************************************
                                      Pool Pausing
     *******************************************************************************/
 
@@ -607,26 +555,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function setProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external authenticate onlyVault {
-        if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
-            revert ProtocolSwapFeePercentageTooHigh();
-        }
-        _protocolSwapFeePercentage = newProtocolSwapFeePercentage;
-        emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
-    }
-
-    /// @inheritdoc IVaultExtension
     function getProtocolSwapFeePercentage() external view onlyVault returns (uint256) {
         return _protocolSwapFeePercentage;
-    }
-
-    /// @inheritdoc IVaultExtension
-    function setProtocolYieldFeePercentage(uint256 newProtocolYieldFeePercentage) external authenticate onlyVault {
-        if (newProtocolYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
-            revert ProtocolYieldFeePercentageTooHigh();
-        }
-        _protocolYieldFeePercentage = newProtocolYieldFeePercentage;
-        emit ProtocolYieldFeePercentageChanged(newProtocolYieldFeePercentage);
     }
 
     /// @inheritdoc IVaultExtension
@@ -637,6 +567,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     /// @inheritdoc IVaultExtension
     function getProtocolFees(address token) external view onlyVault returns (uint256) {
         return _protocolFees[IERC20(token)];
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getStaticSwapFeePercentage(
+        address pool
+    ) external view withRegisteredPool(pool) onlyVault returns (uint256) {
+        return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
     }
 
     /// @inheritdoc IVaultExtension
@@ -655,37 +592,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
                 emit ProtocolFeeCollected(token, amount);
             }
         }
-    }
-
-    /**
-     * @inheritdoc IVaultExtension
-     * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
-     * MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
-     */
-    function setStaticSwapFeePercentage(
-        address pool,
-        uint256 swapFeePercentage
-    ) external authenticate withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault {
-        _setStaticSwapFeePercentage(pool, swapFeePercentage);
-    }
-
-    function _setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) internal virtual {
-        if (swapFeePercentage > _MAX_SWAP_FEE_PERCENTAGE) {
-            revert SwapFeePercentageTooHigh();
-        }
-
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.staticSwapFeePercentage = swapFeePercentage.toUint64();
-        _poolConfig[pool] = config.fromPoolConfig();
-
-        emit SwapFeePercentageChanged(pool, swapFeePercentage);
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getStaticSwapFeePercentage(
-        address pool
-    ) external view withRegisteredPool(pool) onlyVault returns (uint256) {
-        return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
     }
 
     /*******************************************************************************
@@ -822,7 +728,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     }
 
     /*******************************************************************************
-                                    Queries
+                                        Queries
     *******************************************************************************/
 
     /// @dev Ensure that only static calls are made to the functions with this modifier.
@@ -860,25 +766,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
                                     Authentication
     *******************************************************************************/
 
-    /// @inheritdoc IVaultExtension
-    function getAuthorizer() external view onlyVault returns (IAuthorizer) {
-        return _authorizer;
-    }
-
-    /// @inheritdoc IVaultExtension
-    function setAuthorizer(IAuthorizer newAuthorizer) external nonReentrant authenticate onlyVault {
-        _authorizer = newAuthorizer;
-
-        emit AuthorizerChanged(newAuthorizer);
-    }
-
     /// @dev Access control is delegated to the Authorizer
     function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
         return _authorizer.canPerform(actionId, user, address(this));
     }
 
     /*******************************************************************************
--                                ERC4626 Buffers
+-                                   ERC4626 Buffers
      *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
@@ -954,5 +848,41 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
             }),
             LiquidityManagement({ supportsAddLiquidityCustom: true, supportsRemoveLiquidityCustom: false })
         );
+    }
+
+    /*******************************************************************************
+                                     Default handlers
+    *******************************************************************************/
+
+    receive() external payable {
+        revert CannotReceiveEth();
+    }
+
+    // solhint-disable no-complex-fallback
+
+    /**
+     * @inheritdoc Proxy
+     * @dev Override proxy implementation of `fallback` to disallow incoming ETH transfers.
+     * This function actually returns whatever the Vault Extension does when handling the request.
+     */
+    fallback() external payable override {
+        if (msg.value > 0) {
+            revert CannotReceiveEth();
+        }
+
+        _fallback();
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getVaultAdmin() external view returns (address) {
+        return _implementation();
+    }
+
+    /**
+     * @inheritdoc Proxy
+     * @dev Returns Vault Extension, where fallback requests are forwarded.
+     */
+    function _implementation() internal view override returns (address) {
+        return address(_vaultAdmin);
     }
 }

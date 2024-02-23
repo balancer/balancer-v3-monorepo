@@ -7,7 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -123,13 +123,13 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     }
 
     function setSwapFeePercentage(uint256 percentage) internal {
-        authorizer.grantRole(vault.getActionId(IVaultExtension.setStaticSwapFeePercentage.selector), admin);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), admin);
         vm.prank(admin);
         vault.setStaticSwapFeePercentage(address(pool), percentage);
     }
 
     function setProtocolSwapFeePercentage(uint256 percentage) internal {
-        authorizer.grantRole(vault.getActionId(IVaultExtension.setProtocolSwapFeePercentage.selector), admin);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setProtocolSwapFeePercentage.selector), admin);
         vm.prank(admin);
         vault.setProtocolSwapFeePercentage(percentage);
     }
