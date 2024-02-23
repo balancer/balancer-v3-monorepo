@@ -173,7 +173,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
-        _registerPool(pool, tokenConfig, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
+        _registerPool(pool, tokenConfig, false, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
     }
 
     /// @inheritdoc IVaultExtension
@@ -191,6 +191,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
     function _registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
+        bool isBufferPool,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolHooks memory hookConfig,
@@ -268,6 +269,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         config.liquidityManagement = liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = pauseWindowEndTime.toUint32();
+        config.isBufferPool = isBufferPool;
         _poolConfig[pool] = config.fromPoolConfig();
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
@@ -833,6 +835,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         _registerPool(
             pool,
             tokenConfig,
+            true, // Set as buffer pool
             pauseWindowEndTime,
             pauseManager,
             PoolHooks({
@@ -847,11 +850,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
             }),
             LiquidityManagement({ supportsAddLiquidityCustom: true, supportsRemoveLiquidityCustom: false })
         );
-
-        // Set isBufferPool flag
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.isBufferPool = true;
-        _poolConfig[pool] = config.fromPoolConfig();
     }
 
     /*******************************************************************************
