@@ -784,6 +784,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         if (added == false) {
             revert BufferPoolFactoryAlreadyRegistered();
         }
+
+        emit BufferPoolFactoryRegistered(factory);
     }
 
     /// @inheritdoc IVaultExtension
@@ -793,6 +795,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         if (removed == false) {
             revert BufferPoolFactoryNotRegistered();
         }
+
+        emit BufferPoolFactoryDeregistered(factory);
     }
 
     /// @inheritdoc IVaultExtension
@@ -824,6 +828,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         _wrappedTokenBuffers[wrappedToken] = pool;
 
         IERC20 baseToken = IERC20(wrappedToken.asset());
+
+        emit BufferPoolCreated(address(wrappedToken), address(baseToken));
 
         // Token order is wrapped first, then base.
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);

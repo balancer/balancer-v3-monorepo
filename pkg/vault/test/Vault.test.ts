@@ -384,6 +384,12 @@ describe('Vault', function () {
       expect(maxTokens).to.eq(4);
     });
 
+    it('is registered as a normal pool', async () => {
+      const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(poolA);
+
+      expect(poolConfig.isBufferPool).to.be.false;
+    });
+
     it('stores the decimal differences', async () => {
       const expectedDecimals = await Promise.all(
         poolATokens.map(async (token) => (await deployedAt('v3-solidity-utils/ERC20TestToken', token)).decimals())
