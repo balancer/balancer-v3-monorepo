@@ -198,7 +198,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // struct, to be settled in non-reentrant _swap with the rest of the accounting.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN);
 
-        if (_bufferPools.contains(params.pool)) {
+        if (poolData.poolConfig.isBufferPool) {
             revert CannotSwapWithBufferPool(params.pool);
         }
 

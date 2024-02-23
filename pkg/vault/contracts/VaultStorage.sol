@@ -113,9 +113,6 @@ contract VaultStorage {
     // ERC4626 wrapped token -> associated Buffer Pool
     mapping(IERC4626 => address) internal _wrappedTokenBuffers;
 
-    // The set of buffer pools: i.e., the values in the `_wrappedTokenBuffers` mapping.
-    EnumerableSet.AddressSet internal _bufferPools;
-
     // The set of factories allowed to create buffer pools.
     EnumerableSet.AddressSet internal _bufferPoolFactories;
 }
