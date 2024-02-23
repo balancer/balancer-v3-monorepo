@@ -172,7 +172,7 @@ describe('ERC4626BufferPool', function () {
       await vault.connect(alice).registerBufferPoolFactory(factory);
 
       expect(await createBufferPool())
-        .to.emit(vault, 'BufferPoolCreated')
+        .to.emit(vault, 'WrappedTokenBufferCreated')
         .withArgs(wrappedTokenAddress, baseTokenAddress);
     });
   });

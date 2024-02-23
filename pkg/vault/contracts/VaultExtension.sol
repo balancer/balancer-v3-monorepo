@@ -829,7 +829,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
 
         IERC20 baseToken = IERC20(wrappedToken.asset());
 
-        emit BufferPoolCreated(address(wrappedToken), address(baseToken));
+        emit WrappedTokenBufferCreated(address(wrappedToken), address(baseToken));
 
         // Token order is wrapped first, then base.
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);

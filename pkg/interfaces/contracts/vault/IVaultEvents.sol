@@ -134,5 +134,5 @@ interface IVaultEvents {
      * @param wrappedToken The wrapped token associated with the buffer
      * @param baseToken The base token associated with the wrapper
      */
-    event BufferPoolCreated(address indexed wrappedToken, address indexed baseToken);
+    event WrappedTokenBufferCreated(address indexed wrappedToken, address indexed baseToken);
 }
