@@ -157,7 +157,8 @@ contract ERC4626BufferPool is
             // Rate used by the vault to scale values
             uint256 wrappedRate = _getRate();
 
-            uint256 unscaledSharesAmount = request.amountGivenScaled18.divDown(wrappedRate) / _wrappedTokenScalingFactor;
+            uint256 unscaledSharesAmount = request.amountGivenScaled18.divDown(wrappedRate) /
+                _wrappedTokenScalingFactor;
             // Add 1 to assets amount so we make sure we're always returning more assets than needed to wrap.
             // It ensures that any error in the calculation of the rate will be charged from the buffer,
             // and not from the vault
