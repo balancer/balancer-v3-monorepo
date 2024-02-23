@@ -147,6 +147,16 @@ interface IVaultMain {
     function getRate(address pool, uint256 shares) external view returns (uint256);
 
     /*******************************************************************************
+                                Authentication
+    *******************************************************************************/
+
+    /**
+     * @notice Returns the Vault's Authorizer.
+     * @return Address of the authorizer
+     */
+    function getAuthorizer() external view returns (IAuthorizer);
+
+    /*******************************************************************************
                                      Miscellaneous
     *******************************************************************************/
 
