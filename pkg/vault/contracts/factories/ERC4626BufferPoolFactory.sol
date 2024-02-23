@@ -68,7 +68,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
      * well-behaved and compatible with the Vault. Of course, there are no guarantees, but we perform some basic checks.
      * @param wrappedToken The proposed token to create a new buffer for
      */
-    function _isValidWrappedToken(IERC4626 wrappedToken) private view returns (bool) {
+    function _isValidWrappedToken(IERC4626 wrappedToken) internal view returns (bool) {
         return _hasValidAsset(wrappedToken) && _hasAssetValue(wrappedToken) && _supportsRateComputation(wrappedToken);
     }
 
