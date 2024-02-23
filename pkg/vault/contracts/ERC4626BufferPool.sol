@@ -301,30 +301,28 @@ contract ERC4626BufferPool is
         );
     }
 
-    function _isBufferPoolBalanced(uint256[] memory balancesScaled) private view returns (bool) {
-        // Enforce proportionality - might need to say exactAmountsIn[WRAPPED_TOKEN_INDEX].mulDown(getRate())
-        // to compare equal value?
-        if (balancesScaled[WRAPPED_TOKEN_INDEX] == balancesScaled[BASE_TOKEN_INDEX]) {
+    function _isBufferPoolBalanced(uint256[] memory balancesScaled18) private view returns (bool) {
+        if (balancesScaled18[WRAPPED_TOKEN_INDEX] == balancesScaled18[BASE_TOKEN_INDEX]) {
             return true;
         }
 
         // If not perfectly proportional, makes sure that the difference is within tolerance.
-        // The tolerance depends on the decimals of the token, because it introduces imprecisions to the rate
-        // calculation, and on the initial balance of the pool (since exactAmountsInScaled18 has 18 decimals,
-        // it's divided by FixedPoint.ONE so we get only the integer part of the number)
-        uint8 decimals = _wrappedToken.decimals();
+        // The tolerance depends on the decimals of the token, because it introduces imprecision to the rate
+        // calculation, and on the initial balance of the pool (since balancesScaled18 has 18 decimals,
+        // it's divided by FixedPoint.ONE [mulDown] so we get only the integer part of the number)
+        uint256 tolerance = 1;
 
-        if (balancesScaled[WRAPPED_TOKEN_INDEX] >= balancesScaled[BASE_TOKEN_INDEX]) {
-            uint256 tolerance = 10 ** (18 - decimals) * (balancesScaled[WRAPPED_TOKEN_INDEX] / FixedPoint.ONE);
-            return balancesScaled[WRAPPED_TOKEN_INDEX] - balancesScaled[BASE_TOKEN_INDEX] < tolerance;
+        if (balancesScaled18[WRAPPED_TOKEN_INDEX] >= balancesScaled18[BASE_TOKEN_INDEX]) {
+            if (_wrappedTokenScalingFactor * balancesScaled18[WRAPPED_TOKEN_INDEX] > FixedPoint.ONE) {
+                tolerance = _wrappedTokenScalingFactor.mulDown(balancesScaled18[WRAPPED_TOKEN_INDEX]);
+            }
+            return balancesScaled18[WRAPPED_TOKEN_INDEX] - balancesScaled18[BASE_TOKEN_INDEX] < tolerance;
+        } else {
+            if (_wrappedTokenScalingFactor * balancesScaled18[BASE_TOKEN_INDEX] > FixedPoint.ONE) {
+                tolerance = _wrappedTokenScalingFactor.mulDown(balancesScaled18[BASE_TOKEN_INDEX]);
+            }
+            return balancesScaled18[BASE_TOKEN_INDEX] - balancesScaled18[WRAPPED_TOKEN_INDEX] < tolerance;
         }
-
-        if (balancesScaled[BASE_TOKEN_INDEX] >= balancesScaled[WRAPPED_TOKEN_INDEX]) {
-            uint256 tolerance = 10 ** (18 - decimals) * (balancesScaled[BASE_TOKEN_INDEX] / FixedPoint.ONE);
-            return balancesScaled[BASE_TOKEN_INDEX] - balancesScaled[WRAPPED_TOKEN_INDEX] < tolerance;
-        }
-
-        return false;
     }
 
     function _getRate() private view returns (uint256) {
