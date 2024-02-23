@@ -23,6 +23,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { BasePoolAuthentication } from "./BasePoolAuthentication.sol";
 import { BalancerPoolToken } from "./BalancerPoolToken.sol";
@@ -43,13 +44,15 @@ contract ERC4626BufferPool is
     BasePoolAuthentication,
     ReentrancyGuard
 {
-    using FixedPoint for uint256;
     using SafeERC20 for IERC20;
+    using FixedPoint for uint256;
+    using ScalingHelpers for uint256;
 
     uint256 public constant WRAPPED_TOKEN_INDEX = 0;
     uint256 public constant BASE_TOKEN_INDEX = 1;
 
     IERC4626 internal immutable _wrappedToken;
+    uint256 internal immutable _wrappedTokenScalingFactor;
 
     // Uses the factory as the Authentication disambiguator.
     constructor(
@@ -59,6 +62,7 @@ contract ERC4626BufferPool is
         IVault vault
     ) BalancerPoolToken(vault, name, symbol) BasePoolAuthentication(vault, msg.sender) {
         _wrappedToken = wrappedToken;
+        _wrappedTokenScalingFactor = 10 ** (18 - wrappedToken.decimals());
     }
 
     /// @inheritdoc IBasePool
@@ -140,30 +144,34 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IBasePool
     function onSwap(IBasePool.SwapParams memory request) public view onlyVault returns (uint256) {
-        // TODO If onSwap wasn't triggered by the rebalance function, uses linear math
-        // return request.amountGivenScaled18;
+        // If onSwap was triggered by the rebalance function, use the rate (expensive, but more precise)
+        // Since the rebalance function is the only one marked non-reentrant, we can use that guard directly.
+        // Note that this ReentrancyGuard is local to the pool, not related to the Vault's separate ReentrancyGuard.
+        // NB: If this ever changes, we would need to create another modifier on the rebalance function and check that.
+        if (_reentrancyGuardEntered()) {
+            // Rate used by the vault to scale values
+            uint256 wrappedRate = _getRate();
 
-        // If onSwap was triggered by the rebalance function, fixes the rate (gas expensive, but more precise approach)
-        uint8 decimals = _wrappedToken.decimals();
-        // Rate used by the vault to scale values
-        uint256 wrappedRate = _getRate();
+            uint256 unscaledSharesAmount = request.amountGivenScaled18.divDown(wrappedRate) / _wrappedTokenScalingFactor;
+            // Add 1 to assets amount so we make sure we're always returning more assets than needed to wrap.
+            // It ensures that any error in the calculation of the rate will be charged from the buffer,
+            // and not from the vault
+            uint256 unscaledAssetsAmount = _wrappedToken.previewRedeem(unscaledSharesAmount) + 1;
+            uint256 preciseAmountScaled18 = unscaledAssetsAmount * _wrappedTokenScalingFactor;
 
-        uint256 unscaledSharesAmount = request.amountGivenScaled18.divDown(wrappedRate) / 10 ** (18 - decimals);
-        // Add 1 to assets amount so we make sure we're always returning more assets than needed to wrap.
-        // It ensures that any error in the calculation of the rate will be charged from the buffer,
-        // and not from the vault
-        uint256 unscaledAssetsAmount = _wrappedToken.previewRedeem(unscaledSharesAmount) + 1;
-        uint256 preciseAmountScaled18 = unscaledAssetsAmount * 10 ** (18 - decimals);
-
-        // amountGivenScaled18 has some imprecision when calculating the rate (we store only 18 decimals of rate,
-        // therefore it's less precise than using preview or convertToAssets directly).
-        // So, we need to return the linear math value (amountGivenScaled18), but subtract the error introduced by
-        // the rate difference, which is calculated by (amountGivenScaled18 - preciseAmountScaled18), i.e.:
-        //
-        // amountGivenScaled18 - (error)
-        //
-        //     where error is (amountGivenScaled18 - preciseAmountScaled18)
-        return 2 * request.amountGivenScaled18 - preciseAmountScaled18;
+            // amountGivenScaled18 has some imprecision when calculating the rate (we store only 18 decimals of rate,
+            // therefore it's less precise than using preview or convertToAssets directly).
+            // So, we need to return the linear math value (amountGivenScaled18), but subtract the error introduced by
+            // the rate difference, which is calculated by (amountGivenScaled18 - preciseAmountScaled18), i.e.:
+            //
+            // amountGivenScaled18 - (error)
+            //
+            //     where error is (amountGivenScaled18 - preciseAmountScaled18)
+            return 2 * request.amountGivenScaled18 - preciseAmountScaled18;
+        } else {
+            // If onSwap wasn't triggered by the rebalance function, use linear math
+            return request.amountGivenScaled18;
+        }
     }
 
     /// @inheritdoc IBasePool
@@ -194,10 +202,12 @@ contract ERC4626BufferPool is
         uint256 balanceUnwrappedAssets = balancesRaw[BASE_TOKEN_INDEX];
 
         uint256[] memory balancesScaled18 = new uint256[](2);
-        balancesScaled18[WRAPPED_TOKEN_INDEX] = balanceWrappedAssets.mulDown(
+        balancesScaled18[WRAPPED_TOKEN_INDEX] = balanceWrappedAssets.toScaled18RoundDown(
             decimalScalingFactors[WRAPPED_TOKEN_INDEX]
         );
-        balancesScaled18[BASE_TOKEN_INDEX] = balanceUnwrappedAssets.mulDown(decimalScalingFactors[BASE_TOKEN_INDEX]);
+        balancesScaled18[BASE_TOKEN_INDEX] = balanceUnwrappedAssets.toScaled18RoundDown(
+            decimalScalingFactors[BASE_TOKEN_INDEX]
+        );
 
         if (_isBufferPoolBalanced(balancesScaled18)) {
             return;
