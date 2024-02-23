@@ -830,6 +830,8 @@ contract Router is IRouter, ReentrancyGuard {
                     // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
                     // required amount when performing the operation. In this case, the BPT amount needed for the
                     // operation is not known in advance, so we take a flashloan for all the available reserves.
+                    // The last step is the one that defines the inputs for this path. The caller should have enough
+                    // BPT to burn already if that's the case, so we just skip this step if so.
                     if (isLastStep == false) {
                         maxAmountIn = _vault.getTokenReserve(tokenIn);
                         _vault.wire(IERC20(step.pool), params.sender, maxAmountIn);
@@ -1427,6 +1429,10 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     function _settlePaths(address sender, bool wethIsEth) internal {
+        // numTokensIn / Out may be 0 if the inputs and / or outputs are not transient.
+        // For example, a swap starting with a 'remove liquidity' step will already have burned the input tokens,
+        // in which case there is nothing to settle. Then, since we're iterating backwards below, we need to be able
+        // to subtract 1 from these quantities without reverting, which is why we use signed integers.
         int256 numTokensIn = int256(_currentSwapTokensIn.length());
         int256 numTokensOut = int256(_currentSwapTokensOut.length());
         uint256 ethAmountIn = 0;
