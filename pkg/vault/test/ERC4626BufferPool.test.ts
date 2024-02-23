@@ -169,6 +169,7 @@ describe('ERC4626BufferPool', function () {
 
       expect(poolConfig.isPoolRegistered).to.be.true;
       expect(poolConfig.isPoolInitialized).to.be.false;
+      expect(poolConfig.isBufferPool).to.be.true;
     });
 
     it('has the correct tokens', async () => {

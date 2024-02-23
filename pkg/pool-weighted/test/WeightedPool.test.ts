@@ -98,6 +98,7 @@ describe('WeightedPool', function () {
         expect(poolConfig.isPoolRegistered).to.be.true;
         expect(poolConfig.isPoolInitialized).to.be.true;
         expect(poolConfig.isPoolPaused).to.be.false;
+        expect(poolConfig.isBufferPool).to.be.false;
       });
 
       it('has the correct pool tokens and balances', async () => {
