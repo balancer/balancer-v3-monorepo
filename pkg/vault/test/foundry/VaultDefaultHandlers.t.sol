@@ -31,7 +31,7 @@ contract VaultDefaultHandlers is BaseVaultTest {
     }
 
     function testDefaultHandler() public {
-        bytes32 result = VaultExtensionMock(address(vault)).mockExtensionHash(bytes("V3"));
+        bytes32 result = VaultExtensionMock(payable(address(vault))).mockExtensionHash(bytes("V3"));
         assertEq(result, keccak256(bytes("V3")));
     }
 

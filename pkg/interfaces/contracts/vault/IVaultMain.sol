@@ -139,6 +139,16 @@ interface IVaultMain {
     function getPoolTokenCountAndIndexOfToken(address pool, IERC20 token) external view returns (uint256, uint256);
 
     /*******************************************************************************
+                                Authentication
+    *******************************************************************************/
+
+    /**
+     * @notice Returns the Vault's Authorizer.
+     * @return Address of the authorizer
+     */
+    function getAuthorizer() external view returns (IAuthorizer);
+
+    /*******************************************************************************
                                      Miscellaneous
     *******************************************************************************/
 

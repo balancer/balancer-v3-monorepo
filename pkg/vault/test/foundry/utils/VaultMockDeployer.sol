@@ -8,6 +8,7 @@ import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
 import { VaultFactory } from "../../../contracts/VaultFactory.sol";
+import { VaultAdminMock } from "../../../contracts/test/VaultAdminMock.sol";
 import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
 
@@ -16,7 +17,13 @@ library VaultMockDeployer {
         IAuthorizer authorizer = new BasicAuthorizerMock();
         bytes32 salt = bytes32(0);
         vault = VaultMock(payable(CREATE3.getDeployed(salt)));
-        VaultExtensionMock vaultExtension = new VaultExtensionMock(IVault(address(vault)), 90 days, 30 days);
+        VaultAdminMock vaultAdmin = new VaultAdminMock(IVault(address(vault)), 90 days, 30 days);
+        VaultExtensionMock vaultExtension = new VaultExtensionMock(
+            IVault(address(vault)),
+            vaultAdmin,
+            90 days,
+            30 days
+        );
         _create(abi.encode(vaultExtension, authorizer), salt);
         return vault;
     }
