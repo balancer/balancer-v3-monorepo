@@ -35,6 +35,7 @@ describe('ERC4626BufferPool', function () {
   let baseToken: ERC20TestToken;
   let baseTokenAddress: string;
   let wrappedTokenAddress: string;
+  let factoryAddress: string;
   let tokenAddresses: string[];
 
   let alice: SignerWithAddress;
@@ -66,6 +67,7 @@ describe('ERC4626BufferPool', function () {
     tokenAddresses = [wrappedTokenAddress, baseTokenAddress];
 
     factory = await deploy('v3-vault/ERC4626BufferPoolFactory', { args: [vault, 12 * MONTH] });
+    factoryAddress = await factory.getAddress();
   });
 
   async function createBufferPool(): Promise<Contract> {
@@ -84,6 +86,9 @@ describe('ERC4626BufferPool', function () {
   }
 
   async function createAndInitializeBufferPool(): Promise<Contract> {
+    await grantFactoryPermissions();
+    await vault.connect(alice).registerBufferPoolFactory(factory);
+
     pool = await createBufferPool();
 
     await baseToken.mint(alice, TOKEN_AMOUNT);
@@ -96,8 +101,87 @@ describe('ERC4626BufferPool', function () {
     return pool;
   }
 
+  async function grantFactoryPermissions() {
+    const registerFactoryAction = await actionId(vault, 'registerBufferPoolFactory');
+    const deregisterFactoryAction = await actionId(vault, 'deregisterBufferPoolFactory');
+
+    await authorizer.grantRole(registerFactoryAction, alice.address);
+    await authorizer.grantRole(deregisterFactoryAction, alice.address);
+  }
+
+  describe('factory permissions', () => {
+    context('without permission', () => {
+      it('cannot register a pool', async () => {
+        await expect(createBufferPool()).to.be.revertedWithCustomError(vault, 'UnregisteredBufferPoolFactory');
+      });
+    });
+
+    context('with permission', () => {
+      sharedBeforeEach('grant permission', async () => {
+        await grantFactoryPermissions();
+      });
+
+      it('can register a buffer pool factory', async () => {
+        expect(await vault.connect(alice).registerBufferPoolFactory(factory)).to.not.be.reverted;
+      });
+
+      it('cannot register a buffer pool factory twice', async () => {
+        await vault.connect(alice).registerBufferPoolFactory(factory);
+
+        await expect(vault.connect(alice).registerBufferPoolFactory(factory)).to.be.revertedWithCustomError(
+          vault,
+          'BufferPoolFactoryAlreadyRegistered'
+        );
+      });
+
+      it('can deregister a buffer pool factory', async () => {
+        await vault.connect(alice).registerBufferPoolFactory(factory);
+
+        expect(await vault.connect(alice).deregisterBufferPoolFactory(factory)).to.not.be.reverted;
+      });
+
+      it('cannot deregister an unregistered buffer pool factory', async () => {
+        await expect(vault.connect(alice).deregisterBufferPoolFactory(ANY_ADDRESS)).to.be.revertedWithCustomError(
+          vault,
+          'BufferPoolFactoryNotRegistered'
+        );
+      });
+    });
+  });
+
+  describe('events', () => {
+    sharedBeforeEach('grant permission', async () => {
+      await grantFactoryPermissions();
+    });
+
+    it('factory registration emits an event', async () => {
+      await expect(vault.connect(alice).registerBufferPoolFactory(factory))
+        .to.emit(vault, 'BufferPoolFactoryRegistered')
+        .withArgs(factoryAddress);
+    });
+
+    it('factory deregistration emits an event', async () => {
+      await vault.connect(alice).registerBufferPoolFactory(factory);
+
+      await expect(vault.connect(alice).deregisterBufferPoolFactory(factory))
+        .to.emit(vault, 'BufferPoolFactoryDeregistered')
+        .withArgs(factoryAddress);
+    });
+
+    it('buffer creation emits an event', async () => {
+      await vault.connect(alice).registerBufferPoolFactory(factory);
+
+      expect(await createBufferPool())
+        .to.emit(vault, 'WrappedTokenBufferCreated')
+        .withArgs(wrappedTokenAddress, baseTokenAddress);
+    });
+  });
+
   describe('registration', () => {
-    sharedBeforeEach('create pool', async () => {
+    sharedBeforeEach('register factory and create pool', async () => {
+      await grantFactoryPermissions();
+      await vault.connect(alice).registerBufferPoolFactory(factory);
+
       pool = await createBufferPool();
     });
 
@@ -115,6 +199,7 @@ describe('ERC4626BufferPool', function () {
 
       expect(poolConfig.isPoolRegistered).to.be.true;
       expect(poolConfig.isPoolInitialized).to.be.false;
+      expect(poolConfig.isBufferPool).to.be.true;
     });
 
     it('has the correct tokens', async () => {
@@ -135,7 +220,6 @@ describe('ERC4626BufferPool', function () {
 
       const [paused, , , pauseManager] = await vault.getPoolPausedState(pool);
       expect(paused).to.be.false;
-      expect(poolConfig.isBufferPool).to.be.true;
       expect(pauseManager).to.eq(ANY_ADDRESS);
 
       expect(poolConfig.pauseWindowEndTime).to.gt(currentTime);
@@ -154,6 +238,9 @@ describe('ERC4626BufferPool', function () {
 
   describe('initialization', () => {
     sharedBeforeEach('create pool', async () => {
+      await grantFactoryPermissions();
+      await vault.connect(alice).registerBufferPoolFactory(factory);
+
       pool = await createBufferPool();
 
       await baseToken.mint(alice, TOKEN_AMOUNT);

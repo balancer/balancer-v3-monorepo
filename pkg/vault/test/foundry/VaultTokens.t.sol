@@ -117,8 +117,8 @@ contract VaultTokenTest is BaseVaultTest {
     }
 
     function registerBuffers() private {
-        // Buffer Pool creation is permissioned.
-        authorizer.grantRole(bufferFactory.getActionId(ERC4626BufferPoolFactory.create.selector), alice);
+        // Buffer Pool creation is permissioned by factory.
+        authorizer.grantRole(vault.getActionId(IVaultExtension.registerBufferPoolFactory.selector), alice);
 
         // Establish assets and supply so that buffer creation doesn't fail
         dai.mint(address(waDAI), 1000e18);
@@ -127,6 +127,7 @@ contract VaultTokenTest is BaseVaultTest {
         waUSDC.mint(1000e18, alice);
 
         vm.startPrank(alice);
+        vault.registerBufferPoolFactory(address(bufferFactory));
         waDAIBuffer = bufferFactory.create(waDAI, address(0), getSalt(address(waDAI)));
         waUSDCBuffer = bufferFactory.create(waUSDC, address(0), getSalt(address(waUSDC)));
         vm.stopPrank();
