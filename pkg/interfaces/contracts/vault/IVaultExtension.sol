@@ -445,6 +445,7 @@ interface IVaultExtension {
      * @param factory The factory to remove from the allowlist
      */
     function deregisterBufferPoolFactory(address factory) external;
+
     /*******************************************************************************
                                      Default handlers
     *******************************************************************************/
