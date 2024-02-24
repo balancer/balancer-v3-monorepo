@@ -261,7 +261,7 @@ contract WeightedPoolTest is BaseVaultTest {
     }
 
     function testSetSwapFeeTooLow() public {
-        authorizer.grantRole(vault.getActionId(IVaultExtension.setStaticSwapFeePercentage.selector), alice);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
         vm.prank(alice);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapFeePercentageTooLow.selector));
