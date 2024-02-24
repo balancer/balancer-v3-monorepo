@@ -13,6 +13,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -24,6 +25,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -46,6 +48,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
     using Address for *;
     using ArrayHelpers for uint256[];
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using EnumerableSet for EnumerableSet.AddressSet;
     using PackedTokenBalance for bytes32;
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
@@ -170,7 +173,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
-        _registerPool(pool, tokenConfig, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
+        _registerPool(pool, tokenConfig, false, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
     }
 
     /// @inheritdoc IVaultExtension
@@ -188,6 +191,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
     function _registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
+        bool isBufferPool,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolHooks memory hookConfig,
@@ -265,6 +269,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         config.liquidityManagement = liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = pauseWindowEndTime.toUint32();
+        config.isBufferPool = isBufferPool;
         _poolConfig[pool] = config.fromPoolConfig();
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
@@ -773,6 +778,28 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
      *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
+    function registerBufferPoolFactory(address factory) external authenticate {
+        bool added = _bufferPoolFactories.add(factory);
+
+        if (added == false) {
+            revert BufferPoolFactoryAlreadyRegistered();
+        }
+
+        emit BufferPoolFactoryRegistered(factory);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function deregisterBufferPoolFactory(address factory) external authenticate {
+        bool removed = _bufferPoolFactories.remove(factory);
+
+        if (removed == false) {
+            revert BufferPoolFactoryNotRegistered();
+        }
+
+        emit BufferPoolFactoryDeregistered(factory);
+    }
+
+    /// @inheritdoc IVaultExtension
     function registerBuffer(
         IERC4626 wrappedToken,
         address pool,
@@ -783,9 +810,26 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         if (_wrappedTokenBuffers[wrappedToken] != address(0)) {
             revert WrappedTokenBufferAlreadyRegistered();
         }
+
+        // Ensure the buffer pool is from a registered factory
+        bool factoryAllowed = false;
+
+        for (uint256 i = 0; i < _bufferPoolFactories.length(); i++) {
+            if (IBasePoolFactory(_bufferPoolFactories.unchecked_at(i)).isPoolFromFactory(pool)) {
+                factoryAllowed = true;
+                break;
+            }
+        }
+
+        if (factoryAllowed == false) {
+            revert UnregisteredBufferPoolFactory();
+        }
+
         _wrappedTokenBuffers[wrappedToken] = pool;
 
         IERC20 baseToken = IERC20(wrappedToken.asset());
+
+        emit WrappedTokenBufferCreated(address(wrappedToken), address(baseToken));
 
         // Token order is wrapped first, then base.
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
@@ -794,11 +838,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         // We are assuming the baseToken is STANDARD (the default type, with enum value 0).
         tokenConfig[1].token = baseToken;
 
-        _wrappedTokenBufferBaseTokens[IERC20(wrappedToken)] = baseToken;
-
         _registerPool(
             pool,
             tokenConfig,
+            true, // Set as buffer pool
             pauseWindowEndTime,
             pauseManager,
             PoolHooks({
@@ -813,11 +856,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
             }),
             LiquidityManagement({ supportsAddLiquidityCustom: true, supportsRemoveLiquidityCustom: false })
         );
-
-        // Set isBufferPool flag
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.isBufferPool = true;
-        _poolConfig[pool] = config.fromPoolConfig();
     }
 
     /*******************************************************************************
