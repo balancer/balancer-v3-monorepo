@@ -10,6 +10,7 @@ import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
 import {
     TokenConfig,
@@ -98,6 +99,9 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
 
     function createPool() internal override returns (address) {
         factory = new ERC4626BufferPoolFactoryMock(IVault(address(vault)), 365 days);
+        authorizer.grantRole(vault.getActionId(IVaultExtension.registerBufferPoolFactory.selector), alice);
+        vm.prank(alice);
+        vault.registerBufferPoolFactory(address(factory));
 
         bufferPoolDai = ERC4626BufferPoolMock(_createBuffer(waDAI));
         bufferPoolUsdc = ERC4626BufferPoolMock(_createBuffer(waUSDC));
