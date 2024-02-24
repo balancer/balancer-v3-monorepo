@@ -19,7 +19,7 @@ interface IVaultMain {
      * @param data Contains function signature and args to be passed to the msg.sender
      * @return result Resulting data from the call
      */
-    function invoke(bytes calldata data) external payable returns (bytes memory result);
+    function lock(bytes calldata data) external payable returns (bytes memory result);
 
     /**
      * @notice Settles deltas for a token.

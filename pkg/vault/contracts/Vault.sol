@@ -67,7 +67,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * It works by tracking the lockers involved in the execution and ensures that the
      * balances are properly settled by the time the last locker is executed.
      *
-     * This is useful for functions like `invoke`, which performs arbitrary external calls:
+     * This is useful for functions like `lock`, which perform arbitrary external calls:
      * we can keep track of temporary deltas changes, and make sure they are settled by the
      * time the external call is complete.
      */
@@ -95,7 +95,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function invoke(bytes calldata data) external payable transient returns (bytes memory result) {
+    function lock(bytes calldata data) external payable transient returns (bytes memory result) {
         // Executes the function call with value to the msg.sender.
         return (msg.sender).functionCallWithValue(data, msg.value);
     }

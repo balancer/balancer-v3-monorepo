@@ -71,14 +71,14 @@ interface IVaultErrors {
     error BalanceNotSettled();
 
     /**
-     * @dev In transient accounting, a Locker is attempting to execute an operation out of order.
-     * The caller address should equal the Locker.
-     * @param locker Address of the current Locker being processed
+     * @dev In transient accounting, a locker is attempting to execute an operation out of order.
+     * The caller address should equal the locker.
+     * @param locker Address of the current locker being processed
      * @param caller Address of the caller (msg.sender)
      */
     error WrongLocker(address locker, address caller);
 
-    /// @dev A user called a Vault function (swap, add/remove liquidity) outside the invoke context.
+    /// @dev A user called a Vault function (swap, add/remove liquidity) outside the lock context.
     error NoLocker();
 
     /**
@@ -240,7 +240,7 @@ interface IVaultErrors {
     /// @dev The caller specified a buffer period longer than the maximum.
     error PauseBufferPeriodDurationTooLarge();
 
-    /// @dev A user tried to invoke an operation while the Vault was paused.
+    /// @dev A user tried to perform an operation while the Vault was paused.
     error VaultPaused();
 
     /// @dev Governance tried to unpause the Vault when it was not paused.
@@ -250,7 +250,7 @@ interface IVaultErrors {
     error VaultPauseWindowExpired();
 
     /**
-     * @dev A user tried to invoke an operation involving a paused Pool.
+     * @dev A user tried to perform an operation involving a paused Pool.
      * @param pool The paused pool
      */
     error PoolPaused(address pool);
