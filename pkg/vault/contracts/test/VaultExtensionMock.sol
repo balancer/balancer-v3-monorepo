@@ -15,20 +15,13 @@ contract VaultExtensionMock is IVaultExtensionMock, VaultExtension {
 
     constructor(
         IVault vault,
+        IVaultAdmin vaultAdmin,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) VaultExtension(vault, pauseWindowDuration, bufferPeriodDuration) {}
+    ) VaultExtension(vault, vaultAdmin, pauseWindowDuration, bufferPeriodDuration) {}
 
     function mockExtensionHash(bytes calldata input) external payable returns (bytes32) {
         return keccak256(input);
-    }
-
-    function manualPauseVault() external {
-        _setVaultPaused(true);
-    }
-
-    function manualUnpauseVault() external {
-        _setVaultPaused(false);
     }
 
     function manualPausePool(address pool) external {

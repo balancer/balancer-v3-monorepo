@@ -6,9 +6,11 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
+import { IMinimumSwapFee } from "@balancer-labs/v3-interfaces/contracts/vault/IMinimumSwapFee.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
@@ -27,6 +29,7 @@ import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, ReentrancyGuard, ERC20MultiToken {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using PackedTokenBalance for bytes32;
+    using PoolConfigLib for PoolConfig;
     using ScalingHelpers for *;
     using SafeCast for *;
     using FixedPoint for *;
@@ -295,7 +298,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                 poolTokenConfig[token].tokenType == TokenType.ERC4626 &&
                 _wrappedTokenBuffers[IERC4626(address(token))] != pool
             ) {
-                tokens[i] = _wrappedTokenBufferBaseTokens[token];
+                tokens[i] = IERC20(IERC4626(address(token)).asset());
             } else {
                 tokens[i] = token;
             }
@@ -500,6 +503,25 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             poolData.decimalScalingFactors[tokenIndex],
             poolData.tokenRates[tokenIndex]
         );
+    }
+
+    function _setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) internal virtual {
+        if (swapFeePercentage > _MAX_SWAP_FEE_PERCENTAGE) {
+            revert SwapFeePercentageTooHigh();
+        }
+
+        // This cannot be called during pool construction. Pools must be deployed first, then registered.
+        if (IERC165(pool).supportsInterface(type(IMinimumSwapFee).interfaceId)) {
+            if (swapFeePercentage < IMinimumSwapFee(pool).getMinimumSwapFeePercentage()) {
+                revert SwapFeePercentageTooLow();
+            }
+        }
+
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        config.staticSwapFeePercentage = swapFeePercentage.toUint64();
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        emit SwapFeePercentageChanged(pool, swapFeePercentage);
     }
 
     /*******************************************************************************

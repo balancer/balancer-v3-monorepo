@@ -11,6 +11,7 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
 
@@ -112,6 +113,6 @@ contract VaultStorage {
     // ERC4626 wrapped token -> associated Buffer Pool
     mapping(IERC4626 => address) internal _wrappedTokenBuffers;
 
-    // For convenience, store the base token for each buffer in `_wrappedTokenBuffers`
-    mapping(IERC20 => IERC20) internal _wrappedTokenBufferBaseTokens;
+    // The set of factories allowed to create buffer pools.
+    EnumerableSet.AddressSet internal _bufferPoolFactories;
 }
