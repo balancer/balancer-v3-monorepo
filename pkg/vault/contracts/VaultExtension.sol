@@ -133,16 +133,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function getHandler(uint256 index) external view onlyVault returns (address) {
-        if (index >= _handlers.length) {
-            revert HandlerOutOfBounds(index);
+    function getLocker(uint256 index) external view onlyVault returns (address) {
+        if (index >= _lockers.length) {
+            revert LockerOutOfBounds(index);
         }
-        return _handlers[index];
+        return _lockers[index];
     }
 
     /// @inheritdoc IVaultExtension
-    function getHandlersCount() external view onlyVault returns (uint256) {
-        return _handlers.length;
+    function getLockersCount() external view onlyVault returns (uint256) {
+        return _lockers.length;
     }
 
     /// @inheritdoc IVaultExtension
@@ -292,7 +292,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external withHandler withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault returns (uint256 bptAmountOut) {
+    ) external withLocker withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault returns (uint256 bptAmountOut) {
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(pool, Rounding.ROUND_DOWN);
 
         if (poolData.poolConfig.isPoolInitialized) {
@@ -666,7 +666,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         uint256 exactBptAmountIn
     )
         external
-        withHandler
+        withLocker
         nonReentrant
         withInitializedPool(pool)
         onlyInRecoveryMode(pool)
@@ -743,8 +743,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
             revert QueriesDisabled();
         }
 
-        // Add the current handler to the list so `withHandler` does not revert
-        _handlers.push(msg.sender);
+        // Add the current locker to the list so `withLocker` does not revert
+        _lockers.push(msg.sender);
         _;
     }
 
@@ -859,7 +859,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
     }
 
     /*******************************************************************************
-                                     Default handlers
+                                     Default lockers
     *******************************************************************************/
 
     receive() external payable {

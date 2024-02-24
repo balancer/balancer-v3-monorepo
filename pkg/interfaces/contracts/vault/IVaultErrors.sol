@@ -71,21 +71,21 @@ interface IVaultErrors {
     error BalanceNotSettled();
 
     /**
-     * @dev In transient accounting, a handler is attempting to execute an operation out of order.
-     * The caller address should equal the handler.
-     * @param handler Address of the current handler being processed
+     * @dev In transient accounting, a Locker is attempting to execute an operation out of order.
+     * The caller address should equal the Locker.
+     * @param locker Address of the current Locker being processed
      * @param caller Address of the caller (msg.sender)
      */
-    error WrongHandler(address handler, address caller);
+    error WrongLocker(address locker, address caller);
 
     /// @dev A user called a Vault function (swap, add/remove liquidity) outside the invoke context.
-    error NoHandler();
+    error NoLocker();
 
     /**
-     * @dev The caller attempted to access a handler at an invalid index.
+     * @dev The caller attempted to access a Locker at an invalid index.
      * @param index The invalid index
      */
-    error HandlerOutOfBounds(uint256 index);
+    error LockerOutOfBounds(uint256 index);
 
     /// @dev The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
     error BeforeSwapHookFailed();

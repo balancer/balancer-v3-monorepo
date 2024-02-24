@@ -59,8 +59,8 @@ contract VaultStorage {
     // Pool -> (token -> address): Pool's Rate providers.
     mapping(address => mapping(IERC20 => IRateProvider)) internal _poolRateProviders;
 
-    /// @notice List of handlers. It is non-empty only during `invoke` calls.
-    address[] internal _handlers;
+    /// @notice List of lockers. It is non-empty only during `invoke` calls.
+    address[] internal _lockers;
 
     /**
      * @notice The total number of nonzero deltas over all active + completed lockers.
@@ -69,8 +69,8 @@ contract VaultStorage {
     uint256 internal _nonzeroDeltaCount;
 
     /**
-     * @notice Represents the token due/owed to each handler.
-     * @dev Must all net to zero when the last handler is released.
+     * @notice Represents the token due/owed to each locker.
+     * @dev Must all net to zero when the last locker is released.
      */
     mapping(address => mapping(IERC20 => int256)) internal _tokenDeltas;
 

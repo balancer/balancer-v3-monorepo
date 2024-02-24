@@ -52,17 +52,17 @@ interface IVaultExtension {
     *******************************************************************************/
 
     /**
-     * @notice Returns the address at the specified index of the _handlers array.
-     * @param index The index of the handler's address to fetch
+     * @notice Returns the address at the specified index of the _lockers array.
+     * @param index The index of the locker's address to fetch
      * @return The address at the given index
      */
-    function getHandler(uint256 index) external view returns (address);
+    function getLocker(uint256 index) external view returns (address);
 
     /**
-     * @notice Returns the total number of handlers.
-     * @return The number of handlers
+     * @notice Returns the total number of lockers.
+     * @return The number of lockers
      */
-    function getHandlersCount() external view returns (uint256);
+    function getLockersCount() external view returns (uint256);
 
     /**
      *  @notice Returns the count of non-zero deltas.
@@ -385,10 +385,10 @@ interface IVaultExtension {
      * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
      * anything else will revert.
      *
-     * Allows querying any operation on the Vault that has the `withHandler` modifier.
+     * Allows querying any operation on the Vault that has the `withLocker` modifier.
      *
      * Allows the external calling of a function via the Vault contract to
-     * access Vault's functions guarded by `withHandler`.
+     * access Vault's functions guarded by `withLocker`.
      * `transient` modifier ensuring balances changes within the Vault are settled.
      *
      * @param data Contains function signature and args to be passed to the msg.sender
@@ -447,7 +447,7 @@ interface IVaultExtension {
     function deregisterBufferPoolFactory(address factory) external;
 
     /*******************************************************************************
-                                     Default handlers
+                                     Default lockers
     *******************************************************************************/
 
     /**
