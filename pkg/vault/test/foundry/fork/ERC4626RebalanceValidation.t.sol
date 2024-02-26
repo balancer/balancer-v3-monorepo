@@ -121,8 +121,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         // Creating Unbalanced Buffer with more base tokens
         bufferDaiWrapped = waDAI.convertToShares(BUFFER_DAI_BASE);
         waDAI.deposit(BUFFER_DAI_BASE, address(lp));
-        uint256[] memory amountsInMoreBase = [uint256(bufferDaiWrapped), uint256(BUFFER_DAI_BASE)]
-            .toMemoryArray();
+        uint256[] memory amountsInMoreBase = [uint256(bufferDaiWrapped), uint256(BUFFER_DAI_BASE)].toMemoryArray();
         bptAmountOutBase = router.initialize(
             address(bufferPoolDai),
             [aDAI_ADDRESS, DAI_ADDRESS].toMemoryArray().asIERC20(),
@@ -139,8 +138,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         // values in the vault to check if the buffer initializes balanced
         bufferUsdcWrapped = waUSDC.convertToShares(BUFFER_USDC_BASE);
         waUSDC.deposit(BUFFER_USDC_BASE, address(lp));
-        uint256[] memory amountsInMoreWrapped = [uint256(bufferUsdcWrapped), uint256(BUFFER_USDC_BASE)]
-            .toMemoryArray();
+        uint256[] memory amountsInMoreWrapped = [uint256(bufferUsdcWrapped), uint256(BUFFER_USDC_BASE)].toMemoryArray();
         bptAmountOutWrapped = router.initialize(
             address(bufferPoolUsdc),
             [aUSDC_ADDRESS, USDC_ADDRESS].toMemoryArray().asIERC20(),
@@ -362,11 +360,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     function testRebalanceForUsdcWithMoreBase__Fuzz__Fork(uint256 assetsToTransfer) public {
         uint8 decimals = waUSDC.decimals();
 
-        assetsToTransfer = bound(
-            assetsToTransfer,
-            BUFFER_USDC_BASE / 100000,
-            (95 * BUFFER_USDC_BASE) / 100
-        );
+        assetsToTransfer = bound(assetsToTransfer, BUFFER_USDC_BASE / 100000, (95 * BUFFER_USDC_BASE) / 100);
         bufferPoolUsdc.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_IN);
 
         uint256 usdcBalanceBeforeRebalance = usdcMainnet.balanceOf(address(bufferPoolUsdc));
@@ -429,11 +423,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     function testRebalanceForUsdcWithMoreWrapped__Fuzz__Fork(uint256 assetsToTransfer) public {
         uint8 decimals = waUSDC.decimals();
 
-        assetsToTransfer = bound(
-            assetsToTransfer,
-            BUFFER_USDC_BASE / 100000,
-            (95 * BUFFER_USDC_BASE) / 100
-        );
+        assetsToTransfer = bound(assetsToTransfer, BUFFER_USDC_BASE / 100000, (95 * BUFFER_USDC_BASE) / 100);
         bufferPoolUsdc.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_OUT);
 
         uint256 usdcBalanceBeforeRebalance = usdcMainnet.balanceOf(address(bufferPoolUsdc));

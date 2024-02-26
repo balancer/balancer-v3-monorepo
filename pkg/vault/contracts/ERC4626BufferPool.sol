@@ -224,7 +224,10 @@ contract ERC4626BufferPool is
         if (balanceWrappedAssets > balanceUnwrappedAssets) {
             exchangeAmountRaw = (balanceWrappedAssets - balanceUnwrappedAssets) / 2;
             // TODO explain
-            limit = _wrappedToken.convertToShares(exchangeAmountRaw) - _wrappedToken.convertToShares(1) - MAXIMUM_DIFF_WTOKENS;
+            limit =
+                _wrappedToken.convertToShares(exchangeAmountRaw) -
+                _wrappedToken.convertToShares(1) -
+                MAXIMUM_DIFF_WTOKENS;
 
             getVault().invoke(
                 abi.encodeWithSelector(
@@ -243,7 +246,10 @@ contract ERC4626BufferPool is
         } else if (balanceUnwrappedAssets > balanceWrappedAssets) {
             exchangeAmountRaw = (balanceUnwrappedAssets - balanceWrappedAssets) / 2;
             // TODO explain
-            limit = _wrappedToken.convertToShares(exchangeAmountRaw) + _wrappedToken.convertToShares(1) + MAXIMUM_DIFF_WTOKENS;
+            limit =
+                _wrappedToken.convertToShares(exchangeAmountRaw) +
+                _wrappedToken.convertToShares(1) +
+                MAXIMUM_DIFF_WTOKENS;
 
             getVault().invoke(
                 abi.encodeWithSelector(

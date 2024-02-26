@@ -121,8 +121,7 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
         // Creating DAI Buffer
         bufferDaiWrapped = wDAI.convertToShares(BUFFER_BASE_TOKENS);
         wDAI.deposit(BUFFER_BASE_TOKENS, address(lp));
-        uint256[] memory amountsInDai = [uint256(bufferDaiWrapped), uint256(BUFFER_BASE_TOKENS)]
-            .toMemoryArray();
+        uint256[] memory amountsInDai = [uint256(bufferDaiWrapped), uint256(BUFFER_BASE_TOKENS)].toMemoryArray();
         bptAmountOutDai = router.initialize(
             address(bufferPoolDai),
             [wDAI_ADDRESS, DAI_ADDRESS].toMemoryArray().asIERC20(),
@@ -136,8 +135,7 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
         // Creating SAND Buffer
         bufferSandWrapped = wSAND.convertToShares(BUFFER_BASE_TOKENS);
         wSAND.deposit(BUFFER_BASE_TOKENS, address(lp));
-        uint256[] memory amountsInSand = [uint256(bufferSandWrapped), uint256(BUFFER_BASE_TOKENS)]
-            .toMemoryArray();
+        uint256[] memory amountsInSand = [uint256(bufferSandWrapped), uint256(BUFFER_BASE_TOKENS)].toMemoryArray();
         bptAmountOutSand = router.initialize(
             address(bufferPoolSand),
             [wSAND_ADDRESS, SAND_ADDRESS].toMemoryArray().asIERC20(),
@@ -165,16 +163,8 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
 
         // Tokens are deposited to the pool with more base
         (, , uint256[] memory balancesRaw, , ) = vault.getPoolTokenInfo(address(bufferPoolDai));
-        assertEq(
-            balancesRaw[0],
-            bufferDaiWrapped,
-            "wDai BufferPool balance should have the deposited amount of wDai"
-        );
-        assertEq(
-            balancesRaw[1],
-            BUFFER_BASE_TOKENS,
-            "wDai BufferPool balance should have the deposited amount of DAI"
-        );
+        assertEq(balancesRaw[0], bufferDaiWrapped, "wDai BufferPool balance should have the deposited amount of wDai");
+        assertEq(balancesRaw[1], BUFFER_BASE_TOKENS, "wDai BufferPool balance should have the deposited amount of DAI");
 
         // should mint correct amount of BPT tokens for buffer with more base
         // Account for the precision loss
@@ -531,24 +521,12 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
     }
 
     function _createTokens() private {
-        wDAI = new ERC4626TokenMock(
-            'Wrapped Dai',
-            'wDAI',
-            SMALL_AMOUNT,
-            BIG_AMOUNT,
-            IERC20(DAI_ADDRESS)
-        );
+        wDAI = new ERC4626TokenMock("Wrapped Dai", "wDAI", SMALL_AMOUNT, BIG_AMOUNT, IERC20(DAI_ADDRESS));
         wDaiMainnet = IERC20(address(wDAI));
         wDAI_ADDRESS = address(wDAI);
         vm.label(wDAI_ADDRESS, "wDAI");
 
-        wSAND = new ERC4626TokenMock(
-            'Wrapped Sand',
-            'wSAND',
-            BIG_AMOUNT,
-            SMALL_AMOUNT,
-            IERC20(SAND_ADDRESS)
-        );
+        wSAND = new ERC4626TokenMock("Wrapped Sand", "wSAND", BIG_AMOUNT, SMALL_AMOUNT, IERC20(SAND_ADDRESS));
         wSandMainnet = IERC20(address(wSAND));
         wSAND_ADDRESS = address(wSAND);
         vm.label(wSAND_ADDRESS, "wSAND");
