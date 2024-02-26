@@ -16,25 +16,9 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
-contract PriceImpact {
-    using Address for address payable;
-    using EnumerableSet for EnumerableSet.AddressSet;
-    using FixedPoint for int256;
+contract PriceImpact is ReentrancyGuard {
 
     IVault private immutable _vault;
-
-    // solhint-disable-next-line var-name-mixedcase
-    IWETH private immutable _weth;
-
-    // Transient storage used to track tokens and amount flowing in and out within a batch swap.
-    // Set of input tokens involved in a batch swap.
-    EnumerableSet.AddressSet private _currentSwapTokensIn;
-    // Set of output tokens involved in a batch swap.
-    EnumerableSet.AddressSet private _currentSwapTokensOut;
-    // token in -> amount: tracks token in amounts within a batch swap.
-    mapping(address => uint256) private _currentSwapTokenInAmounts;
-    // token out -> amount: tracks token out amounts within a batch swap.
-    mapping(address => uint256) private _currentSwapTokenOutAmounts;
 
     modifier onlyVault() {
         if (msg.sender != address(_vault)) {
@@ -43,10 +27,8 @@ contract PriceImpact {
         _;
     }
 
-    constructor(IVault vault, IWETH weth) {
+    constructor(IVault vault) {
         _vault = vault;
-        _weth = weth;
-        weth.approve(address(_vault), type(uint256).max);
     }
 
     /*******************************************************************************
@@ -55,31 +37,32 @@ contract PriceImpact {
 
     function priceImpactForAddLiquidityUnbalanced(
         address pool,
-        uint256[] exactAmountsIn
+        uint256[] memory exactAmountsIn
     ) external returns (uint256 priceImpact) {
         // query addLiquidityUnbalanced
-        uint256 bptAmountOut = queryAddLiquidityUnbalanced(pool, exactAmountsIn, 0, new bytes(0));
+        uint256 bptAmountOut = this.queryAddLiquidityUnbalanced(pool, exactAmountsIn, 0, new bytes(0));
         // query removeLiquidityProportional
-        uint256[] proportionalAmountsOut = queryRemoveLiquidityProportional(
+        uint256[] memory proportionalAmountsOut = this.queryRemoveLiquidityProportional(
             pool,
             bptAmountOut,
             new uint256[](exactAmountsIn.length),
-            userData
+            new bytes(0)
         );
         // get deltas between exactAmountsIn and proportionalAmountsOut
-        int256[] deltas = new uint256[](exactAmountsIn.length);
+        int256[] memory deltas = new int256[](exactAmountsIn.length);
         for (uint256 i = 0; i < exactAmountsIn.length; i++) {
-            deltas[i] = proportionalAmountsOut[i] - exactAmountsIn[i];
+            deltas[i] = int(proportionalAmountsOut[i] - exactAmountsIn[i]);
         }
         // query add liquidity for each delta, so we know how unbalanced each amount in is in terms of BPT
-        int256[] deltaBPTs = new int256[](exactAmountsIn.length);
+        int256[] memory deltaBPTs = new int256[](exactAmountsIn.length);
         for (uint256 i = 0; i < exactAmountsIn.length; i++) {
             deltaBPTs[i] = queryAddLiquidityForTokenDelta(pool, i, deltas, deltaBPTs);
         }
         // zero out deltas leaving only a remaining delta within a single token
         uint256 remaininDeltaIndex = zeroOutDeltas(pool, deltas, deltaBPTs);
         // calculate price impact ABA with remaining delta and its respective exactAmountIn
-        return deltas[remaininDeltaIndex].divDown(exactAmountsIn[remaininDeltaIndex]) / 2;
+        uint256 delta = uint(deltas[remaininDeltaIndex] * -1); // remaining delta is always negative, so by multiplying by -1 we get a positive number
+        return FixedPoint.divDown(delta, exactAmountsIn[remaininDeltaIndex]) / 2;
     }
 
     /*******************************************************************************
@@ -89,28 +72,29 @@ contract PriceImpact {
     function queryAddLiquidityForTokenDelta(
         address pool,
         uint256 tokenIndex,
-        int256 deltas,
-        int256 deltaBPTs
+        int256[] memory deltas,
+        int256[] memory deltaBPTs
     ) internal returns (int256 deltaBPT) {
-        uint256[] zerosWithSingleDelta = new uint256[](deltas.length);
+        uint256[] memory zerosWithSingleDelta = new uint256[](deltas.length);
         if (deltaBPTs[tokenIndex] == 0) {
             return 0;
         } else if (deltaBPTs[tokenIndex] > 0) {
-            zerosWithSingleDelta[tokenIndex] = deltas[tokenIndex];
-            return queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, 0, new bytes(0));
+            zerosWithSingleDelta[tokenIndex] = uint(deltas[tokenIndex]);
+            return int(this.queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, 0, new bytes(0)));
         } else {
-            zerosWithSingleDelta[tokenIndex] = deltas[tokenIndex] * -1;
-            return queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, 0, new bytes(0));
+            zerosWithSingleDelta[tokenIndex] = uint(deltas[tokenIndex] * -1);
+            return int(this.queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, 0, new bytes(0))) * -1;
         }
     }
 
-    function zeroOutDeltas(address pool, int256[] deltas, int256[] deltaBPTs) internal returns (uint256) {
+    function zeroOutDeltas(address pool, int256[] memory deltas, int256[] memory deltaBPTs) internal returns (uint256) {
         uint256 minNegativeDeltaIndex = 0;
+        IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
 
         for (uint256 i = 0; i < deltas.length - 1; i++) {
             // get minPositiveDeltaIndex and maxNegativeDeltaIndex
             uint256 minPositiveDeltaIndex = minPositiveIndex(deltaBPTs);
-            uint256 minNegativeDeltaIndex = maxNegativeIndex(deltaBPTs);
+            minNegativeDeltaIndex = maxNegativeIndex(deltaBPTs);
 
             uint256 givenTokenIndex;
             uint256 resultTokenIndex;
@@ -119,21 +103,21 @@ contract PriceImpact {
             if (deltaBPTs[minPositiveDeltaIndex] < deltaBPTs[minNegativeDeltaIndex] * -1) {
                 givenTokenIndex = minPositiveDeltaIndex;
                 resultTokenIndex = minNegativeDeltaIndex;
-                resultAmount = querySwapSingleTokenExactIn(
+                resultAmount = this.querySwapSingleTokenExactIn(
                     pool,
-                    IERC20(_vault.getPoolToken(pool, givenTokenIndex)),
-                    IERC20(_vault.getPoolToken(pool, resultTokenIndex)),
-                    deltas[givenTokenIndex],
+                    poolTokens[givenTokenIndex],
+                    poolTokens[resultTokenIndex],
+                    uint(deltas[givenTokenIndex]),
                     new bytes(0)
                 );
             } else {
                 givenTokenIndex = minNegativeDeltaIndex;
                 resultTokenIndex = minPositiveDeltaIndex;
-                resultAmount = querySwapSingleTokenExactOut(
+                resultAmount = this.querySwapSingleTokenExactOut(
                     pool,
-                    IERC20(_vault.getPoolToken(pool, resultTokenIndex)),
-                    IERC20(_vault.getPoolToken(pool, givenTokenIndex)),
-                    deltas[givenTokenIndex] * -1,
+                    poolTokens[resultTokenIndex],
+                    poolTokens[givenTokenIndex],
+                    uint(deltas[givenTokenIndex] * -1),
                     new bytes(0)
                 );
             }
@@ -141,7 +125,7 @@ contract PriceImpact {
             // Update deltas and deltaBPTs
             deltas[givenTokenIndex] = 0;
             deltaBPTs[givenTokenIndex] = 0;
-            deltas[resultTokenIndex] += resultAmount;
+            deltas[resultTokenIndex] += int(resultAmount);
             deltaBPTs[resultTokenIndex] = queryAddLiquidityForTokenDelta(pool, resultTokenIndex, deltas, deltaBPTs);
         }
 
@@ -149,7 +133,7 @@ contract PriceImpact {
     }
 
     // returns the index of the smallest positive integer in an array - i.e. [3, 2, -2, -3] returns 1
-    function minPositiveIndex(int256[] memory array) internal returns (uint256 index) {
+    function minPositiveIndex(int256[] memory array) internal pure returns (uint256 index) {
         int256 min = type(int256).max;
         for (uint256 i = 0; i < array.length; i++) {
             if (array[i] > 0 && array[i] < min) {
@@ -160,7 +144,7 @@ contract PriceImpact {
     }
 
     // returns the index of the biggest negative integer in an array - i.e. [3, 1, -2, -3] returns 2
-    function maxNegativeIndex(int256[] memory array) internal returns (uint256 index) {
+    function maxNegativeIndex(int256[] memory array) internal pure returns (uint256 index) {
         int256 max = type(int256).min;
         for (uint256 i = 0; i < array.length; i++) {
             if (array[i] < 0 && array[i] > max) {
@@ -175,12 +159,12 @@ contract PriceImpact {
     *******************************************************************************/
 
     function _swapHook(
-        SwapSingleTokenHookParams calldata params
+        IRouter.SwapSingleTokenHookParams calldata params
     ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > params.deadline) {
-            revert SwapDeadline();
+            revert IRouter.SwapDeadline();
         }
 
         (amountCalculated, amountIn, amountOut) = _vault.swap(
@@ -200,7 +184,6 @@ contract PriceImpact {
                                     Queries
     *******************************************************************************/
 
-    /// @inheritdoc IRouter
     function querySwapSingleTokenExactIn(
         address pool,
         IERC20 tokenIn,
@@ -212,8 +195,8 @@ contract PriceImpact {
             abi.decode(
                 _vault.quote(
                     abi.encodeWithSelector(
-                        Router.querySwapHook.selector,
-                        SwapSingleTokenHookParams({
+                        PriceImpact.querySwapHook.selector,
+                        IRouter.SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_IN,
                             pool: pool,
@@ -231,7 +214,6 @@ contract PriceImpact {
             );
     }
 
-    /// @inheritdoc IRouter
     function querySwapSingleTokenExactOut(
         address pool,
         IERC20 tokenIn,
@@ -243,8 +225,8 @@ contract PriceImpact {
             abi.decode(
                 _vault.quote(
                     abi.encodeWithSelector(
-                        Router.querySwapHook.selector,
-                        SwapSingleTokenHookParams({
+                        PriceImpact.querySwapHook.selector,
+                        IRouter.SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_OUT,
                             pool: pool,
@@ -269,14 +251,13 @@ contract PriceImpact {
      * @return Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
      */
     function querySwapHook(
-        SwapSingleTokenHookParams calldata params
+        IRouter.SwapSingleTokenHookParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256) {
         (uint256 amountCalculated, , ) = _swapHook(params);
 
         return amountCalculated;
     }
 
-    /// @inheritdoc IRouter
     function queryAddLiquidityUnbalanced(
         address pool,
         uint256[] memory exactAmountsIn,
@@ -286,8 +267,8 @@ contract PriceImpact {
         (, bptAmountOut, ) = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(
-                    Router.queryAddLiquidityHook.selector,
-                    AddLiquidityHookParams({
+                    PriceImpact.queryAddLiquidityHook.selector,
+                    IRouter.AddLiquidityHookParams({
                         // we use router as a sender to simplify basic query functions
                         // but it is possible to add liquidity to any recipient
                         sender: address(this),
@@ -313,7 +294,7 @@ contract PriceImpact {
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function queryAddLiquidityHook(
-        AddLiquidityHookParams calldata params
+        IRouter.AddLiquidityHookParams calldata params
     )
         external
         payable
@@ -333,7 +314,6 @@ contract PriceImpact {
         );
     }
 
-    /// @inheritdoc IRouter
     function queryRemoveLiquidityProportional(
         address pool,
         uint256 exactBptAmountIn,
@@ -343,8 +323,8 @@ contract PriceImpact {
         (, amountsOut, ) = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(
-                    Router.queryRemoveLiquidityHook.selector,
-                    RemoveLiquidityHookParams({
+                    PriceImpact.queryRemoveLiquidityHook.selector,
+                    IRouter.RemoveLiquidityHookParams({
                         // We use router as a sender to simplify basic query functions
                         // but it is possible to remove liquidity from any sender
                         sender: address(this),
@@ -370,7 +350,7 @@ contract PriceImpact {
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function queryRemoveLiquidityHook(
-        RemoveLiquidityHookParams calldata params
+        IRouter.RemoveLiquidityHookParams calldata params
     )
         external
         nonReentrant
