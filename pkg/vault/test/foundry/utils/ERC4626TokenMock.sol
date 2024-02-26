@@ -40,11 +40,11 @@ contract ERC4626TokenMock is IERC4626, ERC20 {
     }
 
     function convertToShares(uint256 assets) external view override returns (uint256) {
-        return assets * _assets / _shares;
+        return _convertToShares(assets);
     }
 
     function convertToAssets(uint256 shares) external view override returns (uint256) {
-        return shares * _assets / _shares;
+        return _convertToAssets(shares);
     }
 
     function maxDeposit(address receiver) external view override returns (uint256) {
@@ -136,7 +136,7 @@ contract ERC4626TokenMock is IERC4626, ERC20 {
     }
 
     function _convertToShares(uint256 assets) private view returns (uint256) {
-        return assets * _assets / _shares;
+        return assets * _shares / _assets;
     }
 
     function _convertToAssets(uint256 shares) private view returns (uint256 assets) {

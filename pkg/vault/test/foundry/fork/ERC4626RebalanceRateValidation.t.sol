@@ -81,7 +81,6 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     }
 
     function createPool() internal override returns (address) {
-        console.log(1);
         waDAI = new ERC4626TokenMock(
             'Wrapped Dai',
             'wDAI',
@@ -89,20 +88,15 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             1e12,
             IERC20(DAI_ADDRESS)
         );
-        console.log(2);
         aDaiMainnet = IERC20(address(waDAI));
-        console.log(3);
         aDAI_ADDRESS = address(waDAI);
-        console.log(4);
 
         factory = new ERC4626BufferPoolFactoryMock(IVault(address(vault)), 365 days);
         authorizer.grantRole(vault.getActionId(IVaultExtension.registerBufferPoolFactory.selector), alice);
         vm.prank(alice);
         vault.registerBufferPoolFactory(address(factory));
-        console.log(5);
 
         bufferPoolDai = ERC4626BufferPoolMock(_createBuffer(waDAI));
-        console.log(6);
 
         return address(bufferPoolDai);
     }
