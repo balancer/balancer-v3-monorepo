@@ -110,7 +110,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function send(IERC20 token, address to, uint256 amount) public nonReentrant withLocker {
+    function sendTo(IERC20 token, address to, uint256 amount) public nonReentrant withLocker {
         // effects
         _takeDebt(token, amount, msg.sender);
         _tokenReserves[token] -= amount;
@@ -119,7 +119,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function take(IERC20 token, address from, uint256 amount) public nonReentrant withLocker onlyTrustedRouter {
+    function takeFrom(IERC20 token, address from, uint256 amount) public nonReentrant withLocker onlyTrustedRouter {
         // effects
         _supplyCredit(token, amount, msg.sender);
         _tokenReserves[token] += amount;
@@ -896,7 +896,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
-                                     Default lockers
+                                     Default handlers
     *******************************************************************************/
 
     receive() external payable {

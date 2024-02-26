@@ -15,8 +15,6 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
-// solhint-disable check-send-result,multiple-sends
-
 contract Router is IRouter, ReentrancyGuard {
     using Address for address payable;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -114,10 +112,10 @@ contract Router is IRouter, ReentrancyGuard {
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
                 // transfer WETH from the router to the Vault
-                _vault.take(_weth, address(this), amountIn);
+                _vault.takeFrom(_weth, address(this), amountIn);
             } else {
                 // transfer tokens from the user to the Vault
-                _vault.take(token, params.sender, amountIn);
+                _vault.takeFrom(token, params.sender, amountIn);
             }
         }
 
@@ -260,9 +258,9 @@ contract Router is IRouter, ReentrancyGuard {
 
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
-                _vault.take(_weth, address(this), amountIn);
+                _vault.takeFrom(_weth, address(this), amountIn);
             } else {
-                _vault.take(token, params.sender, amountIn);
+                _vault.takeFrom(token, params.sender, amountIn);
             }
         }
 
@@ -448,12 +446,12 @@ contract Router is IRouter, ReentrancyGuard {
             // There can be only one WETH token in the pool
             if (params.wethIsEth && address(token) == address(_weth)) {
                 // Send WETH here and unwrap to native ETH
-                _vault.send(_weth, address(this), amountOut);
+                _vault.sendTo(_weth, address(this), amountOut);
                 _weth.withdraw(amountOut);
                 ethAmountOut = amountOut;
             } else {
                 // Transfer the token to the sender (amountOut)
-                _vault.send(token, params.sender, amountOut);
+                _vault.sendTo(token, params.sender, amountOut);
             }
         }
 
@@ -480,7 +478,7 @@ contract Router is IRouter, ReentrancyGuard {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             // Transfer the token to the sender (amountOut)
-            _vault.send(tokens[i], sender, amountsOut[i]);
+            _vault.sendTo(tokens[i], sender, amountsOut[i]);
         }
     }
 
@@ -725,7 +723,7 @@ contract Router is IRouter, ReentrancyGuard {
                         tokenIn = step.tokenOut;
                         // If this is an intermediate step, we'll need to send it back to the vault
                         // to get credit for the BPT minted in the add liquidity operation.
-                        _vault.take(IERC20(step.pool), params.sender, bptAmountOut);
+                        _vault.takeFrom(IERC20(step.pool), params.sender, bptAmountOut);
                     }
                 } else {
                     // No BPT involved in the operation: regular swap exact in
@@ -873,7 +871,7 @@ contract Router is IRouter, ReentrancyGuard {
                     // The last step is the first one in the order of operations.
                     // TODO: We could skip retrieve on the first step and tweak how we settle the output token.
                     // _currentSwapTokenOutAmounts[address(step.tokenOut)] -= exactAmountOut;
-                    _vault.take(IERC20(step.pool), params.sender, exactAmountOut);
+                    _vault.takeFrom(IERC20(step.pool), params.sender, exactAmountOut);
                 } else {
                     // No BPT involved in the operation: regular swap exact out
                     (, uint256 amountIn, ) = _vault.swap(
@@ -1386,7 +1384,7 @@ contract Router is IRouter, ReentrancyGuard {
             _vault.settle(_weth);
         } else {
             // Send the tokenIn amount to the Vault
-            _vault.take(tokenIn, sender, amountIn);
+            _vault.takeFrom(tokenIn, sender, amountIn);
         }
     }
 
@@ -1394,14 +1392,14 @@ contract Router is IRouter, ReentrancyGuard {
         // If the tokenOut is ETH, then unwrap `amountOut` into ETH.
         if (wethIsEth && tokenOut == _weth) {
             // Receive the WETH amountOut
-            _vault.send(tokenOut, address(this), amountOut);
+            _vault.sendTo(tokenOut, address(this), amountOut);
             // Withdraw WETH to ETH
             _weth.withdraw(amountOut);
             // Send ETH to sender
             payable(sender).sendValue(amountOut);
         } else {
             // Receive the tokenOut amountOut
-            _vault.send(tokenOut, sender, amountOut);
+            _vault.sendTo(tokenOut, sender, amountOut);
         }
     }
 
