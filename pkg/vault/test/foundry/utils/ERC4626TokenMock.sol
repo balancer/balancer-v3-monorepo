@@ -47,7 +47,7 @@ contract ERC4626TokenMock is IERC4626, ERC20 {
         return _convertToAssets(shares);
     }
 
-    function maxDeposit(address receiver) external view override returns (uint256) {
+    function maxDeposit(address) external pure override returns (uint256) {
         revert NotImplemented();
     }
 
@@ -69,7 +69,7 @@ contract ERC4626TokenMock is IERC4626, ERC20 {
         return sharesToReturn;
     }
 
-    function maxMint(address receiver) external view override returns (uint256) {
+    function maxMint(address) external pure override returns (uint256) {
         revert NotImplemented();
     }
 
@@ -91,7 +91,7 @@ contract ERC4626TokenMock is IERC4626, ERC20 {
         return assetsToDeposit;
     }
 
-    function maxWithdraw(address owner) external view override returns (uint256) {
+    function maxWithdraw(address) external pure override returns (uint256) {
         revert NotImplemented();
     }
 
@@ -113,7 +113,7 @@ contract ERC4626TokenMock is IERC4626, ERC20 {
         return sharesToBurn;
     }
 
-    function maxRedeem(address owner) external view override returns (uint256) {
+    function maxRedeem(address) external pure override returns (uint256) {
         revert NotImplemented();
     }
 

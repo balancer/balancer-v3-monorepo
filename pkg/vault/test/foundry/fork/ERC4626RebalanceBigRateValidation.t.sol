@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.4;
 
-import "forge-std/console.sol";
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -38,7 +37,7 @@ import { ERC4626BufferPoolFactoryMock } from "../utils/ERC4626BufferPoolFactoryM
 import { ERC4626BufferPoolMock } from "../utils/ERC4626BufferPoolMock.sol";
 import "../utils/ERC4626TokenMock.sol";
 
-contract ERC4626RebalanceValidation is BaseVaultTest {
+contract ERC4626RebalanceBigRateValidation is BaseVaultTest {
     using ArrayHelpers for *;
     using FixedPoint for uint256;
 
@@ -84,8 +83,8 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         waDAI = new ERC4626TokenMock(
             'Wrapped Dai',
             'wDAI',
-            30,
             1e12,
+            3e6,
             IERC20(DAI_ADDRESS)
         );
         aDaiMainnet = IERC20(address(waDAI));
@@ -141,14 +140,14 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         );
 
         // Tokens are deposited to the pool with more underlying
-        (, , uint256[] memory moreUnderlyingBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolDai));
+        (, , uint256[] memory balancesRaw, , ) = vault.getPoolTokenInfo(address(bufferPoolDai));
         assertEq(
-            moreUnderlyingBalances[0],
+            balancesRaw[0],
             bufferDaiWrapped,
             "aDai BufferPool balance should have the deposited amount of aDAI"
         );
         assertEq(
-            moreUnderlyingBalances[1],
+            balancesRaw[1],
             BUFFER_DAI_UNDERLYING,
             "aDai BufferPool balance should have the deposited amount of DAI"
         );
@@ -169,7 +168,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         );
     }
 
-    function testRebalanceForDaiWithMoreUnderlying__Fuzz__Fork(uint256 assetsToTransfer) public {
+    function testBigRateWithMoreUnderlying__Fuzz__Fork(uint256 assetsToTransfer) public {
         uint8 decimals = waDAI.decimals();
 
         assetsToTransfer = bound(assetsToTransfer, BUFFER_DAI_UNDERLYING / 100000, (95 * BUFFER_DAI_UNDERLYING) / 100);
@@ -223,16 +222,26 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             1,
             "aDAI BufferPool contract should not get more than 1 DAI tokens after rebalance"
         );
-        // Makes sure that 1e18 waDAI in the pool can make at least 1e17 rebalance calls (max draining of 10 aDAI)
-        assertApproxEqAbs(
-            aDaiBalanceBeforeRebalance - aDaiBalanceAfterRebalance,
-            0,
-            10,
-            "aDAI BufferPool contract should not lose more than 10 aDAI tokens after rebalance"
-        );
+        // Makes sure that 1e18 DAI converted to waDAI in the pool can make at least 1e17 rebalance calls
+        uint256 sharesInOneAsset = waDAI.convertToShares(1);
+        if (aDaiBalanceBeforeRebalance >= aDaiBalanceAfterRebalance) {
+            assertApproxEqAbs(
+                aDaiBalanceBeforeRebalance - aDaiBalanceAfterRebalance,
+                0,
+                2 * sharesInOneAsset,
+                "aDAI BufferPool contract should not lose more than 1 DAI converted to aDAI after rebalance"
+            );
+        } else {
+            assertApproxEqAbs(
+                aDaiBalanceAfterRebalance - aDaiBalanceBeforeRebalance,
+                0,
+                2 * sharesInOneAsset,
+                "aDAI BufferPool contract should not lose more than 1 DAI converted to aDAI after rebalance"
+            );
+        }
     }
 
-    function testRebalanceForDaiWithMoreWrapped__Fuzz__Fork(uint256 assetsToTransfer) public {
+    function testBigRateWithMoreWrapped__Fuzz__Fork(uint256 assetsToTransfer) public {
         uint8 decimals = waDAI.decimals();
 
         assetsToTransfer = bound(assetsToTransfer, BUFFER_DAI_UNDERLYING / 100000, (95 * BUFFER_DAI_UNDERLYING) / 100);
@@ -286,13 +295,23 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             1,
             "aDAI BufferPool contract should not get more than 1 DAI tokens after rebalance"
         );
-        // Makes sure that 1e18 waDAI in the pool can make at least 1e17 rebalance calls (max draining of 10 aDAI)
-        assertApproxEqAbs(
-            aDaiBalanceBeforeRebalance - aDaiBalanceAfterRebalance,
-            0,
-            10,
-            "aDAI BufferPool contract should not lose more than 10 aDAI tokens after rebalance"
-        );
+        // Makes sure that 1e18 DAI converted to waDAI in the pool can make at least 1e17 rebalance calls
+        uint256 sharesInOneAsset = waDAI.convertToShares(1);
+        if (aDaiBalanceBeforeRebalance >= aDaiBalanceAfterRebalance) {
+            assertApproxEqAbs(
+                aDaiBalanceBeforeRebalance - aDaiBalanceAfterRebalance,
+                0,
+                2 * sharesInOneAsset,
+                "aDAI BufferPool contract should not lose more than 1 DAI converted to aDAI after rebalance"
+            );
+        } else {
+            assertApproxEqAbs(
+                aDaiBalanceAfterRebalance - aDaiBalanceBeforeRebalance,
+                0,
+                2 * sharesInOneAsset,
+                "aDAI BufferPool contract should not lose more than 1 DAI converted to aDAI after rebalance"
+            );
+        }
     }
 
     function _createBuffer(IERC4626 wrappedToken) private returns (address) {

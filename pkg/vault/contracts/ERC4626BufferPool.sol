@@ -167,10 +167,10 @@ contract ERC4626BufferPool is
 
             // amountGivenScaled18 has some imprecision when calculating the rate (we store only 18 decimals of rate,
             // therefore it's less precise than using preview or convertToAssets directly).
-            // So, we need to return the linear math value (amountGivenScaled18), but subtract the error introduced by
+            // So, we need to return the linear math value (amountGivenScaled18), but add the error introduced by
             // the rate difference, which is calculated by (amountGivenScaled18 - preciseAmountScaled18), i.e.:
             //
-            // amountGivenScaled18 - (error)
+            // amountGivenScaled18 + (error)
             //
             //     where error is (amountGivenScaled18 - preciseAmountScaled18)
             return 2 * request.amountGivenScaled18 - preciseAmountScaled18;
@@ -223,7 +223,8 @@ contract ERC4626BufferPool is
         uint256 limit;
         if (balanceWrappedAssets > balanceUnwrappedAssets) {
             exchangeAmountRaw = (balanceWrappedAssets - balanceUnwrappedAssets) / 2;
-            limit = _wrappedToken.convertToShares(exchangeAmountRaw) - MAXIMUM_DIFF_WTOKENS;
+            // TODO explain
+            limit = _wrappedToken.convertToShares(exchangeAmountRaw) - _wrappedToken.convertToShares(1) - MAXIMUM_DIFF_WTOKENS;
 
             getVault().invoke(
                 abi.encodeWithSelector(
@@ -241,7 +242,8 @@ contract ERC4626BufferPool is
             );
         } else if (balanceUnwrappedAssets > balanceWrappedAssets) {
             exchangeAmountRaw = (balanceUnwrappedAssets - balanceWrappedAssets) / 2;
-            limit = _wrappedToken.convertToShares(exchangeAmountRaw) + MAXIMUM_DIFF_WTOKENS;
+            // TODO explain
+            limit = _wrappedToken.convertToShares(exchangeAmountRaw) + _wrappedToken.convertToShares(1) + MAXIMUM_DIFF_WTOKENS;
 
             getVault().invoke(
                 abi.encodeWithSelector(
