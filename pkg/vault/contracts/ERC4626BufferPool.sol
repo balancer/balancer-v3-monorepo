@@ -203,7 +203,7 @@ contract ERC4626BufferPool is
         (IERC20[] memory tokens, , uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors, ) = getVault()
             .getPoolTokenInfo(poolAddress);
 
-        // PreviewRedeem converts a wrapped amount into an underlying (base) amount
+        // PreviewRedeem converts a wrapped amount into a base amount
         uint256 balanceWrappedAssets = _wrappedToken.previewRedeem(balancesRaw[WRAPPED_TOKEN_INDEX]);
         uint256 balanceUnwrappedAssets = balancesRaw[BASE_TOKEN_INDEX];
 
@@ -265,23 +265,23 @@ contract ERC4626BufferPool is
     function rebalanceHook(RebalanceHookParams calldata params) external payable onlyVault {
         (, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
-        IERC20 underlyingToken;
+        IERC20 baseToken;
         IERC20 wrappedToken;
 
         if (params.kind == SwapKind.EXACT_IN) {
-            underlyingToken = params.tokenIn;
+            baseToken = params.tokenIn;
             wrappedToken = params.tokenOut;
 
             getVault().wire(wrappedToken, address(this), amountOut);
             IERC4626(address(wrappedToken)).withdraw(amountIn, address(this), address(this));
-            underlyingToken.safeTransfer(address(getVault()), amountIn);
-            getVault().settle(underlyingToken);
+            baseToken.safeTransfer(address(getVault()), amountIn);
+            getVault().settle(baseToken);
         } else {
-            underlyingToken = params.tokenOut;
+            baseToken = params.tokenOut;
             wrappedToken = params.tokenIn;
 
-            getVault().wire(underlyingToken, address(this), amountOut);
-            underlyingToken.approve(address(wrappedToken), amountOut);
+            getVault().wire(baseToken, address(this), amountOut);
+            baseToken.approve(address(wrappedToken), amountOut);
             IERC4626(address(wrappedToken)).deposit(amountOut, address(this));
             wrappedToken.safeTransfer(address(getVault()), amountIn);
             getVault().settle(wrappedToken);
