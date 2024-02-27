@@ -44,7 +44,6 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
             abi.encodeWithSelector(
                 ERC4626BufferPoolMock.unbalanceHook.selector,
                 RebalanceHookParams({
-                    sender: msg.sender,
                     kind: kind,
                     pool: address(this),
                     tokenIn: tokens[indexIn],

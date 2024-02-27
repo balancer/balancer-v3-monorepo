@@ -12,7 +12,6 @@ interface IBufferPool {
 }
 
 struct RebalanceHookParams {
-    address sender;
     address pool;
     SwapKind kind;
     IERC20 tokenIn;

@@ -56,6 +56,7 @@ contract ERC4626BufferPool is
     // We are limiting the amount of this error to 2 units of the wrapped token.
     uint256 public constant MAXIMUM_DIFF_WTOKENS = 2;
 
+    IVault private immutable _vault;
     IERC4626 internal immutable _wrappedToken;
     uint256 internal immutable _wrappedTokenScalingFactor;
     uint256 internal immutable _baseTokenScalingFactor;
@@ -67,6 +68,7 @@ contract ERC4626BufferPool is
         IERC4626 wrappedToken,
         IVault vault
     ) BalancerPoolToken(vault, name, symbol) BasePoolAuthentication(vault, msg.sender) {
+        _vault = vault;
         _wrappedToken = wrappedToken;
         _wrappedTokenScalingFactor = ScalingHelpers.computeScalingFactor(IERC20(address(wrappedToken)));
         _baseTokenScalingFactor = ScalingHelpers.computeScalingFactor(IERC20(wrappedToken.asset()));
@@ -74,7 +76,7 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IBasePool
     function getPoolTokens() public view onlyVault returns (IERC20[] memory tokens) {
-        return getVault().getPoolTokens(address(this));
+        return _vault.getPoolTokens(address(this));
     }
 
     /// @inheritdoc BasePoolHooks
@@ -203,7 +205,7 @@ contract ERC4626BufferPool is
         address poolAddress = address(this);
 
         // Get balance of tokens
-        (IERC20[] memory tokens, , uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors, ) = getVault()
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors, ) = _vault
             .getPoolTokenInfo(poolAddress);
 
         // PreviewRedeem converts a wrapped amount into a base amount
@@ -232,11 +234,10 @@ contract ERC4626BufferPool is
             // margin for rounding errors related to rate
             limit = _wrappedToken.convertToShares(exchangeAmountRaw - 1) - MAXIMUM_DIFF_WTOKENS;
 
-            getVault().invoke(
+            _vault.invoke(
                 abi.encodeWithSelector(
                     ERC4626BufferPool.rebalanceHook.selector,
                     RebalanceHookParams({
-                        sender: msg.sender,
                         kind: SwapKind.EXACT_IN,
                         pool: poolAddress,
                         tokenIn: tokens[BASE_TOKEN_INDEX],
@@ -254,11 +255,10 @@ contract ERC4626BufferPool is
             // margin for rounding errors related to rate
             limit = _wrappedToken.convertToShares(exchangeAmountRaw + 1) + MAXIMUM_DIFF_WTOKENS;
 
-            getVault().invoke(
+            _vault.invoke(
                 abi.encodeWithSelector(
                     ERC4626BufferPool.rebalanceHook.selector,
                     RebalanceHookParams({
-                        sender: msg.sender,
                         kind: SwapKind.EXACT_OUT,
                         pool: poolAddress,
                         tokenIn: tokens[WRAPPED_TOKEN_INDEX],
@@ -281,26 +281,26 @@ contract ERC4626BufferPool is
             baseToken = params.tokenIn;
             wrappedToken = params.tokenOut;
 
-            getVault().wire(wrappedToken, address(this), amountOut);
+            _vault.wire(wrappedToken, address(this), amountOut);
             IERC4626(address(wrappedToken)).withdraw(amountIn, address(this), address(this));
-            baseToken.safeTransfer(address(getVault()), amountIn);
-            getVault().settle(baseToken);
+            baseToken.safeTransfer(address(_vault), amountIn);
+            _vault.settle(baseToken);
         } else {
             baseToken = params.tokenOut;
             wrappedToken = params.tokenIn;
 
-            getVault().wire(baseToken, address(this), amountOut);
+            _vault.wire(baseToken, address(this), amountOut);
             baseToken.approve(address(wrappedToken), amountOut);
             IERC4626(address(wrappedToken)).deposit(amountOut, address(this));
-            wrappedToken.safeTransfer(address(getVault()), amountIn);
-            getVault().settle(wrappedToken);
+            wrappedToken.safeTransfer(address(_vault), amountIn);
+            _vault.settle(wrappedToken);
         }
     }
 
     function _swapHook(
         RebalanceHookParams calldata params
     ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
-        (amountCalculated, amountIn, amountOut) = getVault().swap(
+        (amountCalculated, amountIn, amountOut) = _vault.swap(
             VaultSwapParams({
                 kind: params.kind,
                 pool: params.pool,
