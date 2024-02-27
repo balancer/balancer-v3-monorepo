@@ -223,14 +223,14 @@ contract ERC4626BufferPool is
         }
 
         uint256 exchangeAmountRaw;
-        uint256 limit;
+        uint256 limitRaw;
         if (balanceWrappedAssetsRaw > balanceBaseAssetsRaw) {
             exchangeAmountRaw = (balanceWrappedAssetsRaw - balanceBaseAssetsRaw) / 2;
             // Since the swap is calculating the amountOut of wrapped tokens,
             // we need to limit the minimum amountOut, which can be defined by
             // the exact conversion of (exchangeAmountRaw - 1), to give some
             // margin for rounding errors related to rate
-            limit = _wrappedToken.convertToShares(exchangeAmountRaw - 1) - MAXIMUM_DIFF_WTOKENS;
+            limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw - 1) - MAXIMUM_DIFF_WTOKENS;
 
             _vault.invoke(
                 abi.encodeWithSelector(
@@ -241,7 +241,7 @@ contract ERC4626BufferPool is
                         tokenIn: tokens[BASE_TOKEN_INDEX],
                         tokenOut: tokens[WRAPPED_TOKEN_INDEX],
                         amountGivenRaw: exchangeAmountRaw,
-                        limitRaw: limit,
+                        limitRaw: limitRaw,
                         userData: ""
                     })
                 )
@@ -252,7 +252,7 @@ contract ERC4626BufferPool is
             // we need to limit the maximum amountIn, which can be defined by
             // the exact conversion of (exchangeAmountRaw + 1), to give some
             // margin for rounding errors related to rate
-            limit = _wrappedToken.convertToShares(exchangeAmountRaw + 1) + MAXIMUM_DIFF_WTOKENS;
+            limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw + 1) + MAXIMUM_DIFF_WTOKENS;
 
             _vault.invoke(
                 abi.encodeWithSelector(
@@ -263,7 +263,7 @@ contract ERC4626BufferPool is
                         tokenIn: tokens[WRAPPED_TOKEN_INDEX],
                         tokenOut: tokens[BASE_TOKEN_INDEX],
                         amountGivenRaw: exchangeAmountRaw,
-                        limitRaw: limit,
+                        limitRaw: limitRaw,
                         userData: ""
                     })
                 )
