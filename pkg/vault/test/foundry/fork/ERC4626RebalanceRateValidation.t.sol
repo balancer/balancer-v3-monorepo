@@ -174,7 +174,10 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
             bptAmountOutDai,
             2 * BUFFER_BASE_TOKENS,
             DELTA,
-            "The amount of issued BPT of wDai BufferPool should be very close from the amount of deposited DAI"
+            string.concat(
+                "The amount of BPT issued by the wDai BufferPool should be very ",
+                "close to the sum of DAI+wDAI (or 2 * DAI, as the buffer is balanced)"
+            )
         );
     }
 
@@ -216,7 +219,10 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
             bptAmountOutSand,
             2 * BUFFER_BASE_TOKENS,
             DELTA,
-            "The amount of issued BPT of wSand BufferPool should be very close from the amount of deposited SAND"
+            string.concat(
+                "The amount of BPT issued by the wSand BufferPool should be very ",
+                "close to the sum of SAND+wSand (or 2 * SAND, as the buffer is balanced)"
+            )
         );
     }
 
