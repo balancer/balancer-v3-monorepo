@@ -10,7 +10,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IBufferPool, RebalanceHookParams } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
+import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
 import {
     AddLiquidityKind,
     RemoveLiquidityKind,
@@ -161,9 +161,7 @@ contract ERC4626BufferPool is
             // Rate used by the vault to scale values
             uint256 wrappedRate = _getRate();
 
-            uint256 sharesRaw = request.amountGivenScaled18.divDown(wrappedRate).divDown(
-                _wrappedTokenScalingFactor
-            );
+            uint256 sharesRaw = request.amountGivenScaled18.divDown(wrappedRate).divDown(_wrappedTokenScalingFactor);
             // Add 1 to assets amount so we make sure we're always returning more assets than needed to wrap.
             // It ensures that any error in the calculation of the rate will be charged from the buffer,
             // and not from the vault
@@ -237,13 +235,14 @@ contract ERC4626BufferPool is
             _vault.invoke(
                 abi.encodeWithSelector(
                     ERC4626BufferPool.rebalanceHook.selector,
-                    RebalanceHookParams({
+                    VaultSwapParams({
                         kind: SwapKind.EXACT_IN,
                         pool: poolAddress,
                         tokenIn: tokens[BASE_TOKEN_INDEX],
                         tokenOut: tokens[WRAPPED_TOKEN_INDEX],
                         amountGivenRaw: exchangeAmountRaw,
-                        limit: limit
+                        limitRaw: limit,
+                        userData: ""
                     })
                 )
             );
@@ -258,20 +257,21 @@ contract ERC4626BufferPool is
             _vault.invoke(
                 abi.encodeWithSelector(
                     ERC4626BufferPool.rebalanceHook.selector,
-                    RebalanceHookParams({
+                    VaultSwapParams({
                         kind: SwapKind.EXACT_OUT,
                         pool: poolAddress,
                         tokenIn: tokens[WRAPPED_TOKEN_INDEX],
                         tokenOut: tokens[BASE_TOKEN_INDEX],
                         amountGivenRaw: exchangeAmountRaw,
-                        limit: limit
+                        limitRaw: limit,
+                        userData: ""
                     })
                 )
             );
         }
     }
 
-    function rebalanceHook(RebalanceHookParams calldata params) external payable onlyVault {
+    function rebalanceHook(VaultSwapParams calldata params) external payable onlyVault {
         (, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         IERC20 baseToken;
@@ -298,7 +298,7 @@ contract ERC4626BufferPool is
     }
 
     function _swapHook(
-        RebalanceHookParams calldata params
+        VaultSwapParams calldata params
     ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         (amountCalculated, amountIn, amountOut) = _vault.swap(
             VaultSwapParams({
@@ -307,8 +307,8 @@ contract ERC4626BufferPool is
                 tokenIn: params.tokenIn,
                 tokenOut: params.tokenOut,
                 amountGivenRaw: params.amountGivenRaw,
-                limitRaw: params.limit,
-                userData: ""
+                limitRaw: params.limitRaw,
+                userData: params.userData
             })
         );
     }

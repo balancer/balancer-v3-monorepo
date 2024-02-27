@@ -7,8 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { RebalanceHookParams } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
+import { SwapKind, SwapParams as VaultSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ERC4626BufferPool } from "@balancer-labs/v3-vault/contracts/ERC4626BufferPool.sol";
 import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.sol";
@@ -43,19 +42,20 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
         getVault().invoke(
             abi.encodeWithSelector(
                 ERC4626BufferPoolMock.unbalanceHook.selector,
-                RebalanceHookParams({
+                VaultSwapParams({
                     kind: kind,
                     pool: address(this),
                     tokenIn: tokens[indexIn],
                     tokenOut: tokens[indexOut],
                     amountGivenRaw: assetsToTransferRaw,
-                    limit: limit
+                    limitRaw: limit,
+                    userData: ""
                 })
             )
         );
     }
 
-    function unbalanceHook(RebalanceHookParams calldata params) external payable onlyVault {
+    function unbalanceHook(VaultSwapParams calldata params) external payable onlyVault {
         (, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         IERC20 underlyingToken;
