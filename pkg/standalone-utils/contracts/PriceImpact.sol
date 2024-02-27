@@ -18,6 +18,8 @@ import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openze
 
 contract PriceImpact is ReentrancyGuard {
 
+    using FixedPoint for uint256;
+
     IVault private immutable _vault;
 
     modifier onlyVault() {
@@ -40,9 +42,9 @@ contract PriceImpact is ReentrancyGuard {
         uint256[] memory exactAmountsIn
     ) external returns (uint256 priceImpact) {
         // query addLiquidityUnbalanced
-        uint256 bptAmountOut = this.queryAddLiquidityUnbalanced(pool, exactAmountsIn, 0, new bytes(0));
+        uint256 bptAmountOut = _queryAddLiquidityUnbalanced(pool, exactAmountsIn, 0, new bytes(0));
         // query removeLiquidityProportional
-        uint256[] memory proportionalAmountsOut = this.queryRemoveLiquidityProportional(
+        uint256[] memory proportionalAmountsOut = _queryRemoveLiquidityProportional(
             pool,
             bptAmountOut,
             new uint256[](exactAmountsIn.length),
@@ -56,20 +58,20 @@ contract PriceImpact is ReentrancyGuard {
         // query add liquidity for each delta, so we know how unbalanced each amount in is in terms of BPT
         int256[] memory deltaBPTs = new int256[](exactAmountsIn.length);
         for (uint256 i = 0; i < exactAmountsIn.length; i++) {
-            deltaBPTs[i] = queryAddLiquidityForTokenDelta(pool, i, deltas, deltaBPTs);
+            deltaBPTs[i] = _queryAddLiquidityForTokenDelta(pool, i, deltas, deltaBPTs);
         }
         // zero out deltas leaving only a remaining delta within a single token
-        uint256 remaininDeltaIndex = zeroOutDeltas(pool, deltas, deltaBPTs);
+        uint256 remaininDeltaIndex = _zeroOutDeltas(pool, deltas, deltaBPTs);
         // calculate price impact ABA with remaining delta and its respective exactAmountIn
         uint256 delta = uint(deltas[remaininDeltaIndex] * -1); // remaining delta is always negative, so by multiplying by -1 we get a positive number
-        return FixedPoint.divDown(delta, exactAmountsIn[remaininDeltaIndex]) / 2;
+        return delta.divDown(exactAmountsIn[remaininDeltaIndex]) / 2;
     }
 
     /*******************************************************************************
                                     Helpers
     *******************************************************************************/
 
-    function queryAddLiquidityForTokenDelta(
+    function _queryAddLiquidityForTokenDelta(
         address pool,
         uint256 tokenIndex,
         int256[] memory deltas,
@@ -80,21 +82,21 @@ contract PriceImpact is ReentrancyGuard {
             return 0;
         } else if (deltaBPTs[tokenIndex] > 0) {
             zerosWithSingleDelta[tokenIndex] = uint(deltas[tokenIndex]);
-            return int(this.queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, 0, new bytes(0)));
+            return int(_queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, 0, new bytes(0)));
         } else {
             zerosWithSingleDelta[tokenIndex] = uint(deltas[tokenIndex] * -1);
-            return int(this.queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, 0, new bytes(0))) * -1;
+            return int(_queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, 0, new bytes(0))) * -1;
         }
     }
 
-    function zeroOutDeltas(address pool, int256[] memory deltas, int256[] memory deltaBPTs) internal returns (uint256) {
+    function _zeroOutDeltas(address pool, int256[] memory deltas, int256[] memory deltaBPTs) internal returns (uint256) {
         uint256 minNegativeDeltaIndex = 0;
         IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
 
         for (uint256 i = 0; i < deltas.length - 1; i++) {
             // get minPositiveDeltaIndex and maxNegativeDeltaIndex
-            uint256 minPositiveDeltaIndex = minPositiveIndex(deltaBPTs);
-            minNegativeDeltaIndex = maxNegativeIndex(deltaBPTs);
+            uint256 minPositiveDeltaIndex = _minPositiveIndex(deltaBPTs);
+            minNegativeDeltaIndex = _maxNegativeIndex(deltaBPTs);
 
             uint256 givenTokenIndex;
             uint256 resultTokenIndex;
@@ -103,22 +105,22 @@ contract PriceImpact is ReentrancyGuard {
             if (deltaBPTs[minPositiveDeltaIndex] < deltaBPTs[minNegativeDeltaIndex] * -1) {
                 givenTokenIndex = minPositiveDeltaIndex;
                 resultTokenIndex = minNegativeDeltaIndex;
-                resultAmount = this.querySwapSingleTokenExactIn(
+                resultAmount = _querySwapSingleTokenExactIn(
                     pool,
                     poolTokens[givenTokenIndex],
                     poolTokens[resultTokenIndex],
                     uint(deltas[givenTokenIndex]),
-                    new bytes(0)
+                    ""
                 );
             } else {
                 givenTokenIndex = minNegativeDeltaIndex;
                 resultTokenIndex = minPositiveDeltaIndex;
-                resultAmount = this.querySwapSingleTokenExactOut(
+                resultAmount = _querySwapSingleTokenExactOut(
                     pool,
                     poolTokens[resultTokenIndex],
                     poolTokens[givenTokenIndex],
                     uint(deltas[givenTokenIndex] * -1),
-                    new bytes(0)
+                    ""
                 );
             }
 
@@ -126,14 +128,14 @@ contract PriceImpact is ReentrancyGuard {
             deltas[givenTokenIndex] = 0;
             deltaBPTs[givenTokenIndex] = 0;
             deltas[resultTokenIndex] += int(resultAmount);
-            deltaBPTs[resultTokenIndex] = queryAddLiquidityForTokenDelta(pool, resultTokenIndex, deltas, deltaBPTs);
+            deltaBPTs[resultTokenIndex] = _queryAddLiquidityForTokenDelta(pool, resultTokenIndex, deltas, deltaBPTs);
         }
 
         return minNegativeDeltaIndex;
     }
 
     // returns the index of the smallest positive integer in an array - i.e. [3, 2, -2, -3] returns 1
-    function minPositiveIndex(int256[] memory array) internal pure returns (uint256 index) {
+    function _minPositiveIndex(int256[] memory array) internal pure returns (uint256 index) {
         int256 min = type(int256).max;
         for (uint256 i = 0; i < array.length; i++) {
             if (array[i] > 0 && array[i] < min) {
@@ -144,7 +146,7 @@ contract PriceImpact is ReentrancyGuard {
     }
 
     // returns the index of the biggest negative integer in an array - i.e. [3, 1, -2, -3] returns 2
-    function maxNegativeIndex(int256[] memory array) internal pure returns (uint256 index) {
+    function _maxNegativeIndex(int256[] memory array) internal pure returns (uint256 index) {
         int256 max = type(int256).min;
         for (uint256 i = 0; i < array.length; i++) {
             if (array[i] < 0 && array[i] > max) {
@@ -191,6 +193,16 @@ contract PriceImpact is ReentrancyGuard {
         uint256 exactAmountIn,
         bytes calldata userData
     ) external returns (uint256 amountCalculated) {
+        return _querySwapSingleTokenExactIn(pool, tokenIn, tokenOut, exactAmountIn, userData);
+    }
+
+    function _querySwapSingleTokenExactIn(
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 exactAmountIn,
+        bytes memory userData
+    ) internal returns (uint256 amountCalculated) {
         return
             abi.decode(
                 _vault.quote(
@@ -221,6 +233,16 @@ contract PriceImpact is ReentrancyGuard {
         uint256 exactAmountOut,
         bytes calldata userData
     ) external returns (uint256 amountCalculated) {
+        return _querySwapSingleTokenExactOut(pool, tokenIn, tokenOut, exactAmountOut, userData);
+    }
+
+    function _querySwapSingleTokenExactOut(
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 exactAmountOut,
+        bytes memory userData
+    ) internal returns (uint256 amountCalculated) {
         return
             abi.decode(
                 _vault.quote(
@@ -264,6 +286,15 @@ contract PriceImpact is ReentrancyGuard {
         uint256 minBptAmountOut,
         bytes memory userData
     ) external returns (uint256 bptAmountOut) {
+        return _queryAddLiquidityUnbalanced(pool, exactAmountsIn, minBptAmountOut, userData);
+    }
+
+    function _queryAddLiquidityUnbalanced(
+        address pool,
+        uint256[] memory exactAmountsIn,
+        uint256 minBptAmountOut,
+        bytes memory userData
+    ) internal returns (uint256 bptAmountOut) {
         (, bptAmountOut, ) = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(
@@ -320,6 +351,15 @@ contract PriceImpact is ReentrancyGuard {
         uint256[] memory minAmountsOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut) {
+        return _queryRemoveLiquidityProportional(pool, exactBptAmountIn, minAmountsOut, userData);
+    }
+
+    function _queryRemoveLiquidityProportional(
+        address pool,
+        uint256 exactBptAmountIn,
+        uint256[] memory minAmountsOut,
+        bytes memory userData
+    ) internal returns (uint256[] memory amountsOut) {
         (, amountsOut, ) = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(

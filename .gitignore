@@ -39,6 +39,3 @@ slither/
 
 # Jupyter
 .ipynb_checkpoints/
-
-# VSCode
-.vscode/*
