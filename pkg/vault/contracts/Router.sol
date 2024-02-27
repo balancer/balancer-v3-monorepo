@@ -35,10 +35,14 @@ contract Router is IRouter, ReentrancyGuard {
     mapping(address => uint256) private _currentSwapTokenOutAmounts;
 
     modifier onlyVault() {
+        _ensureOnlyVault();
+        _;
+    }
+
+    function _ensureOnlyVault() private view {
         if (msg.sender != address(_vault)) {
             revert IVaultErrors.SenderIsNotVault(msg.sender);
         }
-        _;
     }
 
     constructor(IVault vault, IWETH weth) {
