@@ -88,7 +88,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
                 })
             )
         );
-        
+
         router.swapSingleTokenExactIn(address(pool), dai, usdc, defaultAmount, 0, type(uint256).max, false, bytes(""));
     }
 }
