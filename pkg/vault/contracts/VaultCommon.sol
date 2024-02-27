@@ -44,7 +44,12 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * it reverts the transaction with specific error messages.
      */
     modifier withLocker() {
-        // If there are no lockers in the list, revert with an error.
+        _ensureWithLocker();
+        _;
+    }
+
+    function _ensureWithLocker() internal view {
+        // If there are no handlers in the list, revert with an error.
         if (_lockers.length == 0) {
             revert NoLocker();
         }
@@ -54,9 +59,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         address locker = _lockers[_lockers.length - 1];
 
         // If the current function caller is not the active locker, revert.
-        if (msg.sender != locker) revert WrongLocker(msg.sender, locker);
-
-        _;
+        if (msg.sender != locker) {
+            revert WrongLocker(msg.sender, locker);
+        }
     }
 
     /**
