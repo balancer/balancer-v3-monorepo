@@ -176,4 +176,67 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             ""
         );
     }
+
+    function testOnBeforeAddLiquidityHook() public {
+        PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.hooks.shouldCallBeforeAddLiquidity = true;
+        vault.setConfig(address(pool), config);
+
+        vm.prank(bob);
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IPoolHooks.onBeforeAddLiquidity.selector,
+                bob,
+                AddLiquidityKind.UNBALANCED,
+                [defaultAmount, defaultAmount].toMemoryArray(),
+                bptAmountRoundDown,
+                [defaultAmount, defaultAmount].toMemoryArray(),
+                bytes("")
+            )
+        );
+        router.addLiquidityUnbalanced(
+            address(pool),
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmountRoundDown,
+            false,
+            bytes("")
+        );
+    }
+
+    function testOnBeforeAddLiquidityHookAltersRate() public {
+        PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.hooks.shouldCallBeforeAddLiquidity = true;
+        config.hooks.shouldCallAfterAddLiquidity = true;
+        vault.setConfig(address(pool), config);
+
+        // Change rate of first token
+        PoolMock(pool).setChangeTokenRateOnBeforeAddLiquidityHook(true, 0.5e18);
+
+        uint256 rateAdjustedAmount = defaultAmount / 2;
+
+        // Unbalanced add sets amounts to maxAmounts. We can't intercept `_addLliquidity`, but can verify
+        // maxAmounts are updated by inspecting the amountsIn.
+
+        vm.prank(bob);
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IPoolHooks.onAfterAddLiquidity.selector,
+                bob,
+                [rateAdjustedAmount, defaultAmount].toMemoryArray(),
+                defaultAmount * 2,
+                [defaultAmount, defaultAmount * 2].toMemoryArray(),
+                bytes("")
+            )
+        );
+
+        router.addLiquidityUnbalanced(
+            address(pool),
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmountRoundDown,
+            false,
+            bytes("")
+        );
+    }
 }
