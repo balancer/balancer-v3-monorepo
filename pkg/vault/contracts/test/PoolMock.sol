@@ -34,6 +34,9 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     bool public failOnAfterRemoveLiquidity;
 
     bool public changeTokenRateOnBeforeSwapHook;
+    bool public changeTokenRateOnBeforeInitialize;
+    bool public changeTokenRateOnBeforeAddLiquidity;
+    bool public changeTokenRateOnBeforeRemoveLiquidity;
 
     uint256 private _newTokenRate;
     RateProviderMock _firstTokenRateProvider;
@@ -97,6 +100,11 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         failOnBeforeInitialize = fail;
     }
 
+    function setChangeTokenRateOnBeforeInitializeHook(bool changeRate, uint256 newTokenRate) external {
+        changeTokenRateOnBeforeInitialize = changeRate;
+        _newTokenRate = newTokenRate;
+    }
+
     function setFailOnBeforeSwapHook(bool fail) external {
         failOnBeforeSwapHook = fail;
     }
@@ -114,12 +122,22 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         failOnBeforeAddLiquidity = fail;
     }
 
+    function setChangeTokenRateOnBeforeAddLiquidityHook(bool changeRate, uint256 newTokenRate) external {
+        changeTokenRateOnBeforeAddLiquidity = changeRate;
+        _newTokenRate = newTokenRate;
+    }
+
     function setFailOnAfterAddLiquidityHook(bool fail) external {
         failOnAfterAddLiquidity = fail;
     }
 
     function setFailOnBeforeRemoveLiquidityHook(bool fail) external {
         failOnBeforeRemoveLiquidity = fail;
+    }
+
+    function setChangeTokenRateOnBeforeRemoveLiquidityHook(bool changeRate, uint256 newTokenRate) external {
+        changeTokenRateOnBeforeRemoveLiquidity = changeRate;
+        _newTokenRate = newTokenRate;
     }
 
     function setFailOnAfterRemoveLiquidityHook(bool fail) external {
@@ -130,7 +148,11 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         _multiplier = newMultiplier;
     }
 
-    function onBeforeInitialize(uint256[] memory, bytes memory) external view returns (bool) {
+    function onBeforeInitialize(uint256[] memory, bytes memory) external returns (bool) {
+        if (changeTokenRateOnBeforeInitialize) {
+            _updateTokenRate();
+        }
+
         return !failOnBeforeInitialize;
     }
 
@@ -140,7 +162,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
     function onBeforeSwap(IBasePool.SwapParams calldata) external override returns (bool success) {
         if (changeTokenRateOnBeforeSwapHook) {
-            _firstTokenRateProvider.mockRate(_newTokenRate);
+            _updateTokenRate();
         }
 
         return !failOnBeforeSwapHook;
@@ -169,7 +191,11 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         uint256,
         uint256[] memory,
         bytes memory
-    ) external view override returns (bool) {
+    ) external override returns (bool) {
+        if (changeTokenRateOnBeforeAddLiquidity) {
+            _updateTokenRate();
+        }
+
         return !failOnBeforeAddLiquidity;
     }
 
@@ -180,7 +206,11 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         uint256[] memory,
         uint256[] memory,
         bytes memory
-    ) external view override returns (bool) {
+    ) external override returns (bool) {
+        if (changeTokenRateOnBeforeRemoveLiquidity) {
+            _updateTokenRate();
+        }
+
         return !failOnBeforeRemoveLiquidity;
     }
 
@@ -232,5 +262,9 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         for (uint256 i = 0; i < tokens.length; i++) {
             scalingFactors[i] = ScalingHelpers.computeScalingFactor(tokens[i]);
         }
+    }
+
+    function _updateTokenRate() private {
+        _firstTokenRateProvider.mockRate(_newTokenRate);
     }
 }
