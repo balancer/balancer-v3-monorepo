@@ -307,7 +307,7 @@ interface IVaultExtension {
     *******************************************************************************/
 
     /**
-     * @notice Invokes a callback on msg.sender with arguments provided in `data`.
+     * @notice Performs a callback on msg.sender with arguments provided in `data`.
      * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
      * anything else will revert.
      *

@@ -471,7 +471,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _updatePoolDataLiveBalancesAndRates(poolData, Rounding.ROUND_UP);
         }
 
-        // The bulk of the work is done here: the corresponding Pool hook is invoked and its final balances
+        // The bulk of the work is done here: the corresponding Pool hook is called, and the final balances
         // are computed. This function is non-reentrant, as it performs the accounting updates.
         // Note that poolData is mutated to update the Raw and Live balances, so they are accurate when passed
         // into the AfterAddLiquidity hook.
@@ -664,7 +664,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _updatePoolDataLiveBalancesAndRates(poolData, Rounding.ROUND_DOWN);
         }
 
-        // The bulk of the work is done here: the corresponding Pool hook is invoked, and its final balances
+        // The bulk of the work is done here: the corresponding Pool hook is called, and the final balances
         // are computed. This function is non-reentrant, as it performs the accounting updates.
         // Note that poolData is mutated to update the Raw and Live balances, so they are accurate when passed
         // into the AfterRemoveLiquidity hook.

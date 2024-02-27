@@ -15,7 +15,7 @@ interface IVaultMain {
 
     /**
      * @notice Creates a lock context for a sequence of operations.
-     * @dev Invokes a callback on msg.sender with arguments provided in `data`. The Callback is `transient`,
+     * @dev Performs a callback on msg.sender with arguments provided in `data`. The Callback is `transient`,
      * meaning all balances for the caller have to be settled at the end.
      *
      * @param data Contains function signature and args to be passed to the msg.sender
@@ -41,7 +41,7 @@ interface IVaultMain {
     /**
      * @notice Transfers tokens from a sender to the Vault.
      * @dev This function can transfer tokens from users using allowances granted to the Vault.
-     * Only trusted routers are permitted to invoke it. Untrusted routers should use `settle` instead.
+     * Only trusted routers are permitted to call it. Untrusted routers should use `settle` instead.
      *
      * @param token Token's address
      * @param from Sender's address

@@ -39,7 +39,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * @dev This modifier ensures that the function it modifies can only be called
      * by the last locker in the `_lockers` array. This is used to enforce the
      * order of execution when multiple lockers are in play, ensuring only the
-     * current or "active" locker can invoke certain operations in the Vault.
+     * current or "active" locker can perform certain operations in the Vault.
      * If no locker is found or the caller is not the expected locker,
      * it reverts the transaction with specific error messages.
      */
