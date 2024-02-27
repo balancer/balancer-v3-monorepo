@@ -7,7 +7,6 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -69,9 +68,8 @@ contract ERC4626BufferPool is
         IVault vault
     ) BalancerPoolToken(vault, name, symbol) BasePoolAuthentication(vault, msg.sender) {
         _wrappedToken = wrappedToken;
-        ERC20 baseToken = ERC20(wrappedToken.asset());
-        _wrappedTokenScalingFactor = 10 ** (18 - wrappedToken.decimals());
-        _baseTokenScalingFactor = 10 ** (18 - baseToken.decimals());
+        _wrappedTokenScalingFactor = ScalingHelpers.computeScalingFactor(IERC20(address(wrappedToken)));
+        _baseTokenScalingFactor = ScalingHelpers.computeScalingFactor(IERC20(wrappedToken.asset()));
     }
 
     /// @inheritdoc IBasePool
@@ -161,13 +159,12 @@ contract ERC4626BufferPool is
             // Rate used by the vault to scale values
             uint256 wrappedRate = _getRate();
 
-            uint256 unscaledSharesAmount = request.amountGivenScaled18.divDown(wrappedRate) /
-                _wrappedTokenScalingFactor;
+            uint256 unscaledSharesAmount = request.amountGivenScaled18.divDown(wrappedRate).divDown(_wrappedTokenScalingFactor);
             // Add 1 to assets amount so we make sure we're always returning more assets than needed to wrap.
             // It ensures that any error in the calculation of the rate will be charged from the buffer,
             // and not from the vault
             uint256 unscaledAssetsAmount = _wrappedToken.previewRedeem(unscaledSharesAmount) + 1;
-            uint256 preciseAmountScaled18 = unscaledAssetsAmount * _wrappedTokenScalingFactor;
+            uint256 preciseAmountScaled18 = unscaledAssetsAmount.mulDown(_wrappedTokenScalingFactor);
 
             // amountGivenScaled18 has some imprecision when calculating the rate (we store only 18 decimals of rate,
             // therefore it's less precise than using preview or convertToAssets directly).
@@ -326,13 +323,13 @@ contract ERC4626BufferPool is
         uint256 tolerance = 1;
 
         if (balancesScaled18[WRAPPED_TOKEN_INDEX] >= balancesScaled18[BASE_TOKEN_INDEX]) {
-            if (_wrappedTokenScalingFactor * balancesScaled18[WRAPPED_TOKEN_INDEX] > FixedPoint.ONE) {
-                tolerance = _wrappedTokenScalingFactor.mulDown(balancesScaled18[WRAPPED_TOKEN_INDEX]);
+            if (balancesScaled18[WRAPPED_TOKEN_INDEX].mulDown(_wrappedTokenScalingFactor) > FixedPoint.ONE) {
+                tolerance = balancesScaled18[WRAPPED_TOKEN_INDEX].mulDown(_wrappedTokenScalingFactor) / FixedPoint.ONE;
             }
             return balancesScaled18[WRAPPED_TOKEN_INDEX] - balancesScaled18[BASE_TOKEN_INDEX] < tolerance;
         } else {
-            if (_baseTokenScalingFactor * balancesScaled18[BASE_TOKEN_INDEX] > FixedPoint.ONE) {
-                tolerance = _baseTokenScalingFactor.mulDown(balancesScaled18[BASE_TOKEN_INDEX]);
+            if (balancesScaled18[BASE_TOKEN_INDEX].mulDown(_baseTokenScalingFactor) > FixedPoint.ONE) {
+                tolerance = balancesScaled18[BASE_TOKEN_INDEX].mulDown(_baseTokenScalingFactor) / FixedPoint.ONE;
             }
             return balancesScaled18[BASE_TOKEN_INDEX] - balancesScaled18[WRAPPED_TOKEN_INDEX] < tolerance;
         }
