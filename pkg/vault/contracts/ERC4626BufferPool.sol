@@ -211,6 +211,8 @@ contract ERC4626BufferPool is
         uint256 balanceBaseAssetsRaw = balancesRaw[BASE_TOKEN_INDEX];
 
         uint256[] memory balancesScaled18 = new uint256[](2);
+        // "toScaled18RoundDown" is a "mulDown", and since the balance is divided by FixedPoint.ONE,
+        // solidity always rounds down.
         balancesScaled18[WRAPPED_TOKEN_INDEX] = balanceWrappedAssetsRaw.toScaled18RoundDown(
             decimalScalingFactors[WRAPPED_TOKEN_INDEX]
         );
