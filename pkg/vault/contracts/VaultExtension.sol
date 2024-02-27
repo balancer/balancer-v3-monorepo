@@ -268,6 +268,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             if (IPoolHooks(pool).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
                 revert BeforeInitializeHookFailed();
             }
+
+            // The before hook is reentrant, and could have changed token rates.
+            _updateTokenRatesInPoolData(poolData);
+
+            // Also update exactAmountsInScaled18, in case the underlying rates changed.
+            exactAmountsInScaled18 = exactAmountsIn.copyToScaled18ApplyRateRoundDownArray(
+                poolData.decimalScalingFactors,
+                poolData.tokenRates
+            );
         }
 
         bptAmountOut = _initialize(pool, to, poolData, tokens, exactAmountsIn, exactAmountsInScaled18, minBptAmountOut);
