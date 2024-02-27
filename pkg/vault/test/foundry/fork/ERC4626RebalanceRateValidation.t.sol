@@ -53,8 +53,6 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
     IERC20 wSandMainnet;
     IERC4626 wSAND;
 
-    uint256 saltCounter = 0;
-
     uint256 constant BLOCK_NUMBER = 19314200;
 
     address constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -532,12 +530,6 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
 
     function _createBuffer(IERC4626 wrappedToken) private returns (address) {
         return factory.createMocked(wrappedToken);
-    }
-
-    // Need a unique salt for deployments to work; just use the token address
-    function _generateSalt(address token) private returns (bytes32) {
-        saltCounter++;
-        return bytes32(uint256(uint160(token)) + saltCounter);
     }
 
     function _transferTokensFromDonorToUsers() private {

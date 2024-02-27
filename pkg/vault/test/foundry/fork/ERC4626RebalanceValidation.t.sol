@@ -52,8 +52,6 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     IERC20 aUsdcMainnet;
     IERC4626 waUSDC;
 
-    uint256 saltCounter = 0;
-
     // uint256 constant BLOCK_NUMBER = 18985254;
     // Using older block number because convertToAssets function is bricked in the new version of the aToken wrapper
     uint256 constant BLOCK_NUMBER = 17965150;
@@ -484,12 +482,6 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
 
     function _createBuffer(IERC4626 wrappedToken) private returns (address) {
         return factory.createMocked(wrappedToken);
-    }
-
-    // Need a unique salt for deployments to work; just use the token address
-    function _generateSalt(address token) private returns (bytes32) {
-        saltCounter++;
-        return bytes32(uint256(uint160(token)) + saltCounter);
     }
 
     function _transferTokensFromDonorToUsers() private {
