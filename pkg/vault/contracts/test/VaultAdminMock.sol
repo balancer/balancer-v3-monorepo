@@ -21,4 +21,22 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
     function manualUnpauseVault() external {
         _setVaultPaused(false);
     }
+
+    function manualPausePool(address pool) external {
+        _setPoolPaused(pool, true);
+    }
+
+    function manualUnpausePool(address pool) external {
+        _setPoolPaused(pool, false);
+    }
+
+    function manualEnableRecoveryMode(address pool) external {
+        _ensurePoolNotInRecoveryMode(pool);
+        _setPoolRecoveryMode(pool, true);
+    }
+
+    function manualDisableRecoveryMode(address pool) external {
+        _ensurePoolInRecoveryMode(pool);
+        _setPoolRecoveryMode(pool, false);
+    }
 }

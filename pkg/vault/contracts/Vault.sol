@@ -11,6 +11,7 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -50,9 +51,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         _vaultExtension = vaultExtension;
 
-        _vaultPauseWindowEndTime = vaultExtension.getPauseWindowEndTime();
-        _vaultBufferPeriodDuration = vaultExtension.getBufferPeriodDuration();
-        _vaultBufferPeriodEndTime = vaultExtension.getBufferPeriodEndTime();
+        _vaultPauseWindowEndTime = IVaultAdmin(address(vaultExtension)).getPauseWindowEndTime();
+        _vaultBufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
+        _vaultBufferPeriodEndTime = IVaultAdmin(address(vaultExtension)).getBufferPeriodEndTime();
 
         _authorizer = authorizer;
     }
