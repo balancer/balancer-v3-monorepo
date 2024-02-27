@@ -198,6 +198,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // struct, to be settled in non-reentrant _swap with the rest of the accounting.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN);
 
+        // if the sender is the buffer pool, swaps are allowed as this is part of the rebalance mechanism.
         if (
             poolData.poolConfig.isBufferPool &&
             _wrappedTokenBuffers[IERC4626(address(poolData.tokenConfig[0].token))] != msg.sender
