@@ -4,8 +4,61 @@ pragma solidity ^0.8.4;
 
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+
+import { IVault } from "./IVault.sol";
 
 interface IVaultAdmin {
+    /*******************************************************************************
+                              Constants and immutables
+    *******************************************************************************/
+
+    /**
+     * @notice Returns Vault's pause window end time.
+     * @dev This value is immutable; the getter can be called by anyone.
+     */
+    function getPauseWindowEndTime() external view returns (uint256);
+
+    /**
+     * @notice Returns Vault's buffer period duration.
+     * @dev This value is immutable; the getter can be called by anyone.
+     */
+    function getBufferPeriodDuration() external view returns (uint256);
+
+    /**
+     * @notice Returns Vault's buffer period end time.
+     * @dev This value is immutable; the getter can be called by anyone.
+     */
+    function getBufferPeriodEndTime() external view returns (uint256);
+
+    /**
+     * @notice Get the minimum number of tokens in a pool.
+     * @dev We expect the vast majority of pools to be 2-token.
+     * @return The token count of a minimal pool
+     */
+    function getMinimumPoolTokens() external pure returns (uint256);
+
+    /**
+     * @notice Get the maximum number of tokens in a pool.
+     * @return The token count of a minimal pool
+     */
+    function getMaximumPoolTokens() external pure returns (uint256);
+
+    /// @dev Returns the main Vault address.
+    function vault() external view returns (IVault);
+
+    /*******************************************************************************
+                                    Pool Information
+    *******************************************************************************/
+
+    /**
+     * @notice Retrieve the scaling factors from a pool's rate providers.
+     * @dev This is not included in `getPoolTokenInfo` since it makes external calls that might revert,
+     * effectively preventing retrieval of basic pool parameters. Tokens without rate providers will always return
+     * FixedPoint.ONE (1e18).
+     */
+    function getPoolTokenRates(address pool) external view returns (uint256[] memory);
+
     /*******************************************************************************
                                     Vault Pausing
     *******************************************************************************/
@@ -38,6 +91,24 @@ interface IVaultAdmin {
     function unpauseVault() external;
 
     /*******************************************************************************
+                                    Pool Pausing
+    *******************************************************************************/
+
+    /**
+     * @notice Pause the Pool: an emergency action which disables all pool functions.
+     * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
+     * deployment.
+     */
+    function pausePool(address pool) external;
+
+    /**
+     * @notice Reverse a `pause` operation, and restore the Pool to normal functionality.
+     * @dev This is a permissioned function that will only work on a paused Pool within the Buffer Period set during
+     * deployment. Note that the Pool will automatically unpause after the Buffer Period expires.
+     */
+    function unpausePool(address pool) external;
+
+    /*******************************************************************************
                                    Fees
     *******************************************************************************/
 
@@ -59,6 +130,65 @@ interface IVaultAdmin {
      * @param swapFeePercentage The new swap fee percentage to apply to the pool
      */
     function setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) external;
+
+    /**
+     * @notice Collects accumulated protocol fees for the specified array of tokens.
+     * @dev Fees are sent to msg.sender.
+     * @param tokens An array of token addresses for which the fees should be collected
+     */
+    function collectProtocolFees(IERC20[] calldata tokens) external;
+
+    /*******************************************************************************
+                                    Recovery Mode
+    *******************************************************************************/
+
+    /**
+     * @notice Enable recovery mode for a pool.
+     * @dev This is a permissioned function.
+     * @param pool The pool
+     */
+    function enableRecoveryMode(address pool) external;
+
+    /**
+     * @notice Disable recovery mode for a pool.
+     * @dev This is a permissioned function.
+     * @param pool The pool
+     */
+    function disableRecoveryMode(address pool) external;
+
+    /*******************************************************************************
+                                    Queries
+    *******************************************************************************/
+
+    /// @notice Disables queries functionality on the Vault. Can be called only by governance.
+    function disableQuery() external;
+
+    /*******************************************************************************
+-                                ERC4626 Buffers
+     *******************************************************************************/
+
+    /**
+     * @notice Add an ERC4626 Buffer Pool factory to the allowlist for registering buffers.
+     * @dev Since creating buffers is permissionless, and buffers are mapped 1-to-1 to pools (and cannot
+     * be removed), it would be possible to register a malicious buffer pool for a desirable wrapped token,
+     * blocking registration of the legitimate one.
+     *
+     * This way, we can validate Buffer Pool contracts and prevent the issue described above, while retaining
+     * the flexibility to upgrade the Buffer Pool implementation, and support partner innovation, in case a
+     * wrapper arises that is incompatible with the standard Buffer Pool.
+     *
+     * @param factory The factory to add to the allowlist
+     */
+    function registerBufferPoolFactory(address factory) external;
+
+    /**
+     * @notice Remove an ERC4626 Buffer Pool factory from the allowlist for registering buffers.
+     * @dev For maximum flexibility, there are separate functions for registration and deregistration,
+     * so that permissions can be assigned separately.
+     *
+     * @param factory The factory to remove from the allowlist
+     */
+    function deregisterBufferPoolFactory(address factory) external;
 
     /*******************************************************************************
                                 Authentication

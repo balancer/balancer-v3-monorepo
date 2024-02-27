@@ -301,4 +301,7 @@ interface IVaultErrors {
 
     /// @dev The vault extension was configured with an incorrect Vault address.
     error WrongVaultExtensionDeployment();
+
+    /// @dev The vault admin was configured with an incorrect Vault address.
+    error WrongVaultAdminDeployment();
 }

@@ -36,10 +36,14 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonc
     string private _symbol;
 
     modifier onlyVault() {
+        _ensureOnlyVault();
+        _;
+    }
+
+    function _ensureOnlyVault() private view {
         if (msg.sender != address(_vault)) {
             revert IVaultErrors.SenderIsNotVault(msg.sender);
         }
-        _;
     }
 
     constructor(IVault vault_, string memory name_, string memory symbol_) EIP712(name_, "1") {

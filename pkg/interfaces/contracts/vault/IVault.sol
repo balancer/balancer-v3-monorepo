@@ -9,5 +9,6 @@ import { IVaultErrors } from "./IVaultErrors.sol";
 import { IVaultEvents } from "./IVaultEvents.sol";
 
 interface IVault is IVaultMain, IVaultExtension, IVaultAdmin, IVaultErrors, IVaultEvents {
-    // solhint-disable-previous-line no-empty-blocks
+    /// @dev Returns the main Vault address.
+    function vault() external view override(IVaultAdmin, IVaultExtension) returns (IVault);
 }

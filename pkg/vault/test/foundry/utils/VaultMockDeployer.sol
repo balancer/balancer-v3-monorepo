@@ -18,12 +18,7 @@ library VaultMockDeployer {
         bytes32 salt = bytes32(0);
         vault = VaultMock(payable(CREATE3.getDeployed(salt)));
         VaultAdminMock vaultAdmin = new VaultAdminMock(IVault(address(vault)), 90 days, 30 days);
-        VaultExtensionMock vaultExtension = new VaultExtensionMock(
-            IVault(address(vault)),
-            vaultAdmin,
-            90 days,
-            30 days
-        );
+        VaultExtensionMock vaultExtension = new VaultExtensionMock(IVault(address(vault)), vaultAdmin);
         _create(abi.encode(vaultExtension, authorizer), salt);
         return vault;
     }
