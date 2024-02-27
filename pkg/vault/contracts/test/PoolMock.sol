@@ -16,6 +16,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
+import { RateProviderMock } from "./RateProviderMock.sol";
 import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 
 contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
@@ -32,6 +33,11 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     bool public failOnBeforeRemoveLiquidity;
     bool public failOnAfterRemoveLiquidity;
 
+    bool public changeTokenRateOnBeforeSwapHook;
+
+    uint256 private _newTokenRate;
+    RateProviderMock _firstTokenRateProvider;
+
     // Amounts in are multiplied by the multiplier, amounts out are divided by it
     uint256 private _multiplier = FixedPoint.ONE;
 
@@ -46,6 +52,8 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     ) BalancerPoolToken(vault, name, symbol) {
         if (registerPool) {
             PoolFactoryMock factory = new PoolFactoryMock(vault, pauseWindowDuration);
+
+            _firstTokenRateProvider = RateProviderMock(address(tokenConfig[0].rateProvider));
 
             factory.registerPool(
                 address(this),
@@ -93,6 +101,11 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         failOnBeforeSwapHook = fail;
     }
 
+    function setChangeTokenRateOnBeforeSwapHook(bool changeRate, uint256 newTokenRate) external {
+        changeTokenRateOnBeforeSwapHook = changeRate;
+        _newTokenRate = newTokenRate;
+    }
+
     function setFailOnAfterSwapHook(bool fail) external {
         failOnAfterSwapHook = fail;
     }
@@ -125,7 +138,11 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         return !failOnAfterInitialize;
     }
 
-    function onBeforeSwap(IBasePool.SwapParams calldata) external view override returns (bool success) {
+    function onBeforeSwap(IBasePool.SwapParams calldata) external override returns (bool success) {
+        if (changeTokenRateOnBeforeSwapHook) {
+            _firstTokenRateProvider.mockRate(_newTokenRate);
+        }
+
         return !failOnBeforeSwapHook;
     }
 
