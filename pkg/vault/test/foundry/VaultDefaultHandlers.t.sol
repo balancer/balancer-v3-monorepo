@@ -37,7 +37,7 @@ contract VaultDefaultHandlers is BaseVaultTest {
         assertEq(result, keccak256(bytes("V3")));
     }
 
-    function testDefaultHandlerNonExistingFunction() public {
+    function testDefaultHandlerNonExistentFunction() public {
         vm.expectRevert();
         IRateProvider(address(vault)).getRate(FixedPoint.ONE);
     }
