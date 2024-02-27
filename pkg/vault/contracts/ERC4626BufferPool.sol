@@ -207,14 +207,14 @@ contract ERC4626BufferPool is
             .getPoolTokenInfo(poolAddress);
 
         // PreviewRedeem converts a wrapped amount into a base amount
-        uint256 balanceWrappedAssets = _wrappedToken.previewRedeem(balancesRaw[WRAPPED_TOKEN_INDEX]);
-        uint256 balanceUnwrappedAssets = balancesRaw[BASE_TOKEN_INDEX];
+        uint256 balanceWrappedAssetsRaw = _wrappedToken.previewRedeem(balancesRaw[WRAPPED_TOKEN_INDEX]);
+        uint256 balanceBaseAssetsRaw = balancesRaw[BASE_TOKEN_INDEX];
 
         uint256[] memory balancesScaled18 = new uint256[](2);
-        balancesScaled18[WRAPPED_TOKEN_INDEX] = balanceWrappedAssets.toScaled18RoundDown(
+        balancesScaled18[WRAPPED_TOKEN_INDEX] = balanceWrappedAssetsRaw.toScaled18RoundDown(
             decimalScalingFactors[WRAPPED_TOKEN_INDEX]
         );
-        balancesScaled18[BASE_TOKEN_INDEX] = balanceUnwrappedAssets.toScaled18RoundDown(
+        balancesScaled18[BASE_TOKEN_INDEX] = balanceBaseAssetsRaw.toScaled18RoundDown(
             decimalScalingFactors[BASE_TOKEN_INDEX]
         );
 
@@ -224,8 +224,8 @@ contract ERC4626BufferPool is
 
         uint256 exchangeAmountRaw;
         uint256 limit;
-        if (balanceWrappedAssets > balanceUnwrappedAssets) {
-            exchangeAmountRaw = (balanceWrappedAssets - balanceUnwrappedAssets) / 2;
+        if (balanceWrappedAssetsRaw > balanceBaseAssetsRaw) {
+            exchangeAmountRaw = (balanceWrappedAssetsRaw - balanceBaseAssetsRaw) / 2;
             // Since the swap is calculating the amountOut of wrapped tokens,
             // we need to limit the minimum amountOut, which can be defined by
             // the exact conversion of (exchangeAmountRaw - 1), to give some
@@ -246,8 +246,8 @@ contract ERC4626BufferPool is
                     })
                 )
             );
-        } else if (balanceUnwrappedAssets > balanceWrappedAssets) {
-            exchangeAmountRaw = (balanceUnwrappedAssets - balanceWrappedAssets) / 2;
+        } else if (balanceBaseAssetsRaw > balanceWrappedAssetsRaw) {
+            exchangeAmountRaw = (balanceBaseAssetsRaw - balanceWrappedAssetsRaw) / 2;
             // Since the swap is calculating the amountIn of wrapped tokens,
             // we need to limit the maximum amountIn, which can be defined by
             // the exact conversion of (exchangeAmountRaw + 1), to give some
