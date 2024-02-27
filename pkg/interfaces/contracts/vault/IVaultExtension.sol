@@ -174,12 +174,16 @@ interface IVaultExtension {
      * @return scalingFactors Corresponding scalingFactors of the tokens
      * @return rateProviders Corresponding rateProviders of the tokens (or zero for tokens with no rates)
      */
-    function getPoolTokenInfo(
-        address pool
-    )
+    function getPoolTokenInfo(address pool)
         external
         view
-        returns (IERC20[] memory, TokenType[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
+        returns (
+            IERC20[] memory,
+            TokenType[] memory,
+            uint256[] memory,
+            uint256[] memory,
+            IRateProvider[] memory
+        );
 
     /**
      * @notice Retrieve the scaling factors from a pool's rate providers.
@@ -222,7 +226,11 @@ interface IVaultExtension {
      * @param spender Spender's address
      * @return Amount of tokens the spender is allowed to spend
      */
-    function allowance(address token, address owner, address spender) external view returns (uint256);
+    function allowance(
+        address token,
+        address owner,
+        address spender
+    ) external view returns (uint256);
 
     /**
      * @notice Transfers pool token from owner to a recipient.
@@ -234,7 +242,11 @@ interface IVaultExtension {
      * @param amount Amount of tokens to transfer
      * @return True if successful, false otherwise
      */
-    function transfer(address owner, address to, uint256 amount) external returns (bool);
+    function transfer(
+        address owner,
+        address to,
+        uint256 amount
+    ) external returns (bool);
 
     /**
      * @notice Transfers pool token from a sender to a recipient using an allowance.
@@ -247,7 +259,12 @@ interface IVaultExtension {
      * @param amount Amount of tokens to transfer
      * @return True if successful, false otherwise
      */
-    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
+    function transferFrom(
+        address spender,
+        address from,
+        address to,
+        uint256 amount
+    ) external returns (bool);
 
     /**
      * @notice Approves a spender to spend pool tokens on behalf of sender.
@@ -259,7 +276,11 @@ interface IVaultExtension {
      * @param amount Amount of tokens to approve
      * @return True if successful, false otherwise
      */
-    function approve(address owner, address spender, uint256 amount) external returns (bool);
+    function approve(
+        address owner,
+        address spender,
+        uint256 amount
+    ) external returns (bool);
 
     /*******************************************************************************
                                     Vault Pausing
@@ -277,7 +298,14 @@ interface IVaultExtension {
      * @return vaultPauseWindowEndTime The timestamp of the end of the Vault's pause window
      * @return vaultBufferPeriodEndTime The timestamp of the end of the Vault's buffer period
      */
-    function getVaultPausedState() external view returns (bool, uint256, uint256);
+    function getVaultPausedState()
+        external
+        view
+        returns (
+            bool,
+            uint256,
+            uint256
+        );
 
     /**
      * @notice Pause the Vault: an emergency action which disables all operational state-changing functions.
@@ -314,7 +342,15 @@ interface IVaultExtension {
      * @return poolBufferPeriodEndTime The timestamp after which the Pool unpauses itself (if paused)
      * @return pauseManager The pause manager, or the zero address
      */
-    function getPoolPausedState(address pool) external view returns (bool, uint256, uint256, address);
+    function getPoolPausedState(address pool)
+        external
+        view
+        returns (
+            bool,
+            uint256,
+            uint256,
+            address
+        );
 
     /**
      * @notice Pause the Pool: an emergency action which disables all pool functions.
@@ -478,6 +514,24 @@ interface IVaultExtension {
      * Emits an `AuthorizerChanged` event.
      */
     function setAuthorizer(IAuthorizer newAuthorizer) external;
+
+    // @dev Router approval deadline has expired.
+    error ERC2612ExpiredSignature(uint256 deadline);
+
+    // @dev Mismatched signature.
+    error ERC2612InvalidSigner(address signer, address sender);
+
+    event RouterApprovalChanged(address indexed router, address indexed sender, bool approved);
+
+    function setRouterApproval(
+        address sender,
+        address router,
+        bool approved,
+        uint256 deadline,
+        bytes memory signature
+    ) external;
+
+    function isTrustedRouter(address router, address user) external returns (bool) ;
 
     /*******************************************************************************
 -                                ERC4626 Buffers

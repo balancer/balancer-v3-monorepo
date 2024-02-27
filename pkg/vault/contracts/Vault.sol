@@ -119,7 +119,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function retrieve(IERC20 token, address from, uint256 amount) public nonReentrant withHandler onlyTrustedRouter {
+    function retrieve(
+        IERC20 token,
+        address from,
+        uint256 amount
+    ) public nonReentrant withHandler onlyTrustedRouter(from) {
         // effects
         _supplyCredit(token, amount, msg.sender);
         _tokenReserves[token] += amount;
@@ -419,8 +423,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     *******************************************************************************/
 
     /// @dev Rejects routers not approved by governance and users
-    modifier onlyTrustedRouter() {
-        _onlyTrustedRouter(msg.sender);
+    modifier onlyTrustedRouter(address user) {
+        _onlyTrustedRouter(msg.sender, user);
         _;
     }
 
@@ -811,7 +815,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _setPoolBalances(params.pool, poolData);
 
         // Trusted routers use Vault's allowances, which are infinite anyways for pool tokens.
-        if (!_isTrustedRouter(msg.sender)) {
+        if (!_isTrustedRouter(msg.sender, params.from)) {
             _spendAllowance(address(params.pool), params.from, msg.sender, bptAmountIn);
         }
 
@@ -833,8 +837,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         );
     }
 
-    function _onlyTrustedRouter(address sender) internal pure {
-        if (!_isTrustedRouter(sender)) {
+    function _onlyTrustedRouter(address router, address user) internal view {
+        // If the router is the user, then it is trusted a priori.
+        if (!(router == user || _isTrustedRouter(router, user))) {
             revert RouterNotTrusted();
         }
     }

@@ -12,13 +12,12 @@ import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.s
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
 
 library VaultMockDeployer {
-    function deploy() internal returns (VaultMock vault) {
-        IAuthorizer authorizer = new BasicAuthorizerMock();
+    function deploy() internal returns (VaultMock vault, VaultExtensionMock vaultExtension) {
+        BasicAuthorizerMock authorizer = new BasicAuthorizerMock();
         bytes32 salt = bytes32(0);
         vault = VaultMock(payable(CREATE3.getDeployed(salt)));
-        VaultExtensionMock vaultExtension = new VaultExtensionMock(IVault(address(vault)), 90 days, 30 days);
+        vaultExtension = new VaultExtensionMock(IVault(address(vault)), 90 days, 30 days);
         _create(abi.encode(vaultExtension, authorizer), salt);
-        return vault;
     }
 
     function _create(bytes memory constructorArgs, bytes32 salt) internal returns (address) {

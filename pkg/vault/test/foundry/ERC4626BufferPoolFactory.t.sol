@@ -15,7 +15,7 @@ contract ERC4626BufferPoolFactoryTest is Test {
     ERC4626BufferPoolFactory factory;
 
     function setUp() public {
-        vault = VaultMockDeployer.deploy();
+        (vault, ) = VaultMockDeployer.deploy();
         factory = new ERC4626BufferPoolFactory(IVault(address(vault)), 365 days);
     }
 

@@ -14,4 +14,13 @@ interface IVaultExtensionMock {
     function manualEnableRecoveryMode(address pool) external;
 
     function manualDisableRecoveryMode(address pool) external;
+
+    function hashTypedDataV4(bytes32 data) external view returns (bytes32);
+
+    function getRouterApprovalDigest(
+        address sender,
+        address router,
+        bool approved,
+        uint256 deadline
+    ) external view returns (bytes32);
 }

@@ -4,11 +4,14 @@ pragma solidity ^0.8.4;
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -29,6 +32,7 @@ import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 
+
 /**
  * @dev Bytecode extension for Vault.
  * Has access to the same storage layout as the main vault.
@@ -39,7 +43,7 @@ import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
  *
  * The storage of this contract is in practice unused.
  */
-contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
+contract VaultExtension is IVaultExtension, VaultCommon, Authentication, EIP712, Nonces {
     using Address for *;
     using ArrayHelpers for uint256[];
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -70,7 +74,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         IVault mainVault,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) Authentication(bytes32(uint256(uint160(address(mainVault))))) {
+    ) Authentication(bytes32(uint256(uint160(address(mainVault))))) EIP712("Balancer V2 Vault", "1") {
         if (pauseWindowDuration > MAX_PAUSE_WINDOW_DURATION) {
             revert VaultPauseWindowDurationTooLarge();
         }
@@ -800,7 +804,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
         }
 
         // Trusted routers use Vault's allowances, which are infinite anyways for pool tokens.
-        if (!_isTrustedRouter(msg.sender)) {
+        if (!_isTrustedRouter(msg.sender, from)) {
             _spendAllowance(address(pool), from, msg.sender, exactBptAmountIn);
         }
 
@@ -872,6 +876,39 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication {
     /// @dev Access control is delegated to the Authorizer
     function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
         return _authorizer.canPerform(actionId, user, address(this));
+    }
+
+    bytes32 public constant SET_RELAYER_APPROVAL_TYPEHASH =
+        keccak256("SetRouterApproval(address sender,address router,bool approved,uint256 nonce,uint256 deadline)");
+
+    function setRouterApproval(
+        address sender,
+        address router,
+        bool approved,
+        uint256 deadline,
+        bytes memory signature
+    ) external override nonReentrant whenVaultNotPaused {
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp > deadline) {
+            revert ERC2612ExpiredSignature(deadline);
+        }
+
+        bytes32 digest = _hashTypedDataV4(
+            keccak256(abi.encode(SET_RELAYER_APPROVAL_TYPEHASH, sender, router, approved, _useNonce(sender), deadline))
+        );
+
+        address signer = ECDSA.recover(digest, signature);
+
+        if (signer != sender) {
+            revert ERC2612InvalidSigner(signer, sender);
+        }
+
+        _trustedRouters[sender][router] = approved;
+        emit RouterApprovalChanged(router, sender, approved);
+    }
+
+    function isTrustedRouter(address router, address user) external view override returns (bool) {
+        return _isTrustedRouter(router, user);
     }
 
     /*******************************************************************************

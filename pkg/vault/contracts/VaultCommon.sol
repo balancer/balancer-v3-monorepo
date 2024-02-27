@@ -131,9 +131,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         _tokenDeltas[handler][token] = next;
     }
 
-    function _isTrustedRouter(address) internal pure returns (bool) {
-        //TODO: Implement based on approval by governance and user
-        return true;
+    function _isTrustedRouter(address router, address user) internal view returns (bool) {
+        return _trustedRouters[user][router];
     }
 
     /*******************************************************************************

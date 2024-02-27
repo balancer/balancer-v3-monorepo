@@ -43,4 +43,19 @@ contract VaultExtensionMock is IVaultExtensionMock, VaultExtension {
         _ensurePoolInRecoveryMode(pool);
         _setPoolRecoveryMode(pool, false);
     }
+
+    function getRouterApprovalDigest(
+        address sender,
+        address router,
+        bool approved,
+        uint256 deadline
+    ) public view returns (bytes32) {
+        return _hashTypedDataV4(
+            keccak256(abi.encode(SET_RELAYER_APPROVAL_TYPEHASH, sender, router, approved, nonces(sender), deadline))
+        );
+    }
+
+    function hashTypedDataV4(bytes32 data) public view returns (bytes32) {
+        return _hashTypedDataV4(data);
+    }
 }

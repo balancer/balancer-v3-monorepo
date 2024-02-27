@@ -21,7 +21,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
  */
 contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonces {
     bytes32 public constant PERMIT_TYPEHASH =
-        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+        keccak256("Permit(address owner,address spender,uint256 amount,uint256 nonce,uint256 deadline)");
 
     // @dev Permit deadline has expired.
     error ERC2612ExpiredSignature(uint256 deadline);

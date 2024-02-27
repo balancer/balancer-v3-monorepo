@@ -19,7 +19,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     PoolMock internal poolToken;
 
     bytes32 private constant PERMIT_TYPEHASH =
-        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+        keccak256("Permit(address owner,address spender,uint256 amount,uint256 nonce,uint256 deadline)");
 
     uint256 private constant CURRENT_NONCE = 0;
     uint256 internal privateKey = 0xBEEF;

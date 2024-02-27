@@ -5,8 +5,10 @@ pragma solidity ^0.8.4;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
@@ -73,8 +75,11 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     function setUp() public virtual override {
         BaseTest.setUp();
 
-        vault = IVaultMock(address(VaultMockDeployer.deploy()));
+        VaultMock vaultMock;
+        (vaultMock, vaultExtension) = VaultMockDeployer.deploy();
+        vault = IVaultMock(address(vaultMock));
         vm.label(address(vault), "vault");
+        vm.label(address(vaultExtension), "vaultExtension");
         authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
         vm.label(address(authorizer), "authorizer");
         router = new RouterMock(IVault(address(vault)), weth);
@@ -82,14 +87,28 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
         pool = createPool();
 
         // Approve vault allowances
-        approveVault(admin);
-        approveVault(lp);
-        approveVault(alice);
-        approveVault(bob);
-        approveVault(broke);
+        for (uint256 index = 0; index < users.length; index++) {
+            approveVault(users[index]);
+        }
+
+        // Approve router
+        for (uint256 index = 0; index < users.length; index++) {
+            approveRouter(users[index], userKeys[index]);
+        }
 
         // Add initial liquidity
         initPool();
+    }
+
+    function approveRouter(address user, uint256 key) internal {
+        bytes32 digest = vault.getRouterApprovalDigest(user, address(router), true, type(uint256).max);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
+        // note the order here is different from line above.
+        bytes memory signature = abi.encodePacked(r, s, v);
+        address signer = ecrecover(digest, v, r, s);
+        address signer2 = ECDSA.recover(digest, signature);
+        vault.setRouterApproval(user, address(router), true, type(uint256).max, signature);
     }
 
     function approveVault(address user) internal {
