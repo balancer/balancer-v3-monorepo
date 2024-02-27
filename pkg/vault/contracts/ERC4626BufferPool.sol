@@ -7,6 +7,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -58,6 +59,7 @@ contract ERC4626BufferPool is
 
     IERC4626 internal immutable _wrappedToken;
     uint256 internal immutable _wrappedTokenScalingFactor;
+    uint256 internal immutable _baseTokenScalingFactor;
 
     // Uses the factory as the Authentication disambiguator.
     constructor(
@@ -67,7 +69,9 @@ contract ERC4626BufferPool is
         IVault vault
     ) BalancerPoolToken(vault, name, symbol) BasePoolAuthentication(vault, msg.sender) {
         _wrappedToken = wrappedToken;
+        ERC20 baseToken = ERC20(wrappedToken.asset());
         _wrappedTokenScalingFactor = 10 ** (18 - wrappedToken.decimals());
+        _baseTokenScalingFactor = 10 ** (18 - baseToken.decimals());
     }
 
     /// @inheritdoc IBasePool
@@ -327,8 +331,8 @@ contract ERC4626BufferPool is
             }
             return balancesScaled18[WRAPPED_TOKEN_INDEX] - balancesScaled18[BASE_TOKEN_INDEX] < tolerance;
         } else {
-            if (_wrappedTokenScalingFactor * balancesScaled18[BASE_TOKEN_INDEX] > FixedPoint.ONE) {
-                tolerance = _wrappedTokenScalingFactor.mulDown(balancesScaled18[BASE_TOKEN_INDEX]);
+            if (_baseTokenScalingFactor * balancesScaled18[BASE_TOKEN_INDEX] > FixedPoint.ONE) {
+                tolerance = _baseTokenScalingFactor.mulDown(balancesScaled18[BASE_TOKEN_INDEX]);
             }
             return balancesScaled18[BASE_TOKEN_INDEX] - balancesScaled18[WRAPPED_TOKEN_INDEX] < tolerance;
         }
