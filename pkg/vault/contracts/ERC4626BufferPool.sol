@@ -159,24 +159,24 @@ contract ERC4626BufferPool is
             // Rate used by the vault to scale values
             uint256 wrappedRate = _getRate();
 
-            uint256 unscaledSharesAmount = request.amountGivenScaled18.divDown(wrappedRate).divDown(
+            uint256 sharesRaw = request.amountGivenScaled18.divDown(wrappedRate).divDown(
                 _wrappedTokenScalingFactor
             );
             // Add 1 to assets amount so we make sure we're always returning more assets than needed to wrap.
             // It ensures that any error in the calculation of the rate will be charged from the buffer,
             // and not from the vault
-            uint256 unscaledAssetsAmount = _wrappedToken.previewRedeem(unscaledSharesAmount) + 1;
-            uint256 preciseAmountScaled18 = unscaledAssetsAmount.mulDown(_wrappedTokenScalingFactor);
+            uint256 assetsRaw = _wrappedToken.previewRedeem(sharesRaw) + 1;
+            uint256 preciseAssetsScaled18 = assetsRaw.mulDown(_wrappedTokenScalingFactor);
 
             // amountGivenScaled18 has some imprecision when calculating the rate (we store only 18 decimals of rate,
             // therefore it's less precise than using preview or convertToAssets directly).
             // So, we need to return the linear math value (amountGivenScaled18), but add the error introduced by
-            // the rate difference, which is calculated by (amountGivenScaled18 - preciseAmountScaled18), i.e.:
+            // the rate difference, which is calculated by (amountGivenScaled18 - preciseAssetsScaled18), i.e.:
             //
             // amountGivenScaled18 + (error)
             //
-            //     where error is (amountGivenScaled18 - preciseAmountScaled18)
-            return 2 * request.amountGivenScaled18 - preciseAmountScaled18;
+            //     where error is (amountGivenScaled18 - preciseAssetsScaled18)
+            return 2 * request.amountGivenScaled18 - preciseAssetsScaled18;
         } else {
             // If onSwap wasn't triggered by the rebalance function, use linear math
             return request.amountGivenScaled18;
