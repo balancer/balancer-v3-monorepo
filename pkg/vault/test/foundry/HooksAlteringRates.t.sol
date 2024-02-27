@@ -6,9 +6,9 @@ import "forge-std/Test.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
+import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -235,6 +235,83 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             address(pool),
             [defaultAmount, defaultAmount].toMemoryArray(),
             bptAmountRoundDown,
+            false,
+            bytes("")
+        );
+    }
+
+    function testOnBeforeRemoveLiquidityHook() public {
+        PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.hooks.shouldCallBeforeRemoveLiquidity = true;
+        vault.setConfig(address(pool), config);
+
+        vm.prank(alice);
+        router.addLiquidityUnbalanced(
+            address(pool),
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmount,
+            false,
+            bytes("")
+        );
+
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IPoolHooks.onBeforeRemoveLiquidity.selector,
+                alice,
+                RemoveLiquidityKind.PROPORTIONAL,
+                bptAmount,
+                [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
+                [2 * defaultAmount, 2 * defaultAmount].toMemoryArray(),
+                bytes("")
+            )
+        );
+        vm.prank(alice);
+        router.removeLiquidityProportional(
+            address(pool),
+            bptAmount,
+            [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
+            false,
+            bytes("")
+        );
+    }
+
+    function testOnBeforeRemoveLiquidityHookAlterRate() public {
+        PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.hooks.shouldCallBeforeRemoveLiquidity = true;
+        vault.setConfig(address(pool), config);
+
+        // Change rate of first token
+        PoolMock(pool).setChangeTokenRateOnBeforeRemoveLiquidityHook(true, 0.5e18);
+
+        uint256 rateAdjustedAmount = defaultAmount / 2;
+
+        vm.prank(alice);
+        router.addLiquidityUnbalanced(
+            address(pool),
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmount,
+            false,
+            bytes("")
+        );
+
+        // removeLiquidityCustom passes the minAmountsOut to the callback, so we can check that they are updated.
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IPoolLiquidity.onRemoveLiquidityCustom.selector,
+                alice,
+                bptAmount,
+                [rateAdjustedAmount, defaultAmountRoundDown].toMemoryArray(),
+                [defaultAmount, 2 * defaultAmount].toMemoryArray(),
+                bytes("")
+            )
+        );
+        vm.prank(alice);
+        router.removeLiquidityCustom(
+            address(pool),
+            bptAmount,
+            [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
             bytes("")
         );
