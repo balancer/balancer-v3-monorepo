@@ -232,7 +232,7 @@ contract ERC4626BufferPool is
             // margin for rounding errors related to rate
             limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw - 1) - MAXIMUM_DIFF_WTOKENS;
 
-            _vault.invoke(
+            _vault.lock(
                 abi.encodeWithSelector(
                     ERC4626BufferPool.rebalanceHook.selector,
                     VaultSwapParams({
@@ -254,7 +254,7 @@ contract ERC4626BufferPool is
             // margin for rounding errors related to rate
             limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw + 1) + MAXIMUM_DIFF_WTOKENS;
 
-            _vault.invoke(
+            _vault.lock(
                 abi.encodeWithSelector(
                     ERC4626BufferPool.rebalanceHook.selector,
                     VaultSwapParams({
@@ -281,7 +281,7 @@ contract ERC4626BufferPool is
             baseToken = params.tokenIn;
             wrappedToken = params.tokenOut;
 
-            _vault.wire(wrappedToken, address(this), amountOut);
+            _vault.sendTo(wrappedToken, address(this), amountOut);
             IERC4626(address(wrappedToken)).withdraw(amountIn, address(this), address(this));
             baseToken.safeTransfer(address(_vault), amountIn);
             _vault.settle(baseToken);
@@ -289,7 +289,7 @@ contract ERC4626BufferPool is
             baseToken = params.tokenOut;
             wrappedToken = params.tokenIn;
 
-            _vault.wire(baseToken, address(this), amountOut);
+            _vault.sendTo(baseToken, address(this), amountOut);
             baseToken.approve(address(wrappedToken), amountOut);
             IERC4626(address(wrappedToken)).deposit(amountOut, address(this));
             wrappedToken.safeTransfer(address(_vault), amountIn);

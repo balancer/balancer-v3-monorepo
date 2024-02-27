@@ -39,7 +39,7 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
             limit += limit / 100;
         }
 
-        getVault().invoke(
+        getVault().lock(
             abi.encodeWithSelector(
                 ERC4626BufferPoolMock.unbalanceHook.selector,
                 VaultSwapParams({
@@ -64,7 +64,7 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
             underlyingToken = params.tokenIn;
             wrappedToken = params.tokenOut;
 
-            getVault().wire(wrappedToken, address(this), amountOut);
+            getVault().sendTo(wrappedToken, address(this), amountOut);
             IERC4626(address(wrappedToken)).withdraw(amountIn, address(this), address(this));
             underlyingToken.safeTransfer(address(getVault()), amountIn);
             getVault().settle(underlyingToken);
@@ -72,7 +72,7 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
             underlyingToken = params.tokenOut;
             wrappedToken = params.tokenIn;
 
-            getVault().wire(underlyingToken, address(this), amountOut);
+            getVault().sendTo(underlyingToken, address(this), amountOut);
             underlyingToken.approve(address(wrappedToken), amountOut);
             IERC4626(address(wrappedToken)).deposit(amountOut, address(this));
             wrappedToken.safeTransfer(address(getVault()), amountIn);
