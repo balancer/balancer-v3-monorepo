@@ -42,13 +42,13 @@ contract PriceImpact is ReentrancyGuard {
         uint256[] memory exactAmountsIn
     ) external returns (uint256 priceImpact) {
         // query addLiquidityUnbalanced
-        uint256 bptAmountOut = _queryAddLiquidityUnbalanced(pool, exactAmountsIn, 0, new bytes(0));
+        uint256 bptAmountOut = _queryAddLiquidityUnbalanced(pool, exactAmountsIn, 0, "");
         // query removeLiquidityProportional
         uint256[] memory proportionalAmountsOut = _queryRemoveLiquidityProportional(
             pool,
             bptAmountOut,
             new uint256[](exactAmountsIn.length),
-            new bytes(0)
+            ""
         );
         // get deltas between exactAmountsIn and proportionalAmountsOut
         int256[] memory deltas = new int256[](exactAmountsIn.length);
@@ -82,10 +82,10 @@ contract PriceImpact is ReentrancyGuard {
             return 0;
         } else if (deltaBPTs[tokenIndex] > 0) {
             zerosWithSingleDelta[tokenIndex] = uint(deltas[tokenIndex]);
-            return int(_queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, 0, new bytes(0)));
+            return int(_queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, 0, ""));
         } else {
             zerosWithSingleDelta[tokenIndex] = uint(deltas[tokenIndex] * -1);
-            return int(_queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, 0, new bytes(0))) * -1;
+            return int(_queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, 0, "")) * -1;
         }
     }
 
