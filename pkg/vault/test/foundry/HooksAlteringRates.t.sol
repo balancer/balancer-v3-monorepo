@@ -8,6 +8,7 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -90,5 +91,89 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         );
 
         router.swapSingleTokenExactIn(address(pool), dai, usdc, defaultAmount, 0, type(uint256).max, false, bytes(""));
+    }
+
+    function testOnBeforeInitializeHook() public {
+        PoolMock newPool = new PoolMock(
+            IVault(address(vault)),
+            "ERC20 Pool",
+            "ERC20POOL",
+            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
+            true,
+            365 days,
+            address(0)
+        );
+        vm.label(address(newPool), "new-pool");
+
+        PoolConfig memory config = vault.getPoolConfig(address(newPool));
+        config.hooks.shouldCallBeforeInitialize = true;
+        vault.setConfig(address(newPool), config);
+
+        vm.prank(bob);
+        vm.expectCall(
+            address(newPool),
+            abi.encodeWithSelector(
+                IPoolHooks.onBeforeInitialize.selector,
+                [defaultAmount, defaultAmount].toMemoryArray(),
+                ""
+            )
+        );
+        router.initialize(
+            address(newPool),
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            0,
+            false,
+            ""
+        );
+    }
+
+    function testOnBeforeInitializeHookAltersRate() public {
+        IRateProvider[] memory rateProviders = new IRateProvider[](2);
+        rateProviders[0] = new RateProviderMock();
+
+        PoolMock newPool = new PoolMock(
+            IVault(address(vault)),
+            "ERC20 Pool",
+            "ERC20POOL",
+            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20(), rateProviders),
+            true,
+            365 days,
+            address(0)
+        );
+        vm.label(address(newPool), "new-pool");
+
+        PoolConfig memory config = vault.getPoolConfig(address(newPool));
+        config.hooks.shouldCallBeforeInitialize = true;
+        config.hooks.shouldCallAfterInitialize = true;
+        vault.setConfig(address(newPool), config);
+
+        // Change rate of first token
+        PoolMock(newPool).setChangeTokenRateOnBeforeInitializeHook(true, 0.5e18);
+
+        uint256 rateAdjustedAmount = defaultAmount / 2;
+
+        uint256 bptAmount = rateAdjustedAmount + defaultAmount - _MINIMUM_BPT;
+
+        // Cannot intercept _initialize, but can check the same values in the AfterInitialize hook
+        vm.prank(bob);
+        vm.expectCall(
+            address(newPool),
+            abi.encodeWithSelector(
+                IPoolHooks.onAfterInitialize.selector,
+                [rateAdjustedAmount, defaultAmount].toMemoryArray(),
+                bptAmount,
+                ""
+            )
+        );
+
+        router.initialize(
+            address(newPool),
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            0,
+            false,
+            ""
+        );
     }
 }
