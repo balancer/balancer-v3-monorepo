@@ -44,6 +44,11 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * it reverts the transaction with specific error messages.
      */
     modifier withHandler() {
+        _ensureWithHandler();
+        _;
+    }
+
+    function _ensureWithHandler() internal view {
         // If there are no handlers in the list, revert with an error.
         if (_handlers.length == 0) {
             revert NoHandler();
@@ -55,8 +60,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
         // If the current function caller is not the active handler, revert.
         if (msg.sender != handler) revert WrongHandler(msg.sender, handler);
-
-        _;
     }
 
     /**

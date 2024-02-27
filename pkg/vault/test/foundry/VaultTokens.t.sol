@@ -5,7 +5,7 @@ pragma solidity ^0.8.4;
 import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -118,7 +118,7 @@ contract VaultTokenTest is BaseVaultTest {
 
     function registerBuffers() private {
         // Buffer Pool creation is permissioned by factory.
-        authorizer.grantRole(vault.getActionId(IVaultExtension.registerBufferPoolFactory.selector), alice);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.registerBufferPoolFactory.selector), alice);
 
         // Establish assets and supply so that buffer creation doesn't fail
         dai.mint(address(waDAI), 1000e18);

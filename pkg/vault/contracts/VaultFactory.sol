@@ -70,12 +70,7 @@ contract VaultFactory is Authentication {
 
         VaultAdmin vaultAdmin = new VaultAdmin(IVault(vaultAddress), _pauseWindowDuration, _bufferPeriodDuration);
 
-        VaultExtension vaultExtension = new VaultExtension(
-            IVault(vaultAddress),
-            vaultAdmin,
-            _pauseWindowDuration,
-            _bufferPeriodDuration
-        );
+        VaultExtension vaultExtension = new VaultExtension(IVault(vaultAddress), vaultAdmin);
 
         address deployedAddress = _create(abi.encode(vaultExtension, _authorizer), salt);
 
