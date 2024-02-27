@@ -338,7 +338,7 @@ contract ERC4626BufferPool is
             // - balancesScaled18[WRAPPED_TOKEN_INDEX].mulDown(_wrappedTokenScalingFactor) = 1e21 * 1e30 / 1e18 = 1e33
             // - tolerance = 1e33 / 1e18 = 1e15
             // i.e. 1000 wUSDC is 1e21, so we are saying that we can only rely in the 6 most meaningful digits.
-            
+
             tolerance = balancesScaled18[WRAPPED_TOKEN_INDEX].mulDown(_wrappedTokenScalingFactor) / FixedPoint.ONE;
             tolerance = tolerance < 1 ? 1 : tolerance;
             return balancesScaled18[WRAPPED_TOKEN_INDEX] - balancesScaled18[BASE_TOKEN_INDEX] < tolerance;

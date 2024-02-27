@@ -57,7 +57,6 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     // uint256 constant BLOCK_NUMBER = 18985254;
     // Using older block number because convertToAssets function is bricked in the new version of the aToken wrapper
     uint256 constant BLOCK_NUMBER = 17965150;
-    uint256 POOL_AMPLIFICATION = 1e18;
 
     address constant aDAI_ADDRESS = 0x098256c06ab24F5655C5506A6488781BD711c14b;
     address constant aUSDC_ADDRESS = 0x57d20c946A7A3812a7225B881CdcD8431D23431C;

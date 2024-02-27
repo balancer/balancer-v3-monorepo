@@ -56,7 +56,6 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
     uint256 saltCounter = 0;
 
     uint256 constant BLOCK_NUMBER = 19314200;
-    uint256 POOL_AMPLIFICATION = 1e18;
 
     address constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address wDAI_ADDRESS;
