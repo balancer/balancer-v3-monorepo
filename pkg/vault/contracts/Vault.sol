@@ -255,6 +255,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Also update amountGivenScaled18, as it will now be used in the swap, and the rates might have changed.
             _updateAmountGivenInVars(vars, params, poolData);
+            vars.poolSwapParams.amountGivenScaled18 = vars.amountGivenScaled18;
         }
 
         // Non-reentrant call that updates accounting.
