@@ -35,10 +35,14 @@ contract Router is IRouter, ReentrancyGuard {
     mapping(address => uint256) private _currentSwapTokenOutAmounts;
 
     modifier onlyVault() {
+        _ensureOnlyVault();
+        _;
+    }
+
+    function _ensureOnlyVault() private view {
         if (msg.sender != address(_vault)) {
             revert IVaultErrors.SenderIsNotVault(msg.sender);
         }
-        _;
     }
 
     constructor(IVault vault, IWETH weth) {
@@ -62,7 +66,7 @@ contract Router is IRouter, ReentrancyGuard {
     ) external payable returns (uint256 bptAmountOut) {
         return
             abi.decode(
-                _vault.invoke{ value: msg.value }(
+                _vault.lock{ value: msg.value }(
                     abi.encodeWithSelector(
                         Router.initializeHook.selector,
                         InitializeHookParams({
@@ -100,7 +104,7 @@ contract Router is IRouter, ReentrancyGuard {
 
         uint256 ethAmountIn;
         for (uint256 i = 0; i < params.tokens.length; ++i) {
-            // Receive tokens from the handler
+            // Receive tokens from the locker
             IERC20 token = params.tokens[i];
             uint256 amountIn = params.exactAmountsIn[i];
 
@@ -112,10 +116,10 @@ contract Router is IRouter, ReentrancyGuard {
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
                 // transfer WETH from the router to the Vault
-                _vault.retrieve(_weth, address(this), amountIn);
+                _vault.takeFrom(_weth, address(this), amountIn);
             } else {
                 // transfer tokens from the user to the Vault
-                _vault.retrieve(token, params.sender, amountIn);
+                _vault.takeFrom(token, params.sender, amountIn);
             }
         }
 
@@ -132,7 +136,7 @@ contract Router is IRouter, ReentrancyGuard {
         bytes memory userData
     ) external payable returns (uint256 bptAmountOut) {
         (, bptAmountOut, ) = abi.decode(
-            _vault.invoke{ value: msg.value }(
+            _vault.lock{ value: msg.value }(
                 abi.encodeWithSelector(
                     Router.addLiquidityHook.selector,
                     AddLiquidityHookParams({
@@ -166,7 +170,7 @@ contract Router is IRouter, ReentrancyGuard {
         );
 
         (uint256[] memory amountsIn, , ) = abi.decode(
-            _vault.invoke{ value: msg.value }(
+            _vault.lock{ value: msg.value }(
                 abi.encodeWithSelector(
                     Router.addLiquidityHook.selector,
                     AddLiquidityHookParams({
@@ -196,7 +200,7 @@ contract Router is IRouter, ReentrancyGuard {
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         return
             abi.decode(
-                _vault.invoke{ value: msg.value }(
+                _vault.lock{ value: msg.value }(
                     abi.encodeWithSelector(
                         Router.addLiquidityHook.selector,
                         AddLiquidityHookParams({
@@ -246,7 +250,7 @@ contract Router is IRouter, ReentrancyGuard {
 
         uint256 ethAmountIn;
         for (uint256 i = 0; i < tokens.length; ++i) {
-            // Receive tokens from the handler
+            // Receive tokens from the locker
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
 
@@ -258,9 +262,9 @@ contract Router is IRouter, ReentrancyGuard {
 
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
-                _vault.retrieve(_weth, address(this), amountIn);
+                _vault.takeFrom(_weth, address(this), amountIn);
             } else {
-                _vault.retrieve(token, params.sender, amountIn);
+                _vault.takeFrom(token, params.sender, amountIn);
             }
         }
 
@@ -277,7 +281,7 @@ contract Router is IRouter, ReentrancyGuard {
         bytes memory userData
     ) external payable returns (uint256[] memory amountsOut) {
         (, amountsOut, ) = abi.decode(
-            _vault.invoke(
+            _vault.lock(
                 abi.encodeWithSelector(
                     Router.removeLiquidityHook.selector,
                     RemoveLiquidityHookParams({
@@ -311,7 +315,7 @@ contract Router is IRouter, ReentrancyGuard {
         );
 
         (, uint256[] memory amountsOut, ) = abi.decode(
-            _vault.invoke(
+            _vault.lock(
                 abi.encodeWithSelector(
                     Router.removeLiquidityHook.selector,
                     RemoveLiquidityHookParams({
@@ -343,7 +347,7 @@ contract Router is IRouter, ReentrancyGuard {
         (uint256[] memory minAmountsOut, ) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, exactAmountOut);
 
         (bptAmountIn, , ) = abi.decode(
-            _vault.invoke(
+            _vault.lock(
                 abi.encodeWithSelector(
                     Router.removeLiquidityHook.selector,
                     RemoveLiquidityHookParams({
@@ -373,7 +377,7 @@ contract Router is IRouter, ReentrancyGuard {
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
         return
             abi.decode(
-                _vault.invoke(
+                _vault.lock(
                     abi.encodeWithSelector(
                         Router.removeLiquidityHook.selector,
                         RemoveLiquidityHookParams({
@@ -397,7 +401,7 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 exactBptAmountIn
     ) external returns (uint256[] memory amountsOut) {
         amountsOut = abi.decode(
-            _vault.invoke(
+            _vault.lock(
                 abi.encodeWithSelector(Router.removeLiquidityRecoveryHook.selector, pool, msg.sender, exactBptAmountIn)
             ),
             (uint256[])
@@ -445,13 +449,13 @@ contract Router is IRouter, ReentrancyGuard {
 
             // There can be only one WETH token in the pool
             if (params.wethIsEth && address(token) == address(_weth)) {
-                // Wire WETH here and unwrap to native ETH
-                _vault.wire(_weth, address(this), amountOut);
+                // Send WETH here and unwrap to native ETH
+                _vault.sendTo(_weth, address(this), amountOut);
                 _weth.withdraw(amountOut);
                 ethAmountOut = amountOut;
             } else {
-                // Wire the token to the sender (amountOut)
-                _vault.wire(token, params.sender, amountOut);
+                // Transfer the token to the sender (amountOut)
+                _vault.sendTo(token, params.sender, amountOut);
             }
         }
 
@@ -477,8 +481,8 @@ contract Router is IRouter, ReentrancyGuard {
         IERC20[] memory tokens = _vault.getPoolTokens(pool);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            // Wire the token to the sender (amountOut)
-            _vault.wire(tokens[i], sender, amountsOut[i]);
+            // Transfer the token to the sender (amountOut)
+            _vault.sendTo(tokens[i], sender, amountsOut[i]);
         }
     }
 
@@ -495,7 +499,7 @@ contract Router is IRouter, ReentrancyGuard {
     ) external payable returns (uint256) {
         return
             abi.decode(
-                _vault.invoke{ value: msg.value }(
+                _vault.lock{ value: msg.value }(
                     abi.encodeWithSelector(
                         Router.swapSingleTokenHook.selector,
                         SwapSingleTokenHookParams({
@@ -529,7 +533,7 @@ contract Router is IRouter, ReentrancyGuard {
     ) external payable returns (uint256) {
         return
             abi.decode(
-                _vault.invoke{ value: msg.value }(
+                _vault.lock{ value: msg.value }(
                     abi.encodeWithSelector(
                         Router.swapSingleTokenHook.selector,
                         SwapSingleTokenHookParams({
@@ -559,7 +563,7 @@ contract Router is IRouter, ReentrancyGuard {
     ) external payable returns (uint256[] memory amountsOut) {
         return
             abi.decode(
-                _vault.invoke{ value: msg.value }(
+                _vault.lock{ value: msg.value }(
                     abi.encodeWithSelector(
                         Router.swapExactInHook.selector,
                         SwapExactInHookParams({
@@ -584,7 +588,7 @@ contract Router is IRouter, ReentrancyGuard {
     ) external payable returns (uint256[] memory amountsIn) {
         return
             abi.decode(
-                _vault.invoke{ value: msg.value }(
+                _vault.lock{ value: msg.value }(
                     abi.encodeWithSelector(
                         Router.swapExactOutHook.selector,
                         SwapExactOutHookParams({
@@ -614,8 +618,8 @@ contract Router is IRouter, ReentrancyGuard {
         IERC20 tokenIn = params.tokenIn;
         bool wethIsEth = params.wethIsEth;
 
-        uint256 ethAmountIn = _retrieveTokenIn(params.sender, tokenIn, amountIn, wethIsEth);
-        _wireTokenOut(params.sender, params.tokenOut, amountOut, wethIsEth);
+        uint256 ethAmountIn = _takeTokenIn(params.sender, tokenIn, amountIn, wethIsEth);
+        _sendTokenOut(params.sender, params.tokenOut, amountOut, wethIsEth);
 
         if (tokenIn == _weth) {
             // Return the rest of ETH to sender
@@ -734,7 +738,7 @@ contract Router is IRouter, ReentrancyGuard {
                         tokenIn = step.tokenOut;
                         // If this is an intermediate step, we'll need to send it back to the vault
                         // to get credit for the BPT minted in the add liquidity operation.
-                        _vault.retrieve(IERC20(step.pool), params.sender, bptAmountOut);
+                        _vault.takeFrom(IERC20(step.pool), params.sender, bptAmountOut);
                     }
                 } else {
                     // No BPT involved in the operation: regular swap exact in
@@ -806,7 +810,7 @@ contract Router is IRouter, ReentrancyGuard {
                     if (isFirstStep) {
                         // The first step in the iteration is the last one in the given array of steps, and it
                         // specifies the output token for the step as well as the exact amount out for that token.
-                        // Output amounts are stored to wire them later on.
+                        // Output amounts are stored to send them later on.
                         // TODO: This should be transient.
                         _currentSwapTokensOut.add(address(step.tokenOut));
                         _currentSwapTokenOutAmounts[address(step.tokenOut)] += exactAmountOut;
@@ -896,7 +900,7 @@ contract Router is IRouter, ReentrancyGuard {
                     // The last step is the first one in the order of operations.
                     // TODO: We could skip retrieve on the first step and tweak how we settle the output token.
                     // _currentSwapTokenOutAmounts[address(step.tokenOut)] -= exactAmountOut;
-                    _vault.retrieve(IERC20(step.pool), params.sender, exactAmountOut);
+                    _vault.takeFrom(IERC20(step.pool), params.sender, exactAmountOut);
                 } else {
                     // No BPT involved in the operation: regular swap exact out
                     (, uint256 amountIn, ) = _vault.swap(
@@ -1392,7 +1396,7 @@ contract Router is IRouter, ReentrancyGuard {
         amountsGiven[tokenIndex] = amountGiven;
     }
 
-    function _retrieveTokenIn(
+    function _takeTokenIn(
         address sender,
         IERC20 tokenIn,
         uint256 amountIn,
@@ -1409,22 +1413,22 @@ contract Router is IRouter, ReentrancyGuard {
             _vault.settle(_weth);
         } else {
             // Send the tokenIn amount to the Vault
-            _vault.retrieve(tokenIn, sender, amountIn);
+            _vault.takeFrom(tokenIn, sender, amountIn);
         }
     }
 
-    function _wireTokenOut(address sender, IERC20 tokenOut, uint256 amountOut, bool wethIsEth) internal {
+    function _sendTokenOut(address sender, IERC20 tokenOut, uint256 amountOut, bool wethIsEth) internal {
         // If the tokenOut is ETH, then unwrap `amountOut` into ETH.
         if (wethIsEth && tokenOut == _weth) {
             // Receive the WETH amountOut
-            _vault.wire(tokenOut, address(this), amountOut);
+            _vault.sendTo(tokenOut, address(this), amountOut);
             // Withdraw WETH to ETH
             _weth.withdraw(amountOut);
             // Send ETH to sender
             payable(sender).sendValue(amountOut);
         } else {
             // Receive the tokenOut amountOut
-            _vault.wire(tokenOut, sender, amountOut);
+            _vault.sendTo(tokenOut, sender, amountOut);
         }
     }
 
@@ -1441,7 +1445,7 @@ contract Router is IRouter, ReentrancyGuard {
         // Removing the last element from a set is cheaper than removing the first one.
         for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
             address tokenIn = _currentSwapTokensIn.unchecked_at(uint256(i));
-            ethAmountIn += _retrieveTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts[tokenIn], wethIsEth);
+            ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts[tokenIn], wethIsEth);
 
             _currentSwapTokensIn.remove(tokenIn);
             _currentSwapTokenInAmounts[tokenIn] = 0;
@@ -1449,7 +1453,7 @@ contract Router is IRouter, ReentrancyGuard {
 
         for (int256 i = int256(numTokensOut - 1); i >= 0; --i) {
             address tokenOut = _currentSwapTokensOut.unchecked_at(uint256(i));
-            _wireTokenOut(sender, IERC20(tokenOut), _currentSwapTokenOutAmounts[tokenOut], wethIsEth);
+            _sendTokenOut(sender, IERC20(tokenOut), _currentSwapTokenOutAmounts[tokenOut], wethIsEth);
 
             _currentSwapTokensOut.remove(tokenOut);
             _currentSwapTokenOutAmounts[tokenOut] = 0;

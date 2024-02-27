@@ -5,25 +5,24 @@ pragma solidity ^0.8.4;
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
-import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -42,14 +41,14 @@ import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
  *
  * The storage of this contract is in practice unused.
  */
-contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
+contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using Address for *;
     using ArrayHelpers for uint256[];
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using EnumerableSet for EnumerableSet.AddressSet;
     using PackedTokenBalance for bytes32;
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
-    using SafeERC20 for IERC20;
     using InputHelpers for uint256;
     using ScalingHelpers for *;
     using VaultExtensionsLib for IVault;
@@ -67,58 +66,17 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         _vault.ensureVaultDelegateCall();
     }
 
-    constructor(
-        IVault mainVault,
-        IVaultAdmin vaultAdmin,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
-    ) Authentication(bytes32(uint256(uint160(address(mainVault))))) {
-        // TODO: remove constructor code in favor of vault admin.
-        if (pauseWindowDuration > MAX_PAUSE_WINDOW_DURATION) {
-            revert VaultPauseWindowDurationTooLarge();
-        }
-        if (bufferPeriodDuration > MAX_BUFFER_PERIOD_DURATION) {
-            revert PauseBufferPeriodDurationTooLarge();
+    constructor(IVault mainVault, IVaultAdmin vaultAdmin) {
+        if (vaultAdmin.vault() != mainVault) {
+            revert WrongVaultAdminDeployment();
         }
 
-        // solhint-disable-next-line not-rely-on-time
-        uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
-
-        _vaultPauseWindowEndTime = pauseWindowEndTime;
-        _vaultBufferPeriodDuration = bufferPeriodDuration;
-        _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
+        _vaultPauseWindowEndTime = vaultAdmin.getPauseWindowEndTime();
+        _vaultBufferPeriodDuration = vaultAdmin.getBufferPeriodDuration();
+        _vaultBufferPeriodEndTime = vaultAdmin.getBufferPeriodEndTime();
 
         _vault = mainVault;
         _vaultAdmin = vaultAdmin;
-    }
-
-    /*******************************************************************************
-                              Constants and immutables
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultExtension
-    function getPauseWindowEndTime() external view returns (uint256) {
-        return _vaultPauseWindowEndTime;
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getBufferPeriodDuration() external view returns (uint256) {
-        return _vaultBufferPeriodDuration;
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getBufferPeriodEndTime() external view returns (uint256) {
-        return _vaultBufferPeriodEndTime;
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getMinimumPoolTokens() external pure returns (uint256) {
-        return _MIN_TOKENS;
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getMaximumPoolTokens() external pure returns (uint256) {
-        return _MAX_TOKENS;
     }
 
     function vault() external view returns (IVault) {
@@ -130,16 +88,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function getHandler(uint256 index) external view onlyVault returns (address) {
-        if (index >= _handlers.length) {
-            revert HandlerOutOfBounds(index);
+    function getLocker(uint256 index) external view onlyVault returns (address) {
+        if (index >= _lockers.length) {
+            revert LockerOutOfBounds(index);
         }
-        return _handlers[index];
+        return _lockers[index];
     }
 
     /// @inheritdoc IVaultExtension
-    function getHandlersCount() external view onlyVault returns (uint256) {
-        return _handlers.length;
+    function getLockersCount() external view onlyVault returns (uint256) {
+        return _lockers.length;
     }
 
     /// @inheritdoc IVaultExtension
@@ -170,7 +128,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
-        _registerPool(pool, tokenConfig, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
+        _registerPool(pool, tokenConfig, false, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
     }
 
     /// @inheritdoc IVaultExtension
@@ -188,6 +146,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
     function _registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
+        bool isBufferPool,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolHooks memory hookConfig,
@@ -265,6 +224,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         config.liquidityManagement = liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = pauseWindowEndTime.toUint32();
+        config.isBufferPool = isBufferPool;
         _poolConfig[pool] = config.fromPoolConfig();
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
@@ -287,7 +247,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external withHandler withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault returns (uint256 bptAmountOut) {
+    ) external withLocker withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault returns (uint256 bptAmountOut) {
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(pool, Rounding.ROUND_DOWN);
 
         if (poolData.poolConfig.isPoolInitialized) {
@@ -427,13 +387,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         }
     }
 
-    /// @inheritdoc IVaultExtension
-    function getPoolTokenRates(
-        address pool
-    ) external view withRegisteredPool(pool) onlyVault returns (uint256[] memory) {
-        return _getPoolData(pool).tokenRates;
-    }
-
     /*******************************************************************************
                                     Pool Tokens
     *******************************************************************************/
@@ -476,21 +429,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
                                      Pool Pausing
     *******************************************************************************/
 
-    modifier onlyAuthenticatedPauser(address pool) {
-        address pauseManager = _poolPauseManagers[pool];
-
-        if (pauseManager == address(0)) {
-            // If there is no pause manager, default to the authorizer.
-            _authenticateCaller();
-        } else {
-            // Sender must be the pause manager.
-            if (msg.sender != pauseManager) {
-                revert SenderIsNotPauseManager(pool);
-            }
-        }
-        _;
-    }
-
     /// @inheritdoc IVaultExtension
     function isPoolPaused(address pool) external view withRegisteredPool(pool) onlyVault returns (bool) {
         return _isPoolPaused(pool);
@@ -503,48 +441,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         (bool paused, uint256 pauseWindowEndTime) = _getPoolPausedState(pool);
 
         return (paused, pauseWindowEndTime, pauseWindowEndTime + _vaultBufferPeriodDuration, _poolPauseManagers[pool]);
-    }
-
-    /// @inheritdoc IVaultExtension
-    function pausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) onlyVault {
-        _setPoolPaused(pool, true);
-    }
-
-    /// @inheritdoc IVaultExtension
-    function unpausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) onlyVault {
-        _setPoolPaused(pool, false);
-    }
-
-    function _setPoolPaused(address pool, bool pausing) internal {
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-
-        if (_isPoolPaused(pool)) {
-            if (pausing) {
-                // Already paused, and we're trying to pause it again.
-                revert PoolPaused(pool);
-            }
-
-            // The pool can always be unpaused while it's paused.
-            // When the buffer period expires, `_isPoolPaused` will return false, so we would be in the outside
-            // else clause, where trying to unpause will revert unconditionally.
-        } else {
-            if (pausing) {
-                // Not already paused; we can pause within the window.
-                // solhint-disable-next-line not-rely-on-time
-                if (block.timestamp >= config.pauseWindowEndTime) {
-                    revert PoolPauseWindowExpired(pool);
-                }
-            } else {
-                // Not paused, and we're trying to unpause it.
-                revert PoolNotPaused(pool);
-            }
-        }
-
-        // Update poolConfig.
-        config.isPoolPaused = pausing;
-        _poolConfig[pool] = config.fromPoolConfig();
-
-        emit PoolPausedStateChanged(pool, pausing);
     }
 
     /*******************************************************************************
@@ -573,24 +469,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
     }
 
-    /// @inheritdoc IVaultExtension
-    function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant onlyVault {
-        for (uint256 index = 0; index < tokens.length; index++) {
-            IERC20 token = tokens[index];
-            uint256 amount = _protocolFees[token];
-            // checks
-            if (amount > 0) {
-                // effects
-                // set fees to zero for the token
-                _protocolFees[token] = 0;
-                // interactions
-                token.safeTransfer(msg.sender, amount);
-                // emit an event
-                emit ProtocolFeeCollected(token, amount);
-            }
-        }
-    }
-
     /*******************************************************************************
                                     Recovery Mode
     *******************************************************************************/
@@ -601,67 +479,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function enableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate onlyVault {
-        _ensurePoolNotInRecoveryMode(pool);
-        _setPoolRecoveryMode(pool, true);
-    }
-
-    /// @inheritdoc IVaultExtension
-    function disableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate onlyVault {
-        _ensurePoolInRecoveryMode(pool);
-        _setPoolRecoveryMode(pool, false);
-    }
-
-    /**
-     * @dev Change the recovery mode state of a pool, and emit an event. Assumes any validation (e.g., whether
-     * the proposed state change is consistent) has already been done.
-     *
-     * @param pool The pool
-     * @param recoveryMode The desired recovery mode state
-     */
-    function _setPoolRecoveryMode(address pool, bool recoveryMode) internal {
-        // Update poolConfig
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.isPoolInRecoveryMode = recoveryMode;
-        _poolConfig[pool] = config.fromPoolConfig();
-
-        if (recoveryMode == false) {
-            _setPoolBalances(pool, _getPoolData(pool));
-        }
-
-        emit PoolRecoveryModeStateChanged(pool, recoveryMode);
-    }
-
-    /// @dev Factored out as it is reused.
-    function _getPoolData(address pool) internal view returns (PoolData memory poolData) {
-        (
-            poolData.tokenConfig,
-            poolData.balancesRaw,
-            poolData.decimalScalingFactors,
-            poolData.poolConfig
-        ) = _getPoolTokenInfo(pool);
-
-        _updateTokenRatesInPoolData(poolData);
-    }
-
-    /**
-     * @dev Reverts if the pool is in recovery mode.
-     * @param pool The pool
-     */
-    function _ensurePoolNotInRecoveryMode(address pool) internal view {
-        if (_isPoolInRecoveryMode(pool)) {
-            revert PoolInRecoveryMode(pool);
-        }
-    }
-
-    /// @inheritdoc IVaultExtension
     function removeLiquidityRecovery(
         address pool,
         address from,
         uint256 exactBptAmountIn
     )
         external
-        withHandler
+        withLocker
         nonReentrant
         withInitializedPool(pool)
         onlyInRecoveryMode(pool)
@@ -738,8 +562,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
             revert QueriesDisabled();
         }
 
-        // Add the current handler to the list so `withHandler` does not revert
-        _handlers.push(msg.sender);
+        // Add the current locker to the list so `withLocker` does not revert
+        _lockers.push(msg.sender);
         _;
     }
 
@@ -750,22 +574,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function disableQuery() external authenticate onlyVault {
-        _isQueryDisabled = true;
-    }
-
-    /// @inheritdoc IVaultExtension
     function isQueryDisabled() external view onlyVault returns (bool) {
         return _isQueryDisabled;
-    }
-
-    /*******************************************************************************
-                                    Authentication
-    *******************************************************************************/
-
-    /// @dev Access control is delegated to the Authorizer
-    function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
-        return _authorizer.canPerform(actionId, user, address(this));
     }
 
     /*******************************************************************************
@@ -783,9 +593,26 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         if (_wrappedTokenBuffers[wrappedToken] != address(0)) {
             revert WrappedTokenBufferAlreadyRegistered();
         }
+
+        // Ensure the buffer pool is from a registered factory
+        bool factoryAllowed = false;
+
+        for (uint256 i = 0; i < _bufferPoolFactories.length(); i++) {
+            if (IBasePoolFactory(_bufferPoolFactories.unchecked_at(i)).isPoolFromFactory(pool)) {
+                factoryAllowed = true;
+                break;
+            }
+        }
+
+        if (factoryAllowed == false) {
+            revert UnregisteredBufferPoolFactory();
+        }
+
         _wrappedTokenBuffers[wrappedToken] = pool;
 
         IERC20 baseToken = IERC20(wrappedToken.asset());
+
+        emit WrappedTokenBufferCreated(address(wrappedToken), address(baseToken));
 
         // Token order is wrapped first, then base.
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
@@ -794,11 +621,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
         // We are assuming the baseToken is STANDARD (the default type, with enum value 0).
         tokenConfig[1].token = baseToken;
 
-        _wrappedTokenBufferBaseTokens[IERC20(wrappedToken)] = baseToken;
-
         _registerPool(
             pool,
             tokenConfig,
+            true, // Set as buffer pool
             pauseWindowEndTime,
             pauseManager,
             PoolHooks({
@@ -813,15 +639,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, Proxy {
             }),
             LiquidityManagement({ supportsAddLiquidityCustom: true, supportsRemoveLiquidityCustom: false })
         );
-
-        // Set isBufferPool flag
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.isBufferPool = true;
-        _poolConfig[pool] = config.fromPoolConfig();
     }
 
     /*******************************************************************************
-                                     Default handlers
+                                     Default lockers
     *******************************************************************************/
 
     receive() external payable {

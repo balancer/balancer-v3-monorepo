@@ -11,6 +11,7 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -50,9 +51,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         _vaultExtension = vaultExtension;
 
-        _vaultPauseWindowEndTime = vaultExtension.getPauseWindowEndTime();
-        _vaultBufferPeriodDuration = vaultExtension.getBufferPeriodDuration();
-        _vaultBufferPeriodEndTime = vaultExtension.getBufferPeriodEndTime();
+        _vaultPauseWindowEndTime = IVaultAdmin(address(vaultExtension)).getPauseWindowEndTime();
+        _vaultBufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
+        _vaultBufferPeriodEndTime = IVaultAdmin(address(vaultExtension)).getBufferPeriodEndTime();
 
         _authorizer = authorizer;
     }
@@ -64,44 +65,44 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     /**
      * @dev This modifier is used for functions that temporarily modify the `_tokenDeltas`
      * of the Vault but expect to revert or settle balances by the end of their execution.
-     * It works by tracking the handlers involved in the execution and ensures that the
-     * balances are properly settled by the time the last handler is executed.
+     * It works by tracking the lockers involved in the execution and ensures that the
+     * balances are properly settled by the time the last locker is executed.
      *
-     * This is useful for functions like `invoke`, which performs arbitrary external calls:
+     * This is useful for functions like `lock`, which perform arbitrary external calls:
      * we can keep track of temporary deltas changes, and make sure they are settled by the
      * time the external call is complete.
      */
     modifier transient() {
-        // Add the current handler to the list
-        _handlers.push(msg.sender);
+        // Add the current locker to the list
+        _lockers.push(msg.sender);
 
         // The caller does everything here and has to settle all outstanding balances
         _;
 
-        // Check if it's the last handler
-        if (_handlers.length == 1) {
+        // Check if it's the last locker
+        if (_lockers.length == 1) {
             // Ensure all balances are settled
             if (_nonzeroDeltaCount != 0) revert BalanceNotSettled();
 
-            // Reset the handlers list
-            delete _handlers;
+            // Reset the lockers list
+            delete _lockers;
 
             // Reset the counter
             delete _nonzeroDeltaCount;
         } else {
-            // If it's not the last handler, simply remove it from the list
-            _handlers.pop();
+            // If it's not the last locker, simply remove it from the list
+            _lockers.pop();
         }
     }
 
     /// @inheritdoc IVaultMain
-    function invoke(bytes calldata data) external payable transient returns (bytes memory result) {
+    function lock(bytes calldata data) external payable transient returns (bytes memory result) {
         // Executes the function call with value to the msg.sender.
         return (msg.sender).functionCallWithValue(data, msg.value);
     }
 
     /// @inheritdoc IVaultMain
-    function settle(IERC20 token) public nonReentrant withHandler returns (uint256 paid) {
+    function settle(IERC20 token) public nonReentrant withLocker returns (uint256 paid) {
         uint256 reservesBefore = _tokenReserves[token];
         _tokenReserves[token] = token.balanceOf(address(this));
         paid = _tokenReserves[token] - reservesBefore;
@@ -110,7 +111,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function wire(IERC20 token, address to, uint256 amount) public nonReentrant withHandler {
+    function sendTo(IERC20 token, address to, uint256 amount) public nonReentrant withLocker {
         // effects
         _takeDebt(token, amount, msg.sender);
         _tokenReserves[token] -= amount;
@@ -119,7 +120,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function retrieve(IERC20 token, address from, uint256 amount) public nonReentrant withHandler onlyTrustedRouter {
+    function takeFrom(IERC20 token, address from, uint256 amount) public nonReentrant withLocker onlyTrustedRouter {
         // effects
         _supplyCredit(token, amount, msg.sender);
         _tokenReserves[token] += amount;
@@ -177,7 +178,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapParams memory params
     )
         public
-        withHandler
+        withLocker
         withInitializedPool(params.pool)
         whenPoolNotPaused(params.pool)
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
@@ -429,7 +430,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         AddLiquidityParams memory params
     )
         external
-        withHandler
+        withLocker
         withInitializedPool(params.pool)
         whenPoolNotPaused(params.pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
@@ -470,7 +471,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _updatePoolDataLiveBalancesAndRates(poolData, Rounding.ROUND_UP);
         }
 
-        // The bulk of the work is done here: the corresponding Pool hook is invoked and its final balances
+        // The bulk of the work is done here: the corresponding Pool hook is called, and the final balances
         // are computed. This function is non-reentrant, as it performs the accounting updates.
         // Note that poolData is mutated to update the Raw and Live balances, so they are accurate when passed
         // into the AfterAddLiquidity hook.
@@ -624,7 +625,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         RemoveLiquidityParams memory params
     )
         external
-        withHandler
+        withLocker
         withInitializedPool(params.pool)
         whenPoolNotPaused(params.pool)
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
@@ -663,7 +664,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _updatePoolDataLiveBalancesAndRates(poolData, Rounding.ROUND_DOWN);
         }
 
-        // The bulk of the work is done here: the corresponding Pool hook is invoked, and its final balances
+        // The bulk of the work is done here: the corresponding Pool hook is called, and the final balances
         // are computed. This function is non-reentrant, as it performs the accounting updates.
         // Note that poolData is mutated to update the Raw and Live balances, so they are accurate when passed
         // into the AfterRemoveLiquidity hook.
