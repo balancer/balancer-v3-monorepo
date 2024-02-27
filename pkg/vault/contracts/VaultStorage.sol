@@ -59,24 +59,24 @@ contract VaultStorage {
     // Pool -> (token -> address): Pool's Rate providers.
     mapping(address => mapping(IERC20 => IRateProvider)) internal _poolRateProviders;
 
-    /// @notice List of handlers. It is non-empty only during `invoke` calls.
-    address[] internal _handlers;
+    /// @notice List of lockers. It is empty except during `lock` calls.
+    address[] internal _lockers;
 
     /**
      * @notice The total number of nonzero deltas over all active + completed lockers.
-     * @dev It is non-zero only during `invoke` calls.
+     * @dev It is non-zero only during `lock` calls.
      */
     uint256 internal _nonzeroDeltaCount;
 
     /**
-     * @notice Represents the token due/owed to each handler.
-     * @dev Must all net to zero when the last handler is released.
+     * @notice Represents the token due/owed to each locker.
+     * @dev Must all net to zero when the last locker is released.
      */
     mapping(address => mapping(IERC20 => int256)) internal _tokenDeltas;
 
     /**
      * @notice Represents the total reserve of each ERC20 token.
-     * @dev It should be always equal to `token.balanceOf(vault)`, except during `invoke`.
+     * @dev It should be always equal to `token.balanceOf(vault)`, except during `lock`.
      */
     mapping(IERC20 => uint256) internal _tokenReserves;
 
