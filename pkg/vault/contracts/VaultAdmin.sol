@@ -180,6 +180,11 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     *******************************************************************************/
 
     modifier onlyAuthenticatedPauser(address pool) {
+        _ensureAuthenticatedPauser(pool);
+        _;
+    }
+
+    function _ensureAuthenticatedPauser(address pool) private view {
         address pauseManager = _poolPauseManagers[pool];
 
         if (pauseManager == address(0)) {
@@ -191,7 +196,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                 revert SenderIsNotPauseManager(pool);
             }
         }
-        _;
     }
 
     /// @inheritdoc IVaultAdmin
@@ -363,7 +367,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
      *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
-    function registerBufferPoolFactory(address factory) external authenticate {
+    function registerBufferPoolFactory(address factory) external authenticate onlyVault {
         bool added = _bufferPoolFactories.add(factory);
 
         if (added == false) {
@@ -374,7 +378,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function deregisterBufferPoolFactory(address factory) external authenticate {
+    function deregisterBufferPoolFactory(address factory) external authenticate onlyVault {
         bool removed = _bufferPoolFactories.remove(factory);
 
         if (removed == false) {
