@@ -203,7 +203,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             bufferPoolDai.balanceOf(lp),
             bptAmountOutBase,
             DELTA,
-            "lp should have the BPTs issued by the aDAI BufferPool"
+            "lp should have the BPT issued by the aDAI BufferPool"
         );
         assertApproxEqAbs(
             bptAmountOutBase,
@@ -218,7 +218,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             bufferPoolUsdc.balanceOf(lp),
             bptAmountOutWrapped,
             DELTA,
-            "lp should have the BPTs issued by the aUSDC BufferPool"
+            "lp should have the BPT issued by the aUSDC BufferPool"
         );
         assertApproxEqAbs(
             bptAmountOutWrapped,

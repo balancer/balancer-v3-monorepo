@@ -60,7 +60,7 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
     address constant SAND_ADDRESS = 0x3845badAde8e6dFF049820680d1F14bD3903a5d0;
     address wSAND_ADDRESS;
 
-    // Owner of DAI and USDC in Mainnet
+    // Owner of DAI and SAND in Mainnet
     address constant DONOR_WALLET_ADDRESS = 0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503;
 
     address payable donor;
@@ -157,18 +157,18 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
             "Vault should have the deposited amount of DAI"
         );
 
-        // Tokens are deposited to the pool with more base
+        // Check if tokens are deposited in the pool
         (, , uint256[] memory balancesRaw, , ) = vault.getPoolTokenInfo(address(bufferPoolDai));
         assertEq(balancesRaw[0], bufferDaiWrapped, "wDai BufferPool balance should have the deposited amount of wDai");
         assertEq(balancesRaw[1], BUFFER_BASE_TOKENS, "wDai BufferPool balance should have the deposited amount of DAI");
 
-        // should mint correct amount of BPT tokens for buffer with more base
+        // should mint correct amount of BPT tokens for buffer
         // Account for the precision loss
         assertApproxEqAbs(
             bufferPoolDai.balanceOf(lp),
             bptAmountOutDai,
             DELTA,
-            "lp should have the BPTs issued by the wDai BufferPool"
+            "lp should have the BPT issued by the wDai BufferPool"
         );
         assertApproxEqAbs(
             bptAmountOutDai,
@@ -191,7 +191,7 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
             "Vault should have the deposited amount of SAND"
         );
 
-        // Tokens are deposited to the pool with more base
+        // Check if tokens are deposited in the pool
         (, , uint256[] memory balancesRaw, , ) = vault.getPoolTokenInfo(address(bufferPoolSand));
         assertEq(
             balancesRaw[0],
@@ -204,13 +204,13 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
             "wSand BufferPool balance should have the deposited amount of SAND"
         );
 
-        // should mint correct amount of BPT tokens for buffer with more base
+        // should mint correct amount of BPT tokens for buffer
         // Account for the precision loss
         assertApproxEqAbs(
             bufferPoolSand.balanceOf(lp),
             bptAmountOutSand,
             DELTA,
-            "lp should have the BPTs issued by the wSand BufferPool"
+            "lp should have the BPT issued by the wSand BufferPool"
         );
         assertApproxEqAbs(
             bptAmountOutSand,
