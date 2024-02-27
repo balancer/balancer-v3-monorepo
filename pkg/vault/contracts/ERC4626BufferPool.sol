@@ -232,6 +232,8 @@ contract ERC4626BufferPool is
             // margin for rounding errors related to rate
             limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw - 1) - MAXIMUM_DIFF_WTOKENS;
 
+            // In this case, since there is more wrapped than base assets, wrapped tokens will be removed (tokenOut)
+            // and then unwrapped, and the resulting base assets will be deposited in the pool (tokenIn)
             _vault.lock(
                 abi.encodeWithSelector(
                     ERC4626BufferPool.rebalanceHook.selector,
@@ -254,6 +256,8 @@ contract ERC4626BufferPool is
             // margin for rounding errors related to rate
             limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw + 1) + MAXIMUM_DIFF_WTOKENS;
 
+            // In this case, since there is more base than wrapped assets, base assets will be removed (tokenOut)
+            // and then wrapped, and the resulting wrapped assets will be deposited in the pool (tokenIn)
             _vault.lock(
                 abi.encodeWithSelector(
                     ERC4626BufferPool.rebalanceHook.selector,
