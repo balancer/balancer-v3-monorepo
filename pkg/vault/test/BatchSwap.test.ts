@@ -1171,7 +1171,11 @@ describe('BatchSwap', function () {
           setUp();
         });
 
-        itTestsBatchSwap();
+        itTestsBatchSwap(true, false);
+
+        it('mints amount out', async () => {
+          await expect(doSwap()).to.emit(tokenOut, 'Transfer').withArgs(ZERO_ADDRESS, sender.address, totalAmountOut);
+        });
       });
     });
 

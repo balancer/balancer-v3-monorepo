@@ -638,15 +638,15 @@ contract Router is IRouter, ReentrancyGuard {
             SwapPathExactAmountIn memory path = params.paths[i];
             // These two variables shall be updated at the end of each step to be used as inputs of the next one.
             // The initial values are the given token and amount in for the current path.
-            uint256 exactAmountIn = path.exactAmountIn;
-            IERC20 tokenIn = path.tokenIn;
+            uint256 stepExactAmountIn = path.exactAmountIn;
+            IERC20 stepTokenIn = path.tokenIn;
 
             // TODO: this should be transient.
             // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses in
             // a set with unique addresses that can be iterated later on.
             // For example, if all paths share the same token in, the set will end up with only one entry.
-            _currentSwapTokensIn.add(address(tokenIn));
-            _currentSwapTokenInAmounts[address(tokenIn)] += path.exactAmountIn;
+            _currentSwapTokensIn.add(address(stepTokenIn));
+            _currentSwapTokenInAmounts[address(stepTokenIn)] += stepExactAmountIn;
 
             for (uint256 j = 0; j < path.steps.length; ++j) {
                 bool isLastStep = (j == path.steps.length - 1);
@@ -661,16 +661,16 @@ contract Router is IRouter, ReentrancyGuard {
 
                 SwapPathStep memory step = path.steps[j];
 
-                if (address(tokenIn) == step.pool) {
+                if (address(stepTokenIn) == step.pool) {
                     // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
                     // required amount when performing the operation. These tokens might be the output of a previous
                     // step, in which case the user will have a BPT credit.
-                    if (IVault(_vault).getTokenDelta(address(this), tokenIn) < 0) {
-                        _vault.wire(IERC20(step.pool), params.sender, exactAmountIn);
+                    if (IVault(_vault).getTokenDelta(address(this), stepTokenIn) < 0) {
+                        _vault.sendTo(IERC20(step.pool), params.sender, stepExactAmountIn);
                     }
                     // BPT is burnt instantly, so we don't need to send it back later.
-                    if (_currentSwapTokenInAmounts[address(tokenIn)] > 0) {
-                        _currentSwapTokenInAmounts[address(tokenIn)] -= path.exactAmountIn;
+                    if (_currentSwapTokenInAmounts[address(stepTokenIn)] > 0) {
+                        _currentSwapTokenInAmounts[address(stepTokenIn)] -= stepExactAmountIn;
                     }
 
                     // Token in is BPT: remove liquidity - Single token exact in
@@ -687,7 +687,7 @@ contract Router is IRouter, ReentrancyGuard {
                         RemoveLiquidityParams({
                             pool: step.pool,
                             from: params.sender,
-                            maxBptAmountIn: exactAmountIn,
+                            maxBptAmountIn: stepExactAmountIn,
                             minAmountsOut: amountsOut,
                             kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
                             userData: params.userData
@@ -702,16 +702,16 @@ contract Router is IRouter, ReentrancyGuard {
                         _currentSwapTokenOutAmounts[address(step.tokenOut)] += amountsOut[tokenIndex];
                     } else {
                         // Input for the next step is output of current step.
-                        exactAmountIn = amountsOut[tokenIndex];
+                        stepExactAmountIn = amountsOut[tokenIndex];
                         // The token in for the next step is the token out of the current step.
-                        tokenIn = step.tokenOut;
+                        stepTokenIn = step.tokenOut;
                     }
                 } else if (address(step.tokenOut) == step.pool) {
                     // Token out is BPT: add liquidity - Single token exact in (unbalanced)
                     (uint256[] memory exactAmountsIn, ) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
-                        tokenIn,
-                        exactAmountIn
+                        stepTokenIn,
+                        stepExactAmountIn
                     );
 
                     (, uint256 bptAmountOut, ) = _vault.addLiquidity(
@@ -733,9 +733,9 @@ contract Router is IRouter, ReentrancyGuard {
                         _currentSwapTokensOut.add(address(step.tokenOut));
                     } else {
                         // Input for the next step is output of current step.
-                        exactAmountIn = bptAmountOut;
+                        stepExactAmountIn = bptAmountOut;
                         // The token in for the next step is the token out of the current step.
-                        tokenIn = step.tokenOut;
+                        stepTokenIn = step.tokenOut;
                         // If this is an intermediate step, we'll need to send it back to the vault
                         // to get credit for the BPT minted in the add liquidity operation.
                         _vault.takeFrom(IERC20(step.pool), params.sender, bptAmountOut);
@@ -746,9 +746,9 @@ contract Router is IRouter, ReentrancyGuard {
                         SwapParams({
                             kind: SwapKind.EXACT_IN,
                             pool: step.pool,
-                            tokenIn: tokenIn,
+                            tokenIn: stepTokenIn,
                             tokenOut: step.tokenOut,
-                            amountGivenRaw: exactAmountIn,
+                            amountGivenRaw: stepExactAmountIn,
                             limitRaw: minAmountOut,
                             userData: params.userData
                         })
@@ -762,9 +762,9 @@ contract Router is IRouter, ReentrancyGuard {
                         _currentSwapTokenOutAmounts[address(step.tokenOut)] += amountOut;
                     } else {
                         // Input for the next step is output of current step.
-                        exactAmountIn = amountOut;
+                        stepExactAmountIn = amountOut;
                         // The token in for the next step is the token out of the current step.
-                        tokenIn = step.tokenOut;
+                        stepTokenIn = step.tokenOut;
                     }
                 }
             }
@@ -782,7 +782,7 @@ contract Router is IRouter, ReentrancyGuard {
             SwapPathExactAmountOut memory path = params.paths[i];
             // This variable shall be updated at the end of each step to be used as input of the next one.
             // The first value corresponds to the given amount out for the current path.
-            uint256 exactAmountOut = path.exactAmountOut;
+            uint256 stepExactAmountOut = path.exactAmountOut;
 
             // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses in
             // a set with unique addresses that can be iterated later on.
@@ -800,8 +800,8 @@ contract Router is IRouter, ReentrancyGuard {
 
                 // These two variables are set at the beginning of the iteration and are used as inputs for
                 // the operation described by the step.
-                uint256 maxAmountIn;
-                IERC20 tokenIn;
+                uint256 stepMaxAmountIn;
+                IERC20 stepTokenIn;
 
                 // Stack too deep
                 {
@@ -813,46 +813,46 @@ contract Router is IRouter, ReentrancyGuard {
                         // Output amounts are stored to send them later on.
                         // TODO: This should be transient.
                         _currentSwapTokensOut.add(address(step.tokenOut));
-                        _currentSwapTokenOutAmounts[address(step.tokenOut)] += exactAmountOut;
+                        _currentSwapTokenOutAmounts[address(step.tokenOut)] += stepExactAmountOut;
                     }
 
                     if (isLastStep) {
                         // In backwards order, the last step is the first one in the given path.
                         // The given token in and max amount in apply for this step.
-                        maxAmountIn = path.maxAmountIn;
-                        tokenIn = path.tokenIn;
+                        stepMaxAmountIn = path.maxAmountIn;
+                        stepTokenIn = path.tokenIn;
                     } else {
                         // For every other intermediate step, no maximum input applies.
                         // The input token for this step is the output token of the previous given step.
                         // We use uint128 to prevent Vault's internal scaling from overflowing.
-                        maxAmountIn = type(uint128).max;
-                        tokenIn = path.steps[uint256(j - 1)].tokenOut;
+                        stepMaxAmountIn = type(uint128).max;
+                        stepTokenIn = path.steps[uint256(j - 1)].tokenOut;
                     }
                 }
 
-                if (address(tokenIn) == step.pool) {
+                if (address(stepTokenIn) == step.pool) {
                     // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
                     // required amount when performing the operation. In this case, the BPT amount needed for the
                     // operation is not known in advance, so we take a flashloan for all the available reserves.
                     // The last step is the one that defines the inputs for this path. The caller should have enough
                     // BPT to burn already if that's the case, so we just skip this step if so.
                     if (isLastStep == false) {
-                        maxAmountIn = _vault.getTokenReserve(tokenIn);
-                        _vault.wire(IERC20(step.pool), params.sender, maxAmountIn);
+                        stepMaxAmountIn = _vault.getTokenReserve(stepTokenIn);
+                        _vault.sendTo(IERC20(step.pool), params.sender, stepMaxAmountIn);
                     }
 
                     // Token in is BPT: remove liquidity - Single token exact out
                     (uint256[] memory exactAmountsOut, ) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
                         step.tokenOut,
-                        exactAmountOut
+                        stepExactAmountOut
                     );
 
                     (uint256 bptAmountIn, , ) = _vault.removeLiquidity(
                         RemoveLiquidityParams({
                             pool: step.pool,
                             from: params.sender,
-                            maxBptAmountIn: maxAmountIn,
+                            maxBptAmountIn: stepMaxAmountIn,
                             minAmountsOut: exactAmountsOut,
                             kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                             userData: params.userData
@@ -864,18 +864,18 @@ contract Router is IRouter, ReentrancyGuard {
                         pathAmountsIn[i] = bptAmountIn;
                     } else {
                         // Output for the step (j - 1) is the input of step (j).
-                        exactAmountOut = bptAmountIn;
+                        stepExactAmountOut = bptAmountIn;
                         // Refund unused portion of BPT flashloan to the Vault
-                        if (bptAmountIn < maxAmountIn) {
-                            _vault.retrieve(tokenIn, params.sender, maxAmountIn - bptAmountIn);
+                        if (bptAmountIn < stepMaxAmountIn) {
+                            _vault.takeFrom(stepTokenIn, params.sender, stepMaxAmountIn - bptAmountIn);
                         }
                     }
                 } else if (address(step.tokenOut) == step.pool) {
                     // Token out is BPT: add liquidity - Single token exact out
                     (uint256[] memory amountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
-                        tokenIn,
-                        maxAmountIn
+                        stepTokenIn,
+                        stepMaxAmountIn
                     );
 
                     // Reusing `amountsIn` as input argument and function output to prevent stack too deep error.
@@ -884,7 +884,7 @@ contract Router is IRouter, ReentrancyGuard {
                             pool: step.pool,
                             to: params.sender,
                             maxAmountsIn: amountsIn,
-                            minBptAmountOut: exactAmountOut,
+                            minBptAmountOut: stepExactAmountOut,
                             kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                             userData: params.userData
                         })
@@ -893,33 +893,43 @@ contract Router is IRouter, ReentrancyGuard {
                     if (isLastStep) {
                         // The amount out for the last step of the path should be recorded for the return value.
                         pathAmountsIn[i] = amountsIn[tokenIndex];
-                        _currentSwapTokenInAmounts[address(tokenIn)] += amountsIn[tokenIndex];
+                        _currentSwapTokenInAmounts[address(stepTokenIn)] += amountsIn[tokenIndex];
                     } else {
-                        exactAmountOut = amountsIn[tokenIndex];
+                        stepExactAmountOut = amountsIn[tokenIndex];
                     }
-                    // The last step is the first one in the order of operations.
-                    // TODO: We could skip retrieve on the first step and tweak how we settle the output token.
-                    // _currentSwapTokenOutAmounts[address(step.tokenOut)] -= exactAmountOut;
-                    _vault.takeFrom(IERC20(step.pool), params.sender, exactAmountOut);
+
+                    // stack-too-deep
+                    {
+                        // The last step given determines the outputs for the path. Since this is given out, the last
+                        // step given is the first one to be executed in the loop.
+                        bool isFirstStep = (uint256(j) == path.steps.length - 1);
+                        if (isFirstStep) {
+                            // Instead of sending tokens back to the vault, we can just discount it from whatever
+                            // the vault owes the sender to make one less transfer.
+                            _currentSwapTokenOutAmounts[address(step.tokenOut)] -= stepExactAmountOut;
+                        } else {
+                            _vault.takeFrom(IERC20(step.pool), params.sender, stepExactAmountOut);
+                        }
+                    }
                 } else {
                     // No BPT involved in the operation: regular swap exact out
                     (, uint256 amountIn, ) = _vault.swap(
                         SwapParams({
                             kind: SwapKind.EXACT_OUT,
                             pool: step.pool,
-                            tokenIn: tokenIn,
+                            tokenIn: stepTokenIn,
                             tokenOut: step.tokenOut,
-                            amountGivenRaw: exactAmountOut,
-                            limitRaw: maxAmountIn,
+                            amountGivenRaw: stepExactAmountOut,
+                            limitRaw: stepMaxAmountIn,
                             userData: params.userData
                         })
                     );
 
                     if (isLastStep) {
                         pathAmountsIn[i] = amountIn;
-                        _currentSwapTokenInAmounts[address(tokenIn)] += amountIn;
+                        _currentSwapTokenInAmounts[address(stepTokenIn)] += amountIn;
                     } else {
-                        exactAmountOut = amountIn;
+                        stepExactAmountOut = amountIn;
                     }
                 }
             }
