@@ -181,9 +181,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
         IERC20[] memory tempRegisteredTokens = new IERC20[](numTokens);
         uint256 numTempTokens;
-        uint256 i;
 
-        for (i = 0; i < numTokens; ++i) {
+        for (uint256 i = 0; i < numTokens; ++i) {
             TokenConfig memory tokenData = params.tokenConfig[i];
             IERC20 token = tokenData.token;
 
@@ -245,7 +244,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
 
         // Delete any temporarily registered tokens.
-        for (i = 0; i < numTempTokens; i++) {
+        for (uint256 i = 0; i < numTempTokens; i++) {
             poolTokenBalances.remove(tempRegisteredTokens[i]);
         }
 
