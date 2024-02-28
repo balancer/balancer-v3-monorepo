@@ -52,8 +52,11 @@ contract PriceImpactTest is BaseVaultTest {
     }
 
     function testPriceImpact() public {
-        uint256 priceImpact = priceImpactHelper.priceImpactForAddLiquidityUnbalanced(pool, [poolInitAmount, 0].toMemoryArray());
+        vm.prank(address(0), address(0));
+        uint256 priceImpact = priceImpactHelper.priceImpactForAddLiquidityUnbalanced(
+            pool,
+            [poolInitAmount, 0].toMemoryArray()
+        );
         assertEq(priceImpact, 123, "Incorrect price impact for add liquidity unbalanced");
     }
-
 }
