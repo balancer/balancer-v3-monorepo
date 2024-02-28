@@ -139,6 +139,27 @@ contract VaultTokenTest is BaseVaultTest {
         _registerPool(tokenConfig);
     }
 
+    function testRegistrationWithERC4626Tokens() public {
+        registerBuffers();
+
+        // Regular pool cannot have a buffer token with the same base as an existing standard token.
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[0].token = IERC20(waDAI);
+        tokenConfig[0].tokenType = TokenType.ERC4626;
+        tokenConfig[1].token = IERC20(waUSDC);
+        tokenConfig[1].tokenType = TokenType.ERC4626;
+
+        _registerPool(tokenConfig);
+
+        // Check that actual registered tokens, vs "reported" ones, are the wrappers.
+        (IERC20[] memory tokens, TokenType[] memory tokenTypes, , , ) = vault.getPoolTokenInfo(pool);
+
+        assertEq(address(tokens[0]), address(waDAI));
+        assertEq(address(tokens[1]), address(waUSDC));
+        assertTrue(tokenTypes[0] == TokenType.ERC4626);
+        assertTrue(tokenTypes[1] == TokenType.ERC4626);
+    }
+
     function registerBuffers() private {
         // Buffer Pool creation is permissioned by factory.
         authorizer.grantRole(vault.getActionId(IVaultAdmin.registerBufferPoolFactory.selector), alice);
