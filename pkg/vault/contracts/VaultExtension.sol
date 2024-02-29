@@ -119,6 +119,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                             Pool Registration and Initialization
     *******************************************************************************/
 
+    struct PoolRegistrationParams {
+        TokenConfig[] tokenConfig;
+        bool isBufferPool;
+        uint256 swapFeePercentage;
+        uint256 pauseWindowEndTime;
+        address pauseManager;
+        PoolHooks poolHooks;
+        LiquidityManagement liquidityManagement;
+    }
+
     /// @inheritdoc IVaultExtension
     function registerPool(
         address pool,
@@ -148,16 +158,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         return _isPoolRegistered(pool);
     }
 
-    struct PoolRegistrationParams {
-        TokenConfig[] tokenConfig;
-        bool isBufferPool;
-        uint256 swapFeePercentage;
-        uint256 pauseWindowEndTime;
-        address pauseManager;
-        PoolHooks poolHooks;
-        LiquidityManagement liquidityManagement;
-    }
-
     /**
      * @dev The function will register the pool, setting its tokens with an initial balance of zero.
      * The function also checks for valid token addresses and ensures that the pool and tokens aren't
@@ -172,7 +172,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
 
         uint256 numTokens = params.tokenConfig.length;
-
         if (numTokens < _MIN_TOKENS) {
             revert MinTokens();
         }
@@ -182,7 +181,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         // Retrieve or create the pool's token balances mapping.
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        uint8[] memory tokenDecimalDiffs = new uint8[](params.tokenConfig.length);
+        uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
+        IERC20[] memory tempRegisteredTokens = new IERC20[](numTokens);
+        uint256 numTempTokens;
 
         for (uint256 i = 0; i < numTokens; ++i) {
             TokenConfig memory tokenData = params.tokenConfig[i];
@@ -221,11 +222,33 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 if (tokenData.yieldFeeExempt) {
                     revert InvalidTokenConfiguration();
                 }
+
+                if (params.isBufferPool == false) {
+                    // Temporarily register the base token in order to detect duplicates. Since ERC4626 tokens in
+                    // regular (non-buffer) pool appear to the outside as their base (e.g., waDAI would appear as DAI),
+                    // a DAI/waDAI pool - or cDAI/waDAI - would look like DAI/DAI, which we disallow with this check).
+                    IERC20 baseToken = IERC20(IERC4626(address(token)).asset());
+                    if (poolTokenBalances.set(baseToken, 0)) {
+                        // Store it to remove later, so that we don't actually include the base tokens
+                        // in the pool.
+                        tempRegisteredTokens[numTempTokens++] = baseToken;
+                    } else {
+                        // We could introduce a new error here, but depending on the token order (i.e., if the wrapped
+                        // token came first), it's possible to revert above with TokenAlreadyRegistered.
+                        // For consistency, just use the same error in both places.
+                        revert TokenAlreadyRegistered(baseToken);
+                    }
+                }
             } else {
                 revert InvalidTokenType();
             }
 
             tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
+        }
+
+        // Delete any temporarily registered tokens.
+        for (uint256 i = 0; i < numTempTokens; i++) {
+            poolTokenBalances.remove(tempRegisteredTokens[i]);
         }
 
         // Store the pause manager. A zero address means default to the authorizer.

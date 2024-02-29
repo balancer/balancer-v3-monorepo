@@ -28,15 +28,18 @@ contract VaultTokenTest is BaseVaultTest {
     ERC4626BufferPoolFactory bufferFactory;
 
     address waDAIBuffer;
+    address cDAIBuffer;
     address waUSDCBuffer;
 
     ERC4626TestToken waDAI;
+    ERC4626TestToken cDAI;
     ERC4626TestToken waUSDC;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
         waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
+        cDAI = new ERC4626TestToken(dai, "Wrapped cDAI", "cDAI", 18);
         waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 6);
 
         poolFactory = new PoolFactoryMock(vault, 365 days);
@@ -120,6 +123,47 @@ contract VaultTokenTest is BaseVaultTest {
         _registerPool(tokenConfig);
     }
 
+    function testRegistrationWithAmbiguousTokens() public {
+        registerBuffers();
+
+        // Regular pool cannot have a buffer token with the same base as an existing standard token.
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[0].token = IERC20(waDAI);
+        tokenConfig[0].tokenType = TokenType.ERC4626;
+        tokenConfig[1].token = IERC20(dai);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.TokenAlreadyRegistered.selector, address(dai)));
+        _registerPool(tokenConfig);
+
+        // Also can't have two wrapped tokens with the same underlying
+        tokenConfig[1].token = IERC20(cDAI);
+        tokenConfig[1].tokenType = TokenType.ERC4626;
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.TokenAlreadyRegistered.selector, address(dai)));
+        _registerPool(tokenConfig);
+    }
+
+    function testRegistrationWithERC4626Tokens() public {
+        registerBuffers();
+
+        // Regular pool cannot have a buffer token with the same base as an existing standard token.
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[0].token = IERC20(waDAI);
+        tokenConfig[0].tokenType = TokenType.ERC4626;
+        tokenConfig[1].token = IERC20(waUSDC);
+        tokenConfig[1].tokenType = TokenType.ERC4626;
+
+        _registerPool(tokenConfig);
+
+        // Check that actual registered tokens, vs "reported" ones, are the wrappers.
+        (IERC20[] memory tokens, TokenType[] memory tokenTypes, , , ) = vault.getPoolTokenInfo(pool);
+
+        assertEq(address(tokens[0]), address(waDAI));
+        assertEq(address(tokens[1]), address(waUSDC));
+        assertTrue(tokenTypes[0] == TokenType.ERC4626);
+        assertTrue(tokenTypes[1] == TokenType.ERC4626);
+    }
+
     function registerBuffers() private {
         // Buffer Pool creation is permissioned by factory.
         authorizer.grantRole(vault.getActionId(IVaultAdmin.registerBufferPoolFactory.selector), alice);
@@ -127,12 +171,15 @@ contract VaultTokenTest is BaseVaultTest {
         // Establish assets and supply so that buffer creation doesn't fail
         dai.mint(address(waDAI), 1000e18);
         waDAI.mint(1000e18, alice);
+        dai.mint(address(cDAI), 1000e18);
+        cDAI.mint(1000e18, alice);
         usdc.mint(address(waUSDC), 1000e18);
         waUSDC.mint(1000e18, alice);
 
         vm.startPrank(alice);
         vault.registerBufferPoolFactory(address(bufferFactory));
         waDAIBuffer = bufferFactory.create(waDAI, address(0), getSalt(address(waDAI)));
+        cDAIBuffer = bufferFactory.create(cDAI, address(0), getSalt(address(cDAI)));
         waUSDCBuffer = bufferFactory.create(waUSDC, address(0), getSalt(address(waUSDC)));
         vm.stopPrank();
     }
