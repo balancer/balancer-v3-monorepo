@@ -351,7 +351,7 @@ contract ERC4626BufferPool is
             //    2. Since we have 1000 wUSDC, the scaled18 balance is approx 1e21, but the vault rate has
             //       only 18 decimals. The 3 extra digits are imprecise.
             // The whole imprecision is 15 digits, so the tolerance should be 1e15.
-            // Making the account below:
+            // Doing the example math below:
             // - balancesScaled18[WRAPPED_TOKEN_INDEX] = convertToAssets(1000) * 1e12 ~= (1e3 * 1e6) * 1e12 = 1e21
             // - _wrappedTokenScalingFactor = 1e(18-6) * 1e18 = 1e30
             // - balancesScaled18[WRAPPED_TOKEN_INDEX].mulDown(_wrappedTokenScalingFactor) = 1e21 * 1e30 / 1e18 = 1e33
