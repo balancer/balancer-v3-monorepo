@@ -26,12 +26,12 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
+import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
-
 
 /**
  * @dev Bytecode extension for Vault.
@@ -44,6 +44,7 @@ import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
  * The storage of this contract is in practice unused.
  */
 contract VaultExtension is IVaultExtension, VaultCommon, Authentication, EIP712, Nonces {
+    using WordCodec for bytes32;
     using Address for *;
     using ArrayHelpers for uint256[];
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -74,7 +75,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, EIP712,
         IVault mainVault,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) Authentication(bytes32(uint256(uint160(address(mainVault))))) EIP712("Balancer V2 Vault", "1") {
+    ) Authentication(bytes32(uint256(uint160(address(mainVault))))) EIP712("Balancer V3 Vault", "1") {
         if (pauseWindowDuration > MAX_PAUSE_WINDOW_DURATION) {
             revert VaultPauseWindowDurationTooLarge();
         }
@@ -879,34 +880,46 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, EIP712,
     }
 
     bytes32 public constant SET_RELAYER_APPROVAL_TYPEHASH =
-        keccak256("SetRouterApproval(address sender,address router,bool approved,uint256 nonce,uint256 deadline)");
+        keccak256("approveRouter(address user,address router,bool approved,uint256 nonce,uint256 deadline)");
 
-    function setRouterApproval(
-        address sender,
+    /// @inheritdoc IVaultExtension
+    function approveRouter(
+        address user,
         address router,
         bool approved,
         uint256 deadline,
         bytes memory signature
-    ) external override nonReentrant whenVaultNotPaused {
+    ) external override nonReentrant whenVaultNotPaused onlyVault {
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > deadline) {
             revert ERC2612ExpiredSignature(deadline);
         }
 
         bytes32 digest = _hashTypedDataV4(
-            keccak256(abi.encode(SET_RELAYER_APPROVAL_TYPEHASH, sender, router, approved, _useNonce(sender), deadline))
+            keccak256(abi.encode(SET_RELAYER_APPROVAL_TYPEHASH, user, router, approved, _useNonce(user), deadline))
         );
 
         address signer = ECDSA.recover(digest, signature);
 
-        if (signer != sender) {
-            revert ERC2612InvalidSigner(signer, sender);
+        if (signer != user) {
+            revert ERC2612InvalidSigner(signer, user);
         }
 
-        _trustedRouters[sender][router] = approved;
-        emit RouterApprovalChanged(router, sender, approved);
+        _trustedRouters[user][router] = approved;
+        emit RouterUserApprovalChanged(router, user, approved);
     }
 
+    /// @inheritdoc IVaultExtension
+    function approveRouter(
+        address router,
+        bool approved
+    ) external override authenticate nonReentrant whenVaultNotPaused onlyVault {
+        // Use the `vault` address as the user to approve routers through governance.
+        _trustedRouters[address(_vault)][router] = approved;
+        emit RouterGovernanceApprovalChanged(router, approved);
+    }
+
+    /// @inheritdoc IVaultExtension
     function isTrustedRouter(address router, address user) external view override returns (bool) {
         return _isTrustedRouter(router, user);
     }

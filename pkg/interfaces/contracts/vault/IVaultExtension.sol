@@ -521,9 +521,9 @@ interface IVaultExtension {
     // @dev Mismatched signature.
     error ERC2612InvalidSigner(address signer, address sender);
 
-    event RouterApprovalChanged(address indexed router, address indexed sender, bool approved);
+    event RouterUserApprovalChanged(address indexed router, address indexed user, bool approved);
 
-    function setRouterApproval(
+    function approveRouter(
         address sender,
         address router,
         bool approved,
@@ -531,7 +531,11 @@ interface IVaultExtension {
         bytes memory signature
     ) external;
 
-    function isTrustedRouter(address router, address user) external returns (bool) ;
+    event RouterGovernanceApprovalChanged(address indexed router, bool approved);
+
+    function approveRouter(address router, bool approved) external;
+
+    function isTrustedRouter(address router, address user) external returns (bool);
 
     /*******************************************************************************
 -                                ERC4626 Buffers

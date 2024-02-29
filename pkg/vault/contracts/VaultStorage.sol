@@ -115,7 +115,8 @@ contract VaultStorage {
     // For convenience, store the base token for each buffer in `_wrappedTokenBuffers`
     mapping(IERC20 => IERC20) internal _wrappedTokenBufferBaseTokens;
 
-    // Routers approved by users to manage their allowances.
+    // Routers approved by users and governance to manage their allowances.
     // user -> router -> approved
+    // Note that the `vault` address is used as a `user` address for routers trusted by governance.
     mapping(address => mapping(address => bool)) internal _trustedRouters;
 }

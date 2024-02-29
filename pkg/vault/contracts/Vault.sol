@@ -26,6 +26,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
+import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";

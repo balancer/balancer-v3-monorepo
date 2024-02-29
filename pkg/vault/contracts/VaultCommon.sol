@@ -14,6 +14,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultStorage } from "./VaultStorage.sol";
@@ -25,6 +26,7 @@ import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
  * that require storage to work and will be required in both the main Vault and its extension.
  */
 abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, ReentrancyGuard, ERC20MultiToken {
+    using WordCodec for bytes32;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using PackedTokenBalance for bytes32;
     using ScalingHelpers for *;
@@ -131,8 +133,11 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         _tokenDeltas[handler][token] = next;
     }
 
+
     function _isTrustedRouter(address router, address user) internal view returns (bool) {
-        return _trustedRouters[user][router];
+        // Ensure that the router is trusted by both the user and governance.
+        // Note that optimization into a single SLOAD is not possible because approvals are specific to each user.
+        return _trustedRouters[user][router] && _trustedRouters[address(this)][router];
     }
 
     /*******************************************************************************

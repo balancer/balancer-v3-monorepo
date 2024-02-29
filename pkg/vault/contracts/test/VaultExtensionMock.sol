@@ -50,9 +50,10 @@ contract VaultExtensionMock is IVaultExtensionMock, VaultExtension {
         bool approved,
         uint256 deadline
     ) public view returns (bytes32) {
-        return _hashTypedDataV4(
-            keccak256(abi.encode(SET_RELAYER_APPROVAL_TYPEHASH, sender, router, approved, nonces(sender), deadline))
-        );
+        return
+            _hashTypedDataV4(
+                keccak256(abi.encode(SET_RELAYER_APPROVAL_TYPEHASH, sender, router, approved, nonces(sender), deadline))
+            );
     }
 
     function hashTypedDataV4(bytes32 data) public view returns (bytes32) {
