@@ -162,10 +162,21 @@ contract ERC4626BufferPool is
             uint256 wrappedRate = _getRate();
 
             uint256 sharesRaw = request.amountGivenScaled18.divDown(wrappedRate).divDown(_wrappedTokenScalingFactor);
-            // Add 1 to assets amount so we make sure we're always returning more assets than needed to wrap.
-            // It ensures that any error in the calculation of the rate will be charged from the buffer,
-            // and not from the vault
-            uint256 assetsRaw = _wrappedToken.previewRedeem(sharesRaw) + 1;
+
+            uint256 assetsRaw;
+            if (request.kind == SwapKind.EXACT_IN) {
+                // TODO refactor comment
+                // Removes 1 from assets amount so we make sure we're returning more wrapped than needed.
+                // It ensures that any error in the calculation of the rate will be charged from the buffer,
+                // and not from the vault
+                assetsRaw = _wrappedToken.previewRedeem(sharesRaw) + 2;
+            } else {
+                // TODO refactor comment
+                // Add 1 to assets amount so we make sure we're returning more assets than needed to wrap.
+                // It ensures that any error in the calculation of the rate will be charged from the buffer,
+                // and not from the vault
+                assetsRaw = _wrappedToken.previewRedeem(sharesRaw) - 1;
+            }
             uint256 preciseAssetsScaled18 = assetsRaw.mulDown(_wrappedTokenScalingFactor);
 
             // amountGivenScaled18 has some imprecision when calculating the rate (we store only 18 decimals of rate,
@@ -228,11 +239,12 @@ contract ERC4626BufferPool is
         uint256 limitRaw;
         if (balanceWrappedAssetsRaw > balanceBaseAssetsRaw) {
             exchangeAmountRaw = (balanceWrappedAssetsRaw - balanceBaseAssetsRaw) / 2;
+            // TODO refactor comments
             // Since the swap is calculating the amountOut of wrapped tokens,
             // we need to limit the minimum amountOut, which can be defined by
             // the exact conversion of (exchangeAmountRaw - 1), to give some
             // margin for rounding errors related to rate
-            limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw - 1) - MAXIMUM_DIFF_WTOKENS;
+            limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw - 2) - MAXIMUM_DIFF_WTOKENS;
 
             // In this case, since there is more wrapped than base assets, wrapped tokens will be removed (tokenOut)
             // and then unwrapped, and the resulting base assets will be deposited in the pool (tokenIn)
@@ -256,7 +268,7 @@ contract ERC4626BufferPool is
             // we need to limit the maximum amountIn, which can be defined by
             // the exact conversion of (exchangeAmountRaw + 1), to give some
             // margin for rounding errors related to rate
-            limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw + 1) + MAXIMUM_DIFF_WTOKENS;
+            limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw + 2) + MAXIMUM_DIFF_WTOKENS;
 
             // In this case, since there is more base than wrapped assets, base assets will be removed (tokenOut)
             // and then wrapped, and the resulting wrapped assets will be deposited in the pool (tokenIn)
@@ -288,16 +300,17 @@ contract ERC4626BufferPool is
             wrappedToken = params.tokenOut;
 
             _vault.sendTo(wrappedToken, address(this), amountOut);
-            IERC4626(address(wrappedToken)).withdraw(amountIn, address(this), address(this));
+            IERC4626(address(wrappedToken)).redeem(amountOut, address(this), address(this));
             baseToken.safeTransfer(address(_vault), amountIn);
             _vault.settle(baseToken);
         } else {
             baseToken = params.tokenOut;
             wrappedToken = params.tokenIn;
+            uint256 amountToApproveMint = IERC4626(address(wrappedToken)).previewMint(amountIn);
 
             _vault.sendTo(baseToken, address(this), amountOut);
-            baseToken.approve(address(wrappedToken), amountOut);
-            IERC4626(address(wrappedToken)).deposit(amountOut, address(this));
+            baseToken.approve(address(wrappedToken), amountToApproveMint);
+            IERC4626(address(wrappedToken)).mint(amountIn, address(this));
             wrappedToken.safeTransfer(address(_vault), amountIn);
             _vault.settle(wrappedToken);
         }
@@ -312,7 +325,7 @@ contract ERC4626BufferPool is
                 pool: params.pool,
                 tokenIn: params.tokenIn,
                 tokenOut: params.tokenOut,
-                amountGivenRaw: params.amountGivenRaw,
+                amountGivenRaw: params.amountGivenRaw, //params.kind == SwapKind.EXACT_IN ? params.amountGivenRaw - 10 : params.amountGivenRaw,
                 limitRaw: params.limitRaw,
                 userData: params.userData
             })

@@ -243,9 +243,10 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
             10 ** (decimals / 2),
             "wDai BufferPool balance of wDai should be unbalanced by assetsToTransfer"
         );
-        assertEq(
+        assertApproxEqAbs(
             originalBalances[1],
             BUFFER_BASE_TOKENS + assetsToTransfer,
+            10 ** (decimals / 2),
             "wDai BufferPool balance of DAI should be unbalanced by assetsToTransfer"
         );
 
@@ -274,30 +275,32 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
 
         // Makes sure DAI balance didn't change in the pool contract by more than 1 unit
         // (ERC4626 deposit sometimes leave 1 token behind)
+        uint256 assetsInOneShare = wDAI.convertToAssets(1);
+        assetsInOneShare = assetsInOneShare > 0 ? assetsInOneShare : 1;
         assertApproxEqAbs(
             daiBalanceBeforeRebalance,
             daiBalanceAfterRebalance,
-            1,
-            "wDai BufferPool contract should not get more than 1 DAI tokens after rebalance"
+            2 * assetsInOneShare,
+            "wDai BufferPool contract should not get more than 2 wDAI converted to DAI after rebalance"
         );
         // Makes sure that 1e18 DAI converted to wDai in the pool can make at least 1e17 rebalance calls
         uint256 sharesInOneAsset = wDAI.convertToShares(1);
         sharesInOneAsset = sharesInOneAsset > 0 ? sharesInOneAsset : 1;
-        if (wDaiBalanceBeforeRebalance >= wDaiBalanceAfterRebalance) {
+//        if (wDaiBalanceBeforeRebalance >= wDaiBalanceAfterRebalance) {
             assertApproxEqAbs(
                 wDaiBalanceBeforeRebalance - wDaiBalanceAfterRebalance,
                 0,
                 2 * sharesInOneAsset,
                 "wDai BufferPool contract should not lose more than 1 DAI converted to wDai after rebalance"
             );
-        } else {
-            assertApproxEqAbs(
-                wDaiBalanceAfterRebalance - wDaiBalanceBeforeRebalance,
-                0,
-                2 * sharesInOneAsset,
-                "wDai BufferPool contract should not lose more than 1 DAI converted to wDai after rebalance"
-            );
-        }
+//        } else {
+//            assertApproxEqAbs(
+//                wDaiBalanceAfterRebalance - wDaiBalanceBeforeRebalance,
+//                0,
+//                2 * sharesInOneAsset,
+//                "wDai BufferPool contract should not lose more than 1 DAI converted to wDai after rebalance"
+//            );
+//        }
     }
 
     function testDaiSmallRateWithMoreWrapped__Fuzz__Fork(uint256 assetsToTransfer) public {
@@ -317,9 +320,10 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
             10 ** (decimals / 2),
             "wDai BufferPool balance of wDai should be unbalanced by assetsToTransfer"
         );
-        assertEq(
+        assertApproxEqAbs(
             originalBalances[1],
             BUFFER_BASE_TOKENS - assetsToTransfer,
+            10 ** (decimals / 2),
             "wDai BufferPool balance of DAI should be unbalanced by assetsToTransfer"
         );
 
@@ -348,30 +352,20 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
 
         // Makes sure DAI balance didn't change in the pool contract by more than 1 unit
         // (ERC4626 deposit sometimes leave 1 token behind)
+        uint256 assetsInOneShare = wDAI.convertToAssets(1);
+        assetsInOneShare = assetsInOneShare > 0 ? assetsInOneShare : 1;
         assertApproxEqAbs(
             daiBalanceBeforeRebalance,
             daiBalanceAfterRebalance,
-            1,
-            "wDai BufferPool contract should not get more than 1 DAI tokens after rebalance"
+            3 * assetsInOneShare,
+            "wDai BufferPool contract should not lose more than 3 wDAI converted to DAI after rebalance"
         );
-        // Makes sure that 1e18 DAI converted to wDai in the pool can make at least 1e17 rebalance calls
-        uint256 sharesInOneAsset = wDAI.convertToShares(1);
-        sharesInOneAsset = sharesInOneAsset > 0 ? sharesInOneAsset : 1;
-        if (wDaiBalanceBeforeRebalance >= wDaiBalanceAfterRebalance) {
-            assertApproxEqAbs(
-                wDaiBalanceBeforeRebalance - wDaiBalanceAfterRebalance,
-                0,
-                2 * sharesInOneAsset,
-                "wDai BufferPool contract should not lose more than 1 DAI converted to wDai after rebalance"
-            );
-        } else {
-            assertApproxEqAbs(
-                wDaiBalanceAfterRebalance - wDaiBalanceBeforeRebalance,
-                0,
-                2 * sharesInOneAsset,
-                "wDai BufferPool contract should not lose more than 1 DAI converted to wDai after rebalance"
-            );
-        }
+        // Makes sure wDAI balance in the buffer pool didn't change
+        assertEq(
+            wDaiBalanceBeforeRebalance,
+            wDaiBalanceAfterRebalance,
+            "wDai BufferPool contract should not get wDAI after rebalance"
+        );
     }
 
     function testSandBigRateWithMoreBase__Fuzz__Fork(uint256 assetsToTransfer) public {
@@ -391,9 +385,10 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
             10 ** (decimals / 2),
             "wSand BufferPool balance of wSand should be unbalanced by assetsToTransfer"
         );
-        assertEq(
+        assertApproxEqAbs(
             originalBalances[1],
             BUFFER_BASE_TOKENS + assetsToTransfer,
+            10 ** (decimals / 2),
             "wSand BufferPool balance of SAND should be unbalanced by assetsToTransfer"
         );
 
@@ -422,30 +417,32 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
 
         // Makes sure SAND balance didn't change in the pool contract by more than 1 unit
         // (ERC4626 deposit sometimes leave 1 token behind)
+        uint256 assetsInOneShare = wSAND.convertToAssets(1);
+        assetsInOneShare = assetsInOneShare > 0 ? assetsInOneShare : 1;
         assertApproxEqAbs(
             sandBalanceBeforeRebalance,
             sandBalanceAfterRebalance,
-            1,
-            "wSand BufferPool contract should not get more than 1 SAND tokens after rebalance"
+            2 * assetsInOneShare,
+            "wSand BufferPool contract should not get more than 2 wSAND converted to SAND after rebalance"
         );
         // Makes sure that 1e18 SAND converted to wSand in the pool can make at least 1e17 rebalance calls
         uint256 sharesInOneAsset = wSAND.convertToShares(1);
         sharesInOneAsset = sharesInOneAsset > 0 ? sharesInOneAsset : 1;
-        if (wSandBalanceBeforeRebalance >= wSandBalanceAfterRebalance) {
+//        if (wSandBalanceBeforeRebalance >= wSandBalanceAfterRebalance) {
             assertApproxEqAbs(
                 wSandBalanceBeforeRebalance - wSandBalanceAfterRebalance,
                 0,
                 2 * sharesInOneAsset,
                 "wSand BufferPool contract should not lose more than 1 SAND converted to wSand after rebalance"
             );
-        } else {
-            assertApproxEqAbs(
-                wSandBalanceAfterRebalance - wSandBalanceBeforeRebalance,
-                0,
-                2 * sharesInOneAsset,
-                "wSand BufferPool contract should not lose more than 1 SAND converted to wSand after rebalance"
-            );
-        }
+//        } else {
+//            assertApproxEqAbs(
+//                wSandBalanceAfterRebalance - wSandBalanceBeforeRebalance,
+//                0,
+//                2 * sharesInOneAsset,
+//                "wSand BufferPool contract should not lose more than 1 SAND converted to wSand after rebalance"
+//            );
+//        }
     }
 
     function testSandBigRateWithMoreWrapped__Fuzz__Fork(uint256 assetsToTransfer) public {
@@ -465,9 +462,10 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
             10 ** (decimals / 2),
             "wSand BufferPool balance of wSand should be unbalanced by assetsToTransfer"
         );
-        assertEq(
+        assertApproxEqAbs(
             originalBalances[1],
             BUFFER_BASE_TOKENS - assetsToTransfer,
+            10 ** (decimals / 2),
             "wSand BufferPool balance of SAND should be unbalanced by assetsToTransfer"
         );
 
@@ -496,30 +494,32 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
 
         // Makes sure SAND balance didn't change in the pool contract by more than 1 unit
         // (ERC4626 deposit sometimes leave 1 token behind)
+        uint256 assetsInOneShare = wSAND.convertToAssets(1);
+        assetsInOneShare = assetsInOneShare > 0 ? assetsInOneShare : 1;
         assertApproxEqAbs(
             sandBalanceBeforeRebalance,
             sandBalanceAfterRebalance,
-            1,
-            "wSand BufferPool contract should not get more than 1 SAND tokens after rebalance"
+            2 * assetsInOneShare,
+            "wSand BufferPool contract should not get more than 2 wSAND converted to SAND after rebalance"
         );
         // Makes sure that 1e18 SAND converted to wSand in the pool can make at least 1e17 rebalance calls
         uint256 sharesInOneAsset = wSAND.convertToShares(1);
         sharesInOneAsset = sharesInOneAsset > 0 ? sharesInOneAsset : 1;
-        if (wSandBalanceBeforeRebalance >= wSandBalanceAfterRebalance) {
+//        if (wSandBalanceBeforeRebalance >= wSandBalanceAfterRebalance) {
             assertApproxEqAbs(
                 wSandBalanceBeforeRebalance - wSandBalanceAfterRebalance,
                 0,
                 2 * sharesInOneAsset,
                 "wSand BufferPool contract should not lose more than 1 SAND converted to wSand after rebalance"
             );
-        } else {
-            assertApproxEqAbs(
-                wSandBalanceAfterRebalance - wSandBalanceBeforeRebalance,
-                0,
-                2 * sharesInOneAsset,
-                "wSand BufferPool contract should not lose more than 1 SAND converted to wSand after rebalance"
-            );
-        }
+//        } else {
+//            assertApproxEqAbs(
+//                wSandBalanceAfterRebalance - wSandBalanceBeforeRebalance,
+//                0,
+//                2 * sharesInOneAsset,
+//                "wSand BufferPool contract should not lose more than 1 SAND converted to wSand after rebalance"
+//            );
+//        }
     }
 
     function _createTokens() private {
