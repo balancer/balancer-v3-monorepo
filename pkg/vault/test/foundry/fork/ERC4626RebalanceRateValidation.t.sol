@@ -286,21 +286,12 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
         // Makes sure that 1e18 DAI converted to wDai in the pool can make at least 1e17 rebalance calls
         uint256 sharesInOneAsset = wDAI.convertToShares(1);
         sharesInOneAsset = sharesInOneAsset > 0 ? sharesInOneAsset : 1;
-//        if (wDaiBalanceBeforeRebalance >= wDaiBalanceAfterRebalance) {
-            assertApproxEqAbs(
-                wDaiBalanceBeforeRebalance - wDaiBalanceAfterRebalance,
-                0,
-                2 * sharesInOneAsset,
-                "wDai BufferPool contract should not lose more than 1 DAI converted to wDai after rebalance"
-            );
-//        } else {
-//            assertApproxEqAbs(
-//                wDaiBalanceAfterRebalance - wDaiBalanceBeforeRebalance,
-//                0,
-//                2 * sharesInOneAsset,
-//                "wDai BufferPool contract should not lose more than 1 DAI converted to wDai after rebalance"
-//            );
-//        }
+        assertApproxEqAbs(
+            wDaiBalanceBeforeRebalance - wDaiBalanceAfterRebalance,
+            0,
+            2 * sharesInOneAsset,
+            "wDai BufferPool contract should not lose more than 1 DAI converted to wDai after rebalance"
+        );
     }
 
     function testDaiSmallRateWithMoreWrapped__Fuzz__Fork(uint256 assetsToTransfer) public {
@@ -428,21 +419,12 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
         // Makes sure that 1e18 SAND converted to wSand in the pool can make at least 1e17 rebalance calls
         uint256 sharesInOneAsset = wSAND.convertToShares(1);
         sharesInOneAsset = sharesInOneAsset > 0 ? sharesInOneAsset : 1;
-//        if (wSandBalanceBeforeRebalance >= wSandBalanceAfterRebalance) {
-            assertApproxEqAbs(
-                wSandBalanceBeforeRebalance - wSandBalanceAfterRebalance,
-                0,
-                2 * sharesInOneAsset,
-                "wSand BufferPool contract should not lose more than 1 SAND converted to wSand after rebalance"
-            );
-//        } else {
-//            assertApproxEqAbs(
-//                wSandBalanceAfterRebalance - wSandBalanceBeforeRebalance,
-//                0,
-//                2 * sharesInOneAsset,
-//                "wSand BufferPool contract should not lose more than 1 SAND converted to wSand after rebalance"
-//            );
-//        }
+        assertApproxEqAbs(
+            wSandBalanceBeforeRebalance - wSandBalanceAfterRebalance,
+            0,
+            2 * sharesInOneAsset,
+            "wSand BufferPool contract should not lose more than 1 SAND converted to wSand after rebalance"
+        );
     }
 
     function testSandBigRateWithMoreWrapped__Fuzz__Fork(uint256 assetsToTransfer) public {
@@ -505,21 +487,12 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
         // Makes sure that 1e18 SAND converted to wSand in the pool can make at least 1e17 rebalance calls
         uint256 sharesInOneAsset = wSAND.convertToShares(1);
         sharesInOneAsset = sharesInOneAsset > 0 ? sharesInOneAsset : 1;
-//        if (wSandBalanceBeforeRebalance >= wSandBalanceAfterRebalance) {
-            assertApproxEqAbs(
-                wSandBalanceBeforeRebalance - wSandBalanceAfterRebalance,
-                0,
-                2 * sharesInOneAsset,
-                "wSand BufferPool contract should not lose more than 1 SAND converted to wSand after rebalance"
-            );
-//        } else {
-//            assertApproxEqAbs(
-//                wSandBalanceAfterRebalance - wSandBalanceBeforeRebalance,
-//                0,
-//                2 * sharesInOneAsset,
-//                "wSand BufferPool contract should not lose more than 1 SAND converted to wSand after rebalance"
-//            );
-//        }
+        assertApproxEqAbs(
+            wSandBalanceBeforeRebalance - wSandBalanceAfterRebalance,
+            0,
+            2 * sharesInOneAsset,
+            "wSand BufferPool contract should not lose more than 1 SAND converted to wSand after rebalance"
+        );
     }
 
     function _createTokens() private {
