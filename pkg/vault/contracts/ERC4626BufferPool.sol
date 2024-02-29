@@ -56,7 +56,6 @@ contract ERC4626BufferPool is
     // We are limiting the amount of this error to 2 units of the wrapped token.
     uint256 public constant MAXIMUM_DIFF_WTOKENS = 2;
 
-    IVault private immutable _vault;
     IERC4626 internal immutable _wrappedToken;
     uint256 internal immutable _wrappedTokenScalingFactor;
     uint256 internal immutable _baseTokenScalingFactor;
@@ -68,7 +67,6 @@ contract ERC4626BufferPool is
         IERC4626 wrappedToken,
         IVault vault
     ) BalancerPoolToken(vault, name, symbol) BasePoolAuthentication(vault, msg.sender) {
-        _vault = vault;
         _wrappedToken = wrappedToken;
         _wrappedTokenScalingFactor = ScalingHelpers.computeScalingFactor(IERC20(address(wrappedToken)));
         _baseTokenScalingFactor = ScalingHelpers.computeScalingFactor(IERC20(wrappedToken.asset()));
@@ -76,7 +74,7 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IBasePool
     function getPoolTokens() public view onlyVault returns (IERC20[] memory tokens) {
-        return _vault.getPoolTokens(address(this));
+        return getVault().getPoolTokens(address(this));
     }
 
     /// @inheritdoc BasePoolHooks
@@ -212,9 +210,10 @@ contract ERC4626BufferPool is
     /// @dev Non-reentrant to ensure we don't try to externally rebalance during an internal rebalance.
     function _rebalance() internal nonReentrant {
         address poolAddress = address(this);
+        IVault vault = getVault();
 
         // Get balance of tokens
-        (IERC20[] memory tokens, , uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors, ) = _vault
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors, ) = vault
             .getPoolTokenInfo(poolAddress);
 
         // PreviewRedeem converts a wrapped amount into a base amount
@@ -248,7 +247,7 @@ contract ERC4626BufferPool is
 
             // In this case, since there is more wrapped than base assets, wrapped tokens will be removed (tokenOut)
             // and then unwrapped, and the resulting base assets will be deposited in the pool (tokenIn)
-            _vault.lock(
+            vault.lock(
                 abi.encodeWithSelector(
                     ERC4626BufferPool.rebalanceHook.selector,
                     VaultSwapParams({
@@ -272,7 +271,7 @@ contract ERC4626BufferPool is
 
             // In this case, since there is more base than wrapped assets, base assets will be removed (tokenOut)
             // and then wrapped, and the resulting wrapped assets will be deposited in the pool (tokenIn)
-            _vault.lock(
+            vault.lock(
                 abi.encodeWithSelector(
                     ERC4626BufferPool.rebalanceHook.selector,
                     VaultSwapParams({
@@ -290,6 +289,8 @@ contract ERC4626BufferPool is
     }
 
     function rebalanceHook(VaultSwapParams calldata params) external payable onlyVault {
+        IVault vault = getVault();
+
         (, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         IERC20 baseToken;
@@ -299,27 +300,27 @@ contract ERC4626BufferPool is
             baseToken = params.tokenIn;
             wrappedToken = params.tokenOut;
 
-            _vault.sendTo(wrappedToken, address(this), amountOut);
+            vault.sendTo(wrappedToken, address(this), amountOut);
             IERC4626(address(wrappedToken)).redeem(amountOut, address(this), address(this));
-            baseToken.safeTransfer(address(_vault), amountIn);
-            _vault.settle(baseToken);
+            baseToken.safeTransfer(address(vault), amountIn);
+            vault.settle(baseToken);
         } else {
             baseToken = params.tokenOut;
             wrappedToken = params.tokenIn;
             uint256 amountToApproveMint = IERC4626(address(wrappedToken)).previewMint(amountIn);
 
-            _vault.sendTo(baseToken, address(this), amountOut);
+            vault.sendTo(baseToken, address(this), amountOut);
             baseToken.approve(address(wrappedToken), amountToApproveMint);
             IERC4626(address(wrappedToken)).mint(amountIn, address(this));
-            wrappedToken.safeTransfer(address(_vault), amountIn);
-            _vault.settle(wrappedToken);
+            wrappedToken.safeTransfer(address(vault), amountIn);
+            vault.settle(wrappedToken);
         }
     }
 
     function _swapHook(
         VaultSwapParams calldata params
     ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
-        (amountCalculated, amountIn, amountOut) = _vault.swap(
+        (amountCalculated, amountIn, amountOut) = getVault().swap(
             VaultSwapParams({
                 kind: params.kind,
                 pool: params.pool,
