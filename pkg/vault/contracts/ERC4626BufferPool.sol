@@ -325,7 +325,7 @@ contract ERC4626BufferPool is
                 pool: params.pool,
                 tokenIn: params.tokenIn,
                 tokenOut: params.tokenOut,
-                amountGivenRaw: params.amountGivenRaw, //params.kind == SwapKind.EXACT_IN ? params.amountGivenRaw - 10 : params.amountGivenRaw,
+                amountGivenRaw: params.amountGivenRaw,
                 limitRaw: params.limitRaw,
                 userData: params.userData
             })
