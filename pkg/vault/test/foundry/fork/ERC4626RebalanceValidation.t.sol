@@ -52,7 +52,6 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     IERC20 aUsdcMainnet;
     IERC4626 waUSDC;
 
-    // uint256 constant BLOCK_NUMBER = 18985254;
     // Using older block number because convertToAssets function is bricked in the new version of the aToken wrapper
     uint256 constant BLOCK_NUMBER = 17965150;
 
@@ -83,17 +82,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         donor = payable(DONOR_WALLET_ADDRESS);
         vm.label(donor, "TokenDonor");
 
-        daiMainnet = IERC20(DAI_ADDRESS);
-        vm.label(DAI_ADDRESS, "DAI");
-        aDaiMainnet = IERC20(aDAI_ADDRESS);
-        vm.label(aDAI_ADDRESS, "aDAI");
-        waDAI = IERC4626(aDAI_ADDRESS);
-
-        usdcMainnet = IERC20(USDC_ADDRESS);
-        vm.label(USDC_ADDRESS, "USDC");
-        aUsdcMainnet = IERC20(aUSDC_ADDRESS);
-        vm.label(aUSDC_ADDRESS, "aUSDC");
-        waUSDC = IERC4626(aUSDC_ADDRESS);
+        _setupTokens();
 
         BaseVaultTest.setUp();
     }
@@ -119,7 +108,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
 
         vm.startPrank(lp);
 
-        // Creating Unbalanced Buffer with more base tokens
+        // Creating aDAI Buffer
         bufferDaiWrapped = waDAI.convertToShares(BUFFER_DAI_BASE);
         waDAI.deposit(BUFFER_DAI_BASE, address(lp));
         uint256[] memory amountsInMoreBase = [uint256(bufferDaiWrapped), uint256(BUFFER_DAI_BASE)].toMemoryArray();
@@ -133,10 +122,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             bytes("")
         );
 
-        // Creating Unbalanced Buffer with more wrapped tokens
-
-        // NOTE: using assets / rate, instead of convertToShares(assets), because that's how we scale the
-        // values in the vault to check if the buffer initializes balanced
+        // Creating aUSDC Buffer
         bufferUsdcWrapped = waUSDC.convertToShares(BUFFER_USDC_BASE);
         waUSDC.deposit(BUFFER_USDC_BASE, address(lp));
         uint256[] memory amountsInMoreWrapped = [uint256(bufferUsdcWrapped), uint256(BUFFER_USDC_BASE)].toMemoryArray();
@@ -546,5 +532,19 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     function _setPermissions() private {
         authorizer.grantRole(bufferPoolDai.getActionId(IBufferPool.rebalance.selector), admin);
         authorizer.grantRole(bufferPoolUsdc.getActionId(IBufferPool.rebalance.selector), admin);
+    }
+
+    function _setupTokens() private {
+        daiMainnet = IERC20(DAI_ADDRESS);
+        vm.label(DAI_ADDRESS, "DAI");
+        aDaiMainnet = IERC20(aDAI_ADDRESS);
+        vm.label(aDAI_ADDRESS, "aDAI");
+        waDAI = IERC4626(aDAI_ADDRESS);
+
+        usdcMainnet = IERC20(USDC_ADDRESS);
+        vm.label(USDC_ADDRESS, "USDC");
+        aUsdcMainnet = IERC20(aUSDC_ADDRESS);
+        vm.label(aUSDC_ADDRESS, "aUSDC");
+        waUSDC = IERC4626(aUSDC_ADDRESS);
     }
 }
