@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.4;
 
+import "forge-std/console.sol";
+
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -163,16 +165,14 @@ contract ERC4626BufferPool is
 
             uint256 assetsRaw;
             if (request.kind == SwapKind.EXACT_IN) {
-                // TODO refactor comment
-                // Removes 1 from assets amount so we make sure we're returning more wrapped than needed.
-                // It ensures that any error in the calculation of the rate will be charged from the buffer,
-                // and not from the vault
+                // Adds 2 to assets amount so we make sure we're returning less wrapped than converted
+                // amountIn. Since the buffer will unwrap less assets than amountIn, the difference will
+                // be paid with buffer's contract base tokens.
                 assetsRaw = _wrappedToken.previewRedeem(sharesRaw) + 2;
             } else {
-                // TODO refactor comment
-                // Add 1 to assets amount so we make sure we're returning more assets than needed to wrap.
-                // It ensures that any error in the calculation of the rate will be charged from the buffer,
-                // and not from the vault
+                // Subtracts 1 from assets amount so we make sure we're returning more wrapped than converted
+                // amountOut. Since the buffer will wrap more assets than amountOut, the difference will
+                // be paid with buffer's contract base tokens.
                 assetsRaw = _wrappedToken.previewRedeem(sharesRaw) - 1;
             }
             uint256 preciseAssetsScaled18 = assetsRaw.mulDown(_wrappedTokenScalingFactor);
@@ -238,11 +238,10 @@ contract ERC4626BufferPool is
         uint256 limitRaw;
         if (balanceWrappedAssetsRaw > balanceBaseAssetsRaw) {
             exchangeAmountRaw = (balanceWrappedAssetsRaw - balanceBaseAssetsRaw) / 2;
-            // TODO refactor comments
-            // Since the swap is calculating the amountOut of wrapped tokens,
-            // we need to limit the minimum amountOut, which can be defined by
-            // the exact conversion of (exchangeAmountRaw - 1), to give some
-            // margin for rounding errors related to rate
+            // Since onSwap will consider a slightly bigger rate for the wrapped token, we need to account that
+            // in the minimum limit of amountOut calculation, and that's why (exchangeAmountRaw - 2) is converted.
+            // Also, since the unwrap operation has RoundDown divisions, MAXIMUM_DIFF_WTOKENS needs to be subtracted
+            // from amountOut too
             limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw - 2) - MAXIMUM_DIFF_WTOKENS;
 
             // In this case, since there is more wrapped than base assets, wrapped tokens will be removed (tokenOut)
@@ -263,10 +262,10 @@ contract ERC4626BufferPool is
             );
         } else if (balanceBaseAssetsRaw > balanceWrappedAssetsRaw) {
             exchangeAmountRaw = (balanceBaseAssetsRaw - balanceWrappedAssetsRaw) / 2;
-            // Since the swap is calculating the amountIn of wrapped tokens,
-            // we need to limit the maximum amountIn, which can be defined by
-            // the exact conversion of (exchangeAmountRaw + 1), to give some
-            // margin for rounding errors related to rate
+            // Since onSwap will consider a slightly bigger rate for the wrapped token, we need to account that
+            // in the maximum limit of amountIn calculation, and that's why (exchangeAmountRaw + 2) is converted.
+            // Also, since the wrap operation has RoundDown divisions, MAXIMUM_DIFF_WTOKENS needs to be added
+            // to amountIn too
             limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw + 2) + MAXIMUM_DIFF_WTOKENS;
 
             // In this case, since there is more base than wrapped assets, base assets will be removed (tokenOut)
@@ -301,18 +300,30 @@ contract ERC4626BufferPool is
             wrappedToken = params.tokenOut;
 
             vault.sendTo(wrappedToken, address(this), amountOut);
+            // Using redeem, instead of withdraw, to pass the amount of shares (amountOut) instead of the
+            // amount of assets. That's because amount of shares is an output of onSwap, so we make sure
+            // the buffer contract will never have a different balance of wrapped tokens after the rebalance
+            // occurs
             IERC4626(address(wrappedToken)).redeem(amountOut, address(this), address(this));
+            // The explicit transfer is needed, because onSwap considers a slightly larger rate for the wrapped token,
+            // so the redeem function returns a bit less assets than amountIn
             baseToken.safeTransfer(address(vault), amountIn);
             vault.settle(baseToken);
         } else {
             baseToken = params.tokenOut;
             wrappedToken = params.tokenIn;
-            uint256 amountToApproveMint = IERC4626(address(wrappedToken)).previewMint(amountIn);
+            // Since the rate used by onSwap is a bit larger than the real rate, the mint operation
+            // will take more assets than amountOut. So, we need to recalculate the amount of assets
+            // taken to approve the exact amount that will be minted
+            uint256 preciseAmountOut = IERC4626(address(wrappedToken)).previewMint(amountIn);
 
             vault.sendTo(baseToken, address(this), amountOut);
-            baseToken.approve(address(wrappedToken), amountToApproveMint);
-            IERC4626(address(wrappedToken)).mint(amountIn, address(this));
-            wrappedToken.safeTransfer(address(vault), amountIn);
+            baseToken.approve(address(wrappedToken), preciseAmountOut);
+            // Using mint, instead of deposit, to pass the amount of shares (amountIn) instead of the
+            // amount of assets. That's because amount of shares is an output of onSwap, so we make sure
+            // the buffer contract will never have a different balance of wrapped tokens after the rebalance
+            // occurs
+            IERC4626(address(wrappedToken)).mint(amountIn, address(vault));
             vault.settle(wrappedToken);
         }
     }
