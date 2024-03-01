@@ -111,8 +111,6 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
         // note the order here is different from line above.
         bytes memory signature = abi.encodePacked(r, s, v);
-        address signer = ecrecover(digest, v, r, s);
-        address signer2 = ECDSA.recover(digest, signature);
         vault.approveRouter(user, address(router), true, type(uint256).max, signature);
     }
 

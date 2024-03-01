@@ -133,7 +133,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         _tokenDeltas[handler][token] = next;
     }
 
-
     function _isTrustedRouter(address router, address user) internal view returns (bool) {
         // Ensure that the router is trusted by both the user and governance.
         // Note that optimization into a single SLOAD is not possible because approvals are specific to each user.

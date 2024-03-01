@@ -12,6 +12,17 @@ interface IRouter {
     /// @dev Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
 
+    /*******************************************************************************
+                                    Auth
+    *******************************************************************************/
+
+    function approveRouter(
+        bool approved,
+        uint256 deadline,
+        bytes memory signature
+    ) external;
+
+
     /***************************************************************************
                                Pool Initialization
     ***************************************************************************/

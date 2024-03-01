@@ -48,6 +48,15 @@ contract Router is IRouter, ReentrancyGuard {
     }
 
     /*******************************************************************************
+                                    Auth
+    *******************************************************************************/
+
+    /// @inheritdoc IRouter
+    function approveRouter(bool approved, uint256 deadline, bytes memory signature) external nonReentrant {
+        _vault.approveRouter(msg.sender, address(this), approved, deadline, signature);
+    }
+
+    /*******************************************************************************
                                     Pools
     *******************************************************************************/
 
@@ -1428,5 +1437,20 @@ contract Router is IRouter, ReentrancyGuard {
 
         // Return the rest of ETH to sender
         _returnEth(sender, ethAmountIn);
+    }
+
+    /*******************************************************************************
+                                    Utils
+    *******************************************************************************/
+
+    /**
+     * @dev Receives and executes a batch of function calls on this contract.
+     */
+    function multicall(bytes[] calldata data) external virtual returns (bytes[] memory results) {
+        results = new bytes[](data.length);
+        for (uint256 i = 0; i < data.length; i++) {
+            results[i] = Address.functionDelegateCall(address(this), data[i]);
+        }
+        return results;
     }
 }
