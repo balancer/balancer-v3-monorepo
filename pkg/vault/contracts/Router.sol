@@ -33,6 +33,8 @@ contract Router is IRouter, ReentrancyGuard {
     mapping(address => uint256) private _currentSwapTokenInAmounts;
     // token out -> amount: tracks token out amounts within a batch swap.
     mapping(address => uint256) private _currentSwapTokenOutAmounts;
+    // token -> amount that is part of the current input / output amounts, but is settled preemptively.
+    mapping(address => uint256) private _settledTokenAmounts;
 
     modifier onlyVault() {
         _ensureOnlyVault();
@@ -560,7 +562,11 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable returns (uint256[] memory amountsOut) {
+    )
+        external
+        payable
+        returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
+    {
         return
             abi.decode(
                 _vault.lock{ value: msg.value }(
@@ -575,7 +581,7 @@ contract Router is IRouter, ReentrancyGuard {
                         })
                     )
                 ),
-                (uint256[])
+                (uint256[], address[], uint256[])
             );
     }
 
@@ -585,7 +591,7 @@ contract Router is IRouter, ReentrancyGuard {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable returns (uint256[] memory amountsIn) {
+    ) external payable returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
         return
             abi.decode(
                 _vault.lock{ value: msg.value }(
@@ -600,7 +606,7 @@ contract Router is IRouter, ReentrancyGuard {
                         })
                     )
                 ),
-                (uint256[])
+                (uint256[], address[], uint256[])
             );
     }
 
@@ -631,7 +637,30 @@ contract Router is IRouter, ReentrancyGuard {
 
     function swapExactInHook(
         SwapExactInHookParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256[] memory pathAmountsOut) {
+    )
+        external
+        payable
+        nonReentrant
+        onlyVault
+        returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
+    {
+        pathAmountsOut = _swapExactInHook(params);
+
+        // The hook writes current swap token and token amounts out.
+        // We copy that information to memory to return it before it is deleted during settlement.
+        tokensOut = _currentSwapTokensOut._values;
+        amountsOut = new uint256[](tokensOut.length);
+        for (uint256 i = 0; i < tokensOut.length; ++i) {
+            amountsOut[i] = _currentSwapTokenOutAmounts[tokensOut[i]] + _settledTokenAmounts[tokensOut[i]];
+            _settledTokenAmounts[tokensOut[i]] = 0;
+        }
+
+        _settlePaths(params.sender, params.wethIsEth);
+    }
+
+    function _swapExactInHook(
+        SwapExactInHookParams calldata params
+    ) internal returns (uint256[] memory pathAmountsOut) {
         pathAmountsOut = new uint256[](params.paths.length);
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
@@ -731,6 +760,7 @@ contract Router is IRouter, ReentrancyGuard {
                         // is minted directly to the sender, so this step can be considered settled at this point.
                         pathAmountsOut[i] = bptAmountOut;
                         _currentSwapTokensOut.add(address(step.tokenOut));
+                        _settledTokenAmounts[address(step.tokenOut)] += bptAmountOut;
                     } else {
                         // Input for the next step is output of current step.
                         stepExactAmountIn = bptAmountOut;
@@ -769,13 +799,38 @@ contract Router is IRouter, ReentrancyGuard {
                 }
             }
         }
-
-        _settlePaths(params.sender, params.wethIsEth);
     }
 
     function swapExactOutHook(
         SwapExactOutHookParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256[] memory pathAmountsIn) {
+    )
+        external
+        payable
+        nonReentrant
+        onlyVault
+        returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
+    {
+        pathAmountsIn = _swapExactOutHook(params);
+
+        // The hook writes current swap token and token amounts in.
+        // We copy that information to memory to return it before it is deleted during settlement.
+        tokensIn = _currentSwapTokensIn._values; // Copy transient storage to memory
+        amountsIn = new uint256[](tokensIn.length);
+        for (uint256 i = 0; i < tokensIn.length; ++i) {
+            amountsIn[i] = _currentSwapTokenInAmounts[tokensIn[i]] + _settledTokenAmounts[tokensIn[i]];
+            _settledTokenAmounts[tokensIn[i]] = 0;
+        }
+
+        _settlePaths(params.sender, params.wethIsEth);
+    }
+
+    /**
+     * @dev Executes every swap path in the given input parameters.
+     * Computes inputs for the path, and aggregates them by token and amounts as well in transient storage.
+     */
+    function _swapExactOutHook(
+        SwapExactOutHookParams calldata params
+    ) internal returns (uint256[] memory pathAmountsIn) {
         pathAmountsIn = new uint256[](params.paths.length);
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
@@ -862,6 +917,7 @@ contract Router is IRouter, ReentrancyGuard {
                     if (isLastStep) {
                         // BPT is burnt instantly, so we don't need to send it to the Vault during settlement.
                         pathAmountsIn[i] = bptAmountIn;
+                        _settledTokenAmounts[address(stepTokenIn)] += bptAmountIn;
                     } else {
                         // Output for the step (j - 1) is the input of step (j).
                         stepExactAmountOut = bptAmountIn;
@@ -872,18 +928,18 @@ contract Router is IRouter, ReentrancyGuard {
                     }
                 } else if (address(step.tokenOut) == step.pool) {
                     // Token out is BPT: add liquidity - Single token exact out
-                    (uint256[] memory amountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
+                    (uint256[] memory stepAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
                         stepTokenIn,
                         stepMaxAmountIn
                     );
 
                     // Reusing `amountsIn` as input argument and function output to prevent stack too deep error.
-                    (amountsIn, , ) = _vault.addLiquidity(
+                    (stepAmountsIn, , ) = _vault.addLiquidity(
                         AddLiquidityParams({
                             pool: step.pool,
                             to: params.sender,
-                            maxAmountsIn: amountsIn,
+                            maxAmountsIn: stepAmountsIn,
                             minBptAmountOut: stepExactAmountOut,
                             kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                             userData: params.userData
@@ -892,10 +948,10 @@ contract Router is IRouter, ReentrancyGuard {
 
                     if (isLastStep) {
                         // The amount out for the last step of the path should be recorded for the return value.
-                        pathAmountsIn[i] = amountsIn[tokenIndex];
-                        _currentSwapTokenInAmounts[address(stepTokenIn)] += amountsIn[tokenIndex];
+                        pathAmountsIn[i] = stepAmountsIn[tokenIndex];
+                        _currentSwapTokenInAmounts[address(stepTokenIn)] += stepAmountsIn[tokenIndex];
                     } else {
-                        stepExactAmountOut = amountsIn[tokenIndex];
+                        stepExactAmountOut = stepAmountsIn[tokenIndex];
                     }
 
                     // stack-too-deep
@@ -934,8 +990,6 @@ contract Router is IRouter, ReentrancyGuard {
                 }
             }
         }
-
-        _settlePaths(params.sender, params.wethIsEth);
     }
 
     function _swapHook(
