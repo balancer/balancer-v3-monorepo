@@ -106,25 +106,23 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 reservesBefore = _tokenReserves[token];
         _tokenReserves[token] = token.balanceOf(address(this));
         paid = _tokenReserves[token] - reservesBefore;
-        // subtraction must be safe
+
         _supplyCredit(token, paid, msg.sender);
     }
 
     /// @inheritdoc IVaultMain
     function sendTo(IERC20 token, address to, uint256 amount) public nonReentrant withLocker {
-        // effects
         _takeDebt(token, amount, msg.sender);
         _tokenReserves[token] -= amount;
-        // interactions
+
         token.safeTransfer(to, amount);
     }
 
     /// @inheritdoc IVaultMain
     function takeFrom(IERC20 token, address from, uint256 amount) public nonReentrant withLocker onlyTrustedRouter {
-        // effects
         _supplyCredit(token, amount, msg.sender);
         _tokenReserves[token] += amount;
-        // interactions
+
         token.safeTransferFrom(from, address(this), amount);
     }
 
