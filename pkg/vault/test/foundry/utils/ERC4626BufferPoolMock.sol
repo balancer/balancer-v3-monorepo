@@ -55,7 +55,7 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
         );
     }
 
-    function unbalanceHook(VaultSwapParams calldata params) external payable onlyVault {
+    function unbalanceHook(VaultSwapParams calldata params) external onlyVault {
         (, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         IERC20 underlyingToken;
