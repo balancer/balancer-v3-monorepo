@@ -248,20 +248,12 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             waDAI.previewDeposit(BUFFER_DAI_BASE)
         );
 
-        // Makes sure DAI balance didn't change in the pool contract by more than 1 unit
-        // (ERC4626 deposit sometimes leave 1 token behind)
-        assertApproxEqAbs(
-            daiBalanceBeforeRebalance - daiBalanceAfterRebalance,
-            0,
-            5,
-            "aDAI BufferPool contract should not get more than 1 DAI tokens after rebalance"
-        );
-        // Makes sure that 1e18 waDAI in the pool can make at least 1e17 rebalance calls (max draining of 10 aDAI)
-        assertApproxEqAbs(
-            aDaiBalanceBeforeRebalance - aDaiBalanceAfterRebalance,
-            0,
-            10,
-            "aDAI BufferPool contract should not lose more than 10 aDAI tokens after rebalance"
+        // Makes sure the rebalance rounding errors was in favour of the vault
+        _checkBufferContractBalanceAfterRebalance(
+            daiBalanceBeforeRebalance,
+            daiBalanceAfterRebalance,
+            aDaiBalanceBeforeRebalance,
+            aDaiBalanceAfterRebalance
         );
     }
 
@@ -291,20 +283,12 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             waDAI.previewDeposit(BUFFER_DAI_BASE)
         );
 
-        // Makes sure DAI balance didn't change in the pool contract by more than 1 unit
-        // (ERC4626 deposit sometimes leave 1 token behind)
-        assertApproxEqAbs(
-            daiBalanceBeforeRebalance - daiBalanceAfterRebalance,
-            0,
-            5,
-            "aDAI BufferPool contract should not get more than 1 DAI tokens after rebalance"
-        );
-        // Makes sure that 1e18 waDAI in the pool can make at least 1e17 rebalance calls (max draining of 10 aDAI)
-        assertApproxEqAbs(
-            aDaiBalanceBeforeRebalance - aDaiBalanceAfterRebalance,
-            0,
-            10,
-            "aDAI BufferPool contract should not lose more than 10 aDAI tokens after rebalance"
+        // Makes sure the rebalance rounding errors was in favour of the vault
+        _checkBufferContractBalanceAfterRebalance(
+            daiBalanceBeforeRebalance,
+            daiBalanceAfterRebalance,
+            aDaiBalanceBeforeRebalance,
+            aDaiBalanceAfterRebalance
         );
     }
 
@@ -334,20 +318,12 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             waUSDC.previewDeposit(BUFFER_USDC_BASE)
         );
 
-        // Makes sure USDC balance didn't change in the pool contract by more than 1 unit
-        // (ERC4626 deposit sometimes leave 1 token behind)
-        assertApproxEqAbs(
-            usdcBalanceBeforeRebalance - usdcBalanceAfterRebalance,
-            0,
-            5,
-            "aUSDC BufferPool contract should not get more than 1 USDC tokens after rebalance"
-        );
-        // Makes sure that 1e6 waUSDC in the pool can make at least 5e5 rebalance calls (max draining of 2 aUSDC)
-        assertApproxEqAbs(
-            ausdcBalanceBeforeRebalance - ausdcBalanceAfterRebalance,
-            0,
-            5,
-            "aUSDC BufferPool contract should not lose more than 2 aUSDC tokens after rebalance"
+        // Makes sure the rebalance rounding errors was in favour of the vault
+        _checkBufferContractBalanceAfterRebalance(
+            usdcBalanceBeforeRebalance,
+            usdcBalanceAfterRebalance,
+            ausdcBalanceBeforeRebalance,
+            ausdcBalanceAfterRebalance
         );
     }
 
@@ -377,20 +353,12 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             waUSDC.previewDeposit(BUFFER_USDC_BASE)
         );
 
-        // Makes sure USDC balance didn't change in the pool contract by more than 1 unit
-        // (ERC4626 deposit sometimes leave 1 token behind)
-        assertApproxEqAbs(
-            usdcBalanceBeforeRebalance - usdcBalanceAfterRebalance,
-            0,
-            5,
-            "aUSDC BufferPool contract should not get more than 1 USDC tokens after rebalance"
-        );
-        // Makes sure that 1e6 waUSDC in the pool can make at least 5e5 rebalance calls (max draining of 2 aUSDC)
-        assertApproxEqAbs(
-            ausdcBalanceBeforeRebalance - ausdcBalanceAfterRebalance,
-            0,
-            5,
-            "aUSDC BufferPool contract should not lose more than 2 aUSDC tokens after rebalance"
+        // Makes sure the rebalance rounding errors was in favour of the vault
+        _checkBufferContractBalanceAfterRebalance(
+            usdcBalanceBeforeRebalance,
+            usdcBalanceAfterRebalance,
+            ausdcBalanceBeforeRebalance,
+            ausdcBalanceAfterRebalance
         );
     }
 
@@ -509,5 +477,27 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
 
         contractBalanceBaseRaw = baseToken.balanceOf(bufferPool);
         contractBalanceWrappedRaw = wToken.balanceOf(bufferPool);
+    }
+
+    function _checkBufferContractBalanceAfterRebalance (
+        uint256 baseBalanceBeforeRebalanceRaw,
+        uint256 baseBalanceAfterRebalanceRaw,
+        uint256 wrappedBalanceBeforeRebalanceRaw,
+        uint256 wrappedBalanceAfterRebalanceRaw
+    ) private {
+        // Makes sure the base token balance didn't decrease in the pool contract by more than 5 units
+        // (ERC4626 deposit sometimes leave up to 5 tokens behind)
+        assertApproxEqAbs(
+            baseBalanceBeforeRebalanceRaw - baseBalanceAfterRebalanceRaw,
+            0,
+            5,
+            "BufferPool contract should not get more than 1 base tokens after rebalance"
+        );
+        // Makes sure the balance of wrapped tokens don't change
+        assertEq(
+            wrappedBalanceBeforeRebalanceRaw,
+            wrappedBalanceAfterRebalanceRaw,
+            "The balance of wrapped tokens should not change in the buffer pool"
+        );
     }
 }
