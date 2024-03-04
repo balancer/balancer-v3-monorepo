@@ -821,7 +821,9 @@ contract Router is IRouter, ReentrancyGuard {
         _settlePaths(params.sender, params.wethIsEth);
     }
 
-    function _swapExactOutHook(SwapExactOutHookParams calldata params) internal returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
+    function _swapExactOutHook(
+        SwapExactOutHookParams calldata params
+    ) internal returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
         pathAmountsIn = _computePathAmountsIn(params);
 
         // The hook writes current swap token and token amounts in.
