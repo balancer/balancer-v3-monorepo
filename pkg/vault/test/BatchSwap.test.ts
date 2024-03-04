@@ -1,4 +1,5 @@
 import { ethers } from 'hardhat';
+import { VoidSigner } from 'ethers';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
@@ -20,7 +21,7 @@ describe('BatchSwap', function () {
   let tokens: ERC20TokenList;
   let router: Router;
 
-  let lp: SignerWithAddress, sender: SignerWithAddress;
+  let lp: SignerWithAddress, sender: SignerWithAddress, zero: VoidSigner;
 
   let poolATokens: string[], poolBTokens: string[], poolCTokens: string[];
   let poolABTokens: string[], poolACTokens: string[], poolBCTokens: string[];
@@ -28,6 +29,7 @@ describe('BatchSwap', function () {
   let vaultAddress: string;
 
   before('setup signers', async () => {
+    zero = new VoidSigner('0x0000000000000000000000000000000000000000', ethers.provider);
     [, lp, sender] = await ethers.getSigners();
   });
 
@@ -110,6 +112,11 @@ describe('BatchSwap', function () {
       tokensOut: string[];
       amountsOut: bigint[];
     }>;
+    let runQuery: () => Promise<{
+      pathAmountsOut: bigint[];
+      tokensOut: string[];
+      amountsOut: bigint[];
+    }>;
     let tokenIn: ERC20TestToken | PoolMock;
     let tokensOut: (ERC20TestToken | PoolMock)[];
     const pathExactAmountIn = fp(1);
@@ -134,6 +141,7 @@ describe('BatchSwap', function () {
           tokensOut: string[];
           amountsOut: bigint[];
         };
+      runQuery = async () => router.connect(zero).querySwapExactIn.staticCall(paths, '0x');
     }
 
     function itTestsBatchSwap(singleTransferIn = true, singleTransferOut = true) {
@@ -172,6 +180,15 @@ describe('BatchSwap', function () {
       it('returns token amounts out', async () => {
         const calculatedAmountsOut = (await doSwapStatic()).amountsOut;
         calculatedAmountsOut.map((amountOut, i) => expect(amountOut).to.be.almostEqual(amountsOut[i], 1e-8));
+      });
+
+      it('returns same outputs as query', async () => {
+        const realOutputs = await doSwapStatic();
+        const queryOutputs = await runQuery();
+
+        expect(realOutputs.pathAmountsOut).to.be.deep.eq(queryOutputs.pathAmountsOut);
+        expect(realOutputs.amountsOut).to.be.deep.eq(queryOutputs.amountsOut);
+        expect(realOutputs.tokensOut).to.be.deep.eq(queryOutputs.tokensOut);
       });
     }
 

@@ -644,7 +644,15 @@ contract Router is IRouter, ReentrancyGuard {
         onlyVault
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
     {
-        pathAmountsOut = _swapExactInHook(params);
+        (pathAmountsOut, tokensOut, amountsOut) = _swapExactInHook(params);
+
+        _settlePaths(params.sender, params.wethIsEth);
+    }
+
+    function _swapExactInHook(
+        SwapExactInHookParams calldata params
+    ) internal returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) {
+        pathAmountsOut = _computePathAmountsOut(params);
 
         // The hook writes current swap token and token amounts out.
         // We copy that information to memory to return it before it is deleted during settlement.
@@ -654,11 +662,9 @@ contract Router is IRouter, ReentrancyGuard {
             amountsOut[i] = _currentSwapTokenOutAmounts[tokensOut[i]] + _settledTokenAmounts[tokensOut[i]];
             _settledTokenAmounts[tokensOut[i]] = 0;
         }
-
-        _settlePaths(params.sender, params.wethIsEth);
     }
 
-    function _swapExactInHook(
+    function _computePathAmountsOut(
         SwapExactInHookParams calldata params
     ) internal returns (uint256[] memory pathAmountsOut) {
         pathAmountsOut = new uint256[](params.paths.length);
@@ -810,7 +816,13 @@ contract Router is IRouter, ReentrancyGuard {
         onlyVault
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
     {
-        pathAmountsIn = _swapExactOutHook(params);
+        (pathAmountsIn, tokensIn, amountsIn) = _swapExactOutHook(params);
+
+        _settlePaths(params.sender, params.wethIsEth);
+    }
+
+    function _swapExactOutHook(SwapExactOutHookParams calldata params) internal returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
+        pathAmountsIn = _computePathAmountsIn(params);
 
         // The hook writes current swap token and token amounts in.
         // We copy that information to memory to return it before it is deleted during settlement.
@@ -820,15 +832,13 @@ contract Router is IRouter, ReentrancyGuard {
             amountsIn[i] = _currentSwapTokenInAmounts[tokensIn[i]] + _settledTokenAmounts[tokensIn[i]];
             _settledTokenAmounts[tokensIn[i]] = 0;
         }
-
-        _settlePaths(params.sender, params.wethIsEth);
     }
 
     /**
      * @dev Executes every swap path in the given input parameters.
      * Computes inputs for the path, and aggregates them by token and amounts as well in transient storage.
      */
-    function _swapExactOutHook(
+    function _computePathAmountsIn(
         SwapExactOutHookParams calldata params
     ) internal returns (uint256[] memory pathAmountsIn) {
         pathAmountsIn = new uint256[](params.paths.length);
@@ -1092,6 +1102,74 @@ contract Router is IRouter, ReentrancyGuard {
         (uint256 amountCalculated, , ) = _swapHook(params);
 
         return amountCalculated;
+    }
+
+    function querySwapExactIn(
+        SwapPathExactAmountIn[] memory paths,
+        bytes calldata userData
+    ) external returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeWithSelector(
+                        Router.querySwapExactInHook.selector,
+                        SwapExactInHookParams({
+                            sender: address(this),
+                            paths: paths,
+                            deadline: type(uint256).max,
+                            wethIsEth: false,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256[], address[], uint256[])
+            );
+    }
+
+    function querySwapExactInHook(
+        SwapExactInHookParams calldata params
+    )
+        external
+        payable
+        nonReentrant
+        onlyVault
+        returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
+    {
+        (pathAmountsOut, tokensOut, amountsOut) = _swapExactInHook(params);
+    }
+
+    function querySwapExactOut(
+        SwapPathExactAmountOut[] memory paths,
+        bytes calldata userData
+    ) external returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeWithSelector(
+                        Router.querySwapExactOutHook.selector,
+                        SwapExactOutHookParams({
+                            sender: address(this),
+                            paths: paths,
+                            deadline: type(uint256).max,
+                            wethIsEth: false,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256[], address[], uint256[])
+            );
+    }
+
+    function querySwapExactOutHook(
+        SwapExactOutHookParams calldata params
+    )
+        external
+        payable
+        nonReentrant
+        onlyVault
+        returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
+    {
+        (pathAmountsIn, tokensIn, amountsIn) = _swapExactOutHook(params);
     }
 
     /// @inheritdoc IRouter
