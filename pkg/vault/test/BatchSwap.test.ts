@@ -915,6 +915,11 @@ describe('BatchSwap', function () {
       tokensIn: string[];
       amountsIn: bigint[];
     }>;
+    let runQuery: () => Promise<{
+      pathAmountsIn: bigint[];
+      tokensIn: string[];
+      amountsIn: bigint[];
+    }>;
     let tokensIn: (ERC20TestToken | PoolMock)[];
     let tokenOut: ERC20TestToken | PoolMock;
     const pathExactAmountOut = fp(1);
@@ -939,6 +944,7 @@ describe('BatchSwap', function () {
           tokensIn: string[];
           amountsIn: bigint[];
         };
+      runQuery = async () => router.connect(zero).querySwapExactOut.staticCall(paths, '0x');
     }
 
     function itTestsBatchSwap(singleTransferIn = true, singleTransferOut = true) {
@@ -975,6 +981,15 @@ describe('BatchSwap', function () {
       it('returns token amounts in', async () => {
         const calculatedAmountsIn = (await doSwapStatic()).amountsIn;
         calculatedAmountsIn.map((amountIn, i) => expect(amountIn).to.be.almostEqual(amountsIn[i], 1e-8));
+      });
+
+      it('returns same outputs as query', async () => {
+        const realOutputs = await doSwapStatic();
+        const queryOutputs = await runQuery();
+
+        expect(realOutputs.pathAmountsIn).to.be.deep.eq(queryOutputs.pathAmountsIn);
+        expect(realOutputs.amountsIn).to.be.deep.eq(queryOutputs.amountsIn);
+        expect(realOutputs.tokensIn).to.be.deep.eq(queryOutputs.tokensIn);
       });
     }
 
