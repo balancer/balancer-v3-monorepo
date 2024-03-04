@@ -335,7 +335,6 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
             wSAND.previewDeposit(BUFFER_BASE_TOKENS)
         );
 
-
         // Makes sure the rebalance rounding errors was in favour of the vault
         uint256 assetsInOneShare = wSAND.convertToAssets(1);
         assetsInOneShare = assetsInOneShare > 0 ? assetsInOneShare : 1;
