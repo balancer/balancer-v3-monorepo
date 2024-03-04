@@ -229,12 +229,12 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         bufferPoolDai.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_IN);
 
         (uint256 daiBalanceBeforeRebalance, uint256 aDaiBalanceBeforeRebalance) = _checkBufferPoolBalance(
-                vault,
-                address(bufferPoolDai),
-                aDAI_ADDRESS,
-                BUFFER_DAI_BASE + assetsToTransfer,
-                bufferDaiWrapped - waDAI.convertToShares(assetsToTransfer)
-            );
+            vault,
+            address(bufferPoolDai),
+            aDAI_ADDRESS,
+            BUFFER_DAI_BASE + assetsToTransfer,
+            bufferDaiWrapped - waDAI.convertToShares(assetsToTransfer)
+        );
 
         vm.prank(admin);
         bufferPoolDai.rebalance();
@@ -479,7 +479,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         contractBalanceWrappedRaw = wToken.balanceOf(bufferPool);
     }
 
-    function _checkBufferContractBalanceAfterRebalance (
+    function _checkBufferContractBalanceAfterRebalance(
         uint256 baseBalanceBeforeRebalanceRaw,
         uint256 baseBalanceAfterRebalanceRaw,
         uint256 wrappedBalanceBeforeRebalanceRaw,
