@@ -973,7 +973,7 @@ describe('BatchSwap', function () {
     });
 
     context('pure swaps with no nesting', () => {
-      context('single path - first and last steps', () => {
+      context('single path', () => {
         beforeEach(async () => {
           tokensIn = [tokens.get(0)];
           tokenOut = tokens.get(2);
@@ -981,7 +981,7 @@ describe('BatchSwap', function () {
           totalAmountIn = pathMaxAmountIn; // 1 path
           totalAmountOut = pathExactAmountOut; // 1 path, 1:1 ratio between inputs and outputs
           pathAmountsIn = [totalAmountIn]; // 1 path, all tokens out
-          amountsIn = [totalAmountIn];
+          amountsIn = [totalAmountIn]; // 1 path
 
           balanceChange = [
             {
@@ -1017,7 +1017,7 @@ describe('BatchSwap', function () {
         itTestsBatchSwap();
       });
 
-      context('single path - first, intermediate and last steps', () => {
+      context('single path, first - intermediate - final steps', () => {
         beforeEach(async () => {
           tokensIn = [tokens.get(0)];
           tokenOut = tokens.get(2);
@@ -1025,7 +1025,7 @@ describe('BatchSwap', function () {
           totalAmountIn = pathMaxAmountIn; // 1 path
           totalAmountOut = pathExactAmountOut; // 1 path, 1:1 ratio between inputs and outputs
           pathAmountsIn = [totalAmountIn]; // 1 path, all tokens out
-          amountsIn = [totalAmountIn];
+          amountsIn = [totalAmountIn]; // 1 path
 
           balanceChange = [
             {
@@ -1064,15 +1064,15 @@ describe('BatchSwap', function () {
         itTestsBatchSwap();
       });
 
-      context('multi path', () => {
+      context('multi path, SISO', () => {
         beforeEach(async () => {
           tokensIn = [tokens.get(0)];
           tokenOut = tokens.get(2);
 
-          totalAmountIn = pathMaxAmountIn * 2n; // 2 paths
-          totalAmountOut = pathExactAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
-          pathAmountsIn = [totalAmountIn / 2n, totalAmountIn / 2n]; // 2 paths, half the output in each
-          amountsIn = [totalAmountIn];
+          totalAmountIn = pathExactAmountOut * 2n; // 2 paths
+          totalAmountOut = pathMaxAmountIn * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
+          amountsIn = [totalAmountOut]; // 2 paths, single token input
 
           balanceChange = [
             {
@@ -1112,6 +1112,220 @@ describe('BatchSwap', function () {
         });
 
         itTestsBatchSwap();
+      });
+
+      context('multi path, MISO', () => {
+        beforeEach(async () => {
+          tokensIn = [tokens.get(0), tokens.get(1)];
+          tokenOut = tokens.get(2);
+
+          totalAmountIn = pathExactAmountOut * 2n; // 2 paths
+          totalAmountOut = pathMaxAmountIn * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
+          amountsIn = pathAmountsIn; // 2 paths, multiple token inputs
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokensIn[0].symbol()]: ['equal', -pathMaxAmountIn],
+                [await tokensIn[1].symbol()]: ['equal', -pathMaxAmountIn],
+                [await tokenOut.symbol()]: ['equal', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokensIn[0].symbol()]: ['equal', pathMaxAmountIn],
+                [await tokensIn[1].symbol()]: ['equal', pathMaxAmountIn],
+                [await tokenOut.symbol()]: ['equal', -totalAmountOut],
+              },
+            },
+          ];
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
+              ],
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
+            },
+            {
+              tokenIn: token1,
+              steps: [{ pool: poolB, tokenOut: token2 }],
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap(false, true);
+      });
+
+      context('multi path, SIMO', () => {
+        beforeEach(async () => {
+          tokensIn = [tokens.get(0)];
+          tokenOut = tokens.get(2);
+          const secondPathTokenOut = tokens.get(1);
+
+          totalAmountIn = pathExactAmountOut * 2n; // 2 paths
+          totalAmountOut = pathMaxAmountIn * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
+          amountsIn = [totalAmountIn]; // 2 paths, single token input
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokensIn[0].symbol()]: ['equal', -totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', pathExactAmountOut],
+                [await secondPathTokenOut.symbol()]: ['equal', pathExactAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokensIn[0].symbol()]: ['equal', totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', -pathExactAmountOut],
+                [await secondPathTokenOut.symbol()]: ['equal', -pathExactAmountOut],
+              },
+            },
+          ];
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
+              ],
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
+            },
+            {
+              tokenIn: token0,
+              steps: [{ pool: poolA, tokenOut: token1 }],
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap(true, false);
+      });
+
+      context('multi path, MIMO', () => {
+        beforeEach(async () => {
+          tokensIn = [tokens.get(0), poolA];
+          tokenOut = tokens.get(2);
+          const secondPathTokenOut = poolC;
+
+          totalAmountIn = pathExactAmountOut * 2n; // 2 paths
+          totalAmountOut = pathMaxAmountIn * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
+          amountsIn = pathAmountsIn; // 2 paths, multiple token inputs
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokensIn[0].symbol()]: ['equal', -pathMaxAmountIn],
+                [await tokensIn[1].symbol()]: ['equal', -pathMaxAmountIn],
+                [await tokenOut.symbol()]: ['equal', pathExactAmountOut],
+                [await secondPathTokenOut.symbol()]: ['equal', pathExactAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokensIn[0].symbol()]: ['equal', pathMaxAmountIn],
+                [await tokensIn[1].symbol()]: ['equal', pathMaxAmountIn],
+                [await tokenOut.symbol()]: ['equal', -pathExactAmountOut],
+                [await secondPathTokenOut.symbol()]: ['equal', -pathExactAmountOut],
+              },
+            },
+          ];
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
+              ],
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
+            },
+            {
+              tokenIn: poolA,
+              steps: [
+                { pool: poolAB, tokenOut: poolB },
+                { pool: poolBC, tokenOut: poolC },
+              ],
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap(false, false);
+      });
+
+      context('multi path, circular inputs/outputs', () => {
+        beforeEach(async () => {
+          tokensIn = [tokens.get(0), tokens.get(2)];
+          tokenOut = tokens.get(2);
+          const secondPathTokenOut = tokens.get(0);
+
+          totalAmountIn = 0n; // 2 paths
+          totalAmountOut = 0n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [pathMaxAmountIn, pathMaxAmountIn]; // 2 paths, half the output in each
+          amountsIn = pathAmountsIn; // 2 paths, 2 circular inputs
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokensIn[0].symbol()]: ['equal', 0],
+                [await tokenOut.symbol()]: ['equal', 0],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokensIn[0].symbol()]: ['equal', 0],
+                [await secondPathTokenOut.symbol()]: ['equal', 0],
+              },
+            },
+          ];
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
+              ],
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
+            },
+            {
+              tokenIn: token2,
+              steps: [{ pool: poolC, tokenOut: token0 }],
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap(false, false);
       });
     });
 
