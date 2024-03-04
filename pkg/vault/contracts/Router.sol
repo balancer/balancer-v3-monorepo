@@ -1104,10 +1104,15 @@ contract Router is IRouter, ReentrancyGuard {
         return amountCalculated;
     }
 
+    /// @inheritdoc IRouter
     function querySwapExactIn(
         SwapPathExactAmountIn[] memory paths,
         bytes calldata userData
     ) external returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) {
+        for (uint256 i = 0; i < paths.length; ++i) {
+            paths[i].minAmountOut = 0;
+        }
+
         return
             abi.decode(
                 _vault.quote(
@@ -1138,10 +1143,15 @@ contract Router is IRouter, ReentrancyGuard {
         (pathAmountsOut, tokensOut, amountsOut) = _swapExactInHook(params);
     }
 
+    /// @inheritdoc IRouter
     function querySwapExactOut(
         SwapPathExactAmountOut[] memory paths,
         bytes calldata userData
     ) external returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
+        for (uint256 i = 0; i < paths.length; ++i) {
+            paths[i].maxAmountIn = type(uint128).max;
+        }
+
         return
             abi.decode(
                 _vault.quote(
