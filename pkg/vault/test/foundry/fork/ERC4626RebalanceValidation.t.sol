@@ -491,7 +491,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             baseBalanceBeforeRebalanceRaw - baseBalanceAfterRebalanceRaw,
             0,
             5,
-            "BufferPool contract should not get more than 1 base tokens after rebalance"
+            "BufferPool contract should not lose more than 5 base tokens after rebalance"
         );
         // Makes sure the balance of wrapped tokens don't change
         assertEq(
