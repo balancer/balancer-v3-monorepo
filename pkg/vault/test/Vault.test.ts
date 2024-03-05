@@ -7,7 +7,7 @@ import { PoolConfigStructOutput } from '../typechain-types/contracts/test/VaultM
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
-import { ANY_ADDRESS, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
+import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { FP_ONE, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { buildTokenConfig, setupEnvironment } from './poolSetup';
 import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer';
@@ -91,8 +91,10 @@ describe('Vault', function () {
 
   describe('registration', () => {
     it('cannot register a pool with unsorted tokens', async () => {
-      await expect(vault.manualRegisterPoolPassThruTokens(ANY_ADDRESS, unsortedTokens))
-      .to.be.revertedWithCustomError(vaultExtension, 'TokensNotSorted');
+      await expect(vault.manualRegisterPoolPassThruTokens(ANY_ADDRESS, unsortedTokens)).to.be.revertedWithCustomError(
+        vaultExtension,
+        'TokensNotSorted'
+      );
     });
 
     it('can register a pool', async () => {
