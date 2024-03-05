@@ -64,13 +64,13 @@ contract VaultTokenTest is BaseVaultTest {
         registerBuffers();
         registerPool();
 
-        // Calling `getPoolTokens` on a regular pool should return the base tokens for any ERC4626 tokens.
+        // Calling `getPoolTokens` on a regular pool should return the registered tokens for ERC4626 tokens.
         IERC20[] memory tokens = vault.getPoolTokens(poolAddress);
 
         assertEq(tokens.length, 2);
 
-        assertEq(address(tokens[0]), address(dai));
-        assertEq(address(tokens[1]), address(usdc));
+        assertEq(address(tokens[0]), address(waDAI));
+        assertEq(address(tokens[1]), address(waUSDC));
     }
 
     function testGetBufferPoolTokens() public {

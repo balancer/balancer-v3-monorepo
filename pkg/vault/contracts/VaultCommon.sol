@@ -284,7 +284,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     function _getPoolTokens(address pool) internal view returns (IERC20[] memory tokens) {
         // Retrieve the mapping of tokens and their balances for the specified pool.
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        mapping(IERC20 => TokenConfig) storage poolTokenConfig = _poolTokenConfig[pool];
 
         // Initialize arrays to store tokens based on the number of tokens in the pool.
         tokens = new IERC20[](poolTokenBalances.length());
@@ -293,17 +292,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
-            (IERC20 token, ) = poolTokenBalances.unchecked_at(i);
-
-            // Translate tokens of type ERC4626 to base tokens (except for buffer pools)
-            if (
-                poolTokenConfig[token].tokenType == TokenType.ERC4626 &&
-                _wrappedTokenBuffers[IERC4626(address(token))] != pool
-            ) {
-                tokens[i] = IERC20(IERC4626(address(token)).asset());
-            } else {
-                tokens[i] = token;
-            }
+            (tokens[i], ) = poolTokenBalances.unchecked_at(i);
         }
     }
 
