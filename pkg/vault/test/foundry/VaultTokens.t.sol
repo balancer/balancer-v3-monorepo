@@ -55,11 +55,6 @@ contract VaultTokenTest is BaseVaultTest {
         // Do nothing for this test
     }
 
-    function testERC4626PoolWithoutBuffers() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrappedTokenBufferNotRegistered.selector));
-        registerPool();
-    }
-
     function testGetRegularPoolTokens() public {
         registerBuffers();
         registerPool();

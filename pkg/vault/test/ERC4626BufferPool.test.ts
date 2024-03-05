@@ -8,13 +8,7 @@ import { Router } from '@balancer-labs/v3-vault/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { MONTH, currentTimestamp } from '@balancer-labs/v3-helpers/src/time';
 import { ERC20TestToken, ERC4626TestToken, WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
-import {
-  ANY_ADDRESS,
-  MAX_UINT256,
-  ONES_BYTES32,
-  ZERO_ADDRESS,
-  ZERO_BYTES32,
-} from '@balancer-labs/v3-helpers/src/constants';
+import { ANY_ADDRESS, MAX_UINT256, ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
 import { PoolConfigStructOutput, VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
@@ -206,12 +200,6 @@ describe('ERC4626BufferPool', function () {
       const actualTokens = await vault.getPoolTokens(pool);
 
       expect(actualTokens).to.deep.equal(tokenAddresses);
-    });
-
-    it('cannot be registered twice', async () => {
-      await expect(
-        factory.connect(alice).create(wrappedToken, ZERO_ADDRESS, ONES_BYTES32)
-      ).to.be.revertedWithCustomError(vault, 'WrappedTokenBufferAlreadyRegistered');
     });
 
     it('configures the pool correctly', async () => {

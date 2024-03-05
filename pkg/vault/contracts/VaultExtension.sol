@@ -210,11 +210,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                     revert InvalidTokenConfiguration();
                 }
             } else if (tokenData.tokenType == TokenType.ERC4626) {
-                // Require a buffer to exist for this token
-                if (_wrappedTokenBuffers[IERC4626(address(token))] == address(0)) {
-                    revert WrappedTokenBufferNotRegistered();
-                }
-
                 // By definition, ERC4626 tokens are yield-bearing and subject to fees.
                 if (tokenData.yieldFeeExempt) {
                     revert InvalidTokenConfiguration();
@@ -633,11 +628,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address pauseManager,
         uint256 pauseWindowEndTime
     ) external nonReentrant whenVaultNotPaused onlyVault {
-        // Ensure buffer does not already exist.
-        if (_wrappedTokenBuffers[wrappedToken] != address(0)) {
-            revert WrappedTokenBufferAlreadyRegistered();
-        }
-
         // Ensure the buffer pool is from a registered factory
         bool factoryAllowed = false;
 
@@ -651,8 +641,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         if (factoryAllowed == false) {
             revert UnregisteredBufferPoolFactory();
         }
-
-        _wrappedTokenBuffers[wrappedToken] = pool;
 
         IERC20 baseToken = IERC20(wrappedToken.asset());
 
