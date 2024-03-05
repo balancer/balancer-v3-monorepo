@@ -601,20 +601,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address pauseManager,
         uint256 pauseWindowEndTime
     ) external nonReentrant whenVaultNotPaused onlyVault {
-        // Ensure the buffer pool is from a registered factory
-        bool factoryAllowed = false;
-
-        for (uint256 i = 0; i < _bufferPoolFactories.length(); i++) {
-            if (IBasePoolFactory(_bufferPoolFactories.unchecked_at(i)).isPoolFromFactory(pool)) {
-                factoryAllowed = true;
-                break;
-            }
-        }
-
-        if (factoryAllowed == false) {
-            revert UnregisteredBufferPoolFactory();
-        }
-
         IERC20 baseToken = IERC20(wrappedToken.asset());
 
         emit WrappedTokenBufferCreated(address(wrappedToken), address(baseToken));

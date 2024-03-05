@@ -215,17 +215,8 @@ interface IVaultErrors {
     /// @dev A token buffer can only be registered once.
     error WrappedTokenBufferAlreadyRegistered();
 
-    /// @dev A token buffer must be created by a known factory.
-    error UnregisteredBufferPoolFactory();
-
     /// @dev A token buffer must be registered for a token before pools can be registered with that token.
     error WrappedTokenBufferNotRegistered();
-
-    /// @dev A buffer pool factory cannot be added to the allowlist twice.
-    error BufferPoolFactoryAlreadyRegistered();
-
-    /// @dev A buffer pool factory cannot be removed from the allowlist if it is not on the list.
-    error BufferPoolFactoryNotRegistered();
 
     /*******************************************************************************
                                         Pausing

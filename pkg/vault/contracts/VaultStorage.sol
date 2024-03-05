@@ -109,7 +109,4 @@ contract VaultStorage {
     uint256 internal immutable _vaultBufferPeriodDuration;
 
     bool internal _vaultPaused;
-
-    // The set of factories allowed to create buffer pools.
-    EnumerableSet.AddressSet internal _bufferPoolFactories;
 }
