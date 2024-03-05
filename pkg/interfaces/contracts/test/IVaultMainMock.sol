@@ -18,6 +18,8 @@ interface IVaultMainMock {
 
     function manualRegisterPool(address pool, IERC20[] memory tokens) external;
 
+    function manualRegisterPoolPassThruTokens(address pool, IERC20[] memory tokens) external;
+
     function manualRegisterPoolAtTimestamp(
         address pool,
         IERC20[] memory tokens,

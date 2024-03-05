@@ -71,6 +71,21 @@ contract VaultMock is IVaultMainMock, Vault {
         );
     }
 
+    function manualRegisterPoolPassThruTokens(address pool, IERC20[] memory tokens) external {
+        TokenConfig[] memory tokenConfig = new TokenConfig[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            tokenConfig[i].token = tokens[i];
+        }
+
+        _poolFactoryMock.registerPool(
+            pool,
+            tokenConfig,
+            address(0),
+            PoolConfigBits.wrap(0).toPoolConfig().hooks,
+            PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
+        );
+    }
+
     function manualRegisterPoolAtTimestamp(
         address pool,
         IERC20[] memory tokens,
