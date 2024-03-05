@@ -287,25 +287,6 @@ describe('ERC4626BufferPool', function () {
       pool = await createAndInitializeBufferPool();
     });
 
-    it('does not allow buffer pool swaps through a router', async () => {
-      await expect(
-        router
-          .connect(alice)
-          .swapSingleTokenExactIn(
-            pool,
-            baseTokenAddress,
-            wrappedTokenAddress,
-            TOKEN_AMOUNT,
-            0,
-            MAX_UINT256,
-            false,
-            '0x'
-          )
-      )
-        .to.be.revertedWithCustomError(vault, 'CannotSwapWithBufferPool')
-        .withArgs(await pool.getAddress());
-    });
-
     it('does not allow external swaps', async () => {
       await expect(
         pool.connect(alice).onSwap({

@@ -221,9 +221,6 @@ interface IVaultErrors {
     /// @dev A token buffer must be registered for a token before pools can be registered with that token.
     error WrappedTokenBufferNotRegistered();
 
-    /// @dev An external caller (i.e., through a router) is attempting to swap with a Buffer Pools.
-    error CannotSwapWithBufferPool(address bufferPool);
-
     /// @dev A buffer pool factory cannot be added to the allowlist twice.
     error BufferPoolFactoryAlreadyRegistered();
 
