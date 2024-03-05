@@ -22,6 +22,7 @@ import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { TokenConfig, TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
+import { sortTokens } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
 describe('WeightedPool', function () {
   const MAX_PROTOCOL_SWAP_FEE = fp(0.5);
@@ -62,7 +63,7 @@ describe('WeightedPool', function () {
     tokenBAddress = await tokenB.getAddress();
     tokenCAddress = await tokenC.getAddress();
 
-    poolTokens = [tokenAAddress, tokenBAddress, tokenCAddress];
+    [poolTokens] = sortTokens([tokenAAddress, tokenBAddress, tokenCAddress]);
 
     pool = await deploy('v3-vault/PoolMock', {
       args: [vault, 'Pool', 'POOL', buildTokenConfig(poolTokens), true, 365 * 24 * 3600, ZERO_ADDRESS],
@@ -84,9 +85,11 @@ describe('WeightedPool', function () {
       sharedBeforeEach('initialize pool', async () => {
         tokenA.mint(alice, TOKEN_AMOUNT);
         tokenB.mint(alice, TOKEN_AMOUNT);
+        tokenC.mint(alice, TOKEN_AMOUNT);
 
         tokenA.connect(alice).approve(vault, MAX_UINT256);
         tokenB.connect(alice).approve(vault, MAX_UINT256);
+        tokenC.connect(alice).approve(vault, MAX_UINT256);
 
         expect(await router.connect(alice).initialize(pool, poolTokens, INITIAL_BALANCES, FP_ZERO, false, '0x'))
           .to.emit(vault, 'PoolInitialized')

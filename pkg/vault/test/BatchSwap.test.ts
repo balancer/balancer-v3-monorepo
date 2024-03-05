@@ -4,7 +4,7 @@ import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
-import { fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { fp, pct } from '@balancer-labs/v3-helpers/src/numbers';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
 import { IRouter, Router, Vault } from '../typechain-types';
@@ -12,6 +12,7 @@ import { BalanceChange, expectBalanceChange } from '@balancer-labs/v3-helpers/sr
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { buildTokenConfig } from './poolSetup';
+import { sortTokens } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
 describe('BatchSwap', function () {
   let vault: Vault;
@@ -37,13 +38,14 @@ describe('BatchSwap', function () {
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
     router = await deploy('Router', { args: [vaultAddress, WETH] });
 
-    tokens = await ERC20TokenList.create(3);
+    tokens = await ERC20TokenList.create(3, { sorted: true });
+
     token0 = await tokens.get(0).getAddress();
     token1 = await tokens.get(1).getAddress();
     token2 = await tokens.get(2).getAddress();
-    poolATokens = [token0, token1];
-    poolBTokens = [token1, token2];
-    poolCTokens = [token0, token2];
+    [poolATokens] = sortTokens([token0, token1]);
+    [poolBTokens] = sortTokens([token1, token2]);
+    [poolCTokens] = sortTokens([token0, token2]);
 
     // Pool A has tokens 0 and 1.
     poolA = await deploy('v3-vault/PoolMock', {
@@ -62,17 +64,17 @@ describe('BatchSwap', function () {
   });
 
   sharedBeforeEach('nested pools', async () => {
-    poolABTokens = [await poolA.getAddress(), await poolB.getAddress()];
+    [poolABTokens] = sortTokens([await poolA.getAddress(), await poolB.getAddress()]);
     poolAB = await deploy('v3-vault/PoolMock', {
       args: [vaultAddress, 'Pool A-B', 'POOL-AB', buildTokenConfig(poolABTokens), true, 0, ZERO_ADDRESS],
     });
 
-    poolACTokens = [await poolA.getAddress(), await poolC.getAddress()];
+    [poolACTokens] = sortTokens([await poolA.getAddress(), await poolC.getAddress()]);
     poolAC = await deploy('v3-vault/PoolMock', {
       args: [vaultAddress, 'Pool A-C', 'POOL-AC', buildTokenConfig(poolACTokens), true, 0, ZERO_ADDRESS],
     });
 
-    poolBCTokens = [await poolB.getAddress(), await poolC.getAddress()];
+    [poolBCTokens] = sortTokens([await poolB.getAddress(), await poolC.getAddress()]);
     poolBC = await deploy('v3-vault/PoolMock', {
       args: [vaultAddress, 'Pool B-C', 'POOL-BC', buildTokenConfig(poolBCTokens), true, 0, ZERO_ADDRESS],
     });
@@ -180,6 +182,52 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap();
+      });
+
+      context('single path, first - intermediate - final steps', () => {
+        sharedBeforeEach(async () => {
+          tokenIn = tokens.get(0);
+          tokenOut = tokens.get(2);
+
+          totalAmountIn = pathExactAmountIn; // 1 path
+          totalAmountOut = pathMinAmountOut; // 1 path, 1:1 ratio between inputs and outputs
+          pathAmountsOut = [totalAmountOut]; // 1 path, all tokens out
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', -totalAmountOut],
+              },
+            },
+          ];
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
+                { pool: poolC, tokenOut: token0 },
                 { pool: poolA, tokenOut: token1 },
                 { pool: poolB, tokenOut: token2 },
               ],
@@ -456,7 +504,7 @@ describe('BatchSwap', function () {
     });
 
     context('joinswaps (add liquidity step)', () => {
-      context('single path - intermediate add liquidity step', () => {
+      context('single path - initial add liquidity step', () => {
         sharedBeforeEach(async () => {
           tokenIn = tokens.get(0);
           tokenOut = poolB;
@@ -500,7 +548,52 @@ describe('BatchSwap', function () {
         itTestsBatchSwap();
       });
 
-      context('multi path - intermediate and final add liquidity step', () => {
+      context('single path - intermediate add liquidity step', () => {
+        sharedBeforeEach(async () => {
+          tokenIn = tokens.get(0);
+          tokenOut = poolC;
+
+          totalAmountIn = pathExactAmountIn; // 1 path
+          totalAmountOut = pathMinAmountOut; // 1 path, 1:1 ratio between inputs and outputs
+          pathAmountsOut = [totalAmountOut]; // 1 path, all tokens out
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', -totalAmountOut],
+              },
+            },
+          ];
+
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: poolB },
+                { pool: poolBC, tokenOut: poolC },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap();
+      });
+
+      context('multi path - initial and final add liquidity step', () => {
         sharedBeforeEach(async () => {
           tokenIn = tokens.get(0);
           tokenOut = poolB;
@@ -556,11 +649,10 @@ describe('BatchSwap', function () {
       });
     });
 
-    // TODO: this requires #246 to be solved
-    context.skip('exitswaps (remove liquidity step)', () => {
-      context('single path - intermediate remove liquidity step', () => {
+    context('exitswaps (remove liquidity step)', () => {
+      context('single path - initial remove liquidity step', () => {
         sharedBeforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokenIn = poolA;
           tokenOut = tokens.get(2);
 
           totalAmountIn = pathExactAmountIn; // 1 path
@@ -586,9 +678,8 @@ describe('BatchSwap', function () {
 
           paths = [
             {
-              tokenIn: token0,
+              tokenIn: poolA,
               steps: [
-                { pool: poolA, tokenOut: poolA },
                 { pool: poolA, tokenOut: token1 },
                 { pool: poolB, tokenOut: token2 },
               ],
@@ -600,7 +691,52 @@ describe('BatchSwap', function () {
           setUp();
         });
 
-        itTestsBatchSwap();
+        itTestsBatchSwap(false, true);
+      });
+
+      context('single path - intermediate remove liquidity step', () => {
+        sharedBeforeEach(async () => {
+          tokenIn = tokens.get(0);
+          tokenOut = tokens.get(2);
+
+          totalAmountIn = pathExactAmountIn; // 1 path
+          totalAmountOut = pathMinAmountOut; // 1 path, 1:1 ratio between inputs and outputs
+          pathAmountsOut = [totalAmountOut]; // 1 path, all tokens out
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokenOut.symbol()]: ['very-near', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokenOut.symbol()]: ['very-near', -totalAmountOut],
+              },
+            },
+          ];
+
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: poolA },
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pct(pathMinAmountOut, 0.999), // Rounding tolerance
+            },
+          ];
+
+          setUp();
+        });
+        // There are rounding issues in the output transfer, so we skip it.
+        itTestsBatchSwap(true, false);
       });
 
       context('single path - final remove liquidity step', () => {
@@ -637,7 +773,7 @@ describe('BatchSwap', function () {
                 { pool: poolA, tokenOut: token1 },
               ],
               exactAmountIn: pathExactAmountIn,
-              minAmountOut: pathMinAmountOut,
+              minAmountOut: pct(pathMinAmountOut, 0.999), // Rounding tolerance
             },
           ];
 
@@ -646,7 +782,8 @@ describe('BatchSwap', function () {
 
         // The first step of first path is an 'add liquidity' operation, which is settled instantly.
         // Therefore, the transfer event will not have the total amount out as argument.
-        itTestsBatchSwap(false);
+        // There are rounding issues in the output transfer, so we skip it.
+        itTestsBatchSwap(false, false);
       });
 
       context('multi path - final remove liquidity step', () => {
@@ -654,9 +791,9 @@ describe('BatchSwap', function () {
           tokenIn = tokens.get(0);
           tokenOut = tokens.get(1);
 
-          totalAmountIn = pathExactAmountIn * 1n; // 2 paths
-          totalAmountOut = pathMinAmountOut * 1n; // 2 paths, 1:1 ratio between inputs and outputs
-          pathAmountsOut = [totalAmountOut / 1n, totalAmountOut / 1n]; // 2 paths, half the output in each
+          totalAmountIn = pathExactAmountIn * 2n; // 2 paths
+          totalAmountOut = pathMinAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsOut = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
 
           balanceChange = [
             {
@@ -683,7 +820,7 @@ describe('BatchSwap', function () {
                 { pool: poolA, tokenOut: token1 },
               ],
               exactAmountIn: pathExactAmountIn,
-              minAmountOut: pathMinAmountOut,
+              minAmountOut: pct(pathMinAmountOut, 0.999), // Rounding tolerance
             },
             {
               tokenIn: token0,
@@ -702,7 +839,8 @@ describe('BatchSwap', function () {
 
         // The first step of first path is an 'add liquidity' operation, which is settled instantly.
         // Therefore, the transfer event will not have the total amount out as argument.
-        itTestsBatchSwap(false);
+        // There are rounding issues in the output transfer, so we skip it.
+        itTestsBatchSwap(false, false);
       });
     });
   });
@@ -755,7 +893,7 @@ describe('BatchSwap', function () {
     }
 
     context('pure swaps with no nesting', () => {
-      context('single path', () => {
+      context('single path - first and last steps', () => {
         sharedBeforeEach(async () => {
           tokenIn = tokens.get(0);
           tokenOut = tokens.get(2);
@@ -784,6 +922,52 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
+              ],
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap();
+      });
+
+      context('single path - first, intermediate and last steps', () => {
+        sharedBeforeEach(async () => {
+          tokenIn = tokens.get(0);
+          tokenOut = tokens.get(2);
+
+          totalAmountIn = pathMaxAmountIn; // 1 path
+          totalAmountOut = pathExactAmountOut; // 1 path, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [totalAmountIn]; // 1 path, all tokens out
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', -totalAmountOut],
+              },
+            },
+          ];
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
+                { pool: poolC, tokenOut: token0 },
                 { pool: poolA, tokenOut: token1 },
                 { pool: poolB, tokenOut: token2 },
               ],
@@ -849,7 +1033,7 @@ describe('BatchSwap', function () {
     });
 
     context('joinswaps (add liquidity step)', () => {
-      context('single path - first (final) add liquidity step', () => {
+      context('single path - first add liquidity step', () => {
         sharedBeforeEach(async () => {
           tokenIn = tokens.get(0);
           tokenOut = poolB;
@@ -893,7 +1077,7 @@ describe('BatchSwap', function () {
         itTestsBatchSwap();
       });
 
-      context('multi path - first (final) and intermediate add liquidity step', () => {
+      context('multi path - first and intermediate add liquidity step', () => {
         sharedBeforeEach(async () => {
           tokenIn = tokens.get(0);
           tokenOut = poolB;
@@ -947,14 +1131,11 @@ describe('BatchSwap', function () {
         // Therefore, the transfer event will not have the total amount out as argument.
         itTestsBatchSwap(true, false);
       });
-    });
 
-    // TODO: this requires #246 to be solved
-    context.skip('exitswaps (remove liquidity step)', () => {
-      context('single path - intermediate remove liquidity step', () => {
+      context('single path - final add liquidity step', () => {
         sharedBeforeEach(async () => {
           tokenIn = tokens.get(0);
-          tokenOut = tokens.get(2);
+          tokenOut = poolB;
 
           totalAmountIn = pathMaxAmountIn; // 1 path
           totalAmountOut = pathExactAmountOut; // 1 path, 1:1 ratio between inputs and outputs
@@ -981,9 +1162,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: poolA },
                 { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolB, tokenOut: poolB },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -995,10 +1175,105 @@ describe('BatchSwap', function () {
 
         itTestsBatchSwap();
       });
+    });
+
+    context('exitswaps (remove liquidity step)', () => {
+      context('single path - first remove liquidity step', () => {
+        sharedBeforeEach(async () => {
+          tokenIn = poolA;
+          tokenOut = tokens.get(2);
+
+          totalAmountIn = pathMaxAmountIn; // 1 path
+          totalAmountOut = pathExactAmountOut; // 1 path, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [totalAmountOut]; // 1 path, all tokens out
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', -totalAmountOut],
+              },
+            },
+          ];
+
+          paths = [
+            {
+              tokenIn: poolA,
+              steps: [
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
+              ],
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap(false, true);
+
+        it('burns amount in', async () => {
+          await expect(doSwap()).to.emit(tokenIn, 'Transfer').withArgs(sender.address, ZERO_ADDRESS, totalAmountIn);
+        });
+      });
+
+      context('single path - intermediate remove liquidity step', () => {
+        sharedBeforeEach(async () => {
+          tokenIn = poolC;
+          tokenOut = tokens.get(2);
+
+          totalAmountIn = pathMaxAmountIn; // 1 path
+          totalAmountOut = pathExactAmountOut; // 1 path, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [totalAmountOut]; // 1 path, all tokens out
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokenOut.symbol()]: ['equal', -totalAmountOut],
+              },
+            },
+          ];
+
+          paths = [
+            {
+              tokenIn: poolC,
+              steps: [
+                { pool: poolAC, tokenOut: poolA },
+                { pool: poolA, tokenOut: token1 },
+                { pool: poolB, tokenOut: token2 },
+              ],
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap(false, true);
+      });
 
       context('single path - final remove liquidity step', () => {
         sharedBeforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokenIn = poolA;
           tokenOut = tokens.get(1);
 
           totalAmountIn = pathMaxAmountIn; // 1 path
@@ -1024,10 +1299,10 @@ describe('BatchSwap', function () {
 
           paths = [
             {
-              tokenIn: token0,
+              tokenIn: poolA,
               steps: [
-                { pool: poolA, tokenOut: poolA },
-                { pool: poolA, tokenOut: token1 },
+                { pool: poolAB, tokenOut: poolB },
+                { pool: poolB, tokenOut: token1 },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1037,8 +1312,7 @@ describe('BatchSwap', function () {
           setUp();
         });
 
-        // The first step of first path is an 'add liquidity' operation, which is settled instantly.
-        // Therefore, the transfer event will not have the total amount out as argument.
+        // Rounding errors don't allow testing precise transfers for amount out.
         itTestsBatchSwap(true, false);
       });
 
@@ -1047,9 +1321,9 @@ describe('BatchSwap', function () {
           tokenIn = tokens.get(0);
           tokenOut = tokens.get(1);
 
-          totalAmountIn = pathMaxAmountIn * 1n; // 2 paths
-          totalAmountOut = pathExactAmountOut * 1n; // 2 paths, 1:1 ratio between inputs and outputs
-          pathAmountsIn = [totalAmountOut / 1n, totalAmountOut / 1n]; // 2 paths, half the output in each
+          totalAmountIn = pathMaxAmountIn * 2n; // 2 paths
+          totalAmountOut = pathExactAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
 
           balanceChange = [
             {
@@ -1076,7 +1350,7 @@ describe('BatchSwap', function () {
                 { pool: poolA, tokenOut: token1 },
               ],
               exactAmountOut: pathExactAmountOut,
-              maxAmountIn: pathMaxAmountIn,
+              maxAmountIn: pct(pathMaxAmountIn, 1.001), // Rounding tolerance
             },
             {
               tokenIn: token0,
@@ -1093,9 +1367,10 @@ describe('BatchSwap', function () {
           setUp();
         });
 
-        // The first step of first path is an 'add liquidity' operation, which is settled instantly.
-        // Therefore, the transfer event will not have the total amount out as argument.
-        itTestsBatchSwap(true, false);
+        // The first step of both paths are an 'add liquidity' operation, which is settled instantly.
+        // Therefore, the transfer event will not have the total amount in as argument.
+        // Rounding errors make the output inexact, so we skip the transfer checks.
+        itTestsBatchSwap(false, false);
       });
     });
   });

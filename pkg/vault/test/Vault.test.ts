@@ -7,7 +7,7 @@ import { PoolConfigStructOutput } from '../typechain-types/contracts/test/VaultM
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
-import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { ANY_ADDRESS, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
 import { FP_ONE, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { buildTokenConfig, setupEnvironment } from './poolSetup';
 import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer';
@@ -20,6 +20,7 @@ import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
+import { sortTokens } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -43,6 +44,7 @@ describe('Vault', function () {
   let poolBTokens: string[];
   let invalidTokens: string[];
   let duplicateTokens: string[];
+  let unsortedTokens: string[];
 
   before('setup signers', async () => {
     [, alice] = await ethers.getSigners();
@@ -69,10 +71,14 @@ describe('Vault', function () {
     poolBAddress = await poolB.getAddress();
 
     const tokenCAddress = await tokenC.getAddress();
-    poolATokens = [tokenAAddress, tokenBAddress, tokenCAddress];
-    poolBTokens = [tokenAAddress, tokenCAddress];
-    invalidTokens = [tokenAAddress, ZERO_ADDRESS, tokenCAddress];
-    duplicateTokens = [tokenAAddress, tokenBAddress, tokenAAddress];
+    [poolATokens] = sortTokens([tokenAAddress, tokenBAddress, tokenCAddress]);
+    [poolBTokens] = sortTokens([tokenAAddress, tokenCAddress]);
+    [invalidTokens] = sortTokens([tokenAAddress, ZERO_ADDRESS, tokenCAddress]);
+    [duplicateTokens] = sortTokens([tokenAAddress, tokenBAddress, tokenAAddress]);
+
+    // Copy and reverse A tokens.
+    unsortedTokens = Array.from(poolATokens);
+    unsortedTokens.reverse();
 
     expect(await poolA.name()).to.equal('Pool A');
     expect(await poolA.symbol()).to.equal('POOLA');
@@ -84,6 +90,11 @@ describe('Vault', function () {
   });
 
   describe('registration', () => {
+    it('cannot register a pool with unsorted tokens', async () => {
+      await expect(vault.manualRegisterPoolPassThruTokens(ANY_ADDRESS, unsortedTokens))
+      .to.be.revertedWithCustomError(vaultExtension, 'TokensNotSorted');
+    });
+
     it('can register a pool', async () => {
       expect(await vault.isPoolRegistered(poolA)).to.be.true;
       expect(await vault.isPoolRegistered(poolB)).to.be.false;
@@ -149,7 +160,10 @@ describe('Vault', function () {
     it('cannot register a pool with an invalid token (pool address)', async () => {
       const poolBTokensWithItself = Array.from(poolBTokens);
       poolBTokensWithItself.push(poolBAddress);
-      await expect(vault.manualRegisterPool(poolB, poolBTokensWithItself)).to.be.revertedWithCustomError(
+
+      const [finalTokens] = sortTokens(poolBTokensWithItself);
+
+      await expect(vault.manualRegisterPool(poolB, finalTokens)).to.be.revertedWithCustomError(
         vaultExtension,
         'InvalidToken'
       );
@@ -181,7 +195,7 @@ describe('Vault', function () {
     });
 
     it('cannot register a pool with too many tokens', async () => {
-      const tokens = await ERC20TokenList.create(5);
+      const tokens = await ERC20TokenList.create(5, { sorted: true });
 
       await expect(vault.manualRegisterPool(poolB, await tokens.addresses)).to.be.revertedWithCustomError(
         vaultExtension,
