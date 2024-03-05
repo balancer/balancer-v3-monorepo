@@ -181,10 +181,19 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
         IERC20[] memory tempRegisteredTokens = new IERC20[](numTokens);
         uint256 numTempTokens;
+        IERC20 previousToken;
 
         for (uint256 i = 0; i < numTokens; ++i) {
             TokenConfig memory tokenData = params.tokenConfig[i];
             IERC20 token = tokenData.token;
+
+            // Enforce token sorting.
+            if (i != 0) {
+                if (token < previousToken) {
+                    revert InputHelpers.TokensNotSorted();
+                }
+            }
+            previousToken = token;
 
             // Ensure that the token address is valid
             if (address(token) == address(0) || address(token) == pool) {
@@ -658,12 +667,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         emit WrappedTokenBufferCreated(address(wrappedToken), address(baseToken));
 
-        // Token order is wrapped first, then base.
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
-        tokenConfig[0].token = IERC20(wrappedToken);
-        tokenConfig[0].tokenType = TokenType.ERC4626;
+        // Sort tokens
+        uint256 wrappedTokenIndex = baseToken > wrappedToken ? 0 : 1;
+
+        tokenConfig[wrappedTokenIndex].token = IERC20(wrappedToken);
+        tokenConfig[wrappedTokenIndex].tokenType = TokenType.ERC4626;
         // We are assuming the baseToken is STANDARD (the default type, with enum value 0).
-        tokenConfig[1].token = baseToken;
+        tokenConfig[wrappedTokenIndex == 0 ? 1 : 0].token = baseToken;
 
         _registerPool(
             pool,
