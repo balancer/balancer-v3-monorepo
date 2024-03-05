@@ -209,16 +209,6 @@ interface IVaultErrors {
     error SenderIsNotVault(address sender);
 
     /*******************************************************************************
-                                ERC4626 Buffers
-    *******************************************************************************/
-
-    /// @dev A token buffer can only be registered once.
-    error WrappedTokenBufferAlreadyRegistered();
-
-    /// @dev A token buffer must be registered for a token before pools can be registered with that token.
-    error WrappedTokenBufferNotRegistered();
-
-    /*******************************************************************************
                                         Pausing
     *******************************************************************************/
 

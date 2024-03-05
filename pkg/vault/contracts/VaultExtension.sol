@@ -591,52 +591,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
--                                   ERC4626 Buffers
-     *******************************************************************************/
-
-    /// @inheritdoc IVaultExtension
-    function registerBuffer(
-        IERC4626 wrappedToken,
-        address pool,
-        address pauseManager,
-        uint256 pauseWindowEndTime
-    ) external nonReentrant whenVaultNotPaused onlyVault {
-        IERC20 baseToken = IERC20(wrappedToken.asset());
-
-        emit WrappedTokenBufferCreated(address(wrappedToken), address(baseToken));
-
-        // Token order is wrapped first, then base.
-        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
-        tokenConfig[0].token = IERC20(wrappedToken);
-        tokenConfig[0].tokenType = TokenType.ERC4626;
-        // We are assuming the baseToken is STANDARD (the default type, with enum value 0).
-        tokenConfig[1].token = baseToken;
-
-        _registerPool(
-            pool,
-            PoolRegistrationParams({
-                tokenConfig: tokenConfig,
-                pauseWindowEndTime: pauseWindowEndTime,
-                pauseManager: pauseManager,
-                poolHooks: PoolHooks({
-                    shouldCallBeforeInitialize: true, // ensure proportional
-                    shouldCallAfterInitialize: false,
-                    shouldCallBeforeAddLiquidity: true, // ensure custom
-                    shouldCallAfterAddLiquidity: false,
-                    shouldCallBeforeRemoveLiquidity: true, // ensure proportional
-                    shouldCallAfterRemoveLiquidity: false,
-                    shouldCallBeforeSwap: true, // rebalancing
-                    shouldCallAfterSwap: false
-                }),
-                liquidityManagement: LiquidityManagement({
-                    supportsAddLiquidityCustom: true,
-                    supportsRemoveLiquidityCustom: false
-                })
-            })
-        );
-    }
-
-    /*******************************************************************************
                                      Default lockers
     *******************************************************************************/
 

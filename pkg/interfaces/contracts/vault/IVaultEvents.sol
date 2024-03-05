@@ -112,11 +112,4 @@ interface IVaultEvents {
      * @param newAuthorizer The address of the new authorizer
      */
     event AuthorizerChanged(IAuthorizer indexed newAuthorizer);
-
-    /**
-     * @notice A new ERC4626BufferPool has been created.
-     * @param wrappedToken The wrapped token associated with the buffer
-     * @param baseToken The base token associated with the wrapper
-     */
-    event WrappedTokenBufferCreated(address indexed wrappedToken, address indexed baseToken);
 }

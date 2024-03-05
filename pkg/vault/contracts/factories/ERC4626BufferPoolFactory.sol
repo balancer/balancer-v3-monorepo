@@ -55,10 +55,32 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
             salt
         );
 
-        // This must be done first, since `registerBuffer` checks that the pool comes from this factory.
         _registerPoolWithFactory(pool);
 
-        getVault().registerBuffer(wrappedToken, pool, pauseManager, getNewPoolPauseWindowEndTime());
+        // Token order is wrapped first, then base.
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[0].token = IERC20(wrappedToken);
+        tokenConfig[0].tokenType = TokenType.ERC4626;
+        // We are assuming the baseToken is STANDARD (the default type, with enum value 0).
+        tokenConfig[1].token = IERC20(wrappedToken.asset());
+
+        getVault().registerPool(
+            pool,
+            tokenConfig,
+            getNewPoolPauseWindowEndTime(),
+            pauseManager,
+            PoolHooks({
+                shouldCallBeforeInitialize: true, // ensure proportional
+                shouldCallAfterInitialize: false,
+                shouldCallBeforeAddLiquidity: true, // ensure custom
+                shouldCallAfterAddLiquidity: false,
+                shouldCallBeforeRemoveLiquidity: true, // ensure proportional
+                shouldCallAfterRemoveLiquidity: false,
+                shouldCallBeforeSwap: true, // rebalancing
+                shouldCallAfterSwap: false
+            }),
+            LiquidityManagement({ supportsAddLiquidityCustom: true, supportsRemoveLiquidityCustom: false })
+        );
     }
 
     /**
