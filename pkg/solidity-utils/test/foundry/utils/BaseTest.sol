@@ -36,6 +36,10 @@ abstract contract BaseTest is Test, GasSnapshot {
     WETHTestToken internal weth;
     ERC20TestToken internal wsteth;
 
+    // For two-token pools with DAI and USDC, keep track of sorted indices.
+    uint256 daiIdx;
+    uint256 usdcIdx;
+
     // List of all ERC20 tokens
     IERC20[] internal tokens;
 
@@ -56,6 +60,9 @@ abstract contract BaseTest is Test, GasSnapshot {
         weth = new WETHTestToken();
         vm.label(address(weth), "WETH");
 
+        daiIdx = address(dai) > address(usdc) ? 1 : 0;
+        usdcIdx = daiIdx == 0 ? 1 : 0;
+        
         // Fill the token list.
         tokens.push(dai);
         tokens.push(usdc);
