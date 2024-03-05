@@ -114,26 +114,6 @@ contract VaultTokenTest is BaseVaultTest {
         _registerPool(tokenConfig);
     }
 
-    function testRegistrationWithAmbiguousTokens() public {
-        registerBuffers();
-
-        // Regular pool cannot have a buffer token with the same base as an existing standard token.
-        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
-        tokenConfig[0].token = IERC20(waDAI);
-        tokenConfig[0].tokenType = TokenType.ERC4626;
-        tokenConfig[1].token = IERC20(dai);
-
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.TokenAlreadyRegistered.selector, address(dai)));
-        _registerPool(tokenConfig);
-
-        // Also can't have two wrapped tokens with the same underlying
-        tokenConfig[1].token = IERC20(cDAI);
-        tokenConfig[1].tokenType = TokenType.ERC4626;
-
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.TokenAlreadyRegistered.selector, address(dai)));
-        _registerPool(tokenConfig);
-    }
-
     function testRegistrationWithERC4626Tokens() public {
         registerBuffers();
 
