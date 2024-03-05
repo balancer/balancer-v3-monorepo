@@ -21,6 +21,9 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract VaultLiquidityWithRatesTest is BaseVaultTest {
     using ArrayHelpers for *;
 
+    uint256 localDaiIdx = address(dai) > address(wsteth) ? 1 : 0;
+    uint256 localWstethIdx = localDaiIdx == 0 ? 1 : 0;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
         rateProvider.mockRate(mockRate);
@@ -29,6 +32,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
     function createPool() internal override returns (address) {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProvider = new RateProviderMock();
+        // Still need the rate provider at index 0; buildTokenConfig will sort.
         rateProviders[0] = rateProvider;
 
         return
@@ -54,18 +58,22 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         uint256[] memory rawBalances = vault.getRawBalances(address(pool));
         uint256[] memory liveBalances = vault.getLastLiveBalances(address(pool));
 
-        assertEq(FixedPoint.mulDown(rawBalances[0], mockRate), liveBalances[0]);
-        assertEq(rawBalances[1], liveBalances[1]);
+        assertEq(FixedPoint.mulDown(rawBalances[localWstethIdx], mockRate), liveBalances[localWstethIdx]);
+        assertEq(rawBalances[localDaiIdx], liveBalances[localDaiIdx]);
     }
 
     function testAddLiquiditySingleTokenExactOutWithRate() public {
+        uint256[] memory expectedBalances = new uint256[](2);
+        expectedBalances[localWstethIdx] = FixedPoint.mulDown(defaultAmount, mockRate);
+        expectedBalances[localDaiIdx] = defaultAmount;
+
         vm.startPrank(alice);
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
                 IBasePool.computeBalance.selector,
-                [FixedPoint.mulDown(defaultAmount, mockRate), defaultAmount].toMemoryArray(), // liveBalancesScaled18
-                0,
+                expectedBalances, // liveBalancesScaled18
+                localWstethIdx,
                 150e16 // 150% growth
             )
         );
@@ -76,15 +84,24 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
     function testAddLiquidityCustomWithRate() public {
         uint256 rateAdjustedAmount = FixedPoint.mulDown(defaultAmount, mockRate);
 
+        uint256[] memory expectedAmountsIn = new uint256[](2);
+        uint256[] memory expectedBalances = new uint256[](2);
+
+        expectedAmountsIn[localWstethIdx] = rateAdjustedAmount;
+        expectedAmountsIn[localDaiIdx] = defaultAmount;
+
+        expectedBalances[localWstethIdx] = rateAdjustedAmount;
+        expectedBalances[localDaiIdx] = defaultAmount;
+
         vm.startPrank(alice);
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
                 IPoolLiquidity.onAddLiquidityCustom.selector,
                 alice,
-                [rateAdjustedAmount, defaultAmount].toMemoryArray(), // maxAmountsIn
+                expectedAmountsIn, // maxAmountsIn
                 defaultAmount, // minBptOut
-                [rateAdjustedAmount, defaultAmount].toMemoryArray(), // liveBalancesScaled18
+                expectedBalances, // liveBalancesScaled18
                 bytes("")
             )
         );
@@ -139,8 +156,9 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IBasePool.computeBalance.selector,
-                [balances.balancesLiveScaled18[0], balances.balancesLiveScaled18[1]].toMemoryArray(),
-                0, // tokenOutIndex
+                [balances.balancesLiveScaled18[localDaiIdx], balances.balancesLiveScaled18[localWstethIdx]]
+                    .toMemoryArray(),
+                localWstethIdx, // tokenOutIndex
                 50e16 // invariantRatio
             )
         );
@@ -159,9 +177,11 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             bytes("")
         );
 
-        uint256 rateAdjustedAmountOut = FixedPoint.mulDown(defaultAmount, mockRate);
-
         PoolData memory balances = vault.computePoolDataUpdatingBalancesAndFees(address(pool), Rounding.ROUND_DOWN);
+        uint256[] memory expectedAmountsOut = new uint256[](2);
+
+        expectedAmountsOut[localWstethIdx] = FixedPoint.mulDown(defaultAmount, mockRate);
+        expectedAmountsOut[localDaiIdx] = defaultAmount;
 
         vm.expectCall(
             address(pool),
@@ -169,8 +189,9 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
                 IPoolLiquidity.onRemoveLiquidityCustom.selector,
                 alice,
                 defaultAmount, // maxBptAmountIn
-                [rateAdjustedAmountOut, defaultAmount].toMemoryArray(), // minAmountsOut
-                [balances.balancesLiveScaled18[0], balances.balancesLiveScaled18[1]].toMemoryArray(),
+                expectedAmountsOut, // minAmountsOut
+                [balances.balancesLiveScaled18[localDaiIdx], balances.balancesLiveScaled18[localWstethIdx]]
+                    .toMemoryArray(),
                 bytes("")
             )
         );

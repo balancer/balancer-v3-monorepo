@@ -332,8 +332,8 @@ contract VaultSwapTest is BaseVaultTest {
 
         // Tokens are adjusted in the pool
         (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], fee - protocolFee, "Swap: Pool's [0] balance is wrong");
-        assertEq(balances[1], 2 * defaultAmount, "Swap: Pool's [1] balance is wrong");
+        assertEq(balances[daiIdx], fee - protocolFee, "Swap: Pool's [0] balance is wrong");
+        assertEq(balances[usdcIdx], 2 * defaultAmount, "Swap: Pool's [1] balance is wrong");
 
         // protocol fees are accrued
         assertEq(protocolFee, vault.getProtocolFees(address(dai)), "Swap: Protocol's fee amount is wrong");

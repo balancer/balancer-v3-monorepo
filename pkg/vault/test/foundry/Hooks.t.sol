@@ -38,8 +38,8 @@ contract HooksTest is BaseVaultTest {
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
-                    indexIn: 1,
-                    indexOut: 0,
+                    indexIn: usdcIdx,
+                    indexOut: daiIdx,
                     sender: address(router),
                     userData: bytes("")
                 })
@@ -75,8 +75,8 @@ contract HooksTest is BaseVaultTest {
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
-                    indexIn: 1,
-                    indexOut: 0,
+                    indexIn: usdcIdx,
+                    indexOut: daiIdx,
                     sender: address(router),
                     userData: bytes("")
                 })

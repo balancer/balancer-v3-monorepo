@@ -162,8 +162,8 @@ contract VaultLiquidityTest is BaseVaultTest {
         (amountsOut, ) = router.getSingleInputArrayAndTokenIndex(pool, dai, amountOut);
 
         // amountsOut are correct
-        assertEq(amountsOut[0], defaultAmount * 2, "Wrong AmountOut[0]");
-        assertEq(amountsOut[1], 0, "AmountOut[1] > 0");
+        assertEq(amountsOut[daiIdx], defaultAmount * 2, "Wrong AmountOut[dai]");
+        assertEq(amountsOut[usdcIdx], 0, "AmountOut[usdc] > 0");
     }
 
     function testRemoveLiquiditySingleTokenExactIn() public {
@@ -171,7 +171,8 @@ contract VaultLiquidityTest is BaseVaultTest {
     }
 
     function removeLiquiditySingleTokenExactOut() public returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
-        amountsOut = [defaultAmount * 2, 0].toMemoryArray();
+        amountsOut = new uint256[](2);
+        amountsOut[daiIdx] = defaultAmount * 2;
 
         snapStart("vaultRemoveLiquiditySingleTokenExactOut");
         bptAmountIn = router.removeLiquiditySingleTokenExactOut(
@@ -199,8 +200,8 @@ contract VaultLiquidityTest is BaseVaultTest {
         );
 
         // amountsOut are correct
-        assertEq(amountsOut[0], defaultAmount, "Wrong AmountOut[0]");
-        assertEq(amountsOut[1], defaultAmount, "Wrong AmountOut[1]");
+        assertEq(amountsOut[daiIdx], defaultAmount, "Wrong AmountOut[dai]");
+        assertEq(amountsOut[usdcIdx], defaultAmount, "Wrong AmountOut[usdc]");
     }
 
     function testRemoveLiquidityCustom() public {
@@ -223,6 +224,10 @@ contract VaultLiquidityTest is BaseVaultTest {
     }
 
     function testRemoveLiquidityAmountOutBelowMin() public {
+        uint256[] memory amountsOut = new uint256[](2);
+        amountsOut[daiIdx] = defaultAmount + 1;
+        amountsOut[usdcIdx] = defaultAmount;
+
         vm.expectRevert(
             abi.encodeWithSelector(
                 IVaultErrors.AmountOutBelowMin.selector,
@@ -232,13 +237,7 @@ contract VaultLiquidityTest is BaseVaultTest {
             )
         );
         vm.startPrank(alice);
-        router.removeLiquidityProportional(
-            address(pool),
-            2 * defaultAmount,
-            [uint256(defaultAmount + 1), uint256(defaultAmount)].toMemoryArray(),
-            false,
-            bytes("")
-        );
+        router.removeLiquidityProportional(address(pool), 2 * defaultAmount, amountsOut, false, bytes(""));
     }
 
     function testRemoveLiquidityBptInAboveMax() public {

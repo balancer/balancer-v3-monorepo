@@ -18,6 +18,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
@@ -58,7 +59,7 @@ contract WeightedPoolTest is BaseVaultTest {
             factory.create(
                 "ERC20 Pool",
                 "ERC20POOL",
-                tokens,
+                vault.sortTokenConfig(tokens),
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                 ZERO_BYTES32
             )
@@ -71,7 +72,7 @@ contract WeightedPoolTest is BaseVaultTest {
         vm.prank(lp);
         bptAmountOut = router.initialize(
             pool,
-            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            InputHelpers.sortTokens([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             amountsIn,
             // Account for the precision loss
             DAI_AMOUNT - DELTA - 1e6,
@@ -203,9 +204,13 @@ contract WeightedPoolTest is BaseVaultTest {
         assertEq(dai.balanceOf(address(vault)), DAI_AMOUNT + DAI_AMOUNT_IN, "Vault: Wrong DAI balance");
 
         // Tokens are deposited to the pool
-        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], DAI_AMOUNT + DAI_AMOUNT_IN, "Pool: Wrong DAI balance");
-        assertEq(balances[1], USDC_AMOUNT - amountCalculated, "Pool: Wrong USDC balance");
+        (IERC20[] memory tokens, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
+
+        uint256 daiIdx = tokens[0] == dai ? 0 : 1;
+        uint256 usdcIdx = daiIdx == 0 ? 1 : 0;
+
+        assertEq(balances[daiIdx], DAI_AMOUNT + DAI_AMOUNT_IN, "Pool: Wrong DAI balance");
+        assertEq(balances[usdcIdx], USDC_AMOUNT - amountCalculated, "Pool: Wrong USDC balance");
     }
 
     function less(uint256 amount, uint256 base) internal pure returns (uint256) {

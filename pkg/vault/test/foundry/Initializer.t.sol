@@ -12,6 +12,7 @@ import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTy
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
@@ -53,7 +54,7 @@ contract InitializerTest is BaseVaultTest {
         vm.prank(bob);
         router.initialize(
             address(pool),
-            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            InputHelpers.sortTokens([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,
             false,
@@ -73,7 +74,7 @@ contract InitializerTest is BaseVaultTest {
         );
         router.initialize(
             address(pool),
-            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            InputHelpers.sortTokens([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,
             false,
@@ -87,7 +88,7 @@ contract InitializerTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeInitializeHookFailed.selector));
         router.initialize(
             address(pool),
-            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            InputHelpers.sortTokens([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,
             false,
@@ -108,7 +109,7 @@ contract InitializerTest is BaseVaultTest {
         );
         router.initialize(
             address(pool),
-            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            InputHelpers.sortTokens([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,
             false,
@@ -122,7 +123,7 @@ contract InitializerTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.AfterInitializeHookFailed.selector));
         router.initialize(
             address(pool),
-            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            InputHelpers.sortTokens([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,
             false,
