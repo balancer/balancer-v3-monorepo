@@ -17,9 +17,6 @@ contract WeightedPool8020Factory is BasePoolFactory {
     uint256 private constant _EIGHTY = 8e17; // 80%
     uint256 private constant _TWENTY = 2e17; // 20%
 
-    /// @dev By definition, this factory can only create two-token pools.
-    error NotTwoTokens();
-
     constructor(
         IVault vault,
         uint256 pauseWindowDuration
@@ -29,34 +26,40 @@ contract WeightedPool8020Factory is BasePoolFactory {
 
     /**
      * @notice Deploys a new `WeightedPool`.
-     * @dev It assumes the 80% weight token is first in the array.
+     * @dev Since tokens must be sorted, pass in explicit 80/20 token config structs.
      * @param name Name of the pool
      * @param symbol Symbol of the pool
-     * @param tokenConfig The token configuration of the pool: must be two-token
+     * @param highWeightTokenConfig The token configuration of the high weight token
+     * @param lowWeightTokenConfig The token configuration of the high weight token
      * @param salt Value passed to create3, used to create the address
      */
     function create(
         string memory name,
         string memory symbol,
-        TokenConfig[] memory tokenConfig,
+        TokenConfig memory highWeightTokenConfig,
+        TokenConfig memory lowWeightTokenConfig,
         bytes32 salt
     ) external returns (address pool) {
-        if (tokenConfig.length != 2) {
-            revert NotTwoTokens();
-        }
+        // Tokens must be sorted.
+        uint256 highWeightTokenIdx = highWeightTokenConfig.token > lowWeightTokenConfig.token ? 1 : 0;
+        uint256 lowWeightTokenIdx = highWeightTokenIdx == 0 ? 1 : 0;
 
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         uint256[] memory weights = new uint256[](2);
-        weights[0] = _EIGHTY;
-        weights[1] = _TWENTY;
+        IERC20[] memory tokens = new IERC20[](2);
+
+        weights[highWeightTokenIdx] = _EIGHTY;
+        weights[lowWeightTokenIdx] = _TWENTY;
+
+        tokenConfig[highWeightTokenIdx] = highWeightTokenConfig;
+        tokenConfig[lowWeightTokenIdx] = lowWeightTokenConfig;
+
+        tokens[highWeightTokenIdx] = highWeightTokenConfig.token;
+        tokens[lowWeightTokenIdx] = lowWeightTokenConfig.token;
 
         pool = _create(
             abi.encode(
-                WeightedPool.NewPoolParams({
-                    name: name,
-                    symbol: symbol,
-                    tokens: _extractTokensFromTokenConfig(tokenConfig),
-                    normalizedWeights: weights
-                }),
+                WeightedPool.NewPoolParams({ name: name, symbol: symbol, tokens: tokens, normalizedWeights: weights }),
                 getVault()
             ),
             salt
