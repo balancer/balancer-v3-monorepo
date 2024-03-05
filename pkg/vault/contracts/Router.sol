@@ -1190,7 +1190,6 @@ contract Router is IRouter, ReentrancyGuard {
     function queryAddLiquidityUnbalanced(
         address pool,
         uint256[] memory exactAmountsIn,
-        uint256 minBptAmountOut,
         bytes memory userData
     ) external returns (uint256 bptAmountOut) {
         (, bptAmountOut, ) = abi.decode(
@@ -1203,7 +1202,7 @@ contract Router is IRouter, ReentrancyGuard {
                         sender: address(this),
                         pool: pool,
                         maxAmountsIn: exactAmountsIn,
-                        minBptAmountOut: minBptAmountOut,
+                        minBptAmountOut: 0,
                         kind: AddLiquidityKind.UNBALANCED,
                         wethIsEth: false,
                         userData: userData
@@ -1218,14 +1217,13 @@ contract Router is IRouter, ReentrancyGuard {
     function queryAddLiquiditySingleTokenExactOut(
         address pool,
         IERC20 tokenIn,
-        uint256 maxAmountIn,
         uint256 exactBptAmountOut,
         bytes memory userData
     ) external returns (uint256 amountIn) {
         (uint256[] memory maxAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
             pool,
             tokenIn,
-            maxAmountIn
+            type(uint128).max
         );
 
         (uint256[] memory amountsIn, , ) = abi.decode(
@@ -1313,9 +1311,9 @@ contract Router is IRouter, ReentrancyGuard {
     function queryRemoveLiquidityProportional(
         address pool,
         uint256 exactBptAmountIn,
-        uint256[] memory minAmountsOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut) {
+        uint256[] memory minAmountsOut = new uint256[](_vault.getPoolTokens(pool).length);
         (, amountsOut, ) = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(
@@ -1342,13 +1340,13 @@ contract Router is IRouter, ReentrancyGuard {
         address pool,
         uint256 exactBptAmountIn,
         IERC20 tokenOut,
-        uint256 minAmountOut,
         bytes memory userData
     ) external returns (uint256 amountOut) {
+        // We cannot use 0 as min amount out, as the value is used to figure out the token index.
         (uint256[] memory minAmountsOut, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
             pool,
             tokenOut,
-            minAmountOut
+            1
         );
 
         (, uint256[] memory amountsOut, ) = abi.decode(
@@ -1377,7 +1375,6 @@ contract Router is IRouter, ReentrancyGuard {
     /// @inheritdoc IRouter
     function queryRemoveLiquiditySingleTokenExactOut(
         address pool,
-        uint256 maxBptAmountIn,
         IERC20 tokenOut,
         uint256 exactAmountOut,
         bytes memory userData
@@ -1394,7 +1391,7 @@ contract Router is IRouter, ReentrancyGuard {
                         sender: address(this),
                         pool: pool,
                         minAmountsOut: minAmountsOut,
-                        maxBptAmountIn: maxBptAmountIn,
+                        maxBptAmountIn: type(uint128).max,
                         kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                         wethIsEth: false,
                         userData: userData
