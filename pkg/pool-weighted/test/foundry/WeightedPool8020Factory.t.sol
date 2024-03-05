@@ -47,31 +47,17 @@ contract WeightedPool8020FactoryTest is Test {
         TokenConfig[] memory tokens = new TokenConfig[](2);
         tokens[0].token = tokenA;
         tokens[1].token = tokenB;
+        uint256 highWeightIdx = tokenA > tokenB ? 1 : 0;
+        uint256 lowWeightIdx = highWeightIdx == 0 ? 1 : 0;
 
-        WeightedPool pool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens, bytes32(0)));
+        WeightedPool pool = WeightedPool(
+            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], bytes32(0))
+        );
 
         uint256[] memory poolWeights = pool.getNormalizedWeights();
-        assertEq(poolWeights[0], 8e17, "Higher weight token is not 80%");
-        assertEq(poolWeights[1], 2e17, "Lower weight token is not 20%");
+        assertEq(poolWeights[highWeightIdx], 8e17, "Higher weight token is not 80%");
+        assertEq(poolWeights[lowWeightIdx], 2e17, "Lower weight token is not 20%");
         assertEq(pool.symbol(), "Pool8020", "Wrong pool symbol");
-    }
-
-    function testInvalidPoolMinTokens() public {
-        TokenConfig[] memory tokens = new TokenConfig[](1);
-        tokens[0].token = tokenA;
-
-        vm.expectRevert(WeightedPool8020Factory.NotTwoTokens.selector);
-        factory.create("Balancer 80/20 Pool", "Pool8020", tokens, bytes32(0));
-    }
-
-    function testInvalidPoolMaxTokens() public {
-        TokenConfig[] memory tokens = new TokenConfig[](3);
-        tokens[0].token = tokenA;
-        tokens[1].token = tokenB;
-        tokens[2].token = new ERC20TestToken("Token C", "TKNC", 18);
-
-        vm.expectRevert(WeightedPool8020Factory.NotTwoTokens.selector);
-        factory.create("Balancer 80/20 Pool", "Pool8020", tokens, bytes32(0));
     }
 
     function testPoolSalt__Fuzz(bytes32 salt) public {
@@ -82,10 +68,14 @@ contract WeightedPool8020FactoryTest is Test {
         tokens[1].token = tokenB;
         tokens[0].rateProvider = rateProvider;
 
-        WeightedPool pool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens, bytes32(0)));
+        WeightedPool pool = WeightedPool(
+            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], bytes32(0))
+        );
         address expectedPoolAddress = factory.getDeploymentAddress(salt);
 
-        WeightedPool secondPool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens, salt));
+        WeightedPool secondPool = WeightedPool(
+            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], salt)
+        );
 
         assertFalse(address(pool) == address(secondPool), "Two deployed pool addresses are equal");
         assertEq(address(secondPool), expectedPoolAddress, "Unexpected pool address");
@@ -102,7 +92,7 @@ contract WeightedPool8020FactoryTest is Test {
 
         // Different sender should change the address of the pool, given the same salt value
         vm.prank(alice);
-        WeightedPool pool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens, salt));
+        WeightedPool pool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], salt));
         assertFalse(address(pool) == expectedPoolAddress, "Unexpected pool address");
 
         vm.prank(alice);
@@ -119,12 +109,16 @@ contract WeightedPool8020FactoryTest is Test {
         tokens[0].rateProvider = rateProvider;
 
         vm.prank(alice);
-        WeightedPool poolMainnet = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens, salt));
+        WeightedPool poolMainnet = WeightedPool(
+            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], salt)
+        );
 
         vm.chainId(chainId);
 
         vm.prank(alice);
-        WeightedPool poolL2 = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens, salt));
+        WeightedPool poolL2 = WeightedPool(
+            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], salt)
+        );
 
         // Same sender and salt, should still be different because of the chainId.
         assertFalse(address(poolL2) == address(poolMainnet), "L2 and mainnet pool addresses are equal");
