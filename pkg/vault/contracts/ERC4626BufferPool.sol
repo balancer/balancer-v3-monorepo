@@ -168,7 +168,7 @@ contract ERC4626BufferPool is
                 // must be funded with enough base tokens to make up the difference.
                 assetsRaw = _wrappedToken.previewRedeem(sharesRaw) + DUST_BUFFER;
             } else {
-                // Subtract DUST_BUFFER-1 (due to rounding direction, we need to remove 1 ffrom DUST_BUFFER)
+                // Subtract DUST_BUFFER-1 (due to rounding direction, we need to remove 1 from DUST_BUFFER)
                 // from the amount of assets to make sure we return more wrapped than we obtained from amountOut.
                 // Since the buffer will wrap more assets than amountOut, this contract must be funded with enough
                 // base tokens to make up the difference.
