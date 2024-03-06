@@ -697,6 +697,8 @@ contract Router is IRouter, ReentrancyGuard {
                 SwapPathStep memory step = path.steps[j];
 
                 if (address(stepTokenIn) == step.pool) {
+                    // Token in is BPT: remove liquidity - Single token exact in
+
                     // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
                     // required amount when performing the operation. These tokens might be the output of a previous
                     // step, in which case the user will have a BPT credit.
@@ -708,7 +710,6 @@ contract Router is IRouter, ReentrancyGuard {
                         _currentSwapTokenInAmounts[address(stepTokenIn)] -= stepExactAmountIn;
                     }
 
-                    // Token in is BPT: remove liquidity - Single token exact in
                     // minAmountOut cannot be 0 in this case, as that would send an array of 0s to the Vault, which
                     // wouldn't know which token to use.
                     (uint256[] memory amountsOut, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
@@ -898,6 +899,8 @@ contract Router is IRouter, ReentrancyGuard {
                 }
 
                 if (address(stepTokenIn) == step.pool) {
+                    // Token in is BPT: remove liquidity - Single token exact out
+
                     // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
                     // required amount when performing the operation. In this case, the BPT amount needed for the
                     // operation is not known in advance, so we take a flashloan for all the available reserves.
@@ -908,7 +911,6 @@ contract Router is IRouter, ReentrancyGuard {
                         _vault.sendTo(IERC20(step.pool), params.sender, stepMaxAmountIn);
                     }
 
-                    // Token in is BPT: remove liquidity - Single token exact out
                     (uint256[] memory exactAmountsOut, ) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
                         step.tokenOut,
