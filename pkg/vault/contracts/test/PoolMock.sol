@@ -19,6 +19,10 @@ import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { RateProviderMock } from "./RateProviderMock.sol";
 import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 
+interface MaliciousHook {
+    function onMaliciousHook() external;
+}
+
 contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
@@ -38,6 +42,9 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     bool public changeTokenRateOnBeforeInitialize;
     bool public changeTokenRateOnBeforeAddLiquidity;
     bool public changeTokenRateOnBeforeRemoveLiquidity;
+
+    bool public reentrancyHookActive;
+    function() external private _reentrancyHook;
 
     uint256 private _newTokenRate;
     RateProviderMock _firstTokenRateProvider;
@@ -91,6 +98,14 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         // inv = x + y
         uint256 invariant = computeInvariant(balances);
         return (balances[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
+    }
+
+    function setReentrancyHookActive(bool _reentrancyHookActive) external {
+        reentrancyHookActive = _reentrancyHookActive;
+    }
+
+    function setReentrancyHook(function() external reentrancyHook) external {
+        _reentrancyHook = reentrancyHook;
     }
 
     function setFailOnAfterInitializeHook(bool fail) external {
@@ -164,6 +179,11 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     function onBeforeSwap(IBasePool.SwapParams calldata) external override returns (bool success) {
         if (changeTokenRateOnBeforeSwapHook) {
             _updateTokenRate();
+        }
+
+        if (reentrancyHookActive) {
+            reentrancyHookActive = false;
+            _reentrancyHook();
         }
 
         return !failOnBeforeSwapHook;

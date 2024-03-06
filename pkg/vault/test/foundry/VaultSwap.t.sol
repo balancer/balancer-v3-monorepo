@@ -8,6 +8,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -316,6 +317,62 @@ contract VaultSwapTest is BaseVaultTest {
 
         // alice received protocol fees
         assertEq(dai.balanceOf(admin) - defaultBalance, (protocolSwapFee), "Protocol fees not collected");
+    }
+
+     /// Swap
+    function reentrancyHook() public {
+        // do swap
+        SwapParams memory params = SwapParams({
+            kind: SwapKind.EXACT_IN,
+            pool: address(pool),
+            tokenIn: dai,
+            tokenOut: usdc,
+            amountGivenRaw: defaultAmount,
+            limitRaw: 0,
+            userData: bytes("")
+        });
+        vault.swap(params);
+    }
+
+    function startSwap() public {
+        SwapParams memory params = SwapParams({
+            kind: SwapKind.EXACT_IN,
+            pool: address(pool),
+            tokenIn: usdc,
+            tokenOut: dai,
+            amountGivenRaw: defaultAmount,
+            limitRaw: 0,
+            userData: bytes("")
+        });
+        vault.swap(params);
+    }
+
+    function testReentrancySwap() public {
+        // Enable before swap
+        PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.hooks.shouldCallBeforeSwap = true;
+        vault.setConfig(address(pool), config);
+
+        // Enable reentrancy hook
+        PoolMock(pool).setReentrancyHookActive(true);
+        PoolMock(pool).setReentrancyHook(this.reentrancyHook);
+
+        uint256 usdcBeforeSwap = usdc.balanceOf(address(this));
+        uint256 daiBeforeSwap = dai.balanceOf(address(this));
+
+        (, , uint[] memory balancesRawBefore, ,) = vault.getPoolTokenInfo(address(pool));
+
+        vault.lock(abi.encode(this.startSwap.selector));
+
+        (, ,  uint[] memory balancesRawAfter, ,) = vault.getPoolTokenInfo(address(pool));
+
+        // Pool's balances should not change
+        for(uint i = 0; i < balancesRawAfter.length; i++) {
+            assertEq(balancesRawBefore[i], balancesRawAfter[i], "Balance does not match");
+        }
+        // No tokens' being spent.
+        assertEq(usdcBeforeSwap, usdc.balanceOf(address(this)));
+        assertEq(daiBeforeSwap, dai.balanceOf(address(this)));
     }
 
     /// Utils
