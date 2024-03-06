@@ -508,8 +508,13 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
         uint256 wrappedBalanceAfterRebalanceRaw,
         uint256 assetsInOneShare
     ) private {
+        // In the onSwap of ERC4626 buffer pool, depending on the direction of the swap, we add up to 2 assets
+        // in the previewRedeem, to make sure the swap favors the vault, which counts as 2 extra tokens transferred
+        // to the vault. The extra 1 token is related to rounding issues when depositing/withdrawing
+        // (observed empirically). In total, we can miss by 3 shares.
+
         // Makes sure the base token balance didn't decrease in the pool contract by more than 3 units of
-        // wrapped token (ERC4626 deposit sometimes leave up to 5 tokens behind)
+        // wrapped token (ERC4626 deposit sometimes leaves up to 3 shares converted to base assets tokens behind)
         assertApproxEqAbs(
             baseBalanceBeforeRebalanceRaw,
             baseBalanceAfterRebalanceRaw,
