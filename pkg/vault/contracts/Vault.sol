@@ -163,8 +163,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
         uint256 indexIn;
         uint256 indexOut;
-        uint256 tokenInBalance;
-        uint256 tokenOutBalance;
         uint256 amountGivenScaled18;
         uint256 amountCalculatedScaled18;
         uint256 swapFeeAmountScaled18;
@@ -220,9 +218,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vars.indexIn -= 1;
             vars.indexOut -= 1;
         }
-
-        vars.tokenInBalance = poolData.balancesRaw[vars.indexIn];
-        vars.tokenOutBalance = poolData.balancesRaw[vars.indexOut];
 
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
@@ -380,8 +375,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vars.indexOut
         );
 
-        poolData.balancesRaw[vars.indexIn] = vars.tokenInBalance + amountIn;
-        poolData.balancesRaw[vars.indexOut] = vars.tokenOutBalance - amountOut - vars.protocolSwapFeeAmountRaw;
+        poolData.balancesRaw[vars.indexIn] += amountIn;
+        poolData.balancesRaw[vars.indexOut] =
+            poolData.balancesRaw[vars.indexOut] -
+            amountOut -
+            vars.protocolSwapFeeAmountRaw;
 
         // Set both raw and last live balances.
         _setPoolBalances(params.pool, poolData);
