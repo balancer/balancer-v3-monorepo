@@ -579,10 +579,9 @@ interface IRouter {
      * @dev Min amounts out specified in the paths are ignored.
      * @param paths Swap paths from token in to token out, specifying exact amounts in.
      * @param userData Additional (optional) data required for the query
-     * @return pathAmountsOut Calculated amounts of output tokens to be received corresponding to the last step of each
-     * given path
+     * @return pathAmountsOut Calculated amounts of output tokens corresponding to the last step of each given path
      * @return tokensOut Calculated output token addresses
-     * @return amountsOut Calculated amounts of output tokens to be received, ordered by output token address
+     * @return amountsOut Calculated amounts of output tokens, ordered by output token address
      */
     function querySwapExactIn(
         SwapPathExactAmountIn[] memory paths,
@@ -594,10 +593,9 @@ interface IRouter {
      * @dev Max amounts in specified in the paths are ignored.
      * @param paths Swap paths from token in to token out, specifying exact amounts out
      * @param userData Additional (optional) data required for the query
-     * @return pathAmountsIn Calculated amounts of input tokens to be received corresponding to the last step of each
-     * given path
+     * @return pathAmountsIn Calculated amounts of input tokens corresponding to the last step of each given path
      * @return tokensIn Calculated input token addresses
-     * @return amountsIn Calculated amounts of input tokens to be received, ordered by input token address
+     * @return amountsIn Calculated amounts of input tokens, ordered by input token address
      */
     function querySwapExactOut(
         SwapPathExactAmountOut[] memory paths,
