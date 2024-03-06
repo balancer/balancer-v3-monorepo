@@ -19,6 +19,8 @@ contract Router is IRouter, ReentrancyGuard {
     using Address for address payable;
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    uint256 private constant MAX_AMOUNT = type(uint128).max;
+
     IVault private immutable _vault;
 
     // solhint-disable-next-line var-name-mixedcase
@@ -893,7 +895,7 @@ contract Router is IRouter, ReentrancyGuard {
                         // For every other intermediate step, no maximum input applies.
                         // The input token for this step is the output token of the previous given step.
                         // We use uint128 to prevent Vault's internal scaling from overflowing.
-                        stepMaxAmountIn = type(uint128).max;
+                        stepMaxAmountIn = MAX_AMOUNT;
                         stepTokenIn = path.steps[uint256(j - 1)].tokenOut;
                     }
                 }
@@ -1053,7 +1055,7 @@ contract Router is IRouter, ReentrancyGuard {
                             tokenOut: tokenOut,
                             amountGiven: exactAmountIn,
                             limit: 0,
-                            deadline: type(uint256).max,
+                            deadline: MAX_AMOUNT,
                             wethIsEth: false,
                             userData: userData
                         })
@@ -1083,7 +1085,7 @@ contract Router is IRouter, ReentrancyGuard {
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
                             amountGiven: exactAmountOut,
-                            limit: type(uint256).max,
+                            limit: MAX_AMOUNT,
                             deadline: type(uint256).max,
                             wethIsEth: false,
                             userData: userData
@@ -1153,7 +1155,7 @@ contract Router is IRouter, ReentrancyGuard {
         bytes calldata userData
     ) external returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
         for (uint256 i = 0; i < paths.length; ++i) {
-            paths[i].maxAmountIn = type(uint128).max;
+            paths[i].maxAmountIn = MAX_AMOUNT;
         }
 
         return
@@ -1223,7 +1225,7 @@ contract Router is IRouter, ReentrancyGuard {
         (uint256[] memory maxAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
             pool,
             tokenIn,
-            type(uint128).max
+            MAX_AMOUNT
         );
 
         (uint256[] memory amountsIn, , ) = abi.decode(
@@ -1391,7 +1393,7 @@ contract Router is IRouter, ReentrancyGuard {
                         sender: address(this),
                         pool: pool,
                         minAmountsOut: minAmountsOut,
-                        maxBptAmountIn: type(uint128).max,
+                        maxBptAmountIn: MAX_AMOUNT,
                         kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                         wethIsEth: false,
                         userData: userData
