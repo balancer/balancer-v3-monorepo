@@ -21,6 +21,7 @@ import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 
 contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     using FixedPoint for uint256;
+    using ScalingHelpers for uint256;
 
     uint256 public constant MIN_INIT_BPT = 1e6;
 
@@ -176,9 +177,34 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     }
 
     function onAfterSwap(
-        IPoolHooks.AfterSwapParams calldata,
+        IPoolHooks.AfterSwapParams calldata params,
         uint256 amountCalculatedScaled18
     ) external view override returns (bool success) {
+        // check that actual pool balances match
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, uint256[] memory scalingFactors, ) = getVault()
+            .getPoolTokenInfo(address(this));
+        uint256[] memory rates = getVault().getPoolTokenRates(address(this));
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (tokens[i] == params.tokenIn) {
+                uint256 expectedTokenInBalanceRaw = params.tokenInBalanceScaled18.toRawUndoRateRoundDown(
+                    scalingFactors[i],
+                    rates[i]
+                );
+                if (expectedTokenInBalanceRaw != balancesRaw[i]) {
+                    return false;
+                }
+            } else if (tokens[i] == params.tokenOut) {
+                uint256 expectedTokenOutBalanceRaw = params.tokenOutBalanceScaled18.toRawUndoRateRoundDown(
+                    scalingFactors[i],
+                    rates[i]
+                );
+                if (expectedTokenOutBalanceRaw != balancesRaw[i]) {
+                    return false;
+                }
+            }
+        }
+
         return amountCalculatedScaled18 > 0 && !failOnAfterSwapHook;
     }
 
