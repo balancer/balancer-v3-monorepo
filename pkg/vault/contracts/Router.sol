@@ -34,6 +34,9 @@ contract Router is IRouter, ReentrancyGuard {
     // token out -> amount: tracks token out amounts within a batch swap.
     mapping(address => uint256) private _currentSwapTokenOutAmounts;
     // token -> amount that is part of the current input / output amounts, but is settled preemptively.
+    // This situation happens whenever there is BPT involved in the operation, which is minted and burnt instantly.
+    // Since those amounts are not tracked in the inputs / outputs to settle, we need to track them elsewhere
+    // to return the correct total amounts in and out for each token involved in the operation.
     mapping(address => uint256) private _settledTokenAmounts;
 
     modifier onlyVault() {
