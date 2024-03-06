@@ -138,7 +138,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
         setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
         setSwapFeePercentage(swapFeePercentage, address(swapPool));
 
-        uint256[] memory amountsIn = [uint256(daiAmountIn), 0].toMemoryArray();
+        uint256[] memory amountsIn = new uint256[](2);
+        amountsIn[daiIdx] = uint256(daiAmountIn);
 
         vm.startPrank(alice);
         router.addLiquidityUnbalanced(address(liquidityPool), amountsIn, 0, false, bytes(""));
@@ -157,7 +158,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             address(swapPool),
             dai,
             usdc,
-            daiAmountIn - amountsOut[0],
+            daiAmountIn - amountsOut[daiIdx],
             0,
             type(uint256).max,
             false,
@@ -170,7 +171,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
     function testAddLiquidityUnbalancedNoSwapFee__Fuzz(uint256 daiAmountIn) public {
         daiAmountIn = bound(daiAmountIn, 1e18, maxAmount);
 
-        uint256[] memory amountsIn = [uint256(daiAmountIn), 0].toMemoryArray();
+        uint256[] memory amountsIn = new uint256[](2);
+        amountsIn[daiIdx] = uint256(daiAmountIn);
 
         vm.startPrank(alice);
         router.addLiquidityUnbalanced(address(liquidityPool), amountsIn, 0, false, bytes(""));
@@ -189,7 +191,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             address(swapPool),
             dai,
             usdc,
-            daiAmountIn - amountsOut[0],
+            daiAmountIn - amountsOut[daiIdx],
             0,
             type(uint256).max,
             false,
@@ -231,7 +233,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             address(swapPool),
             dai,
             usdc,
-            daiAmountIn - amountsOut[0],
+            daiAmountIn - amountsOut[daiIdx],
             0,
             type(uint256).max,
             false,
@@ -268,7 +270,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             address(swapPool),
             dai,
             usdc,
-            daiAmountIn - amountsOut[0],
+            daiAmountIn - amountsOut[daiIdx],
             0,
             type(uint256).max,
             false,
