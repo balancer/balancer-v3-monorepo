@@ -141,11 +141,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
 
     function testInitialize__Fork() public {
         // Tokens are stored in the Vault
-        assertEq(
-            waDAI.balanceOf(address(vault)),
-            bufferDaiWrapped,
-            "Vault should have the deposited amount of aDAI"
-        );
+        assertEq(waDAI.balanceOf(address(vault)), bufferDaiWrapped, "Vault should have the deposited amount of aDAI");
         assertEq(
             daiMainnet.balanceOf(address(vault)),
             BUFFER_DAI_BASE,

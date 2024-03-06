@@ -132,11 +132,7 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
 
     function testInitializeDai() public {
         // Tokens are stored in the Vault
-        assertEq(
-            wDAI.balanceOf(address(vault)),
-            bufferDaiWrapped,
-            "Vault should have the deposited amount of wDai"
-        );
+        assertEq(wDAI.balanceOf(address(vault)), bufferDaiWrapped, "Vault should have the deposited amount of wDai");
         assertEq(
             daiMainnet.balanceOf(address(vault)),
             BUFFER_BASE_TOKENS,
@@ -169,6 +165,7 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
 
     function testInitializeWsteth() public {
         // Tokens are stored in the Vault
+        assertEq(wSAND.balanceOf(address(vault)), bufferSandWrapped, "Vault should have the deposited amount of wSand");
         assertEq(
             wWstEth.balanceOf(address(vault)),
             buffeWstethWrapped,
