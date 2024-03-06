@@ -416,7 +416,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * @param poolData The corresponding poolData to be read and updated
      * @param roundingDirection Whether balance scaling should round up or down
      */
-    function _updatePoolDataLiveBalancesAndRates(address pool, PoolData memory poolData, Rounding roundingDirection) internal view {
+    function _updatePoolDataLiveBalancesAndRates(
+        address pool,
+        PoolData memory poolData,
+        Rounding roundingDirection
+    ) internal view {
         _updateTokenRatesInPoolData(poolData);
 
         // It's possible a reentrant hook changed the raw balances in Vault storage.
