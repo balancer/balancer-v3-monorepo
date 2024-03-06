@@ -54,7 +54,7 @@ contract ERC4626BufferPool is
     // Due to rounding issues, the swap operation in a rebalance can miscalculate token amounts by 1 or 2.
     // When the swap is settled, these extra tokens are either added to the pool balance or are left behind
     // in the buffer contract as dust, to fund subsequent operations.
-    uint256 public constant MAXIMUM_DIFF_WTOKENS = 2;
+    uint256 public constant DUST_BUFFER = 2;
 
     IERC4626 internal immutable _wrappedToken;
     uint256 internal immutable _wrappedTokenScalingFactor;
@@ -163,15 +163,15 @@ contract ERC4626BufferPool is
 
             uint256 assetsRaw;
             if (request.kind == SwapKind.EXACT_IN) {
-                // Adds 2 to the amount of assets to make sure we return fewer wrapped tokens than we
+                // Adds DUST_BUFFER to the amount of assets to make sure we return fewer wrapped tokens than we
                 // obtained from amountIn. Since the buffer will unwrap less than amountIn, this contract
                 // must be funded with enough base tokens to make up the difference.
-                assetsRaw = _wrappedToken.previewRedeem(sharesRaw) + 2;
+                assetsRaw = _wrappedToken.previewRedeem(sharesRaw) + DUST_BUFFER;
             } else {
-                // Subtract 1 from the amount of assets to make sure we return more wrapped than we obtained from
-                // amountOut. Since the buffer will wrap more assets than amountOut, this contract must be funded
-                // with enough base tokens to make up the difference.
-                assetsRaw = _wrappedToken.previewRedeem(sharesRaw) - 1;
+                // Subtract DUST_BUFFER from the amount of assets to make sure we return more wrapped than we
+                // obtained from amountOut. Since the buffer will wrap more assets than amountOut, this contract
+                // must be funded with enough base tokens to make up the difference.
+                assetsRaw = _wrappedToken.previewRedeem(sharesRaw) - DUST_BUFFER + 1;
             }
             uint256 preciseAssetsScaled18 = assetsRaw.mulDown(_wrappedTokenScalingFactor);
 
@@ -238,9 +238,9 @@ contract ERC4626BufferPool is
             exchangeAmountRaw = (balanceWrappedAssetsRaw - balanceBaseAssetsRaw) / 2;
             // Since onSwap will consider a slightly bigger rate for the wrapped token, we need to account that
             // in the minimum limit of amountOut calculation, and that's why (exchangeAmountRaw - 2) is converted.
-            // Also, since the unwrap operation has RoundDown divisions, MAXIMUM_DIFF_WTOKENS needs to be subtracted
+            // Also, since the unwrap operation has RoundDown divisions, DUST_BUFFER needs to be subtracted
             // from amountOut too
-            limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw - 2) - MAXIMUM_DIFF_WTOKENS;
+            limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw - DUST_BUFFER) - DUST_BUFFER;
 
             // In this case, since there is more wrapped than base assets, wrapped tokens will be removed (tokenOut)
             // and then unwrapped, and the resulting base assets will be deposited in the pool (tokenIn)
@@ -262,9 +262,9 @@ contract ERC4626BufferPool is
             exchangeAmountRaw = (balanceBaseAssetsRaw - balanceWrappedAssetsRaw) / 2;
             // Since onSwap will consider a slightly bigger rate for the wrapped token, we need to account that
             // in the maximum limit of amountIn calculation, and that's why (exchangeAmountRaw + 2) is converted.
-            // Also, since the wrap operation has RoundDown divisions, MAXIMUM_DIFF_WTOKENS needs to be added
+            // Also, since the wrap operation has RoundDown divisions, DUST_BUFFER needs to be added
             // to amountIn too
-            limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw + 2) + MAXIMUM_DIFF_WTOKENS;
+            limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw + DUST_BUFFER) + DUST_BUFFER;
 
             // In this case, since there is more base than wrapped assets, base assets will be removed (tokenOut)
             // and then wrapped, and the resulting wrapped assets will be deposited in the pool (tokenIn)
