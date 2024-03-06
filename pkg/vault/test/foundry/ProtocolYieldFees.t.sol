@@ -26,8 +26,8 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     RateProviderMock wstETHRateProvider;
     RateProviderMock daiRateProvider;
 
-    uint256 localWstethIdx = address(wsteth) > address(dai) ? 1 : 0;
-    uint256 localDaiIdx = localWstethIdx == 0 ? 1 : 0;
+    uint256 localWstethIdx;
+    uint256 localDaiIdx;
 
     function setUp() public override {
         BaseVaultTest.setUp();
@@ -37,6 +37,9 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     function createPool() internal override returns (address) {
         wstETHRateProvider = new RateProviderMock();
         daiRateProvider = new RateProviderMock();
+
+        localWstethIdx = address(wsteth) > address(dai) ? 1 : 0;
+        localDaiIdx = localWstethIdx == 0 ? 1 : 0;
 
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         bool[] memory yieldExemptFlags = new bool[](2);
