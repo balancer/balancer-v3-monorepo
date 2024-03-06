@@ -66,22 +66,32 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnAfterSwapHook() public {
+        setSwapFeePercentage(swapFeePercentage);
+        setProtocolSwapFeePercentage(protocolSwapFeePercentage);
+
+        uint256 expectedAmountOut = (defaultAmount * 99) / 100;
+        uint256 swapFee = (defaultAmount * 1) / 100;
+
         vm.prank(bob);
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IBasePool.onSwap.selector,
-                IBasePool.SwapParams({
+                IPoolHooks.onAfterSwap.selector,
+                IPoolHooks.AfterSwapParams({
                     kind: SwapKind.EXACT_IN,
-                    amountGivenScaled18: defaultAmount,
-                    balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
-                    indexIn: 1,
-                    indexOut: 0,
+                    tokenIn: usdc,
+                    tokenOut: dai,
+                    amountInScaled18: defaultAmount,
+                    amountOutScaled18: expectedAmountOut,
+                    tokenInBalanceScaled18: defaultAmount * 2,
+                    tokenOutBalanceScaled18: defaultAmount - expectedAmountOut - swapFee / 2,
                     sender: address(router),
-                    userData: bytes("")
-                })
+                    userData: ""
+                }),
+                expectedAmountOut
             )
         );
+
         router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, type(uint256).max, false, bytes(""));
     }
 
