@@ -11,6 +11,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
@@ -18,6 +19,7 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract HooksTest is BaseVaultTest {
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -69,8 +71,9 @@ contract HooksTest is BaseVaultTest {
         setSwapFeePercentage(swapFeePercentage);
         setProtocolSwapFeePercentage(protocolSwapFeePercentage);
 
-        uint256 expectedAmountOut = (defaultAmount * 99) / 100;
-        uint256 swapFee = (defaultAmount * 1) / 100;
+        uint256 expectedAmountOut = defaultAmount.mulDown(swapFeePercentage.complement());
+        uint256 swapFee = defaultAmount.mulDown(swapFeePercentage);
+        uint256 protocolFee = swapFee.mulDown(protocolSwapFeePercentage);
 
         vm.prank(bob);
         vm.expectCall(
@@ -84,7 +87,7 @@ contract HooksTest is BaseVaultTest {
                     amountInScaled18: defaultAmount,
                     amountOutScaled18: expectedAmountOut,
                     tokenInBalanceScaled18: defaultAmount * 2,
-                    tokenOutBalanceScaled18: defaultAmount - expectedAmountOut - swapFee / 2,
+                    tokenOutBalanceScaled18: defaultAmount - expectedAmountOut - protocolFee,
                     sender: address(router),
                     userData: ""
                 }),
