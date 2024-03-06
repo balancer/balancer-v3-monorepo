@@ -426,14 +426,10 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
             mockedWsteth.mint(bufferAddress, wstethToConvert + 1e18);
 
             vm.startPrank(bufferAddress);
-            daiMainnet.approve(address(vault), type(uint256).max);
-            wDAI.approve(address(vault), type(uint256).max);
-            daiMainnet.approve(address(wDAI), type(uint256).max);
+            daiMainnet.approve(address(wDAI), daiToConvert);
             wDAI.deposit(daiToConvert, bufferAddress);
 
-            wstethMainnet.approve(address(vault), type(uint256).max);
-            wWstEth.approve(address(vault), type(uint256).max);
-            wstethMainnet.approve(address(wWstEth), type(uint256).max);
+            wstethMainnet.approve(address(wWstEth), wstethToConvert);
             wWstEth.deposit(wstethToConvert, bufferAddress);
             vm.stopPrank();
         }

@@ -396,15 +396,10 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             vm.stopPrank();
 
             vm.startPrank(bufferAddress);
-            daiMainnet.approve(address(vault), type(uint256).max);
-            waDAI.approve(address(vault), type(uint256).max);
-            daiMainnet.approve(address(waDAI), type(uint256).max);
+            daiMainnet.approve(address(waDAI), daiToConvert);
             waDAI.deposit(daiToConvert, bufferAddress);
 
-            usdcMainnet.approve(address(vault), type(uint256).max);
-            waUSDC.approve(address(vault), type(uint256).max);
-            usdcMainnet.approve(address(waUSDC), type(uint256).max);
-
+            usdcMainnet.approve(address(waUSDC), usdcToConvert);
             waUSDC.deposit(usdcToConvert, bufferAddress);
             vm.stopPrank();
         }
