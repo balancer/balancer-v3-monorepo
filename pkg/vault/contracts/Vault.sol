@@ -244,7 +244,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 revert BeforeSwapHookFailed();
             }
 
-            _updatePoolDataLiveBalancesAndRates(poolData, Rounding.ROUND_DOWN);
+            _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN);
 
             // Also update amountGivenScaled18, as it will now be used in the swap, and the rates might have changed.
             _updateAmountGivenInVars(vars, params, poolData);
@@ -416,10 +416,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * @param poolData The corresponding poolData to be read and updated
      * @param roundingDirection Whether balance scaling should round up or down
      */
-    function _updatePoolDataLiveBalancesAndRates(PoolData memory poolData, Rounding roundingDirection) internal view {
+    function _updatePoolDataLiveBalancesAndRates(address pool, PoolData memory poolData, Rounding roundingDirection) internal view {
         _updateTokenRatesInPoolData(poolData);
 
+        // It's possible a reentrant hook changed the raw balances in Vault storage.
+        // Update them before computing the live balances.
+        (, uint256[] memory balancesRaw, , ) = _getPoolTokenInfo(pool);
+
         for (uint256 i = 0; i < poolData.tokenConfig.length; ++i) {
+            poolData.balancesRaw[i] = balancesRaw[i];
+
             _updateLiveTokenBalanceInPoolData(poolData, roundingDirection, i);
         }
     }
@@ -477,7 +483,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (adding liquidity, so round up) again.
-            _updatePoolDataLiveBalancesAndRates(poolData, Rounding.ROUND_UP);
+            _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_UP);
 
             // Also update maxAmountsInScaled18, as the rates might have changed.
             maxAmountsInScaled18 = params.maxAmountsIn.copyToScaled18ApplyRateRoundDownArray(
@@ -676,7 +682,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (removing liquidity, so round down) again.
-            _updatePoolDataLiveBalancesAndRates(poolData, Rounding.ROUND_DOWN);
+            _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN);
 
             // Also update minAmountsOutScaled18, as the rates might have changed.
             minAmountsOutScaled18 = params.minAmountsOut.copyToScaled18ApplyRateRoundUpArray(
