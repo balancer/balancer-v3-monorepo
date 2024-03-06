@@ -50,11 +50,9 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
     ERC4626BufferPoolMock internal bufferPoolSand;
 
     IERC20 daiMainnet;
-    IERC20 wDaiMainnet;
     IERC4626 wDAI;
 
     IERC20 sandMainnet;
-    IERC20 wSandMainnet;
     IERC4626 wSAND;
 
     uint256 constant BLOCK_NUMBER = 19314200;
@@ -151,7 +149,7 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
     function testInitializeDai__Fork() public {
         // Tokens are stored in the Vault
         assertEq(
-            wDaiMainnet.balanceOf(address(vault)),
+            wDAI.balanceOf(address(vault)),
             bufferDaiWrapped,
             "Vault should have the deposited amount of wDai"
         );
@@ -188,7 +186,7 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
     function testInitializeSand__Fork() public {
         // Tokens are stored in the Vault
         assertEq(
-            wSandMainnet.balanceOf(address(vault)),
+            wSAND.balanceOf(address(vault)),
             bufferSandWrapped,
             "Vault should have the deposited amount of wSand"
         );
@@ -388,12 +386,10 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
 
     function _createTokens() private {
         wDAI = new ERC4626TokenMock("Wrapped Dai", "wDAI", SMALL_AMOUNT, BIG_AMOUNT, IERC20(DAI_ADDRESS));
-        wDaiMainnet = IERC20(address(wDAI));
         wDAI_ADDRESS = address(wDAI);
         vm.label(wDAI_ADDRESS, "wDAI");
 
         wSAND = new ERC4626TokenMock("Wrapped Sand", "wSAND", BIG_AMOUNT, SMALL_AMOUNT, IERC20(SAND_ADDRESS));
-        wSandMainnet = IERC20(address(wSAND));
         wSAND_ADDRESS = address(wSAND);
         vm.label(wSAND_ADDRESS, "wSAND");
     }
@@ -415,11 +411,11 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
 
             vm.startPrank(userAddress);
             daiMainnet.approve(address(vault), type(uint256).max);
-            wDaiMainnet.approve(address(vault), type(uint256).max);
+            wDAI.approve(address(vault), type(uint256).max);
             daiMainnet.approve(address(wDAI), type(uint256).max);
 
             sandMainnet.approve(address(vault), type(uint256).max);
-            wSandMainnet.approve(address(vault), type(uint256).max);
+            wSAND.approve(address(vault), type(uint256).max);
             sandMainnet.approve(address(wSAND), type(uint256).max);
             vm.stopPrank();
         }
@@ -441,12 +437,12 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
 
             vm.startPrank(bufferAddress);
             daiMainnet.approve(address(vault), type(uint256).max);
-            wDaiMainnet.approve(address(vault), type(uint256).max);
+            wDAI.approve(address(vault), type(uint256).max);
             daiMainnet.approve(address(wDAI), type(uint256).max);
             wDAI.deposit(daiToConvert, bufferAddress);
 
             sandMainnet.approve(address(vault), type(uint256).max);
-            wSandMainnet.approve(address(vault), type(uint256).max);
+            wSAND.approve(address(vault), type(uint256).max);
             sandMainnet.approve(address(wSAND), type(uint256).max);
             wSAND.deposit(sandToConvert, bufferAddress);
             vm.stopPrank();

@@ -49,11 +49,8 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     ERC4626BufferPoolMock internal bufferPoolDai;
 
     IERC20 daiMainnet;
-    IERC20 aDaiMainnet;
     IERC4626 waDAI;
-
     IERC20 usdcMainnet;
-    IERC20 aUsdcMainnet;
     IERC4626 waUSDC;
 
     // Using older block number because convertToAssets function is bricked in the new version of the aToken wrapper
@@ -145,7 +142,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     function testInitialize__Fork() public {
         // Tokens are stored in the Vault
         assertEq(
-            aDaiMainnet.balanceOf(address(vault)),
+            waDAI.balanceOf(address(vault)),
             bufferDaiWrapped,
             "Vault should have the deposited amount of aDAI"
         );
@@ -155,7 +152,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             "Vault should have the deposited amount of DAI"
         );
         assertEq(
-            aUsdcMainnet.balanceOf(address(vault)),
+            waUSDC.balanceOf(address(vault)),
             bufferUsdcWrapped,
             "Vault should have the deposited amount of aUSDC"
         );
@@ -379,11 +376,11 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
 
             vm.startPrank(userAddress);
             daiMainnet.approve(address(vault), type(uint256).max);
-            aDaiMainnet.approve(address(vault), type(uint256).max);
+            waDAI.approve(address(vault), type(uint256).max);
             daiMainnet.approve(address(waDAI), type(uint256).max);
 
             usdcMainnet.approve(address(vault), type(uint256).max);
-            aUsdcMainnet.approve(address(vault), type(uint256).max);
+            waUSDC.approve(address(vault), type(uint256).max);
             usdcMainnet.approve(address(waUSDC), type(uint256).max);
             vm.stopPrank();
         }
@@ -404,12 +401,12 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
 
             vm.startPrank(bufferAddress);
             daiMainnet.approve(address(vault), type(uint256).max);
-            aDaiMainnet.approve(address(vault), type(uint256).max);
+            waDAI.approve(address(vault), type(uint256).max);
             daiMainnet.approve(address(waDAI), type(uint256).max);
             waDAI.deposit(daiToConvert, bufferAddress);
 
             usdcMainnet.approve(address(vault), type(uint256).max);
-            aUsdcMainnet.approve(address(vault), type(uint256).max);
+            waUSDC.approve(address(vault), type(uint256).max);
             usdcMainnet.approve(address(waUSDC), type(uint256).max);
 
             waUSDC.deposit(usdcToConvert, bufferAddress);
@@ -424,16 +421,14 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
 
     function _setupTokens() private {
         daiMainnet = IERC20(DAI_ADDRESS);
-        vm.label(DAI_ADDRESS, "DAI");
-        aDaiMainnet = IERC20(aDAI_ADDRESS);
-        vm.label(aDAI_ADDRESS, "aDAI");
         waDAI = IERC4626(aDAI_ADDRESS);
+        vm.label(DAI_ADDRESS, "DAI");
+        vm.label(aDAI_ADDRESS, "aDAI");
 
         usdcMainnet = IERC20(USDC_ADDRESS);
-        vm.label(USDC_ADDRESS, "USDC");
-        aUsdcMainnet = IERC20(aUSDC_ADDRESS);
-        vm.label(aUSDC_ADDRESS, "aUSDC");
         waUSDC = IERC4626(aUSDC_ADDRESS);
+        vm.label(USDC_ADDRESS, "USDC");
+        vm.label(aUSDC_ADDRESS, "aUSDC");
     }
 
     function _checkBufferPoolBalance(
