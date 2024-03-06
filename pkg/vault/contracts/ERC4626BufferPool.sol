@@ -51,9 +51,9 @@ contract ERC4626BufferPool is
     uint256 public constant WRAPPED_TOKEN_INDEX = 0;
     uint256 public constant BASE_TOKEN_INDEX = 1;
 
-    // Due to rounding issues, the swap operation of the rebalance function can miss the amount of tokens by 1 or 2.
-    // These extra tokens are sent to the pool balances or stays in the buffer contract, when the swap is settled.
-    // We are limiting the amount of this error to 2 units of the wrapped token.
+    // Due to rounding issues, the swap operation in a rebalance can miscalculate token amounts by 1 or 2.
+    // When the swap is settled, these extra tokens are either added to the pool balance or are left behind
+    // in the buffer contract as dust, to fund subsequent operations.
     uint256 public constant MAXIMUM_DIFF_WTOKENS = 2;
 
     IERC4626 internal immutable _wrappedToken;
@@ -163,14 +163,14 @@ contract ERC4626BufferPool is
 
             uint256 assetsRaw;
             if (request.kind == SwapKind.EXACT_IN) {
-                // Adds 2 to assets amount so we make sure we're returning less wrapped than converted
-                // amountIn. Since the buffer will unwrap less assets than amountIn, the difference will
-                // be paid with buffer's contract base tokens.
+                // Adds 2 to the amount of assets to make sure we return fewer wrapped tokens than we
+                // obtained from amountIn. Since the buffer will unwrap less than amountIn, this contract
+                // must be funded with enough base tokens to make up the difference.
                 assetsRaw = _wrappedToken.previewRedeem(sharesRaw) + 2;
             } else {
-                // Subtracts 1 from assets amount so we make sure we're returning more wrapped than converted
-                // amountOut. Since the buffer will wrap more assets than amountOut, the difference will
-                // be paid with buffer's contract base tokens.
+                // Subtract 1 from the amount of assets to make sure we return more wrapped than we obtained from
+                // amountOut. Since the buffer will wrap more assets than amountOut, this contract must be funded
+                // with enough base tokens to make up the difference.
                 assetsRaw = _wrappedToken.previewRedeem(sharesRaw) - 1;
             }
             uint256 preciseAssetsScaled18 = assetsRaw.mulDown(_wrappedTokenScalingFactor);
