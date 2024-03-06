@@ -431,9 +431,9 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         IVault vault,
         address bufferPool,
         address wrappedToken,
-        uint256 balanceBaseRaw,
-        uint256 balanceWrappedRaw
-    ) private returns (uint256 contractBalanceBaseRaw, uint256 contractBalanceWrappedRaw) {
+        uint256 expectedBaseBalance,
+        uint256 expectedWrappedBalance
+    ) private returns (uint256 contractBaseBalance, uint256 contractWrappedBalance) {
         IERC4626 wToken = IERC4626(wrappedToken);
         IERC20 baseToken = IERC20(wToken.asset());
         uint8 decimals = wToken.decimals();
@@ -445,7 +445,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         (, , uint256[] memory originalBalances, , ) = vault.getPoolTokenInfo(bufferPool);
         assertApproxEqAbs(
             originalBalances[WRAPPED_TOKEN_INDEX],
-            balanceWrappedRaw,
+            expectedWrappedBalance,
             10 ** (decimals / 2),
             string(
                 abi.encodePacked(
@@ -456,7 +456,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         );
         assertApproxEqAbs(
             originalBalances[BASE_TOKEN_INDEX],
-            balanceBaseRaw,
+            expectedBaseBalance,
             10 ** (decimals / 2),
             string(
                 abi.encodePacked(
@@ -466,28 +466,28 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             )
         );
 
-        contractBalanceBaseRaw = baseToken.balanceOf(bufferPool);
-        contractBalanceWrappedRaw = wToken.balanceOf(bufferPool);
+        contractBaseBalance = baseToken.balanceOf(bufferPool);
+        contractWrappedBalance = wToken.balanceOf(bufferPool);
     }
 
     function _checkBufferContractBalanceAfterRebalance(
-        uint256 baseBalanceBeforeRebalanceRaw,
-        uint256 baseBalanceAfterRebalanceRaw,
-        uint256 wrappedBalanceBeforeRebalanceRaw,
-        uint256 wrappedBalanceAfterRebalanceRaw
+        uint256 baseBalanceBeforeRebalance,
+        uint256 baseBalanceAfterRebalance,
+        uint256 wrappedBalanceBeforeRebalance,
+        uint256 wrappedBalanceAfterRebalance
     ) private {
         // Makes sure the base token balance didn't decrease in the pool contract by more than 5 units
         // (ERC4626 deposit sometimes leave up to 5 tokens behind)
         assertApproxEqAbs(
-            baseBalanceBeforeRebalanceRaw - baseBalanceAfterRebalanceRaw,
+            baseBalanceBeforeRebalance - baseBalanceAfterRebalance,
             0,
             5,
             "BufferPool contract should not lose more than 5 base tokens after rebalance"
         );
         // Makes sure the balance of wrapped tokens don't change
         assertEq(
-            wrappedBalanceBeforeRebalanceRaw,
-            wrappedBalanceAfterRebalanceRaw,
+            wrappedBalanceBeforeRebalance,
+            wrappedBalanceAfterRebalance,
             "The balance of wrapped tokens should not change in the buffer pool"
         );
     }
