@@ -141,8 +141,16 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
 
         // Check if tokens are deposited in the pool
         (, , uint256[] memory actualBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolDai));
-        assertEq(actualBalances[0], bufferDaiWrapped, "wDai BufferPool balance should have the deposited amount of wDai");
-        assertEq(actualBalances[1], BUFFER_BASE_TOKENS, "wDai BufferPool balance should have the deposited amount of DAI");
+        assertEq(
+            actualBalances[0],
+            bufferDaiWrapped,
+            "wDai BufferPool balance should have the deposited amount of wDai"
+        );
+        assertEq(
+            actualBalances[1],
+            BUFFER_BASE_TOKENS,
+            "wDai BufferPool balance should have the deposited amount of DAI"
+        );
 
         // should mint correct amount of BPT tokens for buffer
         // Account for the precision loss
