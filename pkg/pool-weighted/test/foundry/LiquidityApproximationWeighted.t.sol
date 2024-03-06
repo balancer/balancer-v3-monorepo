@@ -32,16 +32,13 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
 
     function createPool() internal override returns (address) {
         WeightedPoolFactory factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
-        TokenConfig[] memory tokens = new TokenConfig[](2);
-        tokens[0].token = IERC20(dai);
-        tokens[1].token = IERC20(usdc);
 
         liquidityPool = address(
             WeightedPool(
                 factory.create(
                     "ERC20 Pool",
                     "ERC20POOL",
-                    tokens,
+                    vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
                     [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                     ZERO_BYTES32
                 )
@@ -54,7 +51,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
                 factory.create(
                     "ERC20 Pool",
                     "ERC20POOL",
-                    tokens,
+                    vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
                     [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                     0x0000000000000000000000000000000000000000000000000000000000000001
                 )
