@@ -2,8 +2,9 @@
 
 pragma solidity ^0.8.4;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasePoolFactory } from "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
@@ -30,7 +31,7 @@ contract WeightedPool8020Factory is BasePoolFactory {
      * @param name Name of the pool
      * @param symbol Symbol of the pool
      * @param highWeightTokenConfig The token configuration of the high weight token
-     * @param lowWeightTokenConfig The token configuration of the high weight token
+     * @param lowWeightTokenConfig The token configuration of the low weight token
      * @param salt Value passed to create3, used to create the address
      */
     function create(

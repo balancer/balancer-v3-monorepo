@@ -21,12 +21,16 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract VaultLiquidityWithRatesTest is BaseVaultTest {
     using ArrayHelpers for *;
 
-    uint256 localDaiIdx = address(dai) > address(wsteth) ? 1 : 0;
-    uint256 localWstethIdx = localDaiIdx == 0 ? 1 : 0;
+    // Track the indices for the local dai/wsteth pool.
+    uint256 localDaiIdx;
+    uint256 localWstethIdx;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
         rateProvider.mockRate(mockRate);
+
+        localDaiIdx = address(dai) > address(wsteth) ? 1 : 0;
+        localWstethIdx = localDaiIdx == 0 ? 1 : 0;
     }
 
     function createPool() internal override returns (address) {

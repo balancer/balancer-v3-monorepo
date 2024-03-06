@@ -26,6 +26,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     RateProviderMock wstETHRateProvider;
     RateProviderMock daiRateProvider;
 
+    // Track the indices for the local dai/wsteth pool.
     uint256 localWstethIdx;
     uint256 localDaiIdx;
 

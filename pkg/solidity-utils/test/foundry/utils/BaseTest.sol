@@ -62,7 +62,7 @@ abstract contract BaseTest is Test, GasSnapshot {
 
         daiIdx = address(dai) > address(usdc) ? 1 : 0;
         usdcIdx = daiIdx == 0 ? 1 : 0;
-        
+
         // Fill the token list.
         tokens.push(dai);
         tokens.push(usdc);

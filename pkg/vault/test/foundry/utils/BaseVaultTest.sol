@@ -37,6 +37,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     }
 
     bytes32 constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+    bytes32 constant ONE_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000001;
 
     // Vault mock.
     IVaultMock internal vault;

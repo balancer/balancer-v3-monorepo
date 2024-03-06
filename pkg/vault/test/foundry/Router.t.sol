@@ -16,9 +16,6 @@ import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/I
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
-import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
-import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
@@ -44,11 +41,15 @@ contract RouterTest is BaseVaultTest {
     PoolMock internal wethPool;
     PoolMock internal wethPoolNoInit;
 
-    uint256 localWethIdx = address(weth) > address(dai) ? 1 : 0;
-    uint256 localDaiIdx = localWethIdx == 0 ? 1 : 0;
+    // Track the indices for the local dai/weth pool.
+    uint256 localWethIdx;
+    uint256 localDaiIdx;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+
+        localWethIdx = address(weth) > address(dai) ? 1 : 0;
+        localDaiIdx = localWethIdx == 0 ? 1 : 0;
     }
 
     function createPool() internal override returns (address) {
