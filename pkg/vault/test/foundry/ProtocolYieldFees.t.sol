@@ -26,6 +26,9 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     RateProviderMock wstETHRateProvider;
     RateProviderMock daiRateProvider;
 
+    uint256 localWstethIdx = address(wsteth) > address(dai) ? 1 : 0;
+    uint256 localDaiIdx = localWstethIdx == 0 ? 1 : 0;
+
     function setUp() public override {
         BaseVaultTest.setUp();
     }
@@ -38,6 +41,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         bool[] memory yieldExemptFlags = new bool[](2);
 
+        // These will be sorted with the tokens by buildTokenConfig.
         rateProviders[0] = wstETHRateProvider;
         rateProviders[1] = daiRateProvider;
         yieldExemptFlags[1] = true;
@@ -137,9 +141,12 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
 
         // How much should the fee be?
         // Tricky, because the diff already has the fee subtracted. Need to add it back in
-        uint256 protocolFeeScaled18 = actualProtocolFee.toScaled18ApplyRateRoundDown(scalingFactors[0], wstethRate);
-        uint256 feeScaled18 = (liveBalanceDeltas[0] + protocolFeeScaled18).mulDown(yieldFeePercentage);
-        uint256 expectedProtocolFee = feeScaled18.toRawUndoRateRoundDown(scalingFactors[0], wstethRate);
+        uint256 protocolFeeScaled18 = actualProtocolFee.toScaled18ApplyRateRoundDown(
+            scalingFactors[localWstethIdx],
+            wstethRate
+        );
+        uint256 feeScaled18 = (liveBalanceDeltas[localWstethIdx] + protocolFeeScaled18).mulDown(yieldFeePercentage);
+        uint256 expectedProtocolFee = feeScaled18.toRawUndoRateRoundDown(scalingFactors[localWstethIdx], wstethRate);
 
         assertApproxEqAbs(actualProtocolFee, expectedProtocolFee, 1e3, "Actual protocol fee is not the expected one");
     }
@@ -254,8 +261,8 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         uint256[] memory expectedRawBalances = vault.getRawBalances(address(pool));
         uint256[] memory expectedRates = new uint256[](2);
 
-        expectedRates[0] = wstethRate;
-        expectedRates[1] = daiRate;
+        expectedRates[localWstethIdx] = wstethRate;
+        expectedRates[localDaiIdx] = daiRate;
 
         uint256 expectedLiveBalance;
 
