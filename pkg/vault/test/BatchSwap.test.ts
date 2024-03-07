@@ -13,7 +13,7 @@ import { BalanceChange, expectBalanceChange } from '@balancer-labs/v3-helpers/sr
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { buildTokenConfig } from './poolSetup';
-import { sortAddresses, sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
+import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
 describe('BatchSwap', function () {
   let vault: Vault;
