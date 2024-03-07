@@ -23,7 +23,7 @@ class ERC20TokensDeployer {
     const tokens = await Promise.all(deployments.map(this.deployToken));
 
     if (sorted) {
-      const [, finalTokens] = sortTokens((await Promise.all(tokens.map((token) => token.getAddress()))), tokens);
+      const [, finalTokens] = sortTokens(await Promise.all(tokens.map((token) => token.getAddress())), tokens);
 
       return new ERC20TokenList(finalTokens as ERC20TestToken[]);
     }
