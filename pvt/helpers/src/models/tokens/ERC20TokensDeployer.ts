@@ -6,7 +6,6 @@ import ERC20TokenList from './ERC20TokenList';
 import TypesConverter from '../types/TypesConverter';
 import { RawTokenDeployment, RawTokensDeployment, TokenDeployment, TokensDeploymentOptions } from './types';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
-import { sortTokens } from './sortingHelper';
 
 class ERC20TokensDeployer {
   async deploy(
@@ -21,14 +20,13 @@ class ERC20TokensDeployer {
       varyDecimals
     );
     const tokens = await Promise.all(deployments.map(this.deployToken));
+    let tokenList = new ERC20TokenList(tokens);
 
     if (sorted) {
-      const [, finalTokens] = sortTokens(await Promise.all(tokens.map((token) => token.getAddress())), tokens);
-
-      return new ERC20TokenList(finalTokens as ERC20TestToken[]);
+      tokenList = await tokenList.sort();
     }
 
-    return new ERC20TokenList(tokens);
+    return tokenList;
   }
 
   async deployToken(params: RawTokenDeployment): Promise<ERC20TestToken> {

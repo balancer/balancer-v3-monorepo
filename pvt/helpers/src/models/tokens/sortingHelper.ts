@@ -1,18 +1,15 @@
-function assert(condition: boolean, error: string): asserts condition {
-  if (!condition) throw new Error(error);
+import { BaseContract } from 'ethers';
+
+const cmpAddresses = (tokenA: string, tokenB: string): number => (tokenA.toLowerCase() > tokenB.toLowerCase() ? 1 : -1);
+
+export function sortAddresses(tokens: string[]): string[] {
+  return tokens.sort((tokenA, tokenB) => cmpAddresses(tokenA, tokenB));
 }
 
-const cmpTokens = (tokenA: string, tokenB: string): number => (tokenA.toLowerCase() > tokenB.toLowerCase() ? 1 : -1);
-
-const transposeMatrix = (matrix: unknown[][]): unknown[][] =>
-  matrix[0].map((_, columnIndex) => matrix.map((row) => row[columnIndex]));
-
-export function sortTokens(tokens: string[], ...others: unknown[][]): [string[], ...unknown[][]] {
-  others.forEach((array) => assert(tokens.length === array.length, 'array length mismatch'));
-
-  const transpose = transposeMatrix([tokens, ...others]) as [string, ...unknown[]][];
-  const sortedTranspose = transpose.sort(([tokenA], [tokenB]) => cmpTokens(tokenA, tokenB));
-  const [sortedTokens, ...sortedOthers] = transposeMatrix(sortedTranspose) as [string[], ...unknown[][]];
-
-  return [sortedTokens, ...sortedOthers];
+export async function sortTokens(tokens: BaseContract[]): Promise<BaseContract[]> {
+  const sortableArray = (await Promise.all(
+    tokens.map(async (token) => [await token.getAddress(), token])
+  )) as unknown as [string, BaseContract][];
+  const sortedArray = sortableArray.sort((a, b) => (a[0].toLowerCase() > b[0].toLowerCase() ? 1 : -1));
+  return sortedArray.map((x) => x[1]);
 }

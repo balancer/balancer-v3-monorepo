@@ -4,7 +4,7 @@ import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/PoolMock';
 import { ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
-import { sortTokens } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
+import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
@@ -34,8 +34,8 @@ export async function setupEnvironment(pauseWindowDuration: number): Promise<{
   const tokenBAddress = await tokenB.getAddress();
   const tokenCAddress = await tokenC.getAddress();
 
-  const [poolATokens] = sortTokens([tokenAAddress, tokenBAddress, tokenCAddress]);
-  const [poolBTokens] = sortTokens([tokenAAddress, tokenCAddress]);
+  const poolATokens = sortAddresses([tokenAAddress, tokenBAddress, tokenCAddress]);
+  const poolBTokens = sortAddresses([tokenAAddress, tokenCAddress]);
 
   const poolA: PoolMock = await deploy('v3-vault/PoolMock', {
     args: [vaultAddress, 'Pool A', 'POOLA', buildTokenConfig(poolATokens), true, 365 * 24 * 3600, ZERO_ADDRESS],
