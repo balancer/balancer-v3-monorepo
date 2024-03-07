@@ -31,7 +31,8 @@ interface IVaultMainMock {
 
     function computePoolDataUpdatingBalancesAndFees(
         address pool,
-        Rounding roundingDirection
+        Rounding roundingDirection,
+        uint256[] memory exactAmountsIn
     ) external returns (PoolData memory);
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw);

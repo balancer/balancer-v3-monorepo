@@ -60,7 +60,8 @@ contract PoolDataTest is BaseVaultTest {
 
         PoolData memory data = vault.computePoolDataUpdatingBalancesAndFees(
             address(pool),
-            roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN
+            roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN,
+            new uint256[](2)
         );
 
         // Compute decimal scaling factors from the tokens, in the mock.

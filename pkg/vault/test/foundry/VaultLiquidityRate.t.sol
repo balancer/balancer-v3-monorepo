@@ -132,7 +132,11 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             bytes("")
         );
 
-        PoolData memory balances = vault.computePoolDataUpdatingBalancesAndFees(address(pool), Rounding.ROUND_DOWN);
+        PoolData memory balances = vault.computePoolDataUpdatingBalancesAndFees(
+            address(pool),
+            Rounding.ROUND_DOWN,
+            new uint256[](2)
+        );
         uint256 bptAmountIn = defaultAmount * 2;
 
         vm.expectCall(
@@ -161,7 +165,11 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
 
         uint256 rateAdjustedAmountOut = FixedPoint.mulDown(defaultAmount, mockRate);
 
-        PoolData memory balances = vault.computePoolDataUpdatingBalancesAndFees(address(pool), Rounding.ROUND_DOWN);
+        PoolData memory balances = vault.computePoolDataUpdatingBalancesAndFees(
+            address(pool),
+            Rounding.ROUND_DOWN,
+            new uint256[](2)
+        );
 
         vm.expectCall(
             address(pool),

@@ -247,7 +247,8 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     ) internal returns (uint256[] memory liveBalances) {
         PoolData memory data = vault.computePoolDataUpdatingBalancesAndFees(
             address(pool),
-            roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN
+            roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN,
+            new uint256[](2)
         );
 
         uint256[] memory expectedScalingFactors = PoolMock(pool).getDecimalScalingFactors();

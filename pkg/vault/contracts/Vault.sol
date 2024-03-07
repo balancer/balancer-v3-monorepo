@@ -213,7 +213,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // storage, if yield fees are due. Since the swap callbacks are reentrant and could do anything, including
         // change these balances, we cannot simply store the pending yield fees (and balance changes) in the poolData
         // struct, to be settled in non-reentrant _swap with the rest of the accounting.
-        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN, vars.exactAmountInRaw);
+        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
+            params.pool,
+            Rounding.ROUND_DOWN,
+            vars.exactAmountInRaw
+        );
 
         // if the sender is the buffer pool, swaps are allowed as this is part of the rebalance mechanism.
         if (
@@ -432,7 +436,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * @param roundingDirection Whether balance scaling should round up or down
      * @param exactAmountsInRaw // TODO
      */
-    function _updatePoolDataLiveBalancesAndRates(address pool, PoolData memory poolData, Rounding roundingDirection, uint256[] memory exactAmountsInRaw) internal view {
+    function _updatePoolDataLiveBalancesAndRates(
+        address pool,
+        PoolData memory poolData,
+        Rounding roundingDirection,
+        uint256[] memory exactAmountsInRaw
+    ) internal view {
         _updateTokenRatesInPoolData(poolData, exactAmountsInRaw);
 
         // It's possible a reentrant hook changed the raw balances in Vault storage.
@@ -470,7 +479,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // If proportional, higher balances = higher proportional amountsIn, favoring the pool.
         // If unbalanced, higher balances = lower invariant ratio with fees.
         // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
-        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_UP);
+        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
+            params.pool,
+            Rounding.ROUND_UP,
+            params.maxAmountsIn
+        );
         InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.maxAmountsIn.length);
 
         // Amounts are entering pool math, so round down.
@@ -499,7 +512,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (adding liquidity, so round up) again.
-            _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_UP);
+            _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_UP, params.maxAmountsIn);
 
             // Also update maxAmountsInScaled18, as the rates might have changed.
             maxAmountsInScaled18 = params.maxAmountsIn.copyToScaled18ApplyRateRoundDownArray(
@@ -671,7 +684,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // If proportional, lower balances = lower proportional amountsOut, favoring the pool.
         // If unbalanced, lower balances = lower invariant ratio without fees.
         // bptIn = supply * (1 - ratio), so lower ratio = more bptIn, favoring the pool.
-        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
+            params.pool,
+            Rounding.ROUND_DOWN,
+            params.minAmountsOut
+        );
         InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.minAmountsOut.length);
 
         // Amounts are entering pool math; higher amounts would burn more BPT, so round up to favor the pool.
@@ -698,7 +715,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (removing liquidity, so round down) again.
-            _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN);
+            _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN, params.minAmountsOut);
 
             // Also update minAmountsOutScaled18, as the rates might have changed.
             minAmountsOutScaled18 = params.minAmountsOut.copyToScaled18ApplyRateRoundUpArray(
@@ -932,7 +949,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultMain
     function getRate(address pool, uint256 shares) public view withInitializedPool(pool) returns (uint256 rate) {
-        (PoolData memory poolData, ) = _getPoolDataAndYieldFees(pool, Rounding.ROUND_DOWN);
+        // TODO find out how to don't hardcore number of tokens in pool
+        (PoolData memory poolData, ) = _getPoolDataAndYieldFees(pool, Rounding.ROUND_DOWN, new uint256[](10));
 
         if (poolData.poolConfig.isBufferPool) {
             rate = IRateProvider(pool).getRate(shares);
