@@ -8,6 +8,7 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -21,6 +22,7 @@ import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 
 contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     using FixedPoint for uint256;
+    using ScalingHelpers for uint256;
 
     uint256 public constant MIN_INIT_BPT = 1e6;
 
@@ -176,9 +178,43 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     }
 
     function onAfterSwap(
-        IPoolHooks.AfterSwapParams calldata,
+        IPoolHooks.AfterSwapParams calldata params,
         uint256 amountCalculatedScaled18
     ) external view override returns (bool success) {
+        // check that actual pool balances match
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, uint256[] memory scalingFactors, ) = getVault()
+            .getPoolTokenInfo(address(this));
+
+        uint256[] memory currentLiveBalances = IVaultMock(address(getVault())).getCurrentLiveBalances(address(this));
+
+        uint256[] memory rates = getVault().getPoolTokenRates(address(this));
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (tokens[i] == params.tokenIn) {
+                if (params.tokenInBalanceScaled18 != currentLiveBalances[i]) {
+                    return false;
+                }
+                uint256 expectedTokenInBalanceRaw = params.tokenInBalanceScaled18.toRawUndoRateRoundDown(
+                    scalingFactors[i],
+                    rates[i]
+                );
+                if (expectedTokenInBalanceRaw != balancesRaw[i]) {
+                    return false;
+                }
+            } else if (tokens[i] == params.tokenOut) {
+                if (params.tokenOutBalanceScaled18 != currentLiveBalances[i]) {
+                    return false;
+                }
+                uint256 expectedTokenOutBalanceRaw = params.tokenOutBalanceScaled18.toRawUndoRateRoundDown(
+                    scalingFactors[i],
+                    rates[i]
+                );
+                if (expectedTokenOutBalanceRaw != balancesRaw[i]) {
+                    return false;
+                }
+            }
+        }
+
         return amountCalculatedScaled18 > 0 && !failOnAfterSwapHook;
     }
 

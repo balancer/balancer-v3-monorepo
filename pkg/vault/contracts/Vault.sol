@@ -7,6 +7,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -163,14 +164,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
         uint256 indexIn;
         uint256 indexOut;
-        uint256 tokenInBalance;
-        uint256 tokenOutBalance;
         uint256 amountGivenScaled18;
         uint256 amountCalculatedScaled18;
         uint256 swapFeeAmountScaled18;
         uint256 swapFeePercentage;
         uint256 protocolSwapFeeAmountRaw;
-        IBasePool.SwapParams poolSwapParams;
     }
 
     /// @inheritdoc IVaultMain
@@ -197,7 +195,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // struct, to be settled in non-reentrant _swap with the rest of the accounting.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN);
 
-        if (poolData.poolConfig.isBufferPool) {
+        // if the sender is the buffer pool, swaps are allowed as this is part of the rebalance mechanism.
+        if (
+            poolData.poolConfig.isBufferPool &&
+            _wrappedTokenBuffers[IERC4626(address(poolData.tokenConfig[0].token))] != msg.sender
+        ) {
             revert CannotSwapWithBufferPool(params.pool);
         }
 
@@ -222,9 +224,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vars.indexOut -= 1;
         }
 
-        vars.tokenInBalance = poolData.balancesRaw[vars.indexIn];
-        vars.tokenOutBalance = poolData.balancesRaw[vars.indexOut];
-
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
         _updateAmountGivenInVars(vars, params, poolData);
@@ -236,26 +235,19 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vars.swapFeeAmountScaled18 =
                 vars.amountGivenScaled18.divUp(vars.swapFeePercentage.complement()) -
                 vars.amountGivenScaled18;
+
+            vars.amountGivenScaled18 += vars.swapFeeAmountScaled18;
         }
 
-        // Create the pool hook params (used for both beforeSwap, if required, and the main swap hooks).
-        // Function and inclusion in SwapLocals needed to avoid "stack too deep".
-        vars.poolSwapParams = _buildSwapHookParams(params, vars, poolData);
-
         if (poolData.poolConfig.hooks.shouldCallBeforeSwap) {
-            if (IPoolHooks(params.pool).onBeforeSwap(vars.poolSwapParams) == false) {
+            if (IPoolHooks(params.pool).onBeforeSwap(_buildPoolSwapParams(params, vars, poolData)) == false) {
                 revert BeforeSwapHookFailed();
             }
 
-            _updatePoolDataLiveBalancesAndRates(poolData, Rounding.ROUND_DOWN);
-            // The call to _buildSwapHookParams also modifies poolSwapParams.balancesScaled18.
-            // Set here again explicitly to avoid relying on a side effect.
-            // TODO: ugliness necessitated by the stack issues; revisit on any refactor to see if this can be cleaner.
-            vars.poolSwapParams.balancesScaled18 = poolData.balancesLiveScaled18;
+            _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN);
 
             // Also update amountGivenScaled18, as it will now be used in the swap, and the rates might have changed.
             _updateAmountGivenInVars(vars, params, poolData);
-            vars.poolSwapParams.amountGivenScaled18 = vars.amountGivenScaled18;
         }
 
         // Non-reentrant call that updates accounting.
@@ -297,7 +289,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         emit Swap(params.pool, params.tokenIn, params.tokenOut, amountIn, amountOut, swapFeeAmountRaw);
     }
 
-    function _buildSwapHookParams(
+    function _buildPoolSwapParams(
         SwapParams memory params,
         SwapLocals memory vars,
         PoolData memory poolData
@@ -305,7 +297,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         return
             IBasePool.SwapParams({
                 kind: params.kind,
-                amountGivenScaled18: vars.amountGivenScaled18 + vars.swapFeeAmountScaled18,
+                amountGivenScaled18: vars.amountGivenScaled18,
                 balancesScaled18: poolData.balancesLiveScaled18,
                 indexIn: vars.indexIn,
                 indexOut: vars.indexOut,
@@ -333,34 +325,37 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /// @dev Non-reentrant portion of the swap, which calls the main hook and updates accounting.
     function _swap(
-        SwapParams memory vaultSwapParams,
+        SwapParams memory params,
         SwapLocals memory vars,
         PoolData memory poolData
     ) internal nonReentrant returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
-        // Add swap fee to the amountGiven to account for the fee taken in EXACT_OUT swap on tokenOut
         // Perform the swap request hook and compute the new balances for 'token in' and 'token out' after the swap
-        // If it's an ExactIn swap, vars.swapFeeAmountScaled18 will be zero here, and set based on the amountCalculated.
 
-        vars.amountCalculatedScaled18 = IBasePool(vaultSwapParams.pool).onSwap(vars.poolSwapParams);
+        vars.amountCalculatedScaled18 = IBasePool(params.pool).onSwap(_buildPoolSwapParams(params, vars, poolData));
 
-        if (vars.swapFeePercentage > 0 && vaultSwapParams.kind == SwapKind.EXACT_IN) {
-            // Swap fee is a percentage of the amountCalculated for the EXACT_IN swap
-            // Round up to avoid losses during precision loss.
-            vars.swapFeeAmountScaled18 = vars.amountCalculatedScaled18.mulUp(vars.swapFeePercentage);
-            // Should subtract the fee from the amountCalculated for EXACT_IN swap
-            vars.amountCalculatedScaled18 -= vars.swapFeeAmountScaled18;
-        }
+        // Note that balances are kept in memory, and are not fully computed until the `setPoolBalances` below.
+        // Intervening code cannot read balances from storage, as they are temporarily out-of-sync here. This function
+        // is nonReentrant, to guard against read-only reentrancy issues.
 
-        if (vaultSwapParams.kind == SwapKind.EXACT_IN) {
+        if (params.kind == SwapKind.EXACT_IN) {
+            // If it's an ExactIn swap, set vars.swapFeeAmountScaled18 based on the amountCalculated.
+            if (vars.swapFeePercentage > 0) {
+                // Swap fee is a percentage of the amountCalculated for the EXACT_IN swap
+                // Round up to avoid losses during precision loss.
+                vars.swapFeeAmountScaled18 = vars.amountCalculatedScaled18.mulUp(vars.swapFeePercentage);
+                // Should subtract the fee from the amountCalculated for EXACT_IN swap
+                vars.amountCalculatedScaled18 -= vars.swapFeeAmountScaled18;
+            }
+
             // For `ExactIn` the amount calculated is leaving the Vault, so we round down.
             amountCalculated = vars.amountCalculatedScaled18.toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[vars.indexOut],
                 poolData.tokenRates[vars.indexOut]
             );
-            (amountIn, amountOut) = (vaultSwapParams.amountGivenRaw, amountCalculated);
+            (amountIn, amountOut) = (params.amountGivenRaw, amountCalculated);
 
-            if (amountOut < vaultSwapParams.limitRaw) {
-                revert SwapLimit(amountOut, vaultSwapParams.limitRaw);
+            if (amountOut < params.limitRaw) {
+                revert SwapLimit(amountOut, params.limitRaw);
             }
         } else {
             // Round up when entering the Vault on `ExactOut`.
@@ -368,32 +363,36 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 poolData.decimalScalingFactors[vars.indexIn],
                 poolData.tokenRates[vars.indexIn]
             );
-            (amountIn, amountOut) = (amountCalculated, vaultSwapParams.amountGivenRaw);
+            (amountIn, amountOut) = (amountCalculated, params.amountGivenRaw);
 
-            if (amountIn > vaultSwapParams.limitRaw) {
-                revert SwapLimit(amountIn, vaultSwapParams.limitRaw);
+            if (amountIn > params.limitRaw) {
+                revert SwapLimit(amountIn, params.limitRaw);
             }
         }
 
-        // Compute and charge protocol fees
+        // Compute and charge protocol fees. Note that protocol fee storage is updated before balance storage,
+        // as the final raw balances need to take the protocol fees into account.
         vars.protocolSwapFeeAmountRaw = _computeAndChargeProtocolFees(
             poolData,
             vars.swapFeeAmountScaled18,
-            vaultSwapParams.pool,
-            vaultSwapParams.tokenOut,
+            params.pool,
+            params.tokenOut,
             vars.indexOut
         );
 
-        poolData.balancesRaw[vars.indexIn] = vars.tokenInBalance + amountIn;
-        poolData.balancesRaw[vars.indexOut] = vars.tokenOutBalance - amountOut - vars.protocolSwapFeeAmountRaw;
+        poolData.balancesRaw[vars.indexIn] += amountIn;
+        poolData.balancesRaw[vars.indexOut] =
+            poolData.balancesRaw[vars.indexOut] -
+            amountOut -
+            vars.protocolSwapFeeAmountRaw;
 
         // Set both raw and last live balances.
-        _setPoolBalances(vaultSwapParams.pool, poolData);
+        _setPoolBalances(params.pool, poolData);
 
         // Account amountIn of tokenIn
-        _takeDebt(vaultSwapParams.tokenIn, amountIn, msg.sender);
+        _takeDebt(params.tokenIn, amountIn, msg.sender);
         // Account amountOut of tokenOut
-        _supplyCredit(vaultSwapParams.tokenOut, amountOut, msg.sender);
+        _supplyCredit(params.tokenOut, amountOut, msg.sender);
     }
 
     /// @dev Returns swap fee for the pool.
@@ -420,10 +419,20 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * @param poolData The corresponding poolData to be read and updated
      * @param roundingDirection Whether balance scaling should round up or down
      */
-    function _updatePoolDataLiveBalancesAndRates(PoolData memory poolData, Rounding roundingDirection) internal view {
+    function _updatePoolDataLiveBalancesAndRates(
+        address pool,
+        PoolData memory poolData,
+        Rounding roundingDirection
+    ) internal view {
         _updateTokenRatesInPoolData(poolData);
 
+        // It's possible a reentrant hook changed the raw balances in Vault storage.
+        // Update them before computing the live balances.
+        (, uint256[] memory balancesRaw, , ) = _getPoolTokenInfo(pool);
+
         for (uint256 i = 0; i < poolData.tokenConfig.length; ++i) {
+            poolData.balancesRaw[i] = balancesRaw[i];
+
             _updateLiveTokenBalanceInPoolData(poolData, roundingDirection, i);
         }
     }
@@ -481,7 +490,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (adding liquidity, so round up) again.
-            _updatePoolDataLiveBalancesAndRates(poolData, Rounding.ROUND_UP);
+            _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_UP);
 
             // Also update maxAmountsInScaled18, as the rates might have changed.
             maxAmountsInScaled18 = params.maxAmountsIn.copyToScaled18ApplyRateRoundDownArray(
@@ -680,7 +689,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (removing liquidity, so round down) again.
-            _updatePoolDataLiveBalancesAndRates(poolData, Rounding.ROUND_DOWN);
+            _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN);
 
             // Also update minAmountsOutScaled18, as the rates might have changed.
             minAmountsOutScaled18 = params.minAmountsOut.copyToScaled18ApplyRateRoundUpArray(
