@@ -57,6 +57,24 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
 
         _registerPoolWithFactory(pool);
 
+        _registerPoolWithVault(
+            pool,
+            wrappedToken,
+            getNewPoolPauseWindowEndTime(),
+            pauseManager,
+            _getDefaultPoolHooks(),
+            _getDefaultLiquidityManagement()
+        );
+    }
+
+    function _registerPoolWithVault(
+        address pool,
+        IERC4626 wrappedToken,
+        uint256 pauseWindowEndTime,
+        address pauseManager,
+        PoolHooks memory poolHooks,
+        LiquidityManagement memory liquidityManagement
+    ) internal {
         // Token order is wrapped first, then base.
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[0].token = IERC20(wrappedToken);
@@ -64,11 +82,11 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         // We are assuming the baseToken is STANDARD (the default type, with enum value 0).
         tokenConfig[1].token = IERC20(wrappedToken.asset());
 
-        getVault().registerPool(
-            pool,
-            tokenConfig,
-            getNewPoolPauseWindowEndTime(),
-            pauseManager,
+        getVault().registerPool(pool, tokenConfig, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
+    }
+
+    function _getDefaultPoolHooks() internal pure returns (PoolHooks memory) {
+        return
             PoolHooks({
                 shouldCallBeforeInitialize: true, // ensure proportional
                 shouldCallAfterInitialize: false,
@@ -78,9 +96,11 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
                 shouldCallAfterRemoveLiquidity: false,
                 shouldCallBeforeSwap: true, // rebalancing
                 shouldCallAfterSwap: false
-            }),
-            LiquidityManagement({ supportsAddLiquidityCustom: true, supportsRemoveLiquidityCustom: false })
-        );
+            });
+    }
+
+    function _getDefaultLiquidityManagement() internal pure returns (LiquidityManagement memory) {
+        return LiquidityManagement({ supportsAddLiquidityCustom: true, supportsRemoveLiquidityCustom: false });
     }
 
     /**
