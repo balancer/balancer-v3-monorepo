@@ -72,7 +72,10 @@ abstract contract BaseTest is Test, GasSnapshot {
         vm.label(broke, "broke");
     }
 
-    function getSortedIndexes(address tokenA, address tokenB) internal pure returns (uint256 idxTokenA, uint256 idxTokenB) {
+    function getSortedIndexes(
+        address tokenA,
+        address tokenB
+    ) internal pure returns (uint256 idxTokenA, uint256 idxTokenB) {
         idxTokenA = tokenA > tokenB ? 1 : 0;
         idxTokenB = idxTokenA == 0 ? 1 : 0;
     }
