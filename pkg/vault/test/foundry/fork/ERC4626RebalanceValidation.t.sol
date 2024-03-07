@@ -210,7 +210,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         assertApproxEqAbs(
             bptAmountOutWrapped,
             2 * BUFFER_USDC_BASE * 1e12,
-            DELTA,
+            2 * DELTA, // Larger delta because USDC loses precision when calculating rate with shares
             "The amount of issued BPT of aUSDC BufferPool should be very close from the amount of deposited USDC"
         );
     }
@@ -431,17 +431,17 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     ) private returns (uint256 contractBaseBalance, uint256 contractWrappedBalance) {
         IERC4626 wToken = IERC4626(wrappedToken);
         IERC20 baseToken = IERC20(wToken.asset());
-        uint8 decimals = wToken.decimals();
 
         string memory baseTokenName = IERC20Metadata(address(baseToken)).name();
         string memory wrappedTokenName = IERC20Metadata(address(wToken)).name();
 
-        // Check if the pool is unbalanced before
-        (, , uint256[] memory originalBalances, , ) = vault.getPoolTokenInfo(bufferPool);
+        // According to the function _isBufferPoolBalanced, from ERC4626BufferPool, a difference of 0.1% in the
+        // expected amount of tokens is within tolerance (after rebalance)
+        (, , uint256[] memory actualBalances, , ) = vault.getPoolTokenInfo(bufferPool);
         assertApproxEqAbs(
-            originalBalances[WRAPPED_TOKEN_INDEX],
+            actualBalances[WRAPPED_TOKEN_INDEX],
             expectedWrappedBalance,
-            10 ** (decimals / 2),
+            expectedWrappedBalance / 1000, // tolerance of _isBufferPoolBalanced
             string(
                 abi.encodePacked(
                     string(abi.encodePacked(wrappedTokenName, " BufferPool balance of ")),
@@ -450,9 +450,9 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             )
         );
         assertApproxEqAbs(
-            originalBalances[BASE_TOKEN_INDEX],
+            actualBalances[BASE_TOKEN_INDEX],
             expectedBaseBalance,
-            10 ** (decimals / 2),
+            expectedBaseBalance / 1000, // tolerance of _isBufferPoolBalanced
             string(
                 abi.encodePacked(
                     string(abi.encodePacked(wrappedTokenName, " BufferPool balance of ")),

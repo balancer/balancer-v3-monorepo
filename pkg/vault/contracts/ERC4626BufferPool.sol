@@ -342,38 +342,18 @@ contract ERC4626BufferPool is
         );
     }
 
-    function _isBufferPoolBalanced(uint256[] memory balancesScaled18) private view returns (bool) {
+    function _isBufferPoolBalanced(uint256[] memory balancesScaled18) private pure returns (bool) {
         if (balancesScaled18[WRAPPED_TOKEN_INDEX] == balancesScaled18[BASE_TOKEN_INDEX]) {
             return true;
         }
 
-        // If not perfectly proportional, makes sure that the difference is within tolerance.
-        // The tolerance depends on the decimals of the token, because it introduces imprecision to the rate
-        // calculation, and on the initial balance of the pool (since balancesScaled18 has 18 decimals,
-        // it's divided by FixedPoint.ONE [mulDown] so we get only the integer part of the number)
-        uint256 tolerance;
+        // If not perfectly proportional, makes sure that the difference is within tolerance
+        // (0.1% of base token amount to 1 side or the other).
+        uint256 tolerance = (balancesScaled18[WRAPPED_TOKEN_INDEX] + balancesScaled18[BASE_TOKEN_INDEX]) / 1000;
 
         if (balancesScaled18[WRAPPED_TOKEN_INDEX] >= balancesScaled18[BASE_TOKEN_INDEX]) {
-            // E.g. let's assume that the wrapped balance is 1000 wUSDC, with 6 decimals, and the rate is
-            // FixedPoint.ONE
-            // There are 2 sources of imprecision:
-            //    1. Vault scales to 18, but token has only 6 decimals. The remaining 12 are imprecise
-            //    2. Since we have 1000 wUSDC, the scaled18 balance is approx 1e21, but the vault rate has
-            //       only 18 decimals. The 3 extra digits are imprecise.
-            // The whole imprecision is 15 digits, so the tolerance should be 1e15.
-            // Doing the example math below:
-            // - balancesScaled18[WRAPPED_TOKEN_INDEX] = convertToAssets(1000) * 1e12 ~= (1e3 * 1e6) * 1e12 = 1e21
-            // - _wrappedTokenScalingFactor = 1e(18-6) * 1e18 = 1e30
-            // - balancesScaled18[WRAPPED_TOKEN_INDEX].mulDown(_wrappedTokenScalingFactor) = 1e21 * 1e30 / 1e18 = 1e33
-            // - tolerance = 1e33 / 1e18 = 1e15
-            // i.e. 1000 wUSDC is 1e21, so we are saying that we can only rely in the 6 most meaningful digits.
-
-            tolerance = balancesScaled18[WRAPPED_TOKEN_INDEX].mulDown(_wrappedTokenScalingFactor) / FixedPoint.ONE;
-            tolerance = tolerance < 1 ? 1 : tolerance;
             return balancesScaled18[WRAPPED_TOKEN_INDEX] - balancesScaled18[BASE_TOKEN_INDEX] < tolerance;
         } else {
-            tolerance = balancesScaled18[BASE_TOKEN_INDEX].mulDown(_baseTokenScalingFactor) / FixedPoint.ONE;
-            tolerance = tolerance < 1 ? 1 : tolerance;
             return balancesScaled18[BASE_TOKEN_INDEX] - balancesScaled18[WRAPPED_TOKEN_INDEX] < tolerance;
         }
     }
