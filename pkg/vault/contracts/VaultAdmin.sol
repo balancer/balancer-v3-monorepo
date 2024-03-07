@@ -359,7 +359,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             poolData.poolConfig
         ) = _getPoolTokenInfo(pool);
 
-        _updateTokenRatesInPoolData(poolData);
+        // TODO add comment
+        _updateTokenRatesInPoolData(poolData, poolData.balancesRaw);
     }
 
     /*******************************************************************************

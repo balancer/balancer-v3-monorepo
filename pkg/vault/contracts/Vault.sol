@@ -169,6 +169,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 swapFeeAmountScaled18;
         uint256 swapFeePercentage;
         uint256 protocolSwapFeeAmountRaw;
+        uint256[] exactAmountInRaw;
     }
 
     /// @inheritdoc IVaultMain
@@ -189,11 +190,30 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             revert CannotSwapSameToken();
         }
 
+        // Using SwapLocals struct to avoid stack too deep error
+        SwapLocals memory vars;
+
+        // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[params.pool];
+
+        // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value for non-existence.
+        vars.indexIn = poolBalances.unchecked_indexOf(params.tokenIn);
+        vars.indexOut = poolBalances.unchecked_indexOf(params.tokenOut);
+
+        // TODO discuss how to optimize size of exactAmounInRaw
+        // (we don't have information about number of tokens here)
+        vars.exactAmountInRaw = new uint256[](10);
+        if (params.kind == SwapKind.EXACT_IN) {
+            vars.exactAmountInRaw[vars.indexIn] = params.amountGivenRaw;
+        } else {
+            vars.exactAmountInRaw[vars.indexOut] = params.amountGivenRaw;
+        }
+
         // Fill in the PoolData structure, writing to the raw and last live balance storage, as well as protocol fees
         // storage, if yield fees are due. Since the swap callbacks are reentrant and could do anything, including
         // change these balances, we cannot simply store the pending yield fees (and balance changes) in the poolData
         // struct, to be settled in non-reentrant _swap with the rest of the accounting.
-        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN, vars.exactAmountInRaw);
 
         // if the sender is the buffer pool, swaps are allowed as this is part of the rebalance mechanism.
         if (
@@ -202,14 +222,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         ) {
             revert CannotSwapWithBufferPool(params.pool);
         }
-
-        // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[params.pool];
-        SwapLocals memory vars;
-
-        // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value for non-existence.
-        vars.indexIn = poolBalances.unchecked_indexOf(params.tokenIn);
-        vars.indexOut = poolBalances.unchecked_indexOf(params.tokenOut);
 
         // If either are zero, revert because the token wasn't registered to this pool.
         if (vars.indexIn == 0 || vars.indexOut == 0) {
@@ -244,7 +256,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 revert BeforeSwapHookFailed();
             }
 
-            _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN);
+            _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN, vars.exactAmountInRaw);
 
             // Also update amountGivenScaled18, as it will now be used in the swap, and the rates might have changed.
             _updateAmountGivenInVars(vars, params, poolData);
@@ -418,13 +430,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      *
      * @param poolData The corresponding poolData to be read and updated
      * @param roundingDirection Whether balance scaling should round up or down
+     * @param exactAmountsInRaw // TODO
      */
-    function _updatePoolDataLiveBalancesAndRates(
-        address pool,
-        PoolData memory poolData,
-        Rounding roundingDirection
-    ) internal view {
-        _updateTokenRatesInPoolData(poolData);
+    function _updatePoolDataLiveBalancesAndRates(address pool, PoolData memory poolData, Rounding roundingDirection, uint256[] memory exactAmountsInRaw) internal view {
+        _updateTokenRatesInPoolData(poolData, exactAmountsInRaw);
 
         // It's possible a reentrant hook changed the raw balances in Vault storage.
         // Update them before computing the live balances.

@@ -199,7 +199,8 @@ contract VaultMock is IVaultMainMock, Vault {
             poolData.poolConfig
         ) = _getPoolTokenInfo(pool);
 
-        _updateTokenRatesInPoolData(poolData);
+        // TODO add comment
+        _updateTokenRatesInPoolData(poolData, poolData.balancesRaw);
 
         uint256 numTokens = poolTokenBalances.length();
         currentLiveBalances = new uint256[](numTokens);

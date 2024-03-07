@@ -283,7 +283,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 minBptAmountOut,
         bytes memory userData
     ) external withLocker withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault returns (uint256 bptAmountOut) {
-        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(pool, Rounding.ROUND_DOWN, exactAmountsIn);
 
         if (poolData.poolConfig.isPoolInitialized) {
             revert PoolAlreadyInitialized(pool);
@@ -305,7 +305,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             }
 
             // The before hook is reentrant, and could have changed token rates.
-            _updateTokenRatesInPoolData(poolData);
+            _updateTokenRatesInPoolData(poolData, exactAmountsIn);
 
             // Also update exactAmountsInScaled18, in case the underlying rates changed.
             exactAmountsInScaled18 = exactAmountsIn.copyToScaled18ApplyRateRoundDownArray(

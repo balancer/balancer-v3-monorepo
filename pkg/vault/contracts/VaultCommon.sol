@@ -341,7 +341,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     /**
      * @dev Mutates poolData to add token rates. Assumes tokenConfig is already set.
      */
-    function _updateTokenRatesInPoolData(PoolData memory poolData) internal view {
+    function _updateTokenRatesInPoolData(PoolData memory poolData, uint256[] memory exactAmountsInRaw) internal view {
         uint256 numTokens = poolData.tokenConfig.length;
 
         // Initialize arrays to store tokens based on the number of tokens in the pool.
@@ -355,9 +355,11 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             } else if (tokenType == TokenType.WITH_RATE) {
                 poolData.tokenRates[i] = poolData.tokenConfig[i].rateProvider.getRate(FixedPoint.ONE);
             } else if (tokenType == TokenType.ERC4626) {
+                uint256 shares = exactAmountsInRaw[i];
+                shares = shares == 0 ? FixedPoint.ONE : shares;
                 poolData.tokenRates[i] = IRateProvider(
                     _wrappedTokenBuffers[IERC4626(address(poolData.tokenConfig[i].token))]
-                ).getRate(FixedPoint.ONE);
+                ).getRate(shares);
             } else {
                 revert InvalidTokenConfiguration();
             }
@@ -370,7 +372,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _getPoolDataAndYieldFees(
         address pool,
-        Rounding roundingDirection
+        Rounding roundingDirection,
+        uint256[] memory exactAmountsInRaw
     ) internal view returns (PoolData memory poolData, uint256[] memory dueProtocolYieldFees) {
         // Initialize poolData with base information for subsequent calculations.
         (
@@ -391,7 +394,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         uint256 yieldFeePercentage = _protocolYieldFeePercentage;
 
         // Fill in the tokenRates inside poolData (needed for `_updateLiveTokenBalanceInPoolData`).
-        _updateTokenRatesInPoolData(poolData);
+        _updateTokenRatesInPoolData(poolData, exactAmountsInRaw);
 
         bool poolSubjectToYieldFees = poolData.poolConfig.isPoolInitialized &&
             yieldFeePercentage > 0 &&
@@ -437,11 +440,12 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _computePoolDataUpdatingBalancesAndFees(
         address pool,
-        Rounding roundingDirection
+        Rounding roundingDirection,
+        uint256[] memory exactAmountsInRaw
     ) internal nonReentrant returns (PoolData memory poolData) {
         uint256[] memory dueProtocolYieldFees;
 
-        (poolData, dueProtocolYieldFees) = _getPoolDataAndYieldFees(pool, roundingDirection);
+        (poolData, dueProtocolYieldFees) = _getPoolDataAndYieldFees(pool, roundingDirection, exactAmountsInRaw);
         uint256 numTokens = dueProtocolYieldFees.length;
 
         for (uint256 i = 0; i < numTokens; ++i) {
