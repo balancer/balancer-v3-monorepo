@@ -187,11 +187,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             TokenConfig memory tokenData = params.tokenConfig[i];
             IERC20 token = tokenData.token;
 
-            // Enforce token sorting.
-            if (i != 0) {
-                if (token < previousToken) {
-                    revert InputHelpers.TokensNotSorted();
-                }
+            // Enforce token sorting. (`previousToken` will be the zero address on the first iteration.)
+            if (token < previousToken) {
+                revert InputHelpers.TokensNotSorted();
             }
             previousToken = token;
 
