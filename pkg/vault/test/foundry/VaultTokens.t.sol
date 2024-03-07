@@ -59,7 +59,6 @@ contract VaultTokenTest is BaseVaultTest {
         registerBuffers();
         registerPool();
 
-        // Calling `getPoolTokens` on a regular pool should return the registered tokens for ERC4626 tokens.
         IERC20[] memory tokens = vault.getPoolTokens(poolAddress);
 
         assertEq(tokens.length, 2);
