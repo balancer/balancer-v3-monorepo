@@ -54,7 +54,7 @@ contract WeightedPool8020Factory is BasePoolFactory {
                 WeightedPool.NewPoolParams({
                     name: name,
                     symbol: symbol,
-                    tokens: _extractTokensFromTokenConfig(tokenConfig),
+                    numTokens: tokenConfig.length,
                     normalizedWeights: weights
                 }),
                 getVault()

@@ -46,7 +46,7 @@ contract WeightedPoolFactory is BasePoolFactory {
                 WeightedPool.NewPoolParams({
                     name: name,
                     symbol: symbol,
-                    tokens: _extractTokensFromTokenConfig(tokens),
+                    numTokens: tokens.length,
                     normalizedWeights: normalizedWeights
                 }),
                 getVault()
