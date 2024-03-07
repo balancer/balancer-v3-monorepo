@@ -910,7 +910,7 @@ contract Router is IRouter, ReentrancyGuard {
                     // The last step is the one that defines the inputs for this path. The caller should have enough
                     // BPT to burn already if that's the case, so we just skip this step if so.
                     if (isLastStep == false) {
-                        stepMaxAmountIn = _vault.getTokenReserve(stepTokenIn);
+                        stepMaxAmountIn = _vault.getReservesOf(stepTokenIn);
                         _vault.sendTo(IERC20(step.pool), params.sender, stepMaxAmountIn);
                     }
 
