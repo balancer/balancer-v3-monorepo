@@ -20,7 +20,7 @@ import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
-import { sortTokens } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
+import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -71,10 +71,10 @@ describe('Vault', function () {
     poolBAddress = await poolB.getAddress();
 
     const tokenCAddress = await tokenC.getAddress();
-    [poolATokens] = sortTokens([tokenAAddress, tokenBAddress, tokenCAddress]);
-    [poolBTokens] = sortTokens([tokenAAddress, tokenCAddress]);
-    [invalidTokens] = sortTokens([tokenAAddress, ZERO_ADDRESS, tokenCAddress]);
-    [duplicateTokens] = sortTokens([tokenAAddress, tokenBAddress, tokenAAddress]);
+    poolATokens = sortAddresses([tokenAAddress, tokenBAddress, tokenCAddress]);
+    poolBTokens = sortAddresses([tokenAAddress, tokenCAddress]);
+    invalidTokens = sortAddresses([tokenAAddress, ZERO_ADDRESS, tokenCAddress]);
+    duplicateTokens = sortAddresses([tokenAAddress, tokenBAddress, tokenAAddress]);
 
     // Copy and reverse A tokens.
     unsortedTokens = Array.from(poolATokens);
@@ -163,7 +163,7 @@ describe('Vault', function () {
       const poolBTokensWithItself = Array.from(poolBTokens);
       poolBTokensWithItself.push(poolBAddress);
 
-      const [finalTokens] = sortTokens(poolBTokensWithItself);
+      const finalTokens = sortAddresses(poolBTokensWithItself);
 
       await expect(vault.manualRegisterPool(poolB, finalTokens)).to.be.revertedWithCustomError(
         vaultExtension,

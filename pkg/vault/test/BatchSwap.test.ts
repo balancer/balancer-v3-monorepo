@@ -13,7 +13,7 @@ import { BalanceChange, expectBalanceChange } from '@balancer-labs/v3-helpers/sr
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { buildTokenConfig } from './poolSetup';
-import { sortTokens } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
+import { sortAddresses, sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
 describe('BatchSwap', function () {
   let vault: Vault;
@@ -45,9 +45,9 @@ describe('BatchSwap', function () {
     token0 = await tokens.get(0).getAddress();
     token1 = await tokens.get(1).getAddress();
     token2 = await tokens.get(2).getAddress();
-    [poolATokens] = sortTokens([token0, token1]);
-    [poolBTokens] = sortTokens([token1, token2]);
-    [poolCTokens] = sortTokens([token0, token2]);
+    poolATokens = sortAddresses([token0, token1]);
+    poolBTokens = sortAddresses([token1, token2]);
+    poolCTokens = sortAddresses([token0, token2]);
 
     // Pool A has tokens 0 and 1.
     poolA = await deploy('v3-vault/PoolMock', {
@@ -66,17 +66,17 @@ describe('BatchSwap', function () {
   });
 
   sharedBeforeEach('nested pools', async () => {
-    [poolABTokens] = sortTokens([await poolA.getAddress(), await poolB.getAddress()]);
+    poolABTokens = sortAddresses([await poolA.getAddress(), await poolB.getAddress()]);
     poolAB = await deploy('v3-vault/PoolMock', {
       args: [vaultAddress, 'Pool A-B', 'POOL-AB', buildTokenConfig(poolABTokens), true, 0, ZERO_ADDRESS],
     });
 
-    [poolACTokens] = sortTokens([await poolA.getAddress(), await poolC.getAddress()]);
+    poolACTokens = sortAddresses([await poolA.getAddress(), await poolC.getAddress()]);
     poolAC = await deploy('v3-vault/PoolMock', {
       args: [vaultAddress, 'Pool A-C', 'POOL-AC', buildTokenConfig(poolACTokens), true, 0, ZERO_ADDRESS],
     });
 
-    [poolBCTokens] = sortTokens([await poolB.getAddress(), await poolC.getAddress()]);
+    poolBCTokens = sortAddresses([await poolB.getAddress(), await poolC.getAddress()]);
     poolBC = await deploy('v3-vault/PoolMock', {
       args: [vaultAddress, 'Pool B-C', 'POOL-BC', buildTokenConfig(poolBCTokens), true, 0, ZERO_ADDRESS],
     });
