@@ -19,10 +19,6 @@ import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { RateProviderMock } from "./RateProviderMock.sol";
 import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 
-interface MaliciousHook {
-    function onMaliciousHook() external;
-}
-
 contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;

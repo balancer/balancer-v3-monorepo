@@ -319,9 +319,8 @@ contract VaultSwapTest is BaseVaultTest {
         assertEq(dai.balanceOf(admin) - defaultBalance, (protocolSwapFee), "Protocol fees not collected");
     }
 
-    /// Swap
     function reentrancyHook() public {
-        // do swap
+        // do second swap
         SwapParams memory params = SwapParams({
             kind: SwapKind.EXACT_IN,
             pool: address(pool),
@@ -366,13 +365,13 @@ contract VaultSwapTest is BaseVaultTest {
 
         (, , uint[] memory balancesRawAfter, , ) = vault.getPoolTokenInfo(address(pool));
 
-        // Pool's balances should not change
+        // Pool balances should not change
         for (uint i = 0; i < balancesRawAfter.length; i++) {
             assertEq(balancesRawBefore[i], balancesRawAfter[i], "Balance does not match");
         }
-        // No tokens' being spent.
-        assertEq(usdcBeforeSwap, usdc.balanceOf(address(this)));
-        assertEq(daiBeforeSwap, dai.balanceOf(address(this)));
+        // No tokens being spent.
+        assertEq(usdcBeforeSwap, usdc.balanceOf(address(this)), "USDC balance changed");
+        assertEq(daiBeforeSwap, dai.balanceOf(address(this)), "DAI balance changed");
     }
 
     /// Utils
