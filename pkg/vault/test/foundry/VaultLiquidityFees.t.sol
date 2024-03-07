@@ -110,8 +110,8 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         // amountsOut are correct
         // 2 * amount - (amount * swapFee%)
-        assertEq(amountsOut[daiIdx], defaultAmount * 2 - defaultAmount / 100, "Wrong AmountOut[0]");
-        assertEq(amountsOut[usdcIdx], 0, "AmountOut[1] > 0");
+        assertEq(amountsOut[daiIdx], defaultAmount * 2 - defaultAmount / 100, "Wrong AmountOut[DAI]");
+        assertEq(amountsOut[usdcIdx], 0, "AmountOut[USDC] > 0");
     }
 
     function testRemoveLiquiditySingleTokenExactIn() public {
