@@ -475,8 +475,7 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
         IERC20 baseToken = IERC20(wToken.asset());
         uint8 decimals = wToken.decimals();
 
-        uint256 wrappedTokenIdx = wrappedToken > address(baseToken) ? 1 : 0;
-        uint256 baseTokenIdx = wrappedTokenIdx == 0 ? 1 : 0;
+        (uint256 wrappedTokenIdx, uint256 baseTokenIdx) = getSortedIndexes(wrappedToken, address(baseToken));
 
         string memory baseTokenName = IERC20Metadata(address(baseToken)).name();
         string memory wrappedTokenName = IERC20Metadata(address(wToken)).name();

@@ -128,12 +128,12 @@ contract VaultTokenTest is BaseVaultTest {
     function testInvalidRateTokenWithoutProvider() public {
         // Rated token without a rate provider is invalid
 
-        uint256 ethIdx = address(wsteth) > address(usdc) ? 1 : 0;
+        (uint256 ethIdx, uint256 localUsdcIdx) = getSortedIndexes(address(wsteth), address(usdc));
 
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[ethIdx].token = IERC20(wsteth);
         tokenConfig[ethIdx].tokenType = TokenType.WITH_RATE;
-        tokenConfig[ethIdx == 0 ? 1 : 0].token = IERC20(usdc);
+        tokenConfig[localUsdcIdx].token = IERC20(usdc);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.InvalidTokenConfiguration.selector));
         _registerPool(tokenConfig);
@@ -142,14 +142,13 @@ contract VaultTokenTest is BaseVaultTest {
     function testRegistrationWithAmbiguousTokens() public {
         registerBuffers();
 
-        uint256 wrappedDaiIdx = address(waDAI) > address(dai) ? 1 : 0;
-        uint256 daiIdx = wrappedDaiIdx == 0 ? 1 : 0;
+        (uint256 wrappedDaiIdx, uint256 daiIdxBuffer) = getSortedIndexes(address(waDAI), address(dai));
 
         // Regular pool cannot have a buffer token with the same base as an existing standard token.
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[wrappedDaiIdx].token = IERC20(waDAI);
         tokenConfig[wrappedDaiIdx].tokenType = TokenType.ERC4626;
-        tokenConfig[daiIdx].token = IERC20(dai);
+        tokenConfig[daiIdxBuffer].token = IERC20(dai);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.TokenAlreadyRegistered.selector, address(dai)));
         _registerPool(tokenConfig);
@@ -159,8 +158,7 @@ contract VaultTokenTest is BaseVaultTest {
         registerBuffers();
 
         // Also can't have two wrapped tokens with the same underlying
-        uint256 wrappedDaiIdx = address(waDAI) > address(cDAI) ? 1 : 0;
-        uint256 cDaiIdx = wrappedDaiIdx == 0 ? 1 : 0;
+        (uint256 wrappedDaiIdx, uint256 cDaiIdx) = getSortedIndexes(address(waDAI), address(cDAI));
 
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[wrappedDaiIdx].token = IERC20(waDAI);
