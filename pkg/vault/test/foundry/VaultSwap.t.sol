@@ -21,10 +21,16 @@ contract VaultSwapTest is BaseVaultTest {
     uint256 internal swapFee = defaultAmount / 100; // 1%
     uint256 internal protocolSwapFee = swapFee / 2; // 50%
 
+    // Track the indices for the standard dai/usdc pool.
+    uint256 internal daiIdx;
+    uint256 internal usdcIdx;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
         noInitPool = PoolMock(createPool());
+
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
     /// Swap

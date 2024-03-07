@@ -21,6 +21,9 @@ contract HooksTest is BaseVaultTest {
     using ArrayHelpers for *;
     using FixedPoint for uint256;
 
+    uint256 internal daiIdx;
+    uint256 internal usdcIdx;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
@@ -28,6 +31,8 @@ contract HooksTest is BaseVaultTest {
         config.hooks.shouldCallBeforeSwap = true;
         config.hooks.shouldCallAfterSwap = true;
         vault.setConfig(address(pool), config);
+
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
     function testOnBeforeSwapHook() public {

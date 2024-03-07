@@ -22,14 +22,13 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
     using FixedPoint for *;
 
     // Track the indices for the local dai/wsteth pool.
-    uint256 localDaiIdx;
-    uint256 localWstethIdx;
+    uint256 internal daiIdx;
+    uint256 internal wstethIdx;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        localDaiIdx = address(dai) > address(wsteth) ? 1 : 0;
-        localWstethIdx = localDaiIdx == 0 ? 1 : 0;
+        (daiIdx, wstethIdx) = getSortedIndexes(address(dai), address(wsteth));
     }
 
     function createPool() internal override returns (address) {
@@ -65,8 +64,8 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
     function testInitialRateProviderState() public {
         (, , , , IRateProvider[] memory rateProviders) = vault.getPoolTokenInfo(address(pool));
 
-        assertEq(address(rateProviders[localWstethIdx]), address(rateProvider), "Wrong rate provider");
-        assertEq(address(rateProviders[localDaiIdx]), address(0), "Rate provider should be 0");
+        assertEq(address(rateProviders[wstethIdx]), address(rateProvider), "Wrong rate provider");
+        assertEq(address(rateProviders[daiIdx]), address(0), "Rate provider should be 0");
     }
 
     function testSwapSingleTokenExactIWithRate() public {
@@ -74,8 +73,8 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         uint256 rateAdjustedAmount = defaultAmount.mulDown(mockRate);
 
         uint256[] memory expectedBalances = new uint256[](2);
-        expectedBalances[localWstethIdx] = rateAdjustedAmount;
-        expectedBalances[localDaiIdx] = defaultAmount;
+        expectedBalances[wstethIdx] = rateAdjustedAmount;
+        expectedBalances[daiIdx] = defaultAmount;
 
         vm.expectCall(
             address(pool),
@@ -85,8 +84,8 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: expectedBalances,
-                    indexIn: localDaiIdx,
-                    indexOut: localWstethIdx,
+                    indexIn: daiIdx,
+                    indexOut: wstethIdx,
                     sender: address(router),
                     userData: bytes("")
                 })
@@ -111,8 +110,8 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         uint256 rateAdjustedAmountGiven = defaultAmount.divDown(mockRate);
 
         uint256[] memory expectedBalances = new uint256[](2);
-        expectedBalances[localWstethIdx] = rateAdjustedBalance;
-        expectedBalances[localDaiIdx] = defaultAmount;
+        expectedBalances[wstethIdx] = rateAdjustedBalance;
+        expectedBalances[daiIdx] = defaultAmount;
 
         vm.expectCall(
             address(pool),
@@ -122,8 +121,8 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
                     kind: SwapKind.EXACT_OUT,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: expectedBalances,
-                    indexIn: localDaiIdx,
-                    indexOut: localWstethIdx,
+                    indexIn: daiIdx,
+                    indexOut: wstethIdx,
                     sender: address(router),
                     userData: bytes("")
                 })

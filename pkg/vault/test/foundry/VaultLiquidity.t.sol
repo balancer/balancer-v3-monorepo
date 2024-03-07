@@ -14,8 +14,14 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract VaultLiquidityTest is BaseVaultTest {
     using ArrayHelpers for *;
 
+    // Track the indices for the standard dai/usdc pool.
+    uint256 internal daiIdx;
+    uint256 internal usdcIdx;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
     /// Add

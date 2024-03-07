@@ -67,9 +67,13 @@ contract LiquidityApproximationTest is BaseVaultTest {
     uint256 internal maxSwapFeePercentage = 0.1e18; // 10%
     uint256 internal maxAmount = 3e8 * 1e18 - 1;
 
+    uint256 internal daiIdx;
+
     function setUp() public virtual override {
         defaultBalance = 1e10 * 1e18;
         BaseVaultTest.setUp();
+
+        (daiIdx, ) = getSortedIndexes(address(dai), address(usdc));
 
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
     }

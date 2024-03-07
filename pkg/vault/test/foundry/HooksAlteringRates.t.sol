@@ -21,12 +21,17 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract HooksAlteringRatesTest is BaseVaultTest {
     using ArrayHelpers for *;
 
+    uint256 internal daiIdx;
+    uint256 internal usdcIdx;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
         PoolConfig memory config = vault.getPoolConfig(address(pool));
         config.hooks.shouldCallBeforeSwap = true;
         vault.setConfig(address(pool), config);
+
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
     function createPool() internal virtual override returns (address) {

@@ -42,14 +42,18 @@ contract RouterTest is BaseVaultTest {
     PoolMock internal wethPoolNoInit;
 
     // Track the indices for the local dai/weth pool.
-    uint256 localWethIdx;
-    uint256 localDaiIdx;
+    uint256 internal daiIdxWethPool;
+    uint256 internal wethIdx;
+
+    // Track the indices for the standard dai/usdc pool.
+    uint256 internal daiIdx;
+    uint256 internal usdcIdx;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        localWethIdx = address(weth) > address(dai) ? 1 : 0;
-        localDaiIdx = localWethIdx == 0 ? 1 : 0;
+        (daiIdxWethPool, wethIdx) = getSortedIndexes(address(dai), address(weth));
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
     function createPool() internal override returns (address) {
@@ -493,8 +497,8 @@ contract RouterTest is BaseVaultTest {
 
     function getWethDaiAmountsIn() internal view returns (uint256[] memory amountsIn) {
         amountsIn = new uint256[](2);
-        amountsIn[localWethIdx] = ethAmountIn;
-        amountsIn[localDaiIdx] = daiAmountIn;
+        amountsIn[wethIdx] = ethAmountIn;
+        amountsIn[daiIdxWethPool] = daiAmountIn;
     }
 
     function getWethDaiTokens() internal view returns (IERC20[] memory tokens) {

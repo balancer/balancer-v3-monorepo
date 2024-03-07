@@ -35,8 +35,12 @@ contract VaultTokenTest is BaseVaultTest {
     ERC4626TestToken waUSDC;
 
     // For two-token pools with waDAI/waUSDC, keep track of sorted token order.
-    uint256 waDaiIdx;
-    uint256 waUsdcIdx;
+    uint256 internal waDaiIdx;
+    uint256 internal waUsdcIdx;
+
+    // Track the indices for the standard dai/usdc pool.
+    uint256 internal daiIdx;
+    uint256 internal usdcIdx;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -45,11 +49,11 @@ contract VaultTokenTest is BaseVaultTest {
         cDAI = new ERC4626TestToken(dai, "Wrapped cDAI", "cDAI", 18);
         waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 6);
 
-        waDaiIdx = address(waDAI) > address(waUSDC) ? 1 : 0;
-        waUsdcIdx = waDaiIdx == 0 ? 1 : 0;
-
         poolFactory = new PoolFactoryMock(vault, 365 days);
         bufferFactory = new ERC4626BufferPoolFactory(vault, 365 days);
+
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+        (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
     }
 
     function createPool() internal override returns (address) {

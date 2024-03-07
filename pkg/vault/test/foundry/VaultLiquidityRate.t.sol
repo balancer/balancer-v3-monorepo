@@ -22,15 +22,14 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
     using ArrayHelpers for *;
 
     // Track the indices for the local dai/wsteth pool.
-    uint256 localDaiIdx;
-    uint256 localWstethIdx;
+    uint256 internal daiIdx;
+    uint256 internal wstethIdx;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
         rateProvider.mockRate(mockRate);
 
-        localDaiIdx = address(dai) > address(wsteth) ? 1 : 0;
-        localWstethIdx = localDaiIdx == 0 ? 1 : 0;
+        (daiIdx, wstethIdx) = getSortedIndexes(address(dai), address(wsteth));
     }
 
     function createPool() internal override returns (address) {
@@ -62,14 +61,14 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         uint256[] memory rawBalances = vault.getRawBalances(address(pool));
         uint256[] memory liveBalances = vault.getLastLiveBalances(address(pool));
 
-        assertEq(FixedPoint.mulDown(rawBalances[localWstethIdx], mockRate), liveBalances[localWstethIdx]);
-        assertEq(rawBalances[localDaiIdx], liveBalances[localDaiIdx]);
+        assertEq(FixedPoint.mulDown(rawBalances[wstethIdx], mockRate), liveBalances[wstethIdx]);
+        assertEq(rawBalances[daiIdx], liveBalances[daiIdx]);
     }
 
     function testAddLiquiditySingleTokenExactOutWithRate() public {
         uint256[] memory expectedBalances = new uint256[](2);
-        expectedBalances[localWstethIdx] = FixedPoint.mulDown(defaultAmount, mockRate);
-        expectedBalances[localDaiIdx] = defaultAmount;
+        expectedBalances[wstethIdx] = FixedPoint.mulDown(defaultAmount, mockRate);
+        expectedBalances[daiIdx] = defaultAmount;
 
         vm.startPrank(alice);
         vm.expectCall(
@@ -77,7 +76,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IBasePool.computeBalance.selector,
                 expectedBalances, // liveBalancesScaled18
-                localWstethIdx,
+                wstethIdx,
                 150e16 // 150% growth
             )
         );
@@ -91,11 +90,11 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         uint256[] memory expectedAmountsIn = new uint256[](2);
         uint256[] memory expectedBalances = new uint256[](2);
 
-        expectedAmountsIn[localWstethIdx] = rateAdjustedAmount;
-        expectedAmountsIn[localDaiIdx] = defaultAmount;
+        expectedAmountsIn[wstethIdx] = rateAdjustedAmount;
+        expectedAmountsIn[daiIdx] = defaultAmount;
 
-        expectedBalances[localWstethIdx] = rateAdjustedAmount;
-        expectedBalances[localDaiIdx] = defaultAmount;
+        expectedBalances[wstethIdx] = rateAdjustedAmount;
+        expectedBalances[daiIdx] = defaultAmount;
 
         vm.startPrank(alice);
         vm.expectCall(
@@ -160,9 +159,8 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IBasePool.computeBalance.selector,
-                [balances.balancesLiveScaled18[localDaiIdx], balances.balancesLiveScaled18[localWstethIdx]]
-                    .toMemoryArray(),
-                localWstethIdx, // tokenOutIndex
+                [balances.balancesLiveScaled18[daiIdx], balances.balancesLiveScaled18[wstethIdx]].toMemoryArray(),
+                wstethIdx, // tokenOutIndex
                 50e16 // invariantRatio
             )
         );
@@ -184,8 +182,8 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         PoolData memory balances = vault.computePoolDataUpdatingBalancesAndFees(address(pool), Rounding.ROUND_DOWN);
         uint256[] memory expectedAmountsOut = new uint256[](2);
 
-        expectedAmountsOut[localWstethIdx] = FixedPoint.mulDown(defaultAmount, mockRate);
-        expectedAmountsOut[localDaiIdx] = defaultAmount;
+        expectedAmountsOut[wstethIdx] = FixedPoint.mulDown(defaultAmount, mockRate);
+        expectedAmountsOut[daiIdx] = defaultAmount;
 
         vm.expectCall(
             address(pool),
@@ -194,8 +192,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
                 alice,
                 defaultAmount, // maxBptAmountIn
                 expectedAmountsOut, // minAmountsOut
-                [balances.balancesLiveScaled18[localDaiIdx], balances.balancesLiveScaled18[localWstethIdx]]
-                    .toMemoryArray(),
+                [balances.balancesLiveScaled18[daiIdx], balances.balancesLiveScaled18[wstethIdx]].toMemoryArray(),
                 bytes("")
             )
         );

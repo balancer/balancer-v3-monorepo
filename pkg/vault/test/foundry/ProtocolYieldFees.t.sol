@@ -27,20 +27,19 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     RateProviderMock daiRateProvider;
 
     // Track the indices for the local dai/wsteth pool.
-    uint256 localWstethIdx;
-    uint256 localDaiIdx;
+    uint256 internal wstethIdx;
+    uint256 internal daiIdx;
 
     function setUp() public override {
         BaseVaultTest.setUp();
+
+        (daiIdx, wstethIdx) = getSortedIndexes(address(dai), address(wsteth));
     }
 
     // Create wsteth / dai pool, with rate providers on wsteth (non-exempt), and dai (exempt)
     function createPool() internal override returns (address) {
         wstETHRateProvider = new RateProviderMock();
         daiRateProvider = new RateProviderMock();
-
-        localWstethIdx = address(wsteth) > address(dai) ? 1 : 0;
-        localDaiIdx = localWstethIdx == 0 ? 1 : 0;
 
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         bool[] memory yieldExemptFlags = new bool[](2);
@@ -146,11 +145,11 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         // How much should the fee be?
         // Tricky, because the diff already has the fee subtracted. Need to add it back in
         uint256 protocolFeeScaled18 = actualProtocolFee.toScaled18ApplyRateRoundDown(
-            scalingFactors[localWstethIdx],
+            scalingFactors[wstethIdx],
             wstethRate
         );
-        uint256 feeScaled18 = (liveBalanceDeltas[localWstethIdx] + protocolFeeScaled18).mulDown(yieldFeePercentage);
-        uint256 expectedProtocolFee = feeScaled18.toRawUndoRateRoundDown(scalingFactors[localWstethIdx], wstethRate);
+        uint256 feeScaled18 = (liveBalanceDeltas[wstethIdx] + protocolFeeScaled18).mulDown(yieldFeePercentage);
+        uint256 expectedProtocolFee = feeScaled18.toRawUndoRateRoundDown(scalingFactors[wstethIdx], wstethRate);
 
         assertApproxEqAbs(actualProtocolFee, expectedProtocolFee, 1e3, "Actual protocol fee is not the expected one");
     }
@@ -265,8 +264,8 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         uint256[] memory expectedRawBalances = vault.getRawBalances(address(pool));
         uint256[] memory expectedRates = new uint256[](2);
 
-        expectedRates[localWstethIdx] = wstethRate;
-        expectedRates[localDaiIdx] = daiRate;
+        expectedRates[wstethIdx] = wstethRate;
+        expectedRates[daiIdx] = daiRate;
 
         uint256 expectedLiveBalance;
 
