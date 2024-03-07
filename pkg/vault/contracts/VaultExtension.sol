@@ -669,12 +669,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         // Sort tokens
-        uint256 wrappedTokenIndex = baseToken > wrappedToken ? 0 : 1;
+        uint256 wrappedTokenIndex = wrappedToken > baseToken ? 1 : 0;
+        uint256 baseTokenIndex = wrappedTokenIndex == 0 ? 1 : 0;
 
         tokenConfig[wrappedTokenIndex].token = IERC20(wrappedToken);
         tokenConfig[wrappedTokenIndex].tokenType = TokenType.ERC4626;
         // We are assuming the baseToken is STANDARD (the default type, with enum value 0).
-        tokenConfig[wrappedTokenIndex == 0 ? 1 : 0].token = baseToken;
+        tokenConfig[baseTokenIndex].token = baseToken;
 
         _registerPool(
             pool,

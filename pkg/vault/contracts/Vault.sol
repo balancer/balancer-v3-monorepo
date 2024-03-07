@@ -7,6 +7,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -16,6 +17,7 @@ import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IV
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
+import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
@@ -198,7 +200,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN);
 
         if (poolData.poolConfig.isBufferPool) {
-            revert CannotSwapWithBufferPool(params.pool);
+            // if the sender is the buffer pool, swaps are allowed as this is part of the rebalance mechanism.
+            try IBufferPool(msg.sender).getWrappedTokenIndex() returns (uint256 wrappedTokenIdx) {
+                if (
+                    _wrappedTokenBuffers[IERC4626(address(poolData.tokenConfig[wrappedTokenIdx].token))] != msg.sender
+                ) {
+                    revert CannotSwapWithBufferPool(params.pool);
+                }
+            } catch {
+                revert CannotSwapWithBufferPool(params.pool);
+            }
         }
 
         // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
