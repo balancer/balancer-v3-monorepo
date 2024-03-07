@@ -26,7 +26,6 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
     function unbalanceThePool(uint256 assetsToTransferRaw, SwapKind kind) external {
         (IERC20[] memory tokens, , , , ) = getVault().getPoolTokenInfo(address(this));
 
-        // adsf
         uint256 indexIn = kind == SwapKind.EXACT_IN ? _baseTokenIndex : _wrappedTokenIndex;
         uint256 indexOut = kind == SwapKind.EXACT_IN ? _wrappedTokenIndex : _baseTokenIndex;
 
