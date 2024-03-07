@@ -80,7 +80,7 @@ contract RouterTest is BaseVaultTest {
 
         (daiIdxWethPool, wethIdx) = getSortedIndexes(address(dai), address(weth));
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
-        
+
         wethDaiTokens = new IERC20[](2);
         wethDaiTokens[wethIdx] = IERC20(address(weth));
         wethDaiTokens[daiIdxWethPool] = IERC20(address(dai));

@@ -1,5 +1,5 @@
-export function assert(condition: unknown, error: string): asserts condition {
-  if (condition == false) throw new Error(error);
+function assert(condition: boolean, error: string): asserts condition {
+  if (!condition) throw new Error(error);
 }
 
 const cmpTokens = (tokenA: string, tokenB: string): number => (tokenA.toLowerCase() > tokenB.toLowerCase() ? 1 : -1);
