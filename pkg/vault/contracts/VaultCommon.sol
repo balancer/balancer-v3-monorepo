@@ -353,7 +353,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             if (tokenType == TokenType.STANDARD) {
                 poolData.tokenRates[i] = FixedPoint.ONE;
             } else if (tokenType == TokenType.WITH_RATE) {
-                poolData.tokenRates[i] = poolData.tokenConfig[i].rateProvider.getRate(FixedPoint.ONE);
+                uint256 shares = exactAmountsInRaw[i];
+                shares = shares == 0 ? FixedPoint.ONE : shares;
+                poolData.tokenRates[i] = poolData.tokenConfig[i].rateProvider.getRate(shares);
             } else if (tokenType == TokenType.ERC4626) {
                 uint256 shares = exactAmountsInRaw[i];
                 shares = shares == 0 ? FixedPoint.ONE : shares;

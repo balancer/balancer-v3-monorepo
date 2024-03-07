@@ -156,6 +156,8 @@ contract ERC4626BufferPool is
         // NB: If this ever changes, we would need to create another modifier on the rebalance function and check that.
         if (_reentrancyGuardEntered()) {
             // Rate used by the vault to scale values
+            // Since the amount given is in terms of base token, the vault used FixedPoint.ONE to calculate
+            // the rate of the wrapped token (no shares value to use).
             uint256 wrappedRate = _getRate(FixedPoint.ONE);
 
             uint256 sharesRaw = request.amountGivenScaled18.divDown(wrappedRate).divDown(_wrappedTokenScalingFactor);
