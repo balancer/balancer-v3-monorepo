@@ -19,7 +19,7 @@ contract Router is IRouter, ReentrancyGuard {
     using Address for address payable;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    uint256 private constant MAX_AMOUNT = type(uint128).max;
+    uint256 private constant _MAX_AMOUNT = type(uint128).max;
 
     IVault private immutable _vault;
 
@@ -36,6 +36,9 @@ contract Router is IRouter, ReentrancyGuard {
     // token out -> amount: tracks token out amounts within a batch swap.
     mapping(address => uint256) private _currentSwapTokenOutAmounts;
     // token -> amount that is part of the current input / output amounts, but is settled preemptively.
+    // This situation happens whenever there is BPT involved in the operation, which is minted and burnt instantly.
+    // Since those amounts are not tracked in the inputs / outputs to settle, we need to track them elsewhere
+    // to return the correct total amounts in and out for each token involved in the operation.
     mapping(address => uint256) private _settledTokenAmounts;
 
     modifier onlyVault() {
@@ -895,7 +898,7 @@ contract Router is IRouter, ReentrancyGuard {
                         // For every other intermediate step, no maximum input applies.
                         // The input token for this step is the output token of the previous given step.
                         // We use uint128 to prevent Vault's internal scaling from overflowing.
-                        stepMaxAmountIn = MAX_AMOUNT;
+                        stepMaxAmountIn = _MAX_AMOUNT;
                         stepTokenIn = path.steps[uint256(j - 1)].tokenOut;
                     }
                 }
@@ -1055,7 +1058,7 @@ contract Router is IRouter, ReentrancyGuard {
                             tokenOut: tokenOut,
                             amountGiven: exactAmountIn,
                             limit: 0,
-                            deadline: MAX_AMOUNT,
+                            deadline: _MAX_AMOUNT,
                             wethIsEth: false,
                             userData: userData
                         })
@@ -1085,7 +1088,7 @@ contract Router is IRouter, ReentrancyGuard {
                             tokenIn: tokenIn,
                             tokenOut: tokenOut,
                             amountGiven: exactAmountOut,
-                            limit: MAX_AMOUNT,
+                            limit: _MAX_AMOUNT,
                             deadline: type(uint256).max,
                             wethIsEth: false,
                             userData: userData
@@ -1155,7 +1158,7 @@ contract Router is IRouter, ReentrancyGuard {
         bytes calldata userData
     ) external returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
         for (uint256 i = 0; i < paths.length; ++i) {
-            paths[i].maxAmountIn = MAX_AMOUNT;
+            paths[i].maxAmountIn = _MAX_AMOUNT;
         }
 
         return
@@ -1225,7 +1228,7 @@ contract Router is IRouter, ReentrancyGuard {
         (uint256[] memory maxAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
             pool,
             tokenIn,
-            MAX_AMOUNT
+            _MAX_AMOUNT
         );
 
         (uint256[] memory amountsIn, , ) = abi.decode(
@@ -1345,11 +1348,7 @@ contract Router is IRouter, ReentrancyGuard {
         bytes memory userData
     ) external returns (uint256 amountOut) {
         // We cannot use 0 as min amount out, as the value is used to figure out the token index.
-        (uint256[] memory minAmountsOut, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
-            pool,
-            tokenOut,
-            1
-        );
+        (uint256[] memory minAmountsOut, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, 1);
 
         (, uint256[] memory amountsOut, ) = abi.decode(
             _vault.quote(
@@ -1393,7 +1392,7 @@ contract Router is IRouter, ReentrancyGuard {
                         sender: address(this),
                         pool: pool,
                         minAmountsOut: minAmountsOut,
-                        maxBptAmountIn: MAX_AMOUNT,
+                        maxBptAmountIn: _MAX_AMOUNT,
                         kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                         wethIsEth: false,
                         userData: userData
