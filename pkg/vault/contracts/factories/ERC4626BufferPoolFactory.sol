@@ -22,7 +22,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
 
-    uint256 _BILLION = 1e9;
+    uint256 private constant _BILLION = 1e9;
 
     /// @dev The wrapped token does not conform to the Vault's requirement for ERC4626-compatibility.
     error IncompatibleWrappedToken(address token);
