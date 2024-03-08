@@ -3,6 +3,7 @@
 pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -11,15 +12,20 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
+import { BasePoolAuthentication } from "@balancer-labs/v3-vault/contracts/BasePoolAuthentication.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
+import { AmplificationDataLib, AmplificationDataBits, AmplificationData } from "./lib/AmplificationDataLib.sol";
+
 // https://etherscan.deth.net/address/0xc66Ba2B6595D3613CCab350C886aCE23866EDe24
 
 /// @notice Basic Stable Pool.
-contract StablePool is IBasePool, BalancerPoolToken {
-    uint256 private immutable _totalTokens;
+contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication {
+    using AmplificationDataLib for AmplificationData;
+    using FixedPoint for uint256;
+    using SafeCast for *;
 
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
     // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
@@ -33,28 +39,52 @@ contract StablePool is IBasePool, BalancerPoolToken {
     uint256 private constant _MIN_UPDATE_TIME = 1 days;
     uint256 private constant _MAX_AMP_UPDATE_DAILY_RATE = 2;
 
-    bytes32 private _packedAmplificationData;
+    /// @dev Store amplification state.
+    AmplificationDataBits private _amplificationState;
 
+    /// @dev An amplification update has started.
     event AmpUpdateStarted(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime);
+
+    /// @dev An amplification update has been stopped.
     event AmpUpdateStopped(uint256 currentValue);
+
+    /// @dev The amplification factor is below the minimum of the range (1 - 5000).
+    error AmplificationFactorTooLow();
+
+    /// @dev The amplification factor is above the maximum of the range (1 - 5000).
+    error AmplificationFactorTooHigh();
+
+    /// @dev The amplification change duration is too short.
+    error AmpUpdateDurationTooShort();
+
+    /// @dev The amplification change rate is too fast.
+    error AmpUpdateRateTooFast();
+
+    /// @dev Amplification update operations must be done one at a time.
+    error AmpUpdateAlreadyStarted();
+
+    /// @dev Cannot stop an amplification update before it starts.
+    error AmpUpdateNotStarted();
 
     struct NewPoolParams {
         string name;
         string symbol;
-        IERC20[] tokens;
-        IRateProvider[] rateProviders;
         uint256 amplificationParameter;
     }
 
-    constructor(NewPoolParams memory params, IVault vault) BalancerPoolToken(vault, params.name, params.symbol) {
-        uint256 numTokens = params.tokens.length;
+    constructor(
+        NewPoolParams memory params,
+        IVault vault
+    ) BalancerPoolToken(vault, params.name, params.symbol) BasePoolAuthentication(vault, msg.sender) {
+        if (params.amplificationParameter < StableMath.MIN_AMP) {
+            revert AmplificationFactorTooLow();
+        }
+        if (params.amplificationParameter > StableMath.MAX_AMP) {
+            revert AmplificationFactorTooHigh();
+        }
 
-        _totalTokens = numTokens;
+        uint256 initialAmp = params.amplificationParameter.mulDown(StableMath.AMP_PRECISION);
 
-        _require(amplificationParameter >= _MIN_AMP, Errors.MIN_AMP);
-        _require(amplificationParameter <= _MAX_AMP, Errors.MAX_AMP);
-
-        uint256 initialAmp = Math.mul(amplificationParameter, _AMP_PRECISION);
         _setAmplificationData(initialAmp);
     }
 
@@ -66,8 +96,8 @@ contract StablePool is IBasePool, BalancerPoolToken {
     /// @inheritdoc IBasePool
     function computeInvariant(uint256[] memory balancesLiveScaled18) public view returns (uint256) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
-        
-        return StableMath._calculateInvariant(currentAmp, balances, true);
+
+        return StableMath.computeInvariant(currentAmp, balancesLiveScaled18);
     }
 
     /// @inheritdoc IBasePool
@@ -78,31 +108,39 @@ contract StablePool is IBasePool, BalancerPoolToken {
     ) external view returns (uint256 newBalance) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        return StableMath._getTokenBalanceGivenInvariantAndAllOtherBalances(currentAmp, balancesLiveScaled18, invariantRatio, tokenInIndex);
+        return
+            StableMath.computeBalance(
+                currentAmp,
+                balancesLiveScaled18,
+                computeInvariant(balancesLiveScaled18).mulDown(invariantRatio),
+                tokenInIndex
+            );
     }
 
     /// @inheritdoc IBasePool
     function onSwap(IBasePool.SwapParams memory request) public view onlyVault returns (uint256) {
-        uint256 balanceTokenInScaled18 = request.balancesScaled18[request.indexIn];
-        uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];
+        uint256 invariant = computeInvariant(request.balancesScaled18);
+        (uint256 currentAmp, ) = _getAmplificationParameter();
 
         if (request.kind == SwapKind.EXACT_IN) {
-            uint256 amountOutScaled18 = WeightedMath.computeOutGivenExactIn(
-                balanceTokenInScaled18,
-                _getNormalizedWeight(request.indexIn),
-                balanceTokenOutScaled18,
-                _getNormalizedWeight(request.indexOut),
-                request.amountGivenScaled18
+            uint256 amountOutScaled18 = StableMath.computeOutGivenExactIn(
+                currentAmp,
+                request.balancesScaled18,
+                request.indexIn,
+                request.indexOut,
+                request.amountGivenScaled18,
+                invariant
             );
 
             return amountOutScaled18;
         } else {
-            uint256 amountInScaled18 = WeightedMath.computeInGivenExactOut(
-                balanceTokenInScaled18,
-                _getNormalizedWeight(request.indexIn),
-                balanceTokenOutScaled18,
-                _getNormalizedWeight(request.indexOut),
-                request.amountGivenScaled18
+            uint256 amountInScaled18 = StableMath.computeInGivenExactOut(
+                currentAmp,
+                request.balancesScaled18,
+                request.indexIn,
+                request.indexOut,
+                request.amountGivenScaled18,
+                invariant
             );
 
             // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
@@ -118,24 +156,35 @@ contract StablePool is IBasePool, BalancerPoolToken {
      * `getAmplificationParameter` have to be corrected to account for this when comparing to `rawEndValue`.
      */
     function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime) external authenticate {
-        _require(rawEndValue >= _MIN_AMP, Errors.MIN_AMP);
-        _require(rawEndValue <= _MAX_AMP, Errors.MAX_AMP);
+        if (rawEndValue < StableMath.MIN_AMP) {
+            revert AmplificationFactorTooLow();
+        }
+        if (rawEndValue > StableMath.MAX_AMP) {
+            revert AmplificationFactorTooHigh();
+        }
 
-        uint256 duration = Math.sub(endTime, block.timestamp);
-        _require(duration >= _MIN_UPDATE_TIME, Errors.AMP_END_TIME_TOO_CLOSE);
+        uint256 duration = endTime - block.timestamp;
+        if (duration < _MIN_UPDATE_TIME) {
+            revert AmpUpdateDurationTooShort();
+        }
 
         (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
-        _require(!isUpdating, Errors.AMP_ONGOING_UPDATE);
+        if (isUpdating) {
+            revert AmpUpdateAlreadyStarted();
+        }
 
-        uint256 endValue = Math.mul(rawEndValue, _AMP_PRECISION);
+        uint256 endValue = rawEndValue.mulDown(StableMath.AMP_PRECISION);
 
         // daily rate = (endValue / currentValue) / duration * 1 day
         // We perform all multiplications first to not reduce precision, and round the division up as we want to avoid
         // large rates. Note that these are regular integer multiplications and divisions, not fixed point.
         uint256 dailyRate = endValue > currentValue
-            ? Math.divUp(Math.mul(1 days, endValue), Math.mul(currentValue, duration))
-            : Math.divUp(Math.mul(1 days, currentValue), Math.mul(endValue, duration));
-        _require(dailyRate <= _MAX_AMP_UPDATE_DAILY_RATE, Errors.AMP_RATE_TOO_HIGH);
+            ? endValue.mulDown(1 days).divUp(currentValue.mulDown(duration))
+            : currentValue.mulDown(1 days).divUp(endValue.mulDown(duration));
+
+        if (dailyRate > _MAX_AMP_UPDATE_DAILY_RATE) {
+            revert AmpUpdateRateTooFast();
+        }
 
         _setAmplificationData(currentValue, endValue, block.timestamp, endTime);
     }
@@ -145,22 +194,23 @@ contract StablePool is IBasePool, BalancerPoolToken {
      */
     function stopAmplificationParameterUpdate() external authenticate {
         (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
-        _require(isUpdating, Errors.AMP_NO_ONGOING_UPDATE);
+
+        if (isUpdating == false) {
+            revert AmpUpdateNotStarted();
+        }
 
         _setAmplificationData(currentValue);
     }
 
-    function getAmplificationParameter()
-        external
-        view
-        returns (
-            uint256 value,
-            bool isUpdating,
-            uint256 precision
-        )
-    {
+    /**
+     * @notice Get all the amplifcation parameters.
+     * @return value Current amplification parameter value (could be in the middle of an update)
+     * @return isUpdating True if an amp update is in progress
+     * @return precision The raw value is multiplied by this number for greater precision during updates
+     */
+    function getAmplificationParameter() external view returns (uint256 value, bool isUpdating, uint256 precision) {
         (value, isUpdating) = _getAmplificationParameter();
-        precision = _AMP_PRECISION;
+        precision = StableMath.AMP_PRECISION;
     }
 
     function _getAmplificationParameter() internal view returns (uint256 value, bool isUpdating) {
@@ -174,13 +224,21 @@ contract StablePool is IBasePool, BalancerPoolToken {
             // We can skip checked arithmetic as:
             //  - block.timestamp is always larger or equal to startTime
             //  - endTime is alawys larger than startTime
-            //  - the value delta is bounded by the largest amplification paramater, which never causes the
+            //  - the value delta is bounded by the largest amplification parameter, which never causes the
             //    multiplication to overflow.
             // This also means that the following computation will never revert nor yield invalid results.
-            if (endValue > startValue) {
-                value = startValue + ((endValue - startValue) * (block.timestamp - startTime)) / (endTime - startTime);
-            } else {
-                value = startValue - ((startValue - endValue) * (block.timestamp - startTime)) / (endTime - startTime);
+            unchecked {
+                if (endValue > startValue) {
+                    value =
+                        startValue +
+                        ((endValue - startValue) * (block.timestamp - startTime)) /
+                        (endTime - startTime);
+                } else {
+                    value =
+                        startValue -
+                        ((startValue - endValue) * (block.timestamp - startTime)) /
+                        (endTime - startTime);
+                }
             }
         } else {
             isUpdating = false;
@@ -194,17 +252,13 @@ contract StablePool is IBasePool, BalancerPoolToken {
         emit AmpUpdateStopped(value);
     }
 
-    function _setAmplificationData(
-        uint256 startValue,
-        uint256 endValue,
-        uint256 startTime,
-        uint256 endTime
-    ) private {
-        _packedAmplificationData =
-            WordCodec.encodeUint(uint64(startValue), 0) |
-            WordCodec.encodeUint(uint64(endValue), 64) |
-            WordCodec.encodeUint(uint64(startTime), 64 * 2) |
-            WordCodec.encodeUint(uint64(endTime), 64 * 3);
+    function _setAmplificationData(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime) private {
+        AmplificationData memory data;
+        data.startValue = startValue.toUint64();
+        data.endValue = endValue.toUint64();
+        data.startTime = startTime.toUint64();
+        data.endTime = endTime.toUint64();
+        _amplificationState = data.fromAmpData();
 
         emit AmpUpdateStarted(startValue, endValue, startTime, endTime);
     }
@@ -212,16 +266,12 @@ contract StablePool is IBasePool, BalancerPoolToken {
     function _getAmplificationData()
         private
         view
-        returns (
-            uint256 startValue,
-            uint256 endValue,
-            uint256 startTime,
-            uint256 endTime
-        )
+        returns (uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime)
     {
-        startValue = _packedAmplificationData.decodeUint64(0);
-        endValue = _packedAmplificationData.decodeUint64(64);
-        startTime = _packedAmplificationData.decodeUint64(64 * 2);
-        endTime = _packedAmplificationData.decodeUint64(64 * 3);
+        AmplificationData memory data = _amplificationState.toAmpData();
+        startValue = data.startValue;
+        endValue = data.endValue;
+        startTime = data.startTime;
+        endTime = data.endTime;
     }
 }

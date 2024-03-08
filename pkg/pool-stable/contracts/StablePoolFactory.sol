@@ -31,14 +31,14 @@ contract StablePoolFactory is BasePoolFactory {
      * @param name The name of the pool
      * @param symbol The symbol of the pool
      * @param tokens An array of descriptors for the tokens the pool will manage
-     * @param normalizedWeights The pool weights (must add to FixedPoint.ONE)
+     * @param amplificationParameter The starting Amplification Parameter
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
         string memory name,
         string memory symbol,
         TokenConfig[] memory tokens,
-        uint256[] memory normalizedWeights,
+        uint256 amplificationParameter,
         bytes32 salt
     ) external returns (address pool) {
         pool = _create(
@@ -46,7 +46,7 @@ contract StablePoolFactory is BasePoolFactory {
                 StablePool.NewPoolParams({
                     name: name,
                     symbol: symbol,
-                    tokens: _extractTokensFromTokenConfig(tokens)
+                    amplificationParameter: amplificationParameter
                 }),
                 getVault()
             ),
