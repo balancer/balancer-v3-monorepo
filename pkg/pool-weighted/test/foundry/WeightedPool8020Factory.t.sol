@@ -92,7 +92,9 @@ contract WeightedPool8020FactoryTest is Test {
 
         // Different sender should change the address of the pool, given the same salt value
         vm.prank(alice);
-        WeightedPool pool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], DEFAULT_SWAP_FEE, salt));
+        WeightedPool pool = WeightedPool(
+            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], DEFAULT_SWAP_FEE, salt)
+        );
         assertFalse(address(pool) == expectedPoolAddress, "Unexpected pool address");
 
         vm.prank(alice);
