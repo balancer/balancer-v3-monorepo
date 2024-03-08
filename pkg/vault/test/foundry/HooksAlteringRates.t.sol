@@ -11,6 +11,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
@@ -20,17 +21,24 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract HooksAlteringRatesTest is BaseVaultTest {
     using ArrayHelpers for *;
 
+    uint256 internal daiIdx;
+    uint256 internal usdcIdx;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
         PoolConfig memory config = vault.getPoolConfig(address(pool));
         config.hooks.shouldCallBeforeSwap = true;
         vault.setConfig(address(pool), config);
+
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
     function createPool() internal virtual override returns (address) {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
-        rateProviders[0] = new RateProviderMock();
+        // Rate providers will by sorted along with tokens by buildTokenConfig.
+        rateProvider = new RateProviderMock();
+        rateProviders[0] = rateProvider;
 
         PoolMock newPool = new PoolMock(
             IVault(address(vault)),
@@ -47,9 +55,13 @@ contract HooksAlteringRatesTest is BaseVaultTest {
 
     function testOnBeforeSwapHookAltersRate() public {
         // Change rate of first token
-        PoolMock(pool).setChangeTokenRateOnBeforeSwapHook(true, 0.5e18);
+        PoolMock(pool).setChangeTokenRateOnBeforeSwapHook(true, rateProvider, 0.5e18);
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
+
+        uint256[] memory expectedBalances = new uint256[](2);
+        expectedBalances[daiIdx] = rateAdjustedAmount;
+        expectedBalances[usdcIdx] = defaultAmount;
 
         // Check that the swap gets balances and amount given that reflect the updated rate
         vm.prank(bob);
@@ -60,9 +72,9 @@ contract HooksAlteringRatesTest is BaseVaultTest {
                 IBasePool.SwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: rateAdjustedAmount,
-                    balancesScaled18: [rateAdjustedAmount, defaultAmount].toMemoryArray(),
-                    indexIn: 0,
-                    indexOut: 1,
+                    balancesScaled18: expectedBalances,
+                    indexIn: daiIdx,
+                    indexOut: usdcIdx,
                     sender: address(router),
                     userData: bytes("")
                 })
@@ -74,7 +86,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
 
     function testOnBeforeInitializeHookAltersRate() public {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
-        rateProviders[0] = new RateProviderMock();
+        rateProviders[0] = rateProvider;
 
         PoolMock newPool = new PoolMock(
             IVault(address(vault)),
@@ -93,27 +105,26 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         vault.setConfig(address(newPool), config);
 
         // Change rate of first token
-        PoolMock(newPool).setChangeTokenRateOnBeforeInitializeHook(true, 0.5e18);
+        PoolMock(newPool).setChangeTokenRateOnBeforeInitializeHook(true, rateProvider, 0.5e18);
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
 
         uint256 bptAmount = rateAdjustedAmount + defaultAmount - _MINIMUM_BPT;
 
+        uint256[] memory expectedAmounts = new uint256[](2);
+        expectedAmounts[daiIdx] = rateAdjustedAmount;
+        expectedAmounts[usdcIdx] = defaultAmount;
+
         // Cannot intercept _initialize, but can check the same values in the AfterInitialize hook
         vm.prank(bob);
         vm.expectCall(
             address(newPool),
-            abi.encodeWithSelector(
-                IPoolHooks.onAfterInitialize.selector,
-                [rateAdjustedAmount, defaultAmount].toMemoryArray(),
-                bptAmount,
-                ""
-            )
+            abi.encodeWithSelector(IPoolHooks.onAfterInitialize.selector, expectedAmounts, bptAmount, "")
         );
 
         router.initialize(
             address(newPool),
-            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            InputHelpers.sortTokens([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,
             false,
@@ -128,12 +139,21 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         vault.setConfig(address(pool), config);
 
         // Change rate of first token
-        PoolMock(pool).setChangeTokenRateOnBeforeAddLiquidityHook(true, 0.5e18);
+        PoolMock(pool).setChangeTokenRateOnBeforeAddLiquidityHook(true, rateProvider, 0.5e18);
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
 
         // Unbalanced add sets amounts to maxAmounts. We can't intercept `_addLliquidity`, but can verify
         // maxAmounts are updated by inspecting the amountsIn.
+
+        uint256[] memory expectedAmountsIn = new uint256[](2);
+        uint256[] memory expectedBalances = new uint256[](2);
+
+        expectedAmountsIn[daiIdx] = rateAdjustedAmount;
+        expectedAmountsIn[usdcIdx] = defaultAmount;
+
+        expectedBalances[daiIdx] = defaultAmount;
+        expectedBalances[usdcIdx] = defaultAmount * 2;
 
         vm.prank(bob);
         vm.expectCall(
@@ -141,9 +161,9 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IPoolHooks.onAfterAddLiquidity.selector,
                 bob,
-                [rateAdjustedAmount, defaultAmount].toMemoryArray(),
+                expectedAmountsIn,
                 defaultAmount * 2,
-                [defaultAmount, defaultAmount * 2].toMemoryArray(),
+                expectedBalances,
                 bytes("")
             )
         );
@@ -163,7 +183,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         vault.setConfig(address(pool), config);
 
         // Change rate of first token
-        PoolMock(pool).setChangeTokenRateOnBeforeRemoveLiquidityHook(true, 0.5e18);
+        PoolMock(pool).setChangeTokenRateOnBeforeRemoveLiquidityHook(true, rateProvider, 0.5e18);
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
 
@@ -176,6 +196,15 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             bytes("")
         );
 
+        uint256[] memory expectedAmountsOut = new uint256[](2);
+        uint256[] memory expectedBalances = new uint256[](2);
+
+        expectedAmountsOut[daiIdx] = rateAdjustedAmount;
+        expectedAmountsOut[usdcIdx] = defaultAmountRoundDown;
+
+        expectedBalances[daiIdx] = defaultAmount;
+        expectedBalances[usdcIdx] = defaultAmount * 2;
+
         // removeLiquidityCustom passes the minAmountsOut to the callback, so we can check that they are updated.
         vm.expectCall(
             address(pool),
@@ -183,8 +212,8 @@ contract HooksAlteringRatesTest is BaseVaultTest {
                 IPoolLiquidity.onRemoveLiquidityCustom.selector,
                 alice,
                 bptAmount,
-                [rateAdjustedAmount, defaultAmountRoundDown].toMemoryArray(),
-                [defaultAmount, 2 * defaultAmount].toMemoryArray(),
+                expectedAmountsOut,
+                expectedBalances,
                 bytes("")
             )
         );

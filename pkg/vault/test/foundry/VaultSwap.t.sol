@@ -6,7 +6,6 @@ import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -23,10 +22,16 @@ contract VaultSwapTest is BaseVaultTest {
     uint256 internal swapFee = defaultAmount / 100; // 1%
     uint256 internal protocolSwapFee = swapFee / 2; // 50%
 
+    // Track the indices for the standard dai/usdc pool.
+    uint256 internal daiIdx;
+    uint256 internal usdcIdx;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
         noInitPool = PoolMock(createPool());
+
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
     /// Swap
@@ -388,8 +393,8 @@ contract VaultSwapTest is BaseVaultTest {
 
         // Tokens are adjusted in the pool
         (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], fee - protocolFee, "Swap: Pool's [0] balance is wrong");
-        assertEq(balances[1], 2 * defaultAmount, "Swap: Pool's [1] balance is wrong");
+        assertEq(balances[daiIdx], fee - protocolFee, "Swap: Pool's [0] balance is wrong");
+        assertEq(balances[usdcIdx], 2 * defaultAmount, "Swap: Pool's [1] balance is wrong");
 
         // protocol fees are accrued
         assertEq(protocolFee, vault.getProtocolFees(address(dai)), "Swap: Protocol's fee amount is wrong");
