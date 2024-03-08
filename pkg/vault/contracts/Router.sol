@@ -19,6 +19,8 @@ contract Router is IRouter, ReentrancyGuard {
     using Address for address payable;
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    // Raw token balances are stored in half a slot, so the max is uint128. Moreover, given amounts are usually scaled
+    // inside the Vault, so sending max uint256 would result in an overflow and revert.
     uint256 private constant _MAX_AMOUNT = type(uint128).max;
 
     IVault private immutable _vault;
