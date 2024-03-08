@@ -34,6 +34,7 @@ import { Router } from "@balancer-labs/v3-vault/contracts/Router.sol";
 import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
 import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import { ERC4626BufferPoolFactoryMock } from "./utils/ERC4626BufferPoolFactoryMock.sol";
 import { ERC4626BufferPoolMock } from "./utils/ERC4626BufferPoolMock.sol";
@@ -108,9 +109,7 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
         amountsInDai[wrappedTokenIdx] = bufferDaiWrapped;
         amountsInDai[baseTokenIdx] = BUFFER_BASE_TOKENS;
 
-        IERC20[] memory tokens = new IERC20[](2);
-        tokens[wrappedTokenIdx] = IERC20(wDAI_ADDRESS);
-        tokens[baseTokenIdx] = IERC20(address(mockedDai));
+        IERC20[] memory tokens = InputHelpers.sortTokens([wDAI_ADDRESS, address(mockedDai)].toMemoryArray().asIERC20());
 
         bptAmountOutDai = router.initialize(
             address(bufferPoolDai),

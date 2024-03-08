@@ -17,6 +17,7 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Router } from "../../contracts/Router.sol";
@@ -81,9 +82,7 @@ contract RouterTest is BaseVaultTest {
         (daiIdxWethPool, wethIdx) = getSortedIndexes(address(dai), address(weth));
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
-        wethDaiTokens = new IERC20[](2);
-        wethDaiTokens[wethIdx] = IERC20(address(weth));
-        wethDaiTokens[daiIdxWethPool] = IERC20(address(dai));
+        wethDaiTokens = InputHelpers.sortTokens([address(weth), address(dai)].toMemoryArray().asIERC20());
 
         wethDaiAmountsIn = new uint256[](2);
         wethDaiAmountsIn[wethIdx] = ethAmountIn;
