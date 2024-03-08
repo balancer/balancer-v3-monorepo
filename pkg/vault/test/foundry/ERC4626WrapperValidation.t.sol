@@ -18,7 +18,6 @@ import { ERC4626TokenBrokenRateMock } from "./utils/ERC4626TokenBrokenRateMock.s
 
 import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 
-// IMPORTANT: this is a fork test. Make sure the env variable MAINNET_RPC_URL is set!
 contract ERC4626WrapperValidation is BaseVaultTest {
     ERC4626BufferPoolFactory factory;
 
