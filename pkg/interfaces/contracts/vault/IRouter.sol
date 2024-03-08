@@ -379,14 +379,19 @@ interface IRouter {
      * @param deadline Deadline for the swap
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for the swap
-     * @return amountsOut Calculated amounts of output tokens corresponding to the last step of each input path
+     * @return pathAmountsOut Calculated amounts of output tokens corresponding to the last step of each given path
+     * @return tokensOut Calculated output token addresses
+     * @return amountsOut Calculated amounts of output tokens, ordered by output token address
      */
     function swapExactIn(
         SwapPathExactAmountIn[] memory paths,
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable returns (uint256[] memory amountsOut);
+    )
+        external
+        payable
+        returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut);
 
     /**
      * @notice Executes a swap operation involving multiple paths (steps), specifying exact output token amounts.
@@ -394,14 +399,16 @@ interface IRouter {
      * @param deadline Deadline for the swap
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for the swap
-     * @return amountsIn Calculated amounts of input tokens corresponding to the last step of each input path
+     * @return pathAmountsIn Calculated amounts of input tokens corresponding to the last step of each given path
+     * @return tokensIn Calculated input token addresses
+     * @return amountsIn Calculated amounts of input tokens, ordered by input token address
      */
     function swapExactOut(
         SwapPathExactAmountOut[] memory paths,
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable returns (uint256[] memory amountsIn);
+    ) external payable returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn);
 
     /***************************************************************************
                                      Queries
@@ -411,14 +418,12 @@ interface IRouter {
      * @notice Queries an `addLiquidityUnbalanced` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
-     * @param minBptAmountOut Expected minimum amount of pool tokens to receive
      * @param userData Additional (optional) data required for the query
      * @return bptAmountOut Expected amount of pool tokens to receive
      */
     function queryAddLiquidityUnbalanced(
         address pool,
         uint256[] memory exactAmountsIn,
-        uint256 minBptAmountOut,
         bytes memory userData
     ) external returns (uint256 bptAmountOut);
 
@@ -426,7 +431,6 @@ interface IRouter {
      * @notice Queries an `addLiquiditySingleTokenExactOut` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param tokenIn Token used to add liquidity
-     * @param maxAmountIn Maximum amount of tokens to be added
      * @param exactBptAmountOut Expected exact amount of pool tokens to receive
      * @param userData Additional (optional) data required for the query
      * @return amountIn Expected amount of tokens to add
@@ -434,7 +438,6 @@ interface IRouter {
     function queryAddLiquiditySingleTokenExactOut(
         address pool,
         IERC20 tokenIn,
-        uint256 maxAmountIn,
         uint256 exactBptAmountOut,
         bytes memory userData
     ) external returns (uint256 amountIn);
@@ -460,14 +463,12 @@ interface IRouter {
      * @notice Queries `removeLiquidityProportional` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
-     * @param minAmountsOut Expected minimum amounts of tokens to receive, sorted in token registration order
      * @param userData Additional (optional) data required for the query
      * @return amountsOut Expected amounts of tokens to receive, sorted in token registration order
      */
     function queryRemoveLiquidityProportional(
         address pool,
         uint256 exactBptAmountIn,
-        uint256[] memory minAmountsOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut);
 
@@ -476,7 +477,6 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
      * @param tokenOut Token used to remove liquidity
-     * @param minAmountOut Expected minimum amount of tokens to receive
      * @param userData Additional (optional) data required for the query
      * @return amountOut Expected amount of tokens to receive
      */
@@ -484,14 +484,12 @@ interface IRouter {
         address pool,
         uint256 exactBptAmountIn,
         IERC20 tokenOut,
-        uint256 minAmountOut,
         bytes memory userData
     ) external returns (uint256 amountOut);
 
     /**
      * @notice Queries `removeLiquiditySingleTokenExactOut` operation without actually executing it.
      * @param pool Address of the liquidity pool
-     * @param maxBptAmountIn Maximum amount of pool tokens provided
      * @param tokenOut Token used to remove liquidity
      * @param exactAmountOut Expected exact amount of tokens to receive
      * @param userData Additional (optional) data required for the query
@@ -499,7 +497,6 @@ interface IRouter {
      */
     function queryRemoveLiquiditySingleTokenExactOut(
         address pool,
-        uint256 maxBptAmountIn,
         IERC20 tokenOut,
         uint256 exactAmountOut,
         bytes memory userData
@@ -566,4 +563,34 @@ interface IRouter {
         uint256 exactAmountOut,
         bytes calldata userData
     ) external returns (uint256 amountIn);
+
+    /**
+     * @notice Queries a swap operation involving multiple paths (steps), specifying exact input token amounts.
+     * @dev Min amounts out specified in the paths are ignored.
+     * @param paths Swap paths from token in to token out, specifying exact amounts in.
+     * @param userData Additional (optional) data required for the query
+     * @return pathAmountsOut Calculated amounts of output tokens to be received corresponding to the last step of each
+     * given path
+     * @return tokensOut Calculated output token addresses
+     * @return amountsOut Calculated amounts of output tokens to be received, ordered by output token address
+     */
+    function querySwapExactIn(
+        SwapPathExactAmountIn[] memory paths,
+        bytes calldata userData
+    ) external returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut);
+
+    /**
+     * @notice Queries a swap operation involving multiple paths (steps), specifying exact output token amounts.
+     * @dev Max amounts in specified in the paths are ignored.
+     * @param paths Swap paths from token in to token out, specifying exact amounts out
+     * @param userData Additional (optional) data required for the query
+     * @return pathAmountsIn Calculated amounts of input tokens to be received corresponding to the last step of each
+     * given path
+     * @return tokensIn Calculated input token addresses
+     * @return amountsIn Calculated amounts of input tokens to be received, ordered by input token address
+     */
+    function querySwapExactOut(
+        SwapPathExactAmountOut[] memory paths,
+        bytes calldata userData
+    ) external returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn);
 }
