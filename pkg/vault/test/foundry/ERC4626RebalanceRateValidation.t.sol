@@ -25,7 +25,6 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 
@@ -79,9 +78,6 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
 
     function createPool() internal override returns (address) {
         factory = new ERC4626BufferPoolFactoryMock(IVault(address(vault)), 365 days);
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.registerBufferPoolFactory.selector), alice);
-        vm.prank(alice);
-        vault.registerBufferPoolFactory(address(factory));
 
         bufferPoolDai = ERC4626BufferPoolMock(_createBuffer(wDAI));
         bufferPoolWsteth = ERC4626BufferPoolMock(_createBuffer(wWstEth));
