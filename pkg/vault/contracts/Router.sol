@@ -18,7 +18,9 @@ import { RouterCommon } from "./RouterCommon.sol";
 contract Router is IRouter, RouterCommon, ReentrancyGuard {
     using Address for address payable;
 
-    constructor(IVault vault, IWETH weth) RouterCommon(vault, weth) {}
+    constructor(IVault vault, IWETH weth) RouterCommon(vault, weth) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     /*******************************************************************************
                                     Pools

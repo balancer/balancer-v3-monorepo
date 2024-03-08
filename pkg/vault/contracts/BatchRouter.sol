@@ -32,7 +32,9 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
     // to return the correct total amounts in and out for each token involved in the operation.
     mapping(address => uint256) private _settledTokenAmounts;
 
-    constructor(IVault vault, IWETH weth) RouterCommon(vault, weth) {}
+    constructor(IVault vault, IWETH weth) RouterCommon(vault, weth) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     /// @inheritdoc IBatchRouter
     function swapExactIn(
@@ -566,5 +568,5 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
 
         // Return the rest of ETH to sender
         _returnEth(sender, ethAmountIn);
-}
+    }
 }
