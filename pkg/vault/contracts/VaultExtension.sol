@@ -30,7 +30,6 @@ import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
-import "hardhat/console.sol";
 
 /**
  * @dev Bytecode extension for Vault.
@@ -264,7 +263,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 minBptAmountOut,
         bytes memory userData
     ) external withLocker withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault returns (uint256 bptAmountOut) {
-        console.log("Vault: initialize");
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(pool, Rounding.ROUND_DOWN);
 
         if (poolData.poolConfig.isPoolInitialized) {

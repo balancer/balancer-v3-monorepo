@@ -69,10 +69,10 @@ describe('WeightedPool', function () {
     poolTokens = sortAddresses([tokenAAddress, tokenBAddress, tokenCAddress]);
 
     pool = await deploy('v3-vault/PoolMock', {
-      args: [vault, 'Pool', 'POOL']
+      args: [vault, 'Pool', 'POOL'],
     });
 
-    factory.registerTestPool(pool, buildTokenConfig(poolTokens));
+    await factory.registerTestPool(pool, buildTokenConfig(poolTokens));
   });
 
   describe('initialization', () => {
@@ -100,10 +100,6 @@ describe('WeightedPool', function () {
         expect(await router.connect(alice).initialize(pool, poolTokens, initialBalances, FP_ZERO, false, '0x'))
           .to.emit(vault, 'PoolInitialized')
           .withArgs(pool);
-      });
-
-      it.only('works', () => {
-        expect(true).to.be.true;
       });
 
       it('is registered and initialized', async () => {

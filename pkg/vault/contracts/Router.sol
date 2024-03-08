@@ -14,7 +14,6 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
-import "hardhat/console.sol";
 
 contract Router is IRouter, ReentrancyGuard {
     using Address for address payable;
@@ -74,7 +73,6 @@ contract Router is IRouter, ReentrancyGuard {
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256 bptAmountOut) {
-        console.log("Router: initialize");
         return
             abi.decode(
                 _vault.lock{ value: msg.value }(
@@ -104,7 +102,6 @@ contract Router is IRouter, ReentrancyGuard {
     function initializeHook(
         InitializeHookParams calldata params
     ) external payable nonReentrant onlyVault returns (uint256 bptAmountOut) {
-        console.log("Router: initializeHook");
         bptAmountOut = _vault.initialize(
             params.pool,
             params.sender,
@@ -113,7 +110,6 @@ contract Router is IRouter, ReentrancyGuard {
             params.minBptAmountOut,
             params.userData
         );
-        console.log("Router: returned from Vault");
 
         uint256 ethAmountIn;
         for (uint256 i = 0; i < params.tokens.length; ++i) {
