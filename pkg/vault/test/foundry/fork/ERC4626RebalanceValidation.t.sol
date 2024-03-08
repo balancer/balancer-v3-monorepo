@@ -87,9 +87,6 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
 
     function createPool() internal override returns (address) {
         factory = new ERC4626BufferPoolFactoryMock(IVault(address(vault)), 365 days);
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.registerBufferPoolFactory.selector), alice);
-        vm.prank(alice);
-        vault.registerBufferPoolFactory(address(factory));
 
         bufferPoolDai = ERC4626BufferPoolMock(_createBuffer(waDAI));
         bufferPoolUsdc = ERC4626BufferPoolMock(_createBuffer(waUSDC));

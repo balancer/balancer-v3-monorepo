@@ -121,7 +121,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     struct PoolRegistrationParams {
         TokenConfig[] tokenConfig;
-        bool isBufferPool;
         uint256 pauseWindowEndTime;
         address pauseManager;
         PoolHooks poolHooks;
@@ -141,7 +140,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             pool,
             PoolRegistrationParams({
                 tokenConfig: tokenConfig,
-                isBufferPool: false,
                 pauseWindowEndTime: pauseWindowEndTime,
                 pauseManager: pauseManager,
                 poolHooks: poolHooks,
@@ -179,8 +177,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Retrieve or create the pool's token balances mapping.
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
         uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
-        IERC20[] memory tempRegisteredTokens = new IERC20[](numTokens);
-        uint256 numTempTokens;
         IERC20 previousToken;
 
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -217,42 +213,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                     revert InvalidTokenConfiguration();
                 }
             } else if (tokenData.tokenType == TokenType.ERC4626) {
-                // Require a buffer to exist for this token
-                if (_wrappedTokenBuffers[IERC4626(address(token))] == address(0)) {
-                    revert WrappedTokenBufferNotRegistered();
-                }
-
                 // By definition, ERC4626 tokens are yield-bearing and subject to fees.
                 if (tokenData.yieldFeeExempt) {
                     revert InvalidTokenConfiguration();
-                }
-
-                if (params.isBufferPool == false) {
-                    // Temporarily register the base token in order to detect duplicates. Since ERC4626 tokens in
-                    // regular (non-buffer) pool appear to the outside as their base (e.g., waDAI would appear as DAI),
-                    // a DAI/waDAI pool - or cDAI/waDAI - would look like DAI/DAI, which we disallow with this check).
-                    IERC20 baseToken = IERC20(IERC4626(address(token)).asset());
-                    if (poolTokenBalances.set(baseToken, 0)) {
-                        // Store it to remove later, so that we don't actually include the base tokens
-                        // in the pool.
-                        tempRegisteredTokens[numTempTokens++] = baseToken;
-                    } else {
-                        // We could introduce a new error here, but depending on the token order (i.e., if the wrapped
-                        // token came first), it's possible to revert above with TokenAlreadyRegistered.
-                        // For consistency, just use the same error in both places.
-                        revert TokenAlreadyRegistered(baseToken);
-                    }
                 }
             } else {
                 revert InvalidTokenType();
             }
 
             tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
-        }
-
-        // Delete any temporarily registered tokens.
-        for (uint256 i = 0; i < numTempTokens; i++) {
-            poolTokenBalances.remove(tempRegisteredTokens[i]);
         }
 
         // Store the pause manager. A zero address means default to the authorizer.
@@ -266,7 +235,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         config.liquidityManagement = params.liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = params.pauseWindowEndTime.toUint32();
-        config.isBufferPool = params.isBufferPool;
         _poolConfig[pool] = config.fromPoolConfig();
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
@@ -627,77 +595,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function isQueryDisabled() external view onlyVault returns (bool) {
         return _isQueryDisabled;
-    }
-
-    /*******************************************************************************
--                                   ERC4626 Buffers
-     *******************************************************************************/
-
-    /// @inheritdoc IVaultExtension
-    function registerBuffer(
-        IERC4626 wrappedToken,
-        address pool,
-        address pauseManager,
-        uint256 pauseWindowEndTime
-    ) external nonReentrant whenVaultNotPaused onlyVault {
-        // Ensure buffer does not already exist.
-        if (_wrappedTokenBuffers[wrappedToken] != address(0)) {
-            revert WrappedTokenBufferAlreadyRegistered();
-        }
-
-        // Ensure the buffer pool is from a registered factory
-        bool factoryAllowed = false;
-
-        for (uint256 i = 0; i < _bufferPoolFactories.length(); i++) {
-            if (IBasePoolFactory(_bufferPoolFactories.unchecked_at(i)).isPoolFromFactory(pool)) {
-                factoryAllowed = true;
-                break;
-            }
-        }
-
-        if (factoryAllowed == false) {
-            revert UnregisteredBufferPoolFactory();
-        }
-
-        _wrappedTokenBuffers[wrappedToken] = pool;
-
-        IERC20 baseToken = IERC20(wrappedToken.asset());
-
-        emit WrappedTokenBufferCreated(address(wrappedToken), address(baseToken));
-
-        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
-        // Sort tokens
-        uint256 wrappedTokenIndex = wrappedToken > baseToken ? 1 : 0;
-        uint256 baseTokenIndex = wrappedTokenIndex == 0 ? 1 : 0;
-
-        tokenConfig[wrappedTokenIndex].token = IERC20(wrappedToken);
-        tokenConfig[wrappedTokenIndex].tokenType = TokenType.ERC4626;
-        // We are assuming the baseToken is STANDARD (the default type, with enum value 0).
-        tokenConfig[baseTokenIndex].token = baseToken;
-
-        _registerPool(
-            pool,
-            PoolRegistrationParams({
-                tokenConfig: tokenConfig,
-                isBufferPool: true,
-                pauseWindowEndTime: pauseWindowEndTime,
-                pauseManager: pauseManager,
-                poolHooks: PoolHooks({
-                    shouldCallBeforeInitialize: true, // ensure proportional
-                    shouldCallAfterInitialize: false,
-                    shouldCallBeforeAddLiquidity: true, // ensure custom
-                    shouldCallAfterAddLiquidity: false,
-                    shouldCallBeforeRemoveLiquidity: true, // ensure proportional
-                    shouldCallAfterRemoveLiquidity: false,
-                    shouldCallBeforeSwap: true, // rebalancing
-                    shouldCallAfterSwap: false
-                }),
-                liquidityManagement: LiquidityManagement({
-                    supportsAddLiquidityCustom: true,
-                    supportsRemoveLiquidityCustom: false
-                })
-            })
-        );
     }
 
     /*******************************************************************************

@@ -12,6 +12,7 @@ import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { Vault } from '@balancer-labs/v3-vault/typechain-types';
 import { buildTokenConfig } from './poolSetup';
+import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
 describe('Queries', function () {
   let vault: Vault;
@@ -40,17 +41,10 @@ describe('Queries', function () {
 
     DAI = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['DAI', 'Token A', 18] });
     USDC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['USDC', 'USDC', 18] });
+    const tokenAddresses = sortAddresses([await DAI.getAddress(), await USDC.getAddress()]);
 
     pool = await deploy('v3-vault/PoolMock', {
-      args: [
-        vaultAddress,
-        'Pool',
-        'POOL',
-        buildTokenConfig([await DAI.getAddress(), await USDC.getAddress()]),
-        true,
-        365 * 24 * 3600,
-        ZERO_ADDRESS,
-      ],
+      args: [vaultAddress, 'Pool', 'POOL', buildTokenConfig(tokenAddresses), true, 365 * 24 * 3600, ZERO_ADDRESS],
     });
 
     await USDC.mint(alice, 2n * USDC_AMOUNT_IN);
@@ -61,9 +55,14 @@ describe('Queries', function () {
 
     // The mock pool can be initialized with no liquidity; it mints some BPT to the initializer
     // to comply with the vault's required minimum.
-    await router
-      .connect(alice)
-      .initialize(pool, [DAI, USDC], [2n * DAI_AMOUNT_IN, 2n * USDC_AMOUNT_IN], 0, false, '0x');
+    // Also need to sort the amounts, or initialization would break if we made DAI_AMOUNT_IN != USDC_AMOUNT_IN
+
+    const tokenAmounts =
+      tokenAddresses[0] == (await DAI.getAddress())
+        ? [2n * DAI_AMOUNT_IN, 2n * USDC_AMOUNT_IN]
+        : [2n * USDC_AMOUNT_IN, 2n * DAI_AMOUNT_IN];
+
+    await router.connect(alice).initialize(pool, tokenAddresses, tokenAmounts, 0, false, '0x');
   });
 
   // TODO: query a pool that has an actual invariant (introduced in #145)
