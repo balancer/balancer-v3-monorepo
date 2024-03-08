@@ -48,8 +48,8 @@ contract ERC4626BufferPool is
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
 
-    uint256 public constant WRAPPED_TOKEN_INDEX = 0;
-    uint256 public constant BASE_TOKEN_INDEX = 1;
+    uint256 internal immutable _wrappedTokenIndex;
+    uint256 internal immutable _baseTokenIndex;
 
     // Due to rounding issues, the swap operation in a rebalance can miscalculate token amounts by 1 or 2.
     // When the swap is settled, these extra tokens are either added to the pool balance or are left behind
@@ -67,14 +67,29 @@ contract ERC4626BufferPool is
         IERC4626 wrappedToken,
         IVault vault
     ) BalancerPoolToken(vault, name, symbol) BasePoolAuthentication(vault, msg.sender) {
+        address baseToken = wrappedToken.asset();
+
         _wrappedToken = wrappedToken;
         _wrappedTokenScalingFactor = ScalingHelpers.computeScalingFactor(IERC20(address(wrappedToken)));
-        _baseTokenScalingFactor = ScalingHelpers.computeScalingFactor(IERC20(wrappedToken.asset()));
+        _baseTokenScalingFactor = ScalingHelpers.computeScalingFactor(IERC20(baseToken));
+
+        _wrappedTokenIndex = address(wrappedToken) > baseToken ? 1 : 0;
+        _baseTokenIndex = address(wrappedToken) > baseToken ? 0 : 1;
     }
 
     /// @inheritdoc IBasePool
     function getPoolTokens() public view onlyVault returns (IERC20[] memory tokens) {
         return getVault().getPoolTokens(address(this));
+    }
+
+    /// @inheritdoc IBufferPool
+    function getWrappedTokenIndex() external view returns (uint256) {
+        return _wrappedTokenIndex;
+    }
+
+    /// @inheritdoc IBufferPool
+    function getBaseTokenIndex() external view returns (uint256) {
+        return _baseTokenIndex;
     }
 
     /// @inheritdoc BasePoolHooks
@@ -193,7 +208,7 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IBasePool
     function computeInvariant(uint256[] memory balancesLiveScaled18) public view onlyVault returns (uint256) {
-        return balancesLiveScaled18[WRAPPED_TOKEN_INDEX] + balancesLiveScaled18[BASE_TOKEN_INDEX];
+        return balancesLiveScaled18[0] + balancesLiveScaled18[1];
     }
 
     /// @inheritdoc IRateProvider
@@ -216,17 +231,17 @@ contract ERC4626BufferPool is
             .getPoolTokenInfo(poolAddress);
 
         // PreviewRedeem converts a wrapped amount into a base amount
-        uint256 balanceWrappedAssetsRaw = _wrappedToken.previewRedeem(balancesRaw[WRAPPED_TOKEN_INDEX]);
-        uint256 balanceBaseAssetsRaw = balancesRaw[BASE_TOKEN_INDEX];
+        uint256 balanceWrappedAssetsRaw = _wrappedToken.previewRedeem(balancesRaw[_wrappedTokenIndex]);
+        uint256 balanceBaseAssetsRaw = balancesRaw[_baseTokenIndex];
 
         uint256[] memory balancesScaled18 = new uint256[](2);
         // "toScaled18RoundDown" is a "mulDown", and since the balance is divided by FixedPoint.ONE,
         // solidity always rounds down.
-        balancesScaled18[WRAPPED_TOKEN_INDEX] = balanceWrappedAssetsRaw.toScaled18RoundDown(
-            decimalScalingFactors[WRAPPED_TOKEN_INDEX]
+        balancesScaled18[_wrappedTokenIndex] = balanceWrappedAssetsRaw.toScaled18RoundDown(
+            decimalScalingFactors[_wrappedTokenIndex]
         );
-        balancesScaled18[BASE_TOKEN_INDEX] = balanceBaseAssetsRaw.toScaled18RoundDown(
-            decimalScalingFactors[BASE_TOKEN_INDEX]
+        balancesScaled18[_baseTokenIndex] = balanceBaseAssetsRaw.toScaled18RoundDown(
+            decimalScalingFactors[_baseTokenIndex]
         );
 
         if (_isBufferPoolBalanced(balancesScaled18)) {
@@ -251,8 +266,8 @@ contract ERC4626BufferPool is
                     VaultSwapParams({
                         kind: SwapKind.EXACT_IN,
                         pool: poolAddress,
-                        tokenIn: tokens[BASE_TOKEN_INDEX],
-                        tokenOut: tokens[WRAPPED_TOKEN_INDEX],
+                        tokenIn: tokens[_baseTokenIndex],
+                        tokenOut: tokens[_wrappedTokenIndex],
                         amountGivenRaw: exchangeAmountRaw,
                         limitRaw: limitRaw,
                         userData: ""
@@ -275,8 +290,8 @@ contract ERC4626BufferPool is
                     VaultSwapParams({
                         kind: SwapKind.EXACT_OUT,
                         pool: poolAddress,
-                        tokenIn: tokens[WRAPPED_TOKEN_INDEX],
-                        tokenOut: tokens[BASE_TOKEN_INDEX],
+                        tokenIn: tokens[_wrappedTokenIndex],
+                        tokenOut: tokens[_baseTokenIndex],
                         amountGivenRaw: exchangeAmountRaw,
                         limitRaw: limitRaw,
                         userData: ""
@@ -344,7 +359,7 @@ contract ERC4626BufferPool is
     }
 
     function _isBufferPoolBalanced(uint256[] memory balancesScaled18) private view returns (bool) {
-        if (balancesScaled18[WRAPPED_TOKEN_INDEX] == balancesScaled18[BASE_TOKEN_INDEX]) {
+        if (balancesScaled18[0] == balancesScaled18[1]) {
             return true;
         }
 
@@ -352,9 +367,11 @@ contract ERC4626BufferPool is
         // The tolerance depends on the decimals of the token, because it introduces imprecision to the rate
         // calculation, and on the initial balance of the pool (since balancesScaled18 has 18 decimals,
         // it's divided by FixedPoint.ONE [mulDown] so we get only the integer part of the number)
+        uint256 wrappedTokenIdx = _wrappedTokenIndex;
+        uint256 baseTokenIdx = _baseTokenIndex;
         uint256 tolerance;
 
-        if (balancesScaled18[WRAPPED_TOKEN_INDEX] >= balancesScaled18[BASE_TOKEN_INDEX]) {
+        if (balancesScaled18[wrappedTokenIdx] >= balancesScaled18[baseTokenIdx]) {
             // E.g. let's assume that the wrapped balance is 1000 wUSDC, with 6 decimals, and the rate is
             // FixedPoint.ONE
             // There are 2 sources of imprecision:
@@ -363,19 +380,19 @@ contract ERC4626BufferPool is
             //       only 18 decimals. The 3 extra digits are imprecise.
             // The whole imprecision is 15 digits, so the tolerance should be 1e15.
             // Doing the example math below:
-            // - balancesScaled18[WRAPPED_TOKEN_INDEX] = convertToAssets(1000) * 1e12 ~= (1e3 * 1e6) * 1e12 = 1e21
+            // - balancesScaled18[wrappedTokenIdx] = convertToAssets(1000) * 1e12 ~= (1e3 * 1e6) * 1e12 = 1e21
             // - _wrappedTokenScalingFactor = 1e(18-6) * 1e18 = 1e30
-            // - balancesScaled18[WRAPPED_TOKEN_INDEX].mulDown(_wrappedTokenScalingFactor) = 1e21 * 1e30 / 1e18 = 1e33
+            // - balancesScaled18[wrappedTokenIdx].mulDown(_wrappedTokenScalingFactor) = 1e21 * 1e30 / 1e18 = 1e33
             // - tolerance = 1e33 / 1e18 = 1e15
             // i.e. 1000 wUSDC is 1e21, so we are saying that we can only rely in the 6 most meaningful digits.
 
-            tolerance = balancesScaled18[WRAPPED_TOKEN_INDEX].mulDown(_wrappedTokenScalingFactor) / FixedPoint.ONE;
+            tolerance = balancesScaled18[wrappedTokenIdx].mulDown(_wrappedTokenScalingFactor) / FixedPoint.ONE;
             tolerance = tolerance < 1 ? 1 : tolerance;
-            return balancesScaled18[WRAPPED_TOKEN_INDEX] - balancesScaled18[BASE_TOKEN_INDEX] < tolerance;
+            return balancesScaled18[wrappedTokenIdx] - balancesScaled18[baseTokenIdx] < tolerance;
         } else {
-            tolerance = balancesScaled18[BASE_TOKEN_INDEX].mulDown(_baseTokenScalingFactor) / FixedPoint.ONE;
+            tolerance = balancesScaled18[baseTokenIdx].mulDown(_baseTokenScalingFactor) / FixedPoint.ONE;
             tolerance = tolerance < 1 ? 1 : tolerance;
-            return balancesScaled18[BASE_TOKEN_INDEX] - balancesScaled18[WRAPPED_TOKEN_INDEX] < tolerance;
+            return balancesScaled18[baseTokenIdx] - balancesScaled18[wrappedTokenIdx] < tolerance;
         }
     }
 

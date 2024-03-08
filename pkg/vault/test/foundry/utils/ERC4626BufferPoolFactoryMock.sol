@@ -5,6 +5,7 @@ pragma solidity ^0.8.4;
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ERC4626BufferPoolFactory } from "@balancer-labs/v3-vault/contracts/factories/ERC4626BufferPoolFactory.sol";
 
@@ -41,6 +42,13 @@ contract ERC4626BufferPoolFactoryMock is ERC4626BufferPoolFactory {
 
         _registerPoolWithFactory(pool);
 
-        getVault().registerBuffer(wrappedToken, pool, address(0), getNewPoolPauseWindowEndTime());
+        _registerPoolWithVault(
+            pool,
+            wrappedToken,
+            getNewPoolPauseWindowEndTime(),
+            address(0),
+            _getDefaultPoolHooks(),
+            _getDefaultLiquidityManagement()
+        );
     }
 }

@@ -4,22 +4,24 @@ pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-
-import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract VaultLiquidityWithFeesTest is BaseVaultTest {
     using ArrayHelpers for *;
 
+    // Track the indices for the standard dai/usdc pool.
+    uint256 internal daiIdx;
+    uint256 internal usdcIdx;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+
         setSwapFeePercentage(swapFeePercentage);
         setProtocolSwapFeePercentage(protocolSwapFeePercentage);
+
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
     /// Add
@@ -28,9 +30,14 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         public
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, uint256[] memory protocolSwapFees)
     {
-        amountsIn = [uint256(defaultAmount), 0].toMemoryArray();
+        amountsIn = new uint256[](2);
+        protocolSwapFees = new uint256[](2);
+
+        amountsIn[daiIdx] = defaultAmount;
+
         // protocol swap fee = (defaultAmount * 1% / 2 ) * 50%
-        protocolSwapFees = [uint256((defaultAmount) / 400), 0].toMemoryArray();
+        protocolSwapFees[daiIdx] = uint256((defaultAmount) / 400);
+
         // expectedBtpAmountOut = defaultAmount - defaultAmount * 1% / 2
         uint256 expectedBtpAmountOut = (defaultAmount * 995) / 1000;
 
@@ -50,8 +57,12 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, uint256[] memory protocolSwapFees)
     {
         bptAmountOut = defaultAmount;
+
+        protocolSwapFees = new uint256[](2);
+
         // protocol swap fee = (defaultAmount / 99% / 2 ) * 50% + 1
-        protocolSwapFees = [uint256((defaultAmount / 99) / 4 + 1), 0].toMemoryArray();
+        protocolSwapFees[daiIdx] = uint256((defaultAmount / 99) / 4 + 1);
+
         vm.prank(alice);
         uint256 amountIn = router.addLiquiditySingleTokenExactOut(
             address(pool),
@@ -80,8 +91,11 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         returns (uint256[] memory amountsOut, uint256 bptAmountIn, uint256[] memory protocolSwapFees)
     {
         bptAmountIn = defaultAmount * 2;
+
+        protocolSwapFees = new uint256[](2);
+
         // protocol swap fee = 2 * (defaultAmount * 1% / 2 ) * 50%
-        protocolSwapFees = [uint256((defaultAmount) / 200), 0].toMemoryArray();
+        protocolSwapFees[daiIdx] = uint256((defaultAmount) / 200);
 
         uint256 amountOut = router.removeLiquiditySingleTokenExactIn(
             address(pool),
@@ -96,8 +110,8 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         // amountsOut are correct
         // 2 * amount - (amount * swapFee%)
-        assertEq(amountsOut[0], defaultAmount * 2 - defaultAmount / 100, "Wrong AmountOut[0]");
-        assertEq(amountsOut[1], 0, "AmountOut[1] > 0");
+        assertEq(amountsOut[daiIdx], defaultAmount * 2 - defaultAmount / 100, "Wrong AmountOut[DAI]");
+        assertEq(amountsOut[usdcIdx], 0, "AmountOut[USDC] > 0");
     }
 
     function testRemoveLiquiditySingleTokenExactIn() public {
@@ -108,9 +122,13 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         public
         returns (uint256[] memory amountsOut, uint256 bptAmountIn, uint256[] memory protocolSwapFees)
     {
-        amountsOut = [defaultAmount, 0].toMemoryArray();
+        amountsOut = new uint256[](2);
+        protocolSwapFees = new uint256[](2);
+
+        amountsOut[daiIdx] = defaultAmount;
+
         // protocol swap fee = (defaultAmount / 99% / 2 ) * 50% + 1
-        protocolSwapFees = [uint256((defaultAmount / 99) / 4 + 1), 0].toMemoryArray();
+        protocolSwapFees[daiIdx] = uint256((defaultAmount / 99) / 4 + 1);
 
         bptAmountIn = router.removeLiquiditySingleTokenExactOut(
             address(pool),
@@ -162,8 +180,8 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         );
 
         // Protocols fees are charged
-        assertEq(protocolSwapFees[0], vault.getProtocolFees(address(dai)), "Protocol's fee amount is wrong");
-        assertEq(protocolSwapFees[1], vault.getProtocolFees(address(usdc)), "Protocol's fee amount is wrong");
+        assertEq(protocolSwapFees[daiIdx], vault.getProtocolFees(address(dai)), "Protocol's fee amount is wrong");
+        assertEq(protocolSwapFees[usdcIdx], vault.getProtocolFees(address(usdc)), "Protocol's fee amount is wrong");
 
         // User now has BPT
         assertEq(balancesBefore.userBpt, 0, "Add - User BPT balance before");
@@ -214,8 +232,8 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         );
 
         // Protocols fees are charged
-        assertEq(protocolSwapFees[0], vault.getProtocolFees(address(dai)), "Protocol's fee amount is wrong");
-        assertEq(protocolSwapFees[1], vault.getProtocolFees(address(usdc)), "Protocol's fee amount is wrong");
+        assertEq(protocolSwapFees[daiIdx], vault.getProtocolFees(address(dai)), "Protocol's fee amount is wrong");
+        assertEq(protocolSwapFees[usdcIdx], vault.getProtocolFees(address(usdc)), "Protocol's fee amount is wrong");
 
         // User has burnt the correct amount of BPT
         assertEq(balancesBefore.userBpt - balancesAfter.userBpt, bptAmountIn, "Wrong amount of BPT burned");
