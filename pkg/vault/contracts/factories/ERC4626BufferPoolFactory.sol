@@ -5,6 +5,7 @@ pragma solidity ^0.8.4;
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
+import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -75,12 +76,14 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         PoolHooks memory poolHooks,
         LiquidityManagement memory liquidityManagement
     ) internal {
+        uint256 wrappedTokenIndex = IBufferPool(pool).getWrappedTokenIndex();
+        uint256 baseTokenIndex = IBufferPool(pool).getBaseTokenIndex();
         // Token order is wrapped first, then base.
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
-        tokenConfig[0].token = IERC20(wrappedToken);
-        tokenConfig[0].tokenType = TokenType.ERC4626;
+        tokenConfig[wrappedTokenIndex].token = IERC20(wrappedToken);
+        tokenConfig[wrappedTokenIndex].tokenType = TokenType.ERC4626;
         // We are assuming the baseToken is STANDARD (the default type, with enum value 0).
-        tokenConfig[1].token = IERC20(wrappedToken.asset());
+        tokenConfig[baseTokenIndex].token = IERC20(wrappedToken.asset());
 
         getVault().registerPool(pool, tokenConfig, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
     }

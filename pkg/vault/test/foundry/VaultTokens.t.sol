@@ -74,8 +74,8 @@ contract VaultTokenTest is BaseVaultTest {
 
         assertEq(tokens.length, 2);
 
-        assertEq(address(tokens[daiIdx]), address(dai));
-        assertEq(address(tokens[usdcIdx]), address(usdc));
+        assertEq(address(tokens[waDaiIdx]), address(waDAI));
+        assertEq(address(tokens[waUsdcIdx]), address(waUSDC));
     }
 
     function testGetBufferPoolTokens() public {
