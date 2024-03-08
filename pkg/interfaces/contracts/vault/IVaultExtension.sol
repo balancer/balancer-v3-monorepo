@@ -49,11 +49,11 @@ interface IVaultExtension {
     function getTokenDelta(address user, IERC20 token) external view returns (int256);
 
     /**
-     * @notice Retrieves the reserve of a given token.
+     * @notice Retrieves the reserve (i.e., total Vault balance) of a given token.
      * @param token The token for which to retrieve the reserve
      * @return The amount of reserves for the given token
      */
-    function getTokenReserve(IERC20 token) external view returns (uint256);
+    function getReservesOf(IERC20 token) external view returns (uint256);
 
     /*******************************************************************************
                                     Pool Registration

@@ -255,7 +255,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * @dev Sets the raw balances of a Pool's tokens to the current values in poolData.balancesRaw, then also
      * computes and stores the last live balances in the same slot.
      *
-     * NB: Mutates poolData so that the live balances match the stored values.
+     * Side effects: mutates `poolData` so that the live balances match the stored values.
      */
     function _setPoolBalances(address pool, PoolData memory poolData) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
@@ -342,7 +342,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
-     * @dev Mutates poolData to add token rates. Assumes tokenConfig is already set.
+     * @dev Preconditions: tokenConfig must be current in `poolData`. Side effects: mutates tokenRates in `poolData`.
      */
     function _updateTokenRatesInPoolData(PoolData memory poolData) internal view {
         uint256 numTokens = poolData.tokenConfig.length;
