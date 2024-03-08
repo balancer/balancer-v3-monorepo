@@ -109,10 +109,4 @@ contract VaultStorage {
     uint256 internal immutable _vaultBufferPeriodDuration;
 
     bool internal _vaultPaused;
-
-    // ERC4626 wrapped token -> associated Buffer Pool
-    mapping(IERC4626 => address) internal _wrappedTokenBuffers;
-
-    // The set of factories allowed to create buffer pools.
-    EnumerableSet.AddressSet internal _bufferPoolFactories;
 }

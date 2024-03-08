@@ -195,19 +195,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Sets all fields in `poolData`. Side effects: updates `_poolBalances`, `_protocolFees` in storage.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN);
 
-        if (poolData.poolConfig.isBufferPool) {
-            // if the sender is the buffer pool, swaps are allowed as this is part of the rebalance mechanism.
-            try IBufferPool(msg.sender).getWrappedTokenIndex() returns (uint256 wrappedTokenIdx) {
-                if (
-                    _wrappedTokenBuffers[IERC4626(address(poolData.tokenConfig[wrappedTokenIdx].token))] != msg.sender
-                ) {
-                    revert CannotSwapWithBufferPool(params.pool);
-                }
-            } catch {
-                revert CannotSwapWithBufferPool(params.pool);
-            }
-        }
-
         // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[params.pool];
         SwapLocals memory vars;
