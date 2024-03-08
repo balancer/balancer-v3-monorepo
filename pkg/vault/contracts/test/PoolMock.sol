@@ -3,6 +3,7 @@
 pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
@@ -41,7 +42,8 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     bool public changeTokenRateOnBeforeRemoveLiquidity;
 
     bool public reentrancyHookActive;
-    function() external private _reentrancyHook;
+    address private _hookContract;
+    bytes private _hookCalldata;
 
     uint256 private _newTokenRate;
     RateProviderMock _firstTokenRateProvider;
@@ -101,8 +103,9 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         reentrancyHookActive = _reentrancyHookActive;
     }
 
-    function setReentrancyHook(function() external reentrancyHook) external {
-        _reentrancyHook = reentrancyHook;
+    function setReentrancyHook(address hookContract, bytes calldata data) external {
+        _hookContract = hookContract;
+        _hookCalldata = data;
     }
 
     function setFailOnAfterInitializeHook(bool fail) external {
@@ -179,8 +182,10 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         }
 
         if (reentrancyHookActive) {
+            require(_hookContract != address(0), "Hook contract not set");
+            require(_hookCalldata.length != 0, "Hook calldata is empty");
             reentrancyHookActive = false;
-            _reentrancyHook();
+            Address.functionCall(_hookContract, _hookCalldata);
         }
 
         return !failOnBeforeSwapHook;
