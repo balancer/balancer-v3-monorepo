@@ -78,7 +78,6 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
     ) internal {
         uint256 wrappedTokenIndex = IBufferPool(pool).getWrappedTokenIndex();
         uint256 baseTokenIndex = IBufferPool(pool).getBaseTokenIndex();
-        // Token order is wrapped first, then base.
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[wrappedTokenIndex].token = IERC20(wrappedToken);
         tokenConfig[wrappedTokenIndex].tokenType = TokenType.ERC4626;
