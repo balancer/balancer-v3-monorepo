@@ -78,7 +78,7 @@ contract VaultStorage {
      * @notice Represents the total reserve of each ERC20 token.
      * @dev It should be always equal to `token.balanceOf(vault)`, except during `lock`.
      */
-    mapping(IERC20 => uint256) internal _tokenReserves;
+    mapping(IERC20 => uint256) internal _reservesOf;
 
     // We allow 0% swap fee.
     // The protocol swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool.

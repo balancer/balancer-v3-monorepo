@@ -291,14 +291,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         for (uint256 index = 0; index < tokens.length; index++) {
             IERC20 token = tokens[index];
             uint256 amount = _protocolFees[token];
-            // checks
+
             if (amount > 0) {
-                // effects
                 // set fees to zero for the token
                 _protocolFees[token] = 0;
-                // interactions
+
                 token.safeTransfer(msg.sender, amount);
-                // emit an event
                 emit ProtocolFeeCollected(token, amount);
             }
         }

@@ -111,8 +111,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function getTokenReserve(IERC20 token) external view onlyVault returns (uint256) {
-        return _tokenReserves[token];
+    function getReservesOf(IERC20 token) external view onlyVault returns (uint256) {
+        return _reservesOf[token];
     }
 
     /*******************************************************************************
