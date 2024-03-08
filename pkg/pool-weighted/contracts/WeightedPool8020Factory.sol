@@ -47,7 +47,6 @@ contract WeightedPool8020Factory is BasePoolFactory {
 
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         uint256[] memory weights = new uint256[](2);
-        IERC20[] memory tokens = new IERC20[](2);
 
         weights[highWeightTokenIdx] = _EIGHTY;
         weights[lowWeightTokenIdx] = _TWENTY;
@@ -55,12 +54,14 @@ contract WeightedPool8020Factory is BasePoolFactory {
         tokenConfig[highWeightTokenIdx] = highWeightTokenConfig;
         tokenConfig[lowWeightTokenIdx] = lowWeightTokenConfig;
 
-        tokens[highWeightTokenIdx] = highWeightTokenConfig.token;
-        tokens[lowWeightTokenIdx] = lowWeightTokenConfig.token;
-
         pool = _create(
             abi.encode(
-                WeightedPool.NewPoolParams({ name: name, symbol: symbol, tokens: tokens, normalizedWeights: weights }),
+                WeightedPool.NewPoolParams({
+                    name: name,
+                    symbol: symbol,
+                    numTokens: tokenConfig.length,
+                    normalizedWeights: weights
+                }),
                 getVault()
             ),
             salt
