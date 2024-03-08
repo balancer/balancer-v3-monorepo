@@ -30,7 +30,7 @@ contract WeightedPool is IBasePool, IMinimumSwapFee, BalancerPoolToken {
     struct NewPoolParams {
         string name;
         string symbol;
-        IERC20[] tokens;
+        uint256 numTokens;
         uint256[] normalizedWeights;
     }
 
@@ -41,14 +41,13 @@ contract WeightedPool is IBasePool, IMinimumSwapFee, BalancerPoolToken {
     error NormalizedWeightInvariant();
 
     constructor(NewPoolParams memory params, IVault vault) BalancerPoolToken(vault, params.name, params.symbol) {
-        uint256 numTokens = params.tokens.length;
-        InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
+        InputHelpers.ensureInputLengthMatch(params.numTokens, params.normalizedWeights.length);
 
-        _totalTokens = numTokens;
+        _totalTokens = params.numTokens;
 
         // Ensure each normalized weight is above the minimum
         uint256 normalizedSum = 0;
-        for (uint8 i = 0; i < numTokens; i++) {
+        for (uint8 i = 0; i < params.numTokens; i++) {
             uint256 normalizedWeight = params.normalizedWeights[i];
 
             if (normalizedWeight < WeightedMath._MIN_WEIGHT) {
@@ -64,8 +63,8 @@ contract WeightedPool is IBasePool, IMinimumSwapFee, BalancerPoolToken {
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _normalizedWeight0 = params.normalizedWeights[0];
         _normalizedWeight1 = params.normalizedWeights[1];
-        _normalizedWeight2 = numTokens > 2 ? params.normalizedWeights[2] : 0;
-        _normalizedWeight3 = numTokens > 3 ? params.normalizedWeights[3] : 0;
+        _normalizedWeight2 = params.numTokens > 2 ? params.normalizedWeights[2] : 0;
+        _normalizedWeight3 = params.numTokens > 3 ? params.normalizedWeights[3] : 0;
     }
 
     /// @inheritdoc IBasePool

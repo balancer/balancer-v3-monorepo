@@ -209,8 +209,7 @@ contract WeightedPoolTest is BaseVaultTest {
         assertEq(usdc.balanceOf(address(vault)), USDC_AMOUNT - amountCalculated, "Vault: Wrong USDC balance");
         assertEq(dai.balanceOf(address(vault)), DAI_AMOUNT + DAI_AMOUNT_IN, "Vault: Wrong DAI balance");
 
-        // Tokens are deposited to the pool
-        (IERC20[] memory tokens, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
 
         (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
