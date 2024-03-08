@@ -177,10 +177,17 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Retrieve or create the pool's token balances mapping.
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
         uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
+        IERC20 previousToken;
 
         for (uint256 i = 0; i < numTokens; ++i) {
             TokenConfig memory tokenData = params.tokenConfig[i];
             IERC20 token = tokenData.token;
+
+            // Enforce token sorting. (`previousToken` will be the zero address on the first iteration.)
+            if (token < previousToken) {
+                revert InputHelpers.TokensNotSorted();
+            }
+            previousToken = token;
 
             // Ensure that the token address is valid
             if (address(token) == address(0) || address(token) == pool) {

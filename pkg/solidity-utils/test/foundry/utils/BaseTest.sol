@@ -72,6 +72,14 @@ abstract contract BaseTest is Test, GasSnapshot {
         vm.label(broke, "broke");
     }
 
+    function getSortedIndexes(
+        address tokenA,
+        address tokenB
+    ) internal pure returns (uint256 idxTokenA, uint256 idxTokenB) {
+        idxTokenA = tokenA > tokenB ? 1 : 0;
+        idxTokenB = idxTokenA == 0 ? 1 : 0;
+    }
+
     /// @dev Creates an ERC20 test token, labels its address.
     function createERC20(string memory name, uint8 decimals) internal returns (ERC20TestToken token) {
         token = new ERC20TestToken(name, name, decimals);
