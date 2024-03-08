@@ -16,6 +16,7 @@ import { FP_ONE, FP_ZERO, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
+import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
 describe('ERC4626BufferPool', function () {
   const TOKEN_AMOUNT = fp(1000);
@@ -57,7 +58,7 @@ describe('ERC4626BufferPool', function () {
 
     baseTokenAddress = await baseToken.getAddress();
     wrappedTokenAddress = await wrappedToken.getAddress();
-    tokenAddresses = [wrappedTokenAddress, baseTokenAddress];
+    tokenAddresses = sortAddresses([wrappedTokenAddress, baseTokenAddress]);
 
     factory = await deploy('v3-vault/ERC4626BufferPoolFactory', { args: [vault, 12 * MONTH] });
   });
@@ -182,7 +183,10 @@ describe('ERC4626BufferPool', function () {
       expect(await baseToken.balanceOf(alice)).to.eq(0);
 
       const [, tokenTypes, balances, ,] = await vault.getPoolTokenInfo(pool);
-      expect(tokenTypes).to.deep.equal([TokenType.ERC4626, TokenType.STANDARD]);
+      const expectedTokenTypes = tokenAddresses.map((address) =>
+        address === wrappedTokenAddress ? TokenType.ERC4626 : TokenType.STANDARD
+      );
+      expect(tokenTypes).to.deep.equal(expectedTokenTypes);
       expect(balances).to.deep.equal([TOKEN_AMOUNT, TOKEN_AMOUNT]);
     });
 
