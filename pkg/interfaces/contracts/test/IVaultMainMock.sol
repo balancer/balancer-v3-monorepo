@@ -19,6 +19,8 @@ interface IVaultMainMock {
     function manualRegisterPool(address pool, IERC20[] memory tokens) external;
 
     function manualRegisterPoolWithSwapFee(address pool, IERC20[] memory tokens, uint256 swapFeePercentage) external;
+    
+    function manualRegisterPoolPassThruTokens(address pool, IERC20[] memory tokens) external;
 
     function manualRegisterPoolAtTimestamp(
         address pool,
@@ -41,6 +43,8 @@ interface IVaultMainMock {
     function getCurrentLiveBalances(address pool) external view returns (uint256[] memory currentLiveBalances);
 
     function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances);
+
+    function sortTokenConfig(TokenConfig[] memory tokenConfig) external pure returns (TokenConfig[] memory);
 
     function updateLiveTokenBalanceInPoolData(
         PoolData memory poolData,

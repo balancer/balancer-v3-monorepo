@@ -349,32 +349,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /*******************************************************************************
--                                   ERC4626 Buffers
-     *******************************************************************************/
-
-    /// @inheritdoc IVaultAdmin
-    function registerBufferPoolFactory(address factory) external authenticate onlyVault {
-        bool added = _bufferPoolFactories.add(factory);
-
-        if (added == false) {
-            revert BufferPoolFactoryAlreadyRegistered();
-        }
-
-        emit BufferPoolFactoryRegistered(factory);
-    }
-
-    /// @inheritdoc IVaultAdmin
-    function deregisterBufferPoolFactory(address factory) external authenticate onlyVault {
-        bool removed = _bufferPoolFactories.remove(factory);
-
-        if (removed == false) {
-            revert BufferPoolFactoryNotRegistered();
-        }
-
-        emit BufferPoolFactoryDeregistered(factory);
-    }
-
-    /*******************************************************************************
                                         Queries
     *******************************************************************************/
 

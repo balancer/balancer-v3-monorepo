@@ -5,6 +5,7 @@ pragma solidity ^0.8.4;
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
+import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -55,10 +56,54 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
             salt
         );
 
-        // This must be done first, since `registerBuffer` checks that the pool comes from this factory.
         _registerPoolWithFactory(pool);
 
-        getVault().registerBuffer(wrappedToken, pool, pauseManager, getNewPoolPauseWindowEndTime());
+        _registerPoolWithVault(
+            pool,
+            wrappedToken,
+            getNewPoolPauseWindowEndTime(),
+            pauseManager,
+            _getDefaultPoolHooks(),
+            _getDefaultLiquidityManagement()
+        );
+    }
+
+    function _registerPoolWithVault(
+        address pool,
+        IERC4626 wrappedToken,
+        uint256 pauseWindowEndTime,
+        address pauseManager,
+        PoolHooks memory poolHooks,
+        LiquidityManagement memory liquidityManagement
+    ) internal {
+        uint256 wrappedTokenIndex = IBufferPool(pool).getWrappedTokenIndex();
+        uint256 baseTokenIndex = IBufferPool(pool).getBaseTokenIndex();
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[wrappedTokenIndex].token = IERC20(wrappedToken);
+        tokenConfig[wrappedTokenIndex].tokenType = TokenType.ERC4626;
+        // We are assuming the baseToken is STANDARD (the default type, with enum value 0).
+        tokenConfig[baseTokenIndex].token = IERC20(wrappedToken.asset());
+
+        // Buffers always have 0 swap fees.
+        getVault().registerPool(pool, tokenConfig, 0, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
+    }
+
+    function _getDefaultPoolHooks() internal pure returns (PoolHooks memory) {
+        return
+            PoolHooks({
+                shouldCallBeforeInitialize: true, // ensure proportional
+                shouldCallAfterInitialize: false,
+                shouldCallBeforeAddLiquidity: true, // ensure custom
+                shouldCallAfterAddLiquidity: false,
+                shouldCallBeforeRemoveLiquidity: true, // ensure proportional
+                shouldCallAfterRemoveLiquidity: false,
+                shouldCallBeforeSwap: true, // rebalancing
+                shouldCallAfterSwap: false
+            });
+    }
+
+    function _getDefaultLiquidityManagement() internal pure returns (LiquidityManagement memory) {
+        return LiquidityManagement({ supportsAddLiquidityCustom: true, supportsRemoveLiquidityCustom: false });
     }
 
     /**

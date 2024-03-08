@@ -13,6 +13,7 @@ import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/Vault
 import { buildTokenConfig } from './poolSetup';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { Vault, PoolFactoryMock } from '../typechain-types';
+import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
 describe('Queries', function () {
   let vault: Vault;
@@ -42,6 +43,7 @@ describe('Queries', function () {
 
     DAI = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['DAI', 'Token A', 18] });
     USDC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['USDC', 'USDC', 18] });
+    const tokenAddresses = sortAddresses([await DAI.getAddress(), await USDC.getAddress()]);
 
     pool = await deploy('v3-vault/PoolMock', {
       args: [vaultAddress, 'Pool', 'POOL'],
@@ -59,9 +61,14 @@ describe('Queries', function () {
 
     // The mock pool can be initialized with no liquidity; it mints some BPT to the initializer
     // to comply with the vault's required minimum.
-    await router
-      .connect(alice)
-      .initialize(pool, [DAI, USDC], [2n * DAI_AMOUNT_IN, 2n * USDC_AMOUNT_IN], 0, false, '0x');
+    // Also need to sort the amounts, or initialization would break if we made DAI_AMOUNT_IN != USDC_AMOUNT_IN
+
+    const tokenAmounts =
+      tokenAddresses[0] == (await DAI.getAddress())
+        ? [2n * DAI_AMOUNT_IN, 2n * USDC_AMOUNT_IN]
+        : [2n * USDC_AMOUNT_IN, 2n * DAI_AMOUNT_IN];
+
+    await router.connect(alice).initialize(pool, tokenAddresses, tokenAmounts, 0, false, '0x');
   });
 
   // TODO: query a pool that has an actual invariant (introduced in #145)

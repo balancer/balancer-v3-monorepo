@@ -14,6 +14,7 @@ import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/Vault
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { buildTokenConfig } from './poolSetup';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
+import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
 describe('BatchSwap', function () {
   let vault: Vault;
@@ -43,13 +44,13 @@ describe('BatchSwap', function () {
 
     factory = await deploy('PoolFactoryMock', { args: [vaultAddress, 12 * MONTH] });
 
-    tokens = await ERC20TokenList.create(3);
+    tokens = await ERC20TokenList.create(3, { sorted: true });
     token0 = await tokens.get(0).getAddress();
     token1 = await tokens.get(1).getAddress();
     token2 = await tokens.get(2).getAddress();
-    poolATokens = [token0, token1];
-    poolBTokens = [token1, token2];
-    poolCTokens = [token0, token2];
+    poolATokens = sortAddresses([token0, token1]);
+    poolBTokens = sortAddresses([token1, token2]);
+    poolCTokens = sortAddresses([token0, token2]);
 
     // Pool A has tokens 0 and 1.
     poolA = await deploy('v3-vault/PoolMock', {
@@ -72,17 +73,17 @@ describe('BatchSwap', function () {
   });
 
   sharedBeforeEach('nested pools', async () => {
-    poolABTokens = [await poolA.getAddress(), await poolB.getAddress()];
+    poolABTokens = sortAddresses([await poolA.getAddress(), await poolB.getAddress()]);
     poolAB = await deploy('v3-vault/PoolMock', {
       args: [vaultAddress, 'Pool A-B', 'POOL-AB'],
     });
 
-    poolACTokens = [await poolA.getAddress(), await poolC.getAddress()];
+    poolACTokens = sortAddresses([await poolA.getAddress(), await poolC.getAddress()]);
     poolAC = await deploy('v3-vault/PoolMock', {
       args: [vaultAddress, 'Pool A-C', 'POOL-AC'],
     });
 
-    poolBCTokens = [await poolB.getAddress(), await poolC.getAddress()];
+    poolBCTokens = sortAddresses([await poolB.getAddress(), await poolC.getAddress()]);
     poolBC = await deploy('v3-vault/PoolMock', {
       args: [vaultAddress, 'Pool B-C', 'POOL-BC'],
     });

@@ -20,6 +20,7 @@ import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
+import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -46,6 +47,7 @@ describe('Vault', function () {
   let poolBTokens: string[];
   let invalidTokens: string[];
   let duplicateTokens: string[];
+  let unsortedTokens: string[];
 
   before('setup signers', async () => {
     [, alice] = await ethers.getSigners();
@@ -74,10 +76,14 @@ describe('Vault', function () {
     poolBAddress = await poolB.getAddress();
 
     const tokenCAddress = await tokenC.getAddress();
-    poolATokens = [tokenAAddress, tokenBAddress, tokenCAddress];
-    poolBTokens = [tokenAAddress, tokenCAddress];
-    invalidTokens = [tokenAAddress, ZERO_ADDRESS, tokenCAddress];
-    duplicateTokens = [tokenAAddress, tokenBAddress, tokenAAddress];
+    poolATokens = sortAddresses([tokenAAddress, tokenBAddress, tokenCAddress]);
+    poolBTokens = sortAddresses([tokenAAddress, tokenCAddress]);
+    invalidTokens = sortAddresses([tokenAAddress, ZERO_ADDRESS, tokenCAddress]);
+    duplicateTokens = sortAddresses([tokenAAddress, tokenBAddress, tokenAAddress]);
+
+    // Copy and reverse A tokens.
+    unsortedTokens = Array.from(poolATokens);
+    unsortedTokens.reverse();
 
     expect(await poolA.name()).to.equal('Pool A');
     expect(await poolA.symbol()).to.equal('POOLA');
@@ -89,6 +95,13 @@ describe('Vault', function () {
   });
 
   describe('registration', () => {
+    it('cannot register a pool with unsorted tokens', async () => {
+      await expect(vault.manualRegisterPoolPassThruTokens(ANY_ADDRESS, unsortedTokens)).to.be.revertedWithCustomError(
+        vaultExtension,
+        'TokensNotSorted'
+      );
+    });
+
     it('can register a pool', async () => {
       expect(await vault.isPoolRegistered(poolA)).to.be.true;
       expect(await vault.isPoolRegistered(poolB)).to.be.false;
@@ -160,7 +173,10 @@ describe('Vault', function () {
     it('cannot register a pool with an invalid token (pool address)', async () => {
       const poolBTokensWithItself = Array.from(poolBTokens);
       poolBTokensWithItself.push(poolBAddress);
-      await expect(vault.manualRegisterPool(poolB, poolBTokensWithItself)).to.be.revertedWithCustomError(
+
+      const finalTokens = sortAddresses(poolBTokensWithItself);
+
+      await expect(vault.manualRegisterPool(poolB, finalTokens)).to.be.revertedWithCustomError(
         vaultExtension,
         'InvalidToken'
       );
@@ -192,7 +208,7 @@ describe('Vault', function () {
     });
 
     it('cannot register a pool with too many tokens', async () => {
-      const tokens = await ERC20TokenList.create(5);
+      const tokens = await ERC20TokenList.create(5, { sorted: true });
 
       await expect(vault.manualRegisterPool(poolB, await tokens.addresses)).to.be.revertedWithCustomError(
         vaultExtension,
@@ -389,12 +405,6 @@ describe('Vault', function () {
 
       expect(minTokens).to.eq(2);
       expect(maxTokens).to.eq(4);
-    });
-
-    it('is registered as a normal pool', async () => {
-      const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(poolA);
-
-      expect(poolConfig.isBufferPool).to.be.false;
     });
 
     it('stores the decimal differences', async () => {

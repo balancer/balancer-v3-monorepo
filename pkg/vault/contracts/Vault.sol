@@ -17,6 +17,7 @@ import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IV
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
+import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
@@ -193,14 +194,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolBalances`, `_protocolFees` in storage.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN);
-
-        // if the sender is the buffer pool, swaps are allowed as this is part of the rebalance mechanism.
-        if (
-            poolData.poolConfig.isBufferPool &&
-            _wrappedTokenBuffers[IERC4626(address(poolData.tokenConfig[0].token))] != msg.sender
-        ) {
-            revert CannotSwapWithBufferPool(params.pool);
-        }
 
         // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[params.pool];

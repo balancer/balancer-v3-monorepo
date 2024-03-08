@@ -40,6 +40,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     bool public changeTokenRateOnBeforeAddLiquidity;
     bool public changeTokenRateOnBeforeRemoveLiquidity;
 
+    RateProviderMock _rateProvider;
     uint256 private _newTokenRate;
 
     // Amounts in are multiplied by the multiplier, amounts out are divided by it
@@ -81,8 +82,13 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         failOnBeforeInitialize = fail;
     }
 
-    function setChangeTokenRateOnBeforeInitializeHook(bool changeRate, uint256 newTokenRate) external {
+    function setChangeTokenRateOnBeforeInitializeHook(
+        bool changeRate,
+        RateProviderMock rateProvider,
+        uint256 newTokenRate
+    ) external {
         changeTokenRateOnBeforeInitialize = changeRate;
+        _rateProvider = rateProvider;
         _newTokenRate = newTokenRate;
     }
 
@@ -90,8 +96,13 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         failOnBeforeSwapHook = fail;
     }
 
-    function setChangeTokenRateOnBeforeSwapHook(bool changeRate, uint256 newTokenRate) external {
+    function setChangeTokenRateOnBeforeSwapHook(
+        bool changeRate,
+        RateProviderMock rateProvider,
+        uint256 newTokenRate
+    ) external {
         changeTokenRateOnBeforeSwapHook = changeRate;
+        _rateProvider = rateProvider;
         _newTokenRate = newTokenRate;
     }
 
@@ -103,8 +114,13 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         failOnBeforeAddLiquidity = fail;
     }
 
-    function setChangeTokenRateOnBeforeAddLiquidityHook(bool changeRate, uint256 newTokenRate) external {
+    function setChangeTokenRateOnBeforeAddLiquidityHook(
+        bool changeRate,
+        RateProviderMock rateProvider,
+        uint256 newTokenRate
+    ) external {
         changeTokenRateOnBeforeAddLiquidity = changeRate;
+        _rateProvider = rateProvider;
         _newTokenRate = newTokenRate;
     }
 
@@ -116,8 +132,13 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         failOnBeforeRemoveLiquidity = fail;
     }
 
-    function setChangeTokenRateOnBeforeRemoveLiquidityHook(bool changeRate, uint256 newTokenRate) external {
+    function setChangeTokenRateOnBeforeRemoveLiquidityHook(
+        bool changeRate,
+        RateProviderMock rateProvider,
+        uint256 newTokenRate
+    ) external {
         changeTokenRateOnBeforeRemoveLiquidity = changeRate;
+        _rateProvider = rateProvider;
         _newTokenRate = newTokenRate;
     }
 
@@ -280,8 +301,6 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     }
 
     function _updateTokenRate() private {
-        (, , , , IRateProvider[] memory rateProviders) = getVault().getPoolTokenInfo(address(this));
-
-        RateProviderMock(address(rateProviders[0])).mockRate(_newTokenRate);
+        _rateProvider.mockRate(_newTokenRate);
     }
 }
