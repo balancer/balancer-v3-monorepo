@@ -21,13 +21,20 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
     using ArrayHelpers for *;
     using FixedPoint for *;
 
+    // Track the indices for the local dai/wsteth pool.
+    uint256 internal daiIdx;
+    uint256 internal wstethIdx;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+
+        (daiIdx, wstethIdx) = getSortedIndexes(address(dai), address(wsteth));
     }
 
     function createPool() internal override returns (address) {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProvider = new RateProviderMock();
+        // Must match the array passed in, not the sorted index, since buildTokenConfig will do the sorting.
         rateProviders[0] = rateProvider;
         rateProvider.mockRate(mockRate);
 
@@ -57,13 +64,17 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
     function testInitialRateProviderState() public {
         (, , , , IRateProvider[] memory rateProviders) = vault.getPoolTokenInfo(address(pool));
 
-        assertEq(address(rateProviders[0]), address(rateProvider), "Wrong rate provider");
-        assertEq(address(rateProviders[1]), address(0), "Rate provider should be 0");
+        assertEq(address(rateProviders[wstethIdx]), address(rateProvider), "Wrong rate provider");
+        assertEq(address(rateProviders[daiIdx]), address(0), "Rate provider should be 0");
     }
 
     function testSwapSingleTokenExactIWithRate() public {
         uint256 rateAdjustedLimit = defaultAmount.divDown(mockRate);
         uint256 rateAdjustedAmount = defaultAmount.mulDown(mockRate);
+
+        uint256[] memory expectedBalances = new uint256[](2);
+        expectedBalances[wstethIdx] = rateAdjustedAmount;
+        expectedBalances[daiIdx] = defaultAmount;
 
         vm.expectCall(
             address(pool),
@@ -72,9 +83,9 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
                 IBasePool.SwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
-                    balancesScaled18: [rateAdjustedAmount, defaultAmount].toMemoryArray(),
-                    indexIn: 1,
-                    indexOut: 0,
+                    balancesScaled18: expectedBalances,
+                    indexIn: daiIdx,
+                    indexOut: wstethIdx,
                     sender: address(router),
                     userData: bytes("")
                 })
@@ -98,6 +109,10 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         uint256 rateAdjustedBalance = defaultAmount.mulDown(mockRate);
         uint256 rateAdjustedAmountGiven = defaultAmount.divDown(mockRate);
 
+        uint256[] memory expectedBalances = new uint256[](2);
+        expectedBalances[wstethIdx] = rateAdjustedBalance;
+        expectedBalances[daiIdx] = defaultAmount;
+
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
@@ -105,9 +120,9 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
                 IBasePool.SwapParams({
                     kind: SwapKind.EXACT_OUT,
                     amountGivenScaled18: defaultAmount,
-                    balancesScaled18: [rateAdjustedBalance, defaultAmount].toMemoryArray(),
-                    indexIn: 1,
-                    indexOut: 0,
+                    balancesScaled18: expectedBalances,
+                    indexIn: daiIdx,
+                    indexOut: wstethIdx,
                     sender: address(router),
                     userData: bytes("")
                 })
