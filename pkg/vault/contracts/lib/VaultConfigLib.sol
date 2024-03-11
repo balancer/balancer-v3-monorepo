@@ -1,0 +1,69 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+pragma solidity ^0.8.4;
+
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
+import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
+// @notice Config type to store entire configuration of the pool
+type VaultConfigBits is bytes32;
+
+using VaultConfigLib for VaultConfigBits global;
+
+library VaultConfigLib {
+    using WordCodec for bytes32;
+    using SafeCast for uint256;
+
+    // Bit offsets for pool config
+    uint8 public constant QUERY_DISABLED_OFFSET = 0;
+    uint8 public constant VAULT_PAUSED_OFFSET = QUERY_DISABLED_OFFSET + 1;
+
+    uint8 public constant PROTOCOL_SWAP_FEE_OFFSET = VAULT_PAUSED_OFFSET + 1;
+    uint8 public constant PROTOCOL_YIELD_FEE_OFFSET = PROTOCOL_SWAP_FEE_OFFSET + _UINT10_BITLENGTH;
+
+    // Protocol Swap and Yield Fees are a 10 bits value. We transform it by multiplying by 1e15, so
+    // it can be configured from 0% to 100% fee (step 0.1%)
+    uint8 private constant _UINT10_BITLENGTH = 10;
+
+    function isQueryDisabled(VaultConfigBits config) internal pure returns (bool) {
+        return VaultConfigBits.unwrap(config).decodeBool(QUERY_DISABLED_OFFSET);
+    }
+
+    function isVaultPaused(VaultConfigBits config) internal pure returns (bool) {
+        return VaultConfigBits.unwrap(config).decodeBool(VAULT_PAUSED_OFFSET);
+    }
+
+    function getProtocolSwapFeePercentage(VaultConfigBits config) internal pure returns (uint256) {
+        return VaultConfigBits.unwrap(config).decodeUint(PROTOCOL_SWAP_FEE_OFFSET, _UINT10_BITLENGTH) * 1e15;
+    }
+
+    function getProtocolYieldFeePercentage(VaultConfigBits config) internal pure returns (uint256) {
+        return VaultConfigBits.unwrap(config).decodeUint(PROTOCOL_YIELD_FEE_OFFSET, _UINT10_BITLENGTH) * 1e15;
+    }
+
+    function fromVaultConfig(VaultConfig memory config) internal pure returns (VaultConfigBits) {
+        bytes32 configBits = bytes32(0);
+
+        configBits = configBits
+            .insertBool(config.isQueryDisabled, QUERY_DISABLED_OFFSET)
+            .insertBool(config.isVaultPaused, VAULT_PAUSED_OFFSET)
+            .insertUint(config.protocolSwapFeePercentage / 1e15, PROTOCOL_SWAP_FEE_OFFSET, _UINT10_BITLENGTH)
+            .insertUint(config.protocolYieldFeePercentage / 1e15, PROTOCOL_YIELD_FEE_OFFSET, _UINT10_BITLENGTH);
+
+        return VaultConfigBits.wrap(configBits);
+    }
+
+    function toVaultConfig(VaultConfigBits config) internal pure returns (VaultConfig memory) {
+        return VaultConfig({
+            isQueryDisabled: config.isQueryDisabled(),
+            isVaultPaused: config.isVaultPaused(),
+            protocolSwapFeePercentage: config.getProtocolSwapFeePercentage(),
+            protocolYieldFeePercentage: config.getProtocolYieldFeePercentage()
+        });
+    }
+}

@@ -36,6 +36,14 @@ struct PoolConfig {
     LiquidityManagement liquidityManagement;
 }
 
+/// @dev Represents a vault's configuration
+struct VaultConfig {
+    bool isQueryDisabled;
+    bool isVaultPaused;
+    uint256 protocolSwapFeePercentage;
+    uint256 protocolYieldFeePercentage;
+}
+
 /**
  * @dev Token types supported by the Vault. In general, pools may contain any combination of these tokens.
  * STANDARD tokens (e.g., BAL, WETH) have no rate provider.

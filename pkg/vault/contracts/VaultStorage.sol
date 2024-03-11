@@ -13,6 +13,7 @@ import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IV
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
+import { VaultConfigBits } from "./lib/VaultConfigLib.sol";
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
 
 // solhint-disable max-states-count
@@ -82,7 +83,7 @@ contract VaultStorage {
 
     // We allow 0% swap fee.
     // The protocol swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
-    // TODO consider using uint64 and packing with other things (when we have other things).
+    // TODO Remove this.
     uint256 internal _protocolSwapFeePercentage;
 
     // Protocol yield fee - charged on all pool operations.
@@ -109,4 +110,6 @@ contract VaultStorage {
     uint256 internal immutable _vaultBufferPeriodDuration;
 
     bool internal _vaultPaused;
+
+    VaultConfigBits internal _vaultConfigBytes;
 }

@@ -16,6 +16,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
+import { VaultConfigLib } from "../lib/VaultConfigLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
@@ -177,7 +178,8 @@ contract VaultMock is IVaultMainMock, Vault {
         address pool,
         Rounding roundingDirection
     ) external returns (PoolData memory) {
-        return _computePoolDataUpdatingBalancesAndFees(pool, roundingDirection);
+        VaultConfig memory vaultConfig = VaultConfigLib.toVaultConfig(_vaultConfigBytes);
+        return _computePoolDataUpdatingBalancesAndFees(pool, roundingDirection, vaultConfig);
     }
 
     function updateLiveTokenBalanceInPoolData(

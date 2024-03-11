@@ -26,6 +26,7 @@ import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openze
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { VaultConfigLib } from "./lib/VaultConfigLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
@@ -258,7 +259,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 minBptAmountOut,
         bytes memory userData
     ) external withLocker withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault returns (uint256 bptAmountOut) {
-        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(pool, Rounding.ROUND_DOWN);
+        VaultConfig memory vaultConfig = VaultConfigLib.toVaultConfig(_vaultConfigBytes);
+
+        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(pool, Rounding.ROUND_DOWN, vaultConfig);
 
         if (poolData.poolConfig.isPoolInitialized) {
             revert PoolAlreadyInitialized(pool);
@@ -468,12 +471,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function getProtocolSwapFeePercentage() external view onlyVault returns (uint256) {
-        return _protocolSwapFeePercentage;
+        VaultConfig memory vaultConfig = VaultConfigLib.toVaultConfig(_vaultConfigBytes);
+        return vaultConfig.protocolSwapFeePercentage;
     }
 
     /// @inheritdoc IVaultExtension
     function getProtocolYieldFeePercentage() external view onlyVault returns (uint256) {
-        return _protocolYieldFeePercentage;
+        VaultConfig memory vaultConfig = VaultConfigLib.toVaultConfig(_vaultConfigBytes);
+        return vaultConfig.protocolYieldFeePercentage;
     }
 
     /// @inheritdoc IVaultExtension

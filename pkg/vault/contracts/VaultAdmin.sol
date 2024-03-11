@@ -24,6 +24,7 @@ import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/h
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
+import { VaultConfigLib } from "./lib/VaultConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
@@ -249,7 +250,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
             revert ProtocolSwapFeePercentageTooHigh();
         }
-        _protocolSwapFeePercentage = newProtocolSwapFeePercentage;
+        VaultConfig memory vaultConfig = VaultConfigLib.toVaultConfig(_vaultConfigBytes);
+        vaultConfig.protocolSwapFeePercentage = newProtocolSwapFeePercentage;
+        _vaultConfigBytes = VaultConfigLib.fromVaultConfig(vaultConfig);
         emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
     }
 
@@ -258,7 +261,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         if (newProtocolYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
             revert ProtocolYieldFeePercentageTooHigh();
         }
-        _protocolYieldFeePercentage = newProtocolYieldFeePercentage;
+        VaultConfig memory vaultConfig = VaultConfigLib.toVaultConfig(_vaultConfigBytes);
+        vaultConfig.protocolYieldFeePercentage = newProtocolYieldFeePercentage;
+        _vaultConfigBytes = VaultConfigLib.fromVaultConfig(vaultConfig);
         emit ProtocolYieldFeePercentageChanged(newProtocolYieldFeePercentage);
     }
 

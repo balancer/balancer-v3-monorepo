@@ -15,6 +15,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 
+import { VaultConfigLib } from "./lib/VaultConfigLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultStorage } from "./VaultStorage.sol";
 import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
@@ -360,7 +361,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _getPoolDataAndYieldFees(
         address pool,
-        Rounding roundingDirection
+        Rounding roundingDirection,
+        VaultConfig memory vaultConfig
     ) internal view returns (PoolData memory poolData, uint256[] memory dueProtocolYieldFees) {
         // Initialize poolData with base information for subsequent calculations.
         (
@@ -378,7 +380,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         // Initialize arrays to store balances and rates based on the number of tokens in the pool.
         // Will be read raw, then upscaled and rounded as directed.
         poolData.balancesLiveScaled18 = new uint256[](numTokens);
-        uint256 yieldFeePercentage = _protocolYieldFeePercentage;
+        uint256 yieldFeePercentage = vaultConfig.protocolYieldFeePercentage;
 
         // Fill in the tokenRates inside poolData (needed for `_updateLiveTokenBalanceInPoolData`).
         _updateTokenRatesInPoolData(poolData);
@@ -427,11 +429,12 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _computePoolDataUpdatingBalancesAndFees(
         address pool,
-        Rounding roundingDirection
+        Rounding roundingDirection,
+        VaultConfig memory vaultConfig
     ) internal nonReentrant returns (PoolData memory poolData) {
         uint256[] memory dueProtocolYieldFees;
 
-        (poolData, dueProtocolYieldFees) = _getPoolDataAndYieldFees(pool, roundingDirection);
+        (poolData, dueProtocolYieldFees) = _getPoolDataAndYieldFees(pool, roundingDirection, vaultConfig);
         uint256 numTokens = dueProtocolYieldFees.length;
 
         for (uint256 i = 0; i < numTokens; ++i) {
