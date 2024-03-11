@@ -212,11 +212,11 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
      */
     function _isConvertLinear(
         IERC4626 wrappedToken,
-        function (uint256) view external returns (uint256) convertFunction,
+        function(uint256) external view returns (uint256) convertFunction,
         uint8 decimals
     ) internal view returns (bool) {
         // We need to pass in the unit asset in native decimals.
-        uint256 oneToken = 10 ** wrappedToken.decimals();
+        uint256 oneToken = 10 ** decimals;
         uint256 billionTokens = _BILLION * oneToken;
 
         try convertFunction(oneToken) returns (uint256 rateOfOneToken) {
