@@ -23,6 +23,8 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
 
+    uint256 private constant _BILLION = 1e9;
+
     /// @dev The wrapped token does not conform to the Vault's requirement for ERC4626-compatibility.
     error IncompatibleWrappedToken(address token);
 
@@ -153,9 +155,6 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
 
     /**
      * @dev We want to check that the shares/assets rates are consistent.
-     * The easiest way to do this is preview withdrawals and redemptions with a unit asset.
-     * These values should be reciprocals of each other, so multiplying them together should
-     * equal ONE.
      *
      * There is a deep assumption here that although the ERC4626 standard does not define `getRate` directly,
      * we can derive a rate in this fashion that behaves like all other rate providers. Specifically, we mean
@@ -163,6 +162,20 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
      * of input values. For instance, convertToAssets(60) + converToAssets(40) = convertToAssets(100).
      */
     function _supportsRateComputation(IERC4626 wrappedToken) internal view returns (bool) {
+        uint8 assetsDecimals = IERC20Metadata(wrappedToken.asset()).decimals();
+
+        return
+            _isRateReversible(wrappedToken) &&
+            _isConvertLinear(wrappedToken, wrappedToken.convertToAssets, wrappedToken.decimals()) &&
+            _isConvertLinear(wrappedToken, wrappedToken.convertToShares, assetsDecimals);
+    }
+
+    /**
+     * @dev Previews withdrawals and redemptions with a unit asset.
+     * These values should be reciprocals of each other, so multiplying them together should
+     * equal ONE.
+     */
+    function _isRateReversible(IERC4626 wrappedToken) internal view returns (bool) {
         address asset = wrappedToken.asset();
 
         // We need to pass in the unit asset in native decimals.
@@ -191,6 +204,40 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
                 uint256 diff = rateTest >= FixedPoint.ONE ? rateTest - FixedPoint.ONE : FixedPoint.ONE - rateTest;
 
                 return diff <= tolerance;
+            } catch {
+                return false;
+            }
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * @dev Previews convertToAssets/convertToShares (convertFunction) with a unit token or a billion tokens.
+     * The resulting conversion should be precisely proportional to the amount of tokens (price curve is linear)
+     * Note: this function tests both convertToAssets and convertToShares. If a special treatment for one of these
+     * functions is needed, the function below must be split.
+     */
+    function _isConvertLinear(
+        IERC4626 wrappedToken,
+        function(uint256) external view returns (uint256) convertFunction,
+        uint8 decimals
+    ) internal view returns (bool) {
+        // We need to pass in the unit asset in native decimals.
+        uint256 oneToken = 10 ** decimals;
+        uint256 billionTokens = _BILLION * oneToken;
+
+        try convertFunction(oneToken) returns (uint256 rateOfOneToken) {
+            try convertFunction(billionTokens) returns (uint256 assetsOfBillionTokens) {
+                uint256 rateOfBillionTokens = assetsOfBillionTokens / _BILLION;
+
+                if (rateOfBillionTokens > rateOfOneToken) {
+                    // Less than 10 to ignore last digit, due to rounding errors in the division of convertFunction;
+                    return rateOfBillionTokens - rateOfOneToken < 10;
+                }
+
+                // Less than 10 to ignore last digit, due to rounding errors in the division of convertFunction;
+                return rateOfOneToken - rateOfBillionTokens < 10;
             } catch {
                 return false;
             }
