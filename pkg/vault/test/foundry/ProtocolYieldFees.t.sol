@@ -102,8 +102,12 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     ) public {
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
+
         // yield fee 1-20%
-        yieldFeePercentage = bound(yieldFeePercentage, 0.01e18, 0.2e18);
+        yieldFeePercentage = bound(yieldFeePercentage, 10, 200);
+        // VaultConfig stores yieldFeePercentage as a 10 bits variable (from 0 to 1023, or 0% to 102.3%)
+        // Multiplying by 1e15 makes it 18 decimals scaled again
+        yieldFeePercentage = yieldFeePercentage * 1e15;
 
         pool = createPool();
         wstETHRateProvider.mockRate(wstethRate);

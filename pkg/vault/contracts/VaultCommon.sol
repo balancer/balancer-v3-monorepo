@@ -361,8 +361,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _getPoolDataAndYieldFees(
         address pool,
-        Rounding roundingDirection,
-        VaultConfig memory vaultConfig
+        Rounding roundingDirection
     ) internal view returns (PoolData memory poolData, uint256[] memory dueProtocolYieldFees) {
         // Initialize poolData with base information for subsequent calculations.
         (
@@ -380,6 +379,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         // Initialize arrays to store balances and rates based on the number of tokens in the pool.
         // Will be read raw, then upscaled and rounded as directed.
         poolData.balancesLiveScaled18 = new uint256[](numTokens);
+
+        VaultConfig memory vaultConfig = VaultConfigLib.toVaultConfig(_vaultConfigBytes);
         uint256 yieldFeePercentage = vaultConfig.protocolYieldFeePercentage;
 
         // Fill in the tokenRates inside poolData (needed for `_updateLiveTokenBalanceInPoolData`).
@@ -429,12 +430,11 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _computePoolDataUpdatingBalancesAndFees(
         address pool,
-        Rounding roundingDirection,
-        VaultConfig memory vaultConfig
+        Rounding roundingDirection
     ) internal nonReentrant returns (PoolData memory poolData) {
         uint256[] memory dueProtocolYieldFees;
 
-        (poolData, dueProtocolYieldFees) = _getPoolDataAndYieldFees(pool, roundingDirection, vaultConfig);
+        (poolData, dueProtocolYieldFees) = _getPoolDataAndYieldFees(pool, roundingDirection);
         uint256 numTokens = dueProtocolYieldFees.length;
 
         for (uint256 i = 0; i < numTokens; ++i) {

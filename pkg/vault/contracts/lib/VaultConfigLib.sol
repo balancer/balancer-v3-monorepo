@@ -59,11 +59,12 @@ library VaultConfigLib {
     }
 
     function toVaultConfig(VaultConfigBits config) internal pure returns (VaultConfig memory) {
-        return VaultConfig({
-            isQueryDisabled: config.isQueryDisabled(),
-            isVaultPaused: config.isVaultPaused(),
-            protocolSwapFeePercentage: config.getProtocolSwapFeePercentage(),
-            protocolYieldFeePercentage: config.getProtocolYieldFeePercentage()
-        });
+        return
+            VaultConfig({
+                isQueryDisabled: config.isQueryDisabled(),
+                isVaultPaused: config.isVaultPaused(),
+                protocolSwapFeePercentage: config.getProtocolSwapFeePercentage(),
+                protocolYieldFeePercentage: config.getProtocolYieldFeePercentage()
+            });
     }
 }
