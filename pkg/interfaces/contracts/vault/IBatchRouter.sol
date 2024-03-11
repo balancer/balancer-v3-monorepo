@@ -83,7 +83,7 @@ interface IBatchRouter {
      * @param deadline Deadline for the swap
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for the swap
-     * @return pathAmountsIn Calculated amounts of input tokens corresponding to the last step of each given path
+     * @return pathAmountsIn Calculated amounts of input tokens corresponding to the first step of each given path
      * @return tokensIn Calculated input token addresses
      * @return amountsIn Calculated amounts of input tokens, ordered by input token address
      */
