@@ -17,7 +17,7 @@ import { RouterCommon } from "./RouterCommon.sol";
 contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    // Transient storage used to track tokens and amount flowing in and out within a batch swap.
+    // We use transient storage to track tokens and amounts flowing in and out of a batch swap.
     // Set of input tokens involved in a batch swap.
     EnumerableSet.AddressSet private _currentSwapTokensIn;
     // Set of output tokens involved in a batch swap.
