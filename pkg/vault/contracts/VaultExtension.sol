@@ -125,6 +125,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address pauseManager;
         PoolHooks poolHooks;
         LiquidityManagement liquidityManagement;
+        bool hasDynamicSwapFee;
     }
 
     /// @inheritdoc IVaultExtension
@@ -134,7 +135,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolHooks calldata poolHooks,
-        LiquidityManagement calldata liquidityManagement
+        LiquidityManagement calldata liquidityManagement,
+        bool hasDynamicSwapFee
     ) external nonReentrant whenVaultNotPaused onlyVault {
         _registerPool(
             pool,
@@ -143,7 +145,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 pauseWindowEndTime: pauseWindowEndTime,
                 pauseManager: pauseManager,
                 poolHooks: poolHooks,
-                liquidityManagement: liquidityManagement
+                liquidityManagement: liquidityManagement,
+                hasDynamicSwapFee: hasDynamicSwapFee
             })
         );
     }
@@ -235,6 +238,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         config.isPoolRegistered = true;
         config.hooks = params.poolHooks;
         config.liquidityManagement = params.liquidityManagement;
+        config.hasDynamicSwapFee = params.hasDynamicSwapFee;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = params.pauseWindowEndTime.toUint32();
         _poolConfig[pool] = config.fromPoolConfig();
@@ -248,6 +252,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             params.pauseManager,
             params.poolHooks,
             params.liquidityManagement
+            // TODO: add hasDynamicSwapFee to the event
         );
     }
 

@@ -84,7 +84,15 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         // We are assuming the baseToken is STANDARD (the default type, with enum value 0).
         tokenConfig[baseTokenIndex].token = IERC20(wrappedToken.asset());
 
-        getVault().registerPool(pool, tokenConfig, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
+        getVault().registerPool(
+            pool,
+            tokenConfig,
+            pauseWindowEndTime,
+            pauseManager,
+            poolHooks,
+            liquidityManagement,
+            false // hasDynamicSwapFee
+        );
     }
 
     function _getDefaultPoolHooks() internal pure returns (PoolHooks memory) {

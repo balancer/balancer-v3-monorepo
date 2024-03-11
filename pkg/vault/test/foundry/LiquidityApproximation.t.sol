@@ -15,6 +15,7 @@ import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Ba
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { DynamicFeePoolMock } from "../../contracts/test/DynamicFeePoolMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -550,5 +551,46 @@ contract LiquidityApproximationTest is BaseVaultTest {
         authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
         vm.prank(alice);
         vault.setStaticSwapFeePercentage(address(pool), swapFeePercentage); // 1%
+    }
+}
+
+contract LiquidityApproximationWithDynamicFeesTest is LiquidityApproximationTest {
+    using ArrayHelpers for *;
+    using FixedPoint for *;
+
+    function createPool() internal virtual override returns (address) {
+        liquidityPool = address(
+            new DynamicFeePoolMock(
+                IVault(address(vault)),
+                "ERC20 Pool",
+                "ERC20POOL",
+                vault.buildTokenConfig(
+                    [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+                    new IRateProvider[](2)
+                ),
+                true,
+                365 days,
+                address(0)
+            )
+        );
+        vm.label(address(liquidityPool), "liquidityPool");
+
+        swapPool = address(
+            new DynamicFeePoolMock(
+                IVault(address(vault)),
+                "ERC20 Pool",
+                "ERC20POOL",
+                vault.buildTokenConfig(
+                    [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+                    new IRateProvider[](2)
+                ),
+                true,
+                365 days,
+                address(0)
+            )
+        );
+        vm.label(address(swapPool), "swapPool");
+
+        return address(liquidityPool);
     }
 }

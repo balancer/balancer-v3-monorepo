@@ -405,7 +405,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function _getSwapFeePercentage(address poolAddress, PoolData memory poolData) internal view returns (uint256) {
         if (poolData.poolConfig.hasDynamicSwapFee) {
             // TODO: add computeFee call parameters
-            return IBaseDynamicFeePool(poolAddress).computeFee();
+            return IBaseDynamicFeePool(poolAddress).computeFee(poolData);
         } else {
             return poolData.poolConfig.staticSwapFeePercentage;
         }

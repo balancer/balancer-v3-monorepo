@@ -24,7 +24,8 @@ interface IVaultMainMock {
         address pool,
         IERC20[] memory tokens,
         uint256 timestamp,
-        address pauseManager
+        address pauseManager,
+        bool hasDynamicSwapFee
     ) external;
 
     function getDecimalScalingFactors(address pool) external view returns (uint256[] memory);

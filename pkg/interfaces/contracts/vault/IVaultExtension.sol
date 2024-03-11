@@ -86,7 +86,8 @@ interface IVaultExtension {
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolHooks calldata hookConfig,
-        LiquidityManagement calldata liquidityManagement
+        LiquidityManagement calldata liquidityManagement,
+        bool hasDynamicSwapFee
     ) external;
 
     /**
