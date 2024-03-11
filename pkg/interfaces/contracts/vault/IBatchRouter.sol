@@ -21,8 +21,8 @@ interface IBatchRouter {
     struct SwapPathExactAmountIn {
         IERC20 tokenIn;
         // for each step:
-        // if tokenIn == pool use removeLiquidity SINGLE_TOKEN_EXACT_IN
-        // if tokenOut == pool use addLiquidity UNBALANCED
+        // if tokenIn == pool, use removeLiquidity SINGLE_TOKEN_EXACT_IN
+        // if tokenOut == pool, use addLiquidity UNBALANCED
         SwapPathStep[] steps;
         uint256 exactAmountIn;
         uint256 minAmountOut;
@@ -31,8 +31,8 @@ interface IBatchRouter {
     struct SwapPathExactAmountOut {
         IERC20 tokenIn;
         // for each step:
-        // if tokenIn == pool use removeLiquidity SINGLE_TOKEN_EXACT_OUT
-        // if tokenOut == pool use addLiquidity SINGLE_TOKEN_EXACT_OUT
+        // if tokenIn == pool, use removeLiquidity SINGLE_TOKEN_EXACT_OUT
+        // if tokenOut == pool, use addLiquidity SINGLE_TOKEN_EXACT_OUT
         SwapPathStep[] steps;
         uint256 maxAmountIn;
         uint256 exactAmountOut;
@@ -54,7 +54,7 @@ interface IBatchRouter {
         bytes userData;
     }
 
-    /// @dev The swap transaction was not mined before the specified deadline timestamp.
+    /// @dev The swap transaction was not validated before the specified deadline timestamp.
     error SwapDeadline();
 
     /**
