@@ -21,6 +21,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Router } from "../../contracts/Router.sol";
+import { RouterCommon } from "../../contracts/RouterCommon.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 import { VaultExtensionMock } from "../../contracts/test/VaultExtensionMock.sol";
 
@@ -181,7 +182,7 @@ contract RouterTest is BaseVaultTest {
         checkAddLiquidityPreConditions();
 
         // Caller does not have enough ETH, even if they hold weth.
-        vm.expectRevert(abi.encodeWithSelector(IRouter.InsufficientEth.selector));
+        vm.expectRevert(abi.encodeWithSelector(RouterCommon.InsufficientEth.selector));
         vm.prank(alice);
         router.initialize(address(wethPoolNoInit), wethDaiTokens, wethDaiAmountsIn, initBpt, true, bytes(""));
     }
@@ -252,7 +253,7 @@ contract RouterTest is BaseVaultTest {
         checkAddLiquidityPreConditions();
 
         // Caller does not have enough ETH, even if they hold weth.
-        vm.expectRevert(abi.encodeWithSelector(IRouter.InsufficientEth.selector));
+        vm.expectRevert(abi.encodeWithSelector(RouterCommon.InsufficientEth.selector));
         vm.prank(alice);
         router.addLiquidityCustom(address(wethPool), wethDaiAmountsIn, bptAmountOut, true, bytes(""));
     }

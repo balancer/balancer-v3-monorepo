@@ -54,10 +54,6 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolConfig[pool] = config.fromPoolConfig();
     }
 
-    function setRateProvider(address pool, IERC20 token, IRateProvider rateProvider) external {
-        _poolRateProviders[pool][token] = rateProvider;
-    }
-
     // Used for testing pool registration, which is ordinarily done in the pool factory.
     // The Mock pool has an argument for whether or not to register on deployment. To call register pool
     // separately, deploy it with the registration flag false, then call this function.
