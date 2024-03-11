@@ -154,10 +154,12 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
      * of input values. For instance, convertToAssets(60) + converToAssets(40) = convertToAssets(100).
      */
     function _supportsRateComputation(IERC4626 wrappedToken) internal view returns (bool) {
+        uint8 assetsDecimals = IERC20Metadata(wrappedToken.asset()).decimals();
+
         return
             _isRateReversible(wrappedToken) &&
-            _isConvertToAssetsLinear(wrappedToken) &&
-            _isConvertToSharesLinear(wrappedToken);
+            _isConvertLinear(wrappedToken, wrappedToken.convertToAssets, wrappedToken.decimals()) &&
+            _isConvertLinear(wrappedToken, wrappedToken.convertToShares, assetsDecimals);
     }
 
     /**
@@ -203,55 +205,31 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
     }
 
     /**
-     * @dev Previews withdrawals with a unit share or a billion shares.
-     * The resulting assets should be precisely proportional to the amount of shares (price curve is linear)
+     * @dev Previews convertToAssets/convertToShares (convertFunction) with a unit token or a billion tokens.
+     * The resulting conversion should be precisely proportional to the amount of tokens (price curve is linear)
+     * Note: this function tests both convertToAssets and convertToShares. If a special treatment for one of these
+     * functions is needed, the function below must be split.
      */
-    function _isConvertToAssetsLinear(IERC4626 wrappedToken) internal view returns (bool) {
+    function _isConvertLinear(
+        IERC4626 wrappedToken,
+        function (uint256) view external returns (uint256) convertFunction,
+        uint8 decimals
+    ) internal view returns (bool) {
         // We need to pass in the unit asset in native decimals.
-        uint256 oneShare = 10 ** wrappedToken.decimals();
-        uint256 billionShares = _BILLION * oneShare;
+        uint256 oneToken = 10 ** wrappedToken.decimals();
+        uint256 billionTokens = _BILLION * oneToken;
 
-        try wrappedToken.convertToAssets(oneShare) returns (uint256 rateOfOneShare) {
-            try wrappedToken.convertToAssets(billionShares) returns (uint256 assetsOfBillionShares) {
-                uint256 rateOfBillionShares = assetsOfBillionShares / _BILLION;
+        try convertFunction(oneToken) returns (uint256 rateOfOneToken) {
+            try convertFunction(billionTokens) returns (uint256 assetsOfBillionTokens) {
+                uint256 rateOfBillionTokens = assetsOfBillionTokens / _BILLION;
 
-                if (rateOfBillionShares > rateOfOneShare) {
-                    // Less than 10 to ignore last digit, due to rounding errors in the division of convertToAssets;
-                    return rateOfBillionShares - rateOfOneShare < 10;
+                if (rateOfBillionTokens > rateOfOneToken) {
+                    // Less than 10 to ignore last digit, due to rounding errors in the division of convertFunction;
+                    return rateOfBillionTokens - rateOfOneToken < 10;
                 }
 
-                // Less than 10 to ignore last digit, due to rounding errors in the division of convertToAssets;
-                return rateOfOneShare - rateOfBillionShares < 10;
-            } catch {
-                return false;
-            }
-        } catch {
-            return false;
-        }
-    }
-
-    /**
-     * @dev Previews deposits with a unit asset or a billion assets.
-     * The resulting shares should be precisely proportional to the amount of assets (price curve is linear)
-     */
-    function _isConvertToSharesLinear(IERC4626 wrappedToken) internal view returns (bool) {
-        address asset = wrappedToken.asset();
-
-        // We need to pass in the unit asset in native decimals.
-        uint256 oneAsset = 10 ** IERC20Metadata(asset).decimals();
-        uint256 billionAssets = _BILLION * oneAsset;
-
-        try wrappedToken.convertToShares(oneAsset) returns (uint256 rateOfOneAsset) {
-            try wrappedToken.convertToShares(billionAssets) returns (uint256 sharesOfBillionAssets) {
-                uint256 rateOfBillionAssets = sharesOfBillionAssets / _BILLION;
-
-                if (rateOfBillionAssets > rateOfOneAsset) {
-                    // Less than 10 to ignore last digit, due to rounding errors in the division of convertToShares;
-                    return rateOfBillionAssets - rateOfOneAsset < 10;
-                }
-
-                // Less than 10 to ignore last digit, due to rounding errors in the division of convertToShares;
-                return rateOfOneAsset - rateOfBillionAssets < 10;
+                // Less than 10 to ignore last digit, due to rounding errors in the division of convertFunction;
+                return rateOfOneToken - rateOfBillionTokens < 10;
             } catch {
                 return false;
             }
