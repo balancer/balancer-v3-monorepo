@@ -259,7 +259,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 minBptAmountOut,
         bytes memory userData
     ) external withLocker withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault returns (uint256 bptAmountOut) {
-        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(pool, Rounding.ROUND_DOWN);
+        uint256 protocolYieldFeePercentage = VaultConfigLib.getProtocolYieldFeePercentage(_vaultConfigBytes);
+        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(pool, Rounding.ROUND_DOWN, protocolYieldFeePercentage);
 
         if (poolData.poolConfig.isPoolInitialized) {
             revert PoolAlreadyInitialized(pool);
@@ -469,14 +470,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function getProtocolSwapFeePercentage() external view onlyVault returns (uint256) {
-        VaultConfig memory vaultConfig = VaultConfigLib.toVaultConfig(_vaultConfigBytes);
-        return vaultConfig.protocolSwapFeePercentage;
+        return VaultConfigLib.getProtocolSwapFeePercentage(_vaultConfigBytes);
     }
 
     /// @inheritdoc IVaultExtension
     function getProtocolYieldFeePercentage() external view onlyVault returns (uint256) {
-        VaultConfig memory vaultConfig = VaultConfigLib.toVaultConfig(_vaultConfigBytes);
-        return vaultConfig.protocolYieldFeePercentage;
+        return VaultConfigLib.getProtocolYieldFeePercentage(_vaultConfigBytes);
     }
 
     /// @inheritdoc IVaultExtension
