@@ -40,7 +40,10 @@ struct PoolConfig {
 struct VaultConfig {
     bool isQueryDisabled;
     bool isVaultPaused;
+    // We allow 0% swap fee.
+    // The protocol swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
     uint256 protocolSwapFeePercentage;
+    // Protocol yield fee - charged on all pool operations.
     uint256 protocolYieldFeePercentage;
 }
 
