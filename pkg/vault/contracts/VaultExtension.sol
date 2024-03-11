@@ -230,6 +230,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
 
+        // TODO: add a check for if ( hasDynamicSwapFee ) -> supports interface IBaseDynamicFeePool?
+
         config.isPoolRegistered = true;
         config.hooks = params.poolHooks;
         config.liquidityManagement = params.liquidityManagement;

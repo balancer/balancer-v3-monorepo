@@ -16,6 +16,7 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IBaseDynamicFeePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBaseDynamicFeePool.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
@@ -220,7 +221,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // to a lower calculated amountOut, favoring the pool.
         _updateAmountGivenInVars(vars, params, poolData);
 
-        vars.swapFeePercentage = _getSwapFeePercentage(poolData.poolConfig);
+        vars.swapFeePercentage = _getSwapFeePercentage(params.pool, poolData);
 
         if (vars.swapFeePercentage > 0 && params.kind == SwapKind.EXACT_OUT) {
             // Round up to avoid losses during precision loss.
@@ -401,12 +402,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @dev Returns swap fee for the pool.
-    function _getSwapFeePercentage(PoolConfig memory config) internal pure returns (uint256) {
-        if (config.hasDynamicSwapFee) {
-            // TODO: Fetch dynamic swap fee from the pool using hook
-            return 0;
+    function _getSwapFeePercentage(address poolAddress, PoolData memory poolData) internal view returns (uint256) {
+        if (poolData.poolConfig.hasDynamicSwapFee) {
+            // TODO: add computeFee call parameters
+            return IBaseDynamicFeePool(poolAddress).computeFee();
         } else {
-            return config.staticSwapFeePercentage;
+            return poolData.poolConfig.staticSwapFeePercentage;
         }
     }
 
@@ -570,12 +571,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 poolData.balancesLiveScaled18,
                 maxAmountsInScaled18,
                 _totalSupply(params.pool),
-                _getSwapFeePercentage(poolData.poolConfig),
+                _getSwapFeePercentage(params.pool, poolData),
                 IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             bptAmountOut = params.minBptAmountOut;
             uint256 tokenIndex = InputHelpers.getSingleInputIndex(maxAmountsInScaled18);
+            uint256 swapFeePercentage = _getSwapFeePercentage(params.pool, poolData); // avoids stack too deep
 
             amountsInScaled18 = maxAmountsInScaled18;
             (amountsInScaled18[tokenIndex], swapFeeAmountsScaled18) = BasePoolMath
@@ -584,7 +586,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     tokenIndex,
                     bptAmountOut,
                     _totalSupply(params.pool),
-                    _getSwapFeePercentage(poolData.poolConfig),
+                    swapFeePercentage,
                     IBasePool(params.pool).computeBalance
                 );
         } else if (params.kind == AddLiquidityKind.CUSTOM) {
@@ -785,7 +787,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     tokenOutIndex,
                     bptAmountIn,
                     _totalSupply(params.pool),
-                    _getSwapFeePercentage(poolData.poolConfig),
+                    _getSwapFeePercentage(params.pool, poolData),
                     IBasePool(params.pool).computeBalance
                 );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
@@ -797,7 +799,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 tokenOutIndex,
                 amountsOutScaled18[tokenOutIndex],
                 _totalSupply(params.pool),
-                _getSwapFeePercentage(poolData.poolConfig),
+                _getSwapFeePercentage(params.pool, poolData),
                 IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == RemoveLiquidityKind.CUSTOM) {
