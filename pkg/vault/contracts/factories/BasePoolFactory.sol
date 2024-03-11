@@ -85,13 +85,4 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     function _create(bytes memory constructorArgs, bytes32 salt) internal returns (address) {
         return CREATE3.deploy(_computeFinalSalt(salt), abi.encodePacked(_creationCode, constructorArgs), 0);
     }
-
-    function _extractTokensFromTokenConfig(
-        TokenConfig[] memory tokenData
-    ) internal pure returns (IERC20[] memory registeredTokens) {
-        registeredTokens = new IERC20[](tokenData.length);
-        for (uint256 i = 0; i < tokenData.length; i++) {
-            registeredTokens[i] = tokenData[i].token;
-        }
-    }
 }

@@ -25,7 +25,8 @@ contract ERC4626WrapperValidation is BaseVaultTest {
 
     address constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
-    uint256 constant BLOCK_NUMBER = 19091677;
+    // Using older block number because convertToAssets function is bricked in the new version of the aToken wrapper
+    uint256 constant BLOCK_NUMBER = 17965150;
 
     function setUp() public virtual override {
         vm.createSelectFork({ blockNumber: BLOCK_NUMBER, urlOrAlias: "mainnet" });
