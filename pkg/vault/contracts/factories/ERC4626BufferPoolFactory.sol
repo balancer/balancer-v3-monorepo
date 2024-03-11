@@ -203,8 +203,8 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
     }
 
     /**
-     * @dev Previews withdrawals with a unit share or a billion shares.
-     * The resulting assets should be precisely proportional to the amount of shares (price curve is linear)
+     * @dev Previews withdrawals with a unit share and a billion shares.
+     * If the price curve is linear, the resulting assets should be precisely proportional to the amount of shares.
      */
     function _isConvertToAssetsLinear(IERC4626 wrappedToken) internal view returns (bool) {
         // We need to pass in the unit asset in native decimals.
