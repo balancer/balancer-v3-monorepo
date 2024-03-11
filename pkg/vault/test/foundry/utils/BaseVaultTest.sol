@@ -36,6 +36,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
         uint256[] poolTokens;
     }
 
+    uint256 constant MIN_BPT = 1e6;
+
     bytes32 constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     bytes32 constant ONE_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000001;
 
@@ -146,5 +148,9 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
         // Don't assume token ordering.
         balances.userTokens[0] = tokens[0].balanceOf(user);
         balances.userTokens[1] = tokens[1].balanceOf(user);
+    }
+
+    function getSalt(address addr) internal pure returns (bytes32) {
+        return bytes32(uint256(uint160(addr)));
     }
 }
