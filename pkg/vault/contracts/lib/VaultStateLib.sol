@@ -29,6 +29,7 @@ library VaultStateLib {
     // Protocol Swap and Yield Fees are a 10 bits value. We transform it by multiplying by 1e15, so
     // it can be configured from 0% to 100% fee (step 0.1%)
     uint8 private constant _FEE_BITLENGTH = 10;
+    uint64 public constant FEE_SCALING_FACTOR = 1e15;
 
     function isQueryDisabled(VaultStateBits config) internal pure returns (bool) {
         return VaultStateBits.unwrap(config).decodeBool(QUERY_DISABLED_OFFSET);
@@ -39,11 +40,11 @@ library VaultStateLib {
     }
 
     function getProtocolSwapFeePercentage(VaultStateBits config) internal pure returns (uint256) {
-        return VaultStateBits.unwrap(config).decodeUint(PROTOCOL_SWAP_FEE_OFFSET, _FEE_BITLENGTH) * 1e15;
+        return VaultStateBits.unwrap(config).decodeUint(PROTOCOL_SWAP_FEE_OFFSET, _FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
     function getProtocolYieldFeePercentage(VaultStateBits config) internal pure returns (uint256) {
-        return VaultStateBits.unwrap(config).decodeUint(PROTOCOL_YIELD_FEE_OFFSET, _FEE_BITLENGTH) * 1e15;
+        return VaultStateBits.unwrap(config).decodeUint(PROTOCOL_YIELD_FEE_OFFSET, _FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
     function fromVaultState(VaultState memory config) internal pure returns (VaultStateBits) {
@@ -52,8 +53,12 @@ library VaultStateLib {
         configBits = configBits
             .insertBool(config.isQueryDisabled, QUERY_DISABLED_OFFSET)
             .insertBool(config.isVaultPaused, VAULT_PAUSED_OFFSET)
-            .insertUint(config.protocolSwapFeePercentage / 1e15, PROTOCOL_SWAP_FEE_OFFSET, _FEE_BITLENGTH)
-            .insertUint(config.protocolYieldFeePercentage / 1e15, PROTOCOL_YIELD_FEE_OFFSET, _FEE_BITLENGTH);
+            .insertUint(config.protocolSwapFeePercentage / FEE_SCALING_FACTOR, PROTOCOL_SWAP_FEE_OFFSET, _FEE_BITLENGTH)
+            .insertUint(
+                config.protocolYieldFeePercentage / FEE_SCALING_FACTOR,
+                PROTOCOL_YIELD_FEE_OFFSET,
+                _FEE_BITLENGTH
+            );
 
         return VaultStateBits.wrap(configBits);
     }

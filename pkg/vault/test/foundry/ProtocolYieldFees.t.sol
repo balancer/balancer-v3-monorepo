@@ -13,6 +13,8 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { VaultStateLib } from "../../contracts/lib/VaultStateLib.sol";
+
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
@@ -107,7 +109,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         yieldFeePercentage = bound(yieldFeePercentage, 10, 200);
         // VaultState stores yieldFeePercentage as a 10 bits variable (from 0 to 1023, or 0% to 102.3%)
         // Multiplying by 1e15 makes it 18 decimals scaled again
-        yieldFeePercentage = yieldFeePercentage * 1e15;
+        yieldFeePercentage = yieldFeePercentage * VaultStateLib.FEE_SCALING_FACTOR;
 
         pool = createPool();
         wstETHRateProvider.mockRate(wstethRate);
