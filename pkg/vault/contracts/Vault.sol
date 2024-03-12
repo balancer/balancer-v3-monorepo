@@ -170,7 +170,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 swapFeeAmountScaled18;
         uint256 swapFeePercentage;
         uint256 protocolSwapFeeAmountRaw;
-        uint256 protocolYieldFeePercentage;
     }
 
     /// @inheritdoc IVaultMain
@@ -179,6 +178,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     )
         public
         withLocker
+        loadVaultStateSwap(params)
         withInitializedPool(params.pool)
         whenPoolNotPaused(params.pool)
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
@@ -201,7 +201,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             params.pool,
             Rounding.ROUND_DOWN,
-            params.vaultState.protocolYieldFeePercentage
+            params.protocolYieldFeePercentage
         );
 
         // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
@@ -388,7 +388,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         vars.protocolSwapFeeAmountRaw = _computeAndChargeProtocolFees(
             poolData,
             vars.swapFeeAmountScaled18,
-            params.vaultState.protocolSwapFeePercentage,
+            params.protocolSwapFeePercentage,
             params.pool,
             params.tokenOut,
             vars.indexOut
@@ -466,6 +466,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     )
         external
         withLocker
+        loadVaultStateAddLiquidity(params)
         withInitializedPool(params.pool)
         whenPoolNotPaused(params.pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
@@ -483,7 +484,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             params.pool,
             Rounding.ROUND_UP,
-            params.vaultState.protocolYieldFeePercentage
+            params.protocolYieldFeePercentage
         );
         InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.maxAmountsIn.length);
 
@@ -631,7 +632,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 protocolSwapFeeAmountRaw = _computeAndChargeProtocolFees(
                 poolData,
                 swapFeeAmountsScaled18[i],
-                params.vaultState.protocolSwapFeePercentage,
+                params.protocolSwapFeePercentage,
                 params.pool,
                 token,
                 i
@@ -657,7 +658,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.balancesRaw[i] += (amountInRaw - protocolSwapFeeAmountRaw);
 
             poolData.balancesLiveScaled18[i] += (amountsInScaled18[i] -
-                swapFeeAmountsScaled18[i].mulUp(params.vaultState.protocolSwapFeePercentage));
+                swapFeeAmountsScaled18[i].mulUp(params.protocolSwapFeePercentage));
 
             amountsInRaw[i] = amountInRaw;
         }
@@ -678,6 +679,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     )
         external
         withLocker
+        loadVaultStateRemoveLiquidity(params)
         withInitializedPool(params.pool)
         whenPoolNotPaused(params.pool)
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
@@ -695,7 +697,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             params.pool,
             Rounding.ROUND_DOWN,
-            params.vaultState.protocolYieldFeePercentage
+            params.protocolYieldFeePercentage
         );
         InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.minAmountsOut.length);
 
@@ -848,7 +850,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 protocolSwapFeeAmountRaw = _computeAndChargeProtocolFees(
                 poolData,
                 swapFeeAmountsScaled18[i],
-                params.vaultState.protocolSwapFeePercentage,
+                params.protocolSwapFeePercentage,
                 params.pool,
                 tokens[i],
                 i
@@ -858,7 +860,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.balancesRaw[i] -= protocolSwapFeeAmountRaw;
 
             poolData.balancesLiveScaled18[i] -= (amountsOutScaled18[i] +
-                swapFeeAmountsScaled18[i].mulUp(params.vaultState.protocolSwapFeePercentage));
+                swapFeeAmountsScaled18[i].mulUp(params.protocolSwapFeePercentage));
 
             // amountsOut are amounts exiting the Pool, so we round down.
             amountsOutRaw[i] = amountsOutScaled18[i].toRawUndoRateRoundDown(
@@ -885,7 +887,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _spendAllowance(address(params.pool), params.from, msg.sender, bptAmountIn);
         }
 
-        bool isQueryDisabled = params.vaultState.isQueryDisabled;
+        bool isQueryDisabled = params.isQueryDisabled;
         if (!isQueryDisabled && EVMCallModeHelpers.isStaticCall()) {
             // Increase `from` balance to ensure the burn function succeeds.
             _queryModeBalanceIncrease(params.pool, params.from, bptAmountIn);
@@ -961,14 +963,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         unchecked {
             return (tokenCount, index - 1);
         }
-    }
-
-    /*******************************************************************************
-                                    Vault Information
-    *******************************************************************************/
-
-    function getVaultState() external view returns (VaultState memory vaultState) {
-        vaultState = _vaultState.toVaultState();
     }
 
     /*******************************************************************************

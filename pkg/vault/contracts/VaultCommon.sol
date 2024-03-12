@@ -144,6 +144,43 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /*******************************************************************************
+                                    Vault State Management
+    *******************************************************************************/
+
+    modifier loadVaultStateSwap(SwapParams memory params) {
+        {
+            VaultState memory vaultState = _vaultState.toVaultState();
+            params.isQueryDisabled = vaultState.isQueryDisabled;
+            params.isVaultPaused = vaultState.isVaultPaused;
+            params.protocolSwapFeePercentage = vaultState.protocolSwapFeePercentage;
+            params.protocolYieldFeePercentage = vaultState.protocolYieldFeePercentage;
+        }
+        _;
+    }
+
+    modifier loadVaultStateAddLiquidity(AddLiquidityParams memory params) {
+        {
+            VaultState memory vaultState = _vaultState.toVaultState();
+            params.isQueryDisabled = vaultState.isQueryDisabled;
+            params.isVaultPaused = vaultState.isVaultPaused;
+            params.protocolSwapFeePercentage = vaultState.protocolSwapFeePercentage;
+            params.protocolYieldFeePercentage = vaultState.protocolYieldFeePercentage;
+        }
+        _;
+    }
+
+    modifier loadVaultStateRemoveLiquidity(RemoveLiquidityParams memory params) {
+        {
+            VaultState memory vaultState = _vaultState.toVaultState();
+            params.isQueryDisabled = vaultState.isQueryDisabled;
+            params.isVaultPaused = vaultState.isVaultPaused;
+            params.protocolSwapFeePercentage = vaultState.protocolSwapFeePercentage;
+            params.protocolYieldFeePercentage = vaultState.protocolYieldFeePercentage;
+        }
+        _;
+    }
+
+    /*******************************************************************************
                                     Vault Pausing
     *******************************************************************************/
 

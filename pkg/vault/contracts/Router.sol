@@ -18,6 +18,11 @@ import { RouterCommon } from "./RouterCommon.sol";
 contract Router is IRouter, RouterCommon, ReentrancyGuard {
     using Address for address payable;
 
+    bool private constant _isQueryDisabledDefault = false;
+    bool private constant _isVaultPausedDefault = false;
+    uint256 private constant _protocolSwapFeePercentageDefault = 0;
+    uint256 private constant _protocolYieldFeePercentageDefault = 0;
+
     constructor(IVault vault, IWETH weth) RouterCommon(vault, weth) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -205,8 +210,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
         onlyVault
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
-        VaultState memory vaultState = _vault.getVaultState();
-
         (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: params.pool,
@@ -214,7 +217,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
                 maxAmountsIn: params.maxAmountsIn,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
-                vaultState: vaultState,
+                isQueryDisabled: _isQueryDisabledDefault,
+                isVaultPaused: _isVaultPausedDefault,
+                protocolSwapFeePercentage: _protocolSwapFeePercentageDefault,
+                protocolYieldFeePercentage: _protocolYieldFeePercentageDefault,
                 userData: params.userData
             })
         );
@@ -398,8 +404,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
         onlyVault
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
     {
-        VaultState memory vaultState = _vault.getVaultState();
-
         (bptAmountIn, amountsOut, returnData) = _vault.removeLiquidity(
             RemoveLiquidityParams({
                 pool: params.pool,
@@ -407,7 +411,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
                 maxBptAmountIn: params.maxBptAmountIn,
                 minAmountsOut: params.minAmountsOut,
                 kind: params.kind,
-                vaultState: vaultState,
+                isQueryDisabled: _isQueryDisabledDefault,
+                isVaultPaused: _isVaultPausedDefault,
+                protocolSwapFeePercentage: _protocolSwapFeePercentageDefault,
+                protocolYieldFeePercentage: _protocolYieldFeePercentageDefault,
                 userData: params.userData
             })
         );
@@ -565,8 +572,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
             revert SwapDeadline();
         }
 
-        VaultState memory vaultState = _vault.getVaultState();
-
         (amountCalculated, amountIn, amountOut) = _vault.swap(
             SwapParams({
                 kind: params.kind,
@@ -575,7 +580,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
                 tokenOut: params.tokenOut,
                 amountGivenRaw: params.amountGiven,
                 limitRaw: params.limit,
-                vaultState: vaultState,
+                isQueryDisabled: _isQueryDisabledDefault,
+                isVaultPaused: _isVaultPausedDefault,
+                protocolSwapFeePercentage: _protocolSwapFeePercentageDefault,
+                protocolYieldFeePercentage: _protocolYieldFeePercentageDefault,
                 userData: params.userData
             })
         );
@@ -770,8 +778,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
         onlyVault
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
-        VaultState memory vaultState = _vault.getVaultState();
-
         (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: params.pool,
@@ -779,7 +785,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
                 maxAmountsIn: params.maxAmountsIn,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
-                vaultState: vaultState,
+                isQueryDisabled: _isQueryDisabledDefault,
+                isVaultPaused: _isVaultPausedDefault,
+                protocolSwapFeePercentage: _protocolSwapFeePercentageDefault,
+                protocolYieldFeePercentage: _protocolYieldFeePercentageDefault,
                 userData: params.userData
             })
         );
@@ -942,8 +951,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
         onlyVault
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
     {
-        VaultState memory vaultState = _vault.getVaultState();
-
         return
             _vault.removeLiquidity(
                 RemoveLiquidityParams({
@@ -952,7 +959,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
                     maxBptAmountIn: params.maxBptAmountIn,
                     minAmountsOut: params.minAmountsOut,
                     kind: params.kind,
-                    vaultState: vaultState,
+                    isQueryDisabled: _isQueryDisabledDefault,
+                    isVaultPaused: _isVaultPausedDefault,
+                    protocolSwapFeePercentage: _protocolSwapFeePercentageDefault,
+                    protocolYieldFeePercentage: _protocolYieldFeePercentageDefault,
                     userData: params.userData
                 })
             );

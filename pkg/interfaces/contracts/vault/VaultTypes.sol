@@ -125,7 +125,10 @@ struct SwapParams {
     IERC20 tokenOut;
     uint256 amountGivenRaw;
     uint256 limitRaw;
-    VaultState vaultState;
+    bool isQueryDisabled;
+    bool isVaultPaused;
+    uint256 protocolSwapFeePercentage;
+    uint256 protocolYieldFeePercentage;
     bytes userData;
 }
 
@@ -155,7 +158,10 @@ struct AddLiquidityParams {
     uint256[] maxAmountsIn;
     uint256 minBptAmountOut;
     AddLiquidityKind kind;
-    VaultState vaultState;
+    bool isQueryDisabled;
+    bool isVaultPaused;
+    uint256 protocolSwapFeePercentage;
+    uint256 protocolYieldFeePercentage;
     bytes userData;
 }
 
@@ -185,6 +191,9 @@ struct RemoveLiquidityParams {
     uint256 maxBptAmountIn;
     uint256[] minAmountsOut;
     RemoveLiquidityKind kind;
-    VaultState vaultState;
+    bool isQueryDisabled;
+    bool isVaultPaused;
+    uint256 protocolSwapFeePercentage;
+    uint256 protocolYieldFeePercentage;
     bytes userData;
 }

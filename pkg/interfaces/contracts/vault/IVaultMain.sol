@@ -141,12 +141,6 @@ interface IVaultMain {
     function getPoolTokenCountAndIndexOfToken(address pool, IERC20 token) external view returns (uint256, uint256);
 
     /*******************************************************************************
-                                    Vault Information
-    *******************************************************************************/
-
-    function getVaultState() external view returns (VaultState memory);
-
-    /*******************************************************************************
                                 Authentication
     *******************************************************************************/
 
