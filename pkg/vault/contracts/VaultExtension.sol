@@ -583,6 +583,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert EVMCallModeHelpers.NotStaticCall();
         }
 
+        bool _isQueryDisabled = VaultConfigLib.isQueryDisabled(_vaultConfigBytes);
         if (_isQueryDisabled) {
             revert QueriesDisabled();
         }
@@ -600,7 +601,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function isQueryDisabled() external view onlyVault returns (bool) {
-        return _isQueryDisabled;
+        return VaultConfigLib.isQueryDisabled(_vaultConfigBytes);
     }
 
     /*******************************************************************************

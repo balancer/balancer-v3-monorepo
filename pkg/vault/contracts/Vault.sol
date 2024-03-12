@@ -897,7 +897,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _spendAllowance(address(params.pool), params.from, msg.sender, bptAmountIn);
         }
 
-        if (!_isQueryDisabled && EVMCallModeHelpers.isStaticCall()) {
+        bool isQueryDisabled = VaultConfigLib.isQueryDisabled(_vaultConfigBytes);
+        if (!isQueryDisabled && EVMCallModeHelpers.isStaticCall()) {
             // Increase `from` balance to ensure the burn function succeeds.
             _queryModeBalanceIncrease(params.pool, params.from, bptAmountIn);
         }

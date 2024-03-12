@@ -84,9 +84,6 @@ contract VaultStorage {
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer internal _authorizer;
 
-    /// @notice If set to true, disables query functionality of the Vault. Can be modified only by governance.
-    bool internal _isQueryDisabled;
-
     uint256 public constant MAX_PAUSE_WINDOW_DURATION = 356 days * 4;
     uint256 public constant MAX_BUFFER_PERIOD_DURATION = 90 days;
 
@@ -97,8 +94,6 @@ contract VaultStorage {
     uint256 internal immutable _vaultBufferPeriodEndTime;
     // Stored as a convenience, to avoid calculating it on every operation.
     uint256 internal immutable _vaultBufferPeriodDuration;
-
-    bool internal _vaultPaused;
 
     VaultConfigBits internal _vaultConfigBytes;
 }

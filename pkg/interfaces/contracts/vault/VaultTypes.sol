@@ -38,6 +38,7 @@ struct PoolConfig {
 
 /// @dev Represents a vault's configuration
 struct VaultConfig {
+    /// @notice If set to true, disables query functionality of the Vault. Can be modified only by governance.
     bool isQueryDisabled;
     bool isVaultPaused;
     // We allow 0% swap fee.

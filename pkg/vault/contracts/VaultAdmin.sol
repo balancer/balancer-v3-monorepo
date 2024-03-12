@@ -171,7 +171,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             }
         }
 
-        _vaultPaused = pausing;
+        VaultConfig memory vaultConfig = VaultConfigLib.toVaultConfig(_vaultConfigBytes);
+        vaultConfig.isVaultPaused = pausing;
+        _vaultConfigBytes = VaultConfigLib.fromVaultConfig(vaultConfig);
 
         emit VaultPausedStateChanged(pausing);
     }
@@ -371,7 +373,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     /// @inheritdoc IVaultAdmin
     function disableQuery() external authenticate onlyVault {
-        _isQueryDisabled = true;
+        VaultConfig memory vaultConfig = VaultConfigLib.toVaultConfig(_vaultConfigBytes);
+        vaultConfig.isQueryDisabled = true;
+        _vaultConfigBytes = VaultConfigLib.fromVaultConfig(vaultConfig);
     }
 
     /*******************************************************************************

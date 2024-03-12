@@ -10,7 +10,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-// @notice Config type to store entire configuration of the pool
+// @notice Config type to store entire configuration of the vault
 type VaultConfigBits is bytes32;
 
 using VaultConfigLib for VaultConfigBits global;
