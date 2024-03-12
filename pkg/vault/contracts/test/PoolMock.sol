@@ -41,9 +41,9 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     bool public changeTokenRateOnBeforeAddLiquidity;
     bool public changeTokenRateOnBeforeRemoveLiquidity;
 
-    bool public reentrancyHookActive;
-    address private _hookContract;
-    bytes private _hookCalldata;
+    bool public swapReentrancyHookActive;
+    address private _swapHookContract;
+    bytes private _swapHookCalldata;
 
     RateProviderMock _rateProvider;
     uint256 private _newTokenRate;
@@ -97,13 +97,13 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         return (balances[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
     }
 
-    function setReentrancyHookActive(bool _reentrancyHookActive) external {
-        reentrancyHookActive = _reentrancyHookActive;
+    function setSwapReentrancyHookActive(bool _swapReentrancyHookActive) external {
+        swapReentrancyHookActive = _swapReentrancyHookActive;
     }
 
-    function setReentrancyHook(address hookContract, bytes calldata data) external {
-        _hookContract = hookContract;
-        _hookCalldata = data;
+    function setSwapReentrancyHook(address hookContract, bytes calldata data) external {
+        _swapHookContract = hookContract;
+        _swapHookCalldata = data;
     }
 
     function setFailOnAfterInitializeHook(bool fail) external {
@@ -199,11 +199,11 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
             _updateTokenRate();
         }
 
-        if (reentrancyHookActive) {
-            require(_hookContract != address(0), "Hook contract not set");
-            require(_hookCalldata.length != 0, "Hook calldata is empty");
-            reentrancyHookActive = false;
-            Address.functionCall(_hookContract, _hookCalldata);
+        if (swapReentrancyHookActive) {
+            require(_swapHookContract != address(0), "Hook contract not set");
+            require(_swapHookCalldata.length != 0, "Hook calldata is empty");
+            swapReentrancyHookActive = false;
+            Address.functionCall(_swapHookContract, _swapHookCalldata);
         }
 
         return !failOnBeforeSwapHook;

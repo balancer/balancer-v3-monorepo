@@ -358,8 +358,8 @@ contract VaultSwapTest is BaseVaultTest {
         vault.setConfig(address(pool), config);
 
         // Enable reentrancy hook
-        PoolMock(pool).setReentrancyHookActive(true);
-        PoolMock(pool).setReentrancyHook(address(this), abi.encodeWithSelector(this.reentrancyHook.selector));
+        PoolMock(pool).setSwapReentrancyHookActive(true);
+        PoolMock(pool).setSwapReentrancyHook(address(this), abi.encodeWithSelector(this.reentrancyHook.selector));
 
         uint256 usdcBeforeSwap = usdc.balanceOf(address(this));
         uint256 daiBeforeSwap = dai.balanceOf(address(this));
