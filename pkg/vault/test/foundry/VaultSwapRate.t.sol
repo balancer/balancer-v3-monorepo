@@ -99,7 +99,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
             wsteth,
             defaultAmount,
             rateAdjustedLimit,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -136,7 +136,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
             wsteth,
             rateAdjustedAmountGiven,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );

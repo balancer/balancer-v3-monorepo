@@ -8,7 +8,7 @@ import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constan
 import { fp, pct } from '@balancer-labs/v3-helpers/src/numbers';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
-import { IRouter, Router, Vault } from '../typechain-types';
+import { BatchRouter, IRouter, Router, Vault } from '../typechain-types';
 import { BalanceChange, expectBalanceChange } from '@balancer-labs/v3-helpers/src/test/tokenBalance';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
@@ -20,7 +20,7 @@ describe('BatchSwap', function () {
   let poolA: PoolMock, poolB: PoolMock, poolC: PoolMock;
   let poolAB: PoolMock, poolAC: PoolMock, poolBC: PoolMock;
   let tokens: ERC20TokenList;
-  let router: Router;
+  let router: BatchRouter, basicRouter: Router;
 
   let lp: SignerWithAddress, sender: SignerWithAddress, zero: VoidSigner;
 
@@ -38,7 +38,8 @@ describe('BatchSwap', function () {
     vault = await VaultDeployer.deploy();
     vaultAddress = await vault.getAddress();
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
-    router = await deploy('Router', { args: [vaultAddress, WETH] });
+    router = await deploy('BatchRouter', { args: [vaultAddress, WETH] });
+    basicRouter = await deploy('Router', { args: [vaultAddress, WETH] });
 
     tokens = await ERC20TokenList.create(3, { sorted: true });
 
@@ -88,17 +89,23 @@ describe('BatchSwap', function () {
     tokens.approve({ to: await vault.getAddress(), from: lp, amount: MAX_UINT256 });
     tokens.approve({ to: await vault.getAddress(), from: sender, amount: MAX_UINT256 });
 
-    await router.connect(lp).initialize(poolA, poolATokens, Array(poolATokens.length).fill(fp(10000)), 0, false, '0x');
-    await router.connect(lp).initialize(poolB, poolBTokens, Array(poolBTokens.length).fill(fp(10000)), 0, false, '0x');
-    await router.connect(lp).initialize(poolC, poolCTokens, Array(poolCTokens.length).fill(fp(10000)), 0, false, '0x');
+    await basicRouter
+      .connect(lp)
+      .initialize(poolA, poolATokens, Array(poolATokens.length).fill(fp(10000)), 0, false, '0x');
+    await basicRouter
+      .connect(lp)
+      .initialize(poolB, poolBTokens, Array(poolBTokens.length).fill(fp(10000)), 0, false, '0x');
+    await basicRouter
+      .connect(lp)
+      .initialize(poolC, poolCTokens, Array(poolCTokens.length).fill(fp(10000)), 0, false, '0x');
 
-    await router
+    await basicRouter
       .connect(lp)
       .initialize(poolAB, poolABTokens, Array(poolABTokens.length).fill(fp(1000)), 0, false, '0x');
-    await router
+    await basicRouter
       .connect(lp)
       .initialize(poolAC, poolACTokens, Array(poolACTokens.length).fill(fp(1000)), 0, false, '0x');
-    await router
+    await basicRouter
       .connect(lp)
       .initialize(poolBC, poolBCTokens, Array(poolBCTokens.length).fill(fp(1000)), 0, false, '0x');
 
