@@ -624,7 +624,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20[] memory tokens = new IERC20[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
-
             tokens[i] = poolData.tokenConfig[i].token;
 
             // Compute and charge protocol fees.
@@ -931,12 +930,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         ) {
             // Always charge fees on token. Store amount in native decimals.
             // Since the swapFeeAmountScaled18 also contains the rate, undo it when converting to raw.
-            protocolSwapFeeAmountRaw = swapFeeAmountScaled18
-                .mulUp(protocolSwapFeePercentage)
-                .toRawUndoRateRoundDown(
-                    poolData.decimalScalingFactors[index],
-                    poolData.tokenRates[index]
-                );
+            protocolSwapFeeAmountRaw = swapFeeAmountScaled18.mulUp(protocolSwapFeePercentage).toRawUndoRateRoundDown(
+                poolData.decimalScalingFactors[index],
+                poolData.tokenRates[index]
+            );
 
             _protocolFees[token] += protocolSwapFeeAmountRaw;
             emit ProtocolSwapFeeCharged(pool, address(token), protocolSwapFeeAmountRaw);

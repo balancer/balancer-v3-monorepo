@@ -59,7 +59,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             paths: paths,
                             deadline: deadline,
                             wethIsEth: wethIsEth,
-                        vaultState: vaultState,
+                            vaultState: vaultState,
                             userData: userData
                         })
                     )
@@ -87,7 +87,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             paths: paths,
                             deadline: deadline,
                             wethIsEth: wethIsEth,
-                        vaultState: vaultState,
+                            vaultState: vaultState,
                             userData: userData
                         })
                     )
