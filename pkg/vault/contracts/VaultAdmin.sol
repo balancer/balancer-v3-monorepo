@@ -24,7 +24,7 @@ import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/h
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
-import { VaultStateLib } from "./lib/VaultStateLib.sol";
+import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
@@ -45,6 +45,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using VaultExtensionsLib for IVault;
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
+    using VaultStateLib for VaultStateBits;
 
     IVault private immutable _vault;
 
@@ -171,7 +172,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             }
         }
 
-        VaultState memory vaultState = VaultStateLib.toVaultState(_vaultState);
+        VaultState memory vaultState = _vaultState.toVaultState();
         vaultState.isVaultPaused = pausing;
         _vaultState = VaultStateLib.fromVaultState(vaultState);
 
@@ -252,7 +253,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
             revert ProtocolSwapFeePercentageTooHigh();
         }
-        VaultState memory vaultState = VaultStateLib.toVaultState(_vaultState);
+        VaultState memory vaultState = _vaultState.toVaultState();
         vaultState.protocolSwapFeePercentage = newProtocolSwapFeePercentage;
         _vaultState = VaultStateLib.fromVaultState(vaultState);
         emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
@@ -263,7 +264,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         if (newProtocolYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
             revert ProtocolYieldFeePercentageTooHigh();
         }
-        VaultState memory vaultState = VaultStateLib.toVaultState(_vaultState);
+        VaultState memory vaultState = _vaultState.toVaultState();
         vaultState.protocolYieldFeePercentage = newProtocolYieldFeePercentage;
         _vaultState = VaultStateLib.fromVaultState(vaultState);
         emit ProtocolYieldFeePercentageChanged(newProtocolYieldFeePercentage);
@@ -373,7 +374,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     /// @inheritdoc IVaultAdmin
     function disableQuery() external authenticate onlyVault {
-        VaultState memory vaultState = VaultStateLib.toVaultState(_vaultState);
+        VaultState memory vaultState = _vaultState.toVaultState();
         vaultState.isQueryDisabled = true;
         _vaultState = VaultStateLib.fromVaultState(vaultState);
     }

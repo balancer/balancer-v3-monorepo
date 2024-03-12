@@ -30,7 +30,7 @@ import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openze
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 
-import { VaultStateLib } from "./lib/VaultStateLib.sol";
+import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 import { VaultCommon } from "./VaultCommon.sol";
@@ -46,6 +46,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using SafeCast for *;
     using PoolConfigLib for PoolConfig;
     using ScalingHelpers for *;
+    using VaultStateLib for VaultStateBits;
 
     constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) {
         if (address(vaultExtension.vault()) != address(this)) {
@@ -197,7 +198,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // balances, we cannot defer settlement until `_swap`.
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolBalances`, `_protocolFees` in storage.
-        vars.protocolYieldFeePercentage = VaultStateLib.getProtocolYieldFeePercentage(_vaultState);
+        vars.protocolYieldFeePercentage = _vaultState.getProtocolYieldFeePercentage();
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             params.pool,
             Rounding.ROUND_DOWN,
@@ -389,7 +390,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         protocolFeesVars.poolData = poolData;
         protocolFeesVars.swapFeeAmountScaled18 = vars.swapFeeAmountScaled18;
         protocolFeesVars.pool = params.pool;
-        protocolFeesVars.protocolSwapFeePercentage = VaultStateLib.getProtocolSwapFeePercentage(_vaultState);
+        protocolFeesVars.protocolSwapFeePercentage = _vaultState.getProtocolSwapFeePercentage();
         protocolFeesVars.token = params.tokenOut;
         protocolFeesVars.index = vars.indexOut;
 
@@ -481,7 +482,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // these balances, we cannot defer settlement until `_addLiquidity`.
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolBalances`, `_protocolFees` in storage.
-        uint256 protocolYieldFeePercentage = VaultStateLib.getProtocolYieldFeePercentage(_vaultState);
+        uint256 protocolYieldFeePercentage = _vaultState.getProtocolYieldFeePercentage();
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             params.pool,
             Rounding.ROUND_UP,
@@ -629,7 +630,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         {
             ProtocolFeesLocals memory vars;
             vars.pool = params.pool;
-            vars.protocolSwapFeePercentage = VaultStateLib.getProtocolSwapFeePercentage(_vaultState);
+            vars.protocolSwapFeePercentage = _vaultState.getProtocolSwapFeePercentage();
 
             for (uint256 i = 0; i < numTokens; ++i) {
                 vars.poolData = poolData;
@@ -698,7 +699,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // these balances, we cannot defer settlement until `_removeLiquidity`.
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolBalances`, `_protocolFees` in storage.
-        uint256 protocolYieldFeePercentage = VaultStateLib.getProtocolYieldFeePercentage(_vaultState);
+        uint256 protocolYieldFeePercentage = _vaultState.getProtocolYieldFeePercentage();
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             params.pool,
             Rounding.ROUND_DOWN,
@@ -852,7 +853,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         {
             ProtocolFeesLocals memory vars;
             vars.pool = params.pool;
-            vars.protocolSwapFeePercentage = VaultStateLib.getProtocolSwapFeePercentage(_vaultState);
+            vars.protocolSwapFeePercentage = _vaultState.getProtocolSwapFeePercentage();
 
             for (uint256 i = 0; i < numTokens; ++i) {
                 vars.poolData = poolData;
@@ -897,7 +898,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _spendAllowance(address(params.pool), params.from, msg.sender, bptAmountIn);
         }
 
-        bool isQueryDisabled = VaultStateLib.isQueryDisabled(_vaultState);
+        bool isQueryDisabled = _vaultState.isQueryDisabled();
         if (!isQueryDisabled && EVMCallModeHelpers.isStaticCall()) {
             // Increase `from` balance to ensure the burn function succeeds.
             _queryModeBalanceIncrease(params.pool, params.from, bptAmountIn);

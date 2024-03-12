@@ -95,5 +95,6 @@ contract VaultStorage {
     // Stored as a convenience, to avoid calculating it on every operation.
     uint256 internal immutable _vaultBufferPeriodDuration;
 
+    // Bytes32 with protocol fees and paused flags
     VaultStateBits internal _vaultState;
 }

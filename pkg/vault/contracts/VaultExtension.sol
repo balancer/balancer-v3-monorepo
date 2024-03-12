@@ -26,7 +26,7 @@ import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openze
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { VaultStateLib } from "./lib/VaultStateLib.sol";
+import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
@@ -53,6 +53,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using InputHelpers for uint256;
     using ScalingHelpers for *;
     using VaultExtensionsLib for IVault;
+    using VaultStateLib for VaultStateBits;
 
     IVault private immutable _vault;
     IVaultAdmin private immutable _vaultAdmin;
@@ -259,7 +260,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 minBptAmountOut,
         bytes memory userData
     ) external withLocker withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault returns (uint256 bptAmountOut) {
-        uint256 protocolYieldFeePercentage = VaultStateLib.getProtocolYieldFeePercentage(_vaultState);
+        uint256 protocolYieldFeePercentage = _vaultState.getProtocolYieldFeePercentage();
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             pool,
             Rounding.ROUND_DOWN,
@@ -474,12 +475,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function getProtocolSwapFeePercentage() external view onlyVault returns (uint256) {
-        return VaultStateLib.getProtocolSwapFeePercentage(_vaultState);
+        return _vaultState.getProtocolSwapFeePercentage();
     }
 
     /// @inheritdoc IVaultExtension
     function getProtocolYieldFeePercentage() external view onlyVault returns (uint256) {
-        return VaultStateLib.getProtocolYieldFeePercentage(_vaultState);
+        return _vaultState.getProtocolYieldFeePercentage();
     }
 
     /// @inheritdoc IVaultExtension
@@ -583,7 +584,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert EVMCallModeHelpers.NotStaticCall();
         }
 
-        bool _isQueryDisabled = VaultStateLib.isQueryDisabled(_vaultState);
+        bool _isQueryDisabled = _vaultState.isQueryDisabled();
         if (_isQueryDisabled) {
             revert QueriesDisabled();
         }
@@ -601,7 +602,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function isQueryDisabled() external view onlyVault returns (bool) {
-        return VaultStateLib.isQueryDisabled(_vaultState);
+        return _vaultState.isQueryDisabled();
     }
 
     /*******************************************************************************
