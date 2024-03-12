@@ -8,7 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { TokenConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
+import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -177,18 +177,39 @@ contract BufferSwapTest is BaseVaultTest {
     }
 
     function testBoostedPoolSwap() public {
-        SwapPathStep[] memory steps = [
-            SwapPathStep({ pool: waDAIBufferPool, tokenOut: waDAI }),
-            SwapPathStep({ pool: boostedPool, tokenOut: waUSDC }),
-            SwapPathStep({ pool: waUSDCBufferPool, tokenOut: usdc })
-        ];
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
 
-        SwapPathExactAmountIn[] memory paths = [
-            SwapPathExactAmountIn({ tokenIn: dai, steps: steps, exactAmountIn: swapAmount, minAmountOut: swapAmount })
-        ];
+        // "Transparent" USDC for DAI swap with boosted pool, which holds only wrapped tokens.
+        // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waUSDC in the boosted pool,
+        // and finally post-swap the waUSDC through the USDC buffer to get regular USDC.
+        steps[0] = IBatchRouter.SwapPathStep({ pool: waDAIBufferPool, tokenOut: waDAI });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC });
+        steps[2] = IBatchRouter.SwapPathStep({ pool: waUSDCBufferPool, tokenOut: usdc });
+
+        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+            tokenIn: dai,
+            steps: steps,
+            exactAmountIn: swapAmount,
+            minAmountOut: swapAmount
+        });
 
         vm.prank(alice);
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        assertEq(pathAmountsOut.length, 1, "Incorrect output array length");
+
+        assertEq(pathAmountsOut.length, tokensOut.length, "Output array length mismatch");
+        assertEq(tokensOut.length, amountsOut.length, "Output array length mismatch");
+
+        // Check results
+        assertEq(pathAmountsOut[0], swapAmount);
+        assertEq(amountsOut[0], swapAmount);
+        assertEq(tokensOut[0], address(usdc));
+
+        // Tokens were transferred
+        assertEq(dai.balanceOf(alice), defaultBalance - swapAmount);
+        assertEq(usdc.balanceOf(alice), defaultBalance + swapAmount);
     }
 }
