@@ -857,7 +857,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Subtract protocol fees charged from the pool's balances
             poolData.balancesRaw[i] -= protocolSwapFeeAmountRaw;
 
-            poolData.balancesLiveScaled18[i] -= (amountsOutScaled18[i] -
+            poolData.balancesLiveScaled18[i] -= (amountsOutScaled18[i] +
                 swapFeeAmountsScaled18[i].mulUp(params.vaultState.protocolSwapFeePercentage));
 
             // amountsOut are amounts exiting the Pool, so we round down.
