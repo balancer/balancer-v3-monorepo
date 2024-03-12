@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { TokenConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -15,7 +16,6 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 import { ERC4626BufferPoolFactory } from "../../contracts/factories/ERC4626BufferPoolFactory.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
-
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract BufferSwapTest is BaseVaultTest {
@@ -149,8 +149,16 @@ contract BufferSwapTest is BaseVaultTest {
         assertEq(balancesRaw[1], boostedPoolAmount, "Wrong boosted pool balance");
 
         // lp should have all the buffer BPT.
-        assertEq(IERC20(waDAIBufferPool).balanceOf(lp), defaultAmount * 2 - MIN_BPT, "Wrong DAI buffer pool BPT amount");
-        assertEq(IERC20(waUSDCBufferPool).balanceOf(lp), defaultAmount * 2 - MIN_BPT, "Wrong USDC buffer pool BPT amount");
+        assertEq(
+            IERC20(waDAIBufferPool).balanceOf(lp),
+            defaultAmount * 2 - MIN_BPT,
+            "Wrong DAI buffer pool BPT amount"
+        );
+        assertEq(
+            IERC20(waUSDCBufferPool).balanceOf(lp),
+            defaultAmount * 2 - MIN_BPT,
+            "Wrong USDC buffer pool BPT amount"
+        );
 
         // The buffer pools should each have `defaultAmount` of their respective tokens.
         (uint256 wrappedIdx, uint256 baseIdx) = getSortedIndexes(address(waDAI), address(dai));
@@ -168,7 +176,19 @@ contract BufferSwapTest is BaseVaultTest {
         assertEq(balancesRaw[1], defaultAmount, "Wrong buffer pool balance");
     }
 
-    function testBatchSwap() public {
+    function testBoostedPoolSwap() public {
+        SwapPathStep[] memory steps = [
+            SwapPathStep({ pool: waDAIBufferPool, tokenOut: waDAI }),
+            SwapPathStep({ pool: boostedPool, tokenOut: waUSDC }),
+            SwapPathStep({ pool: waUSDCBufferPool, tokenOut: usdc })
+        ];
 
+        SwapPathExactAmountIn[] memory paths = [
+            SwapPathExactAmountIn({ tokenIn: dai, steps: steps, exactAmountIn: swapAmount, minAmountOut: swapAmount })
+        ];
+
+        vm.prank(alice);
+        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
+            .swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 }
