@@ -28,7 +28,7 @@ library VaultConfigLib {
 
     // Protocol Swap and Yield Fees are a 10 bits value. We transform it by multiplying by 1e15, so
     // it can be configured from 0% to 100% fee (step 0.1%)
-    uint8 private constant _UINT10_BITLENGTH = 10;
+    uint8 private constant _FEE_BITLENGTH = 10;
 
     function isQueryDisabled(VaultConfigBits config) internal pure returns (bool) {
         return VaultConfigBits.unwrap(config).decodeBool(QUERY_DISABLED_OFFSET);
