@@ -47,7 +47,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -61,7 +61,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -76,7 +76,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount - 1,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -91,7 +91,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount - 1,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -110,7 +110,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -131,7 +131,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -154,7 +154,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount - swapFee,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -192,7 +192,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount - swapFee,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -215,7 +215,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount - swapFee,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -251,7 +251,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount - swapFee,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -274,7 +274,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount / 2,
             defaultAmount / 2 - swapFee / 2,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -286,7 +286,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount / 2,
             defaultAmount / 2 - swapFee / 2,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -307,7 +307,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount - swapFee,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );

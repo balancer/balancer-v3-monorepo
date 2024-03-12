@@ -52,7 +52,7 @@ contract HooksTest is BaseVaultTest {
                 })
             )
         );
-        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, type(uint256).max, false, bytes(""));
+        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
     }
 
     function testOnBeforeSwapHookRevert() public {
@@ -66,7 +66,7 @@ contract HooksTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -100,7 +100,7 @@ contract HooksTest is BaseVaultTest {
             )
         );
 
-        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, type(uint256).max, false, bytes(""));
+        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
     }
 
     function testOnAfterSwapHookRevert() public {
@@ -114,7 +114,7 @@ contract HooksTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );

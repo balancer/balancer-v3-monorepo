@@ -81,7 +81,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             )
         );
 
-        router.swapSingleTokenExactIn(address(pool), dai, usdc, defaultAmount, 0, type(uint256).max, false, bytes(""));
+        router.swapSingleTokenExactIn(address(pool), dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
     }
 
     function testOnBeforeInitializeHookAltersRate() public {
