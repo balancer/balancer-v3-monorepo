@@ -21,6 +21,7 @@ import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
 import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
 import { Router } from "../../../contracts/Router.sol";
+import { BatchRouter } from "../../../contracts/BatchRouter.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
@@ -47,6 +48,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     VaultExtensionMock internal vaultExtension;
     // Router mock.
     RouterMock internal router;
+    // Batch router
+    BatchRouter internal batchRouter;
     // Authorizer mock.
     BasicAuthorizerMock internal authorizer;
     // Pool for tests.
@@ -82,6 +85,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
         vm.label(address(authorizer), "authorizer");
         router = new RouterMock(IVault(address(vault)), weth);
         vm.label(address(router), "router");
+        batchRouter = new BatchRouter(IVault(address(vault)), weth);
+        vm.label(address(batchRouter), "batch router");
         pool = createPool();
 
         // Approve vault allowances

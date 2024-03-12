@@ -54,17 +54,14 @@ contract BufferSwapTest is BaseVaultTest {
 
         initializeBuffers();
         initializeBoostedPool();
-
-        dai.mint(address(waDAI), swapAmount);
-        waDAI.mint(swapAmount, alice);
     }
 
     function initializeBuffers() private {
         // Create and fund buffer pools
         dai.mint(address(waDAI), defaultAmount);
-        waDAI.mint(defaultAmount, alice);
+        waDAI.mint(defaultAmount, lp);
         usdc.mint(address(waUSDC), defaultAmount);
-        waUSDC.mint(defaultAmount, alice);
+        waUSDC.mint(defaultAmount, lp);
 
         waDAIBufferPool = bufferFactory.create(waDAI, address(0), getSalt(address(waDAI)));
         waUSDCBufferPool = bufferFactory.create(waUSDC, address(0), getSalt(address(waUSDC)));
@@ -73,8 +70,8 @@ contract BufferSwapTest is BaseVaultTest {
             [address(waDAI), address(dai)].toMemoryArray().asIERC20()
         );
 
-        vm.startPrank(alice);
-        waDAI.approve(address(vault), type(uint256).max);
+        vm.startPrank(lp);
+        waDAI.approve(address(vault), MAX_UINT256);
 
         router.initialize(
             address(waDAIBufferPool),
@@ -89,7 +86,7 @@ contract BufferSwapTest is BaseVaultTest {
             [address(waUSDC), address(usdc)].toMemoryArray().asIERC20()
         );
 
-        waUSDC.approve(address(vault), type(uint256).max);
+        waUSDC.approve(address(vault), MAX_UINT256);
         router.initialize(
             address(waUSDCBufferPool),
             usdcBufferTokens,
@@ -126,8 +123,8 @@ contract BufferSwapTest is BaseVaultTest {
         waUSDC.mint(boostedPoolAmount, bob);
 
         vm.startPrank(bob);
-        waDAI.approve(address(vault), type(uint256).max);
-        waUSDC.approve(address(vault), type(uint256).max);
+        waDAI.approve(address(vault), MAX_UINT256);
+        waUSDC.approve(address(vault), MAX_UINT256);
 
         router.initialize(
             address(boostedPool),
@@ -142,32 +139,36 @@ contract BufferSwapTest is BaseVaultTest {
 
     function testSwapPreconditions() public {
         // bob should have the full boostedPool BPT.
-        assertEq(IERC20(boostedPool).balanceOf(bob), boostedPoolAmount * 2 - MIN_BPT);
+        assertEq(IERC20(boostedPool).balanceOf(bob), boostedPoolAmount * 2 - MIN_BPT, "Wrong boosted pool BPT amount");
 
         (IERC20[] memory tokens, , uint256[] memory balancesRaw, , ) = vault.getPoolTokenInfo(boostedPool);
         // The boosted pool should have `boostedPoolAmount` of both tokens.
-        assertEq(address(tokens[waDaiIdx]), address(waDAI));
-        assertEq(address(tokens[waUsdcIdx]), address(waUSDC));
-        assertEq(balancesRaw[0], boostedPoolAmount);
-        assertEq(balancesRaw[1], boostedPoolAmount);
+        assertEq(address(tokens[waDaiIdx]), address(waDAI), "Wrong boosted pool token (waDAI)");
+        assertEq(address(tokens[waUsdcIdx]), address(waUSDC), "Wrong boosted pool token (waUSDC)");
+        assertEq(balancesRaw[0], boostedPoolAmount, "Wrong boosted pool balance");
+        assertEq(balancesRaw[1], boostedPoolAmount, "Wrong boosted pool balance");
 
-        // alice should have all the buffer BPT.
-        assertEq(IERC20(waDAIBufferPool).balanceOf(alice), defaultAmount * 2 - MIN_BPT);
-        assertEq(IERC20(waUSDCBufferPool).balanceOf(alice), defaultAmount * 2 - MIN_BPT);
+        // lp should have all the buffer BPT.
+        assertEq(IERC20(waDAIBufferPool).balanceOf(lp), defaultAmount * 2 - MIN_BPT, "Wrong DAI buffer pool BPT amount");
+        assertEq(IERC20(waUSDCBufferPool).balanceOf(lp), defaultAmount * 2 - MIN_BPT, "Wrong USDC buffer pool BPT amount");
 
         // The buffer pools should each have `defaultAmount` of their respective tokens.
         (uint256 wrappedIdx, uint256 baseIdx) = getSortedIndexes(address(waDAI), address(dai));
         (tokens, , balancesRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
-        assertEq(address(tokens[wrappedIdx]), address(waDAI));
-        assertEq(address(tokens[baseIdx]), address(dai));
-        assertEq(balancesRaw[0], defaultAmount);
-        assertEq(balancesRaw[1], defaultAmount);
+        assertEq(address(tokens[wrappedIdx]), address(waDAI), "Wrong DAI buffer pool wrapped token");
+        assertEq(address(tokens[baseIdx]), address(dai), "Wrong DAI buffer pool base token");
+        assertEq(balancesRaw[0], defaultAmount, "Wrong buffer pool balance");
+        assertEq(balancesRaw[1], defaultAmount, "Wrong buffer pool balance");
 
         (wrappedIdx, baseIdx) = getSortedIndexes(address(waUSDC), address(usdc));
         (tokens, , balancesRaw, , ) = vault.getPoolTokenInfo(waUSDCBufferPool);
-        assertEq(address(tokens[wrappedIdx]), address(waUSDC));
-        assertEq(address(tokens[baseIdx]), address(usdc));
-        assertEq(balancesRaw[0], defaultAmount);
-        assertEq(balancesRaw[1], defaultAmount);
+        assertEq(address(tokens[wrappedIdx]), address(waUSDC), "Wrong USDC buffer pool wrapped token");
+        assertEq(address(tokens[baseIdx]), address(usdc), "Wrong USDC buffer pool base token");
+        assertEq(balancesRaw[0], defaultAmount, "Wrong buffer pool balance");
+        assertEq(balancesRaw[1], defaultAmount, "Wrong buffer pool balance");
+    }
+
+    function testBatchSwap() public {
+
     }
 }
