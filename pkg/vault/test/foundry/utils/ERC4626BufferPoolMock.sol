@@ -7,7 +7,11 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { SwapKind, SwapParams as VaultSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    SwapKind,
+    SwapParams as VaultSwapParams,
+    VaultState
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ERC4626BufferPool } from "@balancer-labs/v3-vault/contracts/ERC4626BufferPool.sol";
 import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.sol";
@@ -24,7 +28,10 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
 
     // If EXACT_IN, assets will be wrapped. Else, assets will be unwrapped
     function unbalanceThePool(uint256 assetsToTransferRaw, SwapKind kind) external {
-        (IERC20[] memory tokens, , , , ) = getVault().getPoolTokenInfo(address(this));
+        IVault vault = getVault();
+        VaultState memory vaultState = vault.getVaultState();
+
+        (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(address(this));
 
         uint256 indexIn = kind == SwapKind.EXACT_IN ? _baseTokenIndex : _wrappedTokenIndex;
         uint256 indexOut = kind == SwapKind.EXACT_IN ? _wrappedTokenIndex : _baseTokenIndex;
@@ -49,6 +56,7 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
                     tokenOut: tokens[indexOut],
                     amountGivenRaw: assetsToTransferRaw,
                     limitRaw: limit,
+                    vaultState: vaultState,
                     userData: ""
                 })
             )

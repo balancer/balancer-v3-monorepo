@@ -15,7 +15,8 @@ import {
     AddLiquidityKind,
     RemoveLiquidityKind,
     SwapParams as VaultSwapParams,
-    SwapKind
+    SwapKind,
+    VaultState
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
@@ -226,6 +227,8 @@ contract ERC4626BufferPool is
         address poolAddress = address(this);
         IVault vault = getVault();
 
+        VaultState memory vaultState = vault.getVaultState();
+
         // Get balance of tokens
         (IERC20[] memory tokens, , uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors, ) = vault
             .getPoolTokenInfo(poolAddress);
@@ -270,6 +273,7 @@ contract ERC4626BufferPool is
                         tokenOut: tokens[_wrappedTokenIndex],
                         amountGivenRaw: exchangeAmountRaw,
                         limitRaw: limitRaw,
+                        vaultState: vaultState,
                         userData: ""
                     })
                 )
@@ -294,6 +298,7 @@ contract ERC4626BufferPool is
                         tokenOut: tokens[_baseTokenIndex],
                         amountGivenRaw: exchangeAmountRaw,
                         limitRaw: limitRaw,
+                        vaultState: vaultState,
                         userData: ""
                     })
                 )
@@ -345,17 +350,7 @@ contract ERC4626BufferPool is
     function _swapHook(
         VaultSwapParams calldata params
     ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
-        (amountCalculated, amountIn, amountOut) = getVault().swap(
-            VaultSwapParams({
-                kind: params.kind,
-                pool: params.pool,
-                tokenIn: params.tokenIn,
-                tokenOut: params.tokenOut,
-                amountGivenRaw: params.amountGivenRaw,
-                limitRaw: params.limitRaw,
-                userData: params.userData
-            })
-        );
+        (amountCalculated, amountIn, amountOut) = getVault().swap(params);
     }
 
     function _isBufferPoolBalanced(uint256[] memory balancesScaled18) private view returns (bool) {

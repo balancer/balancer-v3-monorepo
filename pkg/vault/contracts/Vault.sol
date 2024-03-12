@@ -984,6 +984,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
+                                    Vault Information
+    *******************************************************************************/
+
+    function getVaultState() external view returns (VaultState memory vaultState) {
+        vaultState = _vaultState.toVaultState();
+    }
+
+    /*******************************************************************************
                                     Authentication
     *******************************************************************************/
 

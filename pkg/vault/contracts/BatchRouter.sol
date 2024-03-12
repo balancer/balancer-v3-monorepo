@@ -47,6 +47,8 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
         payable
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
     {
+        VaultState memory vaultState = _vault.getVaultState();
+
         return
             abi.decode(
                 _vault.lock{ value: msg.value }(
@@ -57,6 +59,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             paths: paths,
                             deadline: deadline,
                             wethIsEth: wethIsEth,
+                        vaultState: vaultState,
                             userData: userData
                         })
                     )
@@ -72,6 +75,8 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
         bool wethIsEth,
         bytes calldata userData
     ) external payable returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
+        VaultState memory vaultState = _vault.getVaultState();
+
         return
             abi.decode(
                 _vault.lock{ value: msg.value }(
@@ -82,6 +87,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             paths: paths,
                             deadline: deadline,
                             wethIsEth: wethIsEth,
+                        vaultState: vaultState,
                             userData: userData
                         })
                     )
@@ -181,6 +187,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             maxBptAmountIn: stepExactAmountIn,
                             minAmountsOut: amountsOut,
                             kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
+                            vaultState: params.vaultState,
                             userData: params.userData
                         })
                     );
@@ -212,6 +219,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             maxAmountsIn: exactAmountsIn,
                             minBptAmountOut: minAmountOut,
                             kind: AddLiquidityKind.UNBALANCED,
+                            vaultState: params.vaultState,
                             userData: params.userData
                         })
                     );
@@ -242,6 +250,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             tokenOut: step.tokenOut,
                             amountGivenRaw: stepExactAmountIn,
                             limitRaw: minAmountOut,
+                            vaultState: params.vaultState,
                             userData: params.userData
                         })
                     );
@@ -379,6 +388,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             maxBptAmountIn: stepMaxAmountIn,
                             minAmountsOut: exactAmountsOut,
                             kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                            vaultState: params.vaultState,
                             userData: params.userData
                         })
                     );
@@ -411,6 +421,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             maxAmountsIn: stepAmountsIn,
                             minBptAmountOut: stepExactAmountOut,
                             kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                            vaultState: params.vaultState,
                             userData: params.userData
                         })
                     );
@@ -446,6 +457,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             tokenOut: step.tokenOut,
                             amountGivenRaw: stepExactAmountOut,
                             limitRaw: stepMaxAmountIn,
+                            vaultState: params.vaultState,
                             userData: params.userData
                         })
                     );
@@ -466,6 +478,8 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
         SwapPathExactAmountIn[] memory paths,
         bytes calldata userData
     ) external returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) {
+        VaultState memory vaultState = _vault.getVaultState();
+
         for (uint256 i = 0; i < paths.length; ++i) {
             paths[i].minAmountOut = 0;
         }
@@ -480,6 +494,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             paths: paths,
                             deadline: type(uint256).max,
                             wethIsEth: false,
+                            vaultState: vaultState,
                             userData: userData
                         })
                     )
@@ -505,6 +520,8 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
         SwapPathExactAmountOut[] memory paths,
         bytes calldata userData
     ) external returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
+        VaultState memory vaultState = _vault.getVaultState();
+
         for (uint256 i = 0; i < paths.length; ++i) {
             paths[i].maxAmountIn = _MAX_AMOUNT;
         }
@@ -519,6 +536,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             paths: paths,
                             deadline: type(uint256).max,
                             wethIsEth: false,
+                            vaultState: vaultState,
                             userData: userData
                         })
                     )

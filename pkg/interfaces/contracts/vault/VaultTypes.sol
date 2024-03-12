@@ -115,6 +115,7 @@ enum SwapKind {
  * @param tokenOut The token leaving the Vault (balance decreases)
  * @param amountGivenRaw Amount specified for tokenIn or tokenOut (depending on the type of swap)
  * @param limitRaw
+ * @param vaultState TODO
  * @param userData Additional (optional) user data
  */
 struct SwapParams {
@@ -124,6 +125,7 @@ struct SwapParams {
     IERC20 tokenOut;
     uint256 amountGivenRaw;
     uint256 limitRaw;
+    VaultState vaultState;
     bytes userData;
 }
 
@@ -144,6 +146,7 @@ enum AddLiquidityKind {
  * @param maxAmountsIn Maximum amounts of input tokens
  * @param minBptAmountOut Minimum amount of output pool tokens
  * @param kind Add liquidity kind
+ * @param vaultState TODO
  * @param userData Optional user data
  */
 struct AddLiquidityParams {
@@ -152,6 +155,7 @@ struct AddLiquidityParams {
     uint256[] maxAmountsIn;
     uint256 minBptAmountOut;
     AddLiquidityKind kind;
+    VaultState vaultState;
     bytes userData;
 }
 
@@ -172,6 +176,7 @@ enum RemoveLiquidityKind {
  * @param maxBptAmountIn Maximum amount of input pool tokens
  * @param minAmountsOut Minimum amounts of output tokens
  * @param kind Remove liquidity kind
+ * @param vaultState TODO
  * @param userData Optional user data
  */
 struct RemoveLiquidityParams {
@@ -180,5 +185,6 @@ struct RemoveLiquidityParams {
     uint256 maxBptAmountIn;
     uint256[] minAmountsOut;
     RemoveLiquidityKind kind;
+    VaultState vaultState;
     bytes userData;
 }
