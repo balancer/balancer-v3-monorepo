@@ -277,9 +277,6 @@ interface IRouter {
         bytes userData;
     }
 
-    /// @dev The swap transaction was not validated before the specified deadline timestamp.
-    error SwapDeadline();
-
     /**
      * @notice Executes a swap operation specifying an exact input token amount.
      * @param pool Address of the liquidity pool

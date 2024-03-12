@@ -54,9 +54,6 @@ interface IBatchRouter {
         bytes userData;
     }
 
-    /// @dev The swap transaction was not validated before the specified deadline timestamp.
-    error SwapDeadline();
-
     /**
      * @notice Executes a swap operation involving multiple paths (steps), specifying exact input token amounts.
      * @param paths Swap paths from token in to token out, specifying exact amounts in.
