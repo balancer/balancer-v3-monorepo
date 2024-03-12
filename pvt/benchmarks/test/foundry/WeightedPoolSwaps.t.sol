@@ -134,9 +134,9 @@ contract WeightedPoolSwaps is BaseVaultTest {
 
         vm.startPrank(bob);
         for (uint256 i = 0; i < swapTimes; ++i) {
-            uint256 amountOut = router.swapExactIn(pool, dai, wsteth, amountIn, 0, type(uint256).max, false, bytes(""));
+            uint256 amountOut = router.swapExactIn(pool, dai, wsteth, amountIn, 0, MAX_UINT256, false, bytes(""));
 
-            router.swapExactIn(pool, wsteth, dai, amountOut, 0, type(uint256).max, false, bytes(""));
+            router.swapExactIn(pool, wsteth, dai, amountOut, 0, MAX_UINT256, false, bytes(""));
         }
         vm.stopPrank();
     }
@@ -151,13 +151,13 @@ contract WeightedPoolSwaps is BaseVaultTest {
                 dai,
                 wsteth,
                 amountOut,
-                type(uint256).max,
-                type(uint256).max,
+                MAX_UINT256,
+                MAX_UINT256,
                 false,
                 bytes("")
             );
 
-            router.swapExactOut(pool, wsteth, dai, amountIn, type(uint256).max, type(uint256).max, false, bytes(""));
+            router.swapExactOut(pool, wsteth, dai, amountIn, MAX_UINT256, MAX_UINT256, false, bytes(""));
         }
         vm.stopPrank();
     }
