@@ -375,7 +375,7 @@ contract RouterTest is BaseVaultTest {
             dai,
             ethAmountIn,
             0,
-            type(uint256).max,
+            MAX_UINT256,
             wethIsEth,
             ""
         );
@@ -395,8 +395,8 @@ contract RouterTest is BaseVaultTest {
             weth,
             dai,
             daiAmountOut,
-            type(uint256).max,
-            type(uint256).max,
+            MAX_UINT256,
+            MAX_UINT256,
             wethIsEth,
             ""
         );
@@ -419,7 +419,7 @@ contract RouterTest is BaseVaultTest {
             dai,
             ethAmountIn,
             0,
-            type(uint256).max,
+            MAX_UINT256,
             wethIsEth,
             ""
         );
@@ -442,8 +442,8 @@ contract RouterTest is BaseVaultTest {
             weth,
             dai,
             daiAmountOut,
-            type(uint256).max,
-            type(uint256).max,
+            MAX_UINT256,
+            MAX_UINT256,
             wethIsEth,
             ""
         );
@@ -466,7 +466,7 @@ contract RouterTest is BaseVaultTest {
             dai,
             ethAmountIn,
             0,
-            type(uint256).max,
+            MAX_UINT256,
             wethIsEth,
             ""
         );

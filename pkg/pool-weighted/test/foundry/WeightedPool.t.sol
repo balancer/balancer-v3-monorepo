@@ -145,7 +145,7 @@ contract WeightedPoolTest is BaseVaultTest {
             bytes("")
         );
 
-        weightedPool.approve(address(vault), type(uint256).max);
+        weightedPool.approve(address(vault), MAX_UINT256);
 
         uint256 bobBptBalance = weightedPool.balanceOf(bob);
         uint256 bptAmountIn = bobBptBalance;
@@ -190,7 +190,7 @@ contract WeightedPoolTest is BaseVaultTest {
             usdc,
             DAI_AMOUNT_IN,
             less(USDC_AMOUNT_OUT, 1e3),
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );

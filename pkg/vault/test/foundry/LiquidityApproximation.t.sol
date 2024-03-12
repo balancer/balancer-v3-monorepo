@@ -163,7 +163,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             usdc,
             daiAmountIn - amountsOut[daiIdx],
             0,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -196,7 +196,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             usdc,
             daiAmountIn - amountsOut[daiIdx],
             0,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -238,7 +238,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             usdc,
             daiAmountIn - amountsOut[daiIdx],
             0,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -275,7 +275,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             usdc,
             daiAmountIn - amountsOut[daiIdx],
             0,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -333,7 +333,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             usdc,
             defaultBalance - dai.balanceOf(alice),
             0,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -385,7 +385,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             usdc,
             defaultBalance - dai.balanceOf(alice),
             0,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -435,7 +435,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             usdc,
             defaultBalance - dai.balanceOf(alice),
             0,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -480,7 +480,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             usdc,
             defaultBalance - dai.balanceOf(alice),
             0,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
