@@ -624,7 +624,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20[] memory tokens = new IERC20[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            tokens[i] = poolData.tokenConfig[i].token;
+            IERC20 token = poolData.tokenConfig[i].token;
+            tokens[i] = token;
 
             // Compute and charge protocol fees.
             uint256 protocolSwapFeeAmountRaw = _computeAndChargeProtocolFees(
@@ -632,7 +633,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 swapFeeAmountsScaled18[i],
                 params.vaultState.protocolSwapFeePercentage,
                 params.pool,
-                tokens[i],
+                token,
                 i
             );
 
@@ -645,11 +646,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // The limits must be checked for raw amounts
             if (amountInRaw > params.maxAmountsIn[i]) {
-                revert AmountInAboveMax(tokens[i], amountInRaw, params.maxAmountsIn[i]);
+                revert AmountInAboveMax(token, amountInRaw, params.maxAmountsIn[i]);
             }
 
             // Debit of token[i] for amountInRaw
-            _takeDebt(tokens[i], amountInRaw, msg.sender);
+            _takeDebt(token, amountInRaw, msg.sender);
 
             // We need regular balances to complete the accounting, and the upscaled balances
             // to use in the `after` hook later on.
@@ -856,7 +857,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Subtract protocol fees charged from the pool's balances
             poolData.balancesRaw[i] -= protocolSwapFeeAmountRaw;
 
-            poolData.balancesLiveScaled18[i] += (amountsOutScaled18[i] -
+            poolData.balancesLiveScaled18[i] -= (amountsOutScaled18[i] -
                 swapFeeAmountsScaled18[i].mulUp(params.vaultState.protocolSwapFeePercentage));
 
             // amountsOut are amounts exiting the Pool, so we round down.
