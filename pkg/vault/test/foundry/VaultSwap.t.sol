@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -47,7 +48,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -61,7 +62,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -76,7 +77,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount - 1,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -91,7 +92,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount - 1,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -110,7 +111,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -131,7 +132,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -154,7 +155,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount - swapFee,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -192,7 +193,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount - swapFee,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -215,7 +216,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount - swapFee,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -251,7 +252,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount - swapFee,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -274,7 +275,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount / 2,
             defaultAmount / 2 - swapFee / 2,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -286,7 +287,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount / 2,
             defaultAmount / 2 - swapFee / 2,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -307,7 +308,7 @@ contract VaultSwapTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount - swapFee,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -321,6 +322,61 @@ contract VaultSwapTest is BaseVaultTest {
 
         // alice received protocol fees
         assertEq(dai.balanceOf(admin) - defaultBalance, (protocolSwapFee), "Protocol fees not collected");
+    }
+
+    function reentrancyHook() public {
+        // do second swap
+        SwapParams memory params = SwapParams({
+            kind: SwapKind.EXACT_IN,
+            pool: address(pool),
+            tokenIn: dai,
+            tokenOut: usdc,
+            amountGivenRaw: defaultAmount,
+            limitRaw: 0,
+            userData: bytes("")
+        });
+        vault.swap(params);
+    }
+
+    function startSwap() public {
+        SwapParams memory params = SwapParams({
+            kind: SwapKind.EXACT_IN,
+            pool: address(pool),
+            tokenIn: usdc,
+            tokenOut: dai,
+            amountGivenRaw: defaultAmount,
+            limitRaw: 0,
+            userData: bytes("")
+        });
+        vault.swap(params);
+    }
+
+    function testReentrancySwap() public {
+        // Enable before swap
+        PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.hooks.shouldCallBeforeSwap = true;
+        vault.setConfig(address(pool), config);
+
+        // Enable reentrancy hook
+        PoolMock(pool).setSwapReentrancyHookActive(true);
+        PoolMock(pool).setSwapReentrancyHook(address(this), abi.encodeWithSelector(this.reentrancyHook.selector));
+
+        uint256 usdcBeforeSwap = usdc.balanceOf(address(this));
+        uint256 daiBeforeSwap = dai.balanceOf(address(this));
+
+        (, , uint[] memory balancesRawBefore, , ) = vault.getPoolTokenInfo(address(pool));
+
+        vault.lock(abi.encode(this.startSwap.selector));
+
+        (, , uint[] memory balancesRawAfter, , ) = vault.getPoolTokenInfo(address(pool));
+
+        // Pool balances should not change
+        for (uint i = 0; i < balancesRawAfter.length; i++) {
+            assertEq(balancesRawBefore[i], balancesRawAfter[i], "Balance does not match");
+        }
+        // No tokens being spent.
+        assertEq(usdcBeforeSwap, usdc.balanceOf(address(this)), "USDC balance changed");
+        assertEq(daiBeforeSwap, dai.balanceOf(address(this)), "DAI balance changed");
     }
 
     /// Utils
