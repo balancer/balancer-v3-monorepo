@@ -3,6 +3,7 @@
 pragma solidity ^0.8.4;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
@@ -39,6 +40,10 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     bool public changeTokenRateOnBeforeInitialize;
     bool public changeTokenRateOnBeforeAddLiquidity;
     bool public changeTokenRateOnBeforeRemoveLiquidity;
+
+    bool public swapReentrancyHookActive;
+    address private _swapHookContract;
+    bytes private _swapHookCalldata;
 
     RateProviderMock _rateProvider;
     uint256 private _newTokenRate;
@@ -90,6 +95,15 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         // inv = x + y
         uint256 invariant = computeInvariant(balances);
         return (balances[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
+    }
+
+    function setSwapReentrancyHookActive(bool _swapReentrancyHookActive) external {
+        swapReentrancyHookActive = _swapReentrancyHookActive;
+    }
+
+    function setSwapReentrancyHook(address hookContract, bytes calldata data) external {
+        _swapHookContract = hookContract;
+        _swapHookCalldata = data;
     }
 
     function setFailOnAfterInitializeHook(bool fail) external {
@@ -183,6 +197,13 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     function onBeforeSwap(IBasePool.SwapParams calldata) external override returns (bool success) {
         if (changeTokenRateOnBeforeSwapHook) {
             _updateTokenRate();
+        }
+
+        if (swapReentrancyHookActive) {
+            require(_swapHookContract != address(0), "Hook contract not set");
+            require(_swapHookCalldata.length != 0, "Hook calldata is empty");
+            swapReentrancyHookActive = false;
+            Address.functionCall(_swapHookContract, _swapHookCalldata);
         }
 
         return !failOnBeforeSwapHook;
