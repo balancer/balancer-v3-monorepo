@@ -26,7 +26,7 @@ import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openze
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { VaultConfigLib } from "./lib/VaultConfigLib.sol";
+import { VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
@@ -259,7 +259,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 minBptAmountOut,
         bytes memory userData
     ) external withLocker withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault returns (uint256 bptAmountOut) {
-        uint256 protocolYieldFeePercentage = VaultConfigLib.getProtocolYieldFeePercentage(_vaultConfigBytes);
+        uint256 protocolYieldFeePercentage = VaultStateLib.getProtocolYieldFeePercentage(_vaultState);
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             pool,
             Rounding.ROUND_DOWN,
@@ -474,12 +474,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function getProtocolSwapFeePercentage() external view onlyVault returns (uint256) {
-        return VaultConfigLib.getProtocolSwapFeePercentage(_vaultConfigBytes);
+        return VaultStateLib.getProtocolSwapFeePercentage(_vaultState);
     }
 
     /// @inheritdoc IVaultExtension
     function getProtocolYieldFeePercentage() external view onlyVault returns (uint256) {
-        return VaultConfigLib.getProtocolYieldFeePercentage(_vaultConfigBytes);
+        return VaultStateLib.getProtocolYieldFeePercentage(_vaultState);
     }
 
     /// @inheritdoc IVaultExtension
@@ -583,7 +583,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert EVMCallModeHelpers.NotStaticCall();
         }
 
-        bool _isQueryDisabled = VaultConfigLib.isQueryDisabled(_vaultConfigBytes);
+        bool _isQueryDisabled = VaultStateLib.isQueryDisabled(_vaultState);
         if (_isQueryDisabled) {
             revert QueriesDisabled();
         }
@@ -601,7 +601,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function isQueryDisabled() external view onlyVault returns (bool) {
-        return VaultConfigLib.isQueryDisabled(_vaultConfigBytes);
+        return VaultStateLib.isQueryDisabled(_vaultState);
     }
 
     /*******************************************************************************

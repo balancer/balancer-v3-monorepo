@@ -37,7 +37,7 @@ struct PoolConfig {
 }
 
 /// @dev Represents a vault's configuration
-struct VaultConfig {
+struct VaultState {
     /// @notice If set to true, disables query functionality of the Vault. Can be modified only by governance.
     bool isQueryDisabled;
     bool isVaultPaused;

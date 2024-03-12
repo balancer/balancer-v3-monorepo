@@ -24,7 +24,7 @@ import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/h
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
-import { VaultConfigLib } from "./lib/VaultConfigLib.sol";
+import { VaultStateLib } from "./lib/VaultStateLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
@@ -171,9 +171,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             }
         }
 
-        VaultConfig memory vaultConfig = VaultConfigLib.toVaultConfig(_vaultConfigBytes);
-        vaultConfig.isVaultPaused = pausing;
-        _vaultConfigBytes = VaultConfigLib.fromVaultConfig(vaultConfig);
+        VaultState memory vaultState = VaultStateLib.toVaultState(_vaultState);
+        vaultState.isVaultPaused = pausing;
+        _vaultState = VaultStateLib.fromVaultState(vaultState);
 
         emit VaultPausedStateChanged(pausing);
     }
@@ -252,9 +252,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
             revert ProtocolSwapFeePercentageTooHigh();
         }
-        VaultConfig memory vaultConfig = VaultConfigLib.toVaultConfig(_vaultConfigBytes);
-        vaultConfig.protocolSwapFeePercentage = newProtocolSwapFeePercentage;
-        _vaultConfigBytes = VaultConfigLib.fromVaultConfig(vaultConfig);
+        VaultState memory vaultState = VaultStateLib.toVaultState(_vaultState);
+        vaultState.protocolSwapFeePercentage = newProtocolSwapFeePercentage;
+        _vaultState = VaultStateLib.fromVaultState(vaultState);
         emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
     }
 
@@ -263,9 +263,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         if (newProtocolYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
             revert ProtocolYieldFeePercentageTooHigh();
         }
-        VaultConfig memory vaultConfig = VaultConfigLib.toVaultConfig(_vaultConfigBytes);
-        vaultConfig.protocolYieldFeePercentage = newProtocolYieldFeePercentage;
-        _vaultConfigBytes = VaultConfigLib.fromVaultConfig(vaultConfig);
+        VaultState memory vaultState = VaultStateLib.toVaultState(_vaultState);
+        vaultState.protocolYieldFeePercentage = newProtocolYieldFeePercentage;
+        _vaultState = VaultStateLib.fromVaultState(vaultState);
         emit ProtocolYieldFeePercentageChanged(newProtocolYieldFeePercentage);
     }
 
@@ -373,9 +373,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     /// @inheritdoc IVaultAdmin
     function disableQuery() external authenticate onlyVault {
-        VaultConfig memory vaultConfig = VaultConfigLib.toVaultConfig(_vaultConfigBytes);
-        vaultConfig.isQueryDisabled = true;
-        _vaultConfigBytes = VaultConfigLib.fromVaultConfig(vaultConfig);
+        VaultState memory vaultState = VaultStateLib.toVaultState(_vaultState);
+        vaultState.isQueryDisabled = true;
+        _vaultState = VaultStateLib.fromVaultState(vaultState);
     }
 
     /*******************************************************************************

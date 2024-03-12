@@ -11,11 +11,11 @@ import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Wo
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 // @notice Config type to store entire configuration of the vault
-type VaultConfigBits is bytes32;
+type VaultStateBits is bytes32;
 
-using VaultConfigLib for VaultConfigBits global;
+using VaultStateLib for VaultStateBits global;
 
-library VaultConfigLib {
+library VaultStateLib {
     using WordCodec for bytes32;
     using SafeCast for uint256;
 
@@ -30,23 +30,23 @@ library VaultConfigLib {
     // it can be configured from 0% to 100% fee (step 0.1%)
     uint8 private constant _FEE_BITLENGTH = 10;
 
-    function isQueryDisabled(VaultConfigBits config) internal pure returns (bool) {
-        return VaultConfigBits.unwrap(config).decodeBool(QUERY_DISABLED_OFFSET);
+    function isQueryDisabled(VaultStateBits config) internal pure returns (bool) {
+        return VaultStateBits.unwrap(config).decodeBool(QUERY_DISABLED_OFFSET);
     }
 
-    function isVaultPaused(VaultConfigBits config) internal pure returns (bool) {
-        return VaultConfigBits.unwrap(config).decodeBool(VAULT_PAUSED_OFFSET);
+    function isVaultPaused(VaultStateBits config) internal pure returns (bool) {
+        return VaultStateBits.unwrap(config).decodeBool(VAULT_PAUSED_OFFSET);
     }
 
-    function getProtocolSwapFeePercentage(VaultConfigBits config) internal pure returns (uint256) {
-        return VaultConfigBits.unwrap(config).decodeUint(PROTOCOL_SWAP_FEE_OFFSET, _FEE_BITLENGTH) * 1e15;
+    function getProtocolSwapFeePercentage(VaultStateBits config) internal pure returns (uint256) {
+        return VaultStateBits.unwrap(config).decodeUint(PROTOCOL_SWAP_FEE_OFFSET, _FEE_BITLENGTH) * 1e15;
     }
 
-    function getProtocolYieldFeePercentage(VaultConfigBits config) internal pure returns (uint256) {
-        return VaultConfigBits.unwrap(config).decodeUint(PROTOCOL_YIELD_FEE_OFFSET, _FEE_BITLENGTH) * 1e15;
+    function getProtocolYieldFeePercentage(VaultStateBits config) internal pure returns (uint256) {
+        return VaultStateBits.unwrap(config).decodeUint(PROTOCOL_YIELD_FEE_OFFSET, _FEE_BITLENGTH) * 1e15;
     }
 
-    function fromVaultConfig(VaultConfig memory config) internal pure returns (VaultConfigBits) {
+    function fromVaultState(VaultState memory config) internal pure returns (VaultStateBits) {
         bytes32 configBits = bytes32(0);
 
         configBits = configBits
@@ -55,12 +55,12 @@ library VaultConfigLib {
             .insertUint(config.protocolSwapFeePercentage / 1e15, PROTOCOL_SWAP_FEE_OFFSET, _FEE_BITLENGTH)
             .insertUint(config.protocolYieldFeePercentage / 1e15, PROTOCOL_YIELD_FEE_OFFSET, _FEE_BITLENGTH);
 
-        return VaultConfigBits.wrap(configBits);
+        return VaultStateBits.wrap(configBits);
     }
 
-    function toVaultConfig(VaultConfigBits config) internal pure returns (VaultConfig memory) {
+    function toVaultState(VaultStateBits config) internal pure returns (VaultState memory) {
         return
-            VaultConfig({
+            VaultState({
                 isQueryDisabled: config.isQueryDisabled(),
                 isVaultPaused: config.isVaultPaused(),
                 protocolSwapFeePercentage: config.getProtocolSwapFeePercentage(),

@@ -15,7 +15,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 
-import { VaultConfigLib } from "./lib/VaultConfigLib.sol";
+import { VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultStorage } from "./VaultStorage.sol";
 import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
@@ -164,7 +164,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * timestamp, the expression short-circuits false, and the Vault is permanently unpaused.
      */
     function _isVaultPaused() internal view returns (bool) {
-        bool isVaultPaused = VaultConfigLib.isVaultPaused(_vaultConfigBytes);
+        bool isVaultPaused = VaultStateLib.isVaultPaused(_vaultState);
         // solhint-disable-next-line not-rely-on-time
         return block.timestamp <= _vaultBufferPeriodEndTime && isVaultPaused;
     }
