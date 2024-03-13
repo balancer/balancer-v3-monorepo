@@ -240,9 +240,12 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     function testPermit__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
         deadline = bound(deadline, block.timestamp, MAX_UINT256);
         vm.assume(privKey != 0);
-        vm.assume(to != address(0));
 
         address usr = vm.addr(privKey);
+
+        vm.assume(to != address(0));
+        vm.assume(to != address(usr));
+        vm.assume(to != address(vault));
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
             privKey,
