@@ -53,12 +53,6 @@ interface IVaultMain {
                                    Add Liquidity
     ***************************************************************************/
 
-    /// @dev Introduce to avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
-    struct LiquidityLocals {
-        uint256 tokenIndex;
-        uint256[] limitsScaled18;
-    }
-
     /**
      * @notice Adds liquidity to a pool.
      * @dev Caution should be exercised when adding liquidity because the Vault has the capability

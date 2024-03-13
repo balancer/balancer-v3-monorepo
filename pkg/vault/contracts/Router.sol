@@ -18,11 +18,6 @@ import { RouterCommon } from "./RouterCommon.sol";
 contract Router is IRouter, RouterCommon, ReentrancyGuard {
     using Address for address payable;
 
-    bool private constant _isQueryDisabledDefault = false;
-    bool private constant _isVaultPausedDefault = false;
-    uint256 private constant _protocolSwapFeePercentageDefault = 0;
-    uint256 private constant _protocolYieldFeePercentageDefault = 0;
-
     constructor(IVault vault, IWETH weth) RouterCommon(vault, weth) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -217,10 +212,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
                 maxAmountsIn: params.maxAmountsIn,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
-                isQueryDisabled: _isQueryDisabledDefault,
-                isVaultPaused: _isVaultPausedDefault,
-                protocolSwapFeePercentage: _protocolSwapFeePercentageDefault,
-                protocolYieldFeePercentage: _protocolYieldFeePercentageDefault,
                 userData: params.userData
             })
         );
@@ -411,10 +402,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
                 maxBptAmountIn: params.maxBptAmountIn,
                 minAmountsOut: params.minAmountsOut,
                 kind: params.kind,
-                isQueryDisabled: _isQueryDisabledDefault,
-                isVaultPaused: _isVaultPausedDefault,
-                protocolSwapFeePercentage: _protocolSwapFeePercentageDefault,
-                protocolYieldFeePercentage: _protocolYieldFeePercentageDefault,
                 userData: params.userData
             })
         );
@@ -580,10 +567,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
                 tokenOut: params.tokenOut,
                 amountGivenRaw: params.amountGiven,
                 limitRaw: params.limit,
-                isQueryDisabled: _isQueryDisabledDefault,
-                isVaultPaused: _isVaultPausedDefault,
-                protocolSwapFeePercentage: _protocolSwapFeePercentageDefault,
-                protocolYieldFeePercentage: _protocolYieldFeePercentageDefault,
                 userData: params.userData
             })
         );
@@ -785,10 +768,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
                 maxAmountsIn: params.maxAmountsIn,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
-                isQueryDisabled: _isQueryDisabledDefault,
-                isVaultPaused: _isVaultPausedDefault,
-                protocolSwapFeePercentage: _protocolSwapFeePercentageDefault,
-                protocolYieldFeePercentage: _protocolYieldFeePercentageDefault,
                 userData: params.userData
             })
         );
@@ -959,10 +938,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
                     maxBptAmountIn: params.maxBptAmountIn,
                     minAmountsOut: params.minAmountsOut,
                     kind: params.kind,
-                    isQueryDisabled: _isQueryDisabledDefault,
-                    isVaultPaused: _isVaultPausedDefault,
-                    protocolSwapFeePercentage: _protocolSwapFeePercentageDefault,
-                    protocolYieldFeePercentage: _protocolYieldFeePercentageDefault,
                     userData: params.userData
                 })
             );

@@ -61,11 +61,6 @@ contract ERC4626BufferPool is
     uint256 internal immutable _wrappedTokenScalingFactor;
     uint256 internal immutable _baseTokenScalingFactor;
 
-    bool private constant _isQueryDisabledDefault = false;
-    bool private constant _isVaultPausedDefault = false;
-    uint256 private constant _protocolSwapFeePercentageDefault = 0;
-    uint256 private constant _protocolYieldFeePercentageDefault = 0;
-
     // Uses the factory as the Authentication disambiguator.
     constructor(
         string memory name,
@@ -276,10 +271,6 @@ contract ERC4626BufferPool is
                         tokenOut: tokens[_wrappedTokenIndex],
                         amountGivenRaw: exchangeAmountRaw,
                         limitRaw: limitRaw,
-                        isQueryDisabled: _isQueryDisabledDefault,
-                        isVaultPaused: _isVaultPausedDefault,
-                        protocolSwapFeePercentage: _protocolSwapFeePercentageDefault,
-                        protocolYieldFeePercentage: _protocolYieldFeePercentageDefault,
                         userData: ""
                     })
                 )
@@ -304,10 +295,6 @@ contract ERC4626BufferPool is
                         tokenOut: tokens[_baseTokenIndex],
                         amountGivenRaw: exchangeAmountRaw,
                         limitRaw: limitRaw,
-                        isQueryDisabled: _isQueryDisabledDefault,
-                        isVaultPaused: _isVaultPausedDefault,
-                        protocolSwapFeePercentage: _protocolSwapFeePercentageDefault,
-                        protocolYieldFeePercentage: _protocolYieldFeePercentageDefault,
                         userData: ""
                     })
                 )

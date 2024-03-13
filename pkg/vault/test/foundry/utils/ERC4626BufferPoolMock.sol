@@ -60,10 +60,6 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
                     tokenOut: tokens[indexOut],
                     amountGivenRaw: assetsToTransferRaw,
                     limitRaw: limit,
-                    isQueryDisabled: _isQueryDisabledDefault,
-                    isVaultPaused: _isVaultPausedDefault,
-                    protocolSwapFeePercentage: _protocolSwapFeePercentageDefault,
-                    protocolYieldFeePercentage: _protocolYieldFeePercentageDefault,
                     userData: ""
                 })
             )

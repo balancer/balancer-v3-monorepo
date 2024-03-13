@@ -32,11 +32,6 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
     // to return the correct total amounts in and out for each token involved in the operation.
     mapping(address => uint256) private _settledTokenAmounts;
 
-    bool private constant _isQueryDisabledDefault = false;
-    bool private constant _isVaultPausedDefault = false;
-    uint256 private constant _protocolSwapFeePercentageDefault = 0;
-    uint256 private constant _protocolYieldFeePercentageDefault = 0;
-
     constructor(IVault vault, IWETH weth) RouterCommon(vault, weth) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -186,10 +181,6 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             maxBptAmountIn: stepExactAmountIn,
                             minAmountsOut: amountsOut,
                             kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
-                            isQueryDisabled: _isQueryDisabledDefault,
-                            isVaultPaused: _isVaultPausedDefault,
-                            protocolSwapFeePercentage: _protocolSwapFeePercentageDefault,
-                            protocolYieldFeePercentage: _protocolYieldFeePercentageDefault,
                             userData: params.userData
                         })
                     );
@@ -221,10 +212,6 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             maxAmountsIn: exactAmountsIn,
                             minBptAmountOut: minAmountOut,
                             kind: AddLiquidityKind.UNBALANCED,
-                            isQueryDisabled: _isQueryDisabledDefault,
-                            isVaultPaused: _isVaultPausedDefault,
-                            protocolSwapFeePercentage: _protocolSwapFeePercentageDefault,
-                            protocolYieldFeePercentage: _protocolYieldFeePercentageDefault,
                             userData: params.userData
                         })
                     );
@@ -255,10 +242,6 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             tokenOut: step.tokenOut,
                             amountGivenRaw: stepExactAmountIn,
                             limitRaw: minAmountOut,
-                            isQueryDisabled: _isQueryDisabledDefault,
-                            isVaultPaused: _isVaultPausedDefault,
-                            protocolSwapFeePercentage: _protocolSwapFeePercentageDefault,
-                            protocolYieldFeePercentage: _protocolYieldFeePercentageDefault,
                             userData: params.userData
                         })
                     );
@@ -396,10 +379,6 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             maxBptAmountIn: stepMaxAmountIn,
                             minAmountsOut: exactAmountsOut,
                             kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
-                            isQueryDisabled: _isQueryDisabledDefault,
-                            isVaultPaused: _isVaultPausedDefault,
-                            protocolSwapFeePercentage: _protocolSwapFeePercentageDefault,
-                            protocolYieldFeePercentage: _protocolYieldFeePercentageDefault,
                             userData: params.userData
                         })
                     );
@@ -432,10 +411,6 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             maxAmountsIn: stepAmountsIn,
                             minBptAmountOut: stepExactAmountOut,
                             kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
-                            isQueryDisabled: _isQueryDisabledDefault,
-                            isVaultPaused: _isVaultPausedDefault,
-                            protocolSwapFeePercentage: _protocolSwapFeePercentageDefault,
-                            protocolYieldFeePercentage: _protocolYieldFeePercentageDefault,
                             userData: params.userData
                         })
                     );
@@ -471,10 +446,6 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             tokenOut: step.tokenOut,
                             amountGivenRaw: stepExactAmountOut,
                             limitRaw: stepMaxAmountIn,
-                            isQueryDisabled: _isQueryDisabledDefault,
-                            isVaultPaused: _isVaultPausedDefault,
-                            protocolSwapFeePercentage: _protocolSwapFeePercentageDefault,
-                            protocolYieldFeePercentage: _protocolYieldFeePercentageDefault,
                             userData: params.userData
                         })
                     );

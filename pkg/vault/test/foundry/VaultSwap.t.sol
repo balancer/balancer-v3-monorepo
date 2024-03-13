@@ -333,10 +333,6 @@ contract VaultSwapTest is BaseVaultTest {
             tokenOut: usdc,
             amountGivenRaw: defaultAmount,
             limitRaw: 0,
-            isQueryDisabled: false,
-            isVaultPaused: false,
-            protocolSwapFeePercentage: 0,
-            protocolYieldFeePercentage: 0,
             userData: bytes("")
         });
         vault.swap(params);
@@ -350,10 +346,6 @@ contract VaultSwapTest is BaseVaultTest {
             tokenOut: dai,
             amountGivenRaw: defaultAmount,
             limitRaw: 0,
-            isQueryDisabled: false,
-            isVaultPaused: false,
-            protocolSwapFeePercentage: 0,
-            protocolYieldFeePercentage: 0,
             userData: bytes("")
         });
         vault.swap(params);
