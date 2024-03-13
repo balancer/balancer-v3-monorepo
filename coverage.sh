@@ -38,7 +38,7 @@ done < lcov.info
 patterns=$(cat files_with_lines_coverage.txt | tr '\n' ' ')
 
 # Now use single lcov --extract command with all file patterns
-lcov --extract lcov.info $patterns --output-file lcov.info
+lcov --extract lcov.info --ignore-errors format $patterns --output-file lcov.info
 
 # generates coverage/lcov.info
 yarn hardhat coverage
@@ -48,7 +48,7 @@ yarn hardhat coverage
 sed -i -e "s/\/.*$(basename "$PWD").//g" coverage/lcov.info
 
 # Now use single lcov --remove command with all file patterns
-lcov --remove coverage/lcov.info $patterns --output-file coverage/lcov.info
+lcov --remove coverage/lcov.info --ignore-errors unused --ignore-errors format $patterns --output-file coverage/lcov.info
 
 # Merge lcov files
 lcov \
@@ -56,19 +56,25 @@ lcov \
     --add-tracefile coverage/lcov.info \
     --add-tracefile lcov.info \
     --output-file merged-lcov.info \
-    --no-checksum
+    --no-checksum \
+    --ignore-errors unused \
+    --ignore-errors format
 
 # Filter out node_modules, test, and mock files
 lcov \
     --rc lcov_branch_coverage=1 \
     --remove merged-lcov.info \
     "*node_modules*" "*test*" "*mock*" \
-    --output-file coverage/filtered-lcov.info
+    --output-file coverage/filtered-lcov.info \
+    --ignore-errors unused \
+    --ignore-errors format
 
 # Generate summary
 lcov \
     --rc lcov_branch_coverage=1 \
-    --list coverage/filtered-lcov.info
+    --list coverage/filtered-lcov.info \
+    --ignore-errors unused \
+    --ignore-errors format
 
 # Open more granular breakdown in browser
 if [ "$HTML" == "true" ]

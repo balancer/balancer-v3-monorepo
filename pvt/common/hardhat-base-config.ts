@@ -52,7 +52,8 @@ export const warnings = {
     'code-size': 'warn',
     'unused-param': 'warn',
     'shadowing-opcode': 'off',
-    default: 'error',
+    // TODO revert this change and put 'error' on default. This is just to generate coverage reports
+    default: 'warn',
   },
 };
 
