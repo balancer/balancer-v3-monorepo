@@ -19,11 +19,6 @@ import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.s
 contract ERC4626BufferPoolMock is ERC4626BufferPool {
     using SafeERC20 for IERC20;
 
-    bool private constant _isQueryDisabledDefault = false;
-    bool private constant _isVaultPausedDefault = false;
-    uint256 private constant _protocolSwapFeePercentageDefault = 0;
-    uint256 private constant _protocolYieldFeePercentageDefault = 0;
-
     constructor(
         string memory name,
         string memory symbol,
@@ -33,9 +28,7 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
 
     // If EXACT_IN, assets will be wrapped. Else, assets will be unwrapped
     function unbalanceThePool(uint256 assetsToTransferRaw, SwapKind kind) external {
-        IVault vault = getVault();
-
-        (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(address(this));
+        (IERC20[] memory tokens, , , , ) = getVault().getPoolTokenInfo(address(this));
 
         uint256 indexIn = kind == SwapKind.EXACT_IN ? _baseTokenIndex : _wrappedTokenIndex;
         uint256 indexOut = kind == SwapKind.EXACT_IN ? _wrappedTokenIndex : _baseTokenIndex;
