@@ -132,7 +132,7 @@ contract StableMathMock {
         uint256 tokenIndex
     ) external pure returns (uint256) {
         return
-            StableMath._getTokenBalanceGivenInvariantAndAllOtherBalances(
+            StableMath.computeBalance(
                 amplificationParameter,
                 balances,
                 currentInvariant,
