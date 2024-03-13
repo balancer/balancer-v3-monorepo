@@ -9,8 +9,6 @@ import { IBasePool } from "./IBasePool.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IRouter {
-    error FailedQuoteInnerCall();
-
     /***************************************************************************
                                Pool Initialization
     ***************************************************************************/
