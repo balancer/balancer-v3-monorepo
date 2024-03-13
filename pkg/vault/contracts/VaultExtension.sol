@@ -19,7 +19,7 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import { RawCallHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RawCallHelpers.sol";
+import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
@@ -601,16 +601,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // This will only revert if result is empty and sender account has no code.
             Address.verifyCallResultFromTarget(msg.sender, success, result);
             // Send result in revert reason.
-            revert RawCallHelpers.Result(result);
+            revert RevertCodec.Result(result);
         } else {
             // If the call reverted with a spoofed `QuoteResult`, we catch it and bubble up a different reason.
-            bytes4 errorSelector = RawCallHelpers.parseSelector(result);
-            if (errorSelector == RawCallHelpers.Result.selector) {
+            bytes4 errorSelector = RevertCodec.parseSelector(result);
+            if (errorSelector == RevertCodec.Result.selector) {
                 revert QuoteResultSpoofed();
             }
 
             // Otherwise we bubble up the original revert reason.
-            RawCallHelpers.bubbleUpRevert(result);
+            RevertCodec.bubbleUpRevert(result);
         }
     }
 
