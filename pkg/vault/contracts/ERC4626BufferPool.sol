@@ -15,8 +15,7 @@ import {
     AddLiquidityKind,
     RemoveLiquidityKind,
     SwapParams as VaultSwapParams,
-    SwapKind,
-    VaultState
+    SwapKind
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
