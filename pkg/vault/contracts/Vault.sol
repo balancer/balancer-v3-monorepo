@@ -189,13 +189,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             revert CannotSwapSameToken();
         }
 
-        VaultState memory vaultState = _vaultState.toVaultState();
-        // Check vault and pool paused inline, instead of using modifier, to save some gas reading the
-        // isVaultPaused state
-        if (vaultState.isVaultPaused) {
-            revert VaultPaused();
-        }
-        _ensurePoolNotPaused(params.pool);
+        VaultState memory vaultState = _ensureUnpausedAndGetVaultState(params.pool);
 
         // `_computePoolDataUpdatingBalancesAndFees` is non-reentrant, as it updates storage as well as filling in
         // poolData in memory. Since the swap hooks are reentrant and could do anything, including change these
@@ -491,13 +485,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // If unbalanced, higher balances = lower invariant ratio with fees.
         // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
 
-        VaultState memory vaultState = _vaultState.toVaultState();
-        // Check vault and pool paused inline, instead of using modifier, to save some gas reading the
-        // isVaultPaused state
-        if (vaultState.isVaultPaused) {
-            revert VaultPaused();
-        }
-        _ensurePoolNotPaused(params.pool);
+        VaultState memory vaultState = _ensureUnpausedAndGetVaultState(params.pool);
 
         // `_computePoolDataUpdatingBalancesAndFees` is non-reentrant, as it updates storage as well as filling in
         // poolData in memory. Since the add liquidity hooks are reentrant and could do anything, including change
@@ -713,13 +701,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // If unbalanced, lower balances = lower invariant ratio without fees.
         // bptIn = supply * (1 - ratio), so lower ratio = more bptIn, favoring the pool.
 
-        VaultState memory vaultState = _vaultState.toVaultState();
-        // Check vault and pool paused inline, instead of using modifier, to save some gas reading the
-        // isVaultPaused state
-        if (vaultState.isVaultPaused) {
-            revert VaultPaused();
-        }
-        _ensurePoolNotPaused(params.pool);
+        VaultState memory vaultState = _ensureUnpausedAndGetVaultState(params.pool);
 
         // `_computePoolDataUpdatingBalancesAndFees` is non-reentrant, as it updates storage as well as filling in
         // poolData in memory. Since the remove liquidity hooks are reentrant and could do anything, including change
@@ -943,6 +925,22 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (!_isTrustedRouter(sender)) {
             revert RouterNotTrusted();
         }
+    }
+
+    /**
+     * @dev To save some gas, vault state variables are stored in a single word and are read only once.
+     * So, it's not possible to use the modifier whenPoolNotPaused , because it requires to read _vaultState
+     * one more time. This function optimizes the check if vault and pool are paused and returns the vaultState
+     * struct to be used elsewhere
+     */
+    function _ensureUnpausedAndGetVaultState(address pool) private view returns (VaultState memory vaultState) {
+        vaultState = _vaultState.toVaultState();
+        // Check vault and pool paused inline, instead of using modifier, to save some gas reading the
+        // isVaultPaused state
+        if (vaultState.isVaultPaused) {
+            revert VaultPaused();
+        }
+        _ensurePoolNotPaused(pool);
     }
 
     /**
