@@ -166,10 +166,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _isVaultPaused() internal view returns (bool) {
         // solhint-disable-next-line not-rely-on-time
-        if (block.timestamp <= _vaultBufferPeriodEndTime) {
-            return _vaultState.isVaultPaused();
-        }
-        return false;
+        return block.timestamp <= _vaultBufferPeriodEndTime && _vaultState.isVaultPaused();
     }
 
     /*******************************************************************************
