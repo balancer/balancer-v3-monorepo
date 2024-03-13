@@ -4,22 +4,18 @@ pragma solidity ^0.8.4;
 
 // solhint-disable no-inline-assembly
 
-library RawCallHelpers {
+library RevertCodec {
     error Result(bytes result);
 
     error UnexpectedCallSuccess();
 
     error ErrorSelectorNotFound();
 
-    function unwrapRawCallResult(bool success, bytes memory resultRaw) internal pure returns (bytes memory) {
-        if (success) {
-            revert UnexpectedCallSuccess();
-        }
-
-        bytes4 errorSelector = RawCallHelpers.parseSelector(resultRaw);
+    function catchEncodedResult(bytes memory resultRaw) internal pure returns (bytes memory) {
+        bytes4 errorSelector = RevertCodec.parseSelector(resultRaw);
         if (errorSelector != Result.selector) {
             // Bubble up error message if the revert reason is not the expected one.
-            RawCallHelpers.bubbleUpRevert(resultRaw);
+            RevertCodec.bubbleUpRevert(resultRaw);
         }
 
         uint256 resultRawLength = resultRaw.length;

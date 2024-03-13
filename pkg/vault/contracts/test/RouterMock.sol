@@ -3,7 +3,7 @@
 pragma solidity ^0.8.4;
 
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
-import { RawCallHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RawCallHelpers.sol";
+import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 
 import "../Router.sol";
 
@@ -27,9 +27,8 @@ contract RouterMock is Router {
         uint256 exactAmountIn,
         bytes calldata userData
     ) external returns (uint256 amountCalculated) {
-        (bool success, bytes memory resultRaw) = address(_vault).call(
-            abi.encodeWithSelector(
-                IVaultExtension.quoteAndRevert.selector,
+        try
+            _vault.quoteAndRevert(
                 abi.encodeWithSelector(
                     Router.querySwapHook.selector,
                     SwapSingleTokenHookParams({
@@ -46,35 +45,31 @@ contract RouterMock is Router {
                     })
                 )
             )
-        );
-
-        return abi.decode(RawCallHelpers.unwrapRawCallResult(success, resultRaw), (uint256));
+        {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            return abi.decode(RevertCodec.catchEncodedResult(result), (uint256));
+        }
     }
 
     function querySpoof() external returns (uint256) {
-        (bool success, bytes memory resultRaw) = address(_vault).call(
-            abi.encodeWithSelector(
-                IVaultExtension.quoteAndRevert.selector,
-                abi.encodeWithSelector(RouterMock.querySpoofHook.selector)
-            )
-        );
-
-        return abi.decode(RawCallHelpers.unwrapRawCallResult(success, resultRaw), (uint256));
+        try _vault.quoteAndRevert(abi.encodeWithSelector(RouterMock.querySpoofHook.selector)) {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            return abi.decode(RevertCodec.catchEncodedResult(result), (uint256));
+        }
     }
 
     function querySpoofHook() external pure {
-        revert RawCallHelpers.Result(abi.encode(uint256(1234)));
+        revert RevertCodec.Result(abi.encode(uint256(1234)));
     }
 
     function queryRevertErrorCode() external returns (uint256) {
-        (bool success, bytes memory resultRaw) = address(_vault).call(
-            abi.encodeWithSelector(
-                IVaultExtension.quoteAndRevert.selector,
-                abi.encodeWithSelector(RouterMock.queryRevertErrorCodeHook.selector)
-            )
-        );
-
-        return abi.decode(RawCallHelpers.unwrapRawCallResult(success, resultRaw), (uint256));
+        try _vault.quoteAndRevert(abi.encodeWithSelector(RouterMock.queryRevertErrorCodeHook.selector)) {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            return abi.decode(RevertCodec.catchEncodedResult(result), (uint256));
+        }
     }
 
     function queryRevertErrorCodeHook() external pure {
@@ -82,14 +77,11 @@ contract RouterMock is Router {
     }
 
     function queryRevertLegacy() external returns (uint256) {
-        (bool success, bytes memory resultRaw) = address(_vault).call(
-            abi.encodeWithSelector(
-                IVaultExtension.quoteAndRevert.selector,
-                abi.encodeWithSelector(RouterMock.queryRevertLegacyHook.selector)
-            )
-        );
-
-        return abi.decode(RawCallHelpers.unwrapRawCallResult(success, resultRaw), (uint256));
+        try _vault.quoteAndRevert(abi.encodeWithSelector(RouterMock.queryRevertLegacyHook.selector)) {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            return abi.decode(RevertCodec.catchEncodedResult(result), (uint256));
+        }
     }
 
     function queryRevertLegacyHook() external pure {
@@ -97,14 +89,11 @@ contract RouterMock is Router {
     }
 
     function queryRevertPanic() external returns (uint256) {
-        (bool success, bytes memory resultRaw) = address(_vault).call(
-            abi.encodeWithSelector(
-                IVaultExtension.quoteAndRevert.selector,
-                abi.encodeWithSelector(RouterMock.queryRevertPanicHook.selector)
-            )
-        );
-
-        return abi.decode(RawCallHelpers.unwrapRawCallResult(success, resultRaw), (uint256));
+        try _vault.quoteAndRevert(abi.encodeWithSelector(RouterMock.queryRevertPanicHook.selector)) {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            return abi.decode(RevertCodec.catchEncodedResult(result), (uint256));
+        }
     }
 
     function queryRevertPanicHook() external pure returns (uint256) {
@@ -114,14 +103,11 @@ contract RouterMock is Router {
     }
 
     function queryRevertNoReason() external returns (uint256) {
-        (bool success, bytes memory resultRaw) = address(_vault).call(
-            abi.encodeWithSelector(
-                IVaultExtension.quoteAndRevert.selector,
-                abi.encodeWithSelector(RouterMock.queryRevertNoReasonHook.selector)
-            )
-        );
-
-        return abi.decode(RawCallHelpers.unwrapRawCallResult(success, resultRaw), (uint256));
+        try _vault.quoteAndRevert(abi.encodeWithSelector(RouterMock.queryRevertNoReasonHook.selector)) {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            return abi.decode(RevertCodec.catchEncodedResult(result), (uint256));
+        }
     }
 
     function queryRevertNoReasonHook() external pure returns (uint256) {
