@@ -179,7 +179,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         public
         withLocker
         withInitializedPool(params.pool)
-        whenPoolNotPaused(params.pool)
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
     {
         if (params.amountGivenRaw == 0) {
@@ -191,6 +190,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         VaultState memory vaultState = _vaultState.toVaultState();
+        // Check vault and pool paused inline, instead of using modifier, to save some gas reading the
+        // isVaultPaused state
+        if (vaultState.isVaultPaused) {
+            revert VaultPaused();
+        }
+        _ensurePoolNotPaused(params.pool);
 
         // `_computePoolDataUpdatingBalancesAndFees` is non-reentrant, as it updates storage as well as filling in
         // poolData in memory. Since the swap hooks are reentrant and could do anything, including change these
@@ -479,7 +484,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         external
         withLocker
         withInitializedPool(params.pool)
-        whenPoolNotPaused(params.pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
         // Round balances up when adding liquidity:
@@ -488,6 +492,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
 
         VaultState memory vaultState = _vaultState.toVaultState();
+        // Check vault and pool paused inline, instead of using modifier, to save some gas reading the
+        // isVaultPaused state
+        if (vaultState.isVaultPaused) {
+            revert VaultPaused();
+        }
+        _ensurePoolNotPaused(params.pool);
 
         // `_computePoolDataUpdatingBalancesAndFees` is non-reentrant, as it updates storage as well as filling in
         // poolData in memory. Since the add liquidity hooks are reentrant and could do anything, including change
@@ -696,15 +706,20 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         external
         withLocker
         withInitializedPool(params.pool)
-        whenPoolNotPaused(params.pool)
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
     {
-        VaultState memory vaultState = _vaultState.toVaultState();
-
         // Round down when removing liquidity:
         // If proportional, lower balances = lower proportional amountsOut, favoring the pool.
         // If unbalanced, lower balances = lower invariant ratio without fees.
         // bptIn = supply * (1 - ratio), so lower ratio = more bptIn, favoring the pool.
+
+        VaultState memory vaultState = _vaultState.toVaultState();
+        // Check vault and pool paused inline, instead of using modifier, to save some gas reading the
+        // isVaultPaused state
+        if (vaultState.isVaultPaused) {
+            revert VaultPaused();
+        }
+        _ensurePoolNotPaused(params.pool);
 
         // `_computePoolDataUpdatingBalancesAndFees` is non-reentrant, as it updates storage as well as filling in
         // poolData in memory. Since the remove liquidity hooks are reentrant and could do anything, including change

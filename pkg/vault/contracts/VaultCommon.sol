@@ -165,9 +165,11 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * timestamp, the expression short-circuits false, and the Vault is permanently unpaused.
      */
     function _isVaultPaused() internal view returns (bool) {
-        bool isVaultPaused = _vaultState.isVaultPaused();
         // solhint-disable-next-line not-rely-on-time
-        return block.timestamp <= _vaultBufferPeriodEndTime && isVaultPaused;
+        if (block.timestamp <= _vaultBufferPeriodEndTime) {
+            return _vaultState.isVaultPaused();
+        }
+        return false;
     }
 
     /*******************************************************************************
