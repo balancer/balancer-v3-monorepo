@@ -251,31 +251,6 @@ interface IRouter {
                                        Swaps
     ***************************************************************************/
 
-    struct SwapPathStep {
-        address pool;
-        IERC20 tokenOut;
-    }
-
-    struct SwapPathExactAmountIn {
-        IERC20 tokenIn;
-        // for each step:
-        // if tokenIn == pool use removeLiquidity SINGLE_TOKEN_EXACT_IN
-        // if tokenOut == pool use addLiquidity UNBALANCED
-        SwapPathStep[] steps;
-        uint256 exactAmountIn;
-        uint256 minAmountOut;
-    }
-
-    struct SwapPathExactAmountOut {
-        IERC20 tokenIn;
-        // for each step:
-        // if tokenIn == pool use removeLiquidity SINGLE_TOKEN_EXACT_OUT
-        // if tokenOut == pool use addLiquidity SINGLE_TOKEN_EXACT_OUT
-        SwapPathStep[] steps;
-        uint256 maxAmountIn;
-        uint256 exactAmountOut;
-    }
-
     /**
      * @dev Data for the swap hook.
      * @param sender Account initiating the swap operation
@@ -301,25 +276,6 @@ interface IRouter {
         bool wethIsEth;
         bytes userData;
     }
-
-    struct SwapExactInHookParams {
-        address sender;
-        SwapPathExactAmountIn[] paths;
-        uint256 deadline;
-        bool wethIsEth;
-        bytes userData;
-    }
-
-    struct SwapExactOutHookParams {
-        address sender;
-        SwapPathExactAmountOut[] paths;
-        uint256 deadline;
-        bool wethIsEth;
-        bytes userData;
-    }
-
-    /// @dev The swap transaction was not mined before the specified deadline timestamp.
-    error SwapDeadline();
 
     /**
      * @notice Executes a swap operation specifying an exact input token amount.
