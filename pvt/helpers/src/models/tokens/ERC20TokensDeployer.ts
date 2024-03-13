@@ -20,8 +20,13 @@ class ERC20TokensDeployer {
       varyDecimals
     );
     const tokens = await Promise.all(deployments.map(this.deployToken));
-    const tokenList = new ERC20TokenList(tokens);
-    return sorted ? await tokenList.sort() : tokenList;
+    let tokenList = new ERC20TokenList(tokens);
+
+    if (sorted) {
+      tokenList = await tokenList.sort();
+    }
+
+    return tokenList;
   }
 
   async deployToken(params: RawTokenDeployment): Promise<ERC20TestToken> {

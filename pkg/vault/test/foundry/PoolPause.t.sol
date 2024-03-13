@@ -6,9 +6,9 @@ import "forge-std/Test.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -150,7 +150,7 @@ contract PoolPauseTest is BaseVaultTest {
         vault.pausePool(address(unmanagedPool));
 
         // Reluctantly authorize Bob
-        bytes32 pausePoolRole = vault.getActionId(IVaultExtension.pausePool.selector);
+        bytes32 pausePoolRole = vault.getActionId(IVaultAdmin.pausePool.selector);
         authorizer.grantRole(pausePoolRole, bob);
 
         vm.prank(bob);
@@ -161,7 +161,7 @@ contract PoolPauseTest is BaseVaultTest {
 
     function testCannotPausePermissionlessPool() public {
         // Authorize alice
-        bytes32 pausePoolRole = vault.getActionId(IVaultExtension.pausePool.selector);
+        bytes32 pausePoolRole = vault.getActionId(IVaultAdmin.pausePool.selector);
         authorizer.grantRole(pausePoolRole, alice);
 
         vm.prank(alice);
@@ -176,7 +176,7 @@ contract PoolPauseTest is BaseVaultTest {
         assertEq(pauseManager, address(0));
 
         // Authorize alice
-        bytes32 pausePoolRole = vault.getActionId(IVaultExtension.pausePool.selector);
+        bytes32 pausePoolRole = vault.getActionId(IVaultAdmin.pausePool.selector);
         authorizer.grantRole(pausePoolRole, alice);
 
         vm.prank(alice);

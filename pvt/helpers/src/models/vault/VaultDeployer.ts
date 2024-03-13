@@ -5,7 +5,13 @@ import * as contract from '../../contract';
 import { VaultDeploymentInputParams, VaultDeploymentParams } from './types';
 
 import TypesConverter from '../types/TypesConverter';
-import { Vault, VaultExtension } from '@balancer-labs/v3-vault/typechain-types';
+import {
+  Vault,
+  VaultAdmin,
+  VaultAdminMock,
+  VaultExtension,
+  VaultExtensionMock,
+} from '@balancer-labs/v3-vault/typechain-types';
 import { VaultMock } from '@balancer-labs/v3-vault/typechain-types';
 import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
@@ -29,8 +35,13 @@ async function deployReal(deployment: VaultDeploymentParams, authorizer: BaseCon
 
   const futureVaultAddress = await getVaultAddress(admin);
 
-  const vaultExtension: VaultExtension = await contract.deploy('v3-vault/VaultExtension', {
+  const vaultAdmin: VaultAdmin = await contract.deploy('v3-vault/VaultAdmin', {
     args: [futureVaultAddress, pauseWindowDuration, bufferPeriodDuration],
+    from: admin,
+  });
+
+  const vaultExtension: VaultExtension = await contract.deploy('v3-vault/VaultExtension', {
+    args: [futureVaultAddress, vaultAdmin],
     from: admin,
   });
 
@@ -45,8 +56,13 @@ async function deployMocked(deployment: VaultDeploymentParams, authorizer: BaseC
 
   const futureVaultAddress = await getVaultAddress(admin);
 
-  const vaultExtension: VaultExtension = await contract.deploy('v3-vault/VaultExtensionMock', {
+  const vaultAdmin: VaultAdminMock = await contract.deploy('v3-vault/VaultAdminMock', {
     args: [futureVaultAddress, pauseWindowDuration, bufferPeriodDuration],
+    from: admin,
+  });
+
+  const vaultExtension: VaultExtensionMock = await contract.deploy('v3-vault/VaultExtensionMock', {
+    args: [futureVaultAddress, vaultAdmin],
     from: admin,
   });
 
@@ -61,7 +77,7 @@ async function getVaultAddress(from: SignerWithAddress): Promise<string> {
   const nonce = await from.getNonce();
   const futureAddress = ethers.getCreateAddress({
     from: from.address,
-    nonce: nonce + 1,
+    nonce: nonce + 2,
   });
   return futureAddress;
 }

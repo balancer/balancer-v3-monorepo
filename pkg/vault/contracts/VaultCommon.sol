@@ -37,26 +37,31 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /**
      * @dev This modifier ensures that the function it modifies can only be called
-     * by the last handler in the `_handlers` array. This is used to enforce the
-     * order of execution when multiple handlers are in play, ensuring only the
-     * current or "active" handler can invoke certain operations in the Vault.
-     * If no handler is found or the caller is not the expected handler,
+     * by the last locker in the `_lockers` array. This is used to enforce the
+     * order of execution when multiple lockers are in play, ensuring only the
+     * current or "active" locker can perform certain operations in the Vault.
+     * If no locker is found or the caller is not the expected locker,
      * it reverts the transaction with specific error messages.
      */
-    modifier withHandler() {
+    modifier withLocker() {
+        _ensureWithLocker();
+        _;
+    }
+
+    function _ensureWithLocker() internal view {
         // If there are no handlers in the list, revert with an error.
-        if (_handlers.length == 0) {
-            revert NoHandler();
+        if (_lockers.length == 0) {
+            revert NoLocker();
         }
 
-        // Get the last handler from the `_handlers` array.
-        // This represents the current active handler.
-        address handler = _handlers[_handlers.length - 1];
+        // Get the last locker from the `_lockers` array.
+        // This represents the current active locker.
+        address locker = _lockers[_lockers.length - 1];
 
-        // If the current function caller is not the active handler, revert.
-        if (msg.sender != handler) revert WrongHandler(msg.sender, handler);
-
-        _;
+        // If the current function caller is not the active locker, revert.
+        if (msg.sender != locker) {
+            revert WrongLocker(msg.sender, locker);
+        }
     }
 
     /**
@@ -68,48 +73,48 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
-     * @notice Records the `credit` for a given handler and token.
+     * @notice Records the `credit` for a given locker and token.
      * @param token   The ERC20 token for which the 'credit' will be accounted.
-     * @param credit  The amount of `token` supplied to the Vault in favor of the `handler`.
-     * @param handler The account credited with the amount.
+     * @param credit  The amount of `token` supplied to the Vault in favor of the `locker`.
+     * @param locker The account credited with the amount.
      */
-    function _supplyCredit(IERC20 token, uint256 credit, address handler) internal {
-        _accountDelta(token, -credit.toInt256(), handler);
+    function _supplyCredit(IERC20 token, uint256 credit, address locker) internal {
+        _accountDelta(token, -credit.toInt256(), locker);
     }
 
     /**
-     * @notice Records the `debt` for a given handler and token.
+     * @notice Records the `debt` for a given locker and token.
      * @param token   The ERC20 token for which the `debt` will be accounted.
-     * @param debt    The amount of `token` taken from the Vault in favor of the `handler`.
-     * @param handler The account responsible for the debt.
+     * @param debt    The amount of `token` taken from the Vault in favor of the `locker`.
+     * @param locker The account responsible for the debt.
      */
-    function _takeDebt(IERC20 token, uint256 debt, address handler) internal {
-        _accountDelta(token, debt.toInt256(), handler);
+    function _takeDebt(IERC20 token, uint256 debt, address locker) internal {
+        _accountDelta(token, debt.toInt256(), locker);
     }
 
     /**
-     * @dev Accounts the delta for the given handler and token.
+     * @dev Accounts the delta for the given locker and token.
      * Positive delta represents debt, while negative delta represents surplus.
-     * The function ensures that only the specified handler can update its respective delta.
+     * The function ensures that only the specified locker can update its respective delta.
      *
      * @param token   The ERC20 token for which the delta is being accounted.
      * @param delta   The difference in the token balance.
      *                Positive indicates a debit or a decrease in Vault's tokens,
      *                negative indicates a credit or an increase in Vault's tokens.
-     * @param handler The handler whose balance difference is being accounted for.
+     * @param locker The locker whose balance difference is being accounted for.
      *                Must be the same as the caller of the function.
      */
-    function _accountDelta(IERC20 token, int256 delta, address handler) internal {
+    function _accountDelta(IERC20 token, int256 delta, address locker) internal {
         // If the delta is zero, there's nothing to account for.
         if (delta == 0) return;
 
-        // Ensure that the handler specified is indeed the caller.
-        if (handler != msg.sender) {
-            revert WrongHandler(handler, msg.sender);
+        // Ensure that the locker specified is indeed the caller.
+        if (locker != msg.sender) {
+            revert WrongLocker(locker, msg.sender);
         }
 
-        // Get the current recorded delta for this token and handler.
-        int256 current = _tokenDeltas[handler][token];
+        // Get the current recorded delta for this token and locker.
+        int256 current = _tokenDeltas[locker][token];
 
         // Calculate the new delta after accounting for the change.
         int256 next = current + delta;
@@ -127,8 +132,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             }
         }
 
-        // Update the delta for this token and handler.
-        _tokenDeltas[handler][token] = next;
+        // Update the delta for this token and locker.
+        _tokenDeltas[locker][token] = next;
     }
 
     function _isTrustedRouter(address) internal pure returns (bool) {
@@ -247,7 +252,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * @dev Sets the raw balances of a Pool's tokens to the current values in poolData.balancesRaw, then also
      * computes and stores the last live balances in the same slot.
      *
-     * NB: Mutates poolData so that the live balances match the stored values.
+     * Side effects: mutates `poolData` so that the live balances match the stored values.
      */
     function _setPoolBalances(address pool, PoolData memory poolData) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
@@ -279,7 +284,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     function _getPoolTokens(address pool) internal view returns (IERC20[] memory tokens) {
         // Retrieve the mapping of tokens and their balances for the specified pool.
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        mapping(IERC20 => TokenConfig) storage poolTokenConfig = _poolTokenConfig[pool];
 
         // Initialize arrays to store tokens based on the number of tokens in the pool.
         tokens = new IERC20[](poolTokenBalances.length());
@@ -288,17 +292,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
-            (IERC20 token, ) = poolTokenBalances.unchecked_at(i);
-
-            // Translate tokens of type ERC4626 to base tokens (except for buffer pools)
-            if (
-                poolTokenConfig[token].tokenType == TokenType.ERC4626 &&
-                _wrappedTokenBuffers[IERC4626(address(token))] != pool
-            ) {
-                tokens[i] = _wrappedTokenBufferBaseTokens[token];
-            } else {
-                tokens[i] = token;
-            }
+            (tokens[i], ) = poolTokenBalances.unchecked_at(i);
         }
     }
 
@@ -334,7 +328,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
-     * @dev Mutates poolData to add token rates. Assumes tokenConfig is already set.
+     * @dev Preconditions: tokenConfig must be current in `poolData`. Side effects: mutates tokenRates in `poolData`.
      */
     function _updateTokenRatesInPoolData(PoolData memory poolData) internal view {
         uint256 numTokens = poolData.tokenConfig.length;
@@ -350,9 +344,10 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             } else if (tokenType == TokenType.WITH_RATE) {
                 poolData.tokenRates[i] = poolData.tokenConfig[i].rateProvider.getRate();
             } else if (tokenType == TokenType.ERC4626) {
-                poolData.tokenRates[i] = IRateProvider(
-                    _wrappedTokenBuffers[IERC4626(address(poolData.tokenConfig[i].token))]
-                ).getRate();
+                // TODO: Review rates on ERC4626 tokens (and see if we still need a separate token type at all).
+                poolData.tokenRates[i] = IERC4626(address(poolData.tokenConfig[i].token)).convertToAssets(
+                    FixedPoint.ONE
+                );
             } else {
                 revert InvalidTokenConfiguration();
             }

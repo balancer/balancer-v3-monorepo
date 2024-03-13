@@ -4,8 +4,9 @@ pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
 
-import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
+
+import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
@@ -237,11 +238,14 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     function testPermit__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
-        deadline = bound(deadline, block.timestamp, type(uint256).max);
+        deadline = bound(deadline, block.timestamp, MAX_UINT256);
         vm.assume(privKey != 0);
-        vm.assume(to != address(0));
 
         address usr = vm.addr(privKey);
+
+        vm.assume(to != address(0));
+        vm.assume(to != address(usr));
+        vm.assume(to != address(vault));
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
             privKey,
@@ -268,7 +272,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         uint256 deadline,
         uint256 nonce
     ) public {
-        deadline = bound(deadline, block.timestamp, type(uint256).max);
+        deadline = bound(deadline, block.timestamp, MAX_UINT256);
         vm.assume(privKey != 0);
         vm.assume(to != address(0));
         vm.assume(nonce != 0);
@@ -337,7 +341,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     function testFailPermitReplay__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
         vm.assume(privKey != 0);
         vm.assume(to != address(0));
-        deadline = bound(deadline, block.timestamp, type(uint256).max);
+        deadline = bound(deadline, block.timestamp, MAX_UINT256);
 
         address usr = vm.addr(privKey);
 

@@ -4,7 +4,7 @@ pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
 
-import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -26,8 +26,14 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     RateProviderMock wstETHRateProvider;
     RateProviderMock daiRateProvider;
 
+    // Track the indices for the local dai/wsteth pool.
+    uint256 internal wstethIdx;
+    uint256 internal daiIdx;
+
     function setUp() public override {
         BaseVaultTest.setUp();
+
+        (daiIdx, wstethIdx) = getSortedIndexes(address(dai), address(wsteth));
     }
 
     // Create wsteth / dai pool, with rate providers on wsteth (non-exempt), and dai (exempt)
@@ -38,6 +44,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         bool[] memory yieldExemptFlags = new bool[](2);
 
+        // These will be sorted with the tokens by buildTokenConfig.
         rateProviders[0] = wstETHRateProvider;
         rateProviders[1] = daiRateProvider;
         yieldExemptFlags[1] = true;
@@ -60,7 +67,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     }
 
     function setProtocolYieldFeePercentage(uint256 yieldFeePercentage) internal {
-        bytes32 setFeeRole = vault.getActionId(IVaultExtension.setProtocolYieldFeePercentage.selector);
+        bytes32 setFeeRole = vault.getActionId(IVaultAdmin.setProtocolYieldFeePercentage.selector);
         authorizer.grantRole(setFeeRole, alice);
 
         vm.prank(alice);
@@ -137,9 +144,12 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
 
         // How much should the fee be?
         // Tricky, because the diff already has the fee subtracted. Need to add it back in
-        uint256 protocolFeeScaled18 = actualProtocolFee.toScaled18ApplyRateRoundDown(scalingFactors[0], wstethRate);
-        uint256 feeScaled18 = (liveBalanceDeltas[0] + protocolFeeScaled18).mulDown(yieldFeePercentage);
-        uint256 expectedProtocolFee = feeScaled18.toRawUndoRateRoundDown(scalingFactors[0], wstethRate);
+        uint256 protocolFeeScaled18 = actualProtocolFee.toScaled18ApplyRateRoundDown(
+            scalingFactors[wstethIdx],
+            wstethRate
+        );
+        uint256 feeScaled18 = (liveBalanceDeltas[wstethIdx] + protocolFeeScaled18).mulDown(yieldFeePercentage);
+        uint256 expectedProtocolFee = feeScaled18.toRawUndoRateRoundDown(scalingFactors[wstethIdx], wstethRate);
 
         assertApproxEqAbs(actualProtocolFee, expectedProtocolFee, 1e3, "Actual protocol fee is not the expected one");
     }
@@ -228,7 +238,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
 
         // Dummy swap
         vm.prank(alice);
-        router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, type(uint256).max, false, "");
+        router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, MAX_UINT256, false, "");
 
         // No matter what the rates are, the value of wsteth grows from 1x to 10x.
         // Then, the protocol takes its cut out of the 9x difference.
@@ -254,8 +264,8 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         uint256[] memory expectedRawBalances = vault.getRawBalances(address(pool));
         uint256[] memory expectedRates = new uint256[](2);
 
-        expectedRates[0] = wstethRate;
-        expectedRates[1] = daiRate;
+        expectedRates[wstethIdx] = wstethRate;
+        expectedRates[daiIdx] = daiRate;
 
         uint256 expectedLiveBalance;
 

@@ -4,11 +4,10 @@ pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
 
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
-import { Vault } from "../../contracts/Vault.sol";
 import { VaultExtensionMock } from "../../contracts/test/VaultExtensionMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -31,11 +30,11 @@ contract VaultDefaultHandlers is BaseVaultTest {
     }
 
     function testDefaultHandler() public {
-        bytes32 result = VaultExtensionMock(address(vault)).mockExtensionHash(bytes("V3"));
+        bytes32 result = VaultExtensionMock(payable(address(vault))).mockExtensionHash(bytes("V3"));
         assertEq(result, keccak256(bytes("V3")));
     }
 
-    function testDefaultHandlerNonExistingFunction() public {
+    function testDefaultHandlerNonExistentFunction() public {
         vm.expectRevert();
         IRateProvider(address(vault)).getRate();
     }

@@ -9,7 +9,7 @@ import { IVault } from "./IVault.sol";
 /// @notice Interface for custom liquidity operations
 interface IPoolLiquidity {
     /**
-     * @notice Add liquidity to the pool with a custom handler.
+     * @notice Add liquidity to the pool with a custom hook.
      * @param sender Address of the sender
      * @param maxAmountsInScaled18 Maximum input amounts, in the same order as the tokens registered in the pool
      * @param minBptAmountOut Minimum amount of output pool tokens
@@ -36,7 +36,7 @@ interface IPoolLiquidity {
         );
 
     /**
-     * @notice Remove liquidity from the pool with a custom handler.
+     * @notice Remove liquidity from the pool with a custom hook.
      * @param sender Address of the sender
      * @param maxBptAmountIn Maximum amount of input pool tokens
      * @param minAmountsOutScaled18 Minimum output amounts, in the same order as the tokens registered in the pool
