@@ -460,7 +460,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _onlyTrustedRouter(msg.sender);
         _;
     }
-    
+
     /// @dev Introduce to avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
     struct LiquidityLocals {
         // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
@@ -540,11 +540,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // `amountsInScaled18` will be overwritten in the custom case, so we need to pass it back and forth to
         // encapsulate that logic in `_addLiquidity`.
         uint256[] memory amountsInScaled18;
-        (amountsIn, amountsInScaled18, bptAmountOut, returnData) = _addLiquidity(
-            vars,
-            params,
-            maxAmountsInScaled18
-        );
+        (amountsIn, amountsInScaled18, bptAmountOut, returnData) = _addLiquidity(vars, params, maxAmountsInScaled18);
 
         if (vars.poolData.poolConfig.hooks.shouldCallAfterAddLiquidity) {
             if (
