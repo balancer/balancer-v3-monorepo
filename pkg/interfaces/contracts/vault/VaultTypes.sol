@@ -37,7 +37,7 @@ struct PoolConfig {
 }
 
 /**
- * @dev Represents a vault's configuration.
+ * @dev Represents the Vault's configuration.
  * @param isQueryDisabled If set to true, disables query functionality of the Vault. Can be modified only by
  * governance.
  * @param isVaultPaused If set to true, Swaps and Add/Remove Liquidity operations are halted
