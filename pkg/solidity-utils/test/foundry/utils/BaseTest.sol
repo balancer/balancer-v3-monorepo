@@ -83,6 +83,65 @@ abstract contract BaseTest is Test, GasSnapshot {
         idxTokenA = tokenA > tokenB ? 1 : 0;
         idxTokenB = idxTokenA == 0 ? 1 : 0;
     }
+    
+    // TODO: a human should re-write this
+    function getSortedIndexesForThree(
+    address tokenA,
+    address tokenB,
+    address tokenC
+) internal pure returns (uint256 idxTokenA, uint256 idxTokenB, uint256 idxTokenC) {
+    // Initial naive approach with temporary indexes
+    uint256 tmpIdxTokenA = 0;
+    uint256 tmpIdxTokenB = 0;
+    uint256 tmpIdxTokenC = 0;
+
+    // Sort the addresses
+    if (tokenA > tokenB) {
+        if (tokenA > tokenC) {
+            // tokenA is the largest
+            tmpIdxTokenA = 2;
+            if (tokenB > tokenC) {
+                // tokenB is the second, tokenC is the smallest
+                tmpIdxTokenB = 1;
+                tmpIdxTokenC = 0;
+            } else {
+                // tokenC is the second, tokenB is the smallest
+                tmpIdxTokenC = 1;
+                tmpIdxTokenB = 0;
+            }
+        } else {
+            // tokenC is the largest, tokenA is the second, tokenB is the smallest
+            tmpIdxTokenC = 2;
+            tmpIdxTokenA = 1;
+            tmpIdxTokenB = 0;
+        }
+    } else {
+        if (tokenB > tokenC) {
+            // tokenB is the largest
+            tmpIdxTokenB = 2;
+            if (tokenA > tokenC) {
+                // tokenA is the second, tokenC is the smallest
+                tmpIdxTokenA = 1;
+                tmpIdxTokenC = 0;
+            } else {
+                // tokenC is the second, tokenA is the smallest
+                tmpIdxTokenC = 1;
+                tmpIdxTokenA = 0;
+            }
+        } else {
+            // tokenC is the largest, tokenB is the second, tokenA is the smallest
+            tmpIdxTokenC = 2;
+            tmpIdxTokenB = 1;
+            tmpIdxTokenA = 0;
+        }
+    }
+    
+    // Assign sorted indexes based on temporary indexes
+    idxTokenA = tmpIdxTokenA;
+    idxTokenB = tmpIdxTokenB;
+    idxTokenC = tmpIdxTokenC;
+}
+
 
     /// @dev Creates an ERC20 test token, labels its address.
     function createERC20(string memory name, uint8 decimals) internal returns (ERC20TestToken token) {
