@@ -460,7 +460,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _onlyTrustedRouter(msg.sender);
         _;
     }
-
+    
+    /// @dev Introduce to avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
     struct LiquidityLocals {
         // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
         PoolData poolData;
