@@ -272,4 +272,6 @@ interface IVaultErrors {
 
     /// @dev The vault admin was configured with an incorrect Vault address.
     error WrongVaultAdminDeployment();
+
+    error QuoteResultSpoofed();
 }

@@ -19,6 +19,7 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { RawCallHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RawCallHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
@@ -590,6 +591,27 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function quote(bytes calldata data) external payable query onlyVault returns (bytes memory result) {
         // Forward the incoming call to the original sender of this transaction.
         return (msg.sender).functionCallWithValue(data, msg.value);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function quoteAndRevert(bytes calldata data) external payable query onlyVault {
+        // Forward the incoming call to the original sender of this transaction.
+        (bool success, bytes memory result) = (msg.sender).call{ value: msg.value }(data);
+        if (success) {
+            // This will only revert if result is empty and sender account has no code.
+            Address.verifyCallResultFromTarget(msg.sender, success, result);
+            // Send result in revert reason.
+            revert RawCallHelpers.Result(result);
+        } else {
+            // If the call reverted with a spoofed `QuoteResult`, we catch it and bubble up a different reason.
+            bytes4 errorSelector = RawCallHelpers.parseSelector(result);
+            if (errorSelector == RawCallHelpers.Result.selector) {
+                revert QuoteResultSpoofed();
+            }
+
+            // Otherwise we bubble up the original revert reason.
+            RawCallHelpers.bubbleUpRevert(result);
+        }
     }
 
     /// @inheritdoc IVaultExtension
