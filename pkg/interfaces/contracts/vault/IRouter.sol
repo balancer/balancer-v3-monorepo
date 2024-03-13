@@ -251,31 +251,6 @@ interface IRouter {
                                        Swaps
     ***************************************************************************/
 
-    struct SwapPathStep {
-        address pool;
-        IERC20 tokenOut;
-    }
-
-    struct SwapPathExactAmountIn {
-        IERC20 tokenIn;
-        // for each step:
-        // if tokenIn == pool use removeLiquidity SINGLE_TOKEN_EXACT_IN
-        // if tokenOut == pool use addLiquidity UNBALANCED
-        SwapPathStep[] steps;
-        uint256 exactAmountIn;
-        uint256 minAmountOut;
-    }
-
-    struct SwapPathExactAmountOut {
-        IERC20 tokenIn;
-        // for each step:
-        // if tokenIn == pool use removeLiquidity SINGLE_TOKEN_EXACT_OUT
-        // if tokenOut == pool use addLiquidity SINGLE_TOKEN_EXACT_OUT
-        SwapPathStep[] steps;
-        uint256 maxAmountIn;
-        uint256 exactAmountOut;
-    }
-
     /**
      * @dev Data for the swap hook.
      * @param sender Account initiating the swap operation
@@ -286,7 +261,7 @@ interface IRouter {
      * @param amountGiven Amount given based on kind of the swap (e.g., tokenIn for exact in)
      * @param limit Maximum or minimum amount based on the kind of swap (e.g., maxAmountIn for exact out)
      * @param deadline Deadline for the swap
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH.
      * @param userData Additional (optional) data required for the swap
      */
     struct SwapSingleTokenHookParams {
@@ -302,25 +277,6 @@ interface IRouter {
         bytes userData;
     }
 
-    struct SwapExactInHookParams {
-        address sender;
-        SwapPathExactAmountIn[] paths;
-        uint256 deadline;
-        bool wethIsEth;
-        bytes userData;
-    }
-
-    struct SwapExactOutHookParams {
-        address sender;
-        SwapPathExactAmountOut[] paths;
-        uint256 deadline;
-        bool wethIsEth;
-        bytes userData;
-    }
-
-    /// @dev The swap transaction was not mined before the specified deadline timestamp.
-    error SwapDeadline();
-
     /**
      * @notice Executes a swap operation specifying an exact input token amount.
      * @param pool Address of the liquidity pool
@@ -330,7 +286,7 @@ interface IRouter {
      * @param minAmountOut Minimum amount of tokens to be received
      * @param deadline Deadline for the swap
      * @param userData Additional (optional) data required for the swap
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH.
      * @return amountOut Calculated amount of output tokens to be received in exchange for the given input tokens
      */
     function swapSingleTokenExactIn(
@@ -353,7 +309,7 @@ interface IRouter {
      * @param maxAmountIn Maximum amount of tokens to be sent
      * @param deadline Deadline for the swap
      * @param userData Additional (optional) data required for the swap
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH.
      * @return amountIn Calculated amount of input tokens to be sent in exchange for the requested output tokens
      */
     function swapSingleTokenExactOut(

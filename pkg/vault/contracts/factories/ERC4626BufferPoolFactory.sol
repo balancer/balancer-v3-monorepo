@@ -166,8 +166,8 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
 
         return
             _isRateReversible(wrappedToken) &&
-            _isConvertLinear(wrappedToken, wrappedToken.convertToAssets, wrappedToken.decimals()) &&
-            _isConvertLinear(wrappedToken, wrappedToken.convertToShares, assetsDecimals);
+            _isConvertLinear(wrappedToken.convertToAssets, wrappedToken.decimals()) &&
+            _isConvertLinear(wrappedToken.convertToShares, assetsDecimals);
     }
 
     /**
@@ -219,7 +219,6 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
      * functions is needed, the function below must be split.
      */
     function _isConvertLinear(
-        IERC4626 wrappedToken,
         function(uint256) external view returns (uint256) convertFunction,
         uint8 decimals
     ) internal view returns (bool) {
