@@ -39,12 +39,12 @@ library VaultStateLib {
         return VaultStateBits.unwrap(config).decodeBool(VAULT_PAUSED_OFFSET);
     }
 
-    function getProtocolSwapFeePercentage(VaultStateBits config) internal pure returns (uint256) {
-        return VaultStateBits.unwrap(config).decodeUint(PROTOCOL_SWAP_FEE_OFFSET, _FEE_BITLENGTH) * FEE_SCALING_FACTOR;
+    function getProtocolSwapFeePercentage(VaultStateBits config) internal pure returns (uint64) {
+        return VaultStateBits.unwrap(config).decodeUint(PROTOCOL_SWAP_FEE_OFFSET, _FEE_BITLENGTH).toUint64() * FEE_SCALING_FACTOR;
     }
 
-    function getProtocolYieldFeePercentage(VaultStateBits config) internal pure returns (uint256) {
-        return VaultStateBits.unwrap(config).decodeUint(PROTOCOL_YIELD_FEE_OFFSET, _FEE_BITLENGTH) * FEE_SCALING_FACTOR;
+    function getProtocolYieldFeePercentage(VaultStateBits config) internal pure returns (uint64) {
+        return VaultStateBits.unwrap(config).decodeUint(PROTOCOL_YIELD_FEE_OFFSET, _FEE_BITLENGTH).toUint64() * FEE_SCALING_FACTOR;
     }
 
     function fromVaultState(VaultState memory config) internal pure returns (VaultStateBits) {

@@ -69,7 +69,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     // Default swap fee percentage.
     uint256 internal swapFeePercentage = 0.01e18; // 1%
     // Default protocol swap fee percentage.
-    uint256 internal protocolSwapFeePercentage = 0.50e18; // 50%
+    uint64 internal protocolSwapFeePercentage = 0.50e18; // 50%
 
     function setUp() public virtual override {
         BaseTest.setUp();
@@ -129,7 +129,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
         vault.setStaticSwapFeePercentage(address(pool), percentage);
     }
 
-    function setProtocolSwapFeePercentage(uint256 percentage) internal {
+    function setProtocolSwapFeePercentage(uint64 percentage) internal {
         authorizer.grantRole(vault.getActionId(IVaultAdmin.setProtocolSwapFeePercentage.selector), admin);
         vm.prank(admin);
         vault.setProtocolSwapFeePercentage(percentage);

@@ -48,8 +48,8 @@ struct PoolConfig {
 struct VaultState {
     bool isQueryDisabled;
     bool isVaultPaused;
-    uint256 protocolSwapFeePercentage;
-    uint256 protocolYieldFeePercentage;
+    uint64 protocolSwapFeePercentage;
+    uint64 protocolYieldFeePercentage;
 }
 
 /**
