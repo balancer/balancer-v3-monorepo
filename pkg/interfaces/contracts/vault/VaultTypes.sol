@@ -36,15 +36,19 @@ struct PoolConfig {
     LiquidityManagement liquidityManagement;
 }
 
-/// @dev Represents a vault's configuration
+/**
+ * @dev Represents a vault's configuration.
+ * @param isQueryDisabled If set to true, disables query functionality of the Vault. Can be modified only by
+ * governance.
+ * @param isVaultPaused If set to true, Swaps and Add/Remove Liquidity operations are halted
+ * @param protocolSwapFeePercentage Charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
+ * We allow 0% swap fee.
+ * @param protocolYieldFeePercentage Charged on all pool operations.
+ */
 struct VaultState {
-    /// @notice If set to true, disables query functionality of the Vault. Can be modified only by governance.
     bool isQueryDisabled;
     bool isVaultPaused;
-    // We allow 0% swap fee.
-    // The protocol swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
     uint256 protocolSwapFeePercentage;
-    // Protocol yield fee - charged on all pool operations.
     uint256 protocolYieldFeePercentage;
 }
 
