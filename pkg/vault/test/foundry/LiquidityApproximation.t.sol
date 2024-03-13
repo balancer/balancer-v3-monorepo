@@ -27,6 +27,7 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
  * unproportional liquidity operation (addLiquidityUnbalanced) combined with
  * add/remove liquidity proportionally, and swapExactIn. Consider the following scenario:
  *
+ * Each pool begins with balances of [100, 100].
  * Alice begins with balances of [100, 0].
  * She executes addLiquidityUnbalanced([100, 0]) and subsequently removeLiquidityProportionally,
  * resulting in balances of [66, 33].
@@ -60,11 +61,11 @@ contract LiquidityApproximationTest is BaseVaultTest {
     address internal swapPool;
     address internal liquidityPool;
     // Allows small roundingDelta to account for rounding
-    uint256 internal roundingDelta = 1e12;
+    uint256 internal roundingDelta = 1e10;
     // The percentage delta of the swap fee, which is sufficiently large to compensate for
     // inaccuracies in liquidity approximations within the specified limits for these tests
-    uint256 internal liquidityPercentageDelta = 25e16; // 25%
-    uint256 internal swapFeePercentageDelta = 20e16; // 20%
+    uint256 internal liquidityPercentageDelta = 0.1e18; // 10%
+    uint256 internal swapFeePercentageDelta = 0.15e18; // 15%
     uint256 internal maxSwapFeePercentage = 0.1e18; // 10%
     uint256 internal maxAmount = 3e8 * 1e18 - 1;
 
@@ -593,4 +594,6 @@ contract LiquidityApproximationWithDynamicFeesTest is LiquidityApproximationTest
 
         return address(liquidityPool);
     }
+
+    // TODO: implement `setSwapFeePercentage` modifying the return on `computeFee`
 }
