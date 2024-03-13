@@ -9,6 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { TokenConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
+import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -16,6 +17,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 import { ERC4626BufferPoolFactory } from "../../contracts/factories/ERC4626BufferPoolFactory.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
+
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract BufferSwapTest is BaseVaultTest {
@@ -165,24 +167,26 @@ contract BufferSwapTest is BaseVaultTest {
         (tokens, , balancesRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
         assertEq(address(tokens[wrappedIdx]), address(waDAI), "Wrong DAI buffer pool wrapped token");
         assertEq(address(tokens[baseIdx]), address(dai), "Wrong DAI buffer pool base token");
-        assertEq(balancesRaw[0], defaultAmount, "Wrong buffer pool balance");
-        assertEq(balancesRaw[1], defaultAmount, "Wrong buffer pool balance");
+        assertEq(balancesRaw[0], defaultAmount, "Wrong waDAI buffer pool balance [0]");
+        assertEq(balancesRaw[1], defaultAmount, "Wrong waDAI buffer pool balance [1]");
 
         (wrappedIdx, baseIdx) = getSortedIndexes(address(waUSDC), address(usdc));
         (tokens, , balancesRaw, , ) = vault.getPoolTokenInfo(waUSDCBufferPool);
         assertEq(address(tokens[wrappedIdx]), address(waUSDC), "Wrong USDC buffer pool wrapped token");
         assertEq(address(tokens[baseIdx]), address(usdc), "Wrong USDC buffer pool base token");
-        assertEq(balancesRaw[0], defaultAmount, "Wrong buffer pool balance");
-        assertEq(balancesRaw[1], defaultAmount, "Wrong buffer pool balance");
+        assertEq(balancesRaw[0], defaultAmount, "Wrong waUSDC buffer pool balance [0]");
+        assertEq(balancesRaw[1], defaultAmount, "Wrong waUSDC buffer pool balance [1]");
     }
 
-    function testBoostedPoolSwap() public {
+    function testBoostedPoolSwapExactIn() public {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
 
         // "Transparent" USDC for DAI swap with boosted pool, which holds only wrapped tokens.
+        // Since this is exact in, swaps will be executed in the order given.
         // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waUSDC in the boosted pool,
-        // and finally post-swap the waUSDC through the USDC buffer to get regular USDC.
+        // and finally post-swap the waUSDC through the USDC buffer to calculate the USDC amount out.
+        // The only token transfers are DAI in (given) and USDC out (calculated).
         steps[0] = IBatchRouter.SwapPathStep({ pool: waDAIBufferPool, tokenOut: waDAI });
         steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC });
         steps[2] = IBatchRouter.SwapPathStep({ pool: waUSDCBufferPool, tokenOut: usdc });
@@ -198,15 +202,51 @@ contract BufferSwapTest is BaseVaultTest {
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        assertEq(pathAmountsOut.length, 1, "Incorrect output array length");
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, SwapKind.EXACT_IN);
+    }
 
-        assertEq(pathAmountsOut.length, tokensOut.length, "Output array length mismatch");
-        assertEq(tokensOut.length, amountsOut.length, "Output array length mismatch");
+    function testBoostedPoolSwapExactOut() public {
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
+
+        // "Transparent" USDC for DAI swap with boosted pool, which holds only wrapped tokens.
+        // Since this is exact out, swaps will be executed in reverse order (though we submit in logical order).
+        // Pre-swap through the USDC buffer to get waUSDC, then main swap waUSDC for waDAI in the boosted pool,
+        // and finally post-swap the waDAI for DAI through the DAI buffer to calculate the DAI amount in.
+        // The only token transfers are DAI in (calculated) and USDC out (given).
+        steps[0] = IBatchRouter.SwapPathStep({ pool: waDAIBufferPool, tokenOut: waDAI });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC });
+        steps[2] = IBatchRouter.SwapPathStep({ pool: waUSDCBufferPool, tokenOut: usdc });
+
+        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+            tokenIn: dai,
+            steps: steps,
+            maxAmountIn: swapAmount,
+            exactAmountOut: swapAmount
+        });
+
+        vm.prank(alice);
+        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
+            .swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, SwapKind.EXACT_OUT);
+    }
+
+    function _verifySwapResult(
+        uint256[] memory paths,
+        address[] memory tokens,
+        uint256[] memory amounts,
+        SwapKind kind
+    ) private {
+        assertEq(paths.length, 1, "Incorrect output array length");
+
+        assertEq(paths.length, tokens.length, "Output array length mismatch");
+        assertEq(tokens.length, amounts.length, "Output array length mismatch");
 
         // Check results
-        assertEq(pathAmountsOut[0], swapAmount);
-        assertEq(amountsOut[0], swapAmount);
-        assertEq(tokensOut[0], address(usdc));
+        assertEq(paths[0], swapAmount);
+        assertEq(amounts[0], swapAmount);
+        assertEq(tokens[0], kind == SwapKind.EXACT_IN ? address(usdc) : address(dai));
 
         // Tokens were transferred
         assertEq(dai.balanceOf(alice), defaultBalance - swapAmount);
