@@ -56,9 +56,6 @@ contract VaultStorage {
     // Pool -> (token -> TokenConfig): The token configuration of each Pool's tokens.
     mapping(address => mapping(IERC20 => TokenConfig)) internal _poolTokenConfig;
 
-    // Pool -> (token -> address): Pool's Rate providers.
-    mapping(address => mapping(IERC20 => IRateProvider)) internal _poolRateProviders;
-
     /// @notice List of lockers. It is empty except during `lock` calls.
     address[] internal _lockers;
 
@@ -109,10 +106,4 @@ contract VaultStorage {
     uint256 internal immutable _vaultBufferPeriodDuration;
 
     bool internal _vaultPaused;
-
-    // ERC4626 wrapped token -> associated Buffer Pool
-    mapping(IERC4626 => address) internal _wrappedTokenBuffers;
-
-    // The set of factories allowed to create buffer pools.
-    EnumerableSet.AddressSet internal _bufferPoolFactories;
 }

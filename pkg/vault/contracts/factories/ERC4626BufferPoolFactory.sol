@@ -5,6 +5,7 @@ pragma solidity ^0.8.4;
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
+import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -21,6 +22,8 @@ import { BasePoolFactory } from "./BasePoolFactory.sol";
 contract ERC4626BufferPoolFactory is BasePoolFactory {
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
+
+    uint256 private constant _BILLION = 1e9;
 
     /// @dev The wrapped token does not conform to the Vault's requirement for ERC4626-compatibility.
     error IncompatibleWrappedToken(address token);
@@ -55,10 +58,53 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
             salt
         );
 
-        // This must be done first, since `registerBuffer` checks that the pool comes from this factory.
         _registerPoolWithFactory(pool);
 
-        getVault().registerBuffer(wrappedToken, pool, pauseManager, getNewPoolPauseWindowEndTime());
+        _registerPoolWithVault(
+            pool,
+            wrappedToken,
+            getNewPoolPauseWindowEndTime(),
+            pauseManager,
+            _getDefaultPoolHooks(),
+            _getDefaultLiquidityManagement()
+        );
+    }
+
+    function _registerPoolWithVault(
+        address pool,
+        IERC4626 wrappedToken,
+        uint256 pauseWindowEndTime,
+        address pauseManager,
+        PoolHooks memory poolHooks,
+        LiquidityManagement memory liquidityManagement
+    ) internal {
+        uint256 wrappedTokenIndex = IBufferPool(pool).getWrappedTokenIndex();
+        uint256 baseTokenIndex = IBufferPool(pool).getBaseTokenIndex();
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[wrappedTokenIndex].token = IERC20(wrappedToken);
+        tokenConfig[wrappedTokenIndex].tokenType = TokenType.ERC4626;
+        // We are assuming the baseToken is STANDARD (the default type, with enum value 0).
+        tokenConfig[baseTokenIndex].token = IERC20(wrappedToken.asset());
+
+        getVault().registerPool(pool, tokenConfig, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
+    }
+
+    function _getDefaultPoolHooks() internal pure returns (PoolHooks memory) {
+        return
+            PoolHooks({
+                shouldCallBeforeInitialize: true, // ensure proportional
+                shouldCallAfterInitialize: false,
+                shouldCallBeforeAddLiquidity: true, // ensure custom
+                shouldCallAfterAddLiquidity: false,
+                shouldCallBeforeRemoveLiquidity: true, // ensure proportional
+                shouldCallAfterRemoveLiquidity: false,
+                shouldCallBeforeSwap: true, // rebalancing
+                shouldCallAfterSwap: false
+            });
+    }
+
+    function _getDefaultLiquidityManagement() internal pure returns (LiquidityManagement memory) {
+        return LiquidityManagement({ supportsAddLiquidityCustom: true, supportsRemoveLiquidityCustom: false });
     }
 
     /**
@@ -101,9 +147,6 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
 
     /**
      * @dev We want to check that the shares/assets rates are consistent.
-     * The easiest way to do this is preview withdrawals and redemptions with a unit asset.
-     * These values should be reciprocals of each other, so multiplying them together should
-     * equal ONE.
      *
      * There is a deep assumption here that although the ERC4626 standard does not define `getRate` directly,
      * we can derive a rate in this fashion that behaves like all other rate providers. Specifically, we mean
@@ -111,6 +154,20 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
      * of input values. For instance, convertToAssets(60) + converToAssets(40) = convertToAssets(100).
      */
     function _supportsRateComputation(IERC4626 wrappedToken) internal view returns (bool) {
+        uint8 assetsDecimals = IERC20Metadata(wrappedToken.asset()).decimals();
+
+        return
+            _isRateReversible(wrappedToken) &&
+            _isConvertLinear(wrappedToken.convertToAssets, wrappedToken.decimals()) &&
+            _isConvertLinear(wrappedToken.convertToShares, assetsDecimals);
+    }
+
+    /**
+     * @dev Previews withdrawals and redemptions with a unit asset.
+     * These values should be reciprocals of each other, so multiplying them together should
+     * equal ONE.
+     */
+    function _isRateReversible(IERC4626 wrappedToken) internal view returns (bool) {
         address asset = wrappedToken.asset();
 
         // We need to pass in the unit asset in native decimals.
@@ -139,6 +196,39 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
                 uint256 diff = rateTest >= FixedPoint.ONE ? rateTest - FixedPoint.ONE : FixedPoint.ONE - rateTest;
 
                 return diff <= tolerance;
+            } catch {
+                return false;
+            }
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * @dev Previews convertToAssets/convertToShares (convertFunction) with a unit token or a billion tokens.
+     * The resulting conversion should be precisely proportional to the amount of tokens (price curve is linear)
+     * Note: this function tests both convertToAssets and convertToShares. If a special treatment for one of these
+     * functions is needed, the function below must be split.
+     */
+    function _isConvertLinear(
+        function(uint256) external view returns (uint256) convertFunction,
+        uint8 decimals
+    ) internal view returns (bool) {
+        // We need to pass in the unit asset in native decimals.
+        uint256 oneToken = 10 ** decimals;
+        uint256 billionTokens = _BILLION * oneToken;
+
+        try convertFunction(oneToken) returns (uint256 rateOfOneToken) {
+            try convertFunction(billionTokens) returns (uint256 assetsOfBillionTokens) {
+                uint256 rateOfBillionTokens = assetsOfBillionTokens / _BILLION;
+
+                if (rateOfBillionTokens > rateOfOneToken) {
+                    // Less than 10 to ignore last digit, due to rounding errors in the division of convertFunction;
+                    return rateOfBillionTokens - rateOfOneToken < 10;
+                }
+
+                // Less than 10 to ignore last digit, due to rounding errors in the division of convertFunction;
+                return rateOfOneToken - rateOfBillionTokens < 10;
             } catch {
                 return false;
             }

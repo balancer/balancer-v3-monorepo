@@ -41,9 +41,6 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     using ArrayHelpers for *;
     using FixedPoint for uint256;
 
-    uint8 immutable WRAPPED_TOKEN_INDEX = 0;
-    uint8 immutable BASE_TOKEN_INDEX = 1;
-
     ERC4626BufferPoolFactoryMock factory;
     ERC4626BufferPoolMock internal bufferPoolUsdc;
     ERC4626BufferPoolMock internal bufferPoolDai;
@@ -90,9 +87,6 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
 
     function createPool() internal override returns (address) {
         factory = new ERC4626BufferPoolFactoryMock(IVault(address(vault)), 365 days);
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.registerBufferPoolFactory.selector), alice);
-        vm.prank(alice);
-        vault.registerBufferPoolFactory(address(factory));
 
         bufferPoolDai = ERC4626BufferPoolMock(_createBuffer(waDAI));
         bufferPoolUsdc = ERC4626BufferPoolMock(_createBuffer(waUSDC));
@@ -112,10 +106,21 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         // Creating aDAI Buffer
         bufferDaiWrapped = waDAI.convertToShares(BUFFER_DAI_BASE);
         waDAI.deposit(BUFFER_DAI_BASE, address(lp));
-        uint256[] memory amountsInMoreBase = [uint256(bufferDaiWrapped), uint256(BUFFER_DAI_BASE)].toMemoryArray();
+
+        uint256 wrappedTokenIdx = bufferPoolDai.getWrappedTokenIndex();
+        uint256 baseTokenIdx = bufferPoolDai.getBaseTokenIndex();
+
+        uint256[] memory amountsInMoreBase = new uint256[](2);
+        amountsInMoreBase[wrappedTokenIdx] = bufferDaiWrapped;
+        amountsInMoreBase[baseTokenIdx] = BUFFER_DAI_BASE;
+
+        IERC20[] memory tokens = new IERC20[](2);
+        tokens[wrappedTokenIdx] = IERC20(aDAI_ADDRESS);
+        tokens[baseTokenIdx] = IERC20(DAI_ADDRESS);
+
         bptAmountOutBase = router.initialize(
             address(bufferPoolDai),
-            [aDAI_ADDRESS, DAI_ADDRESS].toMemoryArray().asIERC20(),
+            tokens,
             amountsInMoreBase,
             // Account for the precision loss
             BUFFER_DAI_BASE - DELTA - 1e6,
@@ -126,10 +131,17 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         // Creating aUSDC Buffer
         bufferUsdcWrapped = waUSDC.convertToShares(BUFFER_USDC_BASE);
         waUSDC.deposit(BUFFER_USDC_BASE, address(lp));
-        uint256[] memory amountsInMoreWrapped = [uint256(bufferUsdcWrapped), uint256(BUFFER_USDC_BASE)].toMemoryArray();
+
+        uint256[] memory amountsInMoreWrapped = new uint256[](2);
+        amountsInMoreWrapped[wrappedTokenIdx] = bufferUsdcWrapped;
+        amountsInMoreWrapped[baseTokenIdx] = BUFFER_USDC_BASE;
+
+        tokens[wrappedTokenIdx] = IERC20(aUSDC_ADDRESS);
+        tokens[baseTokenIdx] = IERC20(USDC_ADDRESS);
+
         bptAmountOutWrapped = router.initialize(
             address(bufferPoolUsdc),
-            [aUSDC_ADDRESS, USDC_ADDRESS].toMemoryArray().asIERC20(),
+            tokens,
             amountsInMoreWrapped,
             // Account for the precision loss
             BUFFER_USDC_BASE - 1e6,
@@ -160,26 +172,32 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
 
         // Tokens are deposited to the pool with more base
         (, , uint256[] memory moreBaseBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolDai));
+        uint256 wrappedTokenIdx = bufferPoolDai.getWrappedTokenIndex();
+        uint256 baseTokenIdx = bufferPoolDai.getBaseTokenIndex();
+
         assertEq(
-            moreBaseBalances[WRAPPED_TOKEN_INDEX],
+            moreBaseBalances[wrappedTokenIdx],
             bufferDaiWrapped,
             "aDai BufferPool balance should have the deposited amount of aDAI"
         );
         assertEq(
-            moreBaseBalances[BASE_TOKEN_INDEX],
+            moreBaseBalances[baseTokenIdx],
             BUFFER_DAI_BASE,
             "aDai BufferPool balance should have the deposited amount of DAI"
         );
 
         // Tokens are deposited to the pool with more wrapped
         (, , uint256[] memory moreWrappedBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolUsdc));
+        wrappedTokenIdx = bufferPoolUsdc.getWrappedTokenIndex();
+        baseTokenIdx = bufferPoolUsdc.getBaseTokenIndex();
+
         assertEq(
-            moreWrappedBalances[WRAPPED_TOKEN_INDEX],
+            moreWrappedBalances[wrappedTokenIdx],
             bufferUsdcWrapped,
             "aUSDC BufferPool balance should have the deposited amount of aUSDC"
         );
         assertEq(
-            moreWrappedBalances[BASE_TOKEN_INDEX],
+            moreWrappedBalances[baseTokenIdx],
             BUFFER_USDC_BASE,
             "aUSDC BufferPool balance should have the deposited amount of USDC"
         );
@@ -371,13 +389,13 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             vm.stopPrank();
 
             vm.startPrank(userAddress);
-            daiMainnet.approve(address(vault), type(uint256).max);
-            waDAI.approve(address(vault), type(uint256).max);
-            daiMainnet.approve(address(waDAI), type(uint256).max);
+            daiMainnet.approve(address(vault), MAX_UINT256);
+            waDAI.approve(address(vault), MAX_UINT256);
+            daiMainnet.approve(address(waDAI), MAX_UINT256);
 
-            usdcMainnet.approve(address(vault), type(uint256).max);
-            waUSDC.approve(address(vault), type(uint256).max);
-            usdcMainnet.approve(address(waUSDC), type(uint256).max);
+            usdcMainnet.approve(address(vault), MAX_UINT256);
+            waUSDC.approve(address(vault), MAX_UINT256);
+            usdcMainnet.approve(address(waUSDC), MAX_UINT256);
             vm.stopPrank();
         }
     }
@@ -433,13 +451,16 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         IERC20 baseToken = IERC20(wToken.asset());
         uint8 decimals = wToken.decimals();
 
+        uint256 wrappedTokenIdx = IBufferPool(bufferPool).getWrappedTokenIndex();
+        uint256 baseTokenIdx = IBufferPool(bufferPool).getBaseTokenIndex();
+
         string memory baseTokenName = IERC20Metadata(address(baseToken)).name();
         string memory wrappedTokenName = IERC20Metadata(address(wToken)).name();
 
         // Check if the pool is unbalanced before
         (, , uint256[] memory originalBalances, , ) = vault.getPoolTokenInfo(bufferPool);
         assertApproxEqAbs(
-            originalBalances[WRAPPED_TOKEN_INDEX],
+            originalBalances[wrappedTokenIdx],
             expectedWrappedBalance,
             10 ** (decimals / 2),
             string(
@@ -450,7 +471,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             )
         );
         assertApproxEqAbs(
-            originalBalances[BASE_TOKEN_INDEX],
+            originalBalances[baseTokenIdx],
             expectedBaseBalance,
             10 ** (decimals / 2),
             string(

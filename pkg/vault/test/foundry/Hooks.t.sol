@@ -21,6 +21,9 @@ contract HooksTest is BaseVaultTest {
     using ArrayHelpers for *;
     using FixedPoint for uint256;
 
+    uint256 internal daiIdx;
+    uint256 internal usdcIdx;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
@@ -28,6 +31,8 @@ contract HooksTest is BaseVaultTest {
         config.hooks.shouldCallBeforeSwap = true;
         config.hooks.shouldCallAfterSwap = true;
         vault.setConfig(address(pool), config);
+
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
     function testOnBeforeSwapHook() public {
@@ -40,14 +45,14 @@ contract HooksTest is BaseVaultTest {
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
-                    indexIn: 1,
-                    indexOut: 0,
+                    indexIn: usdcIdx,
+                    indexOut: daiIdx,
                     sender: address(router),
                     userData: bytes("")
                 })
             )
         );
-        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, type(uint256).max, false, bytes(""));
+        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
     }
 
     function testOnBeforeSwapHookRevert() public {
@@ -61,7 +66,7 @@ contract HooksTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -95,7 +100,7 @@ contract HooksTest is BaseVaultTest {
             )
         );
 
-        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, type(uint256).max, false, bytes(""));
+        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
     }
 
     function testOnAfterSwapHookRevert() public {
@@ -109,7 +114,7 @@ contract HooksTest is BaseVaultTest {
             dai,
             defaultAmount,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );

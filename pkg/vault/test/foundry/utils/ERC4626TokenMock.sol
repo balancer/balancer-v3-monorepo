@@ -13,9 +13,9 @@ contract ERC4626TokenMock is IERC4626, ERC20 {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
 
-    uint256 private _assets;
-    uint256 private _shares;
-    IERC20 private _baseToken;
+    uint256 internal _assets;
+    uint256 internal _shares;
+    IERC20 internal _baseToken;
 
     constructor(
         string memory tokenName,
@@ -135,11 +135,11 @@ contract ERC4626TokenMock is IERC4626, ERC20 {
         return assetsToReturn;
     }
 
-    function _convertToShares(uint256 assets) private view returns (uint256) {
+    function _convertToShares(uint256 assets) internal view virtual returns (uint256) {
         return (assets * _shares) / _assets;
     }
 
-    function _convertToAssets(uint256 shares) private view returns (uint256 assets) {
+    function _convertToAssets(uint256 shares) internal view virtual returns (uint256 assets) {
         return (shares * _assets) / _shares;
     }
 }

@@ -9,8 +9,9 @@ import {
   TokenMint,
   TokensDeploymentOptions,
 } from './types';
-import { ERC20TestToken, ERC20TestToken__factory } from '@balancer-labs/v3-solidity-utils/typechain-types';
+import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { AddressLike } from 'ethers';
+import { sortTokens } from './sortingHelper';
 
 export const ETH_TOKEN_ADDRESS = ZERO_ADDRESS;
 
@@ -165,10 +166,7 @@ export default class ERC20TokenList {
   }
 
   async sort(): Promise<ERC20TokenList> {
-    const addresses = (await Promise.all(this.tokens.map((token) => token.getAddress()))).sort((addressA, addressB) =>
-      addressA.toLowerCase() > addressB.toLowerCase() ? 1 : -1
-    );
-    return new ERC20TokenList(await Promise.all(addresses.map((address) => ERC20TestToken__factory.connect(address))));
+    return new ERC20TokenList((await sortTokens(this.tokens)) as unknown as ERC20TestToken[]);
   }
 
   async scaledBalances(rawBalance: () => number): Promise<bigint[]> {

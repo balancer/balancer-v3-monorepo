@@ -291,14 +291,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         for (uint256 index = 0; index < tokens.length; index++) {
             IERC20 token = tokens[index];
             uint256 amount = _protocolFees[token];
-            // checks
+
             if (amount > 0) {
-                // effects
                 // set fees to zero for the token
                 _protocolFees[token] = 0;
-                // interactions
+
                 token.safeTransfer(msg.sender, amount);
-                // emit an event
                 emit ProtocolFeeCollected(token, amount);
             }
         }
@@ -360,32 +358,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         ) = _getPoolTokenInfo(pool);
 
         _updateTokenRatesInPoolData(poolData);
-    }
-
-    /*******************************************************************************
--                                   ERC4626 Buffers
-     *******************************************************************************/
-
-    /// @inheritdoc IVaultAdmin
-    function registerBufferPoolFactory(address factory) external authenticate onlyVault {
-        bool added = _bufferPoolFactories.add(factory);
-
-        if (added == false) {
-            revert BufferPoolFactoryAlreadyRegistered();
-        }
-
-        emit BufferPoolFactoryRegistered(factory);
-    }
-
-    /// @inheritdoc IVaultAdmin
-    function deregisterBufferPoolFactory(address factory) external authenticate onlyVault {
-        bool removed = _bufferPoolFactories.remove(factory);
-
-        if (removed == false) {
-            revert BufferPoolFactoryNotRegistered();
-        }
-
-        emit BufferPoolFactoryDeregistered(factory);
     }
 
     /*******************************************************************************

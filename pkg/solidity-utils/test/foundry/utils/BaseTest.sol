@@ -17,6 +17,10 @@ abstract contract BaseTest is Test, GasSnapshot {
     // Reasonable block.timestamp `MAY_1_2023`
     uint32 internal constant START_TIMESTAMP = 1_682_899_200;
 
+    uint256 internal constant MAX_UINT256 = type(uint256).max;
+    // Raw token balances are stored in half a slot, so the max is uint128.
+    uint256 internal constant MAX_UINT128 = type(uint128).max;
+
     // Default admin.
     address payable admin;
     // Default liquidity provider.
@@ -70,6 +74,14 @@ abstract contract BaseTest is Test, GasSnapshot {
         hacker = createUser("hacker");
         broke = payable(makeAddr("broke"));
         vm.label(broke, "broke");
+    }
+
+    function getSortedIndexes(
+        address tokenA,
+        address tokenB
+    ) internal pure returns (uint256 idxTokenA, uint256 idxTokenB) {
+        idxTokenA = tokenA > tokenB ? 1 : 0;
+        idxTokenB = idxTokenA == 0 ? 1 : 0;
     }
 
     /// @dev Creates an ERC20 test token, labels its address.

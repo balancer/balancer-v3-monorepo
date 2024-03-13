@@ -4,20 +4,19 @@ pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
-
-import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 
 /**
  * @notice Liquidity operations that are unproportional allow for indirect swaps. It is
@@ -68,9 +67,13 @@ contract LiquidityApproximationTest is BaseVaultTest {
     uint256 internal maxSwapFeePercentage = 0.1e18; // 10%
     uint256 internal maxAmount = 3e8 * 1e18 - 1;
 
+    uint256 internal daiIdx;
+
     function setUp() public virtual override {
         defaultBalance = 1e10 * 1e18;
         BaseVaultTest.setUp();
+
+        (daiIdx, ) = getSortedIndexes(address(dai), address(usdc));
 
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
     }
@@ -138,7 +141,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
         setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
         setSwapFeePercentage(swapFeePercentage, address(swapPool));
 
-        uint256[] memory amountsIn = [uint256(daiAmountIn), 0].toMemoryArray();
+        uint256[] memory amountsIn = new uint256[](2);
+        amountsIn[daiIdx] = uint256(daiAmountIn);
 
         vm.startPrank(alice);
         router.addLiquidityUnbalanced(address(liquidityPool), amountsIn, 0, false, bytes(""));
@@ -157,9 +161,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
             address(swapPool),
             dai,
             usdc,
-            daiAmountIn - amountsOut[0],
+            daiAmountIn - amountsOut[daiIdx],
             0,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -170,7 +174,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
     function testAddLiquidityUnbalancedNoSwapFee__Fuzz(uint256 daiAmountIn) public {
         daiAmountIn = bound(daiAmountIn, 1e18, maxAmount);
 
-        uint256[] memory amountsIn = [uint256(daiAmountIn), 0].toMemoryArray();
+        uint256[] memory amountsIn = new uint256[](2);
+        amountsIn[daiIdx] = uint256(daiAmountIn);
 
         vm.startPrank(alice);
         router.addLiquidityUnbalanced(address(liquidityPool), amountsIn, 0, false, bytes(""));
@@ -189,9 +194,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
             address(swapPool),
             dai,
             usdc,
-            daiAmountIn - amountsOut[0],
+            daiAmountIn - amountsOut[daiIdx],
             0,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -231,9 +236,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
             address(swapPool),
             dai,
             usdc,
-            daiAmountIn - amountsOut[0],
+            daiAmountIn - amountsOut[daiIdx],
             0,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -268,9 +273,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
             address(swapPool),
             dai,
             usdc,
-            daiAmountIn - amountsOut[0],
+            daiAmountIn - amountsOut[daiIdx],
             0,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -328,7 +333,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             usdc,
             defaultBalance - dai.balanceOf(alice),
             0,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -380,7 +385,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             usdc,
             defaultBalance - dai.balanceOf(alice),
             0,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -430,7 +435,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             usdc,
             defaultBalance - dai.balanceOf(alice),
             0,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -475,7 +480,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             usdc,
             defaultBalance - dai.balanceOf(alice),
             0,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );

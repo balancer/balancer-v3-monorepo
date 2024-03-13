@@ -112,27 +112,4 @@ interface IVaultEvents {
      * @param newAuthorizer The address of the new authorizer
      */
     event AuthorizerChanged(IAuthorizer indexed newAuthorizer);
-
-    /**
-     * @notice A new ERC4626BufferPoolFactory has been registered.
-     * @dev Buffer Pools associated with wrapped tokens can now be created from this factory.
-     * @param bufferPoolFactory The factory being registered
-     */
-    event BufferPoolFactoryRegistered(address indexed bufferPoolFactory);
-
-    /**
-     * @notice A new ERC4626BufferPoolFactory has been deregistered.
-     * @dev This prevents new Buffer Pools from being created with this factory: `registerBuffer` calls
-     * using will fail. Existing Buffer Pools (and associated regular pools) are unaffected.
-     *
-     * @param bufferPoolFactory The factory being registered
-     */
-    event BufferPoolFactoryDeregistered(address indexed bufferPoolFactory);
-
-    /**
-     * @notice A new ERC4626BufferPool has been created.
-     * @param wrappedToken The wrapped token associated with the buffer
-     * @param baseToken The base token associated with the wrapper
-     */
-    event WrappedTokenBufferCreated(address indexed wrappedToken, address indexed baseToken);
 }
