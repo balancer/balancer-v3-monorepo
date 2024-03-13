@@ -18,6 +18,9 @@ import { RouterCommon } from "./RouterCommon.sol";
 contract Router is IRouter, RouterCommon, ReentrancyGuard {
     using Address for address payable;
 
+    /// @dev The swap transaction was not validated before the specified deadline timestamp.
+    error SwapDeadline();
+
     constructor(IVault vault, IWETH weth) RouterCommon(vault, weth) {
         // solhint-disable-previous-line no-empty-blocks
     }
