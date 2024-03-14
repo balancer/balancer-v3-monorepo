@@ -9,7 +9,7 @@ import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/sign
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { FP_ONE, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
-import { setupEnvironment } from './poolSetup';
+import { buildTokenConfig, setupEnvironment } from './poolSetup';
 import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
@@ -18,7 +18,9 @@ import { RateProviderMock, VaultExtensionMock } from '../typechain-types';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
+import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
+import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -42,6 +44,7 @@ describe('Vault', function () {
   let poolBTokens: string[];
   let invalidTokens: string[];
   let duplicateTokens: string[];
+  let unsortedTokens: string[];
 
   before('setup signers', async () => {
     [, alice] = await ethers.getSigners();
@@ -68,10 +71,14 @@ describe('Vault', function () {
     poolBAddress = await poolB.getAddress();
 
     const tokenCAddress = await tokenC.getAddress();
-    poolATokens = [tokenAAddress, tokenBAddress, tokenCAddress];
-    poolBTokens = [tokenAAddress, tokenCAddress];
-    invalidTokens = [tokenAAddress, ZERO_ADDRESS, tokenCAddress];
-    duplicateTokens = [tokenAAddress, tokenBAddress, tokenAAddress];
+    poolATokens = sortAddresses([tokenAAddress, tokenBAddress, tokenCAddress]);
+    poolBTokens = sortAddresses([tokenAAddress, tokenCAddress]);
+    invalidTokens = sortAddresses([tokenAAddress, ZERO_ADDRESS, tokenCAddress]);
+    duplicateTokens = sortAddresses([tokenAAddress, tokenBAddress, tokenAAddress]);
+
+    // Copy and reverse A tokens.
+    unsortedTokens = Array.from(poolATokens);
+    unsortedTokens.reverse();
 
     expect(await poolA.name()).to.equal('Pool A');
     expect(await poolA.symbol()).to.equal('POOLA');
@@ -83,6 +90,13 @@ describe('Vault', function () {
   });
 
   describe('registration', () => {
+    it('cannot register a pool with unsorted tokens', async () => {
+      await expect(vault.manualRegisterPoolPassThruTokens(ANY_ADDRESS, unsortedTokens)).to.be.revertedWithCustomError(
+        vaultExtension,
+        'TokensNotSorted'
+      );
+    });
+
     it('can register a pool', async () => {
       expect(await vault.isPoolRegistered(poolA)).to.be.true;
       expect(await vault.isPoolRegistered(poolB)).to.be.false;
@@ -97,7 +111,7 @@ describe('Vault', function () {
     });
 
     it('pools are initially not in recovery mode', async () => {
-      expect(await vault.isPoolInRecoveryMode(poolBAddress)).to.be.false;
+      expect(await vault.isPoolInRecoveryMode(poolA)).to.be.false;
     });
 
     it('pools are initially unpaused', async () => {
@@ -105,15 +119,9 @@ describe('Vault', function () {
     });
 
     it('registering a pool emits an event', async () => {
-      enum TOKEN_TYPE {
-        STANDARD = 0,
-        WITH_RATE,
-        ERC4626,
-      }
-
       const tokenConfig = Array.from({ length: poolBTokens.length }, (_, i) => [
         poolBTokens[i],
-        TOKEN_TYPE.STANDARD.toString(),
+        TokenType.STANDARD.toString(),
         ZERO_ADDRESS,
         false,
       ]);
@@ -127,7 +135,7 @@ describe('Vault', function () {
         tokenConfig,
         pauseWindowEndTime: pauseWindowEndTime.toString(),
         pauseManager: ANY_ADDRESS,
-        callbacks: [false, false, false, false, false, false, false, false],
+        hooks: [false, false, false, false, false, false, false, false],
         liquidityManagement: [true, true],
       };
 
@@ -154,7 +162,10 @@ describe('Vault', function () {
     it('cannot register a pool with an invalid token (pool address)', async () => {
       const poolBTokensWithItself = Array.from(poolBTokens);
       poolBTokensWithItself.push(poolBAddress);
-      await expect(vault.manualRegisterPool(poolB, poolBTokensWithItself)).to.be.revertedWithCustomError(
+
+      const finalTokens = sortAddresses(poolBTokensWithItself);
+
+      await expect(vault.manualRegisterPool(poolB, finalTokens)).to.be.revertedWithCustomError(
         vaultExtension,
         'InvalidToken'
       );
@@ -186,7 +197,7 @@ describe('Vault', function () {
     });
 
     it('cannot register a pool with too many tokens', async () => {
-      const tokens = await ERC20TokenList.create(5);
+      const tokens = await ERC20TokenList.create(5, { sorted: true });
 
       await expect(vault.manualRegisterPool(poolB, await tokens.addresses)).to.be.revertedWithCustomError(
         vaultExtension,
@@ -212,10 +223,11 @@ describe('Vault', function () {
       const [paused, pauseWindowEndTime, bufferPeriodEndTime] = await timedVault.getVaultPausedState();
 
       expect(paused).to.be.false;
-      // We substract 1 because the timestamp is set when the extension is deployed.
-      // Each contract deployment pushes the timestamp by 1, and the main Vault is deployed right after the extension.
-      expect(pauseWindowEndTime).to.equal(await fromNow(PAUSE_WINDOW_DURATION - 1));
-      expect(bufferPeriodEndTime).to.equal((await fromNow(PAUSE_WINDOW_DURATION - 1)) + bn(BUFFER_PERIOD_DURATION));
+      // We subtract 2 because the timestamp is set when the extension is deployed.
+      // Each contract deployment pushes the timestamp by 1, and the main Vault is deployed right after the extension
+      // and the vault admin.
+      expect(pauseWindowEndTime).to.equal(await fromNow(PAUSE_WINDOW_DURATION - 2));
+      expect(bufferPeriodEndTime).to.equal((await fromNow(PAUSE_WINDOW_DURATION - 2)) + bn(BUFFER_PERIOD_DURATION));
 
       await timedVault.manualPauseVault();
       expect(await timedVault.isVaultPaused()).to.be.true;
@@ -247,7 +259,15 @@ describe('Vault', function () {
         expectedRates = Array(poolATokens.length).fill(FP_ONE);
 
         poolC = await deploy('v3-vault/PoolMock', {
-          args: [vault, 'Pool C', 'POOLC', poolATokens, rateProviders, true, 365 * 24 * 3600, ZERO_ADDRESS],
+          args: [
+            vault,
+            'Pool C',
+            'POOLC',
+            buildTokenConfig(poolATokens, rateProviders),
+            true,
+            365 * 24 * 3600,
+            ZERO_ADDRESS,
+          ],
         });
       });
 
@@ -276,16 +296,7 @@ describe('Vault', function () {
 
       sharedBeforeEach('deploy pool', async () => {
         pool = await deploy('v3-vault/PoolMock', {
-          args: [
-            vault,
-            'Pool X',
-            'POOLX',
-            poolATokens,
-            Array(poolATokens.length).fill(ZERO_ADDRESS),
-            true,
-            365 * 24 * 3600,
-            ZERO_ADDRESS,
-          ],
+          args: [vault, 'Pool X', 'POOLX', buildTokenConfig(poolATokens), true, 365 * 24 * 3600, ZERO_ADDRESS],
         });
         poolAddress = await pool.getAddress();
       });
@@ -539,6 +550,16 @@ describe('Vault', function () {
           .to.emit(vault, 'PoolRecoveryModeStateChanged')
           .withArgs(poolBAddress, true);
       });
+    });
+  });
+
+  describe('reentrancy guard state', () => {
+    it('reentrancy guard should be false when not in Vault context', async () => {
+      expect(await vault.unguardedCheckNotEntered()).to.not.be.reverted;
+    });
+
+    it('reentrancy guard should be true when in Vault context', async () => {
+      expect(await vault.guardedCheckEntered()).to.not.be.reverted;
     });
   });
 });

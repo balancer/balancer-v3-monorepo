@@ -14,15 +14,17 @@ interface IVaultMain {
     *******************************************************************************/
 
     /**
-     * @notice Invokes a callback on msg.sender with arguments provided in `data`.
-     * @dev Callback is `transient`, meaning all balances for the caller have to be settled at the end.
+     * @notice Creates a lock context for a sequence of operations.
+     * @dev Performs a callback on msg.sender with arguments provided in `data`. The Callback is `transient`,
+     * meaning all balances for the caller have to be settled at the end.
+     *
      * @param data Contains function signature and args to be passed to the msg.sender
      * @return result Resulting data from the call
      */
-    function invoke(bytes calldata data) external payable returns (bytes memory result);
+    function lock(bytes calldata data) external payable returns (bytes memory result);
 
     /**
-     * @notice Settles deltas for a token.
+     * @notice Settles deltas for a token; must be successful for the current lock to be released.
      * @param token Token's address
      * @return paid Amount paid during settlement
      */
@@ -34,28 +36,22 @@ interface IVaultMain {
      * @param to Recipient's address
      * @param amount Amount of tokens to send
      */
-    function wire(IERC20 token, address to, uint256 amount) external;
+    function sendTo(IERC20 token, address to, uint256 amount) external;
 
     /**
-     * @notice Retrieves tokens from a sender.
+     * @notice Transfers tokens from a sender to the Vault.
      * @dev This function can transfer tokens from users using allowances granted to the Vault.
-     * Only trusted routers should be permitted to invoke it. Untrusted routers should use `settle` instead.
+     * Only trusted routers are permitted to call it. Untrusted routers should use `settle` instead.
      *
      * @param token Token's address
      * @param from Sender's address
-     * @param amount Amount of tokens to retrieve
+     * @param amount Amount of tokens to pull from the sender into the Vault
      */
-    function retrieve(IERC20 token, address from, uint256 amount) external;
+    function takeFrom(IERC20 token, address from, uint256 amount) external;
 
     /***************************************************************************
                                    Add Liquidity
     ***************************************************************************/
-
-    /// @dev Introduce to avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
-    struct LiquidityLocals {
-        uint256 tokenIndex;
-        uint256[] limitsScaled18;
-    }
 
     /**
      * @notice Adds liquidity to a pool.
@@ -90,22 +86,6 @@ interface IVaultMain {
         RemoveLiquidityParams memory params
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 
-    /**
-     * @notice Remove liquidity from a pool specifying exact pool tokens in, with proportional token amounts out.
-     * The request is implemented by the Vault without any interaction with the pool, ensuring that
-     * it works the same for all pools, and cannot be disabled by a new pool type.
-     *
-     * @param pool Address of the pool
-     * @param from Address of user to burn pool tokens from
-     * @param exactBptAmountIn Input pool token amount
-     * @return amountsOut Actual calculated amounts of output tokens
-     */
-    function removeLiquidityRecovery(
-        address pool,
-        address from,
-        uint256 exactBptAmountIn
-    ) external returns (uint256[] memory amountsOut);
-
     /***************************************************************************
                                        Swaps
     ***************************************************************************/
@@ -139,6 +119,30 @@ interface IVaultMain {
     function swap(
         SwapParams memory params
     ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
+
+    /*******************************************************************************
+                                    Pool Information
+    *******************************************************************************/
+
+    /**
+     * @notice Gets the index of a token in a given pool.
+     * @dev Reverts if the pool is not registered, or if the token does not belong to the pool.
+     * @param pool Address of the pool
+     * @param token Address of the token
+     * @return tokenCount Number of tokens in the pool
+     * @return index Index corresponding to the given token in the pool's token list
+     */
+    function getPoolTokenCountAndIndexOfToken(address pool, IERC20 token) external view returns (uint256, uint256);
+
+    /*******************************************************************************
+                                Authentication
+    *******************************************************************************/
+
+    /**
+     * @notice Returns the Vault's Authorizer.
+     * @return Address of the authorizer
+     */
+    function getAuthorizer() external view returns (IAuthorizer);
 
     /*******************************************************************************
                                      Miscellaneous

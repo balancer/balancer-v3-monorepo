@@ -4,26 +4,16 @@ pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
 
-import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
-import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
-import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
-import { Router } from "@balancer-labs/v3-vault/contracts/Router.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 
 import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
@@ -113,35 +103,35 @@ contract WeightedPoolSwaps is BaseVaultTest {
         }
     }
 
-    function testSwapGivenInWithoutRate() public {
-        _testSwapGivenIn(address(weightedPool));
+    function testSwapExactInWithoutRate() public {
+        _testSwapExactIn(address(weightedPool));
     }
 
-    function testSwapGivenOutWithoutRate() public {
-        _testSwapGivenOut(address(weightedPool));
+    function testSwapExactOutWithoutRate() public {
+        _testSwapExactOut(address(weightedPool));
     }
 
-    function testSwapGivenInWithRate() public {
-        _testSwapGivenIn(address(weightedPoolWithRate));
+    function testSwapExactInWithRate() public {
+        _testSwapExactIn(address(weightedPoolWithRate));
     }
 
-    function testSwapGivenOutWithRate() public {
-        _testSwapGivenOut(address(weightedPoolWithRate));
+    function testSwapExactOutWithRate() public {
+        _testSwapExactOut(address(weightedPoolWithRate));
     }
 
-    function _testSwapGivenIn(address pool) internal {
+    function _testSwapExactIn(address pool) internal {
         uint256 amountIn = maxSwapAmount;
 
         vm.startPrank(bob);
         for (uint256 i = 0; i < swapTimes; ++i) {
-            uint256 amountOut = router.swapExactIn(pool, dai, wsteth, amountIn, 0, type(uint256).max, false, bytes(""));
+            uint256 amountOut = router.swapExactIn(pool, dai, wsteth, amountIn, 0, MAX_UINT256, false, bytes(""));
 
-            router.swapExactIn(pool, wsteth, dai, amountOut, 0, type(uint256).max, false, bytes(""));
+            router.swapExactIn(pool, wsteth, dai, amountOut, 0, MAX_UINT256, false, bytes(""));
         }
         vm.stopPrank();
     }
 
-    function _testSwapGivenOut(address pool) internal {
+    function _testSwapExactOut(address pool) internal {
         uint256 amountOut = maxSwapAmount;
 
         vm.startPrank(bob);
@@ -151,13 +141,13 @@ contract WeightedPoolSwaps is BaseVaultTest {
                 dai,
                 wsteth,
                 amountOut,
-                type(uint256).max,
-                type(uint256).max,
+                MAX_UINT256,
+                MAX_UINT256,
                 false,
                 bytes("")
             );
 
-            router.swapExactOut(pool, wsteth, dai, amountIn, type(uint256).max, type(uint256).max, false, bytes(""));
+            router.swapExactOut(pool, wsteth, dai, amountIn, MAX_UINT256, MAX_UINT256, false, bytes(""));
         }
         vm.stopPrank();
     }

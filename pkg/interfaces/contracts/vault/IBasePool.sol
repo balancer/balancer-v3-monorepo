@@ -47,16 +47,16 @@ interface IBasePool {
 
     /**
      * @dev Data for a swap operation.
-     * @param kind Type of swap (given in or given out)
+     * @param kind Type of swap (exact in or exact out)
      * @param pool Address of the liquidity pool
-     * @param amountGivenScaled18 Amount given based on kind of the swap (e.g., tokenIn for given in)
+     * @param amountGivenScaled18 Amount given based on kind of the swap (e.g., tokenIn for exact in)
      * @param balancesScaled18 Current pool balances
      * @param indexIn Index of tokenIn
      * @param indexOut Index of tokenOut
      * @param sender Originator of the swap transaction
      * @param userData Additional (optional) data required for the swap
      */
-    struct SwapParams {
+    struct PoolSwapParams {
         SwapKind kind;
         uint256 amountGivenScaled18;
         uint256[] balancesScaled18;
@@ -71,5 +71,5 @@ interface IBasePool {
      * @param params Swap parameters (see above for struct definition)
      * @return amountCalculatedScaled18 Calculated amount for the swap
      */
-    function onSwap(SwapParams calldata params) external returns (uint256 amountCalculatedScaled18);
+    function onSwap(PoolSwapParams calldata params) external returns (uint256 amountCalculatedScaled18);
 }

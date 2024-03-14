@@ -5,8 +5,8 @@ pragma solidity ^0.8.4;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IRateProvider } from "./IRateProvider.sol";
 
-/// @dev Represents a pool's callbacks.
-struct PoolCallbacks {
+/// @dev Represents a pool's hooks.
+struct PoolHooks {
     bool shouldCallBeforeInitialize;
     bool shouldCallAfterInitialize;
     bool shouldCallBeforeSwap;
@@ -22,18 +22,34 @@ struct LiquidityManagement {
     bool supportsRemoveLiquidityCustom;
 }
 
-/// @dev Represents a pool's configuration, including callbacks.
+/// @dev Represents a pool's configuration, including hooks.
 struct PoolConfig {
     bool isPoolRegistered;
     bool isPoolInitialized;
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
     bool hasDynamicSwapFee;
-    uint64 staticSwapFeePercentage; // stores an 18-decimal FP value (max FixedPoint.ONE)
+    uint256 staticSwapFeePercentage; // stores an 18-decimal FP value (max FixedPoint.ONE)
     uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
     uint32 pauseWindowEndTime;
-    PoolCallbacks callbacks;
+    PoolHooks hooks;
     LiquidityManagement liquidityManagement;
+}
+
+/**
+ * @dev Represents the Vault's configuration.
+ * @param isQueryDisabled If set to true, disables query functionality of the Vault. Can be modified only by
+ * governance.
+ * @param isVaultPaused If set to true, Swaps and Add/Remove Liquidity operations are halted
+ * @param protocolSwapFeePercentage Charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
+ * We allow 0% swap fee.
+ * @param protocolYieldFeePercentage Charged on all pool operations for yield-bearing tokens.
+ */
+struct VaultState {
+    bool isQueryDisabled;
+    bool isVaultPaused;
+    uint256 protocolSwapFeePercentage;
+    uint256 protocolYieldFeePercentage;
 }
 
 /**
@@ -46,6 +62,8 @@ struct PoolConfig {
  * a subset of IERC4626, and functions as its own rate provider. To the outside world (e.g., callers of
  * `getPoolTokens`), the pool will appear to contain the underlying base token (DAI, for waDAI), though the
  * wrapped token will be registered and stored in the pool's balance in the Vault.
+ *
+ * NB: STANDARD must always be the first enum element, so that newly initialized data structures default to Standard.
  */
 enum TokenType {
     STANDARD,
@@ -55,8 +73,8 @@ enum TokenType {
 
 /**
  * @dev Encapsulate the data required for the Vault to support a token of the given type.
- * For STANDARD or ERC4626 tokens, the rate provider address will be 0.
- * TODO: use exempt flag.
+ * For STANDARD or ERC4626 tokens, the rate provider address will be 0. By definition, ERC4626 tokens cannot be
+ * yield exempt, so the `yieldFeeExempt` flag must be false when registering them.
  *
  * @param token The token address
  * @param tokenType The token type (see the enum for supported types)
@@ -71,10 +89,8 @@ struct TokenConfig {
 }
 
 struct PoolData {
-    PoolConfig config;
-    IERC20[] tokens;
-    TokenType[] tokenTypes;
-    IRateProvider[] rateProviders;
+    PoolConfig poolConfig;
+    TokenConfig[] tokenConfig;
     uint256[] balancesRaw;
     uint256[] balancesLiveScaled18;
     uint256[] tokenRates;
@@ -91,17 +107,18 @@ enum Rounding {
 *******************************************************************************/
 
 enum SwapKind {
-    GIVEN_IN,
-    GIVEN_OUT
+    EXACT_IN,
+    EXACT_OUT
 }
 
 /**
  * @dev Data for a swap operation.
- * @param kind Type of swap (Given In or Given Out)
+ * @param kind Type of swap (Exact In or Exact Out)
  * @param pool The pool with the tokens being swapped
  * @param tokenIn The token entering the Vault (balance increases)
  * @param tokenOut The token leaving the Vault (balance decreases)
  * @param amountGivenRaw Amount specified for tokenIn or tokenOut (depending on the type of swap)
+ * @param limitRaw
  * @param userData Additional (optional) user data
  */
 struct SwapParams {
@@ -110,6 +127,7 @@ struct SwapParams {
     IERC20 tokenIn;
     IERC20 tokenOut;
     uint256 amountGivenRaw;
+    uint256 limitRaw;
     bytes userData;
 }
 

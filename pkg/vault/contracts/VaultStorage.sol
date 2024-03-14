@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.4;
 
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
@@ -10,8 +11,12 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
+import { VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
+
+// solhint-disable max-states-count
 
 /**
  * @dev Storage layout for Vault. This contract has no code.
@@ -29,7 +34,6 @@ contract VaultStorage {
     uint256 internal constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
 
     // Maximum protocol yield fee percentage.
-    // TODO Optimize storage; could pack fees into one slot (potentially a single vaultConfig slot).
     uint256 internal constant _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 20e16; // 20%
 
     // Maximum pool swap fee percentage.
@@ -44,52 +48,40 @@ contract VaultStorage {
     // Store pool pause managers.
     mapping(address => address) internal _poolPauseManagers;
 
-    // Pool -> (token -> balance): Pool's ERC20 tokens balances stored at the Vault.
-    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolTokenBalances;
+    // Pool -> (token -> PackedTokenBalance): structure containing the current raw and "last live" scaled balances.
+    // Last live balances are used for yield fee computation, and since these have rates applied, they are stored
+    // as scaled 18-decimal FP values. Each value takes up half the storage slot (i.e., 128 bits).
+    mapping(address => EnumerableMap.IERC20ToBytes32Map) internal _poolTokenBalances;
 
     // Pool -> (token -> TokenConfig): The token configuration of each Pool's tokens.
     mapping(address => mapping(IERC20 => TokenConfig)) internal _poolTokenConfig;
 
-    // Pool -> (token -> address): Pool's Rate providers.
-    mapping(address => mapping(IERC20 => IRateProvider)) internal _poolRateProviders;
-
-    /// @notice List of handlers. It is non-empty only during `invoke` calls.
-    address[] internal _handlers;
+    /// @notice List of lockers. It is empty except during `lock` calls.
+    address[] internal _lockers;
 
     /**
      * @notice The total number of nonzero deltas over all active + completed lockers.
-     * @dev It is non-zero only during `invoke` calls.
+     * @dev It is non-zero only during `lock` calls.
      */
     uint256 internal _nonzeroDeltaCount;
 
     /**
-     * @notice Represents the token due/owed to each handler.
-     * @dev Must all net to zero when the last handler is released.
+     * @notice Represents the token due/owed to each locker.
+     * @dev Must all net to zero when the last locker is released.
      */
     mapping(address => mapping(IERC20 => int256)) internal _tokenDeltas;
 
     /**
      * @notice Represents the total reserve of each ERC20 token.
-     * @dev It should be always equal to `token.balanceOf(vault)`, except during `invoke`.
+     * @dev It should be always equal to `token.balanceOf(vault)`, except during `lock`.
      */
-    mapping(IERC20 => uint256) internal _tokenReserves;
-
-    // We allow 0% swap fee.
-    // The protocol swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
-    // TODO consider using uint64 and packing with other things (when we have other things).
-    uint256 internal _protocolSwapFeePercentage;
-
-    // Protocol yield fee - charged on all pool operations.
-    uint256 internal _protocolYieldFeePercentage;
+    mapping(IERC20 => uint256) internal _reservesOf;
 
     // Token -> fee: Protocol fees (from both swap and yield) accumulated in the Vault for harvest.
     mapping(IERC20 => uint256) internal _protocolFees;
 
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer internal _authorizer;
-
-    /// @notice If set to true, disables query functionality of the Vault. Can be modified only by governance.
-    bool internal _isQueryDisabled;
 
     uint256 public constant MAX_PAUSE_WINDOW_DURATION = 356 days * 4;
     uint256 public constant MAX_BUFFER_PERIOD_DURATION = 90 days;
@@ -102,5 +94,6 @@ contract VaultStorage {
     // Stored as a convenience, to avoid calculating it on every operation.
     uint256 internal immutable _vaultBufferPeriodDuration;
 
-    bool internal _vaultPaused;
+    // Bytes32 with protocol fees and paused flags
+    VaultStateBits internal _vaultState;
 }

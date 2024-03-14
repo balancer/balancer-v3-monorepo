@@ -14,6 +14,13 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 abstract contract BaseTest is Test, GasSnapshot {
     using ArrayHelpers for *;
 
+    // Reasonable block.timestamp `MAY_1_2023`
+    uint32 internal constant START_TIMESTAMP = 1_682_899_200;
+
+    uint256 internal constant MAX_UINT256 = type(uint256).max;
+    // Raw token balances are stored in half a slot, so the max is uint128.
+    uint256 internal constant MAX_UINT128 = type(uint128).max;
+
     // Default admin.
     address payable admin;
     // Default liquidity provider.
@@ -27,7 +34,6 @@ abstract contract BaseTest is Test, GasSnapshot {
     // Broke user.
     address payable broke;
 
-
     // ERC20 tokens used for tests.
     ERC20TestToken internal dai;
     ERC20TestToken internal usdc;
@@ -38,11 +44,14 @@ abstract contract BaseTest is Test, GasSnapshot {
     IERC20[] internal tokens;
 
     // Default balance for accounts
-    uint256 internal defaultBalance;
+    uint256 internal defaultBalance = 1e6 * 1e18;
 
     function setUp() public virtual {
-        // Set default balance to 1mil
-        defaultBalance = 1e6 * 1e18;
+        // Set timestamp only if testing locally
+        if (block.chainid == 31337) {
+            // Set block.timestamp to something better than 0
+            vm.warp(START_TIMESTAMP);
+        }
 
         // Deploy the base test contracts.
         dai = createERC20("DAI", 18);
@@ -67,6 +76,14 @@ abstract contract BaseTest is Test, GasSnapshot {
         vm.label(broke, "broke");
     }
 
+    function getSortedIndexes(
+        address tokenA,
+        address tokenB
+    ) internal pure returns (uint256 idxTokenA, uint256 idxTokenB) {
+        idxTokenA = tokenA > tokenB ? 1 : 0;
+        idxTokenB = idxTokenA == 0 ? 1 : 0;
+    }
+
     /// @dev Creates an ERC20 test token, labels its address.
     function createERC20(string memory name, uint8 decimals) internal returns (ERC20TestToken token) {
         token = new ERC20TestToken(name, name, decimals);
@@ -84,5 +101,17 @@ abstract contract BaseTest is Test, GasSnapshot {
         }
 
         return user;
+    }
+
+    function getDecimalScalingFactor(uint8 decimals) internal pure returns (uint256 scalingFactor) {
+        require(decimals <= 18, "Decimals must be between 0 and 18");
+        uint256 decimalDiff = 18 - decimals;
+        scalingFactor = 1e18; // FP1
+
+        for (uint256 i = 0; i < decimalDiff; ++i) {
+            scalingFactor *= 10;
+        }
+
+        return scalingFactor;
     }
 }

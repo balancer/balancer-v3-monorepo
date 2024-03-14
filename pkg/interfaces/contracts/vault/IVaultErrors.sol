@@ -71,24 +71,45 @@ interface IVaultErrors {
     error BalanceNotSettled();
 
     /**
-     * @dev In transient accounting, a handler is attempting to execute an operation out of order.
-     * The caller address should equal the handler.
-     * @param handler Address of the current handler being processed
+     * @dev In transient accounting, a locker is attempting to execute an operation out of order.
+     * The caller address should equal the locker.
+     * @param locker Address of the current locker being processed
      * @param caller Address of the caller (msg.sender)
      */
-    error WrongHandler(address handler, address caller);
+    error WrongLocker(address locker, address caller);
 
-    /// @dev A user called a Vault function (swap, add/remove liquidity) outside the invoke context.
-    error NoHandler();
+    /// @dev A user called a Vault function (swap, add/remove liquidity) outside the lock context.
+    error NoLocker();
 
     /**
-     * @dev The caller attempted to access a handler at an invalid index.
+     * @dev The caller attempted to access a Locker at an invalid index.
      * @param index The invalid index
      */
-    error HandlerOutOfBounds(uint256 index);
+    error LockerOutOfBounds(uint256 index);
 
-    /// @dev The pool has returned false to a callback, indicating the transaction should revert.
-    error CallbackFailed();
+    /// @dev The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
+    error BeforeSwapHookFailed();
+
+    /// @dev The pool has returned false to the afterSwap hook, indicating the transaction should revert.
+    error AfterSwapHookFailed();
+
+    /// @dev The pool has returned false to the beforeInitialize hook, indicating the transaction should revert.
+    error BeforeInitializeHookFailed();
+
+    /// @dev The pool has returned false to the afterInitialize hook, indicating the transaction should revert.
+    error AfterInitializeHookFailed();
+
+    /// @dev The pool has returned false to the beforeAddLiquidity hook, indicating the transaction should revert.
+    error BeforeAddLiquidityHookFailed();
+
+    /// @dev The pool has returned false to the afterAddLiquidity hook, indicating the transaction should revert.
+    error AfterAddLiquidityHookFailed();
+
+    /// @dev The pool has returned false to the beforeRemoveLiquidity hook, indicating the transaction should revert.
+    error BeforeRemoveLiquidityHookFailed();
+
+    /// @dev The pool has returned false to the afterRemoveLiquidity hook, indicating the transaction should revert.
+    error AfterRemoveLiquidityHookFailed();
 
     /// @dev An unauthorized Router tried to call a permissioned function (i.e., using the Vault's token allowance).
     error RouterNotTrusted();
@@ -106,6 +127,9 @@ interface IVaultErrors {
     /// @dev The user attempted to swap a token not in the pool.
     error TokenNotRegistered();
 
+    /// @dev An amount in or out has exceeded the limit specified in the swap request.
+    error SwapLimit(uint256 amount, uint256 limit);
+
     /*******************************************************************************
                                     Add Liquidity
     *******************************************************************************/
@@ -119,6 +143,9 @@ interface IVaultErrors {
     /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
     error BptAmountOutBelowMin(uint256 amount, uint256 limit);
 
+    /// @dev Pool does not support adding liquidity with a customized input.
+    error DoesNotSupportAddLiquidityCustom();
+
     /*******************************************************************************
                                     Remove Liquidity
     *******************************************************************************/
@@ -131,6 +158,9 @@ interface IVaultErrors {
 
     /// @dev The required BPT amount in exceeds the maximum limit specified for the operation.
     error BptAmountInAboveMax(uint256 amount, uint256 limit);
+
+    /// @dev Pool does not support removing liquidity with a customized input.
+    error DoesNotSupportRemoveLiquidityCustom();
 
     /*******************************************************************************
                                      Fees
@@ -188,7 +218,7 @@ interface IVaultErrors {
     /// @dev The caller specified a buffer period longer than the maximum.
     error PauseBufferPeriodDurationTooLarge();
 
-    /// @dev A user tried to invoke an operation while the Vault was paused.
+    /// @dev A user tried to perform an operation while the Vault was paused.
     error VaultPaused();
 
     /// @dev Governance tried to unpause the Vault when it was not paused.
@@ -198,7 +228,7 @@ interface IVaultErrors {
     error VaultPauseWindowExpired();
 
     /**
-     * @dev A user tried to invoke an operation involving a paused Pool.
+     * @dev A user tried to perform an operation involving a paused Pool.
      * @param pool The paused pool
      */
     error PoolPaused(address pool);
@@ -234,6 +264,12 @@ interface IVaultErrors {
     /// @dev The Vault extension was called by an account directly; it can only be called by the Vault via delegatecall.
     error NotVaultDelegateCall();
 
+    /// @dev Error thrown when a function is not supported.
+    error OperationNotSupported();
+
     /// @dev The vault extension was configured with an incorrect Vault address.
     error WrongVaultExtensionDeployment();
+
+    /// @dev The vault admin was configured with an incorrect Vault address.
+    error WrongVaultAdminDeployment();
 }

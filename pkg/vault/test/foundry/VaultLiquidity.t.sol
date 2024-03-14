@@ -9,21 +9,19 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
-import { PoolMock } from "../../contracts/test/PoolMock.sol";
-
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract VaultLiquidityTest is BaseVaultTest {
     using ArrayHelpers for *;
 
-    struct Balances {
-        uint256[] userTokens;
-        uint256 userBpt;
-        uint256[] poolTokens;
-    }
+    // Track the indices for the standard dai/usdc pool.
+    uint256 internal daiIdx;
+    uint256 internal usdcIdx;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
     /// Add
@@ -48,7 +46,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         bptAmountOut = defaultAmount;
         vm.prank(alice);
         snapStart("vaultAddLiquiditySingleTokenExactOut");
-        amountsIn = router.addLiquiditySingleTokenExactOut(
+        uint256 amountIn = router.addLiquiditySingleTokenExactOut(
             address(pool),
             dai,
             defaultAmount,
@@ -57,6 +55,8 @@ contract VaultLiquidityTest is BaseVaultTest {
             bytes("")
         );
         snapEnd();
+
+        (amountsIn, ) = router.getSingleInputArrayAndTokenIndex(pool, dai, amountIn);
 
         // should mint correct amount of BPT tokens
         assertEq(bptAmountOut, defaultAmount, "Invalid amount of BPT");
@@ -114,17 +114,15 @@ contract VaultLiquidityTest is BaseVaultTest {
     function testAddLiquidityAmountInAboveMax() public {
         uint256 bptAmountOut = defaultAmount;
         vm.expectRevert(
-            abi.encodeWithSelector(IVaultErrors.AmountInAboveMax.selector, address(dai), defaultAmount, defaultAmount - 1)
+            abi.encodeWithSelector(
+                IVaultErrors.AmountInAboveMax.selector,
+                address(dai),
+                defaultAmount,
+                defaultAmount - 1
+            )
         );
         vm.prank(alice);
-        router.addLiquiditySingleTokenExactOut(
-            address(pool),
-            dai,
-            defaultAmount - 1,
-            2 * bptAmountOut,
-            false,
-            bytes("")
-        );
+        router.addLiquiditySingleTokenExactOut(address(pool), dai, defaultAmount - 1, bptAmountOut, false, bytes(""));
     }
 
     /// Remove
@@ -143,8 +141,8 @@ contract VaultLiquidityTest is BaseVaultTest {
         snapEnd();
 
         // amountsOut are correct
-        assertEq(amountsOut[0], defaultAmount);
-        assertEq(amountsOut[1], defaultAmount);
+        assertEq(amountsOut[0], defaultAmount, "Wrong AmountOut[0]");
+        assertEq(amountsOut[1], defaultAmount, "Wrong AmountOut[1]");
     }
 
     function testRemoveLiquidityProportional() public {
@@ -155,7 +153,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         bptAmountIn = defaultAmount * 2;
 
         snapStart("vaultRemoveLiquiditySingleTokenExactIn");
-        amountsOut = router.removeLiquiditySingleTokenExactIn(
+        uint256 amountOut = router.removeLiquiditySingleTokenExactIn(
             address(pool),
             bptAmountIn,
             dai,
@@ -165,9 +163,11 @@ contract VaultLiquidityTest is BaseVaultTest {
         );
         snapEnd();
 
+        (amountsOut, ) = router.getSingleInputArrayAndTokenIndex(pool, dai, amountOut);
+
         // amountsOut are correct
-        assertEq(amountsOut[0], defaultAmount);
-        assertEq(amountsOut[1], 0);
+        assertEq(amountsOut[daiIdx], defaultAmount * 2, "Wrong AmountOut[dai]");
+        assertEq(amountsOut[usdcIdx], 0, "AmountOut[usdc] > 0");
     }
 
     function testRemoveLiquiditySingleTokenExactIn() public {
@@ -175,7 +175,8 @@ contract VaultLiquidityTest is BaseVaultTest {
     }
 
     function removeLiquiditySingleTokenExactOut() public returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
-        amountsOut = [defaultAmount * 2, 0].toMemoryArray();
+        amountsOut = new uint256[](2);
+        amountsOut[daiIdx] = defaultAmount * 2;
 
         snapStart("vaultRemoveLiquiditySingleTokenExactOut");
         bptAmountIn = router.removeLiquiditySingleTokenExactOut(
@@ -203,8 +204,8 @@ contract VaultLiquidityTest is BaseVaultTest {
         );
 
         // amountsOut are correct
-        assertEq(amountsOut[0], defaultAmount);
-        assertEq(amountsOut[1], defaultAmount);
+        assertEq(amountsOut[daiIdx], defaultAmount, "Wrong AmountOut[dai]");
+        assertEq(amountsOut[usdcIdx], defaultAmount, "Wrong AmountOut[usdc]");
     }
 
     function testRemoveLiquidityCustom() public {
@@ -227,21 +228,26 @@ contract VaultLiquidityTest is BaseVaultTest {
     }
 
     function testRemoveLiquidityAmountOutBelowMin() public {
+        uint256[] memory amountsOut = new uint256[](2);
+        amountsOut[daiIdx] = defaultAmount + 1;
+        amountsOut[usdcIdx] = defaultAmount;
+
         vm.expectRevert(
-            abi.encodeWithSelector(IVaultErrors.AmountOutBelowMin.selector, address(dai), defaultAmount, defaultAmount + 1)
+            abi.encodeWithSelector(
+                IVaultErrors.AmountOutBelowMin.selector,
+                address(dai),
+                defaultAmount,
+                defaultAmount + 1
+            )
         );
         vm.startPrank(alice);
-        router.removeLiquidityProportional(
-            address(pool),
-            2 * defaultAmount,
-            [uint256(defaultAmount + 1), uint256(defaultAmount)].toMemoryArray(),
-            false,
-            bytes("")
-        );
+        router.removeLiquidityProportional(address(pool), 2 * defaultAmount, amountsOut, false, bytes(""));
     }
 
     function testRemoveLiquidityBptInAboveMax() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BptAmountInAboveMax.selector, defaultAmount, defaultAmount / 2 - 1));
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.BptAmountInAboveMax.selector, defaultAmount, defaultAmount / 2 - 1)
+        );
         vm.startPrank(alice);
         router.removeLiquiditySingleTokenExactOut(
             address(pool),
@@ -254,17 +260,6 @@ contract VaultLiquidityTest is BaseVaultTest {
     }
 
     /// Utils
-
-    function getBalances(address user) internal view returns (Balances memory balances) {
-        balances.userTokens = new uint256[](2);
-
-        balances.userTokens[0] = dai.balanceOf(user);
-        balances.userTokens[1] = usdc.balanceOf(user);
-        balances.userBpt = PoolMock(pool).balanceOf(user);
-
-        (, , uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(pool));
-        balances.poolTokens = poolBalances;
-    }
 
     function assertAddLiquidity(function() returns (uint256[] memory, uint256) testFunc) internal {
         Balances memory balancesBefore = getBalances(alice);
@@ -300,6 +295,16 @@ contract VaultLiquidityTest is BaseVaultTest {
         // User now has BPT
         assertEq(balancesBefore.userBpt, 0, "Add - User BPT balance before");
         assertEq(balancesAfter.userBpt, bptAmountOut, "Add - User BPT balance after");
+
+        // Ensure raw and last live balances are in sync after the operation
+        uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
+        uint256[] memory lastLiveBalances = vault.getLastLiveBalances(pool);
+
+        assertEq(currentLiveBalances.length, lastLiveBalances.length);
+
+        for (uint256 i = 0; i < currentLiveBalances.length; i++) {
+            assertEq(currentLiveBalances[i], lastLiveBalances[i]);
+        }
     }
 
     function assertRemoveLiquidity(function() returns (uint256[] memory, uint256) testFunc) internal {
@@ -348,5 +353,15 @@ contract VaultLiquidityTest is BaseVaultTest {
         // User has burnt the correct amount of BPT
         assertEq(balancesBefore.userBpt, bptAmountIn, "Remove - User BPT balance before");
         assertEq(balancesAfter.userBpt, 0, "Remove - User BPT balance after");
+
+        // Ensure raw and last live balances are in sync after the operation
+        uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
+        uint256[] memory lastLiveBalances = vault.getLastLiveBalances(pool);
+
+        assertEq(currentLiveBalances.length, lastLiveBalances.length);
+
+        for (uint256 i = 0; i < currentLiveBalances.length; i++) {
+            assertEq(currentLiveBalances[i], lastLiveBalances[i]);
+        }
     }
 }

@@ -8,3 +8,16 @@ export type Account = string | SignerWithAddress | Contract | { address: string 
 export type TxParams = {
   from?: SignerWithAddress;
 };
+
+export enum TokenType {
+  STANDARD = 0,
+  WITH_RATE,
+  ERC4626,
+}
+
+export type TokenConfig = {
+  token: string;
+  tokenType: TokenType;
+  rateProvider: string;
+  yieldFeeExempt: boolean;
+};

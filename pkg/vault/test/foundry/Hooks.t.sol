@@ -5,92 +5,128 @@ pragma solidity ^0.8.4;
 import "forge-std/Test.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IPoolCallbacks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolCallbacks.sol";
+import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { PoolConfig, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract CallbacksTest is BaseVaultTest {
+contract HooksTest is BaseVaultTest {
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
+
+    uint256 internal daiIdx;
+    uint256 internal usdcIdx;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
         PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.callbacks.shouldCallBeforeSwap = true;
-        config.callbacks.shouldCallAfterSwap = true;
+        config.hooks.shouldCallBeforeSwap = true;
+        config.hooks.shouldCallAfterSwap = true;
         vault.setConfig(address(pool), config);
+
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
-    function testOnBeforeSwapCallback() public {
+    function testOnBeforeSwapHook() public {
         vm.prank(bob);
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IPoolCallbacks.onBeforeSwap.selector,
-                IBasePool.SwapParams({
-                    kind: SwapKind.GIVEN_IN,
+                IPoolHooks.onBeforeSwap.selector,
+                IBasePool.PoolSwapParams({
+                    kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
-                    indexIn: 1,
-                    indexOut: 0,
+                    indexIn: usdcIdx,
+                    indexOut: daiIdx,
                     sender: address(router),
                     userData: bytes("")
                 })
             )
         );
-        router.swapExactIn(address(pool), usdc, dai, defaultAmount, 0, type(uint256).max, false, bytes(""));
+        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
     }
 
-    function testOnBeforeSwapCallbackRevert() public {
+    function testOnBeforeSwapHookRevert() public {
         // should fail
-        PoolMock(pool).setFailOnBeforeSwapCallback(true);
+        PoolMock(pool).setFailOnBeforeSwapHook(true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.CallbackFailed.selector));
-        router.swapExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeSwapHookFailed.selector));
+        router.swapSingleTokenExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
     }
 
-    function testOnAfterSwapCallback() public {
+    function testOnAfterSwapHook() public {
+        setSwapFeePercentage(swapFeePercentage);
+        setProtocolSwapFeePercentage(protocolSwapFeePercentage);
+
+        uint256 expectedAmountOut = defaultAmount.mulDown(swapFeePercentage.complement());
+        uint256 swapFee = defaultAmount.mulDown(swapFeePercentage);
+        uint256 protocolFee = swapFee.mulDown(protocolSwapFeePercentage);
+
         vm.prank(bob);
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IBasePool.onSwap.selector,
-                IBasePool.SwapParams({
-                    kind: SwapKind.GIVEN_IN,
-                    amountGivenScaled18: defaultAmount,
-                    balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
-                    indexIn: 1,
-                    indexOut: 0,
+                IPoolHooks.onAfterSwap.selector,
+                IPoolHooks.AfterSwapParams({
+                    kind: SwapKind.EXACT_IN,
+                    tokenIn: usdc,
+                    tokenOut: dai,
+                    amountInScaled18: defaultAmount,
+                    amountOutScaled18: expectedAmountOut,
+                    tokenInBalanceScaled18: defaultAmount * 2,
+                    tokenOutBalanceScaled18: defaultAmount - expectedAmountOut - protocolFee,
                     sender: address(router),
-                    userData: bytes("")
-                })
+                    userData: ""
+                }),
+                expectedAmountOut
             )
         );
-        router.swapExactIn(address(pool), usdc, dai, defaultAmount, 0, type(uint256).max, false, bytes(""));
+
+        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
     }
 
-    function testOnAfterSwapCallbackRevert() public {
+    function testOnAfterSwapHookRevert() public {
         // should fail
-        PoolMock(pool).setFailOnAfterSwapCallback(true);
+        PoolMock(pool).setFailOnAfterSwapHook(true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.CallbackFailed.selector));
-        router.swapExactIn(address(pool), usdc, dai, defaultAmount, defaultAmount, type(uint256).max, false, bytes(""));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.AfterSwapHookFailed.selector));
+        router.swapSingleTokenExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
     }
 
     // Before add
 
     function testOnBeforeAddLiquidityFlag() public {
-        PoolMock(pool).setFailOnBeforeAddLiquidityCallback(true);
+        PoolMock(pool).setFailOnBeforeAddLiquidityHook(true);
 
         vm.prank(bob);
-        // Doesn't fail, does not call callbacks
+        // Doesn't fail, does not call hooks
         router.addLiquidityUnbalanced(
             address(pool),
             [defaultAmount, defaultAmount].toMemoryArray(),
@@ -100,17 +136,18 @@ contract CallbacksTest is BaseVaultTest {
         );
     }
 
-    function testOnBeforeAddLiquidityCallback() public {
+    function testOnBeforeAddLiquidityHook() public {
         PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.callbacks.shouldCallBeforeAddLiquidity = true;
+        config.hooks.shouldCallBeforeAddLiquidity = true;
         vault.setConfig(address(pool), config);
 
         vm.prank(bob);
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IPoolCallbacks.onBeforeAddLiquidity.selector,
+                IPoolHooks.onBeforeAddLiquidity.selector,
                 bob,
+                AddLiquidityKind.UNBALANCED,
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 bptAmountRoundDown,
                 [defaultAmount, defaultAmount].toMemoryArray(),
@@ -129,7 +166,7 @@ contract CallbacksTest is BaseVaultTest {
     // Before remove
 
     function testOnBeforeRemoveLiquidityFlag() public {
-        PoolMock(pool).setFailOnBeforeRemoveLiquidityCallback(true);
+        PoolMock(pool).setFailOnBeforeRemoveLiquidityHook(true);
 
         vm.prank(alice);
         router.addLiquidityUnbalanced(
@@ -150,9 +187,9 @@ contract CallbacksTest is BaseVaultTest {
         );
     }
 
-    function testOnBeforeRemoveLiquidityCallback() public {
+    function testOnBeforeRemoveLiquidityHook() public {
         PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.callbacks.shouldCallBeforeRemoveLiquidity = true;
+        config.hooks.shouldCallBeforeRemoveLiquidity = true;
         vault.setConfig(address(pool), config);
 
         vm.prank(alice);
@@ -167,8 +204,9 @@ contract CallbacksTest is BaseVaultTest {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IPoolCallbacks.onBeforeRemoveLiquidity.selector,
+                IPoolHooks.onBeforeRemoveLiquidity.selector,
                 alice,
+                RemoveLiquidityKind.PROPORTIONAL,
                 bptAmount,
                 [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
                 [2 * defaultAmount, 2 * defaultAmount].toMemoryArray(),
@@ -188,10 +226,10 @@ contract CallbacksTest is BaseVaultTest {
     // After add
 
     function testOnAfterAddLiquidityFlag() public {
-        PoolMock(pool).setFailOnAfterAddLiquidityCallback(true);
+        PoolMock(pool).setFailOnAfterAddLiquidityHook(true);
 
         vm.prank(bob);
-        // Doesn't fail, does not call callbacks
+        // Doesn't fail, does not call hooks
         router.addLiquidityUnbalanced(
             address(pool),
             [defaultAmount, defaultAmount].toMemoryArray(),
@@ -201,16 +239,16 @@ contract CallbacksTest is BaseVaultTest {
         );
     }
 
-    function testOnAfterAddLiquidityCallback() public {
+    function testOnAfterAddLiquidityHook() public {
         PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.callbacks.shouldCallAfterAddLiquidity = true;
+        config.hooks.shouldCallAfterAddLiquidity = true;
         vault.setConfig(address(pool), config);
 
         vm.prank(bob);
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IPoolCallbacks.onAfterAddLiquidity.selector,
+                IPoolHooks.onAfterAddLiquidity.selector,
                 bob,
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 bptAmount,
@@ -230,7 +268,7 @@ contract CallbacksTest is BaseVaultTest {
     // After remove
 
     function testOnAfterRemoveLiquidityFlag() public {
-        PoolMock(pool).setFailOnAfterRemoveLiquidityCallback(true);
+        PoolMock(pool).setFailOnAfterRemoveLiquidityHook(true);
 
         vm.prank(alice);
         router.addLiquidityUnbalanced(
@@ -251,9 +289,9 @@ contract CallbacksTest is BaseVaultTest {
         );
     }
 
-    function testOnAfterRemoveLiquidityCallback() public {
+    function testOnAfterRemoveLiquidityHook() public {
         PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.callbacks.shouldCallAfterRemoveLiquidity = true;
+        config.hooks.shouldCallAfterRemoveLiquidity = true;
         vault.setConfig(address(pool), config);
 
         vm.prank(alice);
@@ -268,7 +306,7 @@ contract CallbacksTest is BaseVaultTest {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IPoolCallbacks.onAfterRemoveLiquidity.selector,
+                IPoolHooks.onAfterRemoveLiquidity.selector,
                 alice,
                 bptAmount,
                 [defaultAmount, defaultAmount].toMemoryArray(),

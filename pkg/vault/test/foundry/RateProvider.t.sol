@@ -13,7 +13,7 @@ contract RateProviderTest is Test {
         rateProvider = new RateProviderMock();
     }
 
-    function testRate(uint256 rate) public {
+    function testRate__Fuzz(uint256 rate) public {
         rate = bound(rate, 1, 100e18);
 
         rateProvider.mockRate(rate);

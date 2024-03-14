@@ -9,7 +9,7 @@ import { PoolConfig, PoolConfigBits, PoolConfigLib } from "../../contracts/lib/P
 contract PoolConfigLibTest is Test {
     uint256 private constant CONFIG_MSB = 134;
 
-    function testToAndFromConfigBits(uint256 rawConfigInt) public {
+    function testToAndFromConfigBits__Fuzz(uint256 rawConfigInt) public {
         rawConfigInt = bound(rawConfigInt, 0, uint256(1 << CONFIG_MSB));
         bytes32 rawConfig = bytes32(rawConfigInt);
         PoolConfig memory config = PoolConfigLib.toPoolConfig(PoolConfigBits.wrap(rawConfig));
