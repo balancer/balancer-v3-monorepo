@@ -43,7 +43,7 @@ struct PoolConfig {
  * @param isVaultPaused If set to true, Swaps and Add/Remove Liquidity operations are halted
  * @param protocolSwapFeePercentage Charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
  * We allow 0% swap fee.
- * @param protocolYieldFeePercentage Charged on all pool operations.
+ * @param protocolYieldFeePercentage Charged on all pool operations for yield-bearing tokens.
  */
 struct VaultState {
     bool isQueryDisabled;
