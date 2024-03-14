@@ -49,15 +49,12 @@ lcov \
     --ignore-errors empty
 
 # Open more granular breakdown in browser
-# if [ "$HTML" == "true" ]
-# then
-    genhtml \
-        --rc genhtml_branch_coverage=1 \
-        --output-directory coverage-genhtml \
-        --ignore-errors category \
-        coverage/filtered-lcov.info
-    open coverage-genhtml/index.html
-# fi
+genhtml \
+    --rc genhtml_branch_coverage=1 \
+    --output-directory coverage-genhtml \
+    --ignore-errors category \
+    coverage/filtered-lcov.info
+open coverage-genhtml/index.html
 
 # Delete temp files
 rm merged-lcov.info coverage/filtered-lcov.info lcov-clear.info lcov-clearvault.info
