@@ -260,11 +260,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 minBptAmountOut,
         bytes memory userData
     ) external withLocker withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault returns (uint256 bptAmountOut) {
-        uint256 protocolYieldFeePercentage = _vaultState.getProtocolYieldFeePercentage();
+        VaultState memory vaultState = _ensureUnpausedAndGetVaultState(pool);
+
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             pool,
             Rounding.ROUND_DOWN,
-            protocolYieldFeePercentage
+            vaultState.protocolYieldFeePercentage
         );
 
         if (poolData.poolConfig.isPoolInitialized) {

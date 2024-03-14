@@ -29,7 +29,7 @@ struct PoolConfig {
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
     bool hasDynamicSwapFee;
-    uint64 staticSwapFeePercentage; // stores an 18-decimal FP value (max FixedPoint.ONE)
+    uint256 staticSwapFeePercentage; // stores an 18-decimal FP value (max FixedPoint.ONE)
     uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
     uint32 pauseWindowEndTime;
     PoolHooks hooks;
@@ -48,8 +48,8 @@ struct PoolConfig {
 struct VaultState {
     bool isQueryDisabled;
     bool isVaultPaused;
-    uint64 protocolSwapFeePercentage;
-    uint64 protocolYieldFeePercentage;
+    uint256 protocolSwapFeePercentage;
+    uint256 protocolYieldFeePercentage;
 }
 
 /**

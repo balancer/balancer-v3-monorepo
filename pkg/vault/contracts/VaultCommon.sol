@@ -161,6 +161,22 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
+     * @dev To save some gas, vault state variables are stored in a single word and are read only once.
+     * So, it's not possible to use the modifier whenPoolNotPaused , because it requires to read _vaultState
+     * one more time. This function optimizes the check if vault and pool are paused and returns the vaultState
+     * struct to be used elsewhere
+     */
+    function _ensureUnpausedAndGetVaultState(address pool) internal view returns (VaultState memory vaultState) {
+        vaultState = _vaultState.toVaultState();
+        // Check vault and pool paused inline, instead of using modifier, to save some gas reading the
+        // isVaultPaused state
+        if (vaultState.isVaultPaused) {
+            revert VaultPaused();
+        }
+        _ensurePoolNotPaused(pool);
+    }
+
+    /**
      * @dev For gas efficiency, storage is only read before `_vaultBufferPeriodEndTime`. Once we're past that
      * timestamp, the expression short-circuits false, and the Vault is permanently unpaused.
      */

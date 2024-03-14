@@ -254,7 +254,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             revert ProtocolSwapFeePercentageTooHigh();
         }
         VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.protocolSwapFeePercentage = newProtocolSwapFeePercentage.toUint64();
+        vaultState.protocolSwapFeePercentage = newProtocolSwapFeePercentage;
         _vaultState = VaultStateLib.fromVaultState(vaultState);
         emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
     }
@@ -265,7 +265,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             revert ProtocolYieldFeePercentageTooHigh();
         }
         VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.protocolYieldFeePercentage = newProtocolYieldFeePercentage.toUint64();
+        vaultState.protocolYieldFeePercentage = newProtocolYieldFeePercentage;
         _vaultState = VaultStateLib.fromVaultState(vaultState);
         emit ProtocolYieldFeePercentageChanged(newProtocolYieldFeePercentage);
     }

@@ -2,10 +2,8 @@
 
 pragma solidity ^0.8.4;
 
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { VaultState } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -17,7 +15,6 @@ using VaultStateLib for VaultStateBits global;
 
 library VaultStateLib {
     using WordCodec for bytes32;
-    using SafeCast for uint256;
 
     // Bit offsets for pool config
     uint8 public constant QUERY_DISABLED_OFFSET = 0;
@@ -39,16 +36,12 @@ library VaultStateLib {
         return VaultStateBits.unwrap(config).decodeBool(VAULT_PAUSED_OFFSET);
     }
 
-    function getProtocolSwapFeePercentage(VaultStateBits config) internal pure returns (uint64) {
-        return
-            VaultStateBits.unwrap(config).decodeUint(PROTOCOL_SWAP_FEE_OFFSET, _FEE_BITLENGTH).toUint64() *
-            FEE_SCALING_FACTOR;
+    function getProtocolSwapFeePercentage(VaultStateBits config) internal pure returns (uint256) {
+        return VaultStateBits.unwrap(config).decodeUint(PROTOCOL_SWAP_FEE_OFFSET, _FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
-    function getProtocolYieldFeePercentage(VaultStateBits config) internal pure returns (uint64) {
-        return
-            VaultStateBits.unwrap(config).decodeUint(PROTOCOL_YIELD_FEE_OFFSET, _FEE_BITLENGTH).toUint64() *
-            FEE_SCALING_FACTOR;
+    function getProtocolYieldFeePercentage(VaultStateBits config) internal pure returns (uint256) {
+        return VaultStateBits.unwrap(config).decodeUint(PROTOCOL_YIELD_FEE_OFFSET, _FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
     function fromVaultState(VaultState memory config) internal pure returns (VaultStateBits) {
