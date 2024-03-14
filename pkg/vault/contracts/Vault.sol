@@ -181,6 +181,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         withInitializedPool(params.pool)
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
     {
+        VaultState memory vaultState = _ensureUnpausedAndGetVaultState(params.pool);
+        
         if (params.amountGivenRaw == 0) {
             revert AmountGivenZero();
         }
@@ -188,8 +190,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (params.tokenIn == params.tokenOut) {
             revert CannotSwapSameToken();
         }
-
-        VaultState memory vaultState = _ensureUnpausedAndGetVaultState(params.pool);
 
         // `_computePoolDataUpdatingBalancesAndFees` is non-reentrant, as it updates storage as well as filling in
         // poolData in memory. Since the swap hooks are reentrant and could do anything, including change these
