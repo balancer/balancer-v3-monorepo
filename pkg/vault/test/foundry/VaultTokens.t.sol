@@ -203,10 +203,6 @@ contract VaultTokenTest is BaseVaultTest {
         );
     }
 
-    function getSalt(address addr) private pure returns (bytes32) {
-        return bytes32(uint256(uint160(addr)));
-    }
-
     function validateBufferPool(address pool, IERC20[] memory expectedTokens) private {
         IERC20[] memory actualTokens = vault.getPoolTokens(pool);
 

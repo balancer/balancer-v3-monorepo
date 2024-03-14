@@ -23,8 +23,6 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract InitializerTest is BaseVaultTest {
     using ArrayHelpers for *;
 
-    uint256 constant MIN_BPT = 1e6;
-
     IERC20[] standardPoolTokens;
 
     function setUp() public virtual override {
