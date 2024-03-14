@@ -17,7 +17,7 @@ import { WeightedPool } from "./WeightedPool.sol";
 contract WeightedPool8020Factory is BasePoolFactory {
     uint256 private constant _EIGHTY = 8e17; // 80%
     uint256 private constant _TWENTY = 2e17; // 20%
-    mapping(IERC20 => mapping(IERC20 => address)) private _poolAddresses;
+    mapping(IERC20 => mapping(IERC20 => address)) private _pools;
 
     /// @dev The pool containing the combination of tokens and weights has already been created.
     error PoolAlreadyExists();
@@ -74,11 +74,11 @@ contract WeightedPool8020Factory is BasePoolFactory {
             salt
         );
 
-        if (_poolAddresses[highWeightToken][lowWeightToken] != address(0)) {
+        if (_pools[highWeightToken][lowWeightToken] != address(0)) {
             revert PoolAlreadyExists();
         }
 
-        _poolAddresses[highWeightToken][lowWeightToken] = pool;
+        _pools[highWeightToken][lowWeightToken] = pool;
 
         getVault().registerPool(
             pool,
@@ -107,6 +107,6 @@ contract WeightedPool8020Factory is BasePoolFactory {
      * @param lowWeightToken The token with 20% weight in the pool.
      */
     function getPool(IERC20 highWeightToken, IERC20 lowWeightToken) external view returns (address pool) {
-        pool = _poolAddresses[highWeightToken][lowWeightToken];
+        pool = _pools[highWeightToken][lowWeightToken];
     }
 }
