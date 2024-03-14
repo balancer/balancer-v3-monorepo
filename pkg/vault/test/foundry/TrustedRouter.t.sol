@@ -45,21 +45,21 @@ contract TrustedRouterTest is BaseVaultTest {
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-    }
-
-    function testApproveRouter() public {
-        assertEq(vault.isTrustedRouter(address(router), alice), true);
-
-        bytes memory signature = getApproveRouterSignature(alice, aliceKey, false, 0);
-        vm.prank(alice);
-        router.approveRouter(false, type(uint256).max, signature);
-
-        assertEq(vault.isTrustedRouter(address(router), alice), false);
-    }
-
-    function testApproveRouterAndSwap() public {
+        // revoke user approval for users
         approveRouter(alice, aliceKey, false, 0);
+    }
 
+    function testApproveRouterByUser() public {
+        assertEq(vault.isTrustedRouter(address(router), alice), false);
+
+        bytes memory signature = getApproveRouterSignature(alice, aliceKey, true, 0);
+        vm.prank(alice);
+        router.approveRouter(true, type(uint256).max, signature);
+
+        assertEq(vault.isTrustedRouter(address(router), alice), true);
+    }
+
+    function testApproveRouterByUserAndSwap() public {
         assertEq(vault.isTrustedRouter(address(router), alice), false);
 
         bytes[] memory data = new bytes[](2);
@@ -87,9 +87,7 @@ contract TrustedRouterTest is BaseVaultTest {
         assertEq(vault.isTrustedRouter(address(router), alice), true);
     }
 
-    function testOneTimeApprove() public {
-        approveRouter(alice, aliceKey, false, 0);
-
+    function testOneTimeApproveByUser() public {
         assertEq(vault.isTrustedRouter(address(router), alice), false);
 
         bytes[] memory data = new bytes[](3);

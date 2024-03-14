@@ -91,15 +91,11 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
             approveVault(users[index]);
         }
 
-        // Approve Router
-        for (uint256 index = 0; index < users.length; index++) {
-            approveRouter(users[index], userKeys[index], true, 0);
-        }
+        // Approve Router by users
+        approveRouterByUsers();
 
         // Approve Router by Governance
-        authorizer.grantRole(vault.getActionId(bytes4(keccak256("approveRouter(address,bool)"))), admin);
-        vm.prank(admin);
-        vault.approveRouter(address(router), true);
+        approveRouterByGovernance(true);
 
         // Add initial liquidity
         initPool();
@@ -116,6 +112,18 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
         // note the order here is different from line above.
         return abi.encodePacked(r, s, v);
+    }
+
+    function approveRouterByUsers() internal virtual {
+        for (uint256 index = 0; index < users.length; index++) {
+            approveRouter(users[index], userKeys[index], true, 0);
+        }
+    }
+
+    function approveRouterByGovernance(bool approve) internal virtual {
+        authorizer.grantRole(vault.getActionId(bytes4(keccak256("approveRouter(address,bool)"))), admin);
+        vm.prank(admin);
+        vault.approveRouter(address(router), approve);
     }
 
     function approveRouter(address user, uint256 key, bool approve, uint256 nonce) internal {
