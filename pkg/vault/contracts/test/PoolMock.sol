@@ -194,7 +194,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         return !failOnAfterInitialize;
     }
 
-    function onBeforeSwap(IBasePool.SwapParams calldata) external override returns (bool success) {
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata) external override returns (bool success) {
         if (changeTokenRateOnBeforeSwapHook) {
             _updateTokenRate();
         }
@@ -209,7 +209,9 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         return !failOnBeforeSwapHook;
     }
 
-    function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
+    function onSwap(
+        IBasePool.PoolSwapParams calldata params
+    ) external view override returns (uint256 amountCalculated) {
         return
             params.kind == SwapKind.EXACT_IN
                 ? params.amountGivenScaled18.mulDown(_multiplier)

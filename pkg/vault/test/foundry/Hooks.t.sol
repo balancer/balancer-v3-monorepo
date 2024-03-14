@@ -41,7 +41,7 @@ contract HooksTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IPoolHooks.onBeforeSwap.selector,
-                IBasePool.SwapParams({
+                IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),

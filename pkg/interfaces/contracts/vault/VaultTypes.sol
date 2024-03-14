@@ -29,11 +29,27 @@ struct PoolConfig {
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
     bool hasDynamicSwapFee;
-    uint64 staticSwapFeePercentage; // stores an 18-decimal FP value (max FixedPoint.ONE)
+    uint256 staticSwapFeePercentage; // stores an 18-decimal FP value (max FixedPoint.ONE)
     uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
     uint32 pauseWindowEndTime;
     PoolHooks hooks;
     LiquidityManagement liquidityManagement;
+}
+
+/**
+ * @dev Represents the Vault's configuration.
+ * @param isQueryDisabled If set to true, disables query functionality of the Vault. Can be modified only by
+ * governance.
+ * @param isVaultPaused If set to true, Swaps and Add/Remove Liquidity operations are halted
+ * @param protocolSwapFeePercentage Charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
+ * We allow 0% swap fee.
+ * @param protocolYieldFeePercentage Charged on all pool operations for yield-bearing tokens.
+ */
+struct VaultState {
+    bool isQueryDisabled;
+    bool isVaultPaused;
+    uint256 protocolSwapFeePercentage;
+    uint256 protocolYieldFeePercentage;
 }
 
 /**
