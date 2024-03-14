@@ -50,6 +50,8 @@ contract TrustedRouterTest is BaseVaultTest {
     }
 
     function testApproveRouterByUser() public {
+        // trusted by the DAO
+        assertEq(vault.isTrustedRouter(address(router), address(vault)), true);
         assertEq(vault.isTrustedRouter(address(router), alice), false);
 
         vm.startPrank(alice);
@@ -67,6 +69,8 @@ contract TrustedRouterTest is BaseVaultTest {
         vm.assume(privKey != 0);
 
         address usr = vm.addr(privKey);
+        // trusted by the DAO
+        assertEq(vault.isTrustedRouter(address(router), address(vault)), true);
         assertEq(vault.isTrustedRouter(address(router), usr), false);
 
         deadline = bound(deadline, block.timestamp, type(uint256).max);
@@ -78,6 +82,9 @@ contract TrustedRouterTest is BaseVaultTest {
     }
 
     function testCannotRetriveWhenUntrustedByUser() public {
+        // trusted by the DAO
+        assertEq(vault.isTrustedRouter(address(router), address(vault)), true);
+
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.RouterNotTrusted.selector, address(router), alice));
         router.swapSingleTokenExactIn(
@@ -93,6 +100,8 @@ contract TrustedRouterTest is BaseVaultTest {
     }
 
     function testApproveRouterByUserAndSwap() public {
+        // trusted by the DAO
+        assertEq(vault.isTrustedRouter(address(router), address(vault)), true);
         assertEq(vault.isTrustedRouter(address(router), alice), false);
 
         bytes[] memory data = new bytes[](2);
@@ -121,6 +130,8 @@ contract TrustedRouterTest is BaseVaultTest {
     }
 
     function testOneTimeApproveByUser() public {
+        // trusted by the DAO
+        assertEq(vault.isTrustedRouter(address(router), address(vault)), true);
         assertEq(vault.isTrustedRouter(address(router), alice), false);
 
         bytes[] memory data = new bytes[](3);
