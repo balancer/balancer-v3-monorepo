@@ -19,6 +19,9 @@ contract WeightedPool8020Factory is BasePoolFactory {
     uint256 private constant _TWENTY = 2e17; // 20%
     mapping(IERC20 => mapping(IERC20 => address)) private _poolAddresses;
 
+    /// @dev The pool containing the combination of tokens and weights has already been created.
+    error PoolAlreadyExists();
+
     constructor(
         IVault vault,
         uint256 pauseWindowDuration
@@ -71,6 +74,10 @@ contract WeightedPool8020Factory is BasePoolFactory {
             salt
         );
 
+        if (_poolAddresses[highWeightToken][lowWeightToken] != address(0)) {
+            revert PoolAlreadyExists();
+        }
+
         _poolAddresses[highWeightToken][lowWeightToken] = pool;
 
         getVault().registerPool(
@@ -99,7 +106,7 @@ contract WeightedPool8020Factory is BasePoolFactory {
      * @param highWeightToken The token with 80% weight in the pool.
      * @param lowWeightToken The token with 20% weight in the pool.
      */
-    function getPoolAddress(IERC20 highWeightToken, IERC20 lowWeightToken) external view returns (address poolAddress) {
-        return _poolAddresses[highWeightToken][lowWeightToken];
+    function getPool(IERC20 highWeightToken, IERC20 lowWeightToken) external view returns (address pool) {
+        pool = _poolAddresses[highWeightToken][lowWeightToken];
     }
 }

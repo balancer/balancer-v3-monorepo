@@ -138,12 +138,12 @@ contract WeightedPool8020FactoryTest is Test {
             factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], firstSalt)
         );
 
-        address fetchedPool = factory.getPoolAddress(highWeightToken, lowWeightToken);
+        address fetchedPool = factory.getPool(highWeightToken, lowWeightToken);
 
         assertEq(
             address(pool),
             address(fetchedPool),
-            "First Expectation - getPoolAddress is fetching a pool different from the one being created"
+            "First Expectation - getPool is fetching a pool different from the one being created"
         );
 
         // Invert the weights
@@ -157,12 +157,12 @@ contract WeightedPool8020FactoryTest is Test {
             factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], secondSalt)
         );
 
-        address fetchedInvPool = factory.getPoolAddress(highWeightToken, lowWeightToken);
+        address fetchedInvPool = factory.getPool(highWeightToken, lowWeightToken);
 
         assertEq(
             address(fetchedInvPool),
             address(invertedPool),
-            "Second Expectation - getPoolAddress is fetching a pool different from the one being created"
+            "Second Expectation - getPool is fetching a pool different from the one being created"
         );
 
         assertNotEq(
@@ -170,5 +170,26 @@ contract WeightedPool8020FactoryTest is Test {
             address(invertedPool),
             "Pools with same tokens but different weight distributions should be different"
         );
+    }
+
+    function testPoolUniqueness__Fuzz(bytes32 firstSalt, bytes32 secondSalt) public {
+        vm.assume(firstSalt != secondSalt);
+
+        IERC20 highWeightToken = IERC20(tokenA);
+        IERC20 lowWeightToken = IERC20(tokenB);
+
+        TokenConfig[] memory tokens = new TokenConfig[](2);
+        tokens[0].token = highWeightToken;
+        tokens[1].token = lowWeightToken;
+
+        WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], firstSalt));
+
+        address fetchedPool = factory.getPool(highWeightToken, lowWeightToken);
+
+        assertNotEq(fetchedPool, address(0), "Pool has not been registered into the poolAddresses mapping correctly");
+
+        // Trying to create the same pool with different token combination should revert
+        vm.expectRevert(WeightedPool8020Factory.PoolAlreadyExists.selector);
+        WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], secondSalt));
     }
 }
