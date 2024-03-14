@@ -196,6 +196,7 @@ __metadata:
     "@balancer-labs/solidity-toolbox": "workspace:*"
     "@balancer-labs/v3-interfaces": "workspace:*"
     "@balancer-labs/v3-solidity-utils": "workspace:*"
+    "@tenderly/hardhat-tenderly": "npm:^2.1.0"
     "@typescript-eslint/eslint-plugin": "npm:^5.41.0"
     "@typescript-eslint/parser": "npm:^5.41.0"
     decimal.js: "npm:^10.4.2"
