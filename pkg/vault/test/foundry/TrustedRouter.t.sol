@@ -77,6 +77,21 @@ contract TrustedRouterTest is BaseVaultTest {
         assertEq(vault.isTrustedRouter(address(router), usr), approve);
     }
 
+    function testCannotRetriveWhenUntrustedByUser() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.RouterNotTrusted.selector, address(router), alice));
+        router.swapSingleTokenExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+    }
+
     function testApproveRouterByUserAndSwap() public {
         assertEq(vault.isTrustedRouter(address(router), alice), false);
 

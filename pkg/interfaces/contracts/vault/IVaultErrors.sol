@@ -112,7 +112,7 @@ interface IVaultErrors {
     error AfterRemoveLiquidityHookFailed();
 
     /// @dev An unauthorized Router tried to call a permissioned function (i.e., using the Vault's token allowance).
-    error RouterNotTrusted();
+    error RouterNotTrusted(address router, address user);
 
     /*******************************************************************************
                                         Swaps

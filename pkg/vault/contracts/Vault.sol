@@ -841,7 +841,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function _onlyTrustedRouter(address router, address user) internal view {
         // If the router is the user, then it is trusted a priori.
         if (!(router == user || _isTrustedRouter(router, user))) {
-            revert RouterNotTrusted();
+            revert RouterNotTrusted(router, user);
         }
     }
 
