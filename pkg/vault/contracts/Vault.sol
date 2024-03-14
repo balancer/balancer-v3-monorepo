@@ -464,10 +464,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     struct LiquidityLocals {
         uint256 numTokens;
         uint256 protocolSwapFeeAmountRaw;
-        uint256 amountInRaw;
         uint256 tokenIndex;
-        uint256 tokenOutIndex;
-        IERC20 token;
     }
 
     /// @inheritdoc IVaultMain
@@ -638,8 +635,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20[] memory tokens = new IERC20[](vars.numTokens);
 
         for (uint256 i = 0; i < vars.numTokens; ++i) {
-            vars.token = poolData.tokenConfig[i].token;
-            tokens[i] = vars.token;
+            IERC20 token = poolData.tokenConfig[i].token;
+            tokens[i] = token;
 
             // Compute and charge protocol fees.
             vars.protocolSwapFeeAmountRaw = _computeAndChargeProtocolFees(
@@ -647,33 +644,33 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 swapFeeAmountsScaled18[i],
                 vaultState.protocolSwapFeePercentage,
                 params.pool,
-                vars.token,
+                token,
                 i
             );
 
             // amountsInRaw are amounts actually entering the Pool, so we round up.
             // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` hook
-            vars.amountInRaw = amountsInScaled18[i].toRawUndoRateRoundUp(
+            uint256 amountInRaw = amountsInScaled18[i].toRawUndoRateRoundUp(
                 poolData.decimalScalingFactors[i],
                 poolData.tokenRates[i]
             );
 
             // The limits must be checked for raw amounts
-            if (vars.amountInRaw > params.maxAmountsIn[i]) {
-                revert AmountInAboveMax(vars.token, vars.amountInRaw, params.maxAmountsIn[i]);
+            if (amountInRaw > params.maxAmountsIn[i]) {
+                revert AmountInAboveMax(token, amountInRaw, params.maxAmountsIn[i]);
             }
 
             // Debit of token[i] for amountInRaw
-            _takeDebt(vars.token, vars.amountInRaw, msg.sender);
+            _takeDebt(token, amountInRaw, msg.sender);
 
             // We need regular balances to complete the accounting, and the upscaled balances
             // to use in the `after` hook later on.
-            poolData.balancesRaw[i] += (vars.amountInRaw - vars.protocolSwapFeeAmountRaw);
+            poolData.balancesRaw[i] += (amountInRaw - vars.protocolSwapFeeAmountRaw);
 
             poolData.balancesLiveScaled18[i] += (amountsInScaled18[i] -
                 swapFeeAmountsScaled18[i].mulUp(vaultState.protocolSwapFeePercentage));
 
-            amountsInRaw[i] = vars.amountInRaw;
+            amountsInRaw[i] = amountInRaw;
         }
 
         // Store the new raw and last live pool balances.
@@ -814,11 +811,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             bptAmountIn = params.maxBptAmountIn;
 
             amountsOutScaled18 = minAmountsOutScaled18;
-            vars.tokenOutIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
-            (amountsOutScaled18[vars.tokenOutIndex], swapFeeAmountsScaled18) = BasePoolMath
+            vars.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
+            (amountsOutScaled18[vars.tokenIndex], swapFeeAmountsScaled18) = BasePoolMath
                 .computeRemoveLiquiditySingleTokenExactIn(
                     poolData.balancesLiveScaled18,
-                    vars.tokenOutIndex,
+                    vars.tokenIndex,
                     bptAmountIn,
                     _totalSupply(params.pool),
                     _getSwapFeePercentage(poolData.poolConfig),
@@ -826,12 +823,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             amountsOutScaled18 = minAmountsOutScaled18;
-            vars.tokenOutIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
+            vars.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
 
             (bptAmountIn, swapFeeAmountsScaled18) = BasePoolMath.computeRemoveLiquiditySingleTokenExactOut(
                 poolData.balancesLiveScaled18,
-                vars.tokenOutIndex,
-                amountsOutScaled18[vars.tokenOutIndex],
+                vars.tokenIndex,
+                amountsOutScaled18[vars.tokenIndex],
                 _totalSupply(params.pool),
                 _getSwapFeePercentage(poolData.poolConfig),
                 IBasePool(params.pool).computeInvariant
@@ -859,7 +856,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         amountsOutRaw = new uint256[](vars.numTokens);
 
         for (uint256 i = 0; i < vars.numTokens; ++i) {
-            tokens[i] = poolData.tokenConfig[i].token;
+            IERC20 token = poolData.tokenConfig[i].token;
+            tokens[i] = token;
 
             // Compute and charge protocol fees.
             vars.protocolSwapFeeAmountRaw = _computeAndChargeProtocolFees(
@@ -867,7 +865,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 swapFeeAmountsScaled18[i],
                 vaultState.protocolSwapFeePercentage,
                 params.pool,
-                tokens[i],
+                token,
                 i
             );
 
@@ -884,11 +882,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
 
             if (amountsOutRaw[i] < params.minAmountsOut[i]) {
-                revert AmountOutBelowMin(tokens[i], amountsOutRaw[i], params.minAmountsOut[i]);
+                revert AmountOutBelowMin(token, amountsOutRaw[i], params.minAmountsOut[i]);
             }
 
             // Credit token[i] for amountOut
-            _supplyCredit(tokens[i], amountsOutRaw[i], msg.sender);
+            _supplyCredit(token, amountsOutRaw[i], msg.sender);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit
             // (potentially by 0).
