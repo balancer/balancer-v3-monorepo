@@ -52,11 +52,29 @@ contract TrustedRouterTest is BaseVaultTest {
     function testApproveRouterByUser() public {
         assertEq(vault.isTrustedRouter(address(router), alice), false);
 
-        bytes memory signature = getApproveRouterSignature(alice, aliceKey, true, 0);
-        vm.prank(alice);
-        router.approveRouter(true, type(uint256).max, signature);
+        vm.startPrank(alice);
+        router.approveRouter(true, type(uint256).max, getApproveRouterSignature(alice, aliceKey, true, 0));
 
         assertEq(vault.isTrustedRouter(address(router), alice), true);
+
+        router.approveRouter(false, type(uint256).max, getApproveRouterSignature(alice, aliceKey, false, 0));
+
+        assertEq(vault.isTrustedRouter(address(router), alice), false);
+        vm.stopPrank();
+    }
+
+    function testApproveRouterByUser(uint248 privKey, bool approve, uint256 deadline) public {
+        vm.assume(privKey != 0);
+
+        address usr = vm.addr(privKey);
+        assertEq(vault.isTrustedRouter(address(router), usr), false);
+
+        deadline = bound(deadline, block.timestamp, type(uint256).max);
+        bytes memory signature = getApproveRouterSignature(usr, privKey, approve, 0);
+
+        vault.approveRouter(usr, address(router), approve, type(uint256).max, signature);
+
+        assertEq(vault.isTrustedRouter(address(router), usr), approve);
     }
 
     function testApproveRouterByUserAndSwap() public {
