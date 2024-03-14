@@ -189,13 +189,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                                      Pool Pausing
     *******************************************************************************/
 
-    /// @dev Modifier to make a function callable only when the Vault and Pool are not paused.
-    modifier whenPoolNotPaused(address pool) {
-        _ensureVaultNotPaused();
-        _ensurePoolNotPaused(pool);
-        _;
-    }
-
     /**
      * @dev Reverts if the pool is paused.
      * @param pool The pool

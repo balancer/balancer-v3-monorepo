@@ -259,7 +259,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external withLocker withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault returns (uint256 bptAmountOut) {
+    ) external withLocker withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
         VaultState memory vaultState = _ensureUnpausedAndGetVaultState(pool);
 
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
