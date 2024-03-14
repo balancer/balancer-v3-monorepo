@@ -99,6 +99,14 @@ contract VaultMock is IVaultMainMock, Vault {
         );
     }
 
+    function manualSetLockers(address[] memory lockers) public {
+        _lockers = lockers;
+    }
+
+    function testWithLocker() public view withLocker {
+
+    }
+
     function buildTokenConfig(IERC20[] memory tokens) public pure returns (TokenConfig[] memory tokenConfig) {
         tokenConfig = new TokenConfig[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {

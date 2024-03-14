@@ -25,6 +25,10 @@ interface IVaultMainMock {
         address pauseManager
     ) external;
 
+    function manualSetLockers(address[] memory lockers) external;
+
+    function testWithLocker() external;
+
     function getDecimalScalingFactors(address pool) external view returns (uint256[] memory);
 
     function recoveryModeExit(address pool) external view;
