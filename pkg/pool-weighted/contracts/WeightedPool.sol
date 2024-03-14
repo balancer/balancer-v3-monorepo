@@ -96,7 +96,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
     }
 
     /// @inheritdoc IBasePool
-    function onSwap(IBasePool.SwapParams memory request) public view onlyVault returns (uint256) {
+    function onSwap(IBasePool.PoolSwapParams memory request) public view onlyVault returns (uint256) {
         uint256 balanceTokenInScaled18 = request.balancesScaled18[request.indexIn];
         uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];
 

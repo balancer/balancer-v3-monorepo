@@ -14,7 +14,7 @@ import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBuffe
 import {
     AddLiquidityKind,
     RemoveLiquidityKind,
-    SwapParams as VaultSwapParams,
+    SwapParams,
     SwapKind
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
@@ -153,7 +153,7 @@ contract ERC4626BufferPool is
     }
 
     /// @inheritdoc BasePoolHooks
-    function onBeforeSwap(IBasePool.SwapParams calldata) external view override onlyVault returns (bool) {
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata) external view override onlyVault returns (bool) {
         // Swaps cannot be called externally - only the Vault can call this.
         // Since routers might still try to trade directly with buffer pools (either maliciously or accidentally),
         // the Vault also explicitly blocks any swaps with buffer pools.
@@ -165,7 +165,7 @@ contract ERC4626BufferPool is
     }
 
     /// @inheritdoc IBasePool
-    function onSwap(IBasePool.SwapParams memory request) public view onlyVault returns (uint256) {
+    function onSwap(IBasePool.PoolSwapParams memory request) public view onlyVault returns (uint256) {
         // If onSwap was triggered by the rebalance function, use the rate (expensive, but more precise)
         // Since the rebalance function is the only one marked non-reentrant, we can use that guard directly.
         // Note that this ReentrancyGuard is local to the pool, not related to the Vault's separate ReentrancyGuard.
@@ -263,7 +263,7 @@ contract ERC4626BufferPool is
             vault.lock(
                 abi.encodeWithSelector(
                     ERC4626BufferPool.rebalanceHook.selector,
-                    VaultSwapParams({
+                    SwapParams({
                         kind: SwapKind.EXACT_IN,
                         pool: poolAddress,
                         tokenIn: tokens[_baseTokenIndex],
@@ -287,7 +287,7 @@ contract ERC4626BufferPool is
             vault.lock(
                 abi.encodeWithSelector(
                     ERC4626BufferPool.rebalanceHook.selector,
-                    VaultSwapParams({
+                    SwapParams({
                         kind: SwapKind.EXACT_OUT,
                         pool: poolAddress,
                         tokenIn: tokens[_wrappedTokenIndex],
@@ -301,7 +301,7 @@ contract ERC4626BufferPool is
         }
     }
 
-    function rebalanceHook(VaultSwapParams calldata params) external payable onlyVault {
+    function rebalanceHook(SwapParams calldata params) external payable onlyVault {
         IVault vault = getVault();
 
         (, uint256 amountIn, uint256 amountOut) = _swapHook(params);
@@ -343,19 +343,9 @@ contract ERC4626BufferPool is
     }
 
     function _swapHook(
-        VaultSwapParams calldata params
+        SwapParams calldata params
     ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
-        (amountCalculated, amountIn, amountOut) = getVault().swap(
-            VaultSwapParams({
-                kind: params.kind,
-                pool: params.pool,
-                tokenIn: params.tokenIn,
-                tokenOut: params.tokenOut,
-                amountGivenRaw: params.amountGivenRaw,
-                limitRaw: params.limitRaw,
-                userData: params.userData
-            })
-        );
+        (amountCalculated, amountIn, amountOut) = getVault().swap(params);
     }
 
     function _isBufferPoolBalanced(uint256[] memory balancesScaled18) private view returns (bool) {

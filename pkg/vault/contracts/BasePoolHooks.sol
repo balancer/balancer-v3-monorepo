@@ -68,7 +68,7 @@ abstract contract BasePoolHooks is IPoolHooks {
     }
 
     /// @inheritdoc IPoolHooks
-    function onBeforeSwap(IBasePool.SwapParams calldata) external virtual returns (bool) {
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata) external virtual returns (bool) {
         return false;
     }
 

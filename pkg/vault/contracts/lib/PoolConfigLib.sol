@@ -72,8 +72,8 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(DYNAMIC_SWAP_FEE_OFFSET);
     }
 
-    function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint64) {
-        return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, _STATIC_SWAP_FEE_BITLENGTH).toUint64();
+    function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
+        return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, _STATIC_SWAP_FEE_BITLENGTH);
     }
 
     function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint24) {
