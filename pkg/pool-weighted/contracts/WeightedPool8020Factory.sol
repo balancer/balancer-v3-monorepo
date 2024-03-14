@@ -17,6 +17,7 @@ import { WeightedPool } from "./WeightedPool.sol";
 contract WeightedPool8020Factory is BasePoolFactory {
     uint256 private constant _EIGHTY = 8e17; // 80%
     uint256 private constant _TWENTY = 2e17; // 20%
+    mapping(IERC20 => mapping(IERC20 => address)) private _poolAddresses;
 
     constructor(
         IVault vault,
@@ -41,8 +42,11 @@ contract WeightedPool8020Factory is BasePoolFactory {
         TokenConfig memory lowWeightTokenConfig,
         bytes32 salt
     ) external returns (address pool) {
+        IERC20 highWeightToken = highWeightTokenConfig.token;
+        IERC20 lowWeightToken = lowWeightTokenConfig.token;
+
         // Tokens must be sorted.
-        uint256 highWeightTokenIdx = highWeightTokenConfig.token > lowWeightTokenConfig.token ? 1 : 0;
+        uint256 highWeightTokenIdx = highWeightToken > lowWeightToken ? 1 : 0;
         uint256 lowWeightTokenIdx = highWeightTokenIdx == 0 ? 1 : 0;
 
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
@@ -67,6 +71,8 @@ contract WeightedPool8020Factory is BasePoolFactory {
             salt
         );
 
+        _poolAddresses[highWeightToken][lowWeightToken] = pool;
+
         getVault().registerPool(
             pool,
             tokenConfig,
@@ -86,5 +92,14 @@ contract WeightedPool8020Factory is BasePoolFactory {
         );
 
         _registerPoolWithFactory(pool);
+    }
+
+    /**
+     * @notice Gets the address of the pool with the respective tokens and weights.
+     * @param highWeightToken The token with 80% weight in the pool.
+     * @param lowWeightToken The token with 20% weight in the pool.
+     */
+    function getPoolAddress(IERC20 highWeightToken, IERC20 lowWeightToken) external view returns (address poolAddress) {
+        return _poolAddresses[highWeightToken][lowWeightToken];
     }
 }

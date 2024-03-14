@@ -4,6 +4,8 @@ pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { TokenConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
@@ -120,5 +122,53 @@ contract WeightedPool8020FactoryTest is Test {
 
         // Same sender and salt, should still be different because of the chainId.
         assertFalse(address(poolL2) == address(poolMainnet), "L2 and mainnet pool addresses are equal");
+    }
+
+    function testPoolGetter__Fuzz(bytes32 firstSalt, bytes32 secondSalt) public {
+        vm.assume(firstSalt != secondSalt);
+
+        IERC20 highWeightToken = IERC20(tokenA);
+        IERC20 lowWeightToken = IERC20(tokenB);
+
+        TokenConfig[] memory tokens = new TokenConfig[](2);
+        tokens[0].token = highWeightToken;
+        tokens[1].token = lowWeightToken;
+
+        WeightedPool pool = WeightedPool(
+            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], firstSalt)
+        );
+
+        address fetchedPool = factory.getPoolAddress(highWeightToken, lowWeightToken);
+
+        assertEq(
+            address(pool),
+            address(fetchedPool),
+            "First Expectation - getPoolAddress is fetching a pool different from the one being created"
+        );
+
+        // Invert the weights
+        highWeightToken = IERC20(tokenB);
+        lowWeightToken = IERC20(tokenA);
+
+        tokens[0].token = highWeightToken;
+        tokens[1].token = lowWeightToken;
+
+        WeightedPool invertedPool = WeightedPool(
+            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], secondSalt)
+        );
+
+        address fetchedInvPool = factory.getPoolAddress(highWeightToken, lowWeightToken);
+
+        assertEq(
+            address(fetchedInvPool),
+            address(invertedPool),
+            "Second Expectation - getPoolAddress is fetching a pool different from the one being created"
+        );
+
+        assertNotEq(
+            address(pool),
+            address(invertedPool),
+            "Pools with same tokens but different weight distributions should be different"
+        );
     }
 }
