@@ -21,6 +21,7 @@ interface IVaultExtensionMock {
         address sender,
         address router,
         bool approved,
+        uint256 nonce,
         uint256 deadline
     ) external view returns (bytes32);
 }

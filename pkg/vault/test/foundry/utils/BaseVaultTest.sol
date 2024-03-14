@@ -93,7 +93,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
 
         // Approve Router
         for (uint256 index = 0; index < users.length; index++) {
-            approveRouter(users[index], userKeys[index]);
+            approveRouter(users[index], userKeys[index], true, 0);
         }
 
         // Approve Router by Governance
@@ -105,13 +105,22 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
         initPool();
     }
 
-    function approveRouter(address user, uint256 key) internal {
-        bytes32 digest = vault.getRouterApprovalDigest(user, address(router), true, type(uint256).max);
+    function getApproveRouterSignature(
+        address user,
+        uint256 key,
+        bool approve,
+        uint256 nonce
+    ) internal view returns (bytes memory) {
+        bytes32 digest = vault.getRouterApprovalDigest(user, address(router), approve, nonce, type(uint256).max);
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
         // note the order here is different from line above.
-        bytes memory signature = abi.encodePacked(r, s, v);
-        vault.approveRouter(user, address(router), true, type(uint256).max, signature);
+        return abi.encodePacked(r, s, v);
+    }
+
+    function approveRouter(address user, uint256 key, bool approve, uint256 nonce) internal {
+        bytes memory signature = getApproveRouterSignature(user, key, approve, nonce);
+        vault.approveRouter(user, address(router), approve, type(uint256).max, signature);
     }
 
     function approveVault(address user) internal {

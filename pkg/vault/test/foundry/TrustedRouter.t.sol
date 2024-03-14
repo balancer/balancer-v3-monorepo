@@ -47,68 +47,10 @@ contract TrustedRouterTest is BaseVaultTest {
         BaseVaultTest.setUp();
     }
 
-    function createPool() internal override returns (address) {
-        PoolMock newPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            true,
-            365 days,
-            address(0)
-        );
-        vm.label(address(newPool), "pool");
-
-        wethPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 weth Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
-            true,
-            365 days,
-            address(0)
-        );
-        vm.label(address(wethPool), "wethPool");
-
-        wethPoolNoInit = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 weth Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
-            true,
-            365 days,
-            address(0)
-        );
-        vm.label(address(wethPoolNoInit), "wethPoolNoInit");
-
-        return address(newPool);
-    }
-
-    function initPool() internal override {
-        (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(address(pool));
-        vm.prank(lp);
-        router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
-
-        vm.prank(lp);
-        bool wethIsEth = true;
-        router.initialize{ value: ethAmountIn }(
-            address(wethPool),
-            [address(weth), address(dai)].toMemoryArray().asIERC20(),
-            [uint256(ethAmountIn), uint256(daiAmountIn)].toMemoryArray(),
-            initBpt,
-            wethIsEth,
-            bytes("")
-        );
-    }
-
     function testApproveRouter() public {
         assertEq(vault.isTrustedRouter(address(router), alice), true);
 
-        bytes32 digest = vault.getRouterApprovalDigest(alice, address(router), false, type(uint256).max);
-
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(aliceKey, digest);
-        // note the order here is different from line above.
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = getApproveRouterSignature(alice, aliceKey, false, 0);
         vm.prank(alice);
         router.approveRouter(false, type(uint256).max, signature);
 
@@ -116,15 +58,67 @@ contract TrustedRouterTest is BaseVaultTest {
     }
 
     function testApproveRouterAndSwap() public {
-        assertEq(vault.isTrustedRouter(address(router), alice), true);
+        approveRouter(alice, aliceKey, false, 0);
 
-        bytes32 digest = vault.getRouterApprovalDigest(alice, address(router), false, type(uint256).max);
+        assertEq(vault.isTrustedRouter(address(router), alice), false);
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(aliceKey, digest);
-        // note the order here is different from line above.
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSelector(
+            IRouter.approveRouter.selector,
+            true,
+            type(uint256).max,
+            getApproveRouterSignature(alice, aliceKey, true, 0)
+        );
+        data[1] = abi.encodeWithSelector(
+            IRouter.swapSingleTokenExactIn.selector,
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+
         vm.prank(alice);
-        router.approveRouter(false, type(uint256).max, signature);
+        router.multicall(data);
+
+        assertEq(vault.isTrustedRouter(address(router), alice), true);
+    }
+
+    function testOneTimeApprove() public {
+        approveRouter(alice, aliceKey, false, 0);
+
+        assertEq(vault.isTrustedRouter(address(router), alice), false);
+
+        bytes[] memory data = new bytes[](3);
+        data[0] = abi.encodeWithSelector(
+            IRouter.approveRouter.selector,
+            true,
+            type(uint256).max,
+            getApproveRouterSignature(alice, aliceKey, true, 0)
+        );
+        data[1] = abi.encodeWithSelector(
+            IRouter.swapSingleTokenExactIn.selector,
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+        data[2] = abi.encodeWithSelector(
+            IRouter.approveRouter.selector,
+            false,
+            type(uint256).max,
+            getApproveRouterSignature(alice, aliceKey, false, 1)
+        );
+
+        vm.prank(alice);
+        router.multicall(data);
 
         assertEq(vault.isTrustedRouter(address(router), alice), false);
     }
