@@ -9,8 +9,8 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { SwapKind, SwapParams as VaultSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ERC4626BufferPool } from "@balancer-labs/v3-vault/contracts/ERC4626BufferPool.sol";
-import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.sol";
+import { ERC4626BufferPool } from "vault/contracts/ERC4626BufferPool.sol";
+import { BasePoolHooks } from "vault/contracts/BasePoolHooks.sol";
 
 contract ERC4626BufferPoolMock is ERC4626BufferPool {
     using SafeERC20 for IERC20;

@@ -15,7 +15,7 @@ import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultType
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { ERC4626BufferPoolFactoryMock } from "../utils/ERC4626BufferPoolFactoryMock.sol";
 import { ERC4626BufferPoolMock } from "../utils/ERC4626BufferPoolMock.sol";
