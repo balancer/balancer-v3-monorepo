@@ -107,15 +107,10 @@ contract BufferSwapTest is BaseVaultTest {
         tokenConfig[0].tokenType = TokenType.ERC4626;
         tokenConfig[1].tokenType = TokenType.ERC4626;
 
-        PoolMock newPool = new PoolMock(
-            IVault(address(vault)),
-            "Boosted Pool",
-            "BOOSTYBOI",
-            tokenConfig,
-            true,
-            365 days,
-            address(0)
-        );
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "Boosted Pool", "BOOSTYBOI");
+
+        factoryMock.registerTestPool(address(newPool), tokenConfig);
+
         vm.label(address(newPool), "boosted pool");
         boostedPool = address(newPool);
 
