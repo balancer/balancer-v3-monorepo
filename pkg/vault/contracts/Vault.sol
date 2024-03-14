@@ -182,7 +182,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
     {
         VaultState memory vaultState = _ensureUnpausedAndGetVaultState(params.pool);
-        
+
         if (params.amountGivenRaw == 0) {
             revert AmountGivenZero();
         }
