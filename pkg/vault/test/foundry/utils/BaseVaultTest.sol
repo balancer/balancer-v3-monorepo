@@ -21,6 +21,7 @@ import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
 import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
 import { Router } from "../../../contracts/Router.sol";
+import { BatchRouter } from "../../../contracts/BatchRouter.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
@@ -36,6 +37,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
         uint256[] poolTokens;
     }
 
+    uint256 constant MIN_BPT = 1e6;
+
     bytes32 constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     bytes32 constant ONE_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000001;
 
@@ -45,6 +48,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     VaultExtensionMock internal vaultExtension;
     // Router mock.
     RouterMock internal router;
+    // Batch router
+    BatchRouter internal batchRouter;
     // Authorizer mock.
     BasicAuthorizerMock internal authorizer;
     // Pool for tests.
@@ -69,7 +74,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     // Default swap fee percentage.
     uint256 internal swapFeePercentage = 0.01e18; // 1%
     // Default protocol swap fee percentage.
-    uint256 internal protocolSwapFeePercentage = 0.50e18; // 50%
+    uint64 internal protocolSwapFeePercentage = 0.50e18; // 50%
 
     function setUp() public virtual override {
         BaseTest.setUp();
@@ -80,6 +85,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
         vm.label(address(authorizer), "authorizer");
         router = new RouterMock(IVault(address(vault)), weth);
         vm.label(address(router), "router");
+        batchRouter = new BatchRouter(IVault(address(vault)), weth);
+        vm.label(address(batchRouter), "batch router");
         pool = createPool();
 
         // Approve vault allowances
@@ -129,7 +136,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
         vault.setStaticSwapFeePercentage(address(pool), percentage);
     }
 
-    function setProtocolSwapFeePercentage(uint256 percentage) internal {
+    function setProtocolSwapFeePercentage(uint64 percentage) internal {
         authorizer.grantRole(vault.getActionId(IVaultAdmin.setProtocolSwapFeePercentage.selector), admin);
         vm.prank(admin);
         vault.setProtocolSwapFeePercentage(percentage);
@@ -146,5 +153,9 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
         // Don't assume token ordering.
         balances.userTokens[0] = tokens[0].balanceOf(user);
         balances.userTokens[1] = tokens[1].balanceOf(user);
+    }
+
+    function getSalt(address addr) internal pure returns (bytes32) {
+        return bytes32(uint256(uint160(addr)));
     }
 }

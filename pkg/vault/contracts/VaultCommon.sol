@@ -15,6 +15,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 
+import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultStorage } from "./VaultStorage.sol";
 import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
@@ -30,6 +31,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     using ScalingHelpers for *;
     using SafeCast for *;
     using FixedPoint for *;
+    using VaultStateLib for VaultStateBits;
 
     /*******************************************************************************
                               Transient Accounting
@@ -159,24 +161,33 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
+     * @dev To save some gas, vault state variables are stored in a single word and are read only once.
+     * So, it's not possible to use the modifier whenPoolNotPaused , because it requires to read _vaultState
+     * one more time. This function optimizes the check if vault and pool are paused and returns the vaultState
+     * struct to be used elsewhere
+     */
+    function _ensureUnpausedAndGetVaultState(address pool) internal view returns (VaultState memory vaultState) {
+        vaultState = _vaultState.toVaultState();
+        // Check vault and pool paused inline, instead of using modifier, to save some gas reading the
+        // isVaultPaused state
+        if (vaultState.isVaultPaused) {
+            revert VaultPaused();
+        }
+        _ensurePoolNotPaused(pool);
+    }
+
+    /**
      * @dev For gas efficiency, storage is only read before `_vaultBufferPeriodEndTime`. Once we're past that
      * timestamp, the expression short-circuits false, and the Vault is permanently unpaused.
      */
     function _isVaultPaused() internal view returns (bool) {
         // solhint-disable-next-line not-rely-on-time
-        return block.timestamp <= _vaultBufferPeriodEndTime && _vaultPaused;
+        return block.timestamp <= _vaultBufferPeriodEndTime && _vaultState.isVaultPaused();
     }
 
     /*******************************************************************************
                                      Pool Pausing
     *******************************************************************************/
-
-    /// @dev Modifier to make a function callable only when the Vault and Pool are not paused.
-    modifier whenPoolNotPaused(address pool) {
-        _ensureVaultNotPaused();
-        _ensurePoolNotPaused(pool);
-        _;
-    }
 
     /**
      * @dev Reverts if the pool is paused.
@@ -360,7 +371,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _getPoolDataAndYieldFees(
         address pool,
-        Rounding roundingDirection
+        Rounding roundingDirection,
+        uint256 yieldFeePercentage
     ) internal view returns (PoolData memory poolData, uint256[] memory dueProtocolYieldFees) {
         // Initialize poolData with base information for subsequent calculations.
         (
@@ -378,7 +390,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         // Initialize arrays to store balances and rates based on the number of tokens in the pool.
         // Will be read raw, then upscaled and rounded as directed.
         poolData.balancesLiveScaled18 = new uint256[](numTokens);
-        uint256 yieldFeePercentage = _protocolYieldFeePercentage;
 
         // Fill in the tokenRates inside poolData (needed for `_updateLiveTokenBalanceInPoolData`).
         _updateTokenRatesInPoolData(poolData);
@@ -427,11 +438,12 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _computePoolDataUpdatingBalancesAndFees(
         address pool,
-        Rounding roundingDirection
+        Rounding roundingDirection,
+        uint256 yieldFeePercentage
     ) internal nonReentrant returns (PoolData memory poolData) {
         uint256[] memory dueProtocolYieldFees;
 
-        (poolData, dueProtocolYieldFees) = _getPoolDataAndYieldFees(pool, roundingDirection);
+        (poolData, dueProtocolYieldFees) = _getPoolDataAndYieldFees(pool, roundingDirection, yieldFeePercentage);
         uint256 numTokens = dueProtocolYieldFees.length;
 
         for (uint256 i = 0; i < numTokens; ++i) {
