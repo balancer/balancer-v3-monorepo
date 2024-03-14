@@ -74,10 +74,7 @@ library PoolConfigLib {
     }
 
     function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint256) {
-        return
-            PoolConfigBits
-                .unwrap(config)
-                .decodeUint(DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH);
+        return PoolConfigBits.unwrap(config).decodeUint(DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH);
     }
 
     function getPauseWindowEndTime(PoolConfigBits config) internal pure returns (uint256) {
