@@ -28,7 +28,7 @@ export default {
   },
   warnings: hardhatBaseConfig.warnings,
   tenderly: {
-    project: 'v2',
+    project: 'v3',
     username: 'balancer',
     privateVerification: true,
   },
