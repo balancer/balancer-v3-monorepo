@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.4;
 
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -15,6 +17,7 @@ using PoolConfigLib for PoolConfigBits global;
 
 library PoolConfigLib {
     using WordCodec for bytes32;
+    using SafeCast for uint256;
 
     // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
@@ -73,15 +76,16 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, _STATIC_SWAP_FEE_BITLENGTH);
     }
 
-    function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint256) {
+    function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint24) {
         return
             PoolConfigBits
                 .unwrap(config)
-                .decodeUint(DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH);
+                .decodeUint(DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH)
+                .toUint24();
     }
 
-    function getPauseWindowEndTime(PoolConfigBits config) internal pure returns (uint256) {
-        return PoolConfigBits.unwrap(config).decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH);
+    function getPauseWindowEndTime(PoolConfigBits config) internal pure returns (uint32) {
+        return PoolConfigBits.unwrap(config).decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH).toUint32();
     }
 
     function shouldCallBeforeSwap(PoolConfigBits config) internal pure returns (bool) {
@@ -186,14 +190,14 @@ library PoolConfigLib {
     }
 
     // Convert from an array of decimal differences, to the encoded 24 bit value (only uses bottom 20 bits).
-    function toTokenDecimalDiffs(uint8[] memory tokenDecimalDiffs) internal pure returns (uint256) {
+    function toTokenDecimalDiffs(uint8[] memory tokenDecimalDiffs) internal pure returns (uint24) {
         bytes32 value;
 
         for (uint256 i = 0; i < tokenDecimalDiffs.length; i++) {
             value = value.insertUint(tokenDecimalDiffs[i], i * _DECIMAL_DIFF_BITLENGTH, _DECIMAL_DIFF_BITLENGTH);
         }
 
-        return uint256(value);
+        return uint256(value).toUint24();
     }
 
     function getDecimalScalingFactors(

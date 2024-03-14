@@ -29,9 +29,9 @@ struct PoolConfig {
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
     bool hasDynamicSwapFee;
-    uint256 staticSwapFeePercentage;
-    uint256 tokenDecimalDiffs;
-    uint256 pauseWindowEndTime;
+    uint256 staticSwapFeePercentage; // stores an 18-decimal FP value (max FixedPoint.ONE)
+    uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
+    uint32 pauseWindowEndTime;
     PoolHooks hooks;
     LiquidityManagement liquidityManagement;
 }
