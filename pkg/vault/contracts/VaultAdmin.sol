@@ -6,7 +6,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -24,6 +23,7 @@ import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/h
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
+import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
@@ -40,10 +40,10 @@ import { VaultCommon } from "./VaultCommon.sol";
  */
 contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using PoolConfigLib for PoolConfig;
-    using SafeCast for *;
     using VaultExtensionsLib for IVault;
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
+    using VaultStateLib for VaultStateBits;
 
     IVault private immutable _vault;
 
@@ -170,7 +170,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             }
         }
 
-        _vaultPaused = pausing;
+        VaultState memory vaultState = _vaultState.toVaultState();
+        vaultState.isVaultPaused = pausing;
+        _vaultState = VaultStateLib.fromVaultState(vaultState);
 
         emit VaultPausedStateChanged(pausing);
     }
@@ -249,7 +251,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
             revert ProtocolSwapFeePercentageTooHigh();
         }
-        _protocolSwapFeePercentage = newProtocolSwapFeePercentage;
+        VaultState memory vaultState = _vaultState.toVaultState();
+        vaultState.protocolSwapFeePercentage = newProtocolSwapFeePercentage;
+        _vaultState = VaultStateLib.fromVaultState(vaultState);
         emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
     }
 
@@ -258,7 +262,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         if (newProtocolYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
             revert ProtocolYieldFeePercentageTooHigh();
         }
-        _protocolYieldFeePercentage = newProtocolYieldFeePercentage;
+        VaultState memory vaultState = _vaultState.toVaultState();
+        vaultState.protocolYieldFeePercentage = newProtocolYieldFeePercentage;
+        _vaultState = VaultStateLib.fromVaultState(vaultState);
         emit ProtocolYieldFeePercentageChanged(newProtocolYieldFeePercentage);
     }
 
@@ -270,7 +276,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function setStaticSwapFeePercentage(
         address pool,
         uint256 swapFeePercentage
-    ) external authenticate withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault nonReentrant {
+    ) external authenticate withRegisteredPool(pool) onlyVault {
+        // Saving bits by not implementing a new modifier
+        _ensureUnpausedAndGetVaultState(pool);
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 
@@ -354,7 +362,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     /// @inheritdoc IVaultAdmin
     function disableQuery() external authenticate onlyVault {
-        _isQueryDisabled = true;
+        VaultState memory vaultState = _vaultState.toVaultState();
+        vaultState.isQueryDisabled = true;
+        _vaultState = VaultStateLib.fromVaultState(vaultState);
     }
 
     /*******************************************************************************
