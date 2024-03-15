@@ -103,9 +103,15 @@ contract VaultMock is IVaultMainMock, Vault {
         _lockers = lockers;
     }
 
-    function testWithLocker() public view withLocker {
-
+    function manualSetInitializedPool(address pool, bool isPoolInitialized) public {
+        PoolConfig memory poolConfig = _poolConfig[pool].toPoolConfig();
+        poolConfig.isPoolInitialized = isPoolInitialized;
+        _poolConfig[pool] = poolConfig.fromPoolConfig();
     }
+
+    function testWithLocker() public view withLocker {}
+
+    function testWithInitializedPool(address pool) public view withInitializedPool(pool) {}
 
     function buildTokenConfig(IERC20[] memory tokens) public pure returns (TokenConfig[] memory tokenConfig) {
         tokenConfig = new TokenConfig[](tokens.length);

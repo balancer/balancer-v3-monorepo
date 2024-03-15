@@ -27,7 +27,11 @@ interface IVaultMainMock {
 
     function manualSetLockers(address[] memory lockers) external;
 
-    function testWithLocker() external;
+    function manualSetInitializedPool(address pool, bool isPoolInitialized) external;
+
+    function testWithLocker() external view;
+
+    function testWithInitializedPool(address pool) external view;
 
     function getDecimalScalingFactors(address pool) external view returns (uint256[] memory);
 
