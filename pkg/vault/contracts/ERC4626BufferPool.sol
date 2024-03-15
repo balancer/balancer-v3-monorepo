@@ -153,14 +153,19 @@ contract ERC4626BufferPool is
     }
 
     /// @inheritdoc BasePoolHooks
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata) external view override onlyVault returns (bool) {
-        // Swaps cannot be called externally - only the Vault can call this.
-        // Since routers might still try to trade directly with buffer pools (either maliciously or accidentally),
-        // the Vault also explicitly blocks any swaps with buffer pools.
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata params) external view override onlyVault returns (bool) {
+        // Ensure we have enough liquidity to accommodate the trade. Since these pools use Linear Math in the swap
+        // context, we can use amountGiven as the trade amount, and assume amountCalculated = amountGiven.
 
-        // TODO implement - check for / perform rebalancing; call _rebalance() if needed
-        // Exact mechanism TBD. Might call back to the Vault with a special operation (that can only be called from
-        // a Buffer Pool) to move the token balances, asset manager style.
+        uint256 totalBufferLiquidity = params.balancesScaled18[0] + params.balancesScaled18[1];
+
+        // If there is not enough total liquidity in the buffer to support the trade, we can't use the buffer.
+        // TODO: Should be handled somehow at the pool level (e.g., pool detects buffer failure and wraps/unwraps
+        // by itself).
+        if (params.amountGivenScaled18 > totalBufferLiquidity) {
+            return false;
+        }
+
         return true;
     }
 

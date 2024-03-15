@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { TokenConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -230,6 +231,31 @@ contract BufferSwapTest is BaseVaultTest {
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, SwapKind.EXACT_OUT);
+    }
+
+    function testBoostedPoolSwapTooLarge() public {
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
+
+        // We have `defaultAmount` of base and wrapped token liquidity in the buffer.
+        // If we swap with an amount greater than the total liquidity, we cannot use the buffer.
+
+        uint256 tooLargeSwapAmount = defaultAmount * 2 + swapAmount;
+
+        steps[0] = IBatchRouter.SwapPathStep({ pool: waDAIBufferPool, tokenOut: waDAI });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC });
+        steps[2] = IBatchRouter.SwapPathStep({ pool: waUSDCBufferPool, tokenOut: usdc });
+
+        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+            tokenIn: dai,
+            steps: steps,
+            exactAmountIn: tooLargeSwapAmount,
+            minAmountOut: tooLargeSwapAmount
+        });
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeSwapHookFailed.selector));
+        vm.prank(alice);
+        batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
     function _verifySwapResult(
