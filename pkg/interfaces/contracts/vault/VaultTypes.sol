@@ -24,6 +24,8 @@ struct LiquidityManagement {
 
 /// @dev Represents a pool's configuration, including hooks.
 struct PoolConfig {
+    PoolHooks hooks;
+    LiquidityManagement liquidityManagement;
     uint256 staticSwapFeePercentage;
     uint256 tokenDecimalDiffs;
     uint256 pauseWindowEndTime;
@@ -32,8 +34,6 @@ struct PoolConfig {
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
     bool hasDynamicSwapFee;
-    PoolHooks hooks;
-    LiquidityManagement liquidityManagement;
 }
 
 /**
