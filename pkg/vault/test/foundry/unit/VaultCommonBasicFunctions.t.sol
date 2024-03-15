@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.4;
 
-import "forge-std/console.sol";
-
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -203,10 +201,6 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         assertEq(address(newTokenConfig[0].token), address(tokens[0]));
         assertEq(address(newTokenConfig[1].token), address(tokens[1]));
         assertEq(address(newTokenConfig[2].token), address(tokens[2]));
-
-        console.log(balancesRaw[0]);
-        console.log(balancesRaw[1]);
-        console.log(balancesRaw[2]);
 
         assertEq(balancesRaw.length, 3);
         assertEq(balancesRaw[0], originalBalancesRaw[0]);
