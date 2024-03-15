@@ -97,7 +97,7 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
 
         emit Transfer(pool, address(0), to, amount);
 
-        // We also invoke the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
+        // We also emit the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
         BalancerPoolToken(pool).emitTransfer(address(0), to, amount);
     }
 
@@ -115,7 +115,7 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
         }
         emit Transfer(pool, address(0), address(0), _MINIMUM_TOTAL_SUPPLY);
 
-        // We also invoke the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
+        // We also emit the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
         BalancerPoolToken(pool).emitTransfer(address(0), address(0), _MINIMUM_TOTAL_SUPPLY);
     }
 
@@ -140,7 +140,7 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
 
         emit Transfer(pool, from, address(0), amount);
 
-        // We also invoke the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
+        // We also emit the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
         BalancerPoolToken(pool).emitTransfer(from, address(0), amount);
     }
 
@@ -167,7 +167,7 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
 
         emit Transfer(pool, from, to, amount);
 
-        // We also invoke the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
+        // We also emit the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
         BalancerPoolToken(pool).emitTransfer(from, to, amount);
     }
 
@@ -183,7 +183,7 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
         _allowances[pool][owner][spender] = amount;
 
         emit Approval(pool, owner, spender, amount);
-        // We also invoke the "approve" event on the pool token to ensure full compliance with ERC20 standards.
+        // We also emit the "approve" event on the pool token to ensure full compliance with ERC20 standards.
         BalancerPoolToken(pool).emitApproval(owner, spender, amount);
     }
 

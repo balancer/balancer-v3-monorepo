@@ -4,7 +4,9 @@ pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
 
-import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -12,6 +14,8 @@ import { PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
+import { VaultStateLib } from "../../contracts/lib/VaultStateLib.sol";
 
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
@@ -22,12 +26,19 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     using ArrayHelpers for *;
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
+    using SafeCast for uint256;
 
     RateProviderMock wstETHRateProvider;
     RateProviderMock daiRateProvider;
 
+    // Track the indices for the local dai/wsteth pool.
+    uint256 internal wstethIdx;
+    uint256 internal daiIdx;
+
     function setUp() public override {
         BaseVaultTest.setUp();
+
+        (daiIdx, wstethIdx) = getSortedIndexes(address(dai), address(wsteth));
     }
 
     // Create wsteth / dai pool, with rate providers on wsteth (non-exempt), and dai (exempt)
@@ -38,6 +49,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         bool[] memory yieldExemptFlags = new bool[](2);
 
+        // These will be sorted with the tokens by buildTokenConfig.
         rateProviders[0] = wstETHRateProvider;
         rateProviders[1] = daiRateProvider;
         yieldExemptFlags[1] = true;
@@ -59,8 +71,8 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         return address(newPool);
     }
 
-    function setProtocolYieldFeePercentage(uint256 yieldFeePercentage) internal {
-        bytes32 setFeeRole = vault.getActionId(IVaultExtension.setProtocolYieldFeePercentage.selector);
+    function setProtocolYieldFeePercentage(uint64 yieldFeePercentage) internal {
+        bytes32 setFeeRole = vault.getActionId(IVaultAdmin.setProtocolYieldFeePercentage.selector);
         authorizer.grantRole(setFeeRole, alice);
 
         vm.prank(alice);
@@ -90,13 +102,17 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     function testNoYieldFeesIfExempt__Fuzz(
         uint256 wstethRate,
         uint256 daiRate,
-        uint256 yieldFeePercentage,
+        uint64 yieldFeePercentage,
         bool roundUp
     ) public {
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
+
         // yield fee 1-20%
-        yieldFeePercentage = bound(yieldFeePercentage, 0.01e18, 0.2e18);
+        yieldFeePercentage = bound(yieldFeePercentage, 10, 200).toUint64();
+        // VaultState stores yieldFeePercentage as a 10 bits variable (from 0 to 1023, or 0% to 102.3%)
+        // Multiplying by 1e15 makes it 18 decimals scaled again
+        yieldFeePercentage = yieldFeePercentage * VaultStateLib.FEE_SCALING_FACTOR;
 
         pool = createPool();
         wstETHRateProvider.mockRate(wstethRate);
@@ -137,9 +153,12 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
 
         // How much should the fee be?
         // Tricky, because the diff already has the fee subtracted. Need to add it back in
-        uint256 protocolFeeScaled18 = actualProtocolFee.toScaled18ApplyRateRoundDown(scalingFactors[0], wstethRate);
-        uint256 feeScaled18 = (liveBalanceDeltas[0] + protocolFeeScaled18).mulDown(yieldFeePercentage);
-        uint256 expectedProtocolFee = feeScaled18.toRawUndoRateRoundDown(scalingFactors[0], wstethRate);
+        uint256 protocolFeeScaled18 = actualProtocolFee.toScaled18ApplyRateRoundDown(
+            scalingFactors[wstethIdx],
+            wstethRate
+        );
+        uint256 feeScaled18 = (liveBalanceDeltas[wstethIdx] + protocolFeeScaled18).mulDown(yieldFeePercentage);
+        uint256 expectedProtocolFee = feeScaled18.toRawUndoRateRoundDown(scalingFactors[wstethIdx], wstethRate);
 
         assertApproxEqAbs(actualProtocolFee, expectedProtocolFee, 1e3, "Actual protocol fee is not the expected one");
     }
@@ -206,7 +225,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     }
 
     function testYieldFeesOnSwap__Fuzz(uint256 wstethRate, uint256 daiRate) public {
-        uint256 protocolYieldFeePercentage = 0.1e18;
+        uint64 protocolYieldFeePercentage = 0.1e18;
         setProtocolYieldFeePercentage(protocolYieldFeePercentage); //  10%
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
@@ -228,7 +247,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
 
         // Dummy swap
         vm.prank(alice);
-        router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, type(uint256).max, false, "");
+        router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, MAX_UINT256, false, "");
 
         // No matter what the rates are, the value of wsteth grows from 1x to 10x.
         // Then, the protocol takes its cut out of the 9x difference.
@@ -254,8 +273,8 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         uint256[] memory expectedRawBalances = vault.getRawBalances(address(pool));
         uint256[] memory expectedRates = new uint256[](2);
 
-        expectedRates[0] = wstethRate;
-        expectedRates[1] = daiRate;
+        expectedRates[wstethIdx] = wstethRate;
+        expectedRates[daiIdx] = daiRate;
 
         uint256 expectedLiveBalance;
 

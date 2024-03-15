@@ -8,13 +8,7 @@ import { Router } from '@balancer-labs/v3-vault/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { MONTH, currentTimestamp } from '@balancer-labs/v3-helpers/src/time';
 import { ERC20TestToken, ERC4626TestToken, WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
-import {
-  ANY_ADDRESS,
-  MAX_UINT256,
-  ONES_BYTES32,
-  ZERO_ADDRESS,
-  ZERO_BYTES32,
-} from '@balancer-labs/v3-helpers/src/constants';
+import { ANY_ADDRESS, MAX_UINT256, ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
 import { PoolConfigStructOutput, VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
@@ -22,6 +16,7 @@ import { FP_ONE, FP_ZERO, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
+import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
 describe('ERC4626BufferPool', function () {
   const TOKEN_AMOUNT = fp(1000);
@@ -63,7 +58,7 @@ describe('ERC4626BufferPool', function () {
 
     baseTokenAddress = await baseToken.getAddress();
     wrappedTokenAddress = await wrappedToken.getAddress();
-    tokenAddresses = [wrappedTokenAddress, baseTokenAddress];
+    tokenAddresses = sortAddresses([wrappedTokenAddress, baseTokenAddress]);
 
     factory = await deploy('v3-vault/ERC4626BufferPoolFactory', { args: [vault, 12 * MONTH] });
   });
@@ -97,7 +92,7 @@ describe('ERC4626BufferPool', function () {
   }
 
   describe('registration', () => {
-    sharedBeforeEach('create pool', async () => {
+    sharedBeforeEach('register factory and create pool', async () => {
       pool = await createBufferPool();
     });
 
@@ -123,19 +118,12 @@ describe('ERC4626BufferPool', function () {
       expect(actualTokens).to.deep.equal(tokenAddresses);
     });
 
-    it('cannot be registered twice', async () => {
-      await expect(
-        factory.connect(alice).create(wrappedToken, ZERO_ADDRESS, ONES_BYTES32)
-      ).to.be.revertedWithCustomError(vault, 'WrappedTokenBufferAlreadyRegistered');
-    });
-
     it('configures the pool correctly', async () => {
       const currentTime = await currentTimestamp();
       const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(pool);
 
       const [paused, , , pauseManager] = await vault.getPoolPausedState(pool);
       expect(paused).to.be.false;
-      expect(poolConfig.isBufferPool).to.be.true;
       expect(pauseManager).to.eq(ANY_ADDRESS);
 
       expect(poolConfig.pauseWindowEndTime).to.gt(currentTime);
@@ -195,7 +183,10 @@ describe('ERC4626BufferPool', function () {
       expect(await baseToken.balanceOf(alice)).to.eq(0);
 
       const [, tokenTypes, balances, ,] = await vault.getPoolTokenInfo(pool);
-      expect(tokenTypes).to.deep.equal([TokenType.ERC4626, TokenType.STANDARD]);
+      const expectedTokenTypes = tokenAddresses.map((address) =>
+        address === wrappedTokenAddress ? TokenType.ERC4626 : TokenType.STANDARD
+      );
+      expect(tokenTypes).to.deep.equal(expectedTokenTypes);
       expect(balances).to.deep.equal([TOKEN_AMOUNT, TOKEN_AMOUNT]);
     });
 
@@ -210,25 +201,6 @@ describe('ERC4626BufferPool', function () {
   describe('swaps', () => {
     sharedBeforeEach('create and initialize pool', async () => {
       pool = await createAndInitializeBufferPool();
-    });
-
-    it('does not allow buffer pool swaps through a router', async () => {
-      await expect(
-        router
-          .connect(alice)
-          .swapSingleTokenExactIn(
-            pool,
-            baseTokenAddress,
-            wrappedTokenAddress,
-            TOKEN_AMOUNT,
-            0,
-            MAX_UINT256,
-            false,
-            '0x'
-          )
-      )
-        .to.be.revertedWithCustomError(vault, 'CannotSwapWithBufferPool')
-        .withArgs(await pool.getAddress());
     });
 
     it('does not allow external swaps', async () => {

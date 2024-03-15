@@ -71,21 +71,21 @@ interface IVaultErrors {
     error BalanceNotSettled();
 
     /**
-     * @dev In transient accounting, a handler is attempting to execute an operation out of order.
-     * The caller address should equal the handler.
-     * @param handler Address of the current handler being processed
+     * @dev In transient accounting, a locker is attempting to execute an operation out of order.
+     * The caller address should equal the locker.
+     * @param locker Address of the current locker being processed
      * @param caller Address of the caller (msg.sender)
      */
-    error WrongHandler(address handler, address caller);
+    error WrongLocker(address locker, address caller);
 
-    /// @dev A user called a Vault function (swap, add/remove liquidity) outside the invoke context.
-    error NoHandler();
+    /// @dev A user called a Vault function (swap, add/remove liquidity) outside the lock context.
+    error NoLocker();
 
     /**
-     * @dev The caller attempted to access a handler at an invalid index.
+     * @dev The caller attempted to access a Locker at an invalid index.
      * @param index The invalid index
      */
-    error HandlerOutOfBounds(uint256 index);
+    error LockerOutOfBounds(uint256 index);
 
     /// @dev The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
     error BeforeSwapHookFailed();
@@ -209,19 +209,6 @@ interface IVaultErrors {
     error SenderIsNotVault(address sender);
 
     /*******************************************************************************
-                                ERC4626 Buffers
-    *******************************************************************************/
-
-    /// @dev A token buffer can only be registered once.
-    error WrappedTokenBufferAlreadyRegistered();
-
-    /// @dev A token buffer must be registered for a token before pools can be registered with that token.
-    error WrappedTokenBufferNotRegistered();
-
-    /// @dev An external caller (i.e., through a router) is attempting to swap with a Buffer Pools.
-    error CannotSwapWithBufferPool(address bufferPool);
-
-    /*******************************************************************************
                                         Pausing
     *******************************************************************************/
 
@@ -231,7 +218,7 @@ interface IVaultErrors {
     /// @dev The caller specified a buffer period longer than the maximum.
     error PauseBufferPeriodDurationTooLarge();
 
-    /// @dev A user tried to invoke an operation while the Vault was paused.
+    /// @dev A user tried to perform an operation while the Vault was paused.
     error VaultPaused();
 
     /// @dev Governance tried to unpause the Vault when it was not paused.
@@ -241,7 +228,7 @@ interface IVaultErrors {
     error VaultPauseWindowExpired();
 
     /**
-     * @dev A user tried to invoke an operation involving a paused Pool.
+     * @dev A user tried to perform an operation involving a paused Pool.
      * @param pool The paused pool
      */
     error PoolPaused(address pool);
@@ -282,4 +269,7 @@ interface IVaultErrors {
 
     /// @dev The vault extension was configured with an incorrect Vault address.
     error WrongVaultExtensionDeployment();
+
+    /// @dev The vault admin was configured with an incorrect Vault address.
+    error WrongVaultAdminDeployment();
 }
