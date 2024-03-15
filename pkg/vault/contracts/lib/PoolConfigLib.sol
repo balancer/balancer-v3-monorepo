@@ -179,7 +179,11 @@ library PoolConfigLib {
                         DECIMAL_SCALING_FACTORS_OFFSET,
                         _TOKEN_DECIMAL_DIFFS_BITLENGTH
                     )
-                    .insertUint(config.staticSwapFeePercentage / FEE_SCALING_FACTOR, STATIC_SWAP_FEE_OFFSET, _FEE_BITLENGTH)
+                    .insertUint(
+                        config.staticSwapFeePercentage / FEE_SCALING_FACTOR,
+                        STATIC_SWAP_FEE_OFFSET,
+                        _FEE_BITLENGTH
+                    )
                     .insertUint(config.pauseWindowEndTime, PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH)
             );
     }
