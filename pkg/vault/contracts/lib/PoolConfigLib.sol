@@ -36,7 +36,7 @@ library PoolConfigLib {
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
 
     uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
-    uint8 public constant DECIMAL_SCALING_FACTORS_OFFSET = STATIC_SWAP_FEE_OFFSET + _STATIC_SWAP_FEE_BITLENGTH;
+    uint8 public constant DECIMAL_SCALING_FACTORS_OFFSET = STATIC_SWAP_FEE_OFFSET + _FEE_BITLENGTH;
     uint8 public constant PAUSE_WINDOW_END_TIME_OFFSET =
         DECIMAL_SCALING_FACTORS_OFFSET + _TOKEN_DECIMAL_DIFFS_BITLENGTH;
 
@@ -45,9 +45,11 @@ library PoolConfigLib {
     uint8 private constant _TOKEN_DECIMAL_DIFFS_BITLENGTH = 24;
     uint8 private constant _DECIMAL_DIFF_BITLENGTH = 5;
 
-    // A fee can never be larger than FixedPoint.ONE, which fits in 60 bits
-    uint8 private constant _STATIC_SWAP_FEE_BITLENGTH = 64;
+    // Swap Fees are a 24 bits value. We transform it by multiplying by 1e11, so
+    // it can be configured from 0% to 100% fee (step 0.00001%)
+    uint8 private constant _FEE_BITLENGTH = 24;
     uint8 private constant _TIMESTAMP_BITLENGTH = 32;
+    uint64 public constant FEE_SCALING_FACTOR = 1e11;
 
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_REGISTERED_OFFSET);
@@ -70,7 +72,7 @@ library PoolConfigLib {
     }
 
     function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
-        return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, _STATIC_SWAP_FEE_BITLENGTH);
+        return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, _FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
     function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint256) {
@@ -177,7 +179,7 @@ library PoolConfigLib {
                         DECIMAL_SCALING_FACTORS_OFFSET,
                         _TOKEN_DECIMAL_DIFFS_BITLENGTH
                     )
-                    .insertUint(config.staticSwapFeePercentage, STATIC_SWAP_FEE_OFFSET, _STATIC_SWAP_FEE_BITLENGTH)
+                    .insertUint(config.staticSwapFeePercentage / FEE_SCALING_FACTOR, STATIC_SWAP_FEE_OFFSET, _FEE_BITLENGTH)
                     .insertUint(config.pauseWindowEndTime, PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH)
             );
     }

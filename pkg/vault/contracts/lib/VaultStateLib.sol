@@ -23,10 +23,10 @@ library VaultStateLib {
     uint8 public constant PROTOCOL_SWAP_FEE_OFFSET = VAULT_PAUSED_OFFSET + 1;
     uint8 public constant PROTOCOL_YIELD_FEE_OFFSET = PROTOCOL_SWAP_FEE_OFFSET + _FEE_BITLENGTH;
 
-    // Protocol Swap and Yield Fees are a 10 bits value. We transform it by multiplying by 1e15, so
-    // it can be configured from 0% to 100% fee (step 0.1%)
-    uint8 private constant _FEE_BITLENGTH = 10;
-    uint64 public constant FEE_SCALING_FACTOR = 1e15;
+    // Protocol Swap and Yield Fees are a 24 bits value. We transform it by multiplying by 1e11, so
+    // it can be configured from 0% to 100% fee (step 0.00001%)
+    uint8 private constant _FEE_BITLENGTH = 24;
+    uint64 public constant FEE_SCALING_FACTOR = 1e11;
 
     function isQueryDisabled(VaultStateBits config) internal pure returns (bool) {
         return VaultStateBits.unwrap(config).decodeBool(QUERY_DISABLED_OFFSET);
