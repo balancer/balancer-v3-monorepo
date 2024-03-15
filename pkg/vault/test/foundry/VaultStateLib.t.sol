@@ -8,6 +8,7 @@ import { VaultState } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTy
 import { VaultStateBits, VaultStateLib } from "../../contracts/lib/VaultStateLib.sol";
 
 contract VaultStateLibTest is Test {
+    // Two 24-bit fees + 2 flags = 50 total bits used.
     uint256 private constant CONFIG_MSB = 50;
 
     function testToAndFromVaultStateBits__Fuzz(uint256 rawConfigInt) public {
