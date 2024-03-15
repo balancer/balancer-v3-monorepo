@@ -19,9 +19,17 @@ import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RatePro
 import { WeightedPool8020Factory } from "../../contracts/WeightedPool8020Factory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
 
+contract WeightedPool8020FactoryMock is WeightedPool8020Factory {
+    constructor(IVault vault, uint256 pauseWindowDuration) WeightedPool8020Factory(vault, pauseWindowDuration) {}
+
+    function setPoolsMapping(IERC20 highWeightToken, IERC20 lowWeightToken, address pool) public {
+        _pools[highWeightToken][lowWeightToken] = pool;
+    }
+}
+
 contract WeightedPool8020FactoryTest is Test {
     VaultMock vault;
-    WeightedPool8020Factory factory;
+    WeightedPool8020FactoryMock factory;
     RateProviderMock rateProvider;
     ERC20TestToken tokenA;
     ERC20TestToken tokenB;
@@ -30,7 +38,7 @@ contract WeightedPool8020FactoryTest is Test {
 
     function setUp() public {
         vault = VaultMockDeployer.deploy();
-        factory = new WeightedPool8020Factory(IVault(address(vault)), 365 days);
+        factory = new WeightedPool8020FactoryMock(IVault(address(vault)), 365 days);
 
         tokenA = new ERC20TestToken("Token A", "TKNA", 18);
         tokenB = new ERC20TestToken("Token B", "TKNB", 6);
@@ -68,17 +76,10 @@ contract WeightedPool8020FactoryTest is Test {
         tokens[1].token = tokenB;
         tokens[0].rateProvider = rateProvider;
 
-        WeightedPool pool = WeightedPool(
-            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], bytes32(0))
-        );
+        WeightedPool pool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], salt));
         address expectedPoolAddress = factory.getDeploymentAddress(salt);
 
-        WeightedPool secondPool = WeightedPool(
-            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], salt)
-        );
-
-        assertFalse(address(pool) == address(secondPool), "Two deployed pool addresses are equal");
-        assertEq(address(secondPool), expectedPoolAddress, "Unexpected pool address");
+        assertEq(address(pool), expectedPoolAddress, "Unexpected pool address");
     }
 
     function testPoolSender__Fuzz(bytes32 salt) public {
@@ -114,6 +115,9 @@ contract WeightedPool8020FactoryTest is Test {
         );
 
         vm.chainId(chainId);
+
+        // resetting _pools back to 0 to avoid the AlreadyExists() check.
+        factory.setPoolsMapping(IERC20(tokenA), IERC20(tokenB), address(0));
 
         vm.prank(alice);
         WeightedPool poolL2 = WeightedPool(
@@ -165,9 +169,8 @@ contract WeightedPool8020FactoryTest is Test {
             "Second Expectation - getPool is fetching a pool different from the one being created"
         );
 
-        assertNotEq(
-            address(pool),
-            address(invertedPool),
+        assertFalse(
+            address(pool) == address(invertedPool),
             "Pools with same tokens but different weight distributions should be different"
         );
     }
@@ -186,9 +189,9 @@ contract WeightedPool8020FactoryTest is Test {
 
         address fetchedPool = factory.getPool(highWeightToken, lowWeightToken);
 
-        assertNotEq(fetchedPool, address(0), "Pool has not been registered into the poolAddresses mapping correctly");
+        assertFalse(fetchedPool == address(0), "Pool has not been registered into the poolAddresses mapping correctly");
 
-        // Trying to create the same pool with different token combination should revert
+        // Trying to create the same pool with different salts should revert
         vm.expectRevert(WeightedPool8020Factory.PoolAlreadyExists.selector);
         WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], secondSalt));
     }
