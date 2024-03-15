@@ -180,8 +180,43 @@ contract BufferSwapTest is BaseVaultTest {
     }
 
     function testBoostedPoolSwapExactIn() public {
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount);
+
+        vm.prank(alice);
+        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
+            .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, SwapKind.EXACT_IN);
+    }
+
+    function testBoostedPoolSwapExactOut() public {
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount);
+
+        vm.prank(alice);
+        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
+            .swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, SwapKind.EXACT_OUT);
+    }
+
+    function testBoostedPoolSwapTooLarge() public {
+        // We have `defaultAmount` of base and wrapped token liquidity in the buffer.
+        // If we swap with an amount greater than the total liquidity, we cannot use the buffer.
+
+        uint256 tooLargeSwapAmount = defaultAmount * 2 + swapAmount;
+
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(tooLargeSwapAmount);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeSwapHookFailed.selector));
+        vm.prank(alice);
+        batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+    }
+
+    function _buildExactInPaths(
+        uint256 amount
+    ) private view returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
+        paths = new IBatchRouter.SwapPathExactAmountIn[](1);
 
         // "Transparent" USDC for DAI swap with boosted pool, which holds only wrapped tokens.
         // Since this is exact in, swaps will be executed in the order given.
@@ -195,20 +230,16 @@ contract BufferSwapTest is BaseVaultTest {
         paths[0] = IBatchRouter.SwapPathExactAmountIn({
             tokenIn: dai,
             steps: steps,
-            exactAmountIn: swapAmount,
-            minAmountOut: swapAmount
+            exactAmountIn: amount,
+            minAmountOut: amount
         });
-
-        vm.prank(alice);
-        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
-            .swapExactIn(paths, MAX_UINT256, false, bytes(""));
-
-        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, SwapKind.EXACT_IN);
     }
 
-    function testBoostedPoolSwapExactOut() public {
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
+    function _buildExactOutPaths(
+        uint256 amount
+    ) private view returns (IBatchRouter.SwapPathExactAmountOut[] memory paths) {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
+        paths = new IBatchRouter.SwapPathExactAmountOut[](1);
 
         // "Transparent" USDC for DAI swap with boosted pool, which holds only wrapped tokens.
         // Since this is exact out, swaps will be executed in reverse order (though we submit in logical order).
@@ -222,40 +253,9 @@ contract BufferSwapTest is BaseVaultTest {
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
             tokenIn: dai,
             steps: steps,
-            maxAmountIn: swapAmount,
-            exactAmountOut: swapAmount
+            maxAmountIn: amount,
+            exactAmountOut: amount
         });
-
-        vm.prank(alice);
-        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
-            .swapExactOut(paths, MAX_UINT256, false, bytes(""));
-
-        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, SwapKind.EXACT_OUT);
-    }
-
-    function testBoostedPoolSwapTooLarge() public {
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
-
-        // We have `defaultAmount` of base and wrapped token liquidity in the buffer.
-        // If we swap with an amount greater than the total liquidity, we cannot use the buffer.
-
-        uint256 tooLargeSwapAmount = defaultAmount * 2 + swapAmount;
-
-        steps[0] = IBatchRouter.SwapPathStep({ pool: waDAIBufferPool, tokenOut: waDAI });
-        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC });
-        steps[2] = IBatchRouter.SwapPathStep({ pool: waUSDCBufferPool, tokenOut: usdc });
-
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
-            tokenIn: dai,
-            steps: steps,
-            exactAmountIn: tooLargeSwapAmount,
-            minAmountOut: tooLargeSwapAmount
-        });
-
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeSwapHookFailed.selector));
-        vm.prank(alice);
-        batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
     function _verifySwapResult(
