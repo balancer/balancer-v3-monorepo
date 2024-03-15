@@ -16,7 +16,8 @@ import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/tes
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
-import { ERC4626BufferPoolFactory } from "../../contracts/factories/ERC4626BufferPoolFactory.sol";
+import { ERC4626BufferPoolFactoryMock } from "./utils/ERC4626BufferPoolFactoryMock.sol";
+import { ERC4626BufferPoolMock } from "./utils/ERC4626BufferPoolMock.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -27,7 +28,7 @@ contract BufferSwapTest is BaseVaultTest {
     ERC4626TestToken internal waDAI;
     ERC4626TestToken internal waUSDC;
 
-    ERC4626BufferPoolFactory bufferFactory;
+    ERC4626BufferPoolFactoryMock bufferFactory;
 
     // For two-token pools with waDAI/waUSDC, keep track of sorted token order.
     uint256 internal waDaiIdx;
@@ -51,7 +52,7 @@ contract BufferSwapTest is BaseVaultTest {
         // "USDC" is deliberately 18 decimals to test one thing at a time.
         waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 18);
 
-        bufferFactory = new ERC4626BufferPoolFactory(vault, 365 days);
+        bufferFactory = new ERC4626BufferPoolFactoryMock(vault, 365 days);
 
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
 
@@ -66,8 +67,8 @@ contract BufferSwapTest is BaseVaultTest {
         usdc.mint(address(waUSDC), defaultAmount);
         waUSDC.mint(defaultAmount, lp);
 
-        waDAIBufferPool = bufferFactory.create(waDAI, address(0), getSalt(address(waDAI)));
-        waUSDCBufferPool = bufferFactory.create(waUSDC, address(0), getSalt(address(waUSDC)));
+        waDAIBufferPool = bufferFactory.createMocked(waDAI);
+        waUSDCBufferPool = bufferFactory.createMocked(waUSDC);
 
         IERC20[] memory daiBufferTokens = InputHelpers.sortTokens(
             [address(waDAI), address(dai)].toMemoryArray().asIERC20()
@@ -148,8 +149,8 @@ contract BufferSwapTest is BaseVaultTest {
         // The boosted pool should have `boostedPoolAmount` of both tokens.
         assertEq(address(tokens[waDaiIdx]), address(waDAI), "Wrong boosted pool token (waDAI)");
         assertEq(address(tokens[waUsdcIdx]), address(waUSDC), "Wrong boosted pool token (waUSDC)");
-        assertEq(balancesRaw[0], boostedPoolAmount, "Wrong boosted pool balance");
-        assertEq(balancesRaw[1], boostedPoolAmount, "Wrong boosted pool balance");
+        assertEq(balancesRaw[0], boostedPoolAmount, "Wrong boosted pool balance [0]");
+        assertEq(balancesRaw[1], boostedPoolAmount, "Wrong boosted pool balance [1]");
 
         // lp should have all the buffer BPT.
         assertEq(
@@ -210,6 +211,22 @@ contract BufferSwapTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeSwapHookFailed.selector));
         vm.prank(alice);
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+    }
+
+    function testBoostedPoolSwapSimpleRebalance() public {
+        // We want to unbalance the pool such that the "low balance" = swapAmount
+        uint256 amountToWrap = defaultAmount - swapAmount;
+        ERC4626BufferPoolMock(waDAIBufferPool).unbalanceThePool(amountToWrap, SwapKind.EXACT_OUT);
+
+        // Check that it is unbalanced
+        (uint256 wrappedIdx, uint256 baseIdx) = getSortedIndexes(address(waDAI), address(dai));
+        (, , uint256[] memory balancesRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
+
+        assertEq(balancesRaw[baseIdx], swapAmount, "Wrong waDAI buffer pool balance (DAI)");
+        assertEq(balancesRaw[wrappedIdx], defaultAmount + amountToWrap, "Wrong waDAI buffer pool balance (waDAI)");
+
+        // Perform the swap
+        // It should now be balanced (except for the trade)
     }
 
     function _buildExactInPaths(
