@@ -60,6 +60,17 @@ contract ERC4626BufferPool is
     uint256 internal immutable _wrappedTokenScalingFactor;
     uint256 internal immutable _baseTokenScalingFactor;
 
+    // If we trigger a rebalance from the `onBeforeSwap` hook, the internal swap on the pool will call this hook again.
+    // Use this flag as an internal reentrancy guard to avoid recursion.
+    bool private _inSwapContext;
+
+    // Apply to edge-case handling functions so that we don't need to remember to set/clear the context flag.
+    modifier performsInternalSwap() {
+        _inSwapContext = true;
+        _;
+        _inSwapContext = false;
+    }
+
     // Uses the factory as the Authentication disambiguator.
     constructor(
         string memory name,
@@ -153,20 +164,49 @@ contract ERC4626BufferPool is
     }
 
     /// @inheritdoc BasePoolHooks
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata params) external view override onlyVault returns (bool) {
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata params) external override onlyVault returns (bool) {
+        // Short-circuit if we're already inside an `onBeforeSwap` hook.
+        if (_inSwapContext) {
+            return true;
+        }
+
         // Ensure we have enough liquidity to accommodate the trade. Since these pools use Linear Math in the swap
         // context, we can use amountGiven as the trade amount, and assume amountCalculated = amountGiven.
 
-        uint256 totalBufferLiquidity = params.balancesScaled18[0] + params.balancesScaled18[1];
+        // If the trade amount is greater than the available balance, the buffer swap would fail without intervention.
+        // Since it's Linear Math, the "available balance" is the amount of tokenOut, regardless of whether the trade
+        // is ExactIn or ExactOut.
+        if (params.amountGivenScaled18 > params.balancesScaled18[params.indexOut]) {
+            uint256 totalBufferLiquidity = params.balancesScaled18[0] + params.balancesScaled18[1];
 
-        // If there is not enough total liquidity in the buffer to support the trade, we can't use the buffer.
-        // TODO: Should be handled somehow at the pool level (e.g., pool detects buffer failure and wraps/unwraps
-        // by itself).
-        if (params.amountGivenScaled18 > totalBufferLiquidity) {
-            return false;
+            // If there is not enough total liquidity in the buffer to support the trade, we can't use the buffer.
+            if (params.amountGivenScaled18 > totalBufferLiquidity) {
+                // TODO: Should be handled somehow at the pool level (e.g., pool detects buffer failure and
+                //  wraps/unwraps by itself).
+                return false;
+            } else {
+                // The buffer pool is currently too unbalanced to allow the trade, so we need to "counter swap" to fix
+                // this and allow the trade to proceed.
+                _handleUnbalancedPoolSwaps(params, totalBufferLiquidity);
+            }
         }
 
         return true;
+    }
+
+    function _handleUnbalancedPoolSwaps(
+        IBasePool.PoolSwapParams calldata params,
+        uint256 totalBufferLiquidity
+    ) private performsInternalSwap {
+        // If the trade amount is less than half the total liquidity, the built-in 50/50 rebalance will allow
+        // the trade to succeed.
+        if (params.amountGivenScaled18 <= totalBufferLiquidity / 2) {
+            _rebalance();
+        } else {
+            // solhint-disable-previous-line no-empty-blocks
+            // TODO: the trade amount is greater than half the liquidity - but less than all of it - so we
+            // need to do a more precise "counter swap" to enable the trade to succeed.
+        }
     }
 
     /// @inheritdoc IBasePool
