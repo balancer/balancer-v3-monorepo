@@ -1,0 +1,22 @@
+module.exports = {
+  buildDir: './pkg/vault/forge-artifacts',
+  contractsDir: 'pkg/vault/contracts',
+  testDir: 'pkg/vault/test',
+  skipContracts: [
+    'BatchRouter',
+    'Router',
+    'VaultStorage',
+    'VaultFactory',
+    'test',
+    'factories',
+    'BasePoolAuthentication',
+    'BasePoolHooks',
+    'ERC4626BufferPool',
+  ],
+  skipTests: [],
+  testingTimeOutInSec: 300,
+  network: 'none',
+  testingFramework: 'custom',
+  minimal: false,
+  tce: false,
+};

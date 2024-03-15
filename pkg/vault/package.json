@@ -17,7 +17,7 @@
     "!contracts/test/**/*.sol"
   ],
   "scripts": {
-    "build": "yarn compile && rm -rf artifacts/build-info",
+    "build": "echo 'skip build'",
     "compile": "hardhat compile",
     "compile:watch": "nodemon --ext sol --exec yarn compile",
     "lint": "yarn lint:solidity && yarn lint:typescript",
@@ -41,6 +41,7 @@
   "devDependencies": {
     "@balancer-labs/solidity-toolbox": "workspace:*",
     "@balancer-labs/v3-solidity-utils": "workspace:*",
+    "@morenabarboni/sumo": "^2.5.4",
     "@typescript-eslint/eslint-plugin": "^5.41.0",
     "@typescript-eslint/parser": "^5.41.0",
     "decimal.js": "^10.4.2",

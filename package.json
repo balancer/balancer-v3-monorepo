@@ -20,9 +20,9 @@
     "Mike McDonald <mike@balancer.finance>"
   ],
   "scripts": {
-    "build": "yarn workspaces foreach --parallel --verbose run build",
+    "compile": "yarn workspace @balancer-labs/v3-vault build",
     "lint": "NODE_NO_WARNINGS=1 yarn workspaces foreach --parallel --verbose run lint",
-    "test": "yarn workspaces foreach --parallel --verbose run test",
+    "test": "yarn workspace @balancer-labs/v3-vault test:forge --fail-fast",
     "coverage": "yarn workspaces foreach --parallel --verbose run coverage",
     "gas": "yarn workspaces foreach --parallel --verbose run gas",
     "slither-install": "python3 -m venv slither && bash -c 'source slither/bin/activate && pip3 install https://github.com/crytic/slither/releases/download/0.10.1/0.10.1.zip'",
