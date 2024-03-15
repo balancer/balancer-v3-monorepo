@@ -62,6 +62,7 @@ contract ERC4626BufferPool is
 
     // If we trigger a rebalance from the `onBeforeSwap` hook, the internal swap on the pool will call this hook again.
     // Use this flag as an internal reentrancy guard to avoid recursion.
+    // TODO: Should be transient.
     bool private _inSwapContext;
 
     // Apply to edge-case handling functions so that we don't need to remember to set/clear the context flag.

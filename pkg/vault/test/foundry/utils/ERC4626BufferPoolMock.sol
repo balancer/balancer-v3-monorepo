@@ -22,7 +22,7 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
         IVault vault
     ) ERC4626BufferPool(name, symbol, wrappedToken, vault) {}
 
-    // If EXACT_IN, assets will be wrapped. Else, assets will be unwrapped
+    // If EXACT_IN, assets will be unwrapped. Else, assets will be wrapped
     function unbalanceThePool(uint256 assetsToTransferRaw, SwapKind kind) external {
         (IERC20[] memory tokens, , , , ) = getVault().getPoolTokenInfo(address(this));
 
