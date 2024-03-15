@@ -249,9 +249,36 @@ contract ERC4626BufferPool is
         }
 
         uint256 exchangeAmountRaw;
-        uint256 limitRaw;
         if (balanceWrappedAssetsRaw > balanceBaseAssetsRaw) {
-            exchangeAmountRaw = (balanceWrappedAssetsRaw - balanceBaseAssetsRaw) / 2;
+            unchecked {
+                exchangeAmountRaw = (balanceWrappedAssetsRaw - balanceBaseAssetsRaw) / 2;
+            }
+
+            _rebalanceInternal(vault, poolAddress, tokens, exchangeAmountRaw, SwapKind.EXACT_IN);
+        } else if (balanceBaseAssetsRaw > balanceWrappedAssetsRaw) {
+            unchecked {
+                exchangeAmountRaw = (balanceBaseAssetsRaw - balanceWrappedAssetsRaw) / 2;
+            }
+
+            _rebalanceInternal(vault, poolAddress, tokens, exchangeAmountRaw, SwapKind.EXACT_OUT);
+        }
+    }
+
+    /**
+     * @dev Shift the balances in a given direction (on an external rebalance, to the equal value point).
+     * ExactIn unwraps wrapped and deposits more base tokens: shifts balance from wrapped to base.
+     * ExactOut does the opposite: wraps base tokens and deposits more wrapped: shifts balances from base to wrapped.
+     * `exchangeAmountRaw` should be in raw base decimals.
+     */
+    function _rebalanceInternal(
+        IVault vault,
+        address poolAddress,
+        IERC20[] memory tokens,
+        uint256 exchangeAmountRaw,
+        SwapKind kind
+    ) private {
+        uint256 limitRaw;
+        if (kind == SwapKind.EXACT_IN) {
             // Since onSwap will consider a slightly bigger rate for the wrapped token, we need to account that
             // in the minimum limit of amountOut calculation, and that's why (exchangeAmountRaw - 2) is converted.
             // Also, since the unwrap operation has RoundDown divisions, DUST_BUFFER needs to be subtracted
@@ -259,7 +286,7 @@ contract ERC4626BufferPool is
             limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw - DUST_BUFFER) - DUST_BUFFER;
 
             // In this case, since there is more wrapped than base assets, wrapped tokens will be removed (tokenOut)
-            // and then unwrapped, and the resulting base assets will be deposited in the pool (tokenIn)
+            // and then unwrapped, and the resulting base assets will be deposited in the pool (tokenIn).
             vault.lock(
                 abi.encodeWithSelector(
                     ERC4626BufferPool.rebalanceHook.selector,
@@ -274,8 +301,7 @@ contract ERC4626BufferPool is
                     })
                 )
             );
-        } else if (balanceBaseAssetsRaw > balanceWrappedAssetsRaw) {
-            exchangeAmountRaw = (balanceBaseAssetsRaw - balanceWrappedAssetsRaw) / 2;
+        } else {
             // Since onSwap will consider a slightly bigger rate for the wrapped token, we need to account that
             // in the maximum limit of amountIn calculation, and that's why (exchangeAmountRaw + 2) is converted.
             // Also, since the wrap operation has RoundDown divisions, DUST_BUFFER needs to be added
@@ -283,7 +309,7 @@ contract ERC4626BufferPool is
             limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw + DUST_BUFFER) + DUST_BUFFER;
 
             // In this case, since there is more base than wrapped assets, base assets will be removed (tokenOut)
-            // and then wrapped, and the resulting wrapped assets will be deposited in the pool (tokenIn)
+            // and then wrapped, and the resulting wrapped assets will be deposited in the pool (tokenIn).
             vault.lock(
                 abi.encodeWithSelector(
                     ERC4626BufferPool.rebalanceHook.selector,
