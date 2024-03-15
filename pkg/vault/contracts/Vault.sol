@@ -5,7 +5,6 @@ pragma solidity ^0.8.4;
 import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -43,7 +42,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using ArrayHelpers for uint256[];
     using Address for *;
     using SafeERC20 for IERC20;
-    using SafeCast for *;
     using PoolConfigLib for PoolConfig;
     using ScalingHelpers for *;
     using VaultStateLib for VaultStateBits;
