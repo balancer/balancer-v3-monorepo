@@ -804,10 +804,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Authentication, EIP712,
             poolBalances.unchecked_setAt(i, packedBalances.setRawBalance(balancesRaw[i]));
         }
 
-        // Trusted routers use Vault's allowances, which are infinite anyways for pool tokens.
-        if (!_isTrustedRouter(msg.sender, from)) {
-            _spendAllowance(address(pool), from, msg.sender, exactBptAmountIn);
-        }
+        _spendAllowance(address(pool), from, msg.sender, exactBptAmountIn);
 
         // When removing liquidity, we must burn tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.

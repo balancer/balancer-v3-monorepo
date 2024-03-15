@@ -84,6 +84,28 @@ contract TrustedRouterTest is BaseVaultTest {
     function testCannotRetriveWhenUntrustedByUser() public {
         // trusted by the DAO
         assertEq(vault.isTrustedRouter(address(router), address(vault)), true);
+        assertEq(vault.isTrustedRouter(address(router), alice), false);
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.RouterNotTrusted.selector, address(router), alice));
+        router.swapSingleTokenExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+    }
+
+    function testCannotRetriveWhenUntrustedByDAO() public {
+        approveRouterByGovernance(false);
+        approveRouter(alice, aliceKey, true, 0);
+
+        // trusted by the DAO
+        assertEq(vault.isTrustedRouter(address(router), address(vault)), false, "Should be not trusted by the DAO");
 
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.RouterNotTrusted.selector, address(router), alice));

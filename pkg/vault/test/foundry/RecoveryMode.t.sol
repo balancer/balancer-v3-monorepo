@@ -7,6 +7,8 @@ import "forge-std/Test.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
+import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
+
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
@@ -32,6 +34,10 @@ contract RecoveryModeTest is BaseVaultTest {
 
         // Put pool in recovery mode
         vault.manualEnableRecoveryMode(address(pool));
+
+        // Approve router to burn BPT
+        vm.prank(alice);
+        BalancerPoolToken(pool).approve(address(router), bptAmountOut / 2);
 
         // Do a recovery withdrawal
         vm.prank(alice);
