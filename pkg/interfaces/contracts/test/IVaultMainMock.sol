@@ -29,9 +29,17 @@ interface IVaultMainMock {
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) external;
 
+    function manualSetPoolPaused(address, bool, uint256) external;
+
+    function manualSetVaultState(bool, bool, uint256, uint256) external;
+
     function testWithLocker() external view;
 
     function testWithInitializedPool(address pool) external view;
+
+    function testEnsurePoolNotPaused(address) external view;
+
+    function testEnsureUnpausedAndGetVaultState(address) external view returns (VaultState memory);
 
     function getDecimalScalingFactors(address pool) external view returns (uint256[] memory);
 
