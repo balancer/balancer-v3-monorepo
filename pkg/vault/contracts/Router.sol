@@ -971,7 +971,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
         return _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn);
     }
 
-
     /*******************************************************************************
                                     Utils
     *******************************************************************************/

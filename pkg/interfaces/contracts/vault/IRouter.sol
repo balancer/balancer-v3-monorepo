@@ -13,12 +13,7 @@ interface IRouter {
                                     Auth
     *******************************************************************************/
 
-    function approveRouter(
-        bool approved,
-        uint256 deadline,
-        bytes memory signature
-    ) external;
-
+    function approveRouter(bool approved, uint256 deadline, bytes memory signature) external;
 
     /***************************************************************************
                                Pool Initialization

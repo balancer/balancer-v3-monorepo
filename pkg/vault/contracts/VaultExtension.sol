@@ -72,10 +72,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _vault.ensureVaultDelegateCall();
     }
 
-    constructor(
-        IVault mainVault,
-        IVaultAdmin vaultAdmin
-    ) {
+    constructor(IVault mainVault, IVaultAdmin vaultAdmin) {
         if (vaultAdmin.vault() != mainVault) {
             revert WrongVaultAdminDeployment();
         }
