@@ -24,32 +24,32 @@ struct LiquidityManagement {
 
 /// @dev Represents a pool's configuration, including hooks.
 struct PoolConfig {
+    uint256 staticSwapFeePercentage;
+    uint256 tokenDecimalDiffs;
+    uint256 pauseWindowEndTime;
     bool isPoolRegistered;
     bool isPoolInitialized;
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
     bool hasDynamicSwapFee;
-    uint256 staticSwapFeePercentage;
-    uint256 tokenDecimalDiffs;
-    uint256 pauseWindowEndTime;
     PoolHooks hooks;
     LiquidityManagement liquidityManagement;
 }
 
 /**
  * @dev Represents the Vault's configuration.
- * @param isQueryDisabled If set to true, disables query functionality of the Vault. Can be modified only by
- * governance.
- * @param isVaultPaused If set to true, Swaps and Add/Remove Liquidity operations are halted
  * @param protocolSwapFeePercentage Charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
  * We allow 0% swap fee.
  * @param protocolYieldFeePercentage Charged on all pool operations for yield-bearing tokens.
+ * @param isQueryDisabled If set to true, disables query functionality of the Vault. Can be modified only by
+ * governance.
+ * @param isVaultPaused If set to true, Swaps and Add/Remove Liquidity operations are halted
  */
 struct VaultState {
-    bool isQueryDisabled;
-    bool isVaultPaused;
     uint256 protocolSwapFeePercentage;
     uint256 protocolYieldFeePercentage;
+    bool isQueryDisabled;
+    bool isVaultPaused;
 }
 
 /**
