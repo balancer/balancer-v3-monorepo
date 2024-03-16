@@ -17,6 +17,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 import { ERC4626BufferPoolFactory } from "../../contracts/factories/ERC4626BufferPoolFactory.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { RouterCommon } from "../../contracts/RouterCommon.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -205,6 +206,32 @@ contract BufferSwapTest is BaseVaultTest {
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, SwapKind.EXACT_IN);
     }
 
+    function testBoostedPoolSwapDeadlineExactIn() public {
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
+
+        // "Transparent" USDC for DAI swap with boosted pool, which holds only wrapped tokens.
+        // Since this is exact in, swaps will be executed in the order given.
+        // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waUSDC in the boosted pool,
+        // and finally post-swap the waUSDC through the USDC buffer to calculate the USDC amount out.
+        // The only token transfers are DAI in (given) and USDC out (calculated).
+        steps[0] = IBatchRouter.SwapPathStep({ pool: waDAIBufferPool, tokenOut: waDAI });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC });
+        steps[2] = IBatchRouter.SwapPathStep({ pool: waUSDCBufferPool, tokenOut: usdc });
+
+        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+            tokenIn: dai,
+            steps: steps,
+            exactAmountIn: swapAmount,
+            minAmountOut: swapAmount
+        });
+
+        vm.expectRevert(abi.encodeWithSelector(RouterCommon.SwapDeadline.selector));
+        vm.prank(alice);
+        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
+            .swapExactIn(paths, block.timestamp - 1, false, bytes(""));
+    }
+
     function testBoostedPoolSwapExactOut() public {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
@@ -230,6 +257,32 @@ contract BufferSwapTest is BaseVaultTest {
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, SwapKind.EXACT_OUT);
+    }
+
+    function testBoostedPoolSwapDeadlineExactOut() public {
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
+
+        // "Transparent" USDC for DAI swap with boosted pool, which holds only wrapped tokens.
+        // Since this is exact out, swaps will be executed in reverse order (though we submit in logical order).
+        // Pre-swap through the USDC buffer to get waUSDC, then main swap waUSDC for waDAI in the boosted pool,
+        // and finally post-swap the waDAI for DAI through the DAI buffer to calculate the DAI amount in.
+        // The only token transfers are DAI in (calculated) and USDC out (given).
+        steps[0] = IBatchRouter.SwapPathStep({ pool: waDAIBufferPool, tokenOut: waDAI });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC });
+        steps[2] = IBatchRouter.SwapPathStep({ pool: waUSDCBufferPool, tokenOut: usdc });
+
+        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+            tokenIn: dai,
+            steps: steps,
+            maxAmountIn: swapAmount,
+            exactAmountOut: swapAmount
+        });
+
+        vm.expectRevert(abi.encodeWithSelector(RouterCommon.SwapDeadline.selector));
+        vm.prank(alice);
+        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
+            .swapExactOut(paths, block.timestamp - 1, false, bytes(""));
     }
 
     function _verifySwapResult(
