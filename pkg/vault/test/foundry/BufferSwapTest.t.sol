@@ -187,7 +187,7 @@ contract BufferSwapTest is BaseVaultTest {
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, SwapKind.EXACT_IN);
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN);
     }
 
     function testBoostedPoolSwapExactOut() public {
@@ -197,7 +197,7 @@ contract BufferSwapTest is BaseVaultTest {
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, SwapKind.EXACT_OUT);
+        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT);
     }
 
     function testBoostedPoolSwapTooLarge() public {
@@ -215,18 +215,31 @@ contract BufferSwapTest is BaseVaultTest {
 
     function testBoostedPoolSwapSimpleRebalance() public {
         // We want to unbalance the pool such that the "low balance" = swapAmount
-        uint256 amountToWrap = defaultAmount - swapAmount;
-        ERC4626BufferPoolMock(waDAIBufferPool).unbalanceThePool(amountToWrap, SwapKind.EXACT_OUT);
+        uint256 amountToUnwrap = defaultAmount - swapAmount;
+        ERC4626BufferPoolMock(waDAIBufferPool).unbalanceThePool(amountToUnwrap, SwapKind.EXACT_IN);
 
         // Check that it is unbalanced
         (uint256 wrappedIdx, uint256 baseIdx) = getSortedIndexes(address(waDAI), address(dai));
         (, , uint256[] memory balancesRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
 
-        assertEq(balancesRaw[baseIdx], swapAmount, "Wrong waDAI buffer pool balance (DAI)");
-        assertEq(balancesRaw[wrappedIdx], defaultAmount + amountToWrap, "Wrong waDAI buffer pool balance (waDAI)");
+        assertEq(balancesRaw[wrappedIdx], swapAmount, "Wrong waDAI buffer pool balance (waDAI)");
+        assertEq(balancesRaw[baseIdx], defaultAmount + amountToUnwrap, "Wrong waDAI buffer pool balance (DAI)");
 
-        // Perform the swap
+        // We are swapping DAI for waDAI, and the balances are: DAI: 1900, waDAI: 100.
+        // With Linear Math, we will be withdrawing the trade amount of the wrapped token.
+        // With a trade amount of 100 DAI in/100 waDAI out, the ending balances would be 2000/0.
+
+        // If we perform the swap with *twice* the available wrapped balance, we will not have enough waDAI.
+        // The pool should detect this, rebalance to 50/50, then perform the trade.
+        // Afterward then, the balances should be the same as if the pool were balanced: 1200/800
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount * 2);
+
+        vm.prank(alice);
+        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
+            .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
         // It should now be balanced (except for the trade)
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount * 2, SwapKind.EXACT_IN);
     }
 
     function _buildExactInPaths(
@@ -248,7 +261,7 @@ contract BufferSwapTest is BaseVaultTest {
             tokenIn: dai,
             steps: steps,
             exactAmountIn: amount,
-            minAmountOut: amount
+            minAmountOut: amount - 1 // rebalance tests are a wei off
         });
     }
 
@@ -279,6 +292,7 @@ contract BufferSwapTest is BaseVaultTest {
         uint256[] memory paths,
         address[] memory tokens,
         uint256[] memory amounts,
+        uint256 expectedDelta,
         SwapKind kind
     ) private {
         assertEq(paths.length, 1, "Incorrect output array length");
@@ -287,12 +301,12 @@ contract BufferSwapTest is BaseVaultTest {
         assertEq(tokens.length, amounts.length, "Output array length mismatch");
 
         // Check results
-        assertEq(paths[0], swapAmount);
-        assertEq(amounts[0], swapAmount);
-        assertEq(tokens[0], kind == SwapKind.EXACT_IN ? address(usdc) : address(dai));
+        assertApproxEqAbs(paths[0], expectedDelta, 1, "Wrong path count");
+        assertApproxEqAbs(amounts[0], expectedDelta, 1, "Wrong amounts count");
+        assertEq(tokens[0], kind == SwapKind.EXACT_IN ? address(usdc) : address(dai), "Wrong token for SwapKind");
 
         // Tokens were transferred
-        assertEq(dai.balanceOf(alice), defaultBalance - swapAmount);
-        assertEq(usdc.balanceOf(alice), defaultBalance + swapAmount);
+        assertApproxEqAbs(dai.balanceOf(alice), defaultBalance - expectedDelta, 1, "Wrong ending balance of DAI");
+        assertApproxEqAbs(usdc.balanceOf(alice), defaultBalance + expectedDelta, 1, "Wrong ending balance of USDC");
     }
 }
