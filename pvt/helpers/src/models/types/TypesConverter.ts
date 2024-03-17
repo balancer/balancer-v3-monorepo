@@ -1,6 +1,5 @@
-import { BigNumberish } from 'ethers';
 import { ethers } from 'hardhat';
-
+import { BigNumberish } from 'ethers';
 import { ZERO_ADDRESS } from '../../constants';
 import { Account } from './types';
 import {
@@ -117,7 +116,10 @@ export default {
   },
 
   toBytes32(value: BigNumberish): string {
-    const hexy = ethers.utils.hexlify(value);
-    return ethers.utils.hexZeroPad(hexy, 32);
+    //const hexy = ethers.utils.hexlify(value);
+    //return ethers.utils.hexZeroPad(hexy, 32);
+    //TODO get ethers.utils to work
+    const num = value.toString();
+    return `0x${num.padStart(65 - num.length, '0')}`;
   },
 };
