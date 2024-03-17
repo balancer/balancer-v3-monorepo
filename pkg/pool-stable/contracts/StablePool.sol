@@ -104,7 +104,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication {
     function computeBalance(
         uint256[] memory balancesLiveScaled18,
         uint256 tokenInIndex,
-        uint256 invariantRatio
+        uint256
     ) external view returns (uint256 newBalance) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
@@ -112,13 +112,13 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication {
             StableMath.computeBalance(
                 currentAmp,
                 balancesLiveScaled18,
-                computeInvariant(balancesLiveScaled18).mulDown(invariantRatio),
+                computeInvariant(balancesLiveScaled18),
                 tokenInIndex
             );
     }
 
     /// @inheritdoc IBasePool
-    function onSwap(IBasePool.SwapParams memory request) public view onlyVault returns (uint256) {
+    function onSwap(IBasePool.PoolSwapParams memory request) public view onlyVault returns (uint256) {
         uint256 invariant = computeInvariant(request.balancesScaled18);
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
