@@ -83,7 +83,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication {
             revert AmplificationFactorTooHigh();
         }
 
-        uint256 initialAmp = params.amplificationParameter.mulDown(StableMath.AMP_PRECISION);
+        uint256 initialAmp = params.amplificationParameter * StableMath.AMP_PRECISION;
 
         _setAmplificationData(initialAmp);
     }
@@ -173,7 +173,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication {
             revert AmpUpdateAlreadyStarted();
         }
 
-        uint256 endValue = rawEndValue.mulDown(StableMath.AMP_PRECISION);
+        uint256 endValue = rawEndValue * StableMath.AMP_PRECISION;
 
         // daily rate = (endValue / currentValue) / duration * 1 day
         // We perform all multiplications first to not reduce precision, and round the division up as we want to avoid
