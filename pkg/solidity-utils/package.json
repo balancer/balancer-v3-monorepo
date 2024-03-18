@@ -41,13 +41,20 @@
   },
   "devDependencies": {
     "@balancer-labs/solidity-toolbox": "workspace:*",
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.6",
+    "@nomicfoundation/hardhat-ethers": "^3.0.5",
+    "@nomicfoundation/hardhat-ignition": "^0.15.0",
+    "@nomicfoundation/hardhat-ignition-ethers": "^0.15.0",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.5",
+    "@nomicfoundation/ignition-core": "^0.15.0",
     "@typescript-eslint/eslint-plugin": "^5.41.0",
     "@typescript-eslint/parser": "^5.41.0",
     "decimal.js": "^10.4.2",
     "eslint": "^8.26.0",
     "eslint-plugin-mocha-no-only": "^1.1.1",
     "eslint-plugin-prettier": "^4.2.1",
-    "hardhat": "2.14.1",
+    "hardhat": "^2.21.0",
     "lodash.frompairs": "^4.0.1",
     "lodash.pick": "^4.4.0",
     "lodash.range": "^3.2.0",
@@ -56,6 +63,7 @@
     "mathjs": "^11.8.0",
     "mocha": "^10.1.0",
     "nodemon": "^2.0.20",
-    "solhint": "^3.4.1"
+    "solhint": "^3.4.1",
+    "solidity-coverage": "^0.8.11"
   }
 }
