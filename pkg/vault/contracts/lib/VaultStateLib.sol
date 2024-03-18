@@ -21,11 +21,11 @@ library VaultStateLib {
     using WordCodec for bytes32;
 
     // Bit offsets for pool config
-    uint8 public constant QUERY_DISABLED_OFFSET = 0;
-    uint8 public constant VAULT_PAUSED_OFFSET = QUERY_DISABLED_OFFSET + 1;
+    uint256 public constant QUERY_DISABLED_OFFSET = 0;
+    uint256 public constant VAULT_PAUSED_OFFSET = QUERY_DISABLED_OFFSET + 1;
 
-    uint8 public constant PROTOCOL_SWAP_FEE_OFFSET = VAULT_PAUSED_OFFSET + 1;
-    uint8 public constant PROTOCOL_YIELD_FEE_OFFSET = PROTOCOL_SWAP_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant PROTOCOL_SWAP_FEE_OFFSET = VAULT_PAUSED_OFFSET + 1;
+    uint256 public constant PROTOCOL_YIELD_FEE_OFFSET = PROTOCOL_SWAP_FEE_OFFSET + FEE_BITLENGTH;
 
     function isQueryDisabled(VaultStateBits config) internal pure returns (bool) {
         return VaultStateBits.unwrap(config).decodeBool(QUERY_DISABLED_OFFSET);

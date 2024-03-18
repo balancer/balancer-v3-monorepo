@@ -189,5 +189,5 @@ struct RemoveLiquidityParams {
 
 // Protocol Fees are 24-bit values. We transform them by multiplying by 1e11, so
 // they can be set to any value between 0% and 100% (step 0.00001%).
-uint8 constant FEE_BITLENGTH = 24;
-uint64 constant FEE_SCALING_FACTOR = 1e11;
+uint256 constant FEE_BITLENGTH = 24;
+uint256 constant FEE_SCALING_FACTOR = 1e11;
