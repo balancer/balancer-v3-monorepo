@@ -13,7 +13,6 @@ import { ERC4626BufferPoolFactory } from "@balancer-labs/v3-vault/contracts/fact
 contract ERC4626BufferPoolFactoryTest is Test {
     VaultMock vault;
     ERC4626BufferPoolFactory factory;
-    ERC20TestToken baseToken;
 
     function setUp() public {
         vault = VaultMockDeployer.deploy();
