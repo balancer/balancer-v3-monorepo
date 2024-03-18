@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.4;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -17,7 +17,6 @@ import { WeightedPool } from "./WeightedPool.sol";
 contract WeightedPool8020Factory is BasePoolFactory {
     uint256 private constant _EIGHTY = 8e17; // 80%
     uint256 private constant _TWENTY = 2e17; // 20%
-    mapping(IERC20 => mapping(IERC20 => address)) internal _pools;
 
     /// @dev The pool containing the combination of tokens and weights has already been created.
     error PoolAlreadyExists();
@@ -32,18 +31,12 @@ contract WeightedPool8020Factory is BasePoolFactory {
     /**
      * @notice Deploys a new `WeightedPool`.
      * @dev Since tokens must be sorted, pass in explicit 80/20 token config structs.
-     * @param name Name of the pool
-     * @param symbol Symbol of the pool
      * @param highWeightTokenConfig The token configuration of the high weight token
      * @param lowWeightTokenConfig The token configuration of the low weight token
-     * @param salt Value passed to create3, used to create the address
      */
     function create(
-        string memory name,
-        string memory symbol,
         TokenConfig memory highWeightTokenConfig,
-        TokenConfig memory lowWeightTokenConfig,
-        bytes32 salt
+        TokenConfig memory lowWeightTokenConfig
     ) external returns (address pool) {
         IERC20 highWeightToken = highWeightTokenConfig.token;
         IERC20 lowWeightToken = lowWeightTokenConfig.token;
@@ -61,11 +54,16 @@ contract WeightedPool8020Factory is BasePoolFactory {
         tokenConfig[highWeightTokenIdx] = highWeightTokenConfig;
         tokenConfig[lowWeightTokenIdx] = lowWeightTokenConfig;
 
+        bytes32 salt = keccak256(abi.encode(block.chainid, highWeightToken, lowWeightToken));
+
+        string memory highWeightTokenSymbol = IERC20Metadata(address(highWeightToken)).symbol();
+        string memory lowWeightTokenSymbol = IERC20Metadata(address(lowWeightToken)).symbol();
+
         pool = _create(
             abi.encode(
                 WeightedPool.NewPoolParams({
-                    name: name,
-                    symbol: symbol,
+                    name: string.concat("Balancer 80 ", highWeightTokenSymbol, " 20 ", lowWeightTokenSymbol),
+                    symbol: string.concat("B-80", highWeightTokenSymbol, "-20", lowWeightTokenSymbol),
                     numTokens: tokenConfig.length,
                     normalizedWeights: weights
                 }),
@@ -73,12 +71,6 @@ contract WeightedPool8020Factory is BasePoolFactory {
             ),
             salt
         );
-
-        if (_pools[highWeightToken][lowWeightToken] != address(0)) {
-            revert PoolAlreadyExists();
-        }
-
-        _pools[highWeightToken][lowWeightToken] = pool;
 
         getVault().registerPool(
             pool,
@@ -107,6 +99,7 @@ contract WeightedPool8020Factory is BasePoolFactory {
      * @param lowWeightToken The token with 20% weight in the pool.
      */
     function getPool(IERC20 highWeightToken, IERC20 lowWeightToken) external view returns (address pool) {
-        pool = _pools[highWeightToken][lowWeightToken];
+        bytes32 salt = keccak256(abi.encode(block.chainid, highWeightToken, lowWeightToken));
+        pool = getDeploymentAddress(salt);
     }
 }
