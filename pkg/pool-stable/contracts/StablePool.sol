@@ -19,8 +19,6 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 import { AmplificationDataLib, AmplificationDataBits, AmplificationData } from "./lib/AmplificationDataLib.sol";
 
-// https://etherscan.deth.net/address/0xc66Ba2B6595D3613CCab350C886aCE23866EDe24
-
 /// @notice Basic Stable Pool.
 contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication {
     using AmplificationDataLib for AmplificationData;
