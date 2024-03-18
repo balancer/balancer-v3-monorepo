@@ -52,7 +52,7 @@ describe('StablePool', () => {
   });
 
   for (let i = 2; i <= 4; i++) {
-    itBehavesAsAStablePool(i);
+    itDeploysAStablePool(i);
   }
 
   async function deployPool(numTokens: number) {
@@ -71,7 +71,7 @@ describe('StablePool', () => {
     pool = await deployedAt('StablePool', poolAddress);
   }
 
-  function itBehavesAsAStablePool(numTokens: number) {
+  function itDeploysAStablePool(numTokens: number) {
     it(`${numTokens} token pool was deployed correctly`, async () => {
       await deployPool(numTokens);
 
