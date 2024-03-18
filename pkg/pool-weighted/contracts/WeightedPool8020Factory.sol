@@ -101,6 +101,6 @@ contract WeightedPool8020Factory is BasePoolFactory {
     }
 
     function _calculateSalt(IERC20 highWeightToken, IERC20 lowWeightToken) internal view returns (bytes32 salt) {
-        bytes32 salt = keccak256(abi.encode(block.chainid, highWeightToken, lowWeightToken));
+        salt = keccak256(abi.encode(block.chainid, highWeightToken, lowWeightToken));
     }
 }
