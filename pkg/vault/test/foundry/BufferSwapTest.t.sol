@@ -187,7 +187,7 @@ contract BufferSwapTest is BaseVaultTest {
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN);
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN, true);
     }
 
     function testBoostedPoolSwapExactOut() public {
@@ -197,7 +197,7 @@ contract BufferSwapTest is BaseVaultTest {
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT);
+        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT, true);
     }
 
     function testBoostedPoolSwapTooLarge() public {
@@ -239,7 +239,7 @@ contract BufferSwapTest is BaseVaultTest {
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         // It should now be balanced (except for the trade)
-        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount * 2, SwapKind.EXACT_IN);
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount * 2, SwapKind.EXACT_IN, false);
     }
 
     function _buildExactInPaths(
@@ -293,7 +293,8 @@ contract BufferSwapTest is BaseVaultTest {
         address[] memory tokens,
         uint256[] memory amounts,
         uint256 expectedDelta,
-        SwapKind kind
+        SwapKind kind,
+        bool balanced
     ) private {
         assertEq(paths.length, 1, "Incorrect output array length");
 
@@ -308,5 +309,24 @@ contract BufferSwapTest is BaseVaultTest {
         // Tokens were transferred
         assertApproxEqAbs(dai.balanceOf(alice), defaultBalance - expectedDelta, 1, "Wrong ending balance of DAI");
         assertApproxEqAbs(usdc.balanceOf(alice), defaultBalance + expectedDelta, 1, "Wrong ending balance of USDC");
+
+        if (balanced) {
+            uint256[] memory balancesRaw;
+
+            (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
+            (, , balancesRaw, , ) = vault.getPoolTokenInfo(boostedPool);
+            assertEq(balancesRaw[daiIdx], boostedPoolAmount + expectedDelta, "Wrong boosted pool DAI balance");
+            assertEq(balancesRaw[usdcIdx], boostedPoolAmount - expectedDelta, "Wrong boosted pool DAI balance");
+
+            (uint256 wrappedIdx, uint256 baseIdx) = getSortedIndexes(address(waDAI), address(dai));
+            (, , balancesRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
+            assertEq(balancesRaw[baseIdx], defaultAmount + expectedDelta, "Wrong DAI buffer pool base balance");
+            assertEq(balancesRaw[wrappedIdx], defaultAmount - expectedDelta, "Wrong DAI buffer pool wrapped balance");
+
+            (wrappedIdx, baseIdx) = getSortedIndexes(address(waUSDC), address(usdc));
+            (, , balancesRaw, , ) = vault.getPoolTokenInfo(waUSDCBufferPool);
+            assertEq(balancesRaw[baseIdx], defaultAmount - expectedDelta, "Wrong USDC buffer pool base balance");
+            assertEq(balancesRaw[wrappedIdx], defaultAmount + expectedDelta, "Wrong USDC buffer pool wrapped balance");
+        }
     }
 }
