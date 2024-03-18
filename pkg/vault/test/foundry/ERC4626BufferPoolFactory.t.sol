@@ -28,45 +28,8 @@ contract ERC4626BufferPoolFactoryTest is Test {
         wrappedToken = new ERC4626TestToken(baseToken, "WrappedToken A", "WTKNA", 18);
     }
 
-    // Used to comply with the _isValidWrappedToken() check for the test token
-    function _increaseERC4626TotalAssets() internal {
-        baseToken.mint(alice, 100e18);
-        vm.startPrank(alice);
-        baseToken.approve(address(wrappedToken), 100e18);
-        wrappedToken.deposit(100e18, alice);
-        vm.stopPrank();
-    }
-
     function testFactoryPausedState() public {
         uint256 pauseWindowDuration = factory.getPauseWindowDuration();
         assertEq(pauseWindowDuration, 365 days);
-    }
-
-    function testBufferPoolGetter_Fuzz(bytes32 salt) public {
-        _increaseERC4626TotalAssets();
-        ERC4626BufferPool bufferPool = ERC4626BufferPool(factory.create(wrappedToken, address(0), salt));
-
-        address fetchedPool = factory.getBufferPool(wrappedToken);
-
-        assertEq(
-            address(bufferPool),
-            address(fetchedPool),
-            "getBufferPool is fetching a buffer pool different from the one being created"
-        );
-    }
-
-    function testPoolUniqueness__Fuzz(bytes32 firstSalt, bytes32 secondSalt) public {
-        vm.assume(firstSalt != secondSalt);
-
-        _increaseERC4626TotalAssets();
-        ERC4626BufferPool(factory.create(wrappedToken, address(0), firstSalt));
-
-        address fetchedPool = factory.getBufferPool(wrappedToken);
-
-        assertNotEq(fetchedPool, address(0), "Pool has not been registered into the _bufferPools mapping correctly");
-
-        // Trying to create the same buffer pool with different salt should revert
-        vm.expectRevert(ERC4626BufferPoolFactory.BufferPoolAlreadyExists.selector);
-        ERC4626BufferPool(factory.create(wrappedToken, address(0), secondSalt));
     }
 }

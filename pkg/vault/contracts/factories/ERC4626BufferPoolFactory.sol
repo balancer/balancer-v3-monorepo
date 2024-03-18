@@ -24,13 +24,9 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
     using ScalingHelpers for uint256;
 
     uint256 private constant _BILLION = 1e9;
-    mapping(IERC4626 => address) private _bufferPools;
 
     /// @dev The wrapped token does not conform to the Vault's requirement for ERC4626-compatibility.
     error IncompatibleWrappedToken(address token);
-
-    /// @dev The buffer pool corresponding to the wrapped token already exists.
-    error BufferPoolAlreadyExists();
 
     constructor(
         IVault vault,
@@ -63,12 +59,6 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         );
 
         _registerPoolWithFactory(pool);
-
-        if (_bufferPools[wrappedToken] != address(0)) {
-            revert BufferPoolAlreadyExists();
-        }
-
-        _bufferPools[wrappedToken] = pool;
 
         _registerPoolWithVault(
             pool,
@@ -115,14 +105,6 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
 
     function _getDefaultLiquidityManagement() internal pure returns (LiquidityManagement memory) {
         return LiquidityManagement({ supportsAddLiquidityCustom: true, supportsRemoveLiquidityCustom: false });
-    }
-
-    /**
-     * @notice Gets the address of the buffer pool associated with the given wrapped token.
-     * @param wrappedToken The ERC4626 token for which to search the corresponding pool.
-     */
-    function getBufferPool(IERC4626 wrappedToken) external view returns (address pool) {
-        pool = _bufferPools[wrappedToken];
     }
 
     /**
