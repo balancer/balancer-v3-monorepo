@@ -53,6 +53,7 @@ export const warnings = {
     'code-size': 'warn' as WarningRule,
     'unused-param': 'warn' as WarningRule,
     'shadowing-opcode': 'off' as WarningRule,
+    default: 'error' as WarningRule,
   },
 };
 

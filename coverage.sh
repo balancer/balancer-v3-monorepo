@@ -3,7 +3,7 @@
 set -e # exit on error
 
 # generates lcov.info
-# forge coverage --report lcov
+forge coverage --report lcov
 
 # Initialize variables
 current_file=""
