@@ -120,12 +120,7 @@ library StableMath {
         // Amount out, so we round down overall.
         balances[tokenIndexIn] += tokenAmountIn;
 
-        uint256 finalBalanceOut = computeBalance(
-            amplificationParameter,
-            balances,
-            invariant,
-            tokenIndexOut
-        );
+        uint256 finalBalanceOut = computeBalance(amplificationParameter, balances, invariant, tokenIndexOut);
 
         // No need to use checked arithmetic since `tokenAmountIn` was actually added to the same balance right before
         // calling `_getTokenBalanceGivenInvariantAndAllOtherBalances` which doesn't alter the balances array.
@@ -162,12 +157,7 @@ library StableMath {
         // Amount in, so we round up overall.
         balances[tokenIndexOut] -= tokenAmountOut;
 
-        uint256 finalBalanceIn = computeBalance(
-            amplificationParameter,
-            balances,
-            invariant,
-            tokenIndexIn
-        );
+        uint256 finalBalanceIn = computeBalance(amplificationParameter, balances, invariant, tokenIndexIn);
 
         // No need to use checked arithmetic since `tokenAmountOut` was actually subtracted from the same balance right
         // before calling `_getTokenBalanceGivenInvariantAndAllOtherBalances` which doesn't alter the balances array.
@@ -247,12 +237,7 @@ library StableMath {
         uint256 newInvariant = (bptTotalSupply + bptAmountOut).divUp(bptTotalSupply).mulUp(currentInvariant);
 
         // Calculate amount in without fee.
-        uint256 newBalanceTokenIndex = computeBalance(
-            amp,
-            balances,
-            newInvariant,
-            tokenIndex
-        );
+        uint256 newBalanceTokenIndex = computeBalance(amp, balances, newInvariant, tokenIndex);
         uint256 amountInWithoutFee = newBalanceTokenIndex - balances[tokenIndex];
 
         // First calculate the sum of all token balances, which will be used to calculate
@@ -342,12 +327,7 @@ library StableMath {
         uint256 newInvariant = (bptTotalSupply - bptAmountIn).divUp(bptTotalSupply).mulUp(currentInvariant);
 
         // Calculate amount out without fee
-        uint256 newBalanceTokenIndex = computeBalance(
-            amp,
-            balances,
-            newInvariant,
-            tokenIndex
-        );
+        uint256 newBalanceTokenIndex = computeBalance(amp, balances, newInvariant, tokenIndex);
         uint256 amountOutWithoutFee = balances[tokenIndex] - newBalanceTokenIndex;
 
         // First calculate the sum of all token balances, which will be used to calculate
