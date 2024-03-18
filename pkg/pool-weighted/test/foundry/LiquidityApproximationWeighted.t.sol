@@ -19,40 +19,35 @@ import { LiquidityApproximationTest } from "vault/test/foundry/LiquidityApproxim
 contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     using ArrayHelpers for *;
 
+    uint256 nonce;
+
     function setUp() public virtual override {
         LiquidityApproximationTest.setUp();
     }
 
     function createPool() internal override returns (address) {
+        address[] memory tokens = [address(dai), address(usdc)].toMemoryArray();
+        liquidityPool = _createPool(tokens, "liquidityPool");
+        swapPool = _createPool(tokens, "swapPool");
+
+        // NOTE: stores address in `pool` (unused in this test)
+        return liquidityPool;
+    }
+
+    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
         WeightedPoolFactory factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
-        IERC20[] memory tokens = [address(dai), address(usdc)].toMemoryArray().asIERC20();
 
-        liquidityPool = address(
-            WeightedPool(
-                factory.create(
-                    "ERC20 Pool",
-                    "ERC20POOL",
-                    vault.buildTokenConfig(tokens),
-                    [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
-                    ZERO_BYTES32
-                )
+        WeightedPool newPool = WeightedPool(
+            factory.create(
+                "ERC20 Pool",
+                "ERC20POOL",
+                vault.buildTokenConfig(tokens.asIERC20()),
+                [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                // NOTE: sends a unique salt
+                bytes32(nonce++)
             )
         );
-        vm.label(address(liquidityPool), "liquidityPool");
-
-        swapPool = address(
-            WeightedPool(
-                factory.create(
-                    "ERC20 Pool",
-                    "ERC20POOL",
-                    vault.buildTokenConfig(tokens),
-                    [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
-                    ONE_BYTES32
-                )
-            )
-        );
-        vm.label(address(swapPool), "swapPool");
-
-        return address(liquidityPool);
+        vm.label(address(newPool), label);
+        return address(newPool);
     }
 }

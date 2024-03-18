@@ -111,13 +111,18 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     }
 
     function initPool() internal virtual {
+        vm.startPrank(lp);
         _initPool(pool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
+        vm.stopPrank();
     }
 
-    function _initPool(address poolToInit, uint256[] memory amountsIn, uint256 minBptOut) internal virtual {
+    function _initPool(
+        address poolToInit,
+        uint256[] memory amountsIn,
+        uint256 minBptOut
+    ) internal virtual returns (uint256 bptOut) {
         (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(poolToInit);
-        vm.prank(lp);
-        router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, "");
+        return router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, "");
     }
 
     function createPool() internal virtual returns (address) {

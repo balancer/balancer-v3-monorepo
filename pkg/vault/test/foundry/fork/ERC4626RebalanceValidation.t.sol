@@ -101,14 +101,11 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         tokens[wrappedTokenIdx] = IERC20(aDAI_ADDRESS);
         tokens[baseTokenIdx] = IERC20(DAI_ADDRESS);
 
-        bptAmountOutBase = router.initialize(
+        bptAmountOutBase = _initPool(
             address(bufferPoolDai),
-            tokens,
             amountsInMoreBase,
             // Account for the precision loss
-            BUFFER_DAI_BASE - DELTA - 1e6,
-            false,
-            bytes("")
+            BUFFER_DAI_BASE - DELTA - 1e6
         );
 
         // Creating aUSDC Buffer
@@ -122,14 +119,11 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         tokens[wrappedTokenIdx] = IERC20(aUSDC_ADDRESS);
         tokens[baseTokenIdx] = IERC20(USDC_ADDRESS);
 
-        bptAmountOutWrapped = router.initialize(
+        bptAmountOutWrapped = _initPool(
             address(bufferPoolUsdc),
-            tokens,
             amountsInMoreWrapped,
             // Account for the precision loss
-            BUFFER_USDC_BASE - 1e6,
-            false,
-            bytes("")
+            BUFFER_USDC_BASE - 1e6
         );
         vm.stopPrank();
     }

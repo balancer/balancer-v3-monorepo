@@ -46,38 +46,33 @@ contract WeightedPoolTest is BaseVaultTest {
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+        weightedPool = WeightedPool(pool);
     }
 
-    function createPool() internal override returns (address) {
+    function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
-        TokenConfig[] memory tokens = new TokenConfig[](2);
-        tokens[0].token = IERC20(dai);
-        tokens[1].token = IERC20(usdc);
-
-        weightedPool = WeightedPool(
+        WeightedPool newPool = WeightedPool(
             factory.create(
                 "ERC20 Pool",
                 "ERC20POOL",
-                vault.sortTokenConfig(tokens),
+                vault.buildTokenConfig(tokens.asIERC20()),
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                 ZERO_BYTES32
             )
         );
-        return address(weightedPool);
+        vm.label(address(newPool), label);
+        return address(newPool);
     }
 
     function initPool() internal override {
-        uint256[] memory amountsIn = [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray();
-        vm.prank(lp);
-        bptAmountOut = router.initialize(
+        vm.startPrank(lp);
+        bptAmountOut = _initPool(
             pool,
-            InputHelpers.sortTokens([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            amountsIn,
+            [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             // Account for the precision loss
-            DAI_AMOUNT - DELTA - 1e6,
-            false,
-            bytes("")
+            DAI_AMOUNT - DELTA - 1e6
         );
+        vm.stopPrank();
     }
 
     function testPoolPausedState() public {
