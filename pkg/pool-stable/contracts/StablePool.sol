@@ -179,8 +179,8 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication {
         // We perform all multiplications first to not reduce precision, and round the division up as we want to avoid
         // large rates. Note that these are regular integer multiplications and divisions, not fixed point.
         uint256 dailyRate = endValue > currentValue
-            ? endValue.mulDown(1 days).divUp(currentValue.mulDown(duration))
-            : currentValue.mulDown(1 days).divUp(endValue.mulDown(duration));
+            ? (endValue * 1 days).divUpRaw(currentValue * duration)
+            : (currentValue * 1 days).divUpRaw(endValue * duration);
 
         if (dailyRate > _MAX_AMP_UPDATE_DAILY_RATE) {
             revert AmpUpdateRateTooFast();
@@ -247,18 +247,13 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication {
     }
 
     function _setAmplificationData(uint256 value) private {
-        _setAmplificationData(value, value, block.timestamp, block.timestamp);
+        _storeAmplificationData(value, value, block.timestamp, block.timestamp);
 
         emit AmpUpdateStopped(value);
     }
 
     function _setAmplificationData(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime) private {
-        AmplificationData memory data;
-        data.startValue = startValue.toUint64();
-        data.endValue = endValue.toUint64();
-        data.startTime = startTime.toUint64();
-        data.endTime = endTime.toUint64();
-        _amplificationState = data.fromAmpData();
+        _storeAmplificationData(startValue, endValue, startTime, endTime);
 
         emit AmpUpdateStarted(startValue, endValue, startTime, endTime);
     }
@@ -273,5 +268,15 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication {
         endValue = data.endValue;
         startTime = data.startTime;
         endTime = data.endTime;
+    }
+
+    function _storeAmplificationData(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime) private {
+        AmplificationData memory data;
+        data.startValue = startValue.toUint64();
+        data.endValue = endValue.toUint64();
+        data.startTime = startTime.toUint64();
+        data.endTime = endTime.toUint64();
+
+        _amplificationState = data.fromAmpData();
     }
 }
