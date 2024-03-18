@@ -160,16 +160,12 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     }
 
     function getBalances(address user) internal view returns (Balances memory balances) {
-        return _getBalances(pool, user);
-    }
+        balances.userBpt = IERC20(pool).balanceOf(user);
 
-    function _getBalances(address queryPool, address user) internal view returns (Balances memory balances) {
-        balances.userBpt = PoolMock(pool).balanceOf(user);
-
-        (IERC20[] memory tokens, , uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(queryPool);
+        (IERC20[] memory tokens, , uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(pool);
         balances.poolTokens = poolBalances;
         balances.userTokens = new uint256[](poolBalances.length);
-        for (uint256 i; i < poolBalances.length; i++) {
+        for (uint256 i = 0; i < poolBalances.length; i++) {
             // Don't assume token ordering.
             balances.userTokens[i] = tokens[i].balanceOf(user);
         }

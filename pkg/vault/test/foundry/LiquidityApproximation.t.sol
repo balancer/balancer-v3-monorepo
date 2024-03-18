@@ -26,6 +26,7 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
  * unproportional liquidity operation (addLiquidityUnbalanced) combined with
  * add/remove liquidity proportionally, and swapExactIn. Consider the following scenario:
  *
+ * Pool begins with balances of [100, 100].
  * Alice begins with balances of [100, 0].
  * She executes addLiquidityUnbalanced([100, 0]) and subsequently removeLiquidityProportionally,
  * resulting in balances of [66, 33].
@@ -79,11 +80,13 @@ contract LiquidityApproximationTest is BaseVaultTest {
     }
 
     function createPool() internal virtual override returns (address) {
-        liquidityPool = _createPool([address(dai), address(usdc)].toMemoryArray(), "liquidityPool");
-        swapPool = _createPool([address(dai), address(usdc)].toMemoryArray(), "swapPool");
+        address[] memory tokens = [address(dai), address(usdc)].toMemoryArray();
+
+        liquidityPool = _createPool(tokens, "liquidityPool");
+        swapPool = _createPool(tokens, "swapPool");
 
         // NOTE: stores address in `pool` (unused in this test)
-        return address(liquidityPool);
+        return address(0xdead);
     }
 
     function initPool() internal override {
