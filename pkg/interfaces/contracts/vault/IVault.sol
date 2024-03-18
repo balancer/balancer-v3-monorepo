@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import { IVaultAdmin } from "./IVaultAdmin.sol";
 import { IVaultExtension } from "./IVaultExtension.sol";
