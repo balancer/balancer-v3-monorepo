@@ -105,8 +105,8 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
 
-        // yield fee 1-20%
-        yieldFeePercentage = bound(yieldFeePercentage, 10, 200);
+        // yield fee 0.000001-20%
+        yieldFeePercentage = bound(yieldFeePercentage, 1, 2000000);
         // VaultState stores yieldFeePercentage as a 24 bits variable (from 0 to (2^24)-1, or 0% to ~167%)
         // Multiplying by FEE_SCALING_FACTOR (1e11) makes it 18 decimals scaled again
         yieldFeePercentage = yieldFeePercentage * FEE_SCALING_FACTOR;
