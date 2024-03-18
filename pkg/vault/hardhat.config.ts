@@ -10,6 +10,7 @@ import '@typechain/hardhat';
 import 'hardhat-ignore-warnings';
 import 'hardhat-gas-reporter';
 import 'hardhat-contract-sizer';
+import { warnings } from '@balancer-labs/v3-common/hardhat-base-config';
 
 const config: HardhatUserConfig = {
   networks: {
@@ -21,6 +22,7 @@ const config: HardhatUserConfig = {
     compilers: hardhatBaseConfig.compilers,
     overrides: { ...hardhatBaseConfig.overrides(name) },
   },
+  warnings,
 };
 
 export default config;
