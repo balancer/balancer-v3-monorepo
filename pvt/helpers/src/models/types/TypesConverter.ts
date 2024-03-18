@@ -120,6 +120,6 @@ export default {
     //return ethers.utils.hexZeroPad(hexy, 32);
     //TODO get ethers.utils to work
     const num = value.toString();
-    return `0x${num.padStart(65 - num.length, '0')}`;
+    return `0x${num.padStart(64, '0')}`;
   },
 };
