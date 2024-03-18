@@ -18,9 +18,6 @@ contract WeightedPool8020Factory is BasePoolFactory {
     uint256 private constant _EIGHTY = 8e17; // 80%
     uint256 private constant _TWENTY = 2e17; // 20%
 
-    /// @dev The pool containing the combination of tokens and weights has already been created.
-    error PoolAlreadyExists();
-
     constructor(
         IVault vault,
         uint256 pauseWindowDuration
