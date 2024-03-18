@@ -51,7 +51,7 @@ contract WeightedPool8020Factory is BasePoolFactory {
         tokenConfig[highWeightTokenIdx] = highWeightTokenConfig;
         tokenConfig[lowWeightTokenIdx] = lowWeightTokenConfig;
 
-        bytes32 salt = keccak256(abi.encode(block.chainid, highWeightToken, lowWeightToken));
+        bytes32 salt = _calculateSalt(highWeightToken, lowWeightToken);
 
         string memory highWeightTokenSymbol = IERC20Metadata(address(highWeightToken)).symbol();
         string memory lowWeightTokenSymbol = IERC20Metadata(address(lowWeightToken)).symbol();
@@ -96,7 +96,11 @@ contract WeightedPool8020Factory is BasePoolFactory {
      * @param lowWeightToken The token with 20% weight in the pool.
      */
     function getPool(IERC20 highWeightToken, IERC20 lowWeightToken) external view returns (address pool) {
-        bytes32 salt = keccak256(abi.encode(block.chainid, highWeightToken, lowWeightToken));
+        bytes32 salt = _calculateSalt(highWeightToken, lowWeightToken);
         pool = getDeploymentAddress(salt);
+    }
+
+    function _calculateSalt(IERC20 highWeightToken, IERC20 lowWeightToken) internal view returns (bytes32 salt) {
+        bytes32 salt = keccak256(abi.encode(block.chainid, highWeightToken, lowWeightToken));
     }
 }
