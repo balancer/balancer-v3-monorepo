@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "../math/StableMath.sol";
 
@@ -131,12 +131,6 @@ contract StableMathMock {
         uint256 currentInvariant,
         uint256 tokenIndex
     ) external pure returns (uint256) {
-        return
-            StableMath._getTokenBalanceGivenInvariantAndAllOtherBalances(
-                amplificationParameter,
-                balances,
-                currentInvariant,
-                tokenIndex
-            );
+        return StableMath.computeBalance(amplificationParameter, balances, currentInvariant, tokenIndex);
     }
 }

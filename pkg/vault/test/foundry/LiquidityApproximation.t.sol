@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -26,6 +26,7 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
  * unproportional liquidity operation (addLiquidityUnbalanced) combined with
  * add/remove liquidity proportionally, and swapExactIn. Consider the following scenario:
  *
+ * Pool begins with balances of [100, 100].
  * Alice begins with balances of [100, 0].
  * She executes addLiquidityUnbalanced([100, 0]) and subsequently removeLiquidityProportionally,
  * resulting in balances of [66, 33].
@@ -79,56 +80,22 @@ contract LiquidityApproximationTest is BaseVaultTest {
     }
 
     function createPool() internal virtual override returns (address) {
-        liquidityPool = address(
-            new PoolMock(
-                IVault(address(vault)),
-                "ERC20 Pool",
-                "ERC20POOL",
-                vault.buildTokenConfig(
-                    [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-                    new IRateProvider[](2)
-                ),
-                true,
-                365 days,
-                address(0)
-            )
-        );
-        vm.label(address(liquidityPool), "liquidityPool");
+        address[] memory tokens = [address(dai), address(usdc)].toMemoryArray();
 
-        swapPool = address(
-            new PoolMock(
-                IVault(address(vault)),
-                "ERC20 Pool",
-                "ERC20POOL",
-                vault.buildTokenConfig(
-                    [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-                    new IRateProvider[](2)
-                ),
-                true,
-                365 days,
-                address(0)
-            )
-        );
-        vm.label(address(swapPool), "swapPool");
+        liquidityPool = _createPool(tokens, "liquidityPool");
+        swapPool = _createPool(tokens, "swapPool");
 
-        return address(liquidityPool);
+        // NOTE: stores address in `pool` (unused in this test)
+        return address(0xdead);
     }
 
     function initPool() internal override {
         poolInitAmount = 1e9 * 1e18;
-        (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(address(swapPool));
-        vm.prank(lp);
-        router.initialize(address(swapPool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
 
-        vm.prank(lp);
-        router.initialize(
-            address(liquidityPool),
-            tokens,
-            [poolInitAmount, poolInitAmount].toMemoryArray(),
-            0,
-            false,
-            ""
-        );
+        vm.startPrank(lp);
+        _initPool(swapPool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
+        _initPool(liquidityPool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
+        vm.stopPrank();
     }
 
     /// Add
@@ -138,8 +105,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
         // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
-        setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
-        setSwapFeePercentage(swapFeePercentage, address(swapPool));
+        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
+        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
         uint256[] memory amountsIn = new uint256[](2);
         amountsIn[daiIdx] = uint256(daiAmountIn);
@@ -209,8 +176,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
         // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
-        setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
-        setSwapFeePercentage(swapFeePercentage, address(swapPool));
+        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
+        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
         vm.startPrank(alice);
         uint256 daiAmountIn = router.addLiquiditySingleTokenExactOut(
@@ -290,8 +257,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
         // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
-        setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
-        setSwapFeePercentage(swapFeePercentage, address(swapPool));
+        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
+        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
         // Add liquidity so we have something to remove
         vm.prank(alice);
@@ -399,8 +366,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
         // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
-        setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
-        setSwapFeePercentage(swapFeePercentage, address(swapPool));
+        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
+        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
         // Add liquidity so we have something to remove
         vm.prank(alice);
@@ -544,11 +511,5 @@ contract LiquidityApproximationTest is BaseVaultTest {
             1e18 + (addLiquidity ? 0 : liquidityTaxPercentage) + roundingDelta,
             "Bob has too much USDC compare to Alice"
         );
-    }
-
-    function setSwapFeePercentage(uint256 swapFeePercentage, address pool) internal {
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
-        vm.prank(alice);
-        vault.setStaticSwapFeePercentage(address(pool), swapFeePercentage); // 1%
     }
 }
