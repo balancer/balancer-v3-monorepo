@@ -81,13 +81,13 @@ describe('WeightedPool', function () {
 
     context('initialized', () => {
       sharedBeforeEach('initialize pool', async () => {
-        tokenA.mint(alice, TOKEN_AMOUNT);
-        tokenB.mint(alice, TOKEN_AMOUNT);
-        tokenC.mint(alice, TOKEN_AMOUNT);
+        await tokenA.mint(alice, TOKEN_AMOUNT);
+        await tokenB.mint(alice, TOKEN_AMOUNT);
+        await tokenC.mint(alice, TOKEN_AMOUNT);
 
-        tokenA.connect(alice).approve(vault, MAX_UINT256);
-        tokenB.connect(alice).approve(vault, MAX_UINT256);
-        tokenC.connect(alice).approve(vault, MAX_UINT256);
+        await tokenA.connect(alice).approve(vault, MAX_UINT256);
+        await tokenB.connect(alice).approve(vault, MAX_UINT256);
+        await tokenC.connect(alice).approve(vault, MAX_UINT256);
 
         expect(await router.connect(alice).initialize(pool, poolTokens, INITIAL_BALANCES, FP_ZERO, false, '0x'))
           .to.emit(vault, 'PoolInitialized')
@@ -142,11 +142,11 @@ describe('WeightedPool', function () {
 
       realPool = await deployedAt('WeightedPool', realPoolAddress);
 
-      tokenA.mint(bob, TOKEN_AMOUNT + TOKEN_AMOUNT + SWAP_AMOUNT);
-      tokenB.mint(bob, TOKEN_AMOUNT + TOKEN_AMOUNT);
+      await tokenA.mint(bob, TOKEN_AMOUNT + TOKEN_AMOUNT + SWAP_AMOUNT);
+      await tokenB.mint(bob, TOKEN_AMOUNT + TOKEN_AMOUNT);
 
-      tokenA.connect(bob).approve(vault, MAX_UINT256);
-      tokenB.connect(bob).approve(vault, MAX_UINT256);
+      await tokenA.connect(bob).approve(vault, MAX_UINT256);
+      await tokenB.connect(bob).approve(vault, MAX_UINT256);
 
       console.log('User address test:', bob.address);
 
