@@ -7,6 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
@@ -15,10 +16,12 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
+import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 
 contract PriceImpact is ReentrancyGuard {
-
     using FixedPoint for uint256;
+
+    error SwapDeadline();
 
     IVault private immutable _vault;
 
@@ -53,12 +56,12 @@ contract PriceImpact is ReentrancyGuard {
         // get deltas between exactAmountsIn and proportionalAmountsOut
         int256[] memory deltas = new int256[](exactAmountsIn.length);
         for (uint256 i = 0; i < exactAmountsIn.length; i++) {
-            deltas[i] = int(proportionalAmountsOut[i] - exactAmountsIn[i]);
+            deltas[i] = int(proportionalAmountsOut[i]) - int(exactAmountsIn[i]);
         }
         // query add liquidity for each delta, so we know how unbalanced each amount in is in terms of BPT
         int256[] memory deltaBPTs = new int256[](exactAmountsIn.length);
         for (uint256 i = 0; i < exactAmountsIn.length; i++) {
-            deltaBPTs[i] = _queryAddLiquidityForTokenDelta(pool, i, deltas, deltaBPTs);
+            deltaBPTs[i] = _queryAddLiquidityForTokenDelta(pool, i, deltas);
         }
         // zero out deltas leaving only a remaining delta within a single token
         uint256 remaininDeltaIndex = _zeroOutDeltas(pool, deltas, deltaBPTs);
@@ -74,13 +77,12 @@ contract PriceImpact is ReentrancyGuard {
     function _queryAddLiquidityForTokenDelta(
         address pool,
         uint256 tokenIndex,
-        int256[] memory deltas,
-        int256[] memory deltaBPTs
+        int256[] memory deltas
     ) internal returns (int256 deltaBPT) {
         uint256[] memory zerosWithSingleDelta = new uint256[](deltas.length);
-        if (deltaBPTs[tokenIndex] == 0) {
+        if (deltas[tokenIndex] == 0) {
             return 0;
-        } else if (deltaBPTs[tokenIndex] > 0) {
+        } else if (deltas[tokenIndex] > 0) {
             zerosWithSingleDelta[tokenIndex] = uint(deltas[tokenIndex]);
             return int(_queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, 0, ""));
         } else {
@@ -89,7 +91,11 @@ contract PriceImpact is ReentrancyGuard {
         }
     }
 
-    function _zeroOutDeltas(address pool, int256[] memory deltas, int256[] memory deltaBPTs) internal returns (uint256) {
+    function _zeroOutDeltas(
+        address pool,
+        int256[] memory deltas,
+        int256[] memory deltaBPTs
+    ) internal returns (uint256) {
         uint256 minNegativeDeltaIndex = 0;
         IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
 
@@ -128,7 +134,7 @@ contract PriceImpact is ReentrancyGuard {
             deltas[givenTokenIndex] = 0;
             deltaBPTs[givenTokenIndex] = 0;
             deltas[resultTokenIndex] += int(resultAmount);
-            deltaBPTs[resultTokenIndex] = _queryAddLiquidityForTokenDelta(pool, resultTokenIndex, deltas, deltaBPTs);
+            deltaBPTs[resultTokenIndex] = _queryAddLiquidityForTokenDelta(pool, resultTokenIndex, deltas);
         }
 
         return minNegativeDeltaIndex;
@@ -166,7 +172,7 @@ contract PriceImpact is ReentrancyGuard {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > params.deadline) {
-            revert IRouter.SwapDeadline();
+            revert SwapDeadline();
         }
 
         (amountCalculated, amountIn, amountOut) = _vault.swap(
@@ -203,27 +209,30 @@ contract PriceImpact is ReentrancyGuard {
         uint256 exactAmountIn,
         bytes memory userData
     ) internal returns (uint256 amountCalculated) {
-        return
-            abi.decode(
-                _vault.quote(
-                    abi.encodeWithSelector(
-                        PriceImpact.querySwapHook.selector,
-                        IRouter.SwapSingleTokenHookParams({
-                            sender: msg.sender,
-                            kind: SwapKind.EXACT_IN,
-                            pool: pool,
-                            tokenIn: tokenIn,
-                            tokenOut: tokenOut,
-                            amountGiven: exactAmountIn,
-                            limit: 0,
-                            deadline: type(uint256).max,
-                            wethIsEth: false,
-                            userData: userData
-                        })
-                    )
-                ),
-                (uint256)
-            );
+        try
+            _vault.quoteAndRevert(
+                abi.encodeWithSelector(
+                    PriceImpact.querySwapHook.selector,
+                    IRouter.SwapSingleTokenHookParams({
+                        sender: msg.sender,
+                        kind: SwapKind.EXACT_IN,
+                        pool: pool,
+                        tokenIn: tokenIn,
+                        tokenOut: tokenOut,
+                        amountGiven: exactAmountIn,
+                        limit: 0,
+                        deadline: type(uint256).max,
+                        wethIsEth: false,
+                        userData: userData
+                    })
+                )
+            )
+        {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            amountCalculated = abi.decode(RevertCodec.catchEncodedResult(result), (uint256));
+            return amountCalculated;
+        }
     }
 
     function querySwapSingleTokenExactOut(
@@ -243,27 +252,30 @@ contract PriceImpact is ReentrancyGuard {
         uint256 exactAmountOut,
         bytes memory userData
     ) internal returns (uint256 amountCalculated) {
-        return
-            abi.decode(
-                _vault.quote(
-                    abi.encodeWithSelector(
-                        PriceImpact.querySwapHook.selector,
-                        IRouter.SwapSingleTokenHookParams({
-                            sender: msg.sender,
-                            kind: SwapKind.EXACT_OUT,
-                            pool: pool,
-                            tokenIn: tokenIn,
-                            tokenOut: tokenOut,
-                            amountGiven: exactAmountOut,
-                            limit: type(uint256).max,
-                            deadline: type(uint256).max,
-                            wethIsEth: false,
-                            userData: userData
-                        })
-                    )
-                ),
-                (uint256)
-            );
+        try
+            _vault.quoteAndRevert(
+                abi.encodeWithSelector(
+                    PriceImpact.querySwapHook.selector,
+                    IRouter.SwapSingleTokenHookParams({
+                        sender: msg.sender,
+                        kind: SwapKind.EXACT_OUT,
+                        pool: pool,
+                        tokenIn: tokenIn,
+                        tokenOut: tokenOut,
+                        amountGiven: exactAmountOut,
+                        limit: type(uint256).max,
+                        deadline: type(uint256).max,
+                        wethIsEth: false,
+                        userData: userData
+                    })
+                )
+            )
+        {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            amountCalculated = abi.decode(RevertCodec.catchEncodedResult(result), (uint256));
+            return amountCalculated;
+        }
     }
 
     /**
@@ -295,8 +307,8 @@ contract PriceImpact is ReentrancyGuard {
         uint256 minBptAmountOut,
         bytes memory userData
     ) internal returns (uint256 bptAmountOut) {
-        (, bptAmountOut, ) = abi.decode(
-            _vault.quote(
+        try
+            _vault.quoteAndRevert(
                 abi.encodeWithSelector(
                     PriceImpact.queryAddLiquidityHook.selector,
                     IRouter.AddLiquidityHookParams({
@@ -311,9 +323,13 @@ contract PriceImpact is ReentrancyGuard {
                         userData: userData
                     })
                 )
-            ),
-            (uint256[], uint256, bytes)
-        );
+            )
+        {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            (, bptAmountOut, ) = abi.decode(RevertCodec.catchEncodedResult(result), (uint256[], uint256, bytes));
+            return bptAmountOut;
+        }
     }
 
     /**
@@ -360,8 +376,8 @@ contract PriceImpact is ReentrancyGuard {
         uint256[] memory minAmountsOut,
         bytes memory userData
     ) internal returns (uint256[] memory amountsOut) {
-        (, amountsOut, ) = abi.decode(
-            _vault.quote(
+        try
+            _vault.quoteAndRevert(
                 abi.encodeWithSelector(
                     PriceImpact.queryRemoveLiquidityHook.selector,
                     IRouter.RemoveLiquidityHookParams({
@@ -376,9 +392,13 @@ contract PriceImpact is ReentrancyGuard {
                         userData: userData
                     })
                 )
-            ),
-            (uint256, uint256[], bytes)
-        );
+            )
+        {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            (, amountsOut, ) = abi.decode(RevertCodec.catchEncodedResult(result), (uint256, uint256[], bytes));
+            return amountsOut;
+        }
     }
 
     /**
