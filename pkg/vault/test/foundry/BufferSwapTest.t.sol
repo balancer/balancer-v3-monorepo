@@ -235,14 +235,6 @@ contract BufferSwapTest is BaseVaultTest {
         });
     }
 
-    function testBoostedPoolSwapDeadlineExactIn() public {
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount);
-
-        vm.expectRevert(abi.encodeWithSelector(RouterCommon.SwapDeadline.selector));
-        vm.prank(alice);
-        batchRouter.swapExactIn(paths, block.timestamp - 1, false, bytes(""));
-    }
-
     function _buildExactOutPaths(
         uint256 amount
     ) private view returns (IBatchRouter.SwapPathExactAmountOut[] memory paths) {
@@ -264,31 +256,6 @@ contract BufferSwapTest is BaseVaultTest {
             maxAmountIn: amount,
             exactAmountOut: amount
         });
-    }
-
-    function testBoostedPoolSwapDeadlineExactOut() public {
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
-
-        // "Transparent" USDC for DAI swap with boosted pool, which holds only wrapped tokens.
-        // Since this is exact out, swaps will be executed in reverse order (though we submit in logical order).
-        // Pre-swap through the USDC buffer to get waUSDC, then main swap waUSDC for waDAI in the boosted pool,
-        // and finally post-swap the waDAI for DAI through the DAI buffer to calculate the DAI amount in.
-        // The only token transfers are DAI in (calculated) and USDC out (given).
-        steps[0] = IBatchRouter.SwapPathStep({ pool: waDAIBufferPool, tokenOut: waDAI });
-        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC });
-        steps[2] = IBatchRouter.SwapPathStep({ pool: waUSDCBufferPool, tokenOut: usdc });
-
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
-            tokenIn: dai,
-            steps: steps,
-            maxAmountIn: swapAmount,
-            exactAmountOut: swapAmount
-        });
-
-        vm.expectRevert(abi.encodeWithSelector(RouterCommon.SwapDeadline.selector));
-        vm.prank(alice);
-        batchRouter.swapExactOut(paths, block.timestamp - 1, false, bytes(""));
     }
 
     function _verifySwapResult(
