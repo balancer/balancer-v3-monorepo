@@ -19,10 +19,10 @@ contract WeightedPool8020Factory is BasePoolFactory {
     uint256 private constant _TWENTY = 2e17; // 20%
     mapping(IERC20 => TokenConfig) private _allowlistedConfigs;
 
-    /// @dev The user has provided a highWeightToken with a token type different than the standard type, indicating the transaction should revert.
+    /// @dev The user has provided a highWeightToken with a token type different than the standard type.
     error HighWeightTokenMustBeStandard();
 
-    /// @dev The user has provided a lowWeightToken with no governance-allowed configuration, indicating the transaction should revert.
+    /// @dev The user has provided a lowWeightToken with no governance-allowed configuration.
     error TokenConfigNotAllowlisted();
 
     /**
