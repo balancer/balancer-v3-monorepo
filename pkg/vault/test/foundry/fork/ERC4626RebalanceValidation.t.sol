@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -15,7 +15,7 @@ import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultType
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { ERC4626BufferPoolFactoryMock } from "../utils/ERC4626BufferPoolFactoryMock.sol";
 import { ERC4626BufferPoolMock } from "../utils/ERC4626BufferPoolMock.sol";
@@ -101,14 +101,11 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         tokens[wrappedTokenIdx] = IERC20(aDAI_ADDRESS);
         tokens[baseTokenIdx] = IERC20(DAI_ADDRESS);
 
-        bptAmountOutBase = router.initialize(
+        bptAmountOutBase = _initPool(
             address(bufferPoolDai),
-            tokens,
             amountsInMoreBase,
             // Account for the precision loss
-            BUFFER_DAI_BASE - DELTA - 1e6,
-            false,
-            bytes("")
+            BUFFER_DAI_BASE - DELTA - 1e6
         );
 
         // Creating aUSDC Buffer
@@ -122,14 +119,11 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         tokens[wrappedTokenIdx] = IERC20(aUSDC_ADDRESS);
         tokens[baseTokenIdx] = IERC20(USDC_ADDRESS);
 
-        bptAmountOutWrapped = router.initialize(
+        bptAmountOutWrapped = _initPool(
             address(bufferPoolUsdc),
-            tokens,
             amountsInMoreWrapped,
             // Account for the precision loss
-            BUFFER_USDC_BASE - 1e6,
-            false,
-            bytes("")
+            BUFFER_USDC_BASE - 1e6
         );
         vm.stopPrank();
     }

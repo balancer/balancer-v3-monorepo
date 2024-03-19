@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -51,8 +51,8 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     }
 
     /// @inheritdoc IBasePoolFactory
-    function getDeploymentAddress(bytes32 salt) external view returns (address) {
-        return CREATE3.getDeployed(_computeFinalSalt(salt));
+    function getDeploymentAddress(bytes32 salt) public view returns (address) {
+        return CREATE3.getDeployed(salt);
     }
 
     /// @inheritdoc IBasePoolFactory
@@ -78,11 +78,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         emit PoolCreated(pool);
     }
 
-    function _computeFinalSalt(bytes32 salt) internal view returns (bytes32) {
-        return keccak256(abi.encode(msg.sender, block.chainid, salt));
-    }
-
     function _create(bytes memory constructorArgs, bytes32 salt) internal returns (address) {
-        return CREATE3.deploy(_computeFinalSalt(salt), abi.encodePacked(_creationCode, constructorArgs), 0);
+        return CREATE3.deploy(salt, abi.encodePacked(_creationCode, constructorArgs), 0);
     }
 }

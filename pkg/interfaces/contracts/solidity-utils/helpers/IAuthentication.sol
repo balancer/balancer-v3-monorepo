@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 interface IAuthentication {
     /// @dev The sender does not have permission to call a function.

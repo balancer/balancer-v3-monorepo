@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -9,8 +9,8 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { SwapKind, SwapParams as VaultSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ERC4626BufferPool } from "@balancer-labs/v3-vault/contracts/ERC4626BufferPool.sol";
-import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.sol";
+import { ERC4626BufferPool } from "vault/contracts/ERC4626BufferPool.sol";
+import { BasePoolHooks } from "vault/contracts/BasePoolHooks.sol";
 
 contract ERC4626BufferPoolMock is ERC4626BufferPool {
     using SafeERC20 for IERC20;
