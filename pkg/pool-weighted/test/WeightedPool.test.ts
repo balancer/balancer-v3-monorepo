@@ -68,7 +68,7 @@ describe('WeightedPool', function () {
     });
   });
 
-  describe.skip('initialization', () => {
+  describe('initialization', () => {
     context('uninitialized', () => {
       it('is registered, but not initialized on deployment', async () => {
         const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(pool);
