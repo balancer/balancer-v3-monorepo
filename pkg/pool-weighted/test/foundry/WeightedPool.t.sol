@@ -131,7 +131,13 @@ contract WeightedPoolTest is BaseVaultTest {
 
     function testRemoveLiquidity() public {
         vm.startPrank(bob);
-        bptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, DAI_AMOUNT - DELTA, false, bytes(""));
+        router.addLiquidityUnbalanced(
+            address(pool),
+            [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
+            DAI_AMOUNT - DELTA,
+            false,
+            bytes("")
+        );
 
         weightedPool.approve(address(vault), MAX_UINT256);
 
