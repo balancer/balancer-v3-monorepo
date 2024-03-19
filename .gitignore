@@ -34,7 +34,7 @@ typechain-types/
 coverage/
 coverage-genhtml/
 coverage.json
-lcov.info
+lcov*.info
 
 # Slither
 slither/

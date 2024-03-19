@@ -26,6 +26,10 @@ auto_detect_solc = false
 runs = 10000
 max_test_rejects = 60000
 
+[profile.coverage.fuzz]
+runs = 100
+max_test_rejects = 60000
+
 [profile.intense.fuzz]
 verbosity = 3
 runs = 100000

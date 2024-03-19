@@ -2,6 +2,9 @@
 
 set -e # exit on error
 
+# reduces the amount of tests in fuzzing, so coverage runs faster
+export FOUNDRY_PROFILE=coverage
+
 # generates lcov.info
 forge coverage --report lcov
 
@@ -25,7 +28,7 @@ lcov \
     --rc branch_coverage=1 \
     --add-tracefile coverage/lcov.info \
     --add-tracefile lcov-clearfolders.info \
-    --output-file merged-lcov.info \
+    --output-file lcov-merged.info \
     --no-checksum \
     --ignore-errors unused \
     --ignore-errors format \
@@ -34,9 +37,9 @@ lcov \
 # Filter out node_modules, test, and mock files
 lcov \
     --rc branch_coverage=1 \
-    --remove merged-lcov.info \
+    --remove lcov-merged.info \
     "*node_modules*" "*test*" "*mock*" \
-    --output-file coverage/filtered-lcov.info \
+    --output-file lcov-filtered.info \
     --ignore-errors unused \
     --ignore-errors format \
     --ignore-errors empty
@@ -44,7 +47,7 @@ lcov \
 # Generate summary
 lcov \
     --rc branch_coverage=1 \
-    --list coverage/filtered-lcov.info \
+    --list lcov-filtered.info \
     --ignore-errors unused \
     --ignore-errors format \
     --ignore-errors empty
@@ -54,10 +57,10 @@ genhtml \
     --rc branch_coverage=1 \
     --output-directory coverage-genhtml \
     --ignore-errors category \
-    coverage/filtered-lcov.info
+    lcov-filtered.info
 open coverage-genhtml/index.html
 
 # Delete temp files
-rm merged-lcov.info coverage/filtered-lcov.info lcov-clear.info lcov-clearvault.info
+rm lcov-*.info
 
 
