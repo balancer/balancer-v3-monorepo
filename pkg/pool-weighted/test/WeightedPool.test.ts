@@ -14,6 +14,7 @@ import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/Vault
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { PoolConfigStructOutput } from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
+import { buildTokenConfig } from '@balancer-labs/v3-helpers/src/models/tokens/tokenConfig';
 import { WeightedPoolFactory } from '../typechain-types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
@@ -200,19 +201,4 @@ describe('WeightedPool', function () {
       ).to.emit(vault, 'ProtocolSwapFeeCharged');
     });
   });
-
-  function buildTokenConfig(tokens: string[]): TokenConfig[] {
-    const result: TokenConfig[] = [];
-
-    tokens.map((token, i) => {
-      result[i] = {
-        token: token,
-        tokenType: TokenType.STANDARD,
-        rateProvider: ZERO_ADDRESS,
-        yieldFeeExempt: false,
-      };
-    });
-
-    return result;
-  }
 });
