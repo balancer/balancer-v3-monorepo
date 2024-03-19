@@ -9,8 +9,8 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { SwapKind, SwapParams as VaultSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ERC4626BufferPool } from "@balancer-labs/v3-vault/contracts/ERC4626BufferPool.sol";
-import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.sol";
+import { ERC4626BufferPool } from "vault/contracts/ERC4626BufferPool.sol";
+import { BasePoolHooks } from "vault/contracts/BasePoolHooks.sol";
 
 contract ERC4626BufferPoolMock is ERC4626BufferPool {
     using SafeERC20 for IERC20;
@@ -22,7 +22,7 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
         IVault vault
     ) ERC4626BufferPool(name, symbol, wrappedToken, vault) {}
 
-    // If EXACT_IN, assets will be wrapped. Else, assets will be unwrapped
+    // If EXACT_IN, assets will be unwrapped. Else, assets will be wrapped
     function unbalanceThePool(uint256 assetsToTransferRaw, SwapKind kind) external {
         (IERC20[] memory tokens, , , , ) = getVault().getPoolTokenInfo(address(this));
 
