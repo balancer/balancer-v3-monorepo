@@ -60,6 +60,7 @@ describe('StablePool', () => {
       'Stable Pool',
       `STABLE-${numTokens}`,
       buildTokenConfig(poolTokens.slice(0, numTokens)),
+      0, // swap fee
       200n,
       TypesConverter.toBytes32(bn(numTokens))
     );

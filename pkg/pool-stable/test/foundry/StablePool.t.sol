@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -35,7 +35,7 @@ contract StablePoolTest is BaseVaultTest {
 
     uint256 constant TOKEN_AMOUNT = 1e3 * 1e18;
     uint256 constant TOKEN_AMOUNT_IN = 1 * 1e18;
-    uint256 constant TOKEN_AMOUNT_OUT = 1 * 1e18;
+    uint256 constant TOKEN_AMOUN_OUT = 1 * 1e18;
 
     uint256 constant DELTA = 1e9;
 
