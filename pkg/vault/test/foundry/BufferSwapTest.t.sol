@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -74,29 +74,9 @@ contract BufferSwapTest is BaseVaultTest {
 
         vm.startPrank(lp);
         waDAI.approve(address(vault), MAX_UINT256);
-
-        router.initialize(
-            address(waDAIBufferPool),
-            daiBufferTokens,
-            [defaultAmount, defaultAmount].toMemoryArray(),
-            defaultAmount * 2 - MIN_BPT,
-            false,
-            bytes("")
-        );
-
-        IERC20[] memory usdcBufferTokens = InputHelpers.sortTokens(
-            [address(waUSDC), address(usdc)].toMemoryArray().asIERC20()
-        );
-
+        _initPool(waDAIBufferPool, [defaultAmount, defaultAmount].toMemoryArray(), defaultAmount * 2 - MIN_BPT);
         waUSDC.approve(address(vault), MAX_UINT256);
-        router.initialize(
-            address(waUSDCBufferPool),
-            usdcBufferTokens,
-            [defaultAmount, defaultAmount].toMemoryArray(),
-            defaultAmount * 2 - MIN_BPT,
-            false,
-            bytes("")
-        );
+        _initPool(waUSDCBufferPool, [defaultAmount, defaultAmount].toMemoryArray(), defaultAmount * 2 - MIN_BPT);
         vm.stopPrank();
     }
 
@@ -123,14 +103,7 @@ contract BufferSwapTest is BaseVaultTest {
         waDAI.approve(address(vault), MAX_UINT256);
         waUSDC.approve(address(vault), MAX_UINT256);
 
-        router.initialize(
-            address(boostedPool),
-            InputHelpers.sortTokens([address(waDAI), address(waUSDC)].toMemoryArray().asIERC20()),
-            [boostedPoolAmount, boostedPoolAmount].toMemoryArray(),
-            boostedPoolAmount * 2 - MIN_BPT,
-            false,
-            bytes("")
-        );
+        _initPool(boostedPool, [boostedPoolAmount, boostedPoolAmount].toMemoryArray(), boostedPoolAmount * 2 - MIN_BPT);
         vm.stopPrank();
     }
 
