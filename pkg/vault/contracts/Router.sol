@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import 'forge-std/console.sol';
-
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -77,7 +75,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
             params.minBptAmountOut,
             params.userData
         );
-        console.log('Router.78 - after initialize');
 
         uint256 ethAmountIn;
         for (uint256 i = 0; i < params.tokens.length; ++i) {
@@ -88,7 +85,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
             // There can be only one WETH token in the pool
             if (params.wethIsEth && address(token) == address(_weth)) {
                 if (msg.value < amountIn) {
-                    console.log('Router.89 - InsufficientEth()');
                     revert InsufficientEth();
                 }
                 _weth.deposit{ value: amountIn }();

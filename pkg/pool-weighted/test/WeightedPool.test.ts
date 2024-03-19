@@ -13,10 +13,7 @@ import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v3-helpe
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
-import {
-  PoolConfigStructOutput,
-  TokenConfigStruct,
-} from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
+import { PoolConfigStructOutput } from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
 import { WeightedPoolFactory } from '../typechain-types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
@@ -131,20 +128,15 @@ describe('WeightedPool', function () {
 
     sharedBeforeEach('create and initialize pool', async () => {
       factory = await deploy('WeightedPoolFactory', { args: [await vault.getAddress(), MONTH * 12] });
-      const realPoolTokens = [tokenAAddress, tokenBAddress];
-      const tokenConfig: TokenConfig[] = [
-        { token: tokenAAddress, tokenType: TokenType.STANDARD, rateProvider: ZERO_ADDRESS, yieldFeeExempt: false },
-        { token: tokenBAddress, tokenType: TokenType.STANDARD, rateProvider: ZERO_ADDRESS, yieldFeeExempt: false },
-      ];
+      const realPoolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
+
+      const tokenConfig: TokenConfig[] = buildTokenConfig(realPoolTokens);
 
       const tx = await factory.create('WeightedPool', 'Test', tokenConfig, WEIGHTS, ZERO_BYTES32);
       const receipt = await tx.wait();
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
 
       realPoolAddress = event.args.pool;
-
-      console.log('Pool address: ', realPoolAddress);
-      console.log('Pool tokens: ', realPoolTokens);
 
       realPool = await deployedAt('WeightedPool', realPoolAddress);
 
@@ -209,8 +201,8 @@ describe('WeightedPool', function () {
     });
   });
 
-  function buildTokenConfig(tokens: string[]): TokenConfigStruct[] {
-    const result: TokenConfigStruct[] = [];
+  function buildTokenConfig(tokens: string[]): TokenConfig[] {
+    const result: TokenConfig[] = [];
 
     tokens.map((token, i) => {
       result[i] = {
