@@ -77,46 +77,46 @@ contract LiquidityInvariantTriPoolTest is BaseVaultTest {
         vm.startPrank(alice);
         uint256 snapshot = vm.snapshot();
         // NOTE: calculates the amount of BPTs that would be minted if only DAI was added
-        uint256 bptOnlyDaiAmountOut = router.addLiquidityUnbalanced({
-            pool: address(unbalancedPool),
-            exactAmountsIn: amountsIn,
-            minBptAmountOut: 0,
-            wethIsEth: false,
-            userData: bytes("")
-        });
+        uint256 bptOnlyDaiAmountOut = router.addLiquidityUnbalanced(
+            address(unbalancedPool),
+            amountsIn,
+            0,
+            false,
+            bytes("")
+        );
 
         // Revert to the previous state not to affect Alice's balances
         vm.revertTo(snapshot);
 
         amountsIn[wethIdx] = uint256(wethAmountIn);
-        uint256 bptUnbalancedAmountOut = router.addLiquidityUnbalanced({
-            pool: address(unbalancedPool),
-            exactAmountsIn: amountsIn,
-            minBptAmountOut: 0,
-            wethIsEth: false,
-            userData: bytes("")
-        });
+        uint256 bptUnbalancedAmountOut = router.addLiquidityUnbalanced(
+            address(unbalancedPool),
+            amountsIn,
+            0,
+            false,
+            bytes("")
+        );
 
         vm.stopPrank();
 
         vm.startPrank(bob);
-        uint256 daiExactAmountIn = router.addLiquiditySingleTokenExactOut({
-            pool: address(exactOutPool),
-            tokenIn: dai,
-            maxAmountIn: dai.balanceOf(bob), // avoids revert when with fee
-            exactBptAmountOut: bptOnlyDaiAmountOut,
-            wethIsEth: false,
-            userData: bytes("")
-        });
+        uint256 daiExactAmountIn = router.addLiquiditySingleTokenExactOut(
+            address(exactOutPool),
+            dai,
+            dai.balanceOf(bob), // avoids revert when with fee
+            bptOnlyDaiAmountOut,
+            false,
+            bytes("")
+        );
 
-        uint256 wethExactAmountIn = router.addLiquiditySingleTokenExactOut({
-            pool: address(exactOutPool),
-            tokenIn: weth,
-            maxAmountIn: weth.balanceOf(bob), // avoids revert when with fee
-            exactBptAmountOut: bptUnbalancedAmountOut - bptOnlyDaiAmountOut,
-            wethIsEth: false,
-            userData: bytes("")
-        });
+        uint256 wethExactAmountIn = router.addLiquiditySingleTokenExactOut(
+            address(exactOutPool),
+            weth,
+            weth.balanceOf(bob), // avoids revert when with fee
+            bptUnbalancedAmountOut - bptOnlyDaiAmountOut,
+            false,
+            bytes("")
+        );
         vm.stopPrank();
 
         assertEq(defaultBalance - dai.balanceOf(bob), daiExactAmountIn, "Bob balance is not correct");

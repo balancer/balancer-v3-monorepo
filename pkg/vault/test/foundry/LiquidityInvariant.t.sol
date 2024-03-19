@@ -21,7 +21,7 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 /**
  * @notice Liquidity operations that involve a single token should behave as a special case
  * of the unbalanced proportional operation, where the amount of one of the tokens is zero.
- * To ensure this, we analize the results of two different but equivalent operations: 
+ * To ensure this, we analize the results of two different but equivalent operations:
  * - addLiquidityUnbalanced vs addLiquiditySingleTokenExactOut
  * - removeLiquiditySingleTokenExactIn vs removeLiquiditySingleTokenExactOut
  * - removeLiquidityProportional vs removeLiquiditySingleTokenExactOut
@@ -80,24 +80,24 @@ contract LiquidityInvariantTest is BaseVaultTest {
         amountsIn[daiIdx] = uint256(daiAmountIn);
 
         vm.startPrank(alice);
-        uint256 bptUnbalancedAmountOut = router.addLiquidityUnbalanced({
-            pool: address(unbalancedPool),
-            exactAmountsIn: amountsIn,
-            minBptAmountOut: 0,
-            wethIsEth: false,
-            userData: bytes("")
-        });
+        uint256 bptUnbalancedAmountOut = router.addLiquidityUnbalanced(
+            address(unbalancedPool),
+            amountsIn,
+            0,
+            false,
+            bytes("")
+        );
         vm.stopPrank();
 
         vm.startPrank(bob);
-        uint256 daiExactAmountIn = router.addLiquiditySingleTokenExactOut({
-            pool: address(exactOutPool),
-            tokenIn: dai,
-            maxAmountIn: dai.balanceOf(bob), // avoids revert when fee
-            exactBptAmountOut: bptUnbalancedAmountOut,
-            wethIsEth: false,
-            userData: bytes("")
-        });
+        uint256 daiExactAmountIn = router.addLiquiditySingleTokenExactOut(
+            address(exactOutPool),
+            dai,
+            dai.balanceOf(bob), // avoids revert when fee
+            bptUnbalancedAmountOut,
+            false,
+            bytes("")
+        );
         vm.stopPrank();
 
         assertEq(defaultBalance - dai.balanceOf(bob), daiExactAmountIn, "Bob DAI balance is not correct");
@@ -134,25 +134,25 @@ contract LiquidityInvariantTest is BaseVaultTest {
         vm.stopPrank();
 
         vm.startPrank(alice);
-        uint256 daiOutExactIn = router.removeLiquiditySingleTokenExactIn({
-            pool: address(exactOutPool),
-            exactBptAmountIn: bptAmountIn,
-            tokenOut: dai,
-            minAmountOut: 1, // NOTE: reverts with AllZeroInputs() if 0
-            wethIsEth: false,
-            userData: bytes("")
-        });
+        uint256 daiOutExactIn = router.removeLiquiditySingleTokenExactIn(
+            address(exactOutPool),
+            bptAmountIn,
+            dai,
+            1, // NOTE: reverts with AllZeroInputs() if 0
+            false,
+            bytes("")
+        );
         vm.stopPrank();
 
         vm.startPrank(bob);
-        uint256 bptInExactOut = router.removeLiquiditySingleTokenExactOut({
-            pool: address(unbalancedPool),
-            maxBptAmountIn: bptAmountIn,
-            tokenOut: dai,
-            exactAmountOut: daiOutExactIn,
-            wethIsEth: false,
-            userData: bytes("")
-        });
+        uint256 bptInExactOut = router.removeLiquiditySingleTokenExactOut(
+            address(unbalancedPool),
+            bptAmountIn,
+            dai,
+            daiOutExactIn,
+            false,
+            bytes("")
+        );
         vm.stopPrank();
 
         assertEq(dai.balanceOf(bob) - defaultBalance, daiOutExactIn, "Bob DAI balance is not correct");
@@ -187,33 +187,33 @@ contract LiquidityInvariantTest is BaseVaultTest {
         vm.stopPrank();
 
         vm.startPrank(alice);
-        uint256[] memory tokensOut = router.removeLiquidityProportional({
-            pool: address(exactOutPool),
-            exactBptAmountIn: bptAmountIn,
-            minAmountsOut: [uint256(1), 1].toMemoryArray(), // NOTE: reverts with AllZeroInputs() if 0
-            wethIsEth: false,
-            userData: bytes("")
-        });
+        uint256[] memory tokensOut = router.removeLiquidityProportional(
+            address(exactOutPool),
+            bptAmountIn,
+            [uint256(1), 1].toMemoryArray(), // NOTE: reverts with AllZeroInputs() if 0
+            false,
+            bytes("")
+        );
         vm.stopPrank();
 
         vm.startPrank(bob);
-        uint256 bptDaiOut = router.removeLiquiditySingleTokenExactOut({
-            pool: address(unbalancedPool),
-            maxBptAmountIn: bptAmountIn,
-            tokenOut: dai,
-            exactAmountOut: tokensOut[daiIdx],
-            wethIsEth: false,
-            userData: bytes("")
-        });
+        uint256 bptDaiOut = router.removeLiquiditySingleTokenExactOut(
+            address(unbalancedPool),
+            bptAmountIn,
+            dai,
+            tokensOut[daiIdx],
+            false,
+            bytes("")
+        );
 
-        uint256 bptWethOut = router.removeLiquiditySingleTokenExactOut({
-            pool: address(unbalancedPool),
-            maxBptAmountIn: IERC20(unbalancedPool).balanceOf(bob),
-            tokenOut: usdc,
-            exactAmountOut: tokensOut[usdcIdx],
-            wethIsEth: false,
-            userData: bytes("")
-        });
+        uint256 bptWethOut = router.removeLiquiditySingleTokenExactOut(
+            address(unbalancedPool),
+            IERC20(unbalancedPool).balanceOf(bob),
+            usdc,
+            tokensOut[usdcIdx],
+            false,
+            bytes("")
+        );
         vm.stopPrank();
 
         assertEq(dai.balanceOf(bob) - defaultBalance, tokensOut[daiIdx], "Bob DAI balance is not correct");
