@@ -35,11 +35,12 @@ contract StablePoolTest is BaseVaultTest {
 
     uint256 constant TOKEN_AMOUNT = 1e3 * 1e18;
     uint256 constant TOKEN_AMOUNT_IN = 1 * 1e18;
-    uint256 constant TOKEN_AMOUN_OUT = 1 * 1e18;
+    uint256 constant TOKEN_AMOUNT_OUT = 1 * 1e18;
 
     uint256 constant DELTA = 1e9;
 
     uint256 constant DEFAULT_AMP_FACTOR = 200;
+    uint256 constant DEFAULT_SWAP_FEE = 0;
 
     StablePool internal stablePool;
     uint256 internal bptAmountOut;
@@ -55,7 +56,14 @@ contract StablePoolTest is BaseVaultTest {
         tokens[1].token = IERC20(usdc);
 
         stablePool = StablePool(
-            factory.create("ERC20 Pool", "ERC20POOL", vault.sortTokenConfig(tokens), DEFAULT_AMP_FACTOR, ZERO_BYTES32)
+            factory.create(
+                "ERC20 Pool",
+                "ERC20POOL",
+                vault.sortTokenConfig(tokens),
+                DEFAULT_AMP_FACTOR,
+                DEFAULT_SWAP_FEE,
+                ZERO_BYTES32
+            )
         );
         return address(stablePool);
     }
