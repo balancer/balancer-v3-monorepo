@@ -70,10 +70,6 @@ contract BufferSwapTest is BaseVaultTest {
         waDAIBufferPool = bufferFactory.createMocked(waDAI);
         waUSDCBufferPool = bufferFactory.createMocked(waUSDC);
 
-        IERC20[] memory daiBufferTokens = InputHelpers.sortTokens(
-            [address(waDAI), address(dai)].toMemoryArray().asIERC20()
-        );
-
         vm.startPrank(lp);
         waDAI.approve(address(vault), MAX_UINT256);
         _initPool(waDAIBufferPool, [defaultAmount, defaultAmount].toMemoryArray(), defaultAmount * 2 - MIN_BPT);
