@@ -5,7 +5,7 @@
 
 This package contains the source code for Balancer V3 Weighted Pools, that is, Pools that swap tokens by enforcing a Constant Weighted Product invariant.
 
-Another useful contract is [`WeightedMath`](./contracts/WeightedMath.sol), which implements the low level calculations required for swaps, joins, exits and price calculations.
+Another useful contract is [`WeightedMath`](../solidity-utils/contracts/math/WeightedMath.sol), which implements the low level calculations required for swaps, joins, exits and price calculations.
 
 ## Overview
 

@@ -13,10 +13,8 @@ import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v3-helpe
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
-import {
-  PoolConfigStructOutput,
-  TokenConfigStruct,
-} from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
+import { PoolConfigStructOutput } from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
+import { buildTokenConfig } from '@balancer-labs/v3-helpers/src/models/tokens/tokenConfig';
 import { WeightedPoolFactory } from '../typechain-types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
@@ -217,19 +215,4 @@ describe('WeightedPool', function () {
       ).to.emit(vault, 'ProtocolSwapFeeCharged');
     });
   });
-
-  function buildTokenConfig(tokens: string[]): TokenConfigStruct[] {
-    const result: TokenConfigStruct[] = [];
-
-    tokens.map((token, i) => {
-      result[i] = {
-        token: token,
-        tokenType: TokenType.STANDARD,
-        rateProvider: ZERO_ADDRESS,
-        yieldFeeExempt: false,
-      };
-    });
-
-    return result;
-  }
 });
