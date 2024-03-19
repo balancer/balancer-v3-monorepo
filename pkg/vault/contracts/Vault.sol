@@ -136,6 +136,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         console.log('Name of token:', IERC20Metadata(address(token)).name());
         console.log('Balance of token:', token.balanceOf(from));
         console.log('Amount to transf:', amount);
+        console.log('Allowance       :', token.allowance(from, address(this)));
         token.safeTransferFrom(from, address(this), amount);
         console.log('Vault.132');
     }
