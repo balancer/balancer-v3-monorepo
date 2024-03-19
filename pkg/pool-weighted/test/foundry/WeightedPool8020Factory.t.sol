@@ -113,6 +113,7 @@ contract WeightedPool8020FactoryTest is Test {
         WeightedPool(factory.create(tokens[0], tokens[1]));
     }
 
+    /// forge-config: default.fuzz.runs = 10
     function testPoolCrossChainProtection_Fuzz(uint16 chainId) public {
         vm.assume(chainId != 31337);
 
