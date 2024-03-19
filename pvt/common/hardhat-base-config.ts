@@ -12,7 +12,7 @@ type SolcConfig = {
 
 export const compilers: [SolcConfig] = [
   {
-    version: '0.8.21',
+    version: '0.8.24',
     settings: {
       optimizer: {
         enabled: true,
@@ -32,11 +32,11 @@ type ContractSettings = Record<
 
 const contractSettings: ContractSettings = {
   '@balancer-labs/v3-vault/contracts/Vault.sol': {
-    version: '0.8.21',
+    version: '0.8.24',
     runs: 500,
   },
   '@balancer-labs/v3-vault/contracts/VaultExtension.sol': {
-    version: '0.8.21',
+    version: '0.8.24',
     runs: 500,
   },
 };
