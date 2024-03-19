@@ -63,14 +63,14 @@ describe('WeightedPool', function () {
     tokenBAddress = await tokenB.getAddress();
     tokenCAddress = await tokenC.getAddress();
 
-    // poolTokens = sortAddresses([tokenAAddress, tokenBAddress, tokenCAddress]);
-    //
-    // pool = await deploy('v3-vault/PoolMock', {
-    //   args: [vault, 'Pool', 'POOL', buildTokenConfig(poolTokens), true, 365 * 24 * 3600, ZERO_ADDRESS],
-    // });
+    poolTokens = sortAddresses([tokenAAddress, tokenBAddress, tokenCAddress]);
+
+    pool = await deploy('v3-vault/PoolMock', {
+      args: [vault, 'Pool', 'POOL', buildTokenConfig(poolTokens), true, 365 * 24 * 3600, ZERO_ADDRESS],
+    });
   });
 
-  describe.skip('initialization', () => {
+  describe('initialization', () => {
     context('uninitialized', () => {
       it('is registered, but not initialized on deployment', async () => {
         const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(pool);
@@ -142,6 +142,9 @@ describe('WeightedPool', function () {
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
 
       realPoolAddress = event.args.pool;
+
+      console.log('Pool address: ', realPoolAddress);
+      console.log('Pool tokens: ', realPoolTokens);
 
       realPool = await deployedAt('WeightedPool', realPoolAddress);
 
