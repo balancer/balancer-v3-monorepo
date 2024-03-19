@@ -142,8 +142,8 @@ describe('WeightedPool', function () {
 
       realPool = await deployedAt('WeightedPool', realPoolAddress);
 
-      tokenA.mint(bob, TOKEN_AMOUNT + SWAP_AMOUNT);
-      tokenB.mint(bob, TOKEN_AMOUNT);
+      tokenA.mint(bob, TOKEN_AMOUNT + TOKEN_AMOUNT + SWAP_AMOUNT);
+      tokenB.mint(bob, TOKEN_AMOUNT + TOKEN_AMOUNT);
 
       tokenA.connect(bob).approve(vault, MAX_UINT256);
       tokenB.connect(bob).approve(vault, MAX_UINT256);
