@@ -16,7 +16,7 @@ remappings = [
 gas_reports = ["Router", "Vault", "WeightedPool"]
 optimizer = true
 optimizer_runs = 9999
-solc_version = '0.8.21'
+solc_version = '0.8.24'
 auto_detect_solc = false
 
 [fuzz]

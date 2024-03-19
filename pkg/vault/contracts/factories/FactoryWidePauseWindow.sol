@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 /**
  * @dev Base contract for V3 factories to support pause windows for pools based on the factory deployment time.

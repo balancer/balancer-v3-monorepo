@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -17,7 +17,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 
-import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { ERC4626BufferPoolFactoryMock } from "./utils/ERC4626BufferPoolFactoryMock.sol";
 import { ERC4626BufferPoolMock } from "./utils/ERC4626BufferPoolMock.sol";
@@ -91,14 +91,11 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
 
         IERC20[] memory tokens = InputHelpers.sortTokens([wDAI_ADDRESS, address(mockedDai)].toMemoryArray().asIERC20());
 
-        bptAmountOutDai = router.initialize(
+        bptAmountOutDai = _initPool(
             address(bufferPoolDai),
-            tokens,
             amountsInDai,
             // Account for the precision loss
-            BUFFER_BASE_TOKENS - DELTA - 1e6,
-            false,
-            bytes("")
+            BUFFER_BASE_TOKENS - DELTA - 1e6
         );
 
         // Creating WSTETH Buffer
@@ -115,14 +112,11 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
         tokens[wrappedTokenIdx] = IERC20(wWSTETH_ADDRESS);
         tokens[baseTokenIdx] = IERC20(address(mockedWsteth));
 
-        bptAmountOutWsteth = router.initialize(
+        bptAmountOutWsteth = _initPool(
             address(bufferPoolWsteth),
-            tokens,
             amountsInWsteth,
             // Account for the precision loss
-            BUFFER_BASE_TOKENS - DELTA - 1e6,
-            false,
-            bytes("")
+            BUFFER_BASE_TOKENS - DELTA - 1e6
         );
         vm.stopPrank();
     }
