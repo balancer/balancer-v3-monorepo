@@ -116,10 +116,7 @@ export default {
   },
 
   toBytes32(value: BigNumberish): string {
-    //const hexy = ethers.utils.hexlify(value);
-    //return ethers.utils.hexZeroPad(hexy, 32);
-    //TODO get ethers.utils to work
-    const num = value.toString();
-    return `0x${num.padStart(64, '0')}`;
+    const hexy = ethers.toBeHex(value);
+    return ethers.zeroPadValue(hexy, 32);
   },
 };
