@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import 'forge-std/console.sol';
+
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -258,50 +260,64 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 minBptAmountOut,
         bytes memory userData
     ) external withLocker withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
+        console.log('VE.263');
         VaultState memory vaultState = _ensureUnpausedAndGetVaultState(pool);
+        console.log('VE.265');
 
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             pool,
             Rounding.ROUND_DOWN,
             vaultState.protocolYieldFeePercentage
         );
+        console.log('VE.272');
 
         if (poolData.poolConfig.isPoolInitialized) {
+            console.log('VE.275');
             revert PoolAlreadyInitialized(pool);
         }
+        console.log('VE.278');
         uint256 numTokens = poolData.tokenConfig.length;
 
+        console.log('VE.281');
         InputHelpers.ensureInputLengthMatch(numTokens, exactAmountsIn.length);
 
         // Amounts are entering pool math, so round down. A lower invariant after the join means less bptOut,
         // favoring the pool.
+        console.log('VE.286');
         uint256[] memory exactAmountsInScaled18 = exactAmountsIn.copyToScaled18ApplyRateRoundDownArray(
             poolData.decimalScalingFactors,
             poolData.tokenRates
         );
 
+        console.log('VE.292');
         if (poolData.poolConfig.hooks.shouldCallBeforeInitialize) {
+            console.log('VE.294');
             if (IPoolHooks(pool).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
+                console.log('VE.296');
                 revert BeforeInitializeHookFailed();
             }
 
             // The before hook is reentrant, and could have changed token rates.
             _updateTokenRatesInPoolData(poolData);
+            console.log('VE.302');
 
             // Also update exactAmountsInScaled18, in case the underlying rates changed.
             exactAmountsInScaled18 = exactAmountsIn.copyToScaled18ApplyRateRoundDownArray(
                 poolData.decimalScalingFactors,
                 poolData.tokenRates
             );
+            console.log('VE.309');
         }
 
         bptAmountOut = _initialize(pool, to, poolData, tokens, exactAmountsIn, exactAmountsInScaled18, minBptAmountOut);
+        console.log('VE.313');
 
         if (poolData.poolConfig.hooks.shouldCallAfterInitialize) {
             if (IPoolHooks(pool).onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false) {
                 revert AfterInitializeHookFailed();
             }
         }
+        console.log('VE.320');
     }
 
     function _initialize(
