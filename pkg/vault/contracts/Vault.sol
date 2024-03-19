@@ -124,10 +124,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultMain
     function takeFrom(IERC20 token, address from, uint256 amount) public nonReentrant withLocker onlyTrustedRouter {
+        console.log('Vault.125');
         _supplyCredit(token, amount, msg.sender);
+        console.log('Vault.127');
         _reservesOf[token] += amount;
+        console.log('Vault.129');
 
         token.safeTransferFrom(from, address(this), amount);
+        console.log('Vault.132');
     }
 
     /*******************************************************************************
