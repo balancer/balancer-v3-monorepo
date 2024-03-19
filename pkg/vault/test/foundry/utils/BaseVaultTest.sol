@@ -15,7 +15,7 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { BaseTest } from "solidity-utils/test/foundry/utils/BaseTest.sol";
+import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 
 import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
@@ -111,29 +111,46 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     }
 
     function initPool() internal virtual {
-        (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(address(pool));
-        vm.prank(lp);
-        router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
+        vm.startPrank(lp);
+        _initPool(pool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
+        vm.stopPrank();
+    }
+
+    function _initPool(
+        address poolToInit,
+        uint256[] memory amountsIn,
+        uint256 minBptOut
+    ) internal virtual returns (uint256 bptOut) {
+        (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(poolToInit);
+        return router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, "");
     }
 
     function createPool() internal virtual returns (address) {
+        return _createPool([address(dai), address(usdc)].toMemoryArray(), "pool");
+    }
+
+    function _createPool(address[] memory tokens, string memory label) internal virtual returns (address) {
         PoolMock newPool = new PoolMock(
             IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
+            vault.buildTokenConfig(tokens.asIERC20()),
             true,
             365 days,
             address(0)
         );
-        vm.label(address(newPool), "pool");
+        vm.label(address(newPool), label);
         return address(newPool);
     }
 
     function setSwapFeePercentage(uint256 percentage) internal {
+        _setSwapFeePercentage(pool, percentage);
+    }
+
+    function _setSwapFeePercentage(address setPool, uint256 percentage) internal {
         authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), admin);
         vm.prank(admin);
-        vault.setStaticSwapFeePercentage(address(pool), percentage);
+        vault.setStaticSwapFeePercentage(setPool, percentage);
     }
 
     function setProtocolSwapFeePercentage(uint64 percentage) internal {
@@ -143,16 +160,15 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     }
 
     function getBalances(address user) internal view returns (Balances memory balances) {
-        balances.userTokens = new uint256[](2);
+        balances.userBpt = IERC20(pool).balanceOf(user);
 
-        balances.userBpt = PoolMock(pool).balanceOf(user);
-
-        (IERC20[] memory tokens, , uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(address(pool));
+        (IERC20[] memory tokens, , uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(pool);
         balances.poolTokens = poolBalances;
-
-        // Don't assume token ordering.
-        balances.userTokens[0] = tokens[0].balanceOf(user);
-        balances.userTokens[1] = tokens[1].balanceOf(user);
+        balances.userTokens = new uint256[](poolBalances.length);
+        for (uint256 i = 0; i < poolBalances.length; i++) {
+            // Don't assume token ordering.
+            balances.userTokens[i] = tokens[i].balanceOf(user);
+        }
     }
 
     function getSalt(address addr) internal pure returns (bytes32) {
