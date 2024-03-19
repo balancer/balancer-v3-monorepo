@@ -107,6 +107,12 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
     function _swapExactInHook(
         SwapExactInHookParams calldata params
     ) internal returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) {
+        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp > params.deadline) {
+            revert SwapDeadline();
+        }
+
         pathAmountsOut = _computePathAmountsOut(params);
 
         // The hook writes current swap token and token amounts out.
@@ -280,6 +286,12 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
     function _swapExactOutHook(
         SwapExactOutHookParams calldata params
     ) internal returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
+        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp > params.deadline) {
+            revert SwapDeadline();
+        }
+
         pathAmountsIn = _computePathAmountsIn(params);
 
         // The hook writes current swap token and token amounts in.
