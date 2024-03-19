@@ -35,8 +35,6 @@ import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 
-import "hardhat/console.sol";
-
 contract Vault is IVaultMain, VaultCommon, Proxy {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using PackedTokenBalance for bytes32;
@@ -125,20 +123,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultMain
     function takeFrom(IERC20 token, address from, uint256 amount) public nonReentrant withLocker onlyTrustedRouter {
-        console.log('Vault.125');
         _supplyCredit(token, amount, msg.sender);
-        console.log('Vault.127');
         _reservesOf[token] += amount;
-        console.log('Vault.129');
 
-        console.log('------------');
-        console.log('User address vault:', from);
-        console.log('Name of token:', IERC20Metadata(address(token)).name());
-        console.log('Balance of token:', token.balanceOf(from));
-        console.log('Amount to transf:', amount);
-        console.log('Allowance       :', token.allowance(from, address(this)));
         token.safeTransferFrom(from, address(this), amount);
-        console.log('Vault.132');
     }
 
     /*******************************************************************************

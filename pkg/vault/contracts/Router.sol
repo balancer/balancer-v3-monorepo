@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "hardhat/console.sol";
-
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -77,44 +75,30 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
             params.minBptAmountOut,
             params.userData
         );
-        console.log('Router.80');
 
         uint256 ethAmountIn;
         for (uint256 i = 0; i < params.tokens.length; ++i) {
-            console.log('Router.84');
             // Receive tokens from the locker
             IERC20 token = params.tokens[i];
-            console.log('Router.87');
             uint256 amountIn = params.exactAmountsIn[i];
-            console.log('Router.89');
 
             // There can be only one WETH token in the pool
             if (params.wethIsEth && address(token) == address(_weth)) {
-                console.log('Router.93');
                 if (msg.value < amountIn) {
-                    console.log('Router.95');
                     revert InsufficientEth();
                 }
-                console.log('Router.98');
                 _weth.deposit{ value: amountIn }();
-                console.log('Router.100');
                 ethAmountIn = amountIn;
-                console.log('Router.102');
                 // transfer WETH from the router to the Vault
                 _vault.takeFrom(_weth, address(this), amountIn);
-                console.log('Router.105');
             } else {
-                console.log('Router.107');
                 // transfer tokens from the user to the Vault
                 _vault.takeFrom(token, params.sender, amountIn);
-                console.log('Router.110');
             }
         }
 
-        console.log('Router.114');
         // return ETH dust
         _returnEth(params.sender, ethAmountIn);
-        console.log('Router.117');
     }
 
     /// @inheritdoc IRouter

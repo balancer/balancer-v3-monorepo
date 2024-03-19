@@ -21,9 +21,6 @@ import { VaultStorage } from "./VaultStorage.sol";
 import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 
-import "hardhat/console.sol";
-
-
 /**
  * @dev Storage layout for Vault. This contract has no code except for common utilities in the inheritance chain
  * that require storage to work and will be required in both the main Vault and its extension.

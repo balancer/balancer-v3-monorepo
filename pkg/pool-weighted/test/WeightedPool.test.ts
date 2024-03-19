@@ -142,13 +142,11 @@ describe('WeightedPool', function () {
 
       realPool = await deployedAt('WeightedPool', realPoolAddress);
 
-      await tokenA.mint(bob, TOKEN_AMOUNT + TOKEN_AMOUNT + SWAP_AMOUNT);
-      await tokenB.mint(bob, TOKEN_AMOUNT + TOKEN_AMOUNT);
+      await tokenA.mint(bob, TOKEN_AMOUNT + SWAP_AMOUNT);
+      await tokenB.mint(bob, TOKEN_AMOUNT);
 
       await tokenA.connect(bob).approve(vault, MAX_UINT256);
       await tokenB.connect(bob).approve(vault, MAX_UINT256);
-
-      console.log('User address test:', bob.address);
 
       await expect(
         await router.connect(bob).initialize(realPool, realPoolTokens, REAL_POOL_INITIAL_BALANCES, FP_ZERO, false, '0x')
