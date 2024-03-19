@@ -161,9 +161,9 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         balance1 = bound(balance1, 0, _MAX_RAW_BALANCE);
         balance2 = bound(balance2, 0, _MAX_RAW_BALANCE);
         balance3 = bound(balance3, 0, _MAX_RAW_BALANCE);
-        decimalDiff1 = bound(decimalDiff1, 0, 17).toUint8();
-        decimalDiff2 = bound(decimalDiff2, 0, 17).toUint8();
-        decimalDiff3 = bound(decimalDiff3, 0, 17).toUint8();
+        decimalDiff1 = bound(decimalDiff1, 0, 18).toUint8();
+        decimalDiff2 = bound(decimalDiff2, 0, 18).toUint8();
+        decimalDiff3 = bound(decimalDiff3, 0, 18).toUint8();
 
         // Generates a "random" address for a non-existent pool
         address newPool = address(bytes20(keccak256(abi.encode(block.timestamp))));
