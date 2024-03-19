@@ -30,7 +30,7 @@ One option to quickly select the suggested Node version is using `nvm`, and runn
 $ nvm use
 ```
 
-Solidity 0.8.4 or higher is required, as V3 uses custom error messages. We strongly recommend using the latest released version of the Solidity compiler (at least 0.8.21), to incorporate all the latest bug fixes.
+Solidity 0.8.24 or higher is required to support the upcoming Cancun hardfork with transient storage. We strongly recommend using the latest released version of the Solidity compiler (at least 0.8.24), to incorporate all the latest bug fixes.
 
 ## Build and Test
 
