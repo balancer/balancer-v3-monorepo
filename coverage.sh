@@ -11,6 +11,7 @@ lines_found=0
 lines_hit=0
 
 sed 's/\.\.\/vault\///g' lcov.info > lcov-clearvault.info
+sed 's/\.\.\/pool-weighted\///g' lcov.info > lcov-clearvault.info
 
 # generates coverage/lcov.info
 yarn hardhat coverage
@@ -21,7 +22,7 @@ sed -i -e "s/\/.*$(basename "$PWD").//g" coverage/lcov.info
 
 # Merge lcov files
 lcov \
-    --rc lcov_branch_coverage=1 \
+    --rc branch_coverage=1 \
     --add-tracefile coverage/lcov.info \
     --add-tracefile lcov-clearvault.info \
     --output-file merged-lcov.info \
@@ -32,7 +33,7 @@ lcov \
 
 # Filter out node_modules, test, and mock files
 lcov \
-    --rc lcov_branch_coverage=1 \
+    --rc branch_coverage=1 \
     --remove merged-lcov.info \
     "*node_modules*" "*test*" "*mock*" \
     --output-file coverage/filtered-lcov.info \
@@ -42,7 +43,7 @@ lcov \
 
 # Generate summary
 lcov \
-    --rc lcov_branch_coverage=1 \
+    --rc branch_coverage=1 \
     --list coverage/filtered-lcov.info \
     --ignore-errors unused \
     --ignore-errors format \
@@ -50,7 +51,7 @@ lcov \
 
 # Open more granular breakdown in browser
 genhtml \
-    --rc genhtml_branch_coverage=1 \
+    --rc branch_coverage=1 \
     --output-directory coverage-genhtml \
     --ignore-errors category \
     coverage/filtered-lcov.info
