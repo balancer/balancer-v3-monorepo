@@ -148,6 +148,8 @@ describe('WeightedPool', function () {
       tokenA.connect(bob).approve(vault, MAX_UINT256);
       tokenB.connect(bob).approve(vault, MAX_UINT256);
 
+      console.log('User address test:', bob.address);
+
       await expect(
         await router.connect(bob).initialize(realPool, realPoolTokens, REAL_POOL_INITIAL_BALANCES, FP_ZERO, false, '0x')
       )
