@@ -34,6 +34,7 @@ describe('WeightedPool', function () {
   let pool: PoolMock;
   let router: Router;
   let alice: SignerWithAddress;
+  let bob: SignerWithAddress;
   let tokenA: ERC20TestToken;
   let tokenB: ERC20TestToken;
   let tokenC: ERC20TestToken;
@@ -44,7 +45,7 @@ describe('WeightedPool', function () {
   let tokenCAddress: string;
 
   before('setup signers', async () => {
-    [, alice] = await ethers.getSigners();
+    [, alice, bob] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault, router, tokens, and pool', async function () {
@@ -141,16 +142,14 @@ describe('WeightedPool', function () {
 
       realPool = await deployedAt('WeightedPool', realPoolAddress);
 
-      tokenA.mint(alice, TOKEN_AMOUNT + SWAP_AMOUNT);
-      tokenB.mint(alice, TOKEN_AMOUNT);
+      tokenA.mint(bob, TOKEN_AMOUNT + SWAP_AMOUNT);
+      tokenB.mint(bob, TOKEN_AMOUNT);
 
-      tokenA.connect(alice).approve(vault, MAX_UINT256);
-      tokenB.connect(alice).approve(vault, MAX_UINT256);
+      tokenA.connect(bob).approve(vault, MAX_UINT256);
+      tokenB.connect(bob).approve(vault, MAX_UINT256);
 
       await expect(
-        await router
-          .connect(alice)
-          .initialize(realPool, realPoolTokens, REAL_POOL_INITIAL_BALANCES, FP_ZERO, false, '0x')
+        await router.connect(bob).initialize(realPool, realPoolTokens, REAL_POOL_INITIAL_BALANCES, FP_ZERO, false, '0x')
       )
         .to.emit(vault, 'PoolInitialized')
         .withArgs(realPoolAddress);
@@ -164,13 +163,13 @@ describe('WeightedPool', function () {
       const authorizerAddress = await vault.getAuthorizer();
       const authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
 
-      await authorizer.grantRole(setSwapFeeAction, alice.address);
-      await authorizer.grantRole(setYieldFeeAction, alice.address);
-      await authorizer.grantRole(setPoolSwapFeeAction, alice.address);
+      await authorizer.grantRole(setSwapFeeAction, bob.address);
+      await authorizer.grantRole(setYieldFeeAction, bob.address);
+      await authorizer.grantRole(setPoolSwapFeeAction, bob.address);
 
-      await vault.connect(alice).setProtocolSwapFeePercentage(MAX_PROTOCOL_SWAP_FEE);
-      await vault.connect(alice).setProtocolYieldFeePercentage(MAX_PROTOCOL_YIELD_FEE);
-      await vault.connect(alice).setStaticSwapFeePercentage(realPoolAddress, POOL_SWAP_FEE);
+      await vault.connect(bob).setProtocolSwapFeePercentage(MAX_PROTOCOL_SWAP_FEE);
+      await vault.connect(bob).setProtocolYieldFeePercentage(MAX_PROTOCOL_YIELD_FEE);
+      await vault.connect(bob).setStaticSwapFeePercentage(realPoolAddress, POOL_SWAP_FEE);
     });
 
     it('pool and protocol fee preconditions', async () => {
@@ -187,7 +186,7 @@ describe('WeightedPool', function () {
     it('emits protocol swap fee event on swap', async () => {
       await expect(
         await router
-          .connect(alice)
+          .connect(bob)
           .swapSingleTokenExactIn(
             realPoolAddress,
             tokenAAddress,
