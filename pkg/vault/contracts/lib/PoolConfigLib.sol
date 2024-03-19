@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -36,8 +36,8 @@ library PoolConfigLib {
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
 
     uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
-    uint8 public constant DECIMAL_SCALING_FACTORS_OFFSET = STATIC_SWAP_FEE_OFFSET + _STATIC_SWAP_FEE_BITLENGTH;
-    uint8 public constant PAUSE_WINDOW_END_TIME_OFFSET =
+    uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant PAUSE_WINDOW_END_TIME_OFFSET =
         DECIMAL_SCALING_FACTORS_OFFSET + _TOKEN_DECIMAL_DIFFS_BITLENGTH;
 
     // Uses a uint24 (3 bytes): least significant 20 bits to store the values, and a 4-bit pad.
@@ -45,8 +45,6 @@ library PoolConfigLib {
     uint8 private constant _TOKEN_DECIMAL_DIFFS_BITLENGTH = 24;
     uint8 private constant _DECIMAL_DIFF_BITLENGTH = 5;
 
-    // A fee can never be larger than FixedPoint.ONE, which fits in 60 bits
-    uint8 private constant _STATIC_SWAP_FEE_BITLENGTH = 64;
     uint8 private constant _TIMESTAMP_BITLENGTH = 32;
 
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
@@ -70,7 +68,7 @@ library PoolConfigLib {
     }
 
     function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
-        return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, _STATIC_SWAP_FEE_BITLENGTH);
+        return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
     function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint256) {
@@ -177,7 +175,11 @@ library PoolConfigLib {
                         DECIMAL_SCALING_FACTORS_OFFSET,
                         _TOKEN_DECIMAL_DIFFS_BITLENGTH
                     )
-                    .insertUint(config.staticSwapFeePercentage, STATIC_SWAP_FEE_OFFSET, _STATIC_SWAP_FEE_BITLENGTH)
+                    .insertUint(
+                        config.staticSwapFeePercentage / FEE_SCALING_FACTOR,
+                        STATIC_SWAP_FEE_OFFSET,
+                        FEE_BITLENGTH
+                    )
                     .insertUint(config.pauseWindowEndTime, PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH)
             );
     }
