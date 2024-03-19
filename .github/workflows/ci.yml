@@ -50,11 +50,9 @@ jobs:
       - uses: actions/checkout@v3
       - name: Set up environment
         uses: ./.github/actions/setup
-      - name: Build
-        run: yarn build
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FORGE_SNAPSHOT_CHECK: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
       - name: Fork Test
         run: yarn workspace @balancer-labs/v3-vault test:fork
 
@@ -65,11 +63,9 @@ jobs:
       - uses: actions/checkout@v3
       - name: Set up environment
         uses: ./.github/actions/setup
-      - name: Build
-        run: yarn build
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FORGE_SNAPSHOT_CHECK: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
       - name: Test
         run: yarn workspace @balancer-labs/v3-vault test:hardhat
 
@@ -80,11 +76,9 @@ jobs:
       - uses: actions/checkout@v3
       - name: Set up environment
         uses: ./.github/actions/setup
-      - name: Build
-        run: yarn build
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FORGE_SNAPSHOT_CHECK: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
       - name: Test
         run: yarn workspace @balancer-labs/v3-solidity-utils test:hardhat
 
@@ -95,11 +89,9 @@ jobs:
       - uses: actions/checkout@v3
       - name: Set up environment
         uses: ./.github/actions/setup
-      - name: Build
-        run: yarn build
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FORGE_SNAPSHOT_CHECK: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
       - name: Test
         run: yarn workspace @balancer-labs/v3-solidity-utils test:forge
 
@@ -110,11 +102,9 @@ jobs:
       - uses: actions/checkout@v3
       - name: Set up environment
         uses: ./.github/actions/setup
-      - name: Build
-        run: yarn build
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FORGE_SNAPSHOT_CHECK: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
       - name: Test
         run: yarn workspace @balancer-labs/v3-pool-weighted test:hardhat
 
@@ -125,10 +115,8 @@ jobs:
       - uses: actions/checkout@v3
       - name: Set up environment
         uses: ./.github/actions/setup
-      - name: Build
-        run: yarn build
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FORGE_SNAPSHOT_CHECK: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
       - name: Test
         run: yarn workspace @balancer-labs/v3-pool-weighted test:forge
