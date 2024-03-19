@@ -91,14 +91,11 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
 
         IERC20[] memory tokens = InputHelpers.sortTokens([wDAI_ADDRESS, address(mockedDai)].toMemoryArray().asIERC20());
 
-        bptAmountOutDai = router.initialize(
+        bptAmountOutDai = _initPool(
             address(bufferPoolDai),
-            tokens,
             amountsInDai,
             // Account for the precision loss
-            BUFFER_BASE_TOKENS - DELTA - 1e6,
-            false,
-            bytes("")
+            BUFFER_BASE_TOKENS - DELTA - 1e6
         );
 
         // Creating WSTETH Buffer
@@ -115,14 +112,11 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
         tokens[wrappedTokenIdx] = IERC20(wWSTETH_ADDRESS);
         tokens[baseTokenIdx] = IERC20(address(mockedWsteth));
 
-        bptAmountOutWsteth = router.initialize(
+        bptAmountOutWsteth = _initPool(
             address(bufferPoolWsteth),
-            tokens,
             amountsInWsteth,
             // Account for the precision loss
-            BUFFER_BASE_TOKENS - DELTA - 1e6,
-            false,
-            bytes("")
+            BUFFER_BASE_TOKENS - DELTA - 1e6
         );
         vm.stopPrank();
     }

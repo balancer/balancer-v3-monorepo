@@ -84,6 +84,36 @@ abstract contract BaseTest is Test, GasSnapshot {
         idxTokenB = idxTokenA == 0 ? 1 : 0;
     }
 
+    function getSortedIndexes(
+        address tokenA,
+        address tokenB,
+        address tokenC
+    ) internal pure returns (uint256 idxTokenA, uint256 idxTokenB, uint256 idxTokenC) {
+        // Step 1: Compare tokenA and tokenB
+        if (tokenA > tokenB) {
+            (idxTokenA, idxTokenB) = (1, 0);
+        } else {
+            (idxTokenA, idxTokenB) = (0, 1);
+        }
+
+        // Step 2 & 3: Introduce and compare tokenC, adjust indexes accordingly
+        if (tokenC > tokenA && tokenC > tokenB) {
+            idxTokenC = 2; // tokenC is the largest
+        } else if (tokenC < tokenA && tokenC < tokenB) {
+            idxTokenC = 0; // tokenC is the smallest, shift the others
+            idxTokenA += 1;
+            idxTokenB += 1;
+        } else {
+            idxTokenC = 1; // tokenC is in the middle
+            if (tokenA > tokenB) {
+                idxTokenA = 2; // tokenA is the largest, tokenB is the smallest
+            } else {
+                idxTokenB = 2; // tokenB is the largest, tokenA is the smallest
+            }
+        }
+    }
+
+
     /// @dev Creates an ERC20 test token, labels its address.
     function createERC20(string memory name, uint8 decimals) internal returns (ERC20TestToken token) {
         token = new ERC20TestToken(name, name, decimals);

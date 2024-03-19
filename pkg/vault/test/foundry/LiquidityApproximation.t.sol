@@ -26,6 +26,7 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
  * unproportional liquidity operation (addLiquidityUnbalanced) combined with
  * add/remove liquidity proportionally, and swapExactIn. Consider the following scenario:
  *
+ * Pool begins with balances of [100, 100].
  * Alice begins with balances of [100, 0].
  * She executes addLiquidityUnbalanced([100, 0]) and subsequently removeLiquidityProportionally,
  * resulting in balances of [66, 33].
@@ -79,56 +80,22 @@ contract LiquidityApproximationTest is BaseVaultTest {
     }
 
     function createPool() internal virtual override returns (address) {
-        liquidityPool = address(
-            new PoolMock(
-                IVault(address(vault)),
-                "ERC20 Pool",
-                "ERC20POOL",
-                vault.buildTokenConfig(
-                    [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-                    new IRateProvider[](2)
-                ),
-                true,
-                365 days,
-                address(0)
-            )
-        );
-        vm.label(address(liquidityPool), "liquidityPool");
+        address[] memory tokens = [address(dai), address(usdc)].toMemoryArray();
 
-        swapPool = address(
-            new PoolMock(
-                IVault(address(vault)),
-                "ERC20 Pool",
-                "ERC20POOL",
-                vault.buildTokenConfig(
-                    [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-                    new IRateProvider[](2)
-                ),
-                true,
-                365 days,
-                address(0)
-            )
-        );
-        vm.label(address(swapPool), "swapPool");
+        liquidityPool = _createPool(tokens, "liquidityPool");
+        swapPool = _createPool(tokens, "swapPool");
 
-        return address(liquidityPool);
+        // NOTE: stores address in `pool` (unused in this test)
+        return address(0xdead);
     }
 
     function initPool() internal override {
         poolInitAmount = 1e9 * 1e18;
-        (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(address(swapPool));
-        vm.prank(lp);
-        router.initialize(address(swapPool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
 
-        vm.prank(lp);
-        router.initialize(
-            address(liquidityPool),
-            tokens,
-            [poolInitAmount, poolInitAmount].toMemoryArray(),
-            0,
-            false,
-            ""
-        );
+        vm.startPrank(lp);
+        _initPool(swapPool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
+        _initPool(liquidityPool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
+        vm.stopPrank();
     }
 
     /// Add
@@ -138,8 +105,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
         // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
-        setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
-        setSwapFeePercentage(swapFeePercentage, address(swapPool));
+        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
+        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
         uint256[] memory amountsIn = new uint256[](2);
         amountsIn[daiIdx] = uint256(daiAmountIn);
@@ -147,26 +114,26 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.startPrank(alice);
         router.addLiquidityUnbalanced(address(liquidityPool), amountsIn, 0, false, bytes(""));
 
-        uint256[] memory amountsOut = router.removeLiquidityProportional(
-            address(liquidityPool),
-            IERC20(liquidityPool).balanceOf(alice),
-            [uint256(0), uint256(0)].toMemoryArray(),
-            false,
-            bytes("")
-        );
+        uint256[] memory amountsOut = router.removeLiquidityProportional({
+            pool: address(liquidityPool),
+            exactBptAmountIn: IERC20(liquidityPool).balanceOf(alice),
+            minAmountsOut: [uint256(0), uint256(0)].toMemoryArray(),
+            wethIsEth: false,
+            userData: bytes("")
+        });
         vm.stopPrank();
 
         vm.prank(bob);
-        uint256 amountOut = router.swapSingleTokenExactIn(
-            address(swapPool),
-            dai,
-            usdc,
-            daiAmountIn - amountsOut[daiIdx],
-            0,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
+        uint256 amountOut = router.swapSingleTokenExactIn({
+            pool: address(swapPool),
+            tokenIn: dai,
+            tokenOut: usdc,
+            exactAmountIn: daiAmountIn - amountsOut[daiIdx],
+            minAmountOut: 0,
+            deadline: MAX_UINT256,
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
         assertLiquidityOperation(amountOut, swapFeePercentage, true);
     }
@@ -180,26 +147,26 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.startPrank(alice);
         router.addLiquidityUnbalanced(address(liquidityPool), amountsIn, 0, false, bytes(""));
 
-        uint256[] memory amountsOut = router.removeLiquidityProportional(
-            address(liquidityPool),
-            IERC20(liquidityPool).balanceOf(alice),
-            [uint256(0), uint256(0)].toMemoryArray(),
-            false,
-            bytes("")
-        );
+        uint256[] memory amountsOut = router.removeLiquidityProportional({
+            pool: address(liquidityPool),
+            exactBptAmountIn: IERC20(liquidityPool).balanceOf(alice),
+            minAmountsOut: [uint256(0), uint256(0)].toMemoryArray(),
+            wethIsEth: false,
+            userData: bytes("")
+        });
         vm.stopPrank();
 
         vm.prank(bob);
-        router.swapSingleTokenExactIn(
-            address(swapPool),
-            dai,
-            usdc,
-            daiAmountIn - amountsOut[daiIdx],
-            0,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
+        router.swapSingleTokenExactIn({
+            pool: address(swapPool),
+            tokenIn: dai,
+            tokenOut: usdc,
+            exactAmountIn: daiAmountIn - amountsOut[daiIdx],
+            minAmountOut: 0,
+            deadline: MAX_UINT256,
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
         assertLiquidityOperationNoSwapFee();
     }
@@ -209,39 +176,39 @@ contract LiquidityApproximationTest is BaseVaultTest {
         // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
-        setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
-        setSwapFeePercentage(swapFeePercentage, address(swapPool));
+        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
+        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
         vm.startPrank(alice);
-        uint256 daiAmountIn = router.addLiquiditySingleTokenExactOut(
-            address(liquidityPool),
-            dai,
-            1e50,
-            exactBptAmountOut,
-            false,
-            bytes("")
-        );
+        uint256 daiAmountIn = router.addLiquiditySingleTokenExactOut({
+            pool: address(liquidityPool),
+            tokenIn: dai,
+            maxAmountIn: 1e50,
+            exactBptAmountOut: exactBptAmountOut,
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
-        uint256[] memory amountsOut = router.removeLiquidityProportional(
-            address(liquidityPool),
-            IERC20(liquidityPool).balanceOf(alice),
-            [uint256(0), uint256(0)].toMemoryArray(),
-            false,
-            bytes("")
-        );
+        uint256[] memory amountsOut = router.removeLiquidityProportional({
+            pool: address(liquidityPool),
+            exactBptAmountIn: IERC20(liquidityPool).balanceOf(alice),
+            minAmountsOut: [uint256(0), uint256(0)].toMemoryArray(),
+            wethIsEth: false,
+            userData: bytes("")
+        });
         vm.stopPrank();
 
         vm.prank(bob);
-        uint256 amountOut = router.swapSingleTokenExactIn(
-            address(swapPool),
-            dai,
-            usdc,
-            daiAmountIn - amountsOut[daiIdx],
-            0,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
+        uint256 amountOut = router.swapSingleTokenExactIn({
+            pool: address(swapPool),
+            tokenIn: dai,
+            tokenOut: usdc,
+            exactAmountIn: daiAmountIn - amountsOut[daiIdx],
+            minAmountOut: 0,
+            deadline: MAX_UINT256,
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
         assertLiquidityOperation(amountOut, swapFeePercentage, true);
     }
@@ -250,35 +217,35 @@ contract LiquidityApproximationTest is BaseVaultTest {
         exactBptAmountOut = bound(exactBptAmountOut, 1e18, maxAmount / 2 - 1);
 
         vm.startPrank(alice);
-        uint256 daiAmountIn = router.addLiquiditySingleTokenExactOut(
-            address(liquidityPool),
-            dai,
-            1e50,
-            exactBptAmountOut,
-            false,
-            bytes("")
-        );
+        uint256 daiAmountIn = router.addLiquiditySingleTokenExactOut({
+            pool: address(liquidityPool),
+            tokenIn: dai,
+            maxAmountIn: 1e50,
+            exactBptAmountOut: exactBptAmountOut,
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
-        uint256[] memory amountsOut = router.removeLiquidityProportional(
-            address(liquidityPool),
-            IERC20(liquidityPool).balanceOf(alice),
-            [uint256(0), uint256(0)].toMemoryArray(),
-            false,
-            bytes("")
-        );
+        uint256[] memory amountsOut = router.removeLiquidityProportional({
+            pool: address(liquidityPool),
+            exactBptAmountIn: IERC20(liquidityPool).balanceOf(alice),
+            minAmountsOut: [uint256(0), uint256(0)].toMemoryArray(),
+            wethIsEth: false,
+            userData: bytes("")
+        });
         vm.stopPrank();
 
         vm.prank(bob);
-        router.swapSingleTokenExactIn(
-            address(swapPool),
-            dai,
-            usdc,
-            daiAmountIn - amountsOut[daiIdx],
-            0,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
+        router.swapSingleTokenExactIn({
+            pool: address(swapPool),
+            tokenIn: dai,
+            tokenOut: usdc,
+            exactAmountIn: daiAmountIn - amountsOut[daiIdx],
+            minAmountOut: 0,
+            deadline: MAX_UINT256,
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
         assertLiquidityOperationNoSwapFee();
     }
@@ -290,53 +257,53 @@ contract LiquidityApproximationTest is BaseVaultTest {
         // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
-        setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
-        setSwapFeePercentage(swapFeePercentage, address(swapPool));
+        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
+        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
         // Add liquidity so we have something to remove
         vm.prank(alice);
-        uint256 bptAmountOut = router.addLiquidityUnbalanced(
-            address(liquidityPool),
-            [maxAmount, maxAmount].toMemoryArray(),
-            0,
-            false,
-            bytes("")
-        );
+        uint256 bptAmountOut = router.addLiquidityUnbalanced({
+            pool: address(liquidityPool),
+            exactAmountsIn: [maxAmount, maxAmount].toMemoryArray(),
+            minBptAmountOut: 0,
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
         vm.startPrank(alice);
         // test removeLiquiditySingleTokenExactOut
-        router.removeLiquiditySingleTokenExactOut(
-            address(liquidityPool),
-            bptAmountOut,
-            usdc,
-            exactAmountOut,
-            false,
-            bytes("")
-        );
+        router.removeLiquiditySingleTokenExactOut({
+            pool: address(liquidityPool),
+            maxBptAmountIn: bptAmountOut,
+            tokenOut: usdc,
+            exactAmountOut: exactAmountOut,
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
         // remove remaining liquidity
-        router.removeLiquidityProportional(
-            address(liquidityPool),
-            IERC20(liquidityPool).balanceOf(alice),
-            [uint256(0), uint256(0)].toMemoryArray(),
-            false,
-            bytes("")
-        );
+        router.removeLiquidityProportional({
+            pool: address(liquidityPool),
+            exactBptAmountIn: IERC20(liquidityPool).balanceOf(alice),
+            minAmountsOut: [uint256(0), uint256(0)].toMemoryArray(),
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
         vm.stopPrank();
 
         vm.startPrank(bob);
         // simulate the same outcome with a pure swap
-        uint256 amountOut = router.swapSingleTokenExactIn(
-            address(swapPool),
-            dai,
-            usdc,
-            defaultBalance - dai.balanceOf(alice),
-            0,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
+        uint256 amountOut = router.swapSingleTokenExactIn({
+            pool: address(swapPool),
+            tokenIn: dai,
+            tokenOut: usdc,
+            exactAmountIn: defaultBalance - dai.balanceOf(alice),
+            minAmountOut: 0,
+            deadline: MAX_UINT256,
+            wethIsEth: false,
+            userData: bytes("")
+        });
         vm.stopPrank();
 
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
@@ -347,48 +314,47 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         // Add liquidity so we have something to remove
         vm.prank(alice);
-        uint256 bptAmountOut = router.addLiquidityUnbalanced(
-            address(liquidityPool),
-            [maxAmount, maxAmount].toMemoryArray(),
-            0,
-            false,
-            bytes("")
-        );
+        uint256 bptAmountOut = router.addLiquidityUnbalanced({
+            pool: address(liquidityPool),
+            exactAmountsIn: [maxAmount, maxAmount].toMemoryArray(),
+            minBptAmountOut: 0,
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
         vm.startPrank(alice);
         // test removeLiquiditySingleTokenExactOut
-        router.removeLiquiditySingleTokenExactOut(
-            address(liquidityPool),
-            bptAmountOut,
-            usdc,
-            exactAmountOut,
-            false,
-            bytes("")
-        );
+        router.removeLiquiditySingleTokenExactOut({
+            pool: address(liquidityPool),
+            maxBptAmountIn: bptAmountOut,
+            tokenOut: usdc,
+            exactAmountOut: exactAmountOut,
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
         // remove remaining liquidity
-        router.removeLiquidityProportional(
-            address(liquidityPool),
-            IERC20(liquidityPool).balanceOf(alice),
-            [uint256(0), uint256(0)].toMemoryArray(),
-            false,
-            bytes("")
-        );
-
+        router.removeLiquidityProportional({
+            pool: address(liquidityPool),
+            exactBptAmountIn: IERC20(liquidityPool).balanceOf(alice),
+            minAmountsOut: [uint256(0), uint256(0)].toMemoryArray(),
+            wethIsEth: false,
+            userData: bytes("")
+        });
         vm.stopPrank();
 
         vm.startPrank(bob);
         // simulate the same outcome with a pure swap
-        router.swapSingleTokenExactIn(
-            address(swapPool),
-            dai,
-            usdc,
-            defaultBalance - dai.balanceOf(alice),
-            0,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
+        router.swapSingleTokenExactIn({
+            pool: address(swapPool),
+            tokenIn: dai,
+            tokenOut: usdc,
+            exactAmountIn: defaultBalance - dai.balanceOf(alice),
+            minAmountOut: 0,
+            deadline: MAX_UINT256,
+            wethIsEth: false,
+            userData: bytes("")
+        });
         vm.stopPrank();
 
         assertLiquidityOperationNoSwapFee();
@@ -399,46 +365,53 @@ contract LiquidityApproximationTest is BaseVaultTest {
         // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
-        setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
-        setSwapFeePercentage(swapFeePercentage, address(swapPool));
+        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
+        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
         // Add liquidity so we have something to remove
         vm.prank(alice);
-        router.addLiquidityUnbalanced(
-            address(liquidityPool),
-            [maxAmount, maxAmount].toMemoryArray(),
-            0,
-            false,
-            bytes("")
-        );
+        router.addLiquidityUnbalanced({
+            pool: address(liquidityPool),
+            exactAmountsIn: [maxAmount, maxAmount].toMemoryArray(),
+            minBptAmountOut: 0,
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
         vm.startPrank(alice);
         // test removeLiquiditySingleTokenExactIn
-        router.removeLiquiditySingleTokenExactIn(address(liquidityPool), exactBptAmountIn, usdc, 1, false, bytes(""));
+        router.removeLiquiditySingleTokenExactIn({
+            pool: address(liquidityPool),
+            exactBptAmountIn: exactBptAmountIn,
+            tokenOut: usdc,
+            minAmountOut: 1,
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
         // remove remaining liquidity
-        router.removeLiquidityProportional(
-            address(liquidityPool),
-            IERC20(liquidityPool).balanceOf(alice),
-            [uint256(0), uint256(0)].toMemoryArray(),
-            false,
-            bytes("")
-        );
+        router.removeLiquidityProportional({
+            pool: address(liquidityPool),
+            exactBptAmountIn: IERC20(liquidityPool).balanceOf(alice),
+            minAmountsOut: [uint256(0), uint256(0)].toMemoryArray(),
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
         vm.stopPrank();
 
         vm.startPrank(bob);
         // simulate the same outcome with a pure swap
-        uint256 amountOut = router.swapSingleTokenExactIn(
-            address(swapPool),
-            dai,
-            usdc,
-            defaultBalance - dai.balanceOf(alice),
-            0,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
+        uint256 amountOut = router.swapSingleTokenExactIn({
+            pool: address(swapPool),
+            tokenIn: dai,
+            tokenOut: usdc,
+            exactAmountIn: defaultBalance - dai.balanceOf(alice),
+            minAmountOut: 0,
+            deadline: MAX_UINT256,
+            wethIsEth: false,
+            userData: bytes("")
+        });
         vm.stopPrank();
 
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
@@ -449,41 +422,41 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         // Add liquidity so we have something to remove
         vm.prank(alice);
-        router.addLiquidityUnbalanced(
-            address(liquidityPool),
-            [maxAmount, maxAmount].toMemoryArray(),
-            0,
-            false,
-            bytes("")
-        );
+        router.addLiquidityUnbalanced({
+            pool: address(liquidityPool),
+            exactAmountsIn: [maxAmount, maxAmount].toMemoryArray(),
+            minBptAmountOut: 0,
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
         vm.startPrank(alice);
         // test removeLiquiditySingleTokenExactIn
         router.removeLiquiditySingleTokenExactIn(address(liquidityPool), exactBptAmountIn, usdc, 1, false, bytes(""));
 
         // remove remaining liquidity
-        router.removeLiquidityProportional(
-            address(liquidityPool),
-            IERC20(liquidityPool).balanceOf(alice),
-            [uint256(0), uint256(0)].toMemoryArray(),
-            false,
-            bytes("")
-        );
+        router.removeLiquidityProportional({
+            pool: address(liquidityPool),
+            exactBptAmountIn: IERC20(liquidityPool).balanceOf(alice),
+            minAmountsOut: [uint256(0), uint256(0)].toMemoryArray(),
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
         vm.stopPrank();
 
         vm.startPrank(bob);
         // simulate the same outcome with a pure swap
-        router.swapSingleTokenExactIn(
-            address(swapPool),
-            dai,
-            usdc,
-            defaultBalance - dai.balanceOf(alice),
-            0,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
+        router.swapSingleTokenExactIn({
+            pool: address(swapPool),
+            tokenIn: dai,
+            tokenOut: usdc,
+            exactAmountIn: defaultBalance - dai.balanceOf(alice),
+            minAmountOut: 0,
+            deadline: MAX_UINT256,
+            wethIsEth: false,
+            userData: bytes("")
+        });
         vm.stopPrank();
 
         assertLiquidityOperationNoSwapFee();
@@ -544,11 +517,5 @@ contract LiquidityApproximationTest is BaseVaultTest {
             1e18 + (addLiquidity ? 0 : liquidityTaxPercentage) + roundingDelta,
             "Bob has too much USDC compare to Alice"
         );
-    }
-
-    function setSwapFeePercentage(uint256 swapFeePercentage, address pool) internal {
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
-        vm.prank(alice);
-        vault.setStaticSwapFeePercentage(address(pool), swapFeePercentage); // 1%
     }
 }

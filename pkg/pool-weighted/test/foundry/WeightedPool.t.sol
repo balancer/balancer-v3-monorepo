@@ -46,38 +46,33 @@ contract WeightedPoolTest is BaseVaultTest {
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+        weightedPool = WeightedPool(pool);
     }
 
-    function createPool() internal override returns (address) {
+    function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
-        TokenConfig[] memory tokens = new TokenConfig[](2);
-        tokens[0].token = IERC20(dai);
-        tokens[1].token = IERC20(usdc);
-
-        weightedPool = WeightedPool(
+        WeightedPool newPool = WeightedPool(
             factory.create(
                 "ERC20 Pool",
                 "ERC20POOL",
-                vault.sortTokenConfig(tokens),
+                vault.buildTokenConfig(tokens.asIERC20()),
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                 ZERO_BYTES32
             )
         );
-        return address(weightedPool);
+        vm.label(address(newPool), label);
+        return address(newPool);
     }
 
     function initPool() internal override {
-        uint256[] memory amountsIn = [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray();
-        vm.prank(lp);
-        bptAmountOut = router.initialize(
+        vm.startPrank(lp);
+        bptAmountOut = _initPool(
             pool,
-            InputHelpers.sortTokens([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            amountsIn,
+            [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             // Account for the precision loss
-            DAI_AMOUNT - DELTA - 1e6,
-            false,
-            bytes("")
+            DAI_AMOUNT - DELTA - 1e6
         );
+        vm.stopPrank();
     }
 
     function testPoolPausedState() public {
@@ -114,7 +109,13 @@ contract WeightedPoolTest is BaseVaultTest {
     function testAddLiquidity() public {
         uint256[] memory amountsIn = [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray();
         vm.prank(bob);
-        bptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, DAI_AMOUNT - DELTA, false, bytes(""));
+        bptAmountOut = router.addLiquidityUnbalanced({
+            pool: address(pool),
+            exactAmountsIn: amountsIn,
+            minBptAmountOut: DAI_AMOUNT - DELTA,
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
         // Tokens are transferred from Bob
         assertEq(defaultBalance - usdc.balanceOf(bob), USDC_AMOUNT, "LP: Wrong USDC balance");
@@ -136,26 +137,26 @@ contract WeightedPoolTest is BaseVaultTest {
 
     function testRemoveLiquidity() public {
         vm.startPrank(bob);
-        router.addLiquidityUnbalanced(
-            address(pool),
-            [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
-            DAI_AMOUNT - DELTA,
-            false,
-            bytes("")
-        );
+        router.addLiquidityUnbalanced({
+            pool: address(pool),
+            exactAmountsIn: [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
+            minBptAmountOut: DAI_AMOUNT - DELTA,
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
         weightedPool.approve(address(vault), MAX_UINT256);
 
         uint256 bobBptBalance = weightedPool.balanceOf(bob);
         uint256 bptAmountIn = bobBptBalance;
 
-        uint256[] memory amountsOut = router.removeLiquidityProportional(
-            address(pool),
-            bptAmountIn,
-            [uint256(less(DAI_AMOUNT, 1e4)), uint256(less(USDC_AMOUNT, 1e4))].toMemoryArray(),
-            false,
-            bytes("")
-        );
+        uint256[] memory amountsOut = router.removeLiquidityProportional({
+            pool: address(pool),
+            exactBptAmountIn: bptAmountIn,
+            minAmountsOut: [uint256(less(DAI_AMOUNT, 1e4)), uint256(less(USDC_AMOUNT, 1e4))].toMemoryArray(),
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
         vm.stopPrank();
 
@@ -183,16 +184,16 @@ contract WeightedPoolTest is BaseVaultTest {
 
     function testSwap() public {
         vm.prank(bob);
-        uint256 amountCalculated = router.swapSingleTokenExactIn(
-            address(pool),
-            dai,
-            usdc,
-            DAI_AMOUNT_IN,
-            less(USDC_AMOUNT_OUT, 1e3),
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
+        uint256 amountCalculated = router.swapSingleTokenExactIn({
+            pool: address(pool),
+            tokenIn: dai,
+            tokenOut: usdc,
+            exactAmountIn: DAI_AMOUNT_IN,
+            minAmountOut: less(USDC_AMOUNT_OUT, 1e3),
+            deadline: MAX_UINT256,
+            wethIsEth: false,
+            userData: bytes("")
+        });
 
         // Tokens are transferred from Bob
         assertEq(usdc.balanceOf(bob), defaultBalance + amountCalculated, "LP: Wrong USDC balance");
@@ -222,6 +223,12 @@ contract WeightedPoolTest is BaseVaultTest {
         uint256[] memory amountsIn = [uint256(1e2 * 1e18), uint256(USDC_AMOUNT)].toMemoryArray();
         vm.prank(bob);
 
-        router.addLiquidityUnbalanced(address(pool), amountsIn, 0, false, bytes(""));
+        router.addLiquidityUnbalanced({
+            pool: address(pool),
+            exactAmountsIn: amountsIn,
+            minBptAmountOut: 0,
+            wethIsEth: false,
+            userData: bytes("")
+        });
     }
 }

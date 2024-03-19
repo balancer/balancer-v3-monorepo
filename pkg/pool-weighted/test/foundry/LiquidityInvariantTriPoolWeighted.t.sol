@@ -11,15 +11,15 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
 
-import { LiquidityApproximationTest } from "vault/test/foundry/LiquidityApproximation.t.sol";
+import { LiquidityInvariantTriPoolTest } from "vault/test/foundry/LiquidityInvariantTriPool.t.sol";
 
-contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
+contract LiquidityInvariantTriPoolWeightedTest is LiquidityInvariantTriPoolTest {
     using ArrayHelpers for *;
 
-    uint256 poolCreationNonce;
+    uint256 nonce;
 
     function setUp() public virtual override {
-        LiquidityApproximationTest.setUp();
+        LiquidityInvariantTriPoolTest.setUp();
     }
 
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
@@ -30,9 +30,9 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
                 "ERC20 Pool",
                 "ERC20POOL",
                 vault.buildTokenConfig(tokens.asIERC20()),
-                [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                [uint256(0.60e18), uint256(0.20e18), uint256(0.20e18)].toMemoryArray(),
                 // NOTE: sends a unique salt
-                bytes32(poolCreationNonce++)
+                bytes32(nonce++)
             )
         );
         vm.label(address(newPool), label);
