@@ -11,7 +11,7 @@ lines_found=0
 lines_hit=0
 
 sed 's/\.\.\/vault\///g' lcov.info > lcov-clearvault.info
-sed 's/\.\.\/pool-weighted\///g' lcov.info > lcov-clearvault.info
+sed 's/\.\.\/pool-weighted\///g' lcov-clearvault.info > lcov-clearfolders.info
 
 # generates coverage/lcov.info
 yarn hardhat coverage
@@ -24,7 +24,7 @@ sed -i -e "s/\/.*$(basename "$PWD").//g" coverage/lcov.info
 lcov \
     --rc branch_coverage=1 \
     --add-tracefile coverage/lcov.info \
-    --add-tracefile lcov-clearvault.info \
+    --add-tracefile lcov-clearfolders.info \
     --output-file merged-lcov.info \
     --no-checksum \
     --ignore-errors unused \
