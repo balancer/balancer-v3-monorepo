@@ -4,7 +4,10 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { TokenConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
 import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
@@ -36,86 +39,96 @@ contract WeightedPool8020FactoryTest is Test {
         assertEq(pauseWindowDuration, 365 days);
     }
 
-    function testPoolCreation__Fuzz(bytes32 salt) public {
-        vm.assume(salt > 0);
+    function testPoolFetching() public {
+        TokenConfig[] memory tokens = new TokenConfig[](2);
+        tokens[0].token = tokenA;
+        tokens[1].token = tokenB;
+        tokens[0].rateProvider = rateProvider;
 
+        WeightedPool pool = WeightedPool(factory.create(tokens[0], tokens[1]));
+        address expectedPoolAddress = factory.getPool(tokenA, tokenB);
+
+        bytes32 salt = keccak256(abi.encode(block.chainid, tokenA, tokenB));
+        address deploymentAddress = factory.getDeploymentAddress(salt);
+
+        assertEq(address(pool), expectedPoolAddress, "Unexpected pool address");
+        assertEq(deploymentAddress, expectedPoolAddress, "Unexpected deployment address");
+    }
+
+    function testPoolCreation() public {
         TokenConfig[] memory tokens = new TokenConfig[](2);
         tokens[0].token = tokenA;
         tokens[1].token = tokenB;
         uint256 highWeightIdx = tokenA > tokenB ? 1 : 0;
         uint256 lowWeightIdx = highWeightIdx == 0 ? 1 : 0;
 
-        WeightedPool pool = WeightedPool(
-            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], bytes32(0))
-        );
+        WeightedPool pool = WeightedPool(factory.create(tokens[0], tokens[1]));
 
         uint256[] memory poolWeights = pool.getNormalizedWeights();
         assertEq(poolWeights[highWeightIdx], 8e17, "Higher weight token is not 80%");
         assertEq(poolWeights[lowWeightIdx], 2e17, "Lower weight token is not 20%");
-        assertEq(pool.symbol(), "Pool8020", "Wrong pool symbol");
+        assertEq(pool.name(), "Balancer 80 TKNA 20 TKNB", "Wrong pool name");
+        assertEq(pool.symbol(), "B-80TKNA-20TKNB", "Wrong pool symbol");
     }
 
-    function testPoolSalt__Fuzz(bytes32 salt) public {
-        vm.assume(salt > 0);
+    function testPoolWithInvertedWeights() public {
+        IERC20 highWeightToken = IERC20(tokenA);
+        IERC20 lowWeightToken = IERC20(tokenB);
+
+        TokenConfig[] memory tokens = new TokenConfig[](2);
+        tokens[0].token = highWeightToken;
+        tokens[1].token = lowWeightToken;
+
+        WeightedPool pool = WeightedPool(factory.create(tokens[0], tokens[1]));
+        WeightedPool invertedPool = WeightedPool(factory.create(tokens[1], tokens[0]));
+
+        assertFalse(
+            address(pool) == address(invertedPool),
+            "Pools with same tokens but different weight distributions should be different"
+        );
+    }
+
+    function testPoolUniqueness() public {
+        IERC20 highWeightToken = IERC20(tokenA);
+        IERC20 lowWeightToken = IERC20(tokenB);
+
+        TokenConfig[] memory tokens = new TokenConfig[](2);
+        tokens[0].token = highWeightToken;
+        tokens[1].token = lowWeightToken;
+
+        WeightedPool(factory.create(tokens[0], tokens[1]));
+
+        vm.expectRevert("DEPLOYMENT_FAILED");
+        WeightedPool(factory.create(tokens[0], tokens[1]));
+
+        tokens[0].rateProvider = IRateProvider(address(1));
+        tokens[0].tokenType = TokenType.ERC4626;
+        tokens[1].rateProvider = IRateProvider(address(2));
+        tokens[1].tokenType = TokenType.WITH_RATE;
+
+        // Trying to create the same pool with same tokens but different token configs should revert
+        vm.expectRevert("DEPLOYMENT_FAILED");
+        WeightedPool(factory.create(tokens[0], tokens[1]));
+    }
+
+    /// forge-config: default.fuzz.runs = 10
+    function testPoolCrossChainProtection_Fuzz(uint16 chainId) public {
+        vm.assume(chainId != 31337);
 
         TokenConfig[] memory tokens = new TokenConfig[](2);
         tokens[0].token = tokenA;
         tokens[1].token = tokenB;
         tokens[0].rateProvider = rateProvider;
 
-        WeightedPool pool = WeightedPool(
-            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], bytes32(0))
-        );
-        address expectedPoolAddress = factory.getDeploymentAddress(salt);
-
-        WeightedPool secondPool = WeightedPool(
-            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], salt)
-        );
-
-        assertFalse(address(pool) == address(secondPool), "Two deployed pool addresses are equal");
-        assertEq(address(secondPool), expectedPoolAddress, "Unexpected pool address");
-    }
-
-    function testPoolSender__Fuzz(bytes32 salt) public {
-        vm.assume(salt > 0);
-        address expectedPoolAddress = factory.getDeploymentAddress(salt);
-
-        TokenConfig[] memory tokens = new TokenConfig[](2);
-        tokens[0].token = tokenA;
-        tokens[1].token = tokenB;
-        tokens[0].rateProvider = rateProvider;
-
-        // Different sender should change the address of the pool, given the same salt value
         vm.prank(alice);
-        WeightedPool pool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], salt));
-        assertFalse(address(pool) == expectedPoolAddress, "Unexpected pool address");
-
-        vm.prank(alice);
-        address aliceExpectedPoolAddress = factory.getDeploymentAddress(salt);
-        assertTrue(address(pool) == aliceExpectedPoolAddress, "Unexpected pool address");
-    }
-
-    function testPoolCrossChainProtection__Fuzz(bytes32 salt, uint16 chainId) public {
-        vm.assume(chainId > 1);
-
-        TokenConfig[] memory tokens = new TokenConfig[](2);
-        tokens[0].token = tokenA;
-        tokens[1].token = tokenB;
-        tokens[0].rateProvider = rateProvider;
-
-        vm.prank(alice);
-        WeightedPool poolMainnet = WeightedPool(
-            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], salt)
-        );
+        WeightedPool poolMainnet = WeightedPool(factory.create(tokens[0], tokens[1]));
 
         vm.chainId(chainId);
 
         vm.prank(alice);
-        WeightedPool poolL2 = WeightedPool(
-            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], salt)
-        );
+        WeightedPool poolL2 = WeightedPool(factory.create(tokens[0], tokens[1]));
 
-        // Same sender and salt, should still be different because of the chainId.
+        // Same salt parameters, should still be different because of the chainId.
         assertFalse(address(poolL2) == address(poolMainnet), "L2 and mainnet pool addresses are equal");
     }
 }

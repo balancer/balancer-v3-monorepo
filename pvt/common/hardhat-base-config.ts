@@ -1,3 +1,4 @@
+import { WarningRule } from 'hardhat-ignore-warnings/dist/type-extensions';
 import './skipFoundryTests.ts';
 
 type SolcConfig = {
@@ -45,14 +46,14 @@ export const warnings = {
   // Ignore code-size in test files: mocks may make contracts not deployable on real networks, but we don't care about
   // that.
   'contracts/test/**/*': {
-    'code-size': 'off',
+    'code-size': 'off' as WarningRule,
   },
   // Make all warnings cause errors, except code-size (contracts may go over the limit during development).
   '*': {
-    'code-size': 'warn',
-    'unused-param': 'warn',
-    'shadowing-opcode': 'off',
-    default: 'error',
+    'code-size': 'warn' as WarningRule,
+    'unused-param': 'warn' as WarningRule,
+    'shadowing-opcode': 'off' as WarningRule,
+    default: 'error' as WarningRule,
   },
 };
 
