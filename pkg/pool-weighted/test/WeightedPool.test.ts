@@ -18,7 +18,12 @@ import { buildTokenConfig } from '@balancer-labs/v3-helpers/src/models/tokens/to
 import { WeightedPoolFactory } from '../typechain-types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
-import { BasePoolParams, TokenConfig, defaultLiquidityManagement, defaultPoolHooks } from '@balancer-labs/v3-helpers/src/models/types/types';
+import {
+  BasePoolParams,
+  TokenConfig,
+  defaultLiquidityManagement,
+  defaultPoolHooks,
+} from '@balancer-labs/v3-helpers/src/models/types/types';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 

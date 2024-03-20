@@ -19,12 +19,14 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
 import { Router } from "@balancer-labs/v3-vault/contracts/Router.sol";
 import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
 import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
-import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
+import { BasePoolFactory } from "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
+
+import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
+import { StablePool } from "../../contracts/StablePool.sol";
 
 import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 
@@ -55,7 +57,18 @@ contract StablePoolTest is BaseVaultTest {
         tokens[1].token = IERC20(usdc);
 
         stablePool = StablePool(
-            factory.create("ERC20 Pool", "ERC20POOL", vault.sortTokenConfig(tokens), DEFAULT_AMP_FACTOR, ZERO_BYTES32)
+            factory.create(
+                BasePoolFactory.BasePoolParams({
+                    name: "ERC20 Pool",
+                    symbol: "ERC20POOL",
+                    tokens: vault.sortTokenConfig(tokens),
+                    pauseManager: address(0),
+                    poolHooks: factory.getDefaultPoolHooks(),
+                    liquidityManagement: factory.getDefaultLiquidityManagement()
+                }),
+                DEFAULT_AMP_FACTOR,
+                ZERO_BYTES32
+            )
         );
         return address(stablePool);
     }
