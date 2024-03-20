@@ -84,7 +84,8 @@ contract WeightedPool8020Factory is BasePoolFactory {
                 shouldCallBeforeSwap: false,
                 shouldCallAfterSwap: false
             }),
-            LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false })
+            LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false }),
+            false // no dynamic swap fee
         );
 
         _registerPoolWithFactory(pool);
