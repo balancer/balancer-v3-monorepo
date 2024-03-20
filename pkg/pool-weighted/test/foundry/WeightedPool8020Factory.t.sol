@@ -8,7 +8,12 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { TokenConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    TokenConfig,
+    TokenType,
+    PoolHooks,
+    LiquidityManagement
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
 import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
@@ -35,20 +40,35 @@ contract WeightedPool8020FactoryTest is Test {
     }
 
     function _createPool(IERC20 highToken, IERC20 lowToken) private returns (WeightedPool) {
+        return _createPoolInternal(highToken, lowToken, false);
+    }
+
+    function _createPoolExpectingRevert(IERC20 highToken, IERC20 lowToken) private returns (WeightedPool) {
+        return _createPoolInternal(highToken, lowToken, true);
+    }
+
+    function _createPoolInternal(IERC20 highToken, IERC20 lowToken, bool expectRevert) private returns (WeightedPool) {
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[0].token = highToken;
         tokenConfig[1].token = lowToken;
 
-        return
-            WeightedPool(
-                factory.create(
-                    tokenConfig[0],
-                    tokenConfig[1],
-                    address(0),
-                    factory.getDefaultPoolHooks(),
-                    factory.getDefaultLiquidityManagement()
-                )
-            );
+        PoolHooks memory poolHooks = factory.getDefaultPoolHooks();
+        LiquidityManagement memory liquidityManagement = factory.getDefaultLiquidityManagement();
+
+        if (expectRevert) {
+            vm.expectRevert("DEPLOYMENT_FAILED");
+        }
+        address newPool = _createPoolInternal(tokenConfig, poolHooks, liquidityManagement);
+
+        return WeightedPool(newPool);
+    }
+
+    function _createPoolInternal(
+        TokenConfig[] memory tokenConfig,
+        PoolHooks memory poolHooks,
+        LiquidityManagement memory liquidityManagement
+    ) private returns (address) {
+        return factory.create(tokenConfig[0], tokenConfig[1], address(0), poolHooks, liquidityManagement);
     }
 
     function testFactoryPausedState() public {
@@ -90,34 +110,28 @@ contract WeightedPool8020FactoryTest is Test {
     }
 
     function testPoolUniqueness() public {
+        _createPool(tokenA, tokenB);
+
+        // Should not be able to deploy identical pool
+        _createPoolExpectingRevert(tokenA, tokenB);
+
         IERC20 highWeightToken = IERC20(tokenA);
         IERC20 lowWeightToken = IERC20(tokenB);
 
-        TokenConfig[] memory tokens = new TokenConfig[](2);
-        tokens[0].token = highWeightToken;
-        tokens[1].token = lowWeightToken;
-
-        _createPool(tokenA, tokenB);
-
-        vm.expectRevert("DEPLOYMENT_FAILED");
-        _createPool(tokenA, tokenB);
-
-        tokens[0].rateProvider = IRateProvider(address(1));
-        tokens[0].tokenType = TokenType.ERC4626;
-        tokens[1].rateProvider = IRateProvider(address(2));
-        tokens[1].tokenType = TokenType.WITH_RATE;
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[0].token = highWeightToken;
+        tokenConfig[0].rateProvider = IRateProvider(address(1));
+        tokenConfig[0].tokenType = TokenType.ERC4626;
+        tokenConfig[1].token = lowWeightToken;
+        tokenConfig[1].rateProvider = IRateProvider(address(2));
+        tokenConfig[1].tokenType = TokenType.WITH_RATE;
 
         // Trying to create the same pool with same tokens but different token configs should revert
+        PoolHooks memory poolHooks = factory.getDefaultPoolHooks();
+        LiquidityManagement memory liquidityManagement = factory.getDefaultLiquidityManagement();
+
         vm.expectRevert("DEPLOYMENT_FAILED");
-        WeightedPool(
-            factory.create(
-                tokens[0],
-                tokens[1],
-                address(0),
-                factory.getDefaultPoolHooks(),
-                factory.getDefaultLiquidityManagement()
-            )
-        );
+        factory.create(tokenConfig[0], tokenConfig[1], address(0), poolHooks, liquidityManagement);
     }
 
     /// forge-config: default.fuzz.runs = 10
