@@ -41,22 +41,19 @@ contract WeightedPool8020Factory is BasePoolFactory {
     /**
      * @notice Deploys a new `WeightedPool`.
      * @dev Since tokens must be sorted, pass in explicit 80/20 token config structs.
-     * @param highWeightTokenConfig The token configuration of the high weight token
-     * @param lowWeightToken The low weight token address
+     * @param highWeightToken The high weight token address.
+     * @param lowWeightToken The low weight token address.
      */
-    function create(TokenConfig memory highWeightTokenConfig, IERC20 lowWeightToken) external returns (address pool) {
-        if (highWeightTokenConfig.tokenType != TokenType.STANDARD) {
-            revert HighWeightTokenMustBeStandard();
-        }
-
+    function create(IERC20 highWeightToken, IERC20 lowWeightToken) external returns (address pool) {
         TokenConfig memory lowWeightTokenConfig = _allowlistedConfigs[lowWeightToken];
-
-        IERC20 highWeightToken = highWeightTokenConfig.token;
         lowWeightToken = lowWeightTokenConfig.token;
 
         if (address(lowWeightToken) == address(0)) {
             revert TokenConfigNotAllowlisted();
         }
+
+        TokenConfig memory highWeightTokenConfig;
+        highWeightTokenConfig.token = highWeightToken;
 
         // Tokens must be sorted.
         uint256 highWeightTokenIdx = highWeightToken > lowWeightToken ? 1 : 0;
