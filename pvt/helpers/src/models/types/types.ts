@@ -24,26 +24,27 @@ export type TokenConfig = {
 };
 
 export type BasePoolParams = {
- name: string;
-symbol: string;
-tokens: TokenConfig[];
-pauseManager: string;
-poolHooks: PoolHooksStruct;
-liquidityManagement: LiquidityManagementStruct;
-}
+  name: string;
+  symbol: string;
+  tokens: TokenConfig[];
+  pauseManager: string;
+  poolHooks: PoolHooksStruct;
+  liquidityManagement: LiquidityManagementStruct;
+};
 
 export function defaultPoolHooks(): PoolHooksStruct {
-  return   {shouldCallBeforeInitialize: false,
-  shouldCallAfterInitialize: false,
-  shouldCallBeforeSwap: false,
-  shouldCallAfterSwap: false,
-  shouldCallBeforeAddLiquidity: false,
-  shouldCallAfterAddLiquidity: false,
-  shouldCallBeforeRemoveLiquidity: false,
-  shouldCallAfterRemoveLiquidity: false};
+  return {
+    shouldCallBeforeInitialize: false,
+    shouldCallAfterInitialize: false,
+    shouldCallBeforeSwap: false,
+    shouldCallAfterSwap: false,
+    shouldCallBeforeAddLiquidity: false,
+    shouldCallAfterAddLiquidity: false,
+    shouldCallBeforeRemoveLiquidity: false,
+    shouldCallAfterRemoveLiquidity: false,
+  };
 }
 
 export function defaultLiquidityManagement(): LiquidityManagementStruct {
-  return {  supportsAddLiquidityCustom: false,
-    supportsRemoveLiquidityCustom: false};
+  return { supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false };
 }
