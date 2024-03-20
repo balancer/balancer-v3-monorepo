@@ -68,7 +68,8 @@ contract StablePoolFactory is BasePoolFactory {
                 shouldCallBeforeSwap: false,
                 shouldCallAfterSwap: false
             }),
-            LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false })
+            LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false }),
+            false // hasDynamicSwapFee
         );
 
         _registerPoolWithFactory(pool);
