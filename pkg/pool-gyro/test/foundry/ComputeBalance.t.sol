@@ -41,7 +41,8 @@ contract ComputeBalanceTest is BaseVaultTest {
 
     function testComputeNewXBalance__Fuzz(uint256 balanceX, uint256 balanceY, uint256 deltaX) public {
         balanceX = bound(balanceX, 1e16, 1e27);
-        balanceY = bound(balanceY, 1e16, 1e27);
+        // Price range is [alpha,beta], so balanceY needs to be between alpha*balanceX and beta*balanceX
+        balanceY = bound(balanceY, balanceX.mulDown(_sqrtAlpha).mulDown(_sqrtAlpha), balanceX.mulDown(_sqrtBeta).mulDown(_sqrtBeta));
         uint256[] memory balances = new uint256[](2);
         balances[0] = balanceX;
         balances[1] = balanceY;
@@ -55,13 +56,14 @@ contract ComputeBalanceTest is BaseVaultTest {
         uint256 invariantRatio = newInvariant.divDown(oldInvariant);
         uint256 newXBalance = _gyroPool.computeBalance(balances, 0, invariantRatio);
 
-        // 0.1% error
-        assertApproxEqRel(newXBalance, balanceX + deltaX, 1e15);
+        // 0.000000000001% error
+        assertApproxEqRel(newXBalance, balanceX + deltaX, 1e4);
     }
 
     function testComputeNewYBalance__Fuzz(uint256 balanceX, uint256 balanceY, uint256 deltaY) public {
         balanceX = bound(balanceX, 1e16, 1e27);
-        balanceY = bound(balanceY, 1e16, 1e27);
+        // Price range is [alpha,beta], so balanceY needs to be between alpha*balanceX and beta*balanceX
+        balanceY = bound(balanceY, balanceX.mulDown(_sqrtAlpha).mulDown(_sqrtAlpha), balanceX.mulDown(_sqrtBeta).mulDown(_sqrtBeta));
         uint256[] memory balances = new uint256[](2);
         balances[0] = balanceX;
         balances[1] = balanceY;
@@ -75,7 +77,7 @@ contract ComputeBalanceTest is BaseVaultTest {
         uint256 invariantRatio = newInvariant.divDown(oldInvariant);
         uint256 newYBalance = _gyroPool.computeBalance(balances, 1, invariantRatio);
 
-        // 0.1% error
-        assertApproxEqRel(newYBalance, balanceY + deltaY, 1e15);
+        // 0.000000000001% error
+        assertApproxEqRel(newYBalance, balanceY + deltaY, 1e4);
     }
 }
