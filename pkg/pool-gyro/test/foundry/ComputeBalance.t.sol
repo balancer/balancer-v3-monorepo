@@ -48,8 +48,8 @@ contract ComputeBalanceTest is BaseVaultTest {
         uint256 invariantRatio = newInvariant.divDown(oldInvariant);
         uint256 newXBalance = _gyroPool.computeBalance(balances, 0, invariantRatio);
 
-        // 0.000000000001% error
-        assertApproxEqRel(newXBalance, balanceX + deltaX, 1e4);
+        // 0.000000000002% error
+        assertApproxEqRel(newXBalance, balanceX + deltaX, 2e4);
     }
 
     function testComputeNewYBalance__Fuzz(uint256 balanceX, uint256 balanceY, uint256 deltaY) public {
@@ -73,7 +73,7 @@ contract ComputeBalanceTest is BaseVaultTest {
         uint256 invariantRatio = newInvariant.divDown(oldInvariant);
         uint256 newYBalance = _gyroPool.computeBalance(balances, 1, invariantRatio);
 
-        // 0.000000000001% error
-        assertApproxEqRel(newYBalance, balanceY + deltaY, 1e4);
+        // 0.000000000002% error
+        assertApproxEqRel(newYBalance, balanceY + deltaY, 2e4);
     }
 }
