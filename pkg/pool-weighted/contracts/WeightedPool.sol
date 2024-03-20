@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -96,7 +96,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
     }
 
     /// @inheritdoc IBasePool
-    function onSwap(IBasePool.SwapParams memory request) public view onlyVault returns (uint256) {
+    function onSwap(IBasePool.PoolSwapParams memory request) public view onlyVault returns (uint256) {
         uint256 balanceTokenInScaled18 = request.balancesScaled18[request.indexIn];
         uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];
 

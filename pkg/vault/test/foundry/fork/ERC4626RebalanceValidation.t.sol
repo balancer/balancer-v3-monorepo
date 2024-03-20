@@ -1,38 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
-import {
-    TokenConfig,
-    PoolConfig,
-    SwapKind,
-    TokenType
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
-import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
-import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 
-import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
-import { Router } from "@balancer-labs/v3-vault/contracts/Router.sol";
-import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
-import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
-import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { ERC4626BufferPoolFactoryMock } from "../utils/ERC4626BufferPoolFactoryMock.sol";
 import { ERC4626BufferPoolMock } from "../utils/ERC4626BufferPoolMock.sol";
@@ -118,14 +101,11 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         tokens[wrappedTokenIdx] = IERC20(aDAI_ADDRESS);
         tokens[baseTokenIdx] = IERC20(DAI_ADDRESS);
 
-        bptAmountOutBase = router.initialize(
+        bptAmountOutBase = _initPool(
             address(bufferPoolDai),
-            tokens,
             amountsInMoreBase,
             // Account for the precision loss
-            BUFFER_DAI_BASE - DELTA - 1e6,
-            false,
-            bytes("")
+            BUFFER_DAI_BASE - DELTA - 1e6
         );
 
         // Creating aUSDC Buffer
@@ -139,14 +119,11 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         tokens[wrappedTokenIdx] = IERC20(aUSDC_ADDRESS);
         tokens[baseTokenIdx] = IERC20(USDC_ADDRESS);
 
-        bptAmountOutWrapped = router.initialize(
+        bptAmountOutWrapped = _initPool(
             address(bufferPoolUsdc),
-            tokens,
             amountsInMoreWrapped,
             // Account for the precision loss
-            BUFFER_USDC_BASE - 1e6,
-            false,
-            bytes("")
+            BUFFER_USDC_BASE - 1e6
         );
         vm.stopPrank();
     }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -198,10 +198,6 @@ contract VaultTokenTest is BaseVaultTest {
             LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false }),
             false // hasDynamicSwapFee
         );
-    }
-
-    function getSalt(address addr) private pure returns (bytes32) {
-        return bytes32(uint256(uint160(addr)));
     }
 
     function validateBufferPool(address pool, IERC20[] memory expectedTokens) private {

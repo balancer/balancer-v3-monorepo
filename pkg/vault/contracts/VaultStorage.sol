@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -13,6 +13,7 @@ import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IV
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
+import { VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
 
 // solhint-disable max-states-count
@@ -33,7 +34,6 @@ contract VaultStorage {
     uint256 internal constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
 
     // Maximum protocol yield fee percentage.
-    // TODO Optimize storage; could pack fees into one slot (potentially a single vaultConfig slot).
     uint256 internal constant _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 20e16; // 20%
 
     // Maximum pool swap fee percentage.
@@ -77,22 +77,11 @@ contract VaultStorage {
      */
     mapping(IERC20 => uint256) internal _reservesOf;
 
-    // We allow 0% swap fee.
-    // The protocol swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
-    // TODO consider using uint64 and packing with other things (when we have other things).
-    uint256 internal _protocolSwapFeePercentage;
-
-    // Protocol yield fee - charged on all pool operations.
-    uint256 internal _protocolYieldFeePercentage;
-
     // Token -> fee: Protocol fees (from both swap and yield) accumulated in the Vault for harvest.
     mapping(IERC20 => uint256) internal _protocolFees;
 
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer internal _authorizer;
-
-    /// @notice If set to true, disables query functionality of the Vault. Can be modified only by governance.
-    bool internal _isQueryDisabled;
 
     uint256 public constant MAX_PAUSE_WINDOW_DURATION = 356 days * 4;
     uint256 public constant MAX_BUFFER_PERIOD_DURATION = 90 days;
@@ -105,5 +94,6 @@ contract VaultStorage {
     // Stored as a convenience, to avoid calculating it on every operation.
     uint256 internal immutable _vaultBufferPeriodDuration;
 
-    bool internal _vaultPaused;
+    // Bytes32 with protocol fees and paused flags
+    VaultStateBits internal _vaultState;
 }

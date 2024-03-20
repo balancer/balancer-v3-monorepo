@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -22,8 +22,6 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract InitializerTest is BaseVaultTest {
     using ArrayHelpers for *;
-
-    uint256 constant MIN_BPT = 1e6;
 
     IERC20[] standardPoolTokens;
 

@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
-
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+pragma solidity ^0.8.24;
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -17,7 +15,6 @@ using PoolConfigLib for PoolConfigBits global;
 
 library PoolConfigLib {
     using WordCodec for bytes32;
-    using SafeCast for uint256;
 
     // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
@@ -39,8 +36,8 @@ library PoolConfigLib {
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
 
     uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
-    uint8 public constant DECIMAL_SCALING_FACTORS_OFFSET = STATIC_SWAP_FEE_OFFSET + _STATIC_SWAP_FEE_BITLENGTH;
-    uint8 public constant PAUSE_WINDOW_END_TIME_OFFSET =
+    uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant PAUSE_WINDOW_END_TIME_OFFSET =
         DECIMAL_SCALING_FACTORS_OFFSET + _TOKEN_DECIMAL_DIFFS_BITLENGTH;
 
     // Uses a uint24 (3 bytes): least significant 20 bits to store the values, and a 4-bit pad.
@@ -48,8 +45,6 @@ library PoolConfigLib {
     uint8 private constant _TOKEN_DECIMAL_DIFFS_BITLENGTH = 24;
     uint8 private constant _DECIMAL_DIFF_BITLENGTH = 5;
 
-    // A fee can never be larger than FixedPoint.ONE, which fits in 60 bits
-    uint8 private constant _STATIC_SWAP_FEE_BITLENGTH = 64;
     uint8 private constant _TIMESTAMP_BITLENGTH = 32;
 
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
@@ -72,20 +67,16 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(DYNAMIC_SWAP_FEE_OFFSET);
     }
 
-    function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint64) {
-        return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, _STATIC_SWAP_FEE_BITLENGTH).toUint64();
+    function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
+        return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
-    function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint24) {
-        return
-            PoolConfigBits
-                .unwrap(config)
-                .decodeUint(DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH)
-                .toUint24();
+    function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint256) {
+        return PoolConfigBits.unwrap(config).decodeUint(DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH);
     }
 
-    function getPauseWindowEndTime(PoolConfigBits config) internal pure returns (uint32) {
-        return PoolConfigBits.unwrap(config).decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH).toUint32();
+    function getPauseWindowEndTime(PoolConfigBits config) internal pure returns (uint256) {
+        return PoolConfigBits.unwrap(config).decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH);
     }
 
     function shouldCallBeforeSwap(PoolConfigBits config) internal pure returns (bool) {
@@ -184,20 +175,24 @@ library PoolConfigLib {
                         DECIMAL_SCALING_FACTORS_OFFSET,
                         _TOKEN_DECIMAL_DIFFS_BITLENGTH
                     )
-                    .insertUint(config.staticSwapFeePercentage, STATIC_SWAP_FEE_OFFSET, _STATIC_SWAP_FEE_BITLENGTH)
+                    .insertUint(
+                        config.staticSwapFeePercentage / FEE_SCALING_FACTOR,
+                        STATIC_SWAP_FEE_OFFSET,
+                        FEE_BITLENGTH
+                    )
                     .insertUint(config.pauseWindowEndTime, PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH)
             );
     }
 
     // Convert from an array of decimal differences, to the encoded 24 bit value (only uses bottom 20 bits).
-    function toTokenDecimalDiffs(uint8[] memory tokenDecimalDiffs) internal pure returns (uint24) {
+    function toTokenDecimalDiffs(uint8[] memory tokenDecimalDiffs) internal pure returns (uint256) {
         bytes32 value;
 
         for (uint256 i = 0; i < tokenDecimalDiffs.length; i++) {
             value = value.insertUint(tokenDecimalDiffs[i], i * _DECIMAL_DIFF_BITLENGTH, _DECIMAL_DIFF_BITLENGTH);
         }
 
-        return uint256(value).toUint24();
+        return uint256(value);
     }
 
     function getDecimalScalingFactors(

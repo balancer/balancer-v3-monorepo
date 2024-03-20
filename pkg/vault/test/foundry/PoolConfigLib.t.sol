@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
 import { PoolConfig, PoolConfigBits, PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 
 contract PoolConfigLibTest is Test {
-    uint256 private constant CONFIG_MSB = 134;
+    // 15 flags + 24 bit fee + 24 bit token diffs + 32 bit timestamp = 95 total bits used.
+    uint256 private constant CONFIG_MSB = 95;
 
     function testToAndFromConfigBits__Fuzz(uint256 rawConfigInt) public {
-        rawConfigInt = bound(rawConfigInt, 0, uint256(1 << CONFIG_MSB));
+        rawConfigInt = bound(rawConfigInt, 0, uint256(1 << CONFIG_MSB) - 1);
         bytes32 rawConfig = bytes32(rawConfigInt);
         PoolConfig memory config = PoolConfigLib.toPoolConfig(PoolConfigBits.wrap(rawConfig));
         bytes32 configBytes32 = PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config));

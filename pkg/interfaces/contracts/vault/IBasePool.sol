@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -56,7 +56,7 @@ interface IBasePool {
      * @param sender Originator of the swap transaction
      * @param userData Additional (optional) data required for the swap
      */
-    struct SwapParams {
+    struct PoolSwapParams {
         SwapKind kind;
         uint256 amountGivenScaled18;
         uint256[] balancesScaled18;
@@ -71,5 +71,5 @@ interface IBasePool {
      * @param params Swap parameters (see above for struct definition)
      * @return amountCalculatedScaled18 Calculated amount for the swap
      */
-    function onSwap(SwapParams calldata params) external returns (uint256 amountCalculatedScaled18);
+    function onSwap(PoolSwapParams calldata params) external returns (uint256 amountCalculatedScaled18);
 }

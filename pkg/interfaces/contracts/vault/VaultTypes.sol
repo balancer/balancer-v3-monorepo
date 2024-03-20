@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IRateProvider } from "./IRateProvider.sol";
@@ -24,16 +24,32 @@ struct LiquidityManagement {
 
 /// @dev Represents a pool's configuration, including hooks.
 struct PoolConfig {
+    PoolHooks hooks;
+    LiquidityManagement liquidityManagement;
+    uint256 staticSwapFeePercentage;
+    uint256 tokenDecimalDiffs;
+    uint256 pauseWindowEndTime;
     bool isPoolRegistered;
     bool isPoolInitialized;
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
     bool hasDynamicSwapFee;
-    uint64 staticSwapFeePercentage; // stores an 18-decimal FP value (max FixedPoint.ONE)
-    uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
-    uint32 pauseWindowEndTime;
-    PoolHooks hooks;
-    LiquidityManagement liquidityManagement;
+}
+
+/**
+ * @dev Represents the Vault's configuration.
+ * @param protocolSwapFeePercentage Charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
+ * We allow 0% swap fee.
+ * @param protocolYieldFeePercentage Charged on all pool operations for yield-bearing tokens.
+ * @param isQueryDisabled If set to true, disables query functionality of the Vault. Can be modified only by
+ * governance.
+ * @param isVaultPaused If set to true, Swaps and Add/Remove Liquidity operations are halted
+ */
+struct VaultState {
+    uint256 protocolSwapFeePercentage;
+    uint256 protocolYieldFeePercentage;
+    bool isQueryDisabled;
+    bool isVaultPaused;
 }
 
 /**
@@ -170,3 +186,8 @@ struct RemoveLiquidityParams {
     RemoveLiquidityKind kind;
     bytes userData;
 }
+
+// Protocol Fees are 24-bit values. We transform them by multiplying by 1e11, so
+// they can be set to any value between 0% and 100% (step 0.00001%).
+uint256 constant FEE_BITLENGTH = 24;
+uint256 constant FEE_SCALING_FACTOR = 1e11;

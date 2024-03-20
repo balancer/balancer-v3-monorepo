@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -199,7 +199,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         return !failOnAfterInitialize;
     }
 
-    function onBeforeSwap(IBasePool.SwapParams calldata) external override returns (bool success) {
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata) external override returns (bool success) {
         if (changeTokenRateOnBeforeSwapHook) {
             _updateTokenRate();
         }
@@ -214,7 +214,9 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         return !failOnBeforeSwapHook;
     }
 
-    function onSwap(IBasePool.SwapParams calldata params) external view override returns (uint256 amountCalculated) {
+    function onSwap(
+        IBasePool.PoolSwapParams calldata params
+    ) external view override returns (uint256 amountCalculated) {
         return
             params.kind == SwapKind.EXACT_IN
                 ? params.amountGivenScaled18.mulDown(_multiplier)

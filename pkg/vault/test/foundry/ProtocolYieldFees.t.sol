@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { FEE_SCALING_FACTOR, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
+import { VaultStateLib } from "../../contracts/lib/VaultStateLib.sol";
 
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
@@ -102,8 +104,12 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     ) public {
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
-        // yield fee 1-20%
-        yieldFeePercentage = bound(yieldFeePercentage, 0.01e18, 0.2e18);
+
+        // yield fee 0.000001-20%
+        yieldFeePercentage = bound(yieldFeePercentage, 1, 2000000);
+        // VaultState stores yieldFeePercentage as a 24 bits variable (from 0 to (2^24)-1, or 0% to ~167%)
+        // Multiplying by FEE_SCALING_FACTOR (1e11) makes it 18 decimals scaled again
+        yieldFeePercentage = yieldFeePercentage * FEE_SCALING_FACTOR;
 
         pool = createPool();
         wstETHRateProvider.mockRate(wstethRate);
@@ -216,7 +222,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     }
 
     function testYieldFeesOnSwap__Fuzz(uint256 wstethRate, uint256 daiRate) public {
-        uint256 protocolYieldFeePercentage = 0.1e18;
+        uint64 protocolYieldFeePercentage = 0.1e18;
         setProtocolYieldFeePercentage(protocolYieldFeePercentage); //  10%
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);

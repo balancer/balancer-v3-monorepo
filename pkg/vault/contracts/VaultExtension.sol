@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -26,6 +25,7 @@ import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openze
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
@@ -47,11 +47,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using EnumerableSet for EnumerableSet.AddressSet;
     using PackedTokenBalance for bytes32;
-    using SafeCast for *;
     using PoolConfigLib for PoolConfig;
     using InputHelpers for uint256;
     using ScalingHelpers for *;
     using VaultExtensionsLib for IVault;
+    using VaultStateLib for VaultStateBits;
 
     IVault private immutable _vault;
     IVaultAdmin private immutable _vaultAdmin;
@@ -240,7 +240,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         config.liquidityManagement = params.liquidityManagement;
         config.hasDynamicSwapFee = params.hasDynamicSwapFee;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
-        config.pauseWindowEndTime = params.pauseWindowEndTime.toUint32();
+        config.pauseWindowEndTime = params.pauseWindowEndTime;
         _poolConfig[pool] = config.fromPoolConfig();
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
@@ -264,8 +264,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external withLocker withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault returns (uint256 bptAmountOut) {
-        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(pool, Rounding.ROUND_DOWN);
+    ) external withLocker withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
+        VaultState memory vaultState = _ensureUnpausedAndGetVaultState(pool);
+
+        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
+            pool,
+            Rounding.ROUND_DOWN,
+            vaultState.protocolYieldFeePercentage
+        );
 
         if (poolData.poolConfig.isPoolInitialized) {
             revert PoolAlreadyInitialized(pool);
@@ -475,12 +481,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function getProtocolSwapFeePercentage() external view onlyVault returns (uint256) {
-        return _protocolSwapFeePercentage;
+        return _vaultState.getProtocolSwapFeePercentage();
     }
 
     /// @inheritdoc IVaultExtension
     function getProtocolYieldFeePercentage() external view onlyVault returns (uint256) {
-        return _protocolYieldFeePercentage;
+        return _vaultState.getProtocolYieldFeePercentage();
     }
 
     /// @inheritdoc IVaultExtension
@@ -584,6 +590,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert EVMCallModeHelpers.NotStaticCall();
         }
 
+        bool _isQueryDisabled = _vaultState.isQueryDisabled();
         if (_isQueryDisabled) {
             revert QueriesDisabled();
         }
@@ -601,7 +608,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function isQueryDisabled() external view onlyVault returns (bool) {
-        return _isQueryDisabled;
+        return _vaultState.isQueryDisabled();
     }
 
     /*******************************************************************************

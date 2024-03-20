@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -146,10 +146,10 @@ interface IPoolHooks {
     /**
      * @notice Called before a swap to give the Pool an opportunity to perform actions.
      *
-     * @param params Swap parameters (see IBasePool.SwapParams for struct definition)
+     * @param params Swap parameters (see IBasePool.PoolSwapParams for struct definition)
      * @return success True if the pool wishes to proceed with settlement
      */
-    function onBeforeSwap(IBasePool.SwapParams calldata params) external returns (bool success);
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata params) external returns (bool success);
 
     /**
      * @notice Called after a swap to give the Pool an opportunity to perform actions.

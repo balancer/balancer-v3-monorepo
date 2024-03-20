@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -68,7 +68,7 @@ abstract contract BasePoolHooks is IPoolHooks {
     }
 
     /// @inheritdoc IPoolHooks
-    function onBeforeSwap(IBasePool.SwapParams calldata) external virtual returns (bool) {
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata) external virtual returns (bool) {
         return false;
     }
 

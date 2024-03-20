@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "./FixedPoint.sol";
 
@@ -16,16 +16,16 @@ library StableMath {
     /// @dev The iterations to calculate the balance didn't converge
     error StableGetBalanceDidntConverge();
 
-    uint256 internal constant _MIN_AMP = 1;
-    uint256 internal constant _MAX_AMP = 5000;
-    uint256 internal constant _AMP_PRECISION = 1e3;
+    uint256 internal constant MIN_AMP = 1;
+    uint256 internal constant MAX_AMP = 5000;
+    uint256 internal constant AMP_PRECISION = 1e3;
 
     // Note on unchecked arithmetic:
     // This contract performs a large number of additions, subtractions, multiplications and divisions, often inside
     // loops. Since many of these operations are gas-sensitive (as they happen e.g. during a swap), it is important to
     // not make any unnecessary checks. We rely on a set of invariants to avoid having to use checked arithmetic,
     // including:
-    //  - the amplification parameter is bounded by _MAX_AMP * _AMP_PRECISION, which fits in 23 bits
+    //  - the amplification parameter is bounded by MAX_AMP * AMP_PRECISION, which fits in 23 bits
     //
     // This means e.g. we can safely multiply a balance by the amplification parameter without worrying about overflow.
 
@@ -77,8 +77,8 @@ library StableMath {
             prevInvariant = invariant;
 
             invariant =
-                ((((ampTimesTotal * sum) / _AMP_PRECISION) + (D_P * numTokens)) * invariant) /
-                ((((ampTimesTotal - _AMP_PRECISION) * invariant) / _AMP_PRECISION) + ((numTokens + 1) * D_P));
+                ((((ampTimesTotal * sum) / AMP_PRECISION) + (D_P * numTokens)) * invariant) /
+                ((((ampTimesTotal - AMP_PRECISION) * invariant) / AMP_PRECISION) + ((numTokens + 1) * D_P));
 
             unchecked {
                 // We are explicitly checking the magnitudes here, so can use unchecked math.
@@ -120,12 +120,7 @@ library StableMath {
         // Amount out, so we round down overall.
         balances[tokenIndexIn] += tokenAmountIn;
 
-        uint256 finalBalanceOut = _getTokenBalanceGivenInvariantAndAllOtherBalances(
-            amplificationParameter,
-            balances,
-            invariant,
-            tokenIndexOut
-        );
+        uint256 finalBalanceOut = computeBalance(amplificationParameter, balances, invariant, tokenIndexOut);
 
         // No need to use checked arithmetic since `tokenAmountIn` was actually added to the same balance right before
         // calling `_getTokenBalanceGivenInvariantAndAllOtherBalances` which doesn't alter the balances array.
@@ -162,12 +157,7 @@ library StableMath {
         // Amount in, so we round up overall.
         balances[tokenIndexOut] -= tokenAmountOut;
 
-        uint256 finalBalanceIn = _getTokenBalanceGivenInvariantAndAllOtherBalances(
-            amplificationParameter,
-            balances,
-            invariant,
-            tokenIndexIn
-        );
+        uint256 finalBalanceIn = computeBalance(amplificationParameter, balances, invariant, tokenIndexIn);
 
         // No need to use checked arithmetic since `tokenAmountOut` was actually subtracted from the same balance right
         // before calling `_getTokenBalanceGivenInvariantAndAllOtherBalances` which doesn't alter the balances array.
@@ -247,12 +237,7 @@ library StableMath {
         uint256 newInvariant = (bptTotalSupply + bptAmountOut).divUp(bptTotalSupply).mulUp(currentInvariant);
 
         // Calculate amount in without fee.
-        uint256 newBalanceTokenIndex = _getTokenBalanceGivenInvariantAndAllOtherBalances(
-            amp,
-            balances,
-            newInvariant,
-            tokenIndex
-        );
+        uint256 newBalanceTokenIndex = computeBalance(amp, balances, newInvariant, tokenIndex);
         uint256 amountInWithoutFee = newBalanceTokenIndex - balances[tokenIndex];
 
         // First calculate the sum of all token balances, which will be used to calculate
@@ -342,12 +327,7 @@ library StableMath {
         uint256 newInvariant = (bptTotalSupply - bptAmountIn).divUp(bptTotalSupply).mulUp(currentInvariant);
 
         // Calculate amount out without fee
-        uint256 newBalanceTokenIndex = _getTokenBalanceGivenInvariantAndAllOtherBalances(
-            amp,
-            balances,
-            newInvariant,
-            tokenIndex
-        );
+        uint256 newBalanceTokenIndex = computeBalance(amp, balances, newInvariant, tokenIndex);
         uint256 amountOutWithoutFee = balances[tokenIndex] - newBalanceTokenIndex;
 
         // First calculate the sum of all token balances, which will be used to calculate
@@ -372,7 +352,7 @@ library StableMath {
 
     // This function calculates the balance of a given token (tokenIndex)
     // given all the other balances and the invariant
-    function _getTokenBalanceGivenInvariantAndAllOtherBalances(
+    function computeBalance(
         uint256 amplificationParameter,
         uint256[] memory balances,
         uint256 invariant,
@@ -391,8 +371,8 @@ library StableMath {
         // Use divUpRaw with inv2, as it is a "raw" 36 decimal value
         uint256 inv2 = invariant * invariant;
         // We remove the balance from c by multiplying it
-        uint256 c = (inv2.divUpRaw(ampTimesTotal * P_D) * _AMP_PRECISION) * balances[tokenIndex];
-        uint256 b = sum + ((invariant / ampTimesTotal) * _AMP_PRECISION);
+        uint256 c = (inv2.divUpRaw(ampTimesTotal * P_D) * AMP_PRECISION) * balances[tokenIndex];
+        uint256 b = sum + ((invariant / ampTimesTotal) * AMP_PRECISION);
         // We iterate to find the balance
         uint256 prevTokenBalance = 0;
         // We multiply the first iteration outside the loop with the invariant to set the value of the
