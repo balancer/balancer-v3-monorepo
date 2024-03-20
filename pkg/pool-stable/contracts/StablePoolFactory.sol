@@ -28,24 +28,20 @@ contract StablePoolFactory is BasePoolFactory {
 
     /**
      * @notice Deploys a new `StablePool`.
-     * @param name The name of the pool
-     * @param symbol The symbol of the pool
-     * @param tokens An array of descriptors for the tokens the pool will manage
+     * @param params The basic pool parameters required for Vault registration. See BasePoolFactory.
      * @param amplificationParameter The starting Amplification Parameter
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
-        string memory name,
-        string memory symbol,
-        TokenConfig[] memory tokens,
+        BasePoolParams memory params,
         uint256 amplificationParameter,
         bytes32 salt
     ) external returns (address pool) {
         pool = _create(
             abi.encode(
                 StablePool.NewPoolParams({
-                    name: name,
-                    symbol: symbol,
+                    name: params.name,
+                    symbol: params.symbol,
                     amplificationParameter: amplificationParameter
                 }),
                 getVault()
@@ -53,24 +49,6 @@ contract StablePoolFactory is BasePoolFactory {
             salt
         );
 
-        getVault().registerPool(
-            pool,
-            tokens,
-            getNewPoolPauseWindowEndTime(),
-            address(0), // no pause manager
-            PoolHooks({
-                shouldCallBeforeInitialize: false,
-                shouldCallAfterInitialize: false,
-                shouldCallBeforeAddLiquidity: false,
-                shouldCallAfterAddLiquidity: false,
-                shouldCallBeforeRemoveLiquidity: false,
-                shouldCallAfterRemoveLiquidity: false,
-                shouldCallBeforeSwap: false,
-                shouldCallAfterSwap: false
-            }),
-            LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false })
-        );
-
-        _registerPoolWithFactory(pool);
+        _registerPoolWithVault(pool, params);
     }
 }

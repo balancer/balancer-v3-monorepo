@@ -30,17 +30,22 @@ contract WeightedPool8020Factory is BasePoolFactory {
      * @dev Since tokens must be sorted, pass in explicit 80/20 token config structs.
      * @param highWeightTokenConfig The token configuration of the high weight token
      * @param lowWeightTokenConfig The token configuration of the low weight token
+     * @param pauseManager An account with permission to pause the pool (or zero to default to governance)
+     * @param poolHooks The hook configuration for the pool
+     * @param liquidityManagement The liquidity management configuration for the pool
      */
     function create(
         TokenConfig memory highWeightTokenConfig,
-        TokenConfig memory lowWeightTokenConfig
+        TokenConfig memory lowWeightTokenConfig,
+        address pauseManager,
+        PoolHooks memory poolHooks,
+        LiquidityManagement memory liquidityManagement
     ) external returns (address pool) {
         IERC20 highWeightToken = highWeightTokenConfig.token;
         IERC20 lowWeightToken = lowWeightTokenConfig.token;
 
         // Tokens must be sorted.
-        uint256 highWeightTokenIdx = highWeightToken > lowWeightToken ? 1 : 0;
-        uint256 lowWeightTokenIdx = highWeightTokenIdx == 0 ? 1 : 0;
+        (uint256 highWeightTokenIdx, uint256 lowWeightTokenIdx) = highWeightToken > lowWeightToken ? (1, 0) : (0, 1);
 
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         uint256[] memory weights = new uint256[](2);
@@ -50,8 +55,6 @@ contract WeightedPool8020Factory is BasePoolFactory {
 
         tokenConfig[highWeightTokenIdx] = highWeightTokenConfig;
         tokenConfig[lowWeightTokenIdx] = lowWeightTokenConfig;
-
-        bytes32 salt = _calculateSalt(highWeightToken, lowWeightToken);
 
         string memory highWeightTokenSymbol = IERC20Metadata(address(highWeightToken)).symbol();
         string memory lowWeightTokenSymbol = IERC20Metadata(address(lowWeightToken)).symbol();
@@ -66,28 +69,20 @@ contract WeightedPool8020Factory is BasePoolFactory {
                 }),
                 getVault()
             ),
-            salt
+            _calculateSalt(highWeightToken, lowWeightToken)
         );
 
-        getVault().registerPool(
+        _registerPoolWithVault(
             pool,
-            tokenConfig,
-            getNewPoolPauseWindowEndTime(),
-            address(0), // no pause manager
-            PoolHooks({
-                shouldCallBeforeInitialize: false,
-                shouldCallAfterInitialize: false,
-                shouldCallBeforeAddLiquidity: false,
-                shouldCallAfterAddLiquidity: false,
-                shouldCallBeforeRemoveLiquidity: false,
-                shouldCallAfterRemoveLiquidity: false,
-                shouldCallBeforeSwap: false,
-                shouldCallAfterSwap: false
-            }),
-            LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false })
+            BasePoolParams({
+                name: "", // Name and symbol aren't used in registration.
+                symbol: "",
+                tokens: tokenConfig,
+                pauseManager: pauseManager,
+                poolHooks: poolHooks,
+                liquidityManagement: liquidityManagement
+            })
         );
-
-        _registerPoolWithFactory(pool);
     }
 
     /**
