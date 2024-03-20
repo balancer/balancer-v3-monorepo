@@ -15,6 +15,8 @@ contract DynamicFeePoolMock is PoolMock, IBaseDynamicFeePool {
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
 
+    uint256 internal _swapFeePercentage;
+
     function _hasDynamicSwapFee() internal pure virtual override returns (bool) {
         return true;
     }
@@ -29,7 +31,11 @@ contract DynamicFeePoolMock is PoolMock, IBaseDynamicFeePool {
         address pauseManager
     ) PoolMock(vault, name, symbol, tokenConfig, registerPool, pauseWindowDuration, pauseManager) {}
 
-    function computeFee(PoolData memory poolData) public pure override returns (uint256 dynamicFee) {
-        return poolData.poolConfig.staticSwapFeePercentage;
+    function computeFee(PoolData memory) public view override returns (uint256 dynamicFee) {
+        return _swapFeePercentage;
+    }
+
+    function setSwapFeePercentage(uint256 swapFeePercentage) external {
+        _swapFeePercentage = swapFeePercentage;
     }
 }

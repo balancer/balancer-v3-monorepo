@@ -147,7 +147,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
         _setSwapFeePercentage(pool, percentage);
     }
 
-    function _setSwapFeePercentage(address setPool, uint256 percentage) internal {
+    function _setSwapFeePercentage(address setPool, uint256 percentage) internal virtual {
         authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), admin);
         vm.prank(admin);
         vault.setStaticSwapFeePercentage(setPool, percentage);
