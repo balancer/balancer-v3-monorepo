@@ -66,7 +66,8 @@ contract PriceImpact is ReentrancyGuard {
         // zero out deltas leaving only a remaining delta within a single token
         uint256 remaininDeltaIndex = _zeroOutDeltas(pool, deltas, deltaBPTs);
         // calculate price impact ABA with remaining delta and its respective exactAmountIn
-        uint256 delta = uint(deltas[remaininDeltaIndex] * -1); // remaining delta is always negative, so by multiplying by -1 we get a positive number
+        // remaining delta is always negative, so by multiplying by -1 we get a positive number
+        uint256 delta = uint(deltas[remaininDeltaIndex] * -1);
         return delta.divDown(exactAmountsIn[remaininDeltaIndex]) / 2;
     }
 
