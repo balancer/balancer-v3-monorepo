@@ -15,7 +15,6 @@ import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Ba
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
-import { DynamicFeePoolMock } from "../../contracts/test/DynamicFeePoolMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
