@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Gyro-1.0
-// for information on licensing please see the README in the GitHub repository <https://github.com/gyrostable/concentrated-lps>.
+// for information on licensing please see the README in the GitHub repository
+// <https://github.com/gyrostable/concentrated-lps>.
 
 pragma solidity ^0.8.24;
 
@@ -8,18 +9,18 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 library GyroPoolMath {
     using FixedPoint for uint256;
 
-    uint256 private constant SQRT_1E_NEG_1 = 316227766016837933;
-    uint256 private constant SQRT_1E_NEG_3 = 31622776601683793;
-    uint256 private constant SQRT_1E_NEG_5 = 3162277660168379;
-    uint256 private constant SQRT_1E_NEG_7 = 316227766016837;
-    uint256 private constant SQRT_1E_NEG_9 = 31622776601683;
-    uint256 private constant SQRT_1E_NEG_11 = 3162277660168;
-    uint256 private constant SQRT_1E_NEG_13 = 316227766016;
-    uint256 private constant SQRT_1E_NEG_15 = 31622776601;
-    uint256 private constant SQRT_1E_NEG_17 = 3162277660;
+    uint256 private constant _SQRT_1E_NEG_1 = 316227766016837933;
+    uint256 private constant _SQRT_1E_NEG_3 = 31622776601683793;
+    uint256 private constant _SQRT_1E_NEG_5 = 3162277660168379;
+    uint256 private constant _SQRT_1E_NEG_7 = 316227766016837;
+    uint256 private constant _SQRT_1E_NEG_9 = 31622776601683;
+    uint256 private constant _SQRT_1E_NEG_11 = 3162277660168;
+    uint256 private constant _SQRT_1E_NEG_13 = 316227766016;
+    uint256 private constant _SQRT_1E_NEG_15 = 31622776601;
+    uint256 private constant _SQRT_1E_NEG_17 = 3162277660;
 
     // Note: this function is identical to that in WeightedMath.sol audited by Balancer
-    function _calcAllTokensInGivenExactBptOut(
+    function calcAllTokensInGivenExactBptOut(
         uint256[] memory balances,
         uint256 bptOut,
         uint256 totalBPT
@@ -43,7 +44,7 @@ library GyroPoolMath {
     }
 
     // Note: this function is identical to that in WeightedMath.sol audited by Balancer
-    function _calcTokensOutGivenExactBptIn(
+    function calcTokensOutGivenExactBptIn(
         uint256[] memory balances,
         uint256 bptIn,
         uint256 totalBPT
@@ -73,7 +74,7 @@ library GyroPoolMath {
      *   b/c this is much more gas efficient than doing many transfers of underlying assets
      *   This function gets protocol fee parameters from GyroConfig
      */
-    function _calcProtocolFees(
+    function calcProtocolFees(
         uint256 previousInvariant,
         uint256 currentInvariant,
         uint256 currentBptSupply,
@@ -91,9 +92,10 @@ library GyroPoolMath {
         *********************************************************************************/
 
         if (currentInvariant <= previousInvariant) {
-            // This shouldn't happen outside of rounding errors, but have this safeguard nonetheless to prevent the Pool
-            // from entering a locked state in which joins and exits revert while computing accumulated swap fees.
-            // NB: This condition is also used by the pools to indicate that _lastInvariant is invalid and should be ignored.
+            // This shouldn't happen outside of rounding errors, but have this safeguard nonetheless to prevent the
+            // Pool from entering a locked state in which joins and exits revert while computing accumulated swap fees.
+            // NB: This condition is also used by the pools to indicate that _lastInvariant is invalid and should be
+            // ignored.
             return (0, 0);
         }
 
@@ -101,7 +103,8 @@ library GyroPoolMath {
         // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less in protocol
         // fees to the Vault.
         // For the numerator, we need to round down delta L. Also for the denominator b/c subtracted
-        // Ordering multiplications for best fixed point precision considering that S and currentInvariant-previousInvariant could be large
+        // Ordering multiplications for best fixed point precision considering that S and
+        // currentInvariant-previousInvariant could be large
         uint256 numerator = (currentBptSupply.mulDown(currentInvariant - previousInvariant)).mulDown(
             protocolSwapFeePerc
         );
@@ -125,7 +128,7 @@ library GyroPoolMath {
     }
 
     /** @dev Implements square root algorithm using Newton's method and a first-guess optimisation **/
-    function _sqrt(uint256 input, uint256 tolerance) internal pure returns (uint256) {
+    function sqrt(uint256 input, uint256 tolerance) internal pure returns (uint256) {
         if (input == 0) {
             return 0;
         }
@@ -152,84 +155,66 @@ library GyroPoolMath {
         return guess;
     }
 
-    // function _makeInitialGuess10(uint256 input) internal pure returns (uint256) {
-    //     uint256 orderUpperBound = 72;
-    //     uint256 orderLowerBound = 0;
-    //     uint256 orderMiddle;
-
-    //     orderMiddle = (orderUpperBound + orderLowerBound) / 2;
-
-    //     while (orderUpperBound - orderLowerBound != 1) {
-    //         if (10**orderMiddle > input) {
-    //             orderUpperBound = orderMiddle;
-    //         } else {
-    //             orderLowerBound = orderMiddle;
-    //         }
-    //     }
-
-    //     return 10**(orderUpperBound / 2);
-    // }
-
-    function _makeInitialGuess(uint256 input) internal pure returns (uint256) {
+    function _makeInitialGuess(uint256 input) private pure returns (uint256) {
         if (input >= FixedPoint.ONE) {
             return (1 << (_intLog2Halved(input / FixedPoint.ONE))) * FixedPoint.ONE;
         } else {
             if (input <= 10) {
-                return SQRT_1E_NEG_17;
+                return _SQRT_1E_NEG_17;
             }
             if (input <= 1e2) {
                 return 1e10;
             }
             if (input <= 1e3) {
-                return SQRT_1E_NEG_15;
+                return _SQRT_1E_NEG_15;
             }
             if (input <= 1e4) {
                 return 1e11;
             }
             if (input <= 1e5) {
-                return SQRT_1E_NEG_13;
+                return _SQRT_1E_NEG_13;
             }
             if (input <= 1e6) {
                 return 1e12;
             }
             if (input <= 1e7) {
-                return SQRT_1E_NEG_11;
+                return _SQRT_1E_NEG_11;
             }
             if (input <= 1e8) {
                 return 1e13;
             }
             if (input <= 1e9) {
-                return SQRT_1E_NEG_9;
+                return _SQRT_1E_NEG_9;
             }
             if (input <= 1e10) {
                 return 1e14;
             }
             if (input <= 1e11) {
-                return SQRT_1E_NEG_7;
+                return _SQRT_1E_NEG_7;
             }
             if (input <= 1e12) {
                 return 1e15;
             }
             if (input <= 1e13) {
-                return SQRT_1E_NEG_5;
+                return _SQRT_1E_NEG_5;
             }
             if (input <= 1e14) {
                 return 1e16;
             }
             if (input <= 1e15) {
-                return SQRT_1E_NEG_3;
+                return _SQRT_1E_NEG_3;
             }
             if (input <= 1e16) {
                 return 1e17;
             }
             if (input <= 1e17) {
-                return SQRT_1E_NEG_1;
+                return _SQRT_1E_NEG_1;
             }
             return input;
         }
     }
 
-    function _intLog2Halved(uint256 x) public pure returns (uint256 n) {
+    function _intLog2Halved(uint256 x) private pure returns (uint256 n) {
         if (x >= 1 << 128) {
             x >>= 128;
             n += 64;
@@ -260,9 +245,12 @@ library GyroPoolMath {
         }
     }
 
-    /** @dev If liquidity update is proportional so that price stays the same ("balanced liquidity update"), then this
-     *  returns the invariant after that change. This is more efficient than calling `calculateInvariant()` on the updated balances.
-     *  `isIncreaseLiq` denotes the sign of the update. See the writeup, Corollary 3 in Section 3.1.3. */
+    /*
+     *  @dev If liquidity update is proportional so that price stays the same ("balanced liquidity update"), then this
+     *  returns the invariant after that change. This is more efficient than calling `calculateInvariant()` on the
+     *  updated balances.
+     *  `isIncreaseLiq` denotes the sign of the update. See the writeup, Corollary 3 in Section 3.1.3.
+     */
     function liquidityInvariantUpdate(
         uint256 uinvariant,
         uint256 changeBptSupply,
@@ -286,7 +274,8 @@ library GyroPoolMath {
      * `calculateInvariant()` on the updated balances. `isIncreaseLiq` denotes the sign of the update.
      * See the writeup, Corollary 3 in Section 3.1.3.
      *
-     * DEPRECATED and will go out of use and be removed once pending changes to the ECLP are merged. Use the other liquidityInvariantUpdate() function instead!
+     * DEPRECATED and will go out of use and be removed once pending changes to the ECLP are merged. Use the other
+     * liquidityInvariantUpdate() function instead!
      */
     function liquidityInvariantUpdate(
         uint256[] memory balances,

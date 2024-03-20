@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Gyro-1.0
-// for information on licensing please see the README in the GitHub repository <https://github.com/gyrostable/concentrated-lps>.
+// for information on licensing please see the README in the GitHub repository
+// <https://github.com/gyrostable/concentrated-lps>.
 
 pragma solidity ^0.8.24;
 
@@ -21,7 +22,7 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
     IERC20 private immutable _token0;
     IERC20 private immutable _token1;
 
-    bytes32 private constant POOL_TYPE = "2CLP";
+    bytes32 private constant _POOL_TYPE = "2CLP";
 
     struct GyroParams {
         string name;

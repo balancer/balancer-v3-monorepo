@@ -88,7 +88,7 @@ library Gyro2CLPMath {
         uint256 addTerm = (mc.mulDown(4 * FixedPoint.ONE)).mulDown(a);
         // The minus sign in the radicand cancels out in this special case, so we add
         uint256 radicand = bSquare + addTerm;
-        uint256 sqrResult = GyroPoolMath._sqrt(radicand, 5);
+        uint256 sqrResult = GyroPoolMath.sqrt(radicand, 5);
         // The minus sign in the numerator cancels out in this special case
         uint256 numerator = mb + sqrResult;
         invariant = numerator.divDown(denominator);
@@ -199,8 +199,8 @@ library Gyro2CLPMath {
 
     /** @dev Calculates the spot price of token A in units of token B.
      *
-     * The spot price is bounded by pool parameters due to virtual reserves. Aside from being instantaneously manipulable
-     * within a transaction, it may also not be accurate if the true price is outside of these bounds.
+     * The spot price is bounded by pool parameters due to virtual reserves. Aside from being instantaneously
+     * manipulable within a transaction, it may also not be accurate if the true price is outside of these bounds.
      */
     function _calcSpotPriceAinB(
         uint256 balanceA,
