@@ -554,10 +554,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             poolBalances.unchecked_setAt(i, packedBalances.setRawBalance(balancesRaw[i]));
         }
 
-        // Trusted routers use Vault's allowances, which are infinite anyways for pool tokens.
-        if (!_isTrustedRouter(msg.sender)) {
-            _spendAllowance(address(pool), from, msg.sender, exactBptAmountIn);
-        }
+        // If allowance is max (or if it's a trusted router) this will have no effect.
+        _spendAllowance(address(pool), from, msg.sender, exactBptAmountIn);
 
         // When removing liquidity, we must burn tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
