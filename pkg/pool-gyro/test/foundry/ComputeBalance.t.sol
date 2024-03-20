@@ -28,21 +28,25 @@ contract ComputeBalanceTest is BaseVaultTest {
 
         _gyroPool = new Gyro2CLPPool(
             Gyro2CLPPool.GyroParams({
-                name: 'GyroPool',
-                symbol: 'GRP',
+                name: "GyroPool",
+                symbol: "GRP",
                 tokens: tokens,
                 sqrtAlpha: _sqrtAlpha,
                 sqrtBeta: _sqrtBeta
             }),
             vault
         );
-        vm.label(address(_gyroPool), 'GyroPool');
+        vm.label(address(_gyroPool), "GyroPool");
     }
 
     function testComputeNewXBalance__Fuzz(uint256 balanceX, uint256 balanceY, uint256 deltaX) public {
         balanceX = bound(balanceX, 1e16, 1e27);
         // Price range is [alpha,beta], so balanceY needs to be between alpha*balanceX and beta*balanceX
-        balanceY = bound(balanceY, balanceX.mulDown(_sqrtAlpha).mulDown(_sqrtAlpha), balanceX.mulDown(_sqrtBeta).mulDown(_sqrtBeta));
+        balanceY = bound(
+            balanceY,
+            balanceX.mulDown(_sqrtAlpha).mulDown(_sqrtAlpha),
+            balanceX.mulDown(_sqrtBeta).mulDown(_sqrtBeta)
+        );
         uint256[] memory balances = new uint256[](2);
         balances[0] = balanceX;
         balances[1] = balanceY;
@@ -63,7 +67,11 @@ contract ComputeBalanceTest is BaseVaultTest {
     function testComputeNewYBalance__Fuzz(uint256 balanceX, uint256 balanceY, uint256 deltaY) public {
         balanceX = bound(balanceX, 1e16, 1e27);
         // Price range is [alpha,beta], so balanceY needs to be between alpha*balanceX and beta*balanceX
-        balanceY = bound(balanceY, balanceX.mulDown(_sqrtAlpha).mulDown(_sqrtAlpha), balanceX.mulDown(_sqrtBeta).mulDown(_sqrtBeta));
+        balanceY = bound(
+            balanceY,
+            balanceX.mulDown(_sqrtAlpha).mulDown(_sqrtAlpha),
+            balanceX.mulDown(_sqrtBeta).mulDown(_sqrtBeta)
+        );
         uint256[] memory balances = new uint256[](2);
         balances[0] = balanceX;
         balances[1] = balanceY;

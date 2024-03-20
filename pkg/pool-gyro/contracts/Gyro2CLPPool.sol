@@ -62,7 +62,6 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
         return Gyro2CLPMath._calculateInvariant(balancesLiveScaled18, sqrtParams[0], sqrtParams[1]);
     }
 
-
     /// @inheritdoc IBasePool
     function computeBalance(
         uint256[] memory balancesLiveScaled18,
@@ -155,13 +154,10 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
         return parameter0 ? _sqrtAlpha : _sqrtBeta;
     }
 
-   
-    function _getVirtualParameters(uint256[2] memory sqrtParams, uint256 invariant)
-        internal
-        view
-        virtual
-        returns (uint256[2] memory virtualParameters)
-    {
+    function _getVirtualParameters(
+        uint256[2] memory sqrtParams,
+        uint256 invariant
+    ) internal view virtual returns (uint256[2] memory virtualParameters) {
         virtualParameters[0] = _virtualParameters(true, sqrtParams[1], invariant);
         virtualParameters[1] = _virtualParameters(false, sqrtParams[0], invariant);
         return virtualParameters;
@@ -182,15 +178,7 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
         uint256 balanceTokenIn, // scaled
         uint256 balanceTokenOut, // scaled
         bool tokenInIsToken0
-    )
-        internal
-        view
-        returns (
-            uint256 currentInvariant,
-            uint256 virtualParamIn,
-            uint256 virtualParamOut
-        )
-    {
+    ) internal view returns (uint256 currentInvariant, uint256 virtualParamIn, uint256 virtualParamOut) {
         uint256[] memory balances = new uint256[](2);
         balances[0] = tokenInIsToken0 ? balanceTokenIn : balanceTokenOut;
         balances[1] = tokenInIsToken0 ? balanceTokenOut : balanceTokenIn;

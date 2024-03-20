@@ -50,16 +50,7 @@ library Gyro2CLPMath {
         uint256[] memory balances,
         uint256 sqrtAlpha,
         uint256 sqrtBeta
-    )
-        internal
-        pure
-        returns (
-            uint256 a,
-            uint256 mb,
-            uint256 bSquare,
-            uint256 mc
-        )
-    {
+    ) internal pure returns (uint256 a, uint256 mb, uint256 bSquare, uint256 mc) {
         {
             a = FixedPoint.ONE - sqrtAlpha.divDown(sqrtBeta);
             uint256 bterm0 = balances[1].divDown(sqrtBeta);
@@ -70,7 +61,9 @@ library Gyro2CLPMath {
         // For better fixed point precision, calculate in expanded form w/ re-ordering of multiplications
         // b^2 = x^2 * alpha + x*y*2*sqrt(alpha/beta) + y^2 / beta
         bSquare = (balances[0].mulDown(balances[0])).mulDown(sqrtAlpha).mulDown(sqrtAlpha);
-        uint256 bSq2 = (balances[0].mulDown(balances[1])).mulDown(2 * FixedPoint.ONE).mulDown(sqrtAlpha).divDown(sqrtBeta);
+        uint256 bSq2 = (balances[0].mulDown(balances[1])).mulDown(2 * FixedPoint.ONE).mulDown(sqrtAlpha).divDown(
+            sqrtBeta
+        );
         uint256 bSq3 = (balances[1].mulDown(balances[1])).divDown(sqrtBeta.mulUp(sqrtBeta));
         bSquare = bSquare + bSq2 + bSq3;
     }

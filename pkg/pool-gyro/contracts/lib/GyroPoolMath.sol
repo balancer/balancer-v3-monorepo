@@ -102,7 +102,9 @@ library GyroPoolMath {
         // fees to the Vault.
         // For the numerator, we need to round down delta L. Also for the denominator b/c subtracted
         // Ordering multiplications for best fixed point precision considering that S and currentInvariant-previousInvariant could be large
-        uint256 numerator = (currentBptSupply.mulDown(currentInvariant - previousInvariant)).mulDown(protocolSwapFeePerc);
+        uint256 numerator = (currentBptSupply.mulDown(currentInvariant - previousInvariant)).mulDown(
+            protocolSwapFeePerc
+        );
         uint256 diffInvariant = protocolSwapFeePerc.mulDown(currentInvariant - previousInvariant);
         uint256 denominator = currentInvariant - diffInvariant;
         uint256 deltaS = numerator.divDown(denominator);
@@ -142,7 +144,10 @@ library GyroPoolMath {
         // Check in some epsilon range
         // Check square is more or less correct
         uint256 guessSquared = guess.mulDown(guess);
-        require(guessSquared <= input + guess.mulUp(tolerance) && guessSquared >= input - guess.mulUp(tolerance), "_sqrt FAILED");
+        require(
+            guessSquared <= input + guess.mulUp(tolerance) && guessSquared >= input - guess.mulUp(tolerance),
+            "_sqrt FAILED"
+        );
 
         return guess;
     }
@@ -298,7 +303,9 @@ library GyroPoolMath {
             }
         }
 
-        uint256 deltaInvariant = uinvariant.mulDown(deltaBalances[largestBalanceIndex]).divDown(balances[largestBalanceIndex]);
+        uint256 deltaInvariant = uinvariant.mulDown(deltaBalances[largestBalanceIndex]).divDown(
+            balances[largestBalanceIndex]
+        );
         unewInvariant = isIncreaseLiq ? uinvariant + deltaInvariant : uinvariant - deltaInvariant;
     }
 }
