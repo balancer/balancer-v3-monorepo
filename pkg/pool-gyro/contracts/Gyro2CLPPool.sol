@@ -70,16 +70,38 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
         uint256 tokenInIndex,
         uint256 invariantRatio
     ) external view returns (uint256 newBalance) {
-        _sqrtParameters();
+        /**********************************************************************************************
+        // Gyro invariant formula is:
+        //                                    Lˆ2 = (x + a)(y + b)
+        // where:
+        //   a = L / _sqrtBeta
+        //   b = L * _sqrtAlpha
+        //
+        // In computeBalance, we want to know what's the new balance of a token, given that invariant
+        // changed and the other token balance didn't change. To calculate that for "x", we use:
+        //
+        //            (L*Lratio)ˆ2 = (newX + (L*Lratio) / _sqrtBeta)(y + (L*Lratio) * _sqrtAlpha)
+        //
+        // To simplify, let's rename a few terms:
+        //
+        //                                       squareNewInv = (newX + a)(y + b)
+        //
+        // Isolating newX:                       newX = (squareNewInv/(y + b)) - a
+        // For newY:                             newY = (squareNewInv/(x + a)) - b
+        **********************************************************************************************/
 
-        /* return
-            WeightedMath.computeBalanceOutGivenInvariant(
-                balancesLiveScaled18[tokenInIndex],
-                _getNormalizedWeights()[tokenInIndex],
-                invariantRatio
-            ); */
-
-        revert NotImplemented();
+        uint256[2] memory sqrtParams = _sqrtParameters();
+        uint256 invariant = Gyro2CLPMath._calculateInvariant(balancesLiveScaled18, sqrtParams[0], sqrtParams[1]);
+        // New invariant
+        invariant = invariant*invariantRatio;
+        uint256 squareNewInv = invariant.mulDown(invariant);
+        uint256 a = invariant.divDown(sqrtParams[1]);
+        uint256 b = invariant.mulDown(sqrtParams[0]);
+        if (tokenInIndex == 0) {
+            newBalance = squareNewInv.divDown(b + balancesLiveScaled18[1]) - a;
+        } else {
+            newBalance = squareNewInv.divDown(a + balancesLiveScaled18[0]) - b;
+        }
     }
 
     /// @inheritdoc IBasePool
