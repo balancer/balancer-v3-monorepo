@@ -34,18 +34,30 @@ contract WeightedPool8020FactoryTest is Test {
         tokenB = new ERC20TestToken("Token B", "TKNB", 6);
     }
 
+    function _createPool(IERC20 highToken, IERC20 lowToken) private returns (WeightedPool) {
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[0].token = highToken;
+        tokenConfig[1].token = lowToken;
+
+        return
+            WeightedPool(
+                factory.create(
+                    tokenConfig[0],
+                    tokenConfig[1],
+                    address(0),
+                    factory.getDefaultPoolHooks(),
+                    factory.getDefaultLiquidityManagement()
+                )
+            );
+    }
+
     function testFactoryPausedState() public {
         uint256 pauseWindowDuration = factory.getPauseWindowDuration();
         assertEq(pauseWindowDuration, 365 days);
     }
 
     function testPoolFetching() public {
-        TokenConfig[] memory tokens = new TokenConfig[](2);
-        tokens[0].token = tokenA;
-        tokens[1].token = tokenB;
-        tokens[0].rateProvider = rateProvider;
-
-        WeightedPool pool = WeightedPool(factory.create(tokens[0], tokens[1]));
+        WeightedPool pool = _createPool(tokenA, tokenB);
         address expectedPoolAddress = factory.getPool(tokenA, tokenB);
 
         bytes32 salt = keccak256(abi.encode(block.chainid, tokenA, tokenB));
@@ -56,13 +68,9 @@ contract WeightedPool8020FactoryTest is Test {
     }
 
     function testPoolCreation() public {
-        TokenConfig[] memory tokens = new TokenConfig[](2);
-        tokens[0].token = tokenA;
-        tokens[1].token = tokenB;
-        uint256 highWeightIdx = tokenA > tokenB ? 1 : 0;
-        uint256 lowWeightIdx = highWeightIdx == 0 ? 1 : 0;
+        (uint256 highWeightIdx, uint256 lowWeightIdx) = tokenA > tokenB ? (1, 0) : (0, 1);
 
-        WeightedPool pool = WeightedPool(factory.create(tokens[0], tokens[1]));
+        WeightedPool pool = _createPool(tokenA, tokenB);
 
         uint256[] memory poolWeights = pool.getNormalizedWeights();
         assertEq(poolWeights[highWeightIdx], 8e17, "Higher weight token is not 80%");
@@ -72,19 +80,12 @@ contract WeightedPool8020FactoryTest is Test {
     }
 
     function testPoolWithInvertedWeights() public {
-        IERC20 highWeightToken = IERC20(tokenA);
-        IERC20 lowWeightToken = IERC20(tokenB);
-
-        TokenConfig[] memory tokens = new TokenConfig[](2);
-        tokens[0].token = highWeightToken;
-        tokens[1].token = lowWeightToken;
-
-        WeightedPool pool = WeightedPool(factory.create(tokens[0], tokens[1]));
-        WeightedPool invertedPool = WeightedPool(factory.create(tokens[1], tokens[0]));
+        WeightedPool pool = _createPool(tokenA, tokenB);
+        WeightedPool invertedPool = _createPool(tokenB, tokenA);
 
         assertFalse(
             address(pool) == address(invertedPool),
-            "Pools with same tokens but different weight distributions should be different"
+            "Pools with same tokens but different weights should be different"
         );
     }
 
@@ -96,10 +97,10 @@ contract WeightedPool8020FactoryTest is Test {
         tokens[0].token = highWeightToken;
         tokens[1].token = lowWeightToken;
 
-        WeightedPool(factory.create(tokens[0], tokens[1]));
+        _createPool(tokenA, tokenB);
 
         vm.expectRevert("DEPLOYMENT_FAILED");
-        WeightedPool(factory.create(tokens[0], tokens[1]));
+        _createPool(tokenA, tokenB);
 
         tokens[0].rateProvider = IRateProvider(address(1));
         tokens[0].tokenType = TokenType.ERC4626;
@@ -108,25 +109,28 @@ contract WeightedPool8020FactoryTest is Test {
 
         // Trying to create the same pool with same tokens but different token configs should revert
         vm.expectRevert("DEPLOYMENT_FAILED");
-        WeightedPool(factory.create(tokens[0], tokens[1]));
+        WeightedPool(
+            factory.create(
+                tokens[0],
+                tokens[1],
+                address(0),
+                factory.getDefaultPoolHooks(),
+                factory.getDefaultLiquidityManagement()
+            )
+        );
     }
 
     /// forge-config: default.fuzz.runs = 10
     function testPoolCrossChainProtection_Fuzz(uint16 chainId) public {
         vm.assume(chainId != 31337);
 
-        TokenConfig[] memory tokens = new TokenConfig[](2);
-        tokens[0].token = tokenA;
-        tokens[1].token = tokenB;
-        tokens[0].rateProvider = rateProvider;
-
         vm.prank(alice);
-        WeightedPool poolMainnet = WeightedPool(factory.create(tokens[0], tokens[1]));
+        WeightedPool poolMainnet = _createPool(tokenA, tokenB);
 
         vm.chainId(chainId);
 
         vm.prank(alice);
-        WeightedPool poolL2 = WeightedPool(factory.create(tokens[0], tokens[1]));
+        WeightedPool poolL2 = _createPool(tokenA, tokenB);
 
         // Same salt parameters, should still be different because of the chainId.
         assertFalse(address(poolL2) == address(poolMainnet), "L2 and mainnet pool addresses are equal");

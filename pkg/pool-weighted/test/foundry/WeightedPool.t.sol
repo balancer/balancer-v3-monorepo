@@ -19,12 +19,14 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import { WeightedPool } from "pool-weighted/contracts/WeightedPool.sol";
 import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
 import { Router } from "@balancer-labs/v3-vault/contracts/Router.sol";
 import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
 import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
-import { WeightedPoolFactory } from "pool-weighted/contracts/WeightedPoolFactory.sol";
+import { BasePoolFactory } from "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
+
+import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
+import { WeightedPool } from "../../contracts/WeightedPool.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
@@ -53,9 +55,14 @@ contract WeightedPoolTest is BaseVaultTest {
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
         WeightedPool newPool = WeightedPool(
             factory.create(
-                "ERC20 Pool",
-                "ERC20POOL",
-                vault.buildTokenConfig(tokens.asIERC20()),
+                BasePoolFactory.BasePoolParams({
+                    name: "ERC20 Pool",
+                    symbol: "ERC20POOL",
+                    tokens: vault.buildTokenConfig(tokens.asIERC20()),
+                    pauseManager: address(0),
+                    poolHooks: factory.getDefaultPoolHooks(),
+                    liquidityManagement: factory.getDefaultLiquidityManagement()
+                }),
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                 ZERO_BYTES32
             )
