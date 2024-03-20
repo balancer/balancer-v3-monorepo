@@ -9,6 +9,7 @@ ffi = true
 fs_permissions = [{ access = "read-write", path = ".forge-snapshots/"}]
 remappings = [
     'vault/=../vault/',
+    'pool-weighted/=../pool-weighted/',
     'solidity-utils/=../solidity-utils/',
     'ds-test/=../../node_modules/forge-std/lib/ds-test/src/',
     'forge-std/=../../node_modules/forge-std/src/',
@@ -18,11 +19,15 @@ remappings = [
 ]
 optimizer = true
 optimizer_runs = 999
-solc_version = '0.8.21'
+solc_version = '0.8.24'
 auto_detect_solc = false
 
 [fuzz]
 runs = 10000
+max_test_rejects = 60000
+
+[profile.coverage.fuzz]
+runs = 100
 max_test_rejects = 60000
 
 [profile.intense.fuzz]

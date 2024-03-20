@@ -55,11 +55,19 @@ contract TrustedRouterTest is BaseVaultTest {
         assertEq(vault.isTrustedRouter(address(router), alice), false);
 
         vm.startPrank(alice);
-        router.approveRouter(true, type(uint256).max, getApproveRouterSignature(alice, aliceKey, true, 0));
+        router.approveRouter(
+            true,
+            type(uint256).max,
+            getApproveRouterSignature(alice, address(router), aliceKey, true, 0)
+        );
 
         assertEq(vault.isTrustedRouter(address(router), alice), true);
 
-        router.approveRouter(false, type(uint256).max, getApproveRouterSignature(alice, aliceKey, false, 0));
+        router.approveRouter(
+            false,
+            type(uint256).max,
+            getApproveRouterSignature(alice, address(router), aliceKey, false, 0)
+        );
 
         assertEq(vault.isTrustedRouter(address(router), alice), false);
         vm.stopPrank();
@@ -74,7 +82,7 @@ contract TrustedRouterTest is BaseVaultTest {
         assertEq(vault.isTrustedRouter(address(router), usr), false);
 
         deadline = bound(deadline, block.timestamp, type(uint256).max);
-        bytes memory signature = getApproveRouterSignature(usr, privKey, approve, 0);
+        bytes memory signature = getApproveRouterSignature(usr, address(router), privKey, approve, 0);
 
         vault.approveRouter(usr, address(router), approve, type(uint256).max, signature);
 
@@ -131,7 +139,7 @@ contract TrustedRouterTest is BaseVaultTest {
             IRouter.approveRouter.selector,
             true,
             type(uint256).max,
-            getApproveRouterSignature(alice, aliceKey, true, 0)
+            getApproveRouterSignature(alice, address(router), aliceKey, true, 0)
         );
         data[1] = abi.encodeWithSelector(
             IRouter.swapSingleTokenExactIn.selector,
@@ -161,7 +169,7 @@ contract TrustedRouterTest is BaseVaultTest {
             IRouter.approveRouter.selector,
             true,
             type(uint256).max,
-            getApproveRouterSignature(alice, aliceKey, true, 0)
+            getApproveRouterSignature(alice, address(router), aliceKey, true, 0)
         );
         data[1] = abi.encodeWithSelector(
             IRouter.swapSingleTokenExactIn.selector,
@@ -178,7 +186,7 @@ contract TrustedRouterTest is BaseVaultTest {
             IRouter.approveRouter.selector,
             false,
             type(uint256).max,
-            getApproveRouterSignature(alice, aliceKey, false, 1)
+            getApproveRouterSignature(alice, address(router), aliceKey, false, 1)
         );
 
         vm.prank(alice);

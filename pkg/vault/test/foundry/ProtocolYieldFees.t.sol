@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { FEE_SCALING_FACTOR, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -26,7 +24,6 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     using ArrayHelpers for *;
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
-    using SafeCast for uint256;
 
     RateProviderMock wstETHRateProvider;
     RateProviderMock daiRateProvider;
@@ -71,7 +68,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         return address(newPool);
     }
 
-    function setProtocolYieldFeePercentage(uint64 yieldFeePercentage) internal {
+    function setProtocolYieldFeePercentage(uint256 yieldFeePercentage) internal {
         bytes32 setFeeRole = vault.getActionId(IVaultAdmin.setProtocolYieldFeePercentage.selector);
         authorizer.grantRole(setFeeRole, alice);
 
@@ -102,17 +99,17 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     function testNoYieldFeesIfExempt__Fuzz(
         uint256 wstethRate,
         uint256 daiRate,
-        uint64 yieldFeePercentage,
+        uint256 yieldFeePercentage,
         bool roundUp
     ) public {
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
 
-        // yield fee 1-20%
-        yieldFeePercentage = bound(yieldFeePercentage, 10, 200).toUint64();
-        // VaultState stores yieldFeePercentage as a 10 bits variable (from 0 to 1023, or 0% to 102.3%)
-        // Multiplying by 1e15 makes it 18 decimals scaled again
-        yieldFeePercentage = yieldFeePercentage * VaultStateLib.FEE_SCALING_FACTOR;
+        // yield fee 0.000001-20%
+        yieldFeePercentage = bound(yieldFeePercentage, 1, 2000000);
+        // VaultState stores yieldFeePercentage as a 24 bits variable (from 0 to (2^24)-1, or 0% to ~167%)
+        // Multiplying by FEE_SCALING_FACTOR (1e11) makes it 18 decimals scaled again
+        yieldFeePercentage = yieldFeePercentage * FEE_SCALING_FACTOR;
 
         pool = createPool();
         wstETHRateProvider.mockRate(wstethRate);

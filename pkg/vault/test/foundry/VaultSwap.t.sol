@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -12,6 +12,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { RouterCommon } from "../../contracts/RouterCommon.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -68,7 +69,7 @@ contract VaultSwapTest is BaseVaultTest {
         );
     }
 
-    function testSwapLimitGivenIn() public {
+    function testSwapLimitExactIn() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, defaultAmount - 1, defaultAmount));
         router.swapSingleTokenExactIn(
@@ -78,6 +79,21 @@ contract VaultSwapTest is BaseVaultTest {
             defaultAmount - 1,
             defaultAmount,
             MAX_UINT256,
+            false,
+            bytes("")
+        );
+    }
+
+    function testSwapDeadlineExactIn() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(RouterCommon.SwapDeadline.selector));
+        router.swapSingleTokenExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            block.timestamp - 1,
             false,
             bytes("")
         );
@@ -93,6 +109,21 @@ contract VaultSwapTest is BaseVaultTest {
             defaultAmount,
             defaultAmount - 1,
             MAX_UINT256,
+            false,
+            bytes("")
+        );
+    }
+
+    function testSwapDeadlineExactOut() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(RouterCommon.SwapDeadline.selector));
+        router.swapSingleTokenExactOut(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            block.timestamp - 1,
             false,
             bytes("")
         );

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -17,9 +17,6 @@ import { RouterCommon } from "./RouterCommon.sol";
 
 contract Router is IRouter, RouterCommon, ReentrancyGuard {
     using Address for address payable;
-
-    /// @dev The swap transaction was not validated before the specified deadline timestamp.
-    error SwapDeadline();
 
     constructor(IVault vault, IWETH weth) RouterCommon(vault, weth) {
         // solhint-disable-previous-line no-empty-blocks

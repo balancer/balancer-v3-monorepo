@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
@@ -19,6 +19,9 @@ contract RouterCommon {
 
     /// @dev The amount of ETH paid is insufficient to complete this operation.
     error InsufficientEth();
+
+    /// @dev The swap transaction was not validated before the specified deadline timestamp.
+    error SwapDeadline();
 
     // Raw token balances are stored in half a slot, so the max is uint128. Moreover, given amounts are usually scaled
     // inside the Vault, so sending max uint256 would result in an overflow and revert.
