@@ -6,7 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { TokenConfig, PoolHooks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import {
     SingletonAuthentication
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
@@ -26,6 +26,26 @@ import { FactoryWidePauseWindow } from "./FactoryWidePauseWindow.sol";
  * prevent the creation of any future pools from the factory.
  */
 abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, FactoryWidePauseWindow {
+    /**
+     * @dev Struct for parameters related to Pool creation and Vault registration, and common to all pool types.
+     * Tokens must be sorted for pool registration.
+     *
+     * @param name The name of the pool
+     * @param symbol The symbol of the pool
+     * @param tokens An array of descriptors for the tokens the pool will manage
+     * @param pauseManager An account with permission to pause the pool (or zero to default to governance)
+     * @param poolHooks The hook configuration for the pool
+     * @param liquidityManagement The liquidity management configuration for the pool
+     */
+    struct BasePoolParams {
+        string name;
+        string symbol;
+        TokenConfig[] tokens;
+        address pauseManager;
+        PoolHooks poolHooks;
+        LiquidityManagement liquidityManagement;
+    }
+
     mapping(address => bool) private _isPoolFromFactory;
     bool private _disabled;
 
@@ -78,7 +98,37 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         emit PoolCreated(pool);
     }
 
-    function _create(bytes memory constructorArgs, bytes32 salt) internal returns (address) {
-        return CREATE3.deploy(salt, abi.encodePacked(_creationCode, constructorArgs), 0);
+    function _create(bytes memory constructorArgs, bytes32 salt) internal returns (address pool) {
+        pool = CREATE3.deploy(salt, abi.encodePacked(_creationCode, constructorArgs), 0);
+        
+        _registerPoolWithFactory(pool);
+    }
+
+    function _registerPoolWithVault(address pool, BasePoolParams memory params) internal {
+        getVault().registerPool(
+            pool,
+            params.tokens,
+            getNewPoolPauseWindowEndTime(),
+            params.pauseManager,
+            params.poolHooks,
+            params.liquidityManagement
+        );
+    }
+
+    function getDefaultPoolHooks() external pure returns (PoolHooks memory) {
+            return PoolHooks({
+                shouldCallBeforeInitialize: false,
+                shouldCallAfterInitialize: false,
+                shouldCallBeforeAddLiquidity: false,
+                shouldCallAfterAddLiquidity: false,
+                shouldCallBeforeRemoveLiquidity: false,
+                shouldCallAfterRemoveLiquidity: false,
+                shouldCallBeforeSwap: false,
+                shouldCallAfterSwap: false
+            });
+    }
+
+    function getDefaultLiquidityManagement() external pure returns (LiquidityManagement memory) {
+        return LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false });
     }
 }
