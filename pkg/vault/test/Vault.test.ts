@@ -140,7 +140,7 @@ describe('Vault', function () {
       };
 
       // Use expectEvent here to prevent errors with structs of arrays with hardhat matchers.
-      const tx = await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS);
+      const tx = await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS, false);
       expectEvent.inReceipt(await tx.wait(), 'PoolRegistered', expectedArgs);
     });
 
