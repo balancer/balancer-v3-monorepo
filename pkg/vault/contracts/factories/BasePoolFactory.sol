@@ -6,11 +6,11 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { TokenConfig, PoolHooks, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import {
     SingletonAuthentication
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FactoryWidePauseWindow } from "./FactoryWidePauseWindow.sol";
 
@@ -100,7 +100,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
 
     function _create(bytes memory constructorArgs, bytes32 salt) internal returns (address pool) {
         pool = CREATE3.deploy(salt, abi.encodePacked(_creationCode, constructorArgs), 0);
-        
+
         _registerPoolWithFactory(pool);
     }
 
@@ -115,8 +115,13 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         );
     }
 
+    /**
+     * @notice Convenience function for constructing a PoolHooks object.
+     * @dev Users can call this to create a structure with all false arguments, then set the ones they need to true.
+     */
     function getDefaultPoolHooks() external pure returns (PoolHooks memory) {
-            return PoolHooks({
+        return
+            PoolHooks({
                 shouldCallBeforeInitialize: false,
                 shouldCallAfterInitialize: false,
                 shouldCallBeforeAddLiquidity: false,
@@ -128,6 +133,10 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
             });
     }
 
+    /**
+     * @notice Convenience function for constructing a LiquidityManagement object.
+     * @dev Users can call this to create a structure with all false arguments, then set the ones they need to true.
+     */
     function getDefaultLiquidityManagement() external pure returns (LiquidityManagement memory) {
         return LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false });
     }
