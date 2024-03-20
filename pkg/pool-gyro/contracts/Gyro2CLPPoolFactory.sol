@@ -51,12 +51,7 @@ contract Gyro2CLPPoolFactory is BasePoolFactory {
 
         pool = _create(
             abi.encode(
-                Gyro2CLPPool.GyroParams({
-                    name: name,
-                    symbol: symbol,
-                    sqrtAlpha: sqrtAlpha,
-                    sqrtBeta: sqrtBeta
-                }),
+                Gyro2CLPPool.GyroParams({ name: name, symbol: symbol, sqrtAlpha: sqrtAlpha, sqrtBeta: sqrtBeta }),
                 getVault()
             ),
             salt

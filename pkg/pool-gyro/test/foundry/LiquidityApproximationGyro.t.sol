@@ -12,7 +12,7 @@ import { Gyro2CLPPoolFactory } from "../../contracts/Gyro2CLPPoolFactory.sol";
 import { Gyro2CLPPool } from "../../contracts/Gyro2CLPPool.sol";
 
 import { LiquidityApproximationTest } from "@balancer-labs/v3-vault/test/foundry/LiquidityApproximation.t.sol";
-import {Gyro2CLPPool} from "../../contracts/Gyro2CLPPool.sol";
+import { Gyro2CLPPool } from "../../contracts/Gyro2CLPPool.sol";
 
 contract LiquidityApproximationStableTest is LiquidityApproximationTest {
     using ArrayHelpers for *;

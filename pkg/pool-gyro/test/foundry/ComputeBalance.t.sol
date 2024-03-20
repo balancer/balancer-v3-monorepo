@@ -21,12 +21,7 @@ contract ComputeBalanceTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         _gyroPool = new Gyro2CLPPool(
-            Gyro2CLPPool.GyroParams({
-                name: "GyroPool",
-                symbol: "GRP",
-                sqrtAlpha: _sqrtAlpha,
-                sqrtBeta: _sqrtBeta
-            }),
+            Gyro2CLPPool.GyroParams({ name: "GyroPool", symbol: "GRP", sqrtAlpha: _sqrtAlpha, sqrtBeta: _sqrtBeta }),
             vault
         );
         vm.label(address(_gyroPool), "GyroPool");
