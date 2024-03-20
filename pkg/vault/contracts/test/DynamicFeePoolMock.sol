@@ -8,10 +8,10 @@ import { TokenConfig, PoolData } from "@balancer-labs/v3-interfaces/contracts/va
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
-import { BaseDynamicFeePool } from "../BaseDynamicFeePool.sol";
+import { IBaseDynamicFeePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBaseDynamicFeePool.sol";
 import { PoolMock } from "./PoolMock.sol";
 
-contract DynamicFeePoolMock is PoolMock, BaseDynamicFeePool {
+contract DynamicFeePoolMock is PoolMock, IBaseDynamicFeePool {
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
 
@@ -30,7 +30,6 @@ contract DynamicFeePoolMock is PoolMock, BaseDynamicFeePool {
     ) PoolMock(vault, name, symbol, tokenConfig, registerPool, pauseWindowDuration, pauseManager) {}
 
     function computeFee(PoolData memory poolData) public pure override returns (uint256 dynamicFee) {
-        // TODO: see why tests pass with 1
-        return 1; // poolData.poolConfig.staticSwapFeePercentage;
+        return poolData.poolConfig.staticSwapFeePercentage;
     }
 }
