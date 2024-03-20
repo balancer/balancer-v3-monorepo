@@ -19,15 +19,12 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
 
     uint256 private immutable _sqrtAlpha;
     uint256 private immutable _sqrtBeta;
-    IERC20 private immutable _token0;
-    IERC20 private immutable _token1;
 
     bytes32 private constant _POOL_TYPE = "2CLP";
 
     struct GyroParams {
         string name;
         string symbol;
-        IERC20[] tokens;
         uint256 sqrtAlpha; // A: Should already be upscaled
         uint256 sqrtBeta; // A: Should already be upscaled. Could be passed as an array[](2)
     }
@@ -41,14 +38,8 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
             revert SqrtParamsWrong();
         }
 
-        if (params.tokens.length != 2) {
-            revert SupportsOnlyTwoTokens();
-        }
-
         _sqrtAlpha = params.sqrtAlpha;
         _sqrtBeta = params.sqrtBeta;
-        _token0 = params.tokens[0];
-        _token1 = params.tokens[1];
     }
 
     /// @inheritdoc IBasePool

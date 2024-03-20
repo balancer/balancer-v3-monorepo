@@ -4,8 +4,6 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { Gyro2CLPPool } from "../../contracts/Gyro2CLPPool.sol";
@@ -22,15 +20,10 @@ contract ComputeBalanceTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        IERC20[] memory tokens = new IERC20[](2);
-        tokens[0] = dai;
-        tokens[1] = wsteth;
-
         _gyroPool = new Gyro2CLPPool(
             Gyro2CLPPool.GyroParams({
                 name: "GyroPool",
                 symbol: "GRP",
-                tokens: tokens,
                 sqrtAlpha: _sqrtAlpha,
                 sqrtBeta: _sqrtBeta
             }),
