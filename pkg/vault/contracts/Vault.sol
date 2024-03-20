@@ -812,25 +812,28 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             amountsOutScaled18 = minAmountsOutScaled18;
             vars.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
+
+            uint256 swapFeePercentage = _getSwapFeePercentage(params.pool, poolData); // avoids stack too deep
             (amountsOutScaled18[vars.tokenIndex], swapFeeAmountsScaled18) = BasePoolMath
                 .computeRemoveLiquiditySingleTokenExactIn(
                     poolData.balancesLiveScaled18,
                     vars.tokenIndex,
                     bptAmountIn,
                     _totalSupply(params.pool),
-                    _getSwapFeePercentage(params.pool, poolData),
+                    swapFeePercentage,
                     IBasePool(params.pool).computeBalance
                 );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             amountsOutScaled18 = minAmountsOutScaled18;
             vars.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
 
+            uint256 swapFeePercentage = _getSwapFeePercentage(params.pool, poolData); // avoids stack too deep
             (bptAmountIn, swapFeeAmountsScaled18) = BasePoolMath.computeRemoveLiquiditySingleTokenExactOut(
                 poolData.balancesLiveScaled18,
                 vars.tokenIndex,
                 amountsOutScaled18[vars.tokenIndex],
                 _totalSupply(params.pool),
-                _getSwapFeePercentage(params.pool, poolData),
+                swapFeePercentage,
                 IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == RemoveLiquidityKind.CUSTOM) {
