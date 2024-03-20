@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { BasePoolFactory } from "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
@@ -28,9 +29,14 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
 
         StablePool newPool = StablePool(
             factory.create(
-                "ERC20 Pool",
-                "ERC20POOL",
-                vault.buildTokenConfig(tokens.asIERC20()),
+                BasePoolFactory.BasePoolParams({
+                    name: "ERC20 Pool",
+                    symbol: "ERC20POOL",
+                    tokens: vault.buildTokenConfig(tokens.asIERC20()),
+                    pauseManager: address(0),
+                    poolHooks: factory.getDefaultPoolHooks(),
+                    liquidityManagement: factory.getDefaultLiquidityManagement()
+                }),
                 DEFAULT_AMP_FACTOR,
                 ZERO_BYTES32
             )
