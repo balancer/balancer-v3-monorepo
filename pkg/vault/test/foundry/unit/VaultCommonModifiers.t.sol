@@ -26,6 +26,7 @@ contract VaultCommonModifiersTest is BaseVaultTest {
         vault.manualSetLockers(lockers);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, address(bob), address(alice)));
         vm.prank(bob);
+        // If function does not revert, test passes
         vault.mockWithLocker();
     }
 
@@ -36,6 +37,7 @@ contract VaultCommonModifiersTest is BaseVaultTest {
         vault.manualSetLockers(lockers);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, address(bob), address(alice)));
         vm.prank(bob);
+        // If function does not revert, test passes
         vault.mockWithLocker();
     }
 
@@ -45,6 +47,7 @@ contract VaultCommonModifiersTest is BaseVaultTest {
         lockers[1] = address(bob);
         vault.manualSetLockers(lockers);
         vm.prank(bob);
+        // If function does not revert, test passes
         vault.mockWithLocker();
     }
 
@@ -60,6 +63,7 @@ contract VaultCommonModifiersTest is BaseVaultTest {
 
     function testInitializedPool() public {
         vault.manualSetInitializedPool(address(pool), true);
+        // If function does not revert, test passes
         vault.mockWithInitializedPool(address(pool));
     }
 }
