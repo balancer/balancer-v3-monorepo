@@ -31,8 +31,9 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonc
 
     IVault private immutable _vault;
 
-    string private _name;
-    string private _symbol;
+    // EIP712 also defines _name.
+    string private _bptName;
+    string private _bptSymbol;
 
     modifier onlyVault() {
         _ensureOnlyVault();
@@ -47,18 +48,18 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonc
 
     constructor(IVault vault_, string memory name_, string memory symbol_) EIP712(name_, "1") {
         _vault = vault_;
-        _name = name_;
-        _symbol = symbol_;
+        _bptName = name_;
+        _bptSymbol = symbol_;
     }
 
     /// @inheritdoc IERC20Metadata
     function name() public view returns (string memory) {
-        return _name;
+        return _bptName;
     }
 
     /// @inheritdoc IERC20Metadata
     function symbol() public view returns (string memory) {
-        return _symbol;
+        return _bptSymbol;
     }
 
     /// @inheritdoc IERC20Metadata
