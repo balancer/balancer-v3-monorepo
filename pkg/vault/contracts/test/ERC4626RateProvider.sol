@@ -9,7 +9,7 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 contract ERC4626RateProvider is IRateProvider {
-    IERC4626 _wrappedToken;
+    IERC4626 private immutable _wrappedToken;
 
     constructor(IERC4626 wrappedToken) {
         _wrappedToken = wrappedToken;
