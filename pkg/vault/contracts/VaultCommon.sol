@@ -393,16 +393,20 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             poolData.poolConfig.isPoolInRecoveryMode == false;
 
         for (uint256 i = 0; i < numTokens; ++i) {
+            TokenConfig memory tokenConfig = poolData.tokenConfig[i];
+
             // This sets the live balance in poolData from the raw balance, applying scaling and rates,
             // and respecting the rounding direction. Charging a yield fee changes the raw
             // balance, in which case the safest and most numerically precise way to adjust
             // the live balance is to simply repeat the scaling (hence the second call below).
             _updateLiveTokenBalanceInPoolData(poolData, roundingDirection, i);
 
+            // The Vault actually guarantees a token with paysYieldFees set is a WITH_RATE token, so technically we
+            // could just check the flag, but we don't want to introduce that dependency for a slight gas savings.
+            bool tokenSubjectToYieldFees = tokenConfig.paysYieldFees && tokenConfig.tokenType == TokenType.WITH_RATE;
+
             // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
-            // The Vault guarantees any token with the yield fee flag set must be WITH_RATE, so
-            // no need to check it again in the critical path.
-            if (poolSubjectToYieldFees && poolData.tokenConfig[i].paysYieldFees) {
+            if (poolSubjectToYieldFees && tokenSubjectToYieldFees) {
                 uint256 yieldFeeAmountRaw = _computeYieldProtocolFeesDue(
                     poolData,
                     poolBalances.unchecked_valueAt(i).getLastLiveBalanceScaled18(),
