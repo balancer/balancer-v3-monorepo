@@ -36,7 +36,6 @@ contract VaultCommonModifiersTest is BaseVaultTest {
         vault.manualSetLockers(lockers);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, address(bob), address(alice)));
         vm.prank(bob);
-        // If function does not revert, test passes
         vault.mockWithLocker();
     }
 
