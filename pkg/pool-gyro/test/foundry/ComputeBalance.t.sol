@@ -14,8 +14,8 @@ contract ComputeBalanceTest is BaseVaultTest {
     using FixedPoint for uint256;
 
     Gyro2CLPPool private _gyroPool;
-    uint256 private _sqrtAlpha = 1e18;
-    uint256 private _sqrtBeta = 100e18;
+    uint256 private _sqrtAlpha = 997496867163000167; // alpha (lower price rate) = 0.995
+    uint256 private _sqrtBeta = 1002496882788171068; // beta (upper price rate) = 1.005
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
