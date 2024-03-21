@@ -23,7 +23,7 @@
     "lint:solidity": "npx prettier --check --plugin=prettier-plugin-solidity 'contracts/**/*.sol' || npx solhint 'contracts/**/*.sol'",
     "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0",
     "prettier": "npx prettier --write --plugin=prettier-plugin-solidity 'contracts/**/*.sol'",
-    "slither": "yarn compile && bash -c 'source ../../slither/bin/activate && slither --compile-force-framework hardhat --ignore-compile . --config-file ../../.slither.config.json'",
+    "slither": "yarn compile --force && bash -c 'source ../../slither/bin/activate && slither --compile-force-framework hardhat --ignore-compile . --config-file ../../.slither.config.json'",
     "slither:triage": "yarn compile && bash -c 'source ../../slither/bin/activate && slither --compile-force-framework hardhat --ignore-compile . --config-file ../../.slither.config.json --triage-mode'"
   },
   "devDependencies": {
