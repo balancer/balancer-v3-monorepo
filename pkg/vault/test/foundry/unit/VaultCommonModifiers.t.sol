@@ -17,7 +17,7 @@ contract VaultCommonModifiersTest is BaseVaultTest {
         address[] memory lockers;
         vault.manualSetLockers(lockers);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.NoLocker.selector));
-        vault.testWithLocker();
+        vault.mockWithLocker();
     }
 
     function testLockersWithWrongAddress() public {
@@ -26,7 +26,7 @@ contract VaultCommonModifiersTest is BaseVaultTest {
         vault.manualSetLockers(lockers);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, address(bob), address(alice)));
         vm.prank(bob);
-        vault.testWithLocker();
+        vault.mockWithLocker();
     }
 
     function testLockersWithRightAddressInWrongPosition() public {
@@ -36,7 +36,7 @@ contract VaultCommonModifiersTest is BaseVaultTest {
         vault.manualSetLockers(lockers);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, address(bob), address(alice)));
         vm.prank(bob);
-        vault.testWithLocker();
+        vault.mockWithLocker();
     }
 
     function testLockersWithRightAddress() public {
@@ -45,7 +45,7 @@ contract VaultCommonModifiersTest is BaseVaultTest {
         lockers[1] = address(bob);
         vault.manualSetLockers(lockers);
         vm.prank(bob);
-        vault.testWithLocker();
+        vault.mockWithLocker();
     }
 
     /*******************************************************************************
@@ -55,11 +55,11 @@ contract VaultCommonModifiersTest is BaseVaultTest {
     function testUninitializedPool() public {
         vault.manualSetInitializedPool(address(pool), false);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, address(pool)));
-        vault.testWithInitializedPool(address(pool));
+        vault.mockWithInitializedPool(address(pool));
     }
 
     function testInitializedPool() public {
         vault.manualSetInitializedPool(address(pool), true);
-        vault.testWithInitializedPool(address(pool));
+        vault.mockWithInitializedPool(address(pool));
     }
 }

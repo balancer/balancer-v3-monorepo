@@ -39,15 +39,15 @@ interface IVaultMainMock {
 
     function manualSetPoolTokenBalances(address, IERC20[] memory, uint256[] memory) external;
 
-    function testWithLocker() external view;
+    function mockWithLocker() external view;
 
-    function testWithInitializedPool(address pool) external view;
+    function mockWithInitializedPool(address pool) external view;
 
-    function testEnsurePoolNotPaused(address) external view;
+    function mockEnsurePoolNotPaused(address) external view;
 
-    function testEnsureUnpausedAndGetVaultState(address) external view returns (VaultState memory);
+    function mockEnsureUnpausedAndGetVaultState(address) external view returns (VaultState memory);
 
-    function testInternalGetPoolTokenInfo(
+    function mockInternalGetPoolTokenInfo(
         address
     ) external view returns (TokenConfig[] memory, uint256[] memory, uint256[] memory, PoolConfig memory);
 
