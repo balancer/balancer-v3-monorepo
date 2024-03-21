@@ -26,26 +26,6 @@ import { FactoryWidePauseWindow } from "./FactoryWidePauseWindow.sol";
  * prevent the creation of any future pools from the factory.
  */
 abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, FactoryWidePauseWindow {
-    /**
-     * @dev Struct for parameters related to Pool creation and Vault registration, and common to all pool types.
-     * Tokens must be sorted for pool registration.
-     *
-     * @param name The name of the pool
-     * @param symbol The symbol of the pool
-     * @param tokens An array of descriptors for the tokens the pool will manage
-     * @param pauseManager An account with permission to pause the pool (or zero to default to governance)
-     * @param poolHooks The hook configuration for the pool
-     * @param liquidityManagement The liquidity management configuration for the pool
-     */
-    struct BasePoolParams {
-        string name;
-        string symbol;
-        TokenConfig[] tokens;
-        address pauseManager;
-        PoolHooks poolHooks;
-        LiquidityManagement liquidityManagement;
-    }
-
     mapping(address => bool) private _isPoolFromFactory;
     bool private _disabled;
 
@@ -104,14 +84,14 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         _registerPoolWithFactory(pool);
     }
 
-    function _registerPoolWithVault(address pool, BasePoolParams memory params) internal {
+    function _registerPoolWithVault(address pool, TokenConfig[] memory tokens, address pauseManager, PoolHooks memory poolHooks, LiquidityManagement memory liquidityManagement) internal {
         getVault().registerPool(
             pool,
-            params.tokens,
+            tokens,
             getNewPoolPauseWindowEndTime(),
-            params.pauseManager,
-            params.poolHooks,
-            params.liquidityManagement
+            pauseManager,
+            poolHooks,
+            liquidityManagement
         );
     }
 

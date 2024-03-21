@@ -28,20 +28,26 @@ contract StablePoolFactory is BasePoolFactory {
 
     /**
      * @notice Deploys a new `StablePool`.
-     * @param params The basic pool parameters required for Vault registration. See BasePoolFactory.
+     * @param name The name of the pool
+     * @param symbol The symbol of the pool
+     * @param tokens An array of descriptors for the tokens the pool will manage
      * @param amplificationParameter The starting Amplification Parameter
+     * @param pauseManager An account with permission to pause the pool (or zero to default to governance)
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
-        BasePoolParams memory params,
+        string memory name,
+        string memory symbol,
+        TokenConfig[] memory tokens,
         uint256 amplificationParameter,
+        address pauseManager,
         bytes32 salt
     ) external returns (address pool) {
         pool = _create(
             abi.encode(
                 StablePool.NewPoolParams({
-                    name: params.name,
-                    symbol: params.symbol,
+                    name: name,
+                    symbol: symbol,
                     amplificationParameter: amplificationParameter
                 }),
                 getVault()
@@ -49,6 +55,6 @@ contract StablePoolFactory is BasePoolFactory {
             salt
         );
 
-        _registerPoolWithVault(pool, params);
+        _registerPoolWithVault(pool, tokens, pauseManager, getDefaultPoolHooks(), getDefaultLiquidityManagement());
     }
 }
