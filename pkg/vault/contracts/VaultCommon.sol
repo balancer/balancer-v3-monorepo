@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -354,11 +353,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                 poolData.tokenRates[i] = FixedPoint.ONE;
             } else if (tokenType == TokenType.WITH_RATE) {
                 poolData.tokenRates[i] = poolData.tokenConfig[i].rateProvider.getRate();
-            } else if (tokenType == TokenType.ERC4626) {
-                // TODO: Review rates on ERC4626 tokens (and see if we still need a separate token type at all).
-                poolData.tokenRates[i] = IERC4626(address(poolData.tokenConfig[i].token)).convertToAssets(
-                    FixedPoint.ONE
-                );
             } else {
                 revert InvalidTokenConfiguration();
             }
@@ -399,20 +393,16 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             poolData.poolConfig.isPoolInRecoveryMode == false;
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            TokenType tokenType = poolData.tokenConfig[i].tokenType;
-
             // This sets the live balance in poolData from the raw balance, applying scaling and rates,
             // and respecting the rounding direction. Charging a yield fee changes the raw
             // balance, in which case the safest and most numerically precise way to adjust
             // the live balance is to simply repeat the scaling (hence the second call below).
             _updateLiveTokenBalanceInPoolData(poolData, roundingDirection, i);
 
-            bool tokenSubjectToYieldFees = tokenType == TokenType.ERC4626 ||
-                (tokenType == TokenType.WITH_RATE && poolData.tokenConfig[i].yieldFeeExempt == false);
-
             // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
-            // ERC4626 tokens always pay yield fees; WITH_RATE tokens pay unless exempt.
-            if (poolSubjectToYieldFees && tokenSubjectToYieldFees) {
+            // The Vault guarantees any token with the yield fee flag set must be WITH_RATE, so
+            // no need to check it again in the critical path.
+            if (poolSubjectToYieldFees && poolData.tokenConfig[i].paysYieldFees) {
                 uint256 yieldFeeAmountRaw = _computeYieldProtocolFeesDue(
                     poolData,
                     poolBalances.unchecked_valueAt(i).getLastLiveBalanceScaled18(),
