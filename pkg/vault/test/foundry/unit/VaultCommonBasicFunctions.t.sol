@@ -23,12 +23,12 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         BaseVaultTest.setUp();
     }
 
-    function createPool() internal override returns (address) {
+    function createPool() internal view override returns (address) {
         // Generates a "random" address for a non-existent pool
         return address(bytes20(keccak256(abi.encode(block.timestamp))));
     }
 
-    function initPool() internal override {}
+    function initPool() internal pure override {}
 
     /*******************************************************************************
                                   _getPoolTokenInfo
