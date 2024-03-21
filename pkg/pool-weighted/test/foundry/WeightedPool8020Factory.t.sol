@@ -47,23 +47,16 @@ contract WeightedPool8020FactoryTest is Test {
         tokenConfig[0].token = highToken;
         tokenConfig[1].token = lowToken;
 
-        PoolHooks memory poolHooks = factory.getDefaultPoolHooks();
-        LiquidityManagement memory liquidityManagement = factory.getDefaultLiquidityManagement();
-
         if (expectRevert) {
             vm.expectRevert("DEPLOYMENT_FAILED");
         }
-        address newPool = _createPoolInternal(tokenConfig, poolHooks, liquidityManagement);
+        address newPool = _createPoolInternal(tokenConfig);
 
         return WeightedPool(newPool);
     }
 
-    function _createPoolInternal(
-        TokenConfig[] memory tokenConfig,
-        PoolHooks memory poolHooks,
-        LiquidityManagement memory liquidityManagement
-    ) private returns (address) {
-        return factory.create(tokenConfig[0], tokenConfig[1], address(0), poolHooks, liquidityManagement);
+    function _createPoolInternal(TokenConfig[] memory tokenConfig) private returns (address) {
+        return factory.create(tokenConfig[0], tokenConfig[1], address(0));
     }
 
     function testFactoryPausedState() public {
@@ -122,11 +115,8 @@ contract WeightedPool8020FactoryTest is Test {
         tokenConfig[1].tokenType = TokenType.WITH_RATE;
 
         // Trying to create the same pool with same tokens but different token configs should revert
-        PoolHooks memory poolHooks = factory.getDefaultPoolHooks();
-        LiquidityManagement memory liquidityManagement = factory.getDefaultLiquidityManagement();
-
         vm.expectRevert("DEPLOYMENT_FAILED");
-        factory.create(tokenConfig[0], tokenConfig[1], address(0), poolHooks, liquidityManagement);
+        factory.create(tokenConfig[0], tokenConfig[1], address(0));
     }
 
     /// forge-config: default.fuzz.runs = 10

@@ -55,15 +55,11 @@ contract WeightedPoolTest is BaseVaultTest {
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
         WeightedPool newPool = WeightedPool(
             factory.create(
-                BasePoolFactory.BasePoolParams({
-                    name: "ERC20 Pool",
-                    symbol: "ERC20POOL",
-                    tokens: vault.buildTokenConfig(tokens.asIERC20()),
-                    pauseManager: address(0),
-                    poolHooks: factory.getDefaultPoolHooks(),
-                    liquidityManagement: factory.getDefaultLiquidityManagement()
-                }),
+                "ERC20 Pool",
+                "ERC20POOL",
+                vault.buildTokenConfig(tokens.asIERC20()),
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                address(0),
                 ZERO_BYTES32
             )
         );
