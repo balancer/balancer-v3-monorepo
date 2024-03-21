@@ -31,15 +31,11 @@ contract WeightedPool8020Factory is BasePoolFactory {
      * @param highWeightTokenConfig The token configuration of the high weight token
      * @param lowWeightTokenConfig The token configuration of the low weight token
      * @param pauseManager An account with permission to pause the pool (or zero to default to governance)
-     * @param poolHooks The hook configuration for the pool
-     * @param liquidityManagement The liquidity management configuration for the pool
      */
     function create(
         TokenConfig memory highWeightTokenConfig,
         TokenConfig memory lowWeightTokenConfig,
-        address pauseManager,
-        PoolHooks memory poolHooks,
-        LiquidityManagement memory liquidityManagement
+        address pauseManager
     ) external returns (address pool) {
         IERC20 highWeightToken = highWeightTokenConfig.token;
         IERC20 lowWeightToken = lowWeightTokenConfig.token;
@@ -79,8 +75,8 @@ contract WeightedPool8020Factory is BasePoolFactory {
                 symbol: "",
                 tokens: tokenConfig,
                 pauseManager: pauseManager,
-                poolHooks: poolHooks,
-                liquidityManagement: liquidityManagement
+                poolHooks: getDefaultPoolHooks(),
+                liquidityManagement: getDefaultLiquidityManagement()
             })
         );
     }

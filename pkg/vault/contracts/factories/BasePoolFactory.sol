@@ -119,7 +119,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
      * @notice Convenience function for constructing a PoolHooks object.
      * @dev Users can call this to create a structure with all false arguments, then set the ones they need to true.
      */
-    function getDefaultPoolHooks() external pure returns (PoolHooks memory) {
+    function getDefaultPoolHooks() public pure returns (PoolHooks memory) {
         return
             PoolHooks({
                 shouldCallBeforeInitialize: false,
@@ -137,7 +137,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
      * @notice Convenience function for constructing a LiquidityManagement object.
      * @dev Users can call this to create a structure with all false arguments, then set the ones they need to true.
      */
-    function getDefaultLiquidityManagement() external pure returns (LiquidityManagement memory) {
+    function getDefaultLiquidityManagement() public pure returns (LiquidityManagement memory) {
         return LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false });
     }
 }
