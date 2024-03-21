@@ -16,6 +16,7 @@ contract VaultCommonModifiersTest is BaseVaultTest {
     function testEmptyLockers() public {
         address[] memory lockers;
         vault.manualSetLockers(lockers);
+
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.NoLocker.selector));
         vault.mockWithLocker();
     }
@@ -24,8 +25,9 @@ contract VaultCommonModifiersTest is BaseVaultTest {
         address[] memory lockers = new address[](1);
         lockers[0] = address(alice);
         vault.manualSetLockers(lockers);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, address(bob), address(alice)));
+
         vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, address(bob), address(alice)));
         vault.mockWithLocker();
     }
 
@@ -34,8 +36,9 @@ contract VaultCommonModifiersTest is BaseVaultTest {
         lockers[0] = address(bob);
         lockers[1] = address(alice);
         vault.manualSetLockers(lockers);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, address(bob), address(alice)));
+
         vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, address(bob), address(alice)));
         vault.mockWithLocker();
     }
 
@@ -44,8 +47,9 @@ contract VaultCommonModifiersTest is BaseVaultTest {
         lockers[0] = address(alice);
         lockers[1] = address(bob);
         vault.manualSetLockers(lockers);
-        vm.prank(bob);
+
         // If function does not revert, test passes
+        vm.prank(bob);
         vault.mockWithLocker();
     }
 

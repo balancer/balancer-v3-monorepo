@@ -31,6 +31,8 @@ interface IVaultMainMock {
 
     function manualSetPoolPaused(address, bool, uint256) external;
 
+    function manualSetVaultPaused(bool) external;
+
     function manualSetVaultState(bool, bool, uint256, uint256) external;
 
     function manualSetPoolTokenConfig(address, IERC20[] memory, TokenConfig[] memory) external;
