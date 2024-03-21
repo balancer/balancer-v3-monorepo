@@ -68,17 +68,7 @@ contract WeightedPool8020Factory is BasePoolFactory {
             _calculateSalt(highWeightToken, lowWeightToken)
         );
 
-        _registerPoolWithVault(
-            pool,
-            BasePoolParams({
-                name: "", // Name and symbol aren't used in registration.
-                symbol: "",
-                tokens: tokenConfig,
-                pauseManager: pauseManager,
-                poolHooks: getDefaultPoolHooks(),
-                liquidityManagement: getDefaultLiquidityManagement()
-            })
-        );
+        _registerPoolWithVault(pool, tokenConfig, pauseManager, getDefaultPoolHooks(), getDefaultLiquidityManagement());
     }
 
     /**
