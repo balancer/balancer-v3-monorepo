@@ -10,7 +10,7 @@ export function buildTokenConfig(tokens: string[]): TokenConfigStruct[] {
       token: token,
       tokenType: TokenType.STANDARD,
       rateProvider: ZERO_ADDRESS,
-      paysYieldFees: true,
+      paysYieldFees: false,
     };
   });
 
