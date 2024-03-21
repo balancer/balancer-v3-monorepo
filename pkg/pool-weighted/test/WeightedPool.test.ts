@@ -18,12 +18,7 @@ import { buildTokenConfig } from '@balancer-labs/v3-helpers/src/models/tokens/to
 import { WeightedPoolFactory } from '../typechain-types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
-import {
-  BasePoolParams,
-  TokenConfig,
-  defaultLiquidityManagement,
-  defaultPoolHooks,
-} from '@balancer-labs/v3-helpers/src/models/types/types';
+import { TokenConfig } from '@balancer-labs/v3-helpers/src/models/types/types';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
@@ -139,16 +134,7 @@ describe('WeightedPool', function () {
 
       const tokenConfig: TokenConfig[] = buildTokenConfig(realPoolTokens);
 
-      const params: BasePoolParams = {
-        name: 'WeightedPool',
-        symbol: 'Test',
-        tokens: tokenConfig,
-        pauseManager: ZERO_ADDRESS,
-        poolHooks: defaultPoolHooks(),
-        liquidityManagement: defaultLiquidityManagement(),
-      };
-
-      const tx = await factory.create(params, WEIGHTS, ZERO_BYTES32);
+      const tx = await factory.create('WeightedPool', 'Test', tokenConfig, WEIGHTS, ZERO_ADDRESS, ZERO_BYTES32);
       const receipt = await tx.wait();
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
 

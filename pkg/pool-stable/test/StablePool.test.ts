@@ -17,12 +17,7 @@ import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constan
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { PoolConfigStructOutput } from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
 import { buildTokenConfig } from '@balancer-labs/v3-helpers/src/models/tokens/tokenConfig';
-import {
-  BasePoolParams,
-  TokenConfig,
-  defaultLiquidityManagement,
-  defaultPoolHooks,
-} from '@balancer-labs/v3-helpers/src/models/types/types';
+import { TokenConfig } from '@balancer-labs/v3-helpers/src/models/types/types';
 
 describe('StablePool', () => {
   const TOKEN_AMOUNT = fp(1000);
@@ -64,16 +59,14 @@ describe('StablePool', () => {
   async function deployPool(numTokens: number) {
     const tokenConfig: TokenConfig[] = buildTokenConfig(poolTokens.slice(0, numTokens));
 
-    const params: BasePoolParams = {
-      name: 'Stable Pool',
-      symbol: `STABLE-${numTokens}`,
-      tokens: tokenConfig,
-      pauseManager: ZERO_ADDRESS,
-      poolHooks: defaultPoolHooks(),
-      liquidityManagement: defaultLiquidityManagement(),
-    };
-
-    const tx = await factory.create(params, 200n, TypesConverter.toBytes32(bn(numTokens)));
+    const tx = await factory.create(
+      'Stable Pool',
+      `STABLE-${numTokens}`,
+      tokenConfig,
+      200n,
+      ZERO_ADDRESS,
+      TypesConverter.toBytes32(bn(numTokens))
+    );
     const receipt = await tx.wait();
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
 
