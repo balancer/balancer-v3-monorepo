@@ -19,8 +19,9 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
 
     uint256 poolCreationNonce;
 
-    uint256 private _sqrtAlpha = 1e18;
-    uint256 private _sqrtBeta = 100e18;
+    // Big price range since Liquidity Approximation tests a lot of values
+    uint256 private _sqrtAlpha = 1e16; // alpha (lower price rate) = 0.0001
+    uint256 private _sqrtBeta = 1e20; // beta (upper price rate) = 10000
 
     function setUp() public virtual override {
         LiquidityApproximationTest.setUp();
