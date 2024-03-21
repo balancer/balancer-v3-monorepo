@@ -206,9 +206,13 @@ contract BufferSwapTest is BaseVaultTest {
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
-    function testBoostedPoolSwapRebalance__Fuzz(uint256 amountDaiToSwap, uint256 unbalancedAmountDai, uint256 unbalancedAmountUsdc) public {
+    function testBoostedPoolSwapRebalance__Fuzz(
+        uint256 amountDaiToSwap,
+        uint256 unbalancedAmountDai,
+        uint256 unbalancedAmountUsdc
+    ) public {
         // Trading between 1 DAI and 49% liquidity
-        amountDaiToSwap = bound(amountDaiToSwap, 1e18, 49 * defaultAmount / 50);
+        amountDaiToSwap = bound(amountDaiToSwap, 1e18, (49 * defaultAmount) / 50);
 
         // Unbalancing at least the amount needed to swap, so that a rebalance is always needed
         unbalancedAmountDai = bound(unbalancedAmountDai, defaultAmount - amountDaiToSwap + 1, defaultAmount);
@@ -222,13 +226,29 @@ contract BufferSwapTest is BaseVaultTest {
         {
             (uint256 wrappedDaiIdx, uint256 baseDaiIdx) = getSortedIndexes(address(waDAI), address(dai));
             (, , uint256[] memory balancesDaiRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
-            assertEq(balancesDaiRaw[wrappedDaiIdx], defaultAmount - unbalancedAmountDai, "Wrong waDAI buffer pool balance (waDAI)");
-            assertEq(balancesDaiRaw[baseDaiIdx], defaultAmount + unbalancedAmountDai, "Wrong waDAI buffer pool balance (DAI)");
+            assertEq(
+                balancesDaiRaw[wrappedDaiIdx],
+                defaultAmount - unbalancedAmountDai,
+                "Wrong waDAI buffer pool balance (waDAI)"
+            );
+            assertEq(
+                balancesDaiRaw[baseDaiIdx],
+                defaultAmount + unbalancedAmountDai,
+                "Wrong waDAI buffer pool balance (DAI)"
+            );
 
             (uint256 wrappedUsdcIdx, uint256 baseUsdcIdx) = getSortedIndexes(address(waUSDC), address(usdc));
             (, , uint256[] memory balancesUsdcRaw, , ) = vault.getPoolTokenInfo(waUSDCBufferPool);
-            assertEq(balancesUsdcRaw[wrappedUsdcIdx], defaultAmount + unbalancedAmountUsdc, "Wrong waUSDC buffer pool balance (waUSDC)");
-            assertEq(balancesUsdcRaw[baseUsdcIdx], defaultAmount - unbalancedAmountUsdc, "Wrong waUSDC buffer pool balance (USDC)");
+            assertEq(
+                balancesUsdcRaw[wrappedUsdcIdx],
+                defaultAmount + unbalancedAmountUsdc,
+                "Wrong waUSDC buffer pool balance (waUSDC)"
+            );
+            assertEq(
+                balancesUsdcRaw[baseUsdcIdx],
+                defaultAmount - unbalancedAmountUsdc,
+                "Wrong waUSDC buffer pool balance (USDC)"
+            );
         }
 
         // The pools are unbalanced, in a way that we're sure there's not enough tokens to trade
@@ -246,7 +266,7 @@ contract BufferSwapTest is BaseVaultTest {
 
     function testBoostedPoolSwapMoreThan50pLiquidityRebalance__Fuzz(uint256 amountDaiToSwap) public {
         // Trading between 51% and 99% of pool liquidity
-        amountDaiToSwap = bound(amountDaiToSwap, 51 * defaultAmount / 50, 99 * defaultAmount / 50);
+        amountDaiToSwap = bound(amountDaiToSwap, (51 * defaultAmount) / 50, (99 * defaultAmount) / 50);
 
         // Don't need to unbalance pool, it's balanced in 50% already and swap amount is higher
 
