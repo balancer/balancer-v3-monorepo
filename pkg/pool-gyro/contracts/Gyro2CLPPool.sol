@@ -167,13 +167,13 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
     }
 
     function _calculateCurrentValues(
-        uint256 balanceTokenIn, // scaled
-        uint256 balanceTokenOut, // scaled
+        uint256 balanceTokenInScaled18,
+        uint256 balanceTokenOutScaled18,
         bool tokenInIsToken0
     ) internal view returns (uint256 currentInvariant, uint256 virtualParamIn, uint256 virtualParamOut) {
         uint256[] memory balances = new uint256[](2);
-        balances[0] = tokenInIsToken0 ? balanceTokenIn : balanceTokenOut;
-        balances[1] = tokenInIsToken0 ? balanceTokenOut : balanceTokenIn;
+        balances[0] = tokenInIsToken0 ? balanceTokenInScaled18 : balanceTokenOutScaled18;
+        balances[1] = tokenInIsToken0 ? balanceTokenOutScaled18 : balanceTokenInScaled18;
 
         uint256[2] memory sqrtParams = _sqrtParameters();
 
