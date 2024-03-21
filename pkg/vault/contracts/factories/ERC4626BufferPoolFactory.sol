@@ -40,7 +40,12 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
      * @notice Deploys a new `ERC4626BufferPool`.
      * @dev Buffers might need an external pause manager (e.g., a large depositor). This is permissionless,
      * so anyone can create a buffer for any wrapper. As a safety measure, we validate the wrapper for
-     * ERC4626-compatibility. Note that this is "best effort," and not guaranteed.
+     * ERC4626-compatibility. In particular, we check that the wrapped token supports the interface we need,
+     * has value, and the "rate" is linear, which means that converting between assets and shares is
+     * symmetrical and independent of the amount.
+     *
+     * NB: this is a "best effort" to check for basic compatibility, and does not guarantee that a particular
+     * wrapped token is fully compliant with the Vault.
      *
      * @param wrappedToken The ERC4626 wrapped token associated with the buffer and pool
      * @param rateProvider The rate provider associated with the wrapped token
