@@ -73,13 +73,13 @@ interface IVaultMainMock {
     function buildTokenConfig(
         IERC20[] memory tokens,
         IRateProvider[] memory rateProviders,
-        bool[] memory yieldExemptFlags
+        bool[] memory yieldFeeFlags
     ) external pure returns (TokenConfig[] memory tokenConfig);
 
     function buildTokenConfig(
         IERC20[] memory tokens,
         TokenType[] memory tokenTypes,
         IRateProvider[] memory rateProviders,
-        bool[] memory yieldExemptFlags
+        bool[] memory yieldFeeFlags
     ) external pure returns (TokenConfig[] memory tokenConfig);
 }

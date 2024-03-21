@@ -11,6 +11,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -68,8 +69,8 @@ contract BufferSwapTest is BaseVaultTest {
         usdc.mint(address(waUSDC), defaultAmount);
         waUSDC.mint(defaultAmount, lp);
 
-        waDAIBufferPool = bufferFactory.createMocked(waDAI);
-        waUSDCBufferPool = bufferFactory.createMocked(waUSDC);
+        waDAIBufferPool = bufferFactory.createMocked(waDAI, IRateProvider(address(waDAI)));
+        waUSDCBufferPool = bufferFactory.createMocked(waUSDC, IRateProvider(address(waUSDC)));
 
         vm.startPrank(lp);
         waDAI.approve(address(vault), MAX_UINT256);
@@ -85,6 +86,8 @@ contract BufferSwapTest is BaseVaultTest {
         tokenConfig[waUsdcIdx].token = IERC20(waUSDC);
         tokenConfig[0].tokenType = TokenType.WITH_RATE;
         tokenConfig[1].tokenType = TokenType.WITH_RATE;
+        tokenConfig[waDaiIdx].rateProvider = IRateProvider(address(waDAI));
+        tokenConfig[waUsdcIdx].rateProvider = IRateProvider(address(waUSDC));
 
         PoolMock newPool = new PoolMock(
             IVault(address(vault)),

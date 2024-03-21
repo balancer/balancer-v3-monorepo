@@ -4,7 +4,7 @@ import { Contract } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
-import { Router } from '@balancer-labs/v3-vault/typechain-types';
+import { ERC4626BufferPoolFactory, Router } from '@balancer-labs/v3-vault/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { MONTH, currentTimestamp } from '@balancer-labs/v3-helpers/src/time';
 import { ERC20TestToken, ERC4626TestToken, WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
@@ -26,7 +26,7 @@ describe('ERC4626BufferPool', function () {
   let vault: IVaultMock;
   let authorizer: Contract;
   let router: Router;
-  let factory: Contract;
+  let factory: ERC4626BufferPoolFactory;
   let wrappedToken: ERC4626TestToken;
   let baseToken: ERC20TestToken;
   let baseTokenAddress: string;
@@ -69,7 +69,7 @@ describe('ERC4626BufferPool', function () {
     await baseToken.mint(wrappedToken, TOKEN_AMOUNT);
     await wrappedToken.mint(TOKEN_AMOUNT, alice);
 
-    const tx = await factory.connect(alice).create(wrappedToken, ANY_ADDRESS, ZERO_BYTES32);
+    const tx = await factory.connect(alice).create(wrappedToken, wrappedToken, ANY_ADDRESS, ZERO_BYTES32);
     const receipt = await tx.wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');

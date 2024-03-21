@@ -9,6 +9,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -351,7 +352,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     }
 
     function _createBuffer(IERC4626 wrappedToken) private returns (address) {
-        return factory.createMocked(wrappedToken);
+        return factory.createMocked(wrappedToken, IRateProvider(address(wrappedToken)));
     }
 
     function _transferTokensFromDonorToUsers() private {

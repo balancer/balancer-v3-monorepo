@@ -44,12 +44,12 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         daiRateProvider = new RateProviderMock();
 
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
-        bool[] memory yieldExemptFlags = new bool[](2);
+        bool[] memory yieldFeeFlags = new bool[](2);
 
         // These will be sorted with the tokens by buildTokenConfig.
         rateProviders[0] = wstETHRateProvider;
         rateProviders[1] = daiRateProvider;
-        yieldExemptFlags[1] = true;
+        yieldFeeFlags[0] = true;
 
         PoolMock newPool = new PoolMock(
             IVault(address(vault)),
@@ -58,7 +58,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
             vault.buildTokenConfig(
                 [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
                 rateProviders,
-                yieldExemptFlags
+                yieldFeeFlags
             ),
             true,
             365 days,
