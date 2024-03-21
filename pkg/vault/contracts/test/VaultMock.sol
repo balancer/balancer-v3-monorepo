@@ -117,7 +117,7 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolConfig[pool] = poolConfig.fromPoolConfig();
     }
 
-    function manualSetVaultPaused (bool isVaultPaused) public {
+    function manualSetVaultPaused(bool isVaultPaused) public {
         VaultState memory vaultState = _vaultState.toVaultState();
         vaultState.isVaultPaused = isVaultPaused;
         _vaultState = vaultState.fromVaultState();
