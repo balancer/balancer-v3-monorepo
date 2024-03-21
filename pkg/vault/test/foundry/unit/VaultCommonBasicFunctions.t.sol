@@ -31,7 +31,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         // Generates a "random" address for a non-existent pool
         address newPool = address(bytes20(keccak256(abi.encode(block.timestamp))));
         (TokenConfig[] memory newTokenConfig, , , ) = vault.internalGetPoolTokenInfo(newPool);
-        assertEq(newTokenConfig.length, 0, 'newTokenConfig should be empty');
+        assertEq(newTokenConfig.length, 0, "newTokenConfig should be empty");
     }
 
     function testNonEmptyPoolTokenConfig() public {
@@ -49,10 +49,26 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         (TokenConfig[] memory newTokenConfig, , , ) = vault.internalGetPoolTokenInfo(newPool);
         assertEq(newTokenConfig.length, 3);
         for (uint256 i = 0; i < newTokenConfig.length; i++) {
-            assertEq(address(newTokenConfig[i].token), address(tokens[i]), string.concat('token', Strings.toString(i), 'address is not correct'));
-            assertEq(uint256(newTokenConfig[i].tokenType), uint256(TokenType.STANDARD), string.concat('token', Strings.toString(i), 'should be STANDARD type'));
-            assertEq(address(newTokenConfig[i].rateProvider), address(0), string.concat('token', Strings.toString(i), 'should have no rate provider'));
-            assertEq(newTokenConfig[i].yieldFeeExempt, false, string.concat('token', Strings.toString(i), 'yieldFeeExempt flag should be false'));
+            assertEq(
+                address(newTokenConfig[i].token),
+                address(tokens[i]),
+                string.concat("token", Strings.toString(i), "address is not correct")
+            );
+            assertEq(
+                uint256(newTokenConfig[i].tokenType),
+                uint256(TokenType.STANDARD),
+                string.concat("token", Strings.toString(i), "should be STANDARD type")
+            );
+            assertEq(
+                address(newTokenConfig[i].rateProvider),
+                address(0),
+                string.concat("token", Strings.toString(i), "should have no rate provider")
+            );
+            assertEq(
+                newTokenConfig[i].yieldFeeExempt,
+                false,
+                string.concat("token", Strings.toString(i), "yieldFeeExempt flag should be false")
+            );
         }
     }
 
@@ -77,12 +93,32 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         assertEq(newTokenConfig.length, 3);
         assertEq(balancesRaw.length, 3);
         for (uint256 i = 0; i < newTokenConfig.length; i++) {
-            assertEq(address(newTokenConfig[i].token), address(tokens[i]), string.concat('token', Strings.toString(i), 'address is not correct'));
-            assertEq(uint256(newTokenConfig[i].tokenType), uint256(TokenType.STANDARD), string.concat('token', Strings.toString(i), 'should be STANDARD type'));
-            assertEq(address(newTokenConfig[i].rateProvider), address(0), string.concat('token', Strings.toString(i), 'should have no rate provider'));
-            assertEq(newTokenConfig[i].yieldFeeExempt, false, string.concat('token', Strings.toString(i), 'yieldFeeExempt flag should be false'));
+            assertEq(
+                address(newTokenConfig[i].token),
+                address(tokens[i]),
+                string.concat("token", Strings.toString(i), "address is not correct")
+            );
+            assertEq(
+                uint256(newTokenConfig[i].tokenType),
+                uint256(TokenType.STANDARD),
+                string.concat("token", Strings.toString(i), "should be STANDARD type")
+            );
+            assertEq(
+                address(newTokenConfig[i].rateProvider),
+                address(0),
+                string.concat("token", Strings.toString(i), "should have no rate provider")
+            );
+            assertEq(
+                newTokenConfig[i].yieldFeeExempt,
+                false,
+                string.concat("token", Strings.toString(i), "yieldFeeExempt flag should be false")
+            );
 
-            assertEq(balancesRaw[i], originalBalancesRaw[i], string.concat('token', Strings.toString(i), 'balance should match set pool balance'));
+            assertEq(
+                balancesRaw[i],
+                originalBalancesRaw[i],
+                string.concat("token", Strings.toString(i), "balance should match set pool balance")
+            );
         }
     }
 
@@ -94,11 +130,11 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         (, , uint256[] memory decimalScalingFactors, PoolConfig memory poolConfig) = vault.internalGetPoolTokenInfo(
             newPool
         );
-        assertEq(decimalScalingFactors.length, 0, 'should have no decimalScalingFactors');
+        assertEq(decimalScalingFactors.length, 0, "should have no decimalScalingFactors");
         assertEq(
             bytes32(sha256(abi.encodePacked(poolConfig.fromPoolConfig()))),
             bytes32(sha256(abi.encodePacked(emptyPoolConfig.fromPoolConfig()))),
-            'poolConfig should match empty pool config'
+            "poolConfig should match empty pool config"
         );
     }
 
@@ -128,16 +164,25 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         originalPoolConfig.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         vault.manualSetPoolConfig(newPool, originalPoolConfig);
 
-        (, , uint256[] memory decimalScalingFactors, PoolConfig memory newPoolConfig) = vault
-            .internalGetPoolTokenInfo(newPool);
-        assertEq(decimalScalingFactors.length, 3, 'length of decimalScalingFactors should be equal to amount of tokens');
+        (, , uint256[] memory decimalScalingFactors, PoolConfig memory newPoolConfig) = vault.internalGetPoolTokenInfo(
+            newPool
+        );
+        assertEq(
+            decimalScalingFactors.length,
+            3,
+            "length of decimalScalingFactors should be equal to amount of tokens"
+        );
         for (uint256 i = 0; i < decimalScalingFactors.length; i++) {
-            assertEq(decimalScalingFactors[i], 10 ** (18 + tokenDecimalDiffs[i]), string.concat('decimalScalingFactors of token', Strings.toString(i), 'should match tokenDecimalDiffs'));
+            assertEq(
+                decimalScalingFactors[i],
+                10 ** (18 + tokenDecimalDiffs[i]),
+                string.concat("decimalScalingFactors of token", Strings.toString(i), "should match tokenDecimalDiffs")
+            );
         }
         assertEq(
             bytes32(sha256(abi.encodePacked(newPoolConfig.fromPoolConfig()))),
             bytes32(sha256(abi.encodePacked(originalPoolConfig.fromPoolConfig()))),
-            'original and new poolConfigs should be the same'
+            "original and new poolConfigs should be the same"
         );
     }
 
@@ -193,19 +238,43 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         assertEq(decimalScalingFactors.length, 3);
 
         for (uint256 i = 0; i < newTokenConfig.length; i++) {
-            assertEq(address(newTokenConfig[i].token), address(tokens[i]), string.concat('token', Strings.toString(i), 'address is not correct'));
-            assertEq(uint256(newTokenConfig[i].tokenType), uint256(TokenType.STANDARD), string.concat('token', Strings.toString(i), 'should be STANDARD type'));
-            assertEq(address(newTokenConfig[i].rateProvider), address(0), string.concat('token', Strings.toString(i), 'should have no rate provider'));
-            assertEq(newTokenConfig[i].yieldFeeExempt, false, string.concat('token', Strings.toString(i), 'yieldFeeExempt flag should be false'));
+            assertEq(
+                address(newTokenConfig[i].token),
+                address(tokens[i]),
+                string.concat("token", Strings.toString(i), "address is not correct")
+            );
+            assertEq(
+                uint256(newTokenConfig[i].tokenType),
+                uint256(TokenType.STANDARD),
+                string.concat("token", Strings.toString(i), "should be STANDARD type")
+            );
+            assertEq(
+                address(newTokenConfig[i].rateProvider),
+                address(0),
+                string.concat("token", Strings.toString(i), "should have no rate provider")
+            );
+            assertEq(
+                newTokenConfig[i].yieldFeeExempt,
+                false,
+                string.concat("token", Strings.toString(i), "yieldFeeExempt flag should be false")
+            );
 
-            assertEq(balancesRaw[i], originalBalancesRaw[i], string.concat('token', Strings.toString(i), 'balance should match set pool balance'));
-            assertEq(decimalScalingFactors[i], 10 ** (18 + tokenDecimalDiffs[i]), string.concat('decimalScalingFactors of token', Strings.toString(i), 'should match tokenDecimalDiffs'));
+            assertEq(
+                balancesRaw[i],
+                originalBalancesRaw[i],
+                string.concat("token", Strings.toString(i), "balance should match set pool balance")
+            );
+            assertEq(
+                decimalScalingFactors[i],
+                10 ** (18 + tokenDecimalDiffs[i]),
+                string.concat("decimalScalingFactors of token", Strings.toString(i), "should match tokenDecimalDiffs")
+            );
         }
 
         assertEq(
             bytes32(sha256(abi.encodePacked(newPoolConfig.fromPoolConfig()))),
             bytes32(sha256(abi.encodePacked(originalPoolConfig.fromPoolConfig()))),
-            'original and new poolConfigs should be the same'
+            "original and new poolConfigs should be the same"
         );
     }
 }

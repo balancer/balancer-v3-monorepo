@@ -99,10 +99,10 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vault.manualSetPoolPaused(address(pool), false, _FIXED_PAUSE_END_TIME);
 
         VaultState memory vaultState = vault.ensureUnpausedAndGetVaultState(address(pool));
-        assertEq(vaultState.isVaultPaused, false, 'vaultState.isVaultPaused should be false');
-        assertEq(vaultState.isQueryDisabled, true, 'vaultState.isQueryDisabled should be true');
-        assertEq(vaultState.protocolSwapFeePercentage, 3e16, 'vaultState.protocolSwapFeePercentage should be 3e16');
-        assertEq(vaultState.protocolYieldFeePercentage, 5e17, 'vaultState.protocolYieldFeePercentage should be 5e17');
+        assertEq(vaultState.isVaultPaused, false, "vaultState.isVaultPaused should be false");
+        assertEq(vaultState.isQueryDisabled, true, "vaultState.isQueryDisabled should be true");
+        assertEq(vaultState.protocolSwapFeePercentage, 3e16, "vaultState.protocolSwapFeePercentage should be 3e16");
+        assertEq(vaultState.protocolYieldFeePercentage, 5e17, "vaultState.protocolYieldFeePercentage should be 5e17");
     }
 
     // Returns the correct block.timestamp to consider the pool unpaused
