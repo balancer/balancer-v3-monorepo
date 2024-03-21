@@ -52,9 +52,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         originalBalancesRaw[2] = 3000;
         vault.manualSetPoolTokenBalances(pool, tokens, originalBalancesRaw);
 
-        (TokenConfig[] memory newTokenConfig, uint256[] memory balancesRaw, , ) = vault.internalGetPoolTokenInfo(
-            pool
-        );
+        (TokenConfig[] memory newTokenConfig, uint256[] memory balancesRaw, , ) = vault.internalGetPoolTokenInfo(pool);
         assertEq(newTokenConfig.length, 3);
         assertEq(balancesRaw.length, 3);
         for (uint256 i = 0; i < newTokenConfig.length; i++) {
