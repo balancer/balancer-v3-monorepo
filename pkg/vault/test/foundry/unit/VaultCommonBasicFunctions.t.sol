@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.4;
 
+import "forge-std/Test.sol";
+
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
@@ -14,7 +16,7 @@ import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
 contract VaultCommonBasicFunctionsTest is BaseVaultTest {
     using PoolConfigLib for PoolConfig;
-    using SafeCast for uint256;
+    using SafeCast for *;
 
     // The balance and live balance are stored in the same bytes32 word, each uses 128 bits
     uint256 private constant _MAX_RAW_BALANCE = 2 ** 128 - 1;
@@ -231,5 +233,137 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             bytes32(sha256(abi.encodePacked(originalPoolConfig.fromPoolConfig()))),
             "original and new poolConfigs should be the same"
         );
+    }
+
+    function testAccountDeltaZero() public {
+        vm.prank(alice);
+        // Does not revert even with wrong locker.
+        vault.accountDelta(dai, 0, bob);
+    }
+
+    function testAccountDeltaWrongLocker() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, bob, alice));
+        vault.accountDelta(dai, 1, bob);
+    }
+
+    function testTakeDebtZero() public {
+        vm.prank(alice);
+        // Does not revert even with wrong locker.
+        vault.takeDebt(dai, 0, bob);
+    }
+
+    function testTakeDebtWrongLocker() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, bob, alice));
+        vault.takeDebt(dai, 1, bob);
+    }
+
+    function testSupplyCreditZero() public {
+        vm.prank(alice);
+        // Does not revert even with wrong locker.
+        vault.supplyCredit(dai, 0, bob);
+    }
+
+    function testSupplyCreditWrongLocker() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, bob, alice));
+        vault.supplyCredit(dai, 1, bob);
+    }
+
+    function testAccountDeltaNonZeroUp__Fuzz(int256 delta) public {
+        vm.assume(delta != 0);
+        int256 startingTokenDelta = vault.getTokenDelta(alice, dai);
+        uint256 startingNonzeroDeltaCount = vault.getNonzeroDeltaCount();
+
+        vm.prank(alice);
+        vault.accountDelta(dai, delta, alice);
+
+        assertEq(vault.getTokenDelta(alice, dai), startingTokenDelta + delta, "Incorrect token delta (token)");
+        assertEq(vault.getNonzeroDeltaCount(), startingNonzeroDeltaCount + 1, "Incorrect non-zero delta count");
+    }
+
+    function testSupplyCreditNonZeroUp__Fuzz(uint256 delta) public {
+        delta = bound(delta, 1, MAX_UINT128);
+        int256 startingTokenDelta = vault.getTokenDelta(alice, dai);
+        uint256 startingNonzeroDeltaCount = vault.getNonzeroDeltaCount();
+
+        vm.prank(alice);
+        vault.supplyCredit(dai, delta, alice);
+
+        assertEq(
+            vault.getTokenDelta(alice, dai),
+            startingTokenDelta - delta.toInt256(),
+            "Incorrect token delta (token)"
+        );
+        assertEq(vault.getNonzeroDeltaCount(), startingNonzeroDeltaCount + 1, "Incorrect non-zero delta count");
+    }
+
+    function testTakeDebtNonZeroUp__Fuzz(uint256 delta) public {
+        delta = bound(delta, 1, MAX_UINT128);
+        int256 startingTokenDelta = vault.getTokenDelta(alice, dai);
+        uint256 startingNonzeroDeltaCount = vault.getNonzeroDeltaCount();
+
+        vm.prank(alice);
+        vault.takeDebt(dai, delta, alice);
+
+        assertEq(
+            vault.getTokenDelta(alice, dai),
+            startingTokenDelta + delta.toInt256(),
+            "Incorrect token delta (token)"
+        );
+        assertEq(vault.getNonzeroDeltaCount(), startingNonzeroDeltaCount + 1, "Incorrect non-zero delta count");
+    }
+
+    function testAccountDeltaNonZeroDown__Fuzz(int256 delta, uint256 startingNonZeroDeltaCount) public {
+        delta = bound(delta, -MAX_UINT128.toInt256(), MAX_UINT128.toInt256());
+        startingNonZeroDeltaCount = bound(startingNonZeroDeltaCount, 1, 10000);
+        vm.assume(delta != 0);
+
+        vault.manualSetAccountDelta(dai, alice, delta);
+        vault.manualSetNonZeroDeltaCount(startingNonZeroDeltaCount);
+
+        require(vault.getNonzeroDeltaCount() == startingNonZeroDeltaCount, "Starting non-zero delta count incorrect");
+        require(vault.getTokenDelta(alice, dai) == delta, "Starting token delta incorrect");
+
+        vm.prank(alice);
+        vault.accountDelta(dai, -delta, alice);
+
+        assertEq(vault.getTokenDelta(alice, dai), 0, "Incorrect token delta (token)");
+        assertEq(vault.getNonzeroDeltaCount(), startingNonZeroDeltaCount - 1, "Incorrect non-zero delta count");
+    }
+
+    function testSupplyCreditNonZeroDown__Fuzz(int256 delta, uint256 startingNonZeroDeltaCount) public {
+        delta = bound(delta, int256(1), MAX_UINT128.toInt256());
+        startingNonZeroDeltaCount = bound(startingNonZeroDeltaCount, 1, 10000);
+
+        vault.manualSetAccountDelta(dai, alice, delta);
+        vault.manualSetNonZeroDeltaCount(startingNonZeroDeltaCount);
+
+        require(vault.getNonzeroDeltaCount() == startingNonZeroDeltaCount, "Starting non-zero delta count incorrect");
+        require(vault.getTokenDelta(alice, dai) == delta, "Starting token delta incorrect");
+
+        vm.prank(alice);
+        vault.supplyCredit(dai, delta.toUint256(), alice);
+
+        assertEq(vault.getTokenDelta(alice, dai), 0, "Incorrect token delta (token)");
+        assertEq(vault.getNonzeroDeltaCount(), startingNonZeroDeltaCount - 1, "Incorrect non-zero delta count");
+    }
+
+    function testTakeDebtNonZeroDown__Fuzz(int256 delta, uint256 startingNonZeroDeltaCount) public {
+        delta = bound(delta, int256(1), MAX_UINT128.toInt256());
+        startingNonZeroDeltaCount = bound(startingNonZeroDeltaCount, 1, 10000);
+
+        vault.manualSetAccountDelta(dai, alice, -delta);
+        vault.manualSetNonZeroDeltaCount(startingNonZeroDeltaCount);
+
+        require(vault.getNonzeroDeltaCount() == startingNonZeroDeltaCount, "Starting non-zero delta count incorrect");
+        require(vault.getTokenDelta(alice, dai) == -delta, "Starting token delta incorrect");
+
+        vm.prank(alice);
+        vault.takeDebt(dai, delta.toUint256(), alice);
+
+        assertEq(vault.getTokenDelta(alice, dai), 0, "Incorrect token delta (token)");
+        assertEq(vault.getNonzeroDeltaCount(), startingNonZeroDeltaCount - 1, "Incorrect non-zero delta count");
     }
 }
