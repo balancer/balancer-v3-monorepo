@@ -29,7 +29,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
     function testEmptyPoolTokenConfig() public {
         // Generates a "random" address for a non-existent pool
         address newPool = address(bytes20(keccak256(abi.encode(block.timestamp))));
-        (TokenConfig[] memory newTokenConfig, , , ) = vault.mockInternalGetPoolTokenInfo(newPool);
+        (TokenConfig[] memory newTokenConfig, , , ) = vault.internalGetPoolTokenInfo(newPool);
         assertEq(newTokenConfig.length, 0);
     }
 
@@ -45,7 +45,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         uint256[] memory rawBalances = new uint256[](3);
         vault.manualSetPoolTokenBalances(newPool, tokens, rawBalances);
 
-        (TokenConfig[] memory newTokenConfig, , , ) = vault.mockInternalGetPoolTokenInfo(newPool);
+        (TokenConfig[] memory newTokenConfig, , , ) = vault.internalGetPoolTokenInfo(newPool);
         assertEq(newTokenConfig.length, 3);
         assertEq(address(newTokenConfig[0].token), address(tokens[0]));
         assertEq(address(newTokenConfig[1].token), address(tokens[1]));
@@ -62,7 +62,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
         vault.manualSetPoolTokenConfig(newPool, tokens, tokenConfig);
 
-        (TokenConfig[] memory newTokenConfig, uint256[] memory balancesRaw, , ) = vault.mockInternalGetPoolTokenInfo(
+        (TokenConfig[] memory newTokenConfig, uint256[] memory balancesRaw, , ) = vault.internalGetPoolTokenInfo(
             newPool
         );
         assertEq(newTokenConfig.length, 0);
@@ -84,7 +84,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         rawBalances[2] = 3000;
         vault.manualSetPoolTokenBalances(newPool, tokens, rawBalances);
 
-        (TokenConfig[] memory newTokenConfig, uint256[] memory balancesRaw, , ) = vault.mockInternalGetPoolTokenInfo(
+        (TokenConfig[] memory newTokenConfig, uint256[] memory balancesRaw, , ) = vault.internalGetPoolTokenInfo(
             newPool
         );
         assertEq(newTokenConfig.length, 3);
@@ -102,7 +102,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         address newPool = address(bytes20(keccak256(abi.encode(block.timestamp))));
         PoolConfig memory emptyPoolConfig;
 
-        (, , uint256[] memory decimalScalingFactors, PoolConfig memory poolConfig) = vault.mockInternalGetPoolTokenInfo(
+        (, , uint256[] memory decimalScalingFactors, PoolConfig memory poolConfig) = vault.internalGetPoolTokenInfo(
             newPool
         );
         assertEq(decimalScalingFactors.length, 0);
@@ -139,7 +139,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         vault.manualSetPoolConfig(newPool, poolConfig);
 
         (, , uint256[] memory decimalScalingFactors, PoolConfig memory newPoolConfig) = vault
-            .mockInternalGetPoolTokenInfo(newPool);
+            .internalGetPoolTokenInfo(newPool);
         assertEq(decimalScalingFactors.length, 3);
         assertEq(decimalScalingFactors[0], 10 ** (18 + tokenDecimalDiffs[0]));
         assertEq(decimalScalingFactors[1], 10 ** (18 + tokenDecimalDiffs[1]));
@@ -195,7 +195,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             uint256[] memory balancesRaw,
             uint256[] memory decimalScalingFactors,
             PoolConfig memory newPoolConfig
-        ) = vault.mockInternalGetPoolTokenInfo(newPool);
+        ) = vault.internalGetPoolTokenInfo(newPool);
 
         assertEq(newTokenConfig.length, 3);
         assertEq(address(newTokenConfig[0].token), address(tokens[0]));

@@ -152,15 +152,15 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function mockWithInitializedPool(address pool) public view withInitializedPool(pool) {}
 
-    function mockEnsurePoolNotPaused(address pool) public view {
+    function ensurePoolNotPaused(address pool) public view {
         _ensurePoolNotPaused(pool);
     }
 
-    function mockEnsureUnpausedAndGetVaultState(address pool) public view returns (VaultState memory vaultState) {
+    function ensureUnpausedAndGetVaultState(address pool) public view returns (VaultState memory vaultState) {
         vaultState = _ensureUnpausedAndGetVaultState(pool);
     }
 
-    function mockInternalGetPoolTokenInfo(
+    function internalGetPoolTokenInfo(
         address pool
     )
         public

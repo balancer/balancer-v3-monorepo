@@ -43,11 +43,11 @@ interface IVaultMainMock {
 
     function mockWithInitializedPool(address pool) external view;
 
-    function mockEnsurePoolNotPaused(address) external view;
+    function ensurePoolNotPaused(address) external view;
 
-    function mockEnsureUnpausedAndGetVaultState(address) external view returns (VaultState memory);
+    function ensureUnpausedAndGetVaultState(address) external view returns (VaultState memory);
 
-    function mockInternalGetPoolTokenInfo(
+    function internalGetPoolTokenInfo(
         address
     ) external view returns (TokenConfig[] memory, uint256[] memory, uint256[] memory, PoolConfig memory);
 

@@ -28,7 +28,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
 
         vault.manualSetPoolPaused(address(pool), true, _FIXED_PAUSE_END_TIME);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, address(pool)));
-        vault.mockEnsurePoolNotPaused(address(pool));
+        vault.ensurePoolNotPaused(address(pool));
     }
 
     function testPausedPoolAfterBufferPeriod() public {
@@ -36,7 +36,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vm.warp(_getTimeAfterPauseBufferPeriod());
 
         vault.manualSetPoolPaused(address(pool), true, _FIXED_PAUSE_END_TIME);
-        vault.mockEnsurePoolNotPaused(address(pool));
+        vault.ensurePoolNotPaused(address(pool));
     }
 
     function testUnpausedPoolBeforeBufferPeriod() public {
@@ -44,7 +44,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vm.warp(_FIXED_PAUSE_END_TIME);
 
         vault.manualSetPoolPaused(address(pool), false, _FIXED_PAUSE_END_TIME);
-        vault.mockEnsurePoolNotPaused(address(pool));
+        vault.ensurePoolNotPaused(address(pool));
     }
 
     function testUnpausedPoolAfterBufferPeriod() public {
@@ -52,7 +52,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vm.warp(_getTimeAfterPauseBufferPeriod());
 
         vault.manualSetPoolPaused(address(pool), false, _FIXED_PAUSE_END_TIME);
-        vault.mockEnsurePoolNotPaused(address(pool));
+        vault.ensurePoolNotPaused(address(pool));
     }
 
     /*******************************************************************************
@@ -62,7 +62,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
     function testVaultPaused() public {
         vault.manualSetVaultState(true, false, 1e16, 1e16);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultPaused.selector));
-        vault.mockEnsureUnpausedAndGetVaultState(address(pool));
+        vault.ensureUnpausedAndGetVaultState(address(pool));
     }
 
     function testVaultUnpausedButPoolPaused() public {
@@ -73,7 +73,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vault.manualSetPoolPaused(address(pool), true, _FIXED_PAUSE_END_TIME);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, address(pool)));
-        vault.mockEnsureUnpausedAndGetVaultState(address(pool));
+        vault.ensureUnpausedAndGetVaultState(address(pool));
     }
 
     function testVaultPausedButPoolUnpaused() public {
@@ -84,7 +84,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vault.manualSetPoolPaused(address(pool), false, _FIXED_PAUSE_END_TIME);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultPaused.selector));
-        vault.mockEnsureUnpausedAndGetVaultState(address(pool));
+        vault.ensureUnpausedAndGetVaultState(address(pool));
     }
 
     function testVaultAndPoolUnpaused() public {
@@ -94,7 +94,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vault.manualSetVaultState(false, true, 3e16, 5e17);
         vault.manualSetPoolPaused(address(pool), false, _FIXED_PAUSE_END_TIME);
 
-        VaultState memory vaultState = vault.mockEnsureUnpausedAndGetVaultState(address(pool));
+        VaultState memory vaultState = vault.ensureUnpausedAndGetVaultState(address(pool));
         assertEq(vaultState.isVaultPaused, false);
         assertEq(vaultState.isQueryDisabled, true);
         assertEq(vaultState.protocolSwapFeePercentage, 3e16);
