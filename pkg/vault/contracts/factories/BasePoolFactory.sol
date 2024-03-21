@@ -84,7 +84,13 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         _registerPoolWithFactory(pool);
     }
 
-    function _registerPoolWithVault(address pool, TokenConfig[] memory tokens, address pauseManager, PoolHooks memory poolHooks, LiquidityManagement memory liquidityManagement) internal {
+    function _registerPoolWithVault(
+        address pool,
+        TokenConfig[] memory tokens,
+        address pauseManager,
+        PoolHooks memory poolHooks,
+        LiquidityManagement memory liquidityManagement
+    ) internal {
         getVault().registerPool(
             pool,
             tokens,
@@ -99,25 +105,15 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
      * @notice Convenience function for constructing a PoolHooks object.
      * @dev Users can call this to create a structure with all false arguments, then set the ones they need to true.
      */
-    function getDefaultPoolHooks() public pure returns (PoolHooks memory) {
-        return
-            PoolHooks({
-                shouldCallBeforeInitialize: false,
-                shouldCallAfterInitialize: false,
-                shouldCallBeforeAddLiquidity: false,
-                shouldCallAfterAddLiquidity: false,
-                shouldCallBeforeRemoveLiquidity: false,
-                shouldCallAfterRemoveLiquidity: false,
-                shouldCallBeforeSwap: false,
-                shouldCallAfterSwap: false
-            });
+    function getDefaultPoolHooks() public pure returns (PoolHooks memory poolHooks) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
      * @notice Convenience function for constructing a LiquidityManagement object.
      * @dev Users can call this to create a structure with all false arguments, then set the ones they need to true.
      */
-    function getDefaultLiquidityManagement() public pure returns (LiquidityManagement memory) {
-        return LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false });
+    function getDefaultLiquidityManagement() public pure returns (LiquidityManagement memory liquidityManagement) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 }
