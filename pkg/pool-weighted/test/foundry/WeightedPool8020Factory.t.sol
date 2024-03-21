@@ -35,28 +35,11 @@ contract WeightedPool8020FactoryTest is Test {
     }
 
     function _createPool(IERC20 highToken, IERC20 lowToken) private returns (WeightedPool) {
-        return _createPoolInternal(highToken, lowToken, false);
-    }
-
-    function _createPoolExpectingRevert(IERC20 highToken, IERC20 lowToken) private returns (WeightedPool) {
-        return _createPoolInternal(highToken, lowToken, true);
-    }
-
-    function _createPoolInternal(IERC20 highToken, IERC20 lowToken, bool expectRevert) private returns (WeightedPool) {
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[0].token = highToken;
         tokenConfig[1].token = lowToken;
 
-        if (expectRevert) {
-            vm.expectRevert("DEPLOYMENT_FAILED");
-        }
-        address newPool = _createPoolInternal(tokenConfig);
-
-        return WeightedPool(newPool);
-    }
-
-    function _createPoolInternal(TokenConfig[] memory tokenConfig) private returns (address) {
-        return factory.create(tokenConfig[0], tokenConfig[1], address(0));
+        return WeightedPool(factory.create(tokenConfig[0], tokenConfig[1], address(0)));
     }
 
     function testFactoryPausedState() public {
@@ -101,7 +84,8 @@ contract WeightedPool8020FactoryTest is Test {
         _createPool(tokenA, tokenB);
 
         // Should not be able to deploy identical pool
-        _createPoolExpectingRevert(tokenA, tokenB);
+        vm.expectRevert("DEPLOYMENT_FAILED");
+        _createPool(tokenA, tokenB);
 
         IERC20 highWeightToken = IERC20(tokenA);
         IERC20 lowWeightToken = IERC20(tokenB);
