@@ -93,21 +93,6 @@ contract VaultTokenTest is BaseVaultTest {
         );
     }
 
-    function testInvalidYieldExemptWrappedToken() public {
-        registerBuffers();
-
-        // yield-exampt ERC4626 token is invalid
-        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
-        tokenConfig[waDaiIdx].token = IERC20(waDAI);
-        tokenConfig[waUsdcIdx].token = IERC20(waUSDC);
-        tokenConfig[0].tokenType = TokenType.ERC4626;
-        tokenConfig[0].yieldFeeExempt = true;
-        tokenConfig[1].tokenType = TokenType.ERC4626;
-
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.InvalidTokenConfiguration.selector));
-        _registerPool(tokenConfig);
-    }
-
     function testInvalidStandardTokenWithRateProvider() public {
         // Standard token with a rate provider is invalid
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
@@ -133,27 +118,6 @@ contract VaultTokenTest is BaseVaultTest {
         _registerPool(tokenConfig);
     }
 
-    function testRegistrationWithERC4626Tokens() public {
-        registerBuffers();
-
-        // Regular pool cannot have a buffer token with the same base as an existing standard token.
-        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
-        tokenConfig[waDaiIdx].token = IERC20(waDAI);
-        tokenConfig[waUsdcIdx].token = IERC20(waUSDC);
-        tokenConfig[0].tokenType = TokenType.ERC4626;
-        tokenConfig[1].tokenType = TokenType.ERC4626;
-
-        _registerPool(tokenConfig);
-
-        // Check that actual registered tokens, vs "reported" ones, are the wrappers.
-        (IERC20[] memory tokens, TokenType[] memory tokenTypes, , , ) = vault.getPoolTokenInfo(pool);
-
-        assertEq(address(tokens[waDaiIdx]), address(waDAI));
-        assertEq(address(tokens[waUsdcIdx]), address(waUSDC));
-        assertTrue(tokenTypes[0] == TokenType.ERC4626);
-        assertTrue(tokenTypes[1] == TokenType.ERC4626);
-    }
-
     function registerBuffers() private {
         // Establish assets and supply so that buffer creation doesn't fail
         dai.mint(address(waDAI), 1000e18);
@@ -174,8 +138,10 @@ contract VaultTokenTest is BaseVaultTest {
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[waDaiIdx].token = IERC20(waDAI);
         tokenConfig[waUsdcIdx].token = IERC20(waUSDC);
-        tokenConfig[0].tokenType = TokenType.ERC4626;
-        tokenConfig[1].tokenType = TokenType.ERC4626;
+        tokenConfig[0].tokenType = TokenType.WITH_RATE;
+        tokenConfig[1].tokenType = TokenType.WITH_RATE;
+        tokenConfig[waDaiIdx].rateProvider = IRateProvider(waDAI);
+        tokenConfig[waUsdcIdx].rateProvider = IRateProvider(waUSDC);
 
         _registerPool(tokenConfig);
     }

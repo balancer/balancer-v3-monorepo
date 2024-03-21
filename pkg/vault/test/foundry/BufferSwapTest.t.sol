@@ -83,8 +83,8 @@ contract BufferSwapTest is BaseVaultTest {
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[waDaiIdx].token = IERC20(waDAI);
         tokenConfig[waUsdcIdx].token = IERC20(waUSDC);
-        tokenConfig[0].tokenType = TokenType.ERC4626;
-        tokenConfig[1].tokenType = TokenType.ERC4626;
+        tokenConfig[0].tokenType = TokenType.WITH_RATE;
+        tokenConfig[1].tokenType = TokenType.WITH_RATE;
 
         PoolMock newPool = new PoolMock(
             IVault(address(vault)),

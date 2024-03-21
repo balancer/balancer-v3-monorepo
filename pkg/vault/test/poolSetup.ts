@@ -59,7 +59,7 @@ export function buildTokenConfig(tokens: string[], rateProviders: string[] = [])
       token: token,
       tokenType: rateProviders[i] == ZERO_ADDRESS ? TokenType.STANDARD : TokenType.WITH_RATE,
       rateProvider: rateProviders[i],
-      yieldFeeExempt: false,
+      paysYieldFees: rateProviders[i] != ZERO_ADDRESS,
     };
   });
 

@@ -17,6 +17,7 @@ import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
+import '@balancer-labs/v3-common/setupTests';
 
 describe('ERC4626BufferPool', function () {
   const TOKEN_AMOUNT = fp(1000);
@@ -184,7 +185,7 @@ describe('ERC4626BufferPool', function () {
 
       const [, tokenTypes, balances, ,] = await vault.getPoolTokenInfo(pool);
       const expectedTokenTypes = tokenAddresses.map((address) =>
-        address === wrappedTokenAddress ? TokenType.ERC4626 : TokenType.STANDARD
+        address === wrappedTokenAddress ? TokenType.WITH_RATE : TokenType.STANDARD
       );
       expect(tokenTypes).to.deep.equal(expectedTokenTypes);
       expect(balances).to.deep.equal([TOKEN_AMOUNT, TOKEN_AMOUNT]);
