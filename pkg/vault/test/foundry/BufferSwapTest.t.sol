@@ -13,6 +13,7 @@ import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatc
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
@@ -24,6 +25,7 @@ import { RouterCommon } from "../../contracts/RouterCommon.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract BufferSwapTest is BaseVaultTest {
+    using FixedPoint for uint256;
     using ArrayHelpers for *;
 
     ERC4626TestToken internal waDAI;
@@ -50,8 +52,23 @@ contract BufferSwapTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
+        vm.label(address(waDAI), "waDAI");
+
         // "USDC" is deliberately 18 decimals to test one thing at a time.
         waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 18);
+        vm.label(address(waUSDC), "waUSDC");
+
+        // Supplying a sufficient big amount of tokens to waDAI and waUSDC, so that the rate of the tokens don't change
+        // too much during the tests
+        uint256 quantityToDeposit = 1e7 * 1e18;
+        vm.startPrank(lp);
+        dai.mint(address(lp), quantityToDeposit);
+        dai.approve(address(waDAI), quantityToDeposit);
+        waDAI.deposit(quantityToDeposit, address(lp));
+        usdc.mint(address(lp), quantityToDeposit);
+        usdc.approve(address(waUSDC), quantityToDeposit);
+        waUSDC.deposit(quantityToDeposit, address(lp));
+        vm.stopPrank();
 
         bufferFactory = new ERC4626BufferPoolFactoryMock(vault, 365 days);
 
@@ -69,7 +86,13 @@ contract BufferSwapTest is BaseVaultTest {
         waUSDC.mint(defaultAmount, lp);
 
         waDAIBufferPool = bufferFactory.createMocked(waDAI);
+        vm.label(address(waDAIBufferPool), "waDAIBufferPool");
         waUSDCBufferPool = bufferFactory.createMocked(waUSDC);
+        vm.label(address(waUSDCBufferPool), "waUSDCBufferPool");
+
+        // Give some tokens to buffer pool contracts to pay for rebalancing rounding issues
+        dai.mint(address(waDAIBufferPool), 10);
+        usdc.mint(address(waUSDCBufferPool), 10);
 
         vm.startPrank(lp);
         waDAI.approve(address(vault), MAX_UINT256);
@@ -210,6 +233,36 @@ contract BufferSwapTest is BaseVaultTest {
 
         // It should now be balanced (except for the trade)
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount * 2, SwapKind.EXACT_IN, false);
+    }
+
+    function testBoostedPoolSwapMoreThan50pLiquidityRebalance() public {
+        // Swap 60% of buffer liquidity. Pool is currently balanced, but we don't have enough
+        // waDAI to swap and need to wrap some assets
+        uint256 swap60pLiquidity = (2 * defaultAmount).mulDown(6e17);
+
+        // Check that it is unbalanced
+        (uint256 wrappedIdx, uint256 baseIdx) = getSortedIndexes(address(waDAI), address(dai));
+        (, , uint256[] memory balancesRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
+
+        // Pool is currently balanced 50/50
+        assertEq(balancesRaw[wrappedIdx], defaultAmount, "Wrong waDAI buffer pool balance (waDAI)");
+        assertEq(balancesRaw[baseIdx], defaultAmount, "Wrong waDAI buffer pool balance (DAI)");
+
+        // We are swapping DAI for waDAI, and the balances are: DAI: 1900, waDAI: 100.
+        // With Linear Math, we will be withdrawing the trade amount of the wrapped token.
+        // With a trade amount of 100 DAI in/100 waDAI out, the ending balances would be 2000/0.
+
+        // If we perform the swap with more tokens than 50% of pool liquidity, we will not have enough waDAI.
+        // The pool should detect this, rebalance to 60/40 (swap is 60% of pool liquidity), then perform the trade.
+        // Afterward, all the wrapped tokens were removed, so the pool state should be very close from: 0/2000
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount * 12);
+
+        vm.prank(alice);
+        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
+            .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        // It should now be balanced (except for the trade)
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swap60pLiquidity, SwapKind.EXACT_IN, false);
     }
 
     function _buildExactInPaths(
