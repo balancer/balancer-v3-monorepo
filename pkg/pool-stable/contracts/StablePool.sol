@@ -102,7 +102,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication {
     function computeBalance(
         uint256[] memory balancesLiveScaled18,
         uint256 tokenInIndex,
-        uint256
+        uint256 invariantRatio
     ) external view returns (uint256 newBalance) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
@@ -110,7 +110,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication {
             StableMath.computeBalance(
                 currentAmp,
                 balancesLiveScaled18,
-                computeInvariant(balancesLiveScaled18),
+                computeInvariant(balancesLiveScaled18).mulDown(invariantRatio),
                 tokenInIndex
             );
     }

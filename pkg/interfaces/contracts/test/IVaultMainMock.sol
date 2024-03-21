@@ -27,6 +27,34 @@ interface IVaultMainMock {
         address pauseManager
     ) external;
 
+    function manualSetLockers(address[] memory lockers) external;
+
+    function manualSetInitializedPool(address pool, bool isPoolInitialized) external;
+
+    function manualSetPoolPaused(address, bool, uint256) external;
+
+    function manualSetVaultPaused(bool) external;
+
+    function manualSetVaultState(bool, bool, uint256, uint256) external;
+
+    function manualSetPoolTokenConfig(address, IERC20[] memory, TokenConfig[] memory) external;
+
+    function manualSetPoolConfig(address, PoolConfig memory) external;
+
+    function manualSetPoolTokenBalances(address, IERC20[] memory, uint256[] memory) external;
+
+    function mockWithLocker() external view;
+
+    function mockWithInitializedPool(address pool) external view;
+
+    function ensurePoolNotPaused(address) external view;
+
+    function ensureUnpausedAndGetVaultState(address) external view returns (VaultState memory);
+
+    function internalGetPoolTokenInfo(
+        address
+    ) external view returns (TokenConfig[] memory, uint256[] memory, uint256[] memory, PoolConfig memory);
+
     function getDecimalScalingFactors(address pool) external view returns (uint256[] memory);
 
     function recoveryModeExit(address pool) external view;
