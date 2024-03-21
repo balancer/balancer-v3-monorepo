@@ -353,6 +353,8 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     }
 
     function _createBuffer(IERC4626 wrappedToken) private returns (address) {
+        // We need to deploy a rate provider that will call the ERC4626 function on the wrappedToken,
+        // Our test versions implement IRateProvider, but real wrappers typically do not do this.
         return factory.createMocked(wrappedToken, new ERC4626RateProvider(wrappedToken));
     }
 
