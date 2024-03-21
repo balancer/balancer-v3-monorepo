@@ -229,9 +229,7 @@ contract ERC4626BufferPool is
                 }
             } else {
                 // amountGivenScaled18 is the amount of base out, so we can calculate the percentage directly
-                desiredBaseTokenPercentage = params.amountGivenScaled18.divDown(
-                    totalBufferLiquidityScaled18
-                );
+                desiredBaseTokenPercentage = params.amountGivenScaled18.divDown(totalBufferLiquidityScaled18);
 
                 // Swapping wrapped to base. We need to unbalance the pool to the base side, to make sure we
                 // have enough tokens to trade (desired base percentage + 1%)
