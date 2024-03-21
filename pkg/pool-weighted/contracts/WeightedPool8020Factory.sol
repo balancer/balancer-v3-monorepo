@@ -84,4 +84,12 @@ contract WeightedPool8020Factory is BasePoolFactory {
     function _calculateSalt(IERC20 highWeightToken, IERC20 lowWeightToken) internal view returns (bytes32 salt) {
         salt = keccak256(abi.encode(block.chainid, highWeightToken, lowWeightToken));
     }
+
+    /**
+     * @dev By default, the BasePoolFactory adds the sender and chainId to compute a final salt.
+     * Override this to make it use the canonical address salt directly.
+     */
+    function _computeFinalSalt(bytes32 salt) internal pure override returns (bytes32) {
+        return salt;
+    }
 }
