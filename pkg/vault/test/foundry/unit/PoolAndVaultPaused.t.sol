@@ -2,14 +2,17 @@
 
 pragma solidity ^0.8.4;
 
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
+import "@balancer-labs/v3-interfaces/contracts/test/IVaultMainMock.sol";
 
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
 contract PoolAndVaultPausedTest is BaseVaultTest {
-    // The pauseWindowEndTime is stored as a 32 bits number
-    uint256 private constant _MAX_PAUSE_END_TIME = 2 ** 32 - 1;
+    // block.timestamp in which VaultMock sets the end of pool's pause buffer period
+    uint256 private constant _FIXED_PAUSE_END_TIME = 2 ** 16;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -19,24 +22,36 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
                                 _ensurePoolNotPaused
     *******************************************************************************/
 
-    function testPausedPoolWithBigEndTime() public {
-        vault.manualSetPoolPaused(address(pool), true, _MAX_PAUSE_END_TIME);
+    function testPausedPoolBeforeBufferPeriod() public {
+        // sets the time before the pause buffer period
+        vm.warp(_FIXED_PAUSE_END_TIME);
+
+        vault.manualSetPoolPaused(address(pool), true, _FIXED_PAUSE_END_TIME);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, address(pool)));
         vault.testEnsurePoolNotPaused(address(pool));
     }
 
-    function testPausedPoolWithSmallEndTime() public {
-        vault.manualSetPoolPaused(address(pool), true, 1);
+    function testPausedPoolAfterBufferPeriod() public {
+        // sets the time after the pause buffer period
+        vm.warp(_getTimeAfterPauseBufferPeriod());
+
+        vault.manualSetPoolPaused(address(pool), true, _FIXED_PAUSE_END_TIME);
         vault.testEnsurePoolNotPaused(address(pool));
     }
 
-    function testUnpausedPoolWithBigEndTime() public {
-        vault.manualSetPoolPaused(address(pool), false, _MAX_PAUSE_END_TIME);
+    function testUnpausedPoolBeforeBufferPeriod() public {
+        // sets the time before the pause buffer period
+        vm.warp(_FIXED_PAUSE_END_TIME);
+
+        vault.manualSetPoolPaused(address(pool), false, _FIXED_PAUSE_END_TIME);
         vault.testEnsurePoolNotPaused(address(pool));
     }
 
-    function testUnpausedPoolWithSmallEndTime() public {
-        vault.manualSetPoolPaused(address(pool), false, 1);
+    function testUnpausedPoolAfterBufferPeriod() public {
+        // sets the time after the pause buffer period
+        vm.warp(_getTimeAfterPauseBufferPeriod());
+
+        vault.manualSetPoolPaused(address(pool), false, _FIXED_PAUSE_END_TIME);
         vault.testEnsurePoolNotPaused(address(pool));
     }
 
@@ -51,26 +66,43 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
     }
 
     function testVaultUnpausedButPoolPaused() public {
+        // sets the time before the pause buffer period
+        vm.warp(_FIXED_PAUSE_END_TIME);
+
         vault.manualSetVaultState(false, false, 1e16, 1e16);
-        vault.manualSetPoolPaused(address(pool), true, _MAX_PAUSE_END_TIME);
+        vault.manualSetPoolPaused(address(pool), true, _FIXED_PAUSE_END_TIME);
+
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, address(pool)));
         vault.testEnsureUnpausedAndGetVaultState(address(pool));
     }
 
     function testVaultPausedButPoolUnpaused() public {
+        // sets the time after the pause buffer period
+        vm.warp(_getTimeAfterPauseBufferPeriod());
+
         vault.manualSetVaultState(true, false, 1e16, 1e16);
-        vault.manualSetPoolPaused(address(pool), false, 1);
+        vault.manualSetPoolPaused(address(pool), false, _FIXED_PAUSE_END_TIME);
+
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultPaused.selector));
         vault.testEnsureUnpausedAndGetVaultState(address(pool));
     }
 
     function testVaultAndPoolUnpaused() public {
+        // sets the time after the pause buffer period
+        vm.warp(_getTimeAfterPauseBufferPeriod());
+
         vault.manualSetVaultState(false, true, 3e16, 5e17);
-        vault.manualSetPoolPaused(address(pool), false, 1);
+        vault.manualSetPoolPaused(address(pool), false, _FIXED_PAUSE_END_TIME);
+
         VaultState memory vaultState = vault.testEnsureUnpausedAndGetVaultState(address(pool));
         assertEq(vaultState.isVaultPaused, false);
         assertEq(vaultState.isQueryDisabled, true);
         assertEq(vaultState.protocolSwapFeePercentage, 3e16);
         assertEq(vaultState.protocolYieldFeePercentage, 5e17);
+    }
+
+    function _getTimeAfterPauseBufferPeriod() private returns (uint256) {
+        uint256 bufferPeriodDuration = IVaultAdmin(address(vault)).getBufferPeriodDuration();
+        return _FIXED_PAUSE_END_TIME + bufferPeriodDuration + 1;
     }
 }
