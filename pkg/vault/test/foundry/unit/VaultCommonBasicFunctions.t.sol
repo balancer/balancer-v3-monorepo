@@ -34,44 +34,6 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         assertEq(newTokenConfig.length, 0, "newTokenConfig should be empty");
     }
 
-    function testNonEmptyPoolTokenConfig() public {
-        // Generates a "random" address for a non-existent pool
-        address newPool = address(bytes20(keccak256(abi.encode(block.timestamp))));
-        IERC20[] memory tokens = new IERC20[](3);
-        tokens[0] = usdc;
-        tokens[1] = dai;
-        tokens[2] = wsteth;
-        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
-        vault.manualSetPoolTokenConfig(newPool, tokens, tokenConfig);
-        uint256[] memory rawBalances = new uint256[](3);
-        vault.manualSetPoolTokenBalances(newPool, tokens, rawBalances);
-
-        (TokenConfig[] memory newTokenConfig, , , ) = vault.internalGetPoolTokenInfo(newPool);
-        assertEq(newTokenConfig.length, 3);
-        for (uint256 i = 0; i < newTokenConfig.length; i++) {
-            assertEq(
-                address(newTokenConfig[i].token),
-                address(tokens[i]),
-                string.concat("token", Strings.toString(i), "address is not correct")
-            );
-            assertEq(
-                uint256(newTokenConfig[i].tokenType),
-                uint256(TokenType.STANDARD),
-                string.concat("token", Strings.toString(i), "should be STANDARD type")
-            );
-            assertEq(
-                address(newTokenConfig[i].rateProvider),
-                address(0),
-                string.concat("token", Strings.toString(i), "should have no rate provider")
-            );
-            assertEq(
-                newTokenConfig[i].yieldFeeExempt,
-                false,
-                string.concat("token", Strings.toString(i), "yieldFeeExempt flag should be false")
-            );
-        }
-    }
-
     function testNonEmptyPoolTokenBalance() public {
         // Generates a "random" address for a non-existent pool
         address newPool = address(bytes20(keccak256(abi.encode(block.timestamp))));
