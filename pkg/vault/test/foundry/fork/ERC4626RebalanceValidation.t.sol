@@ -16,10 +16,11 @@ import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultType
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
-
 import { ERC4626BufferPoolFactoryMock } from "../utils/ERC4626BufferPoolFactoryMock.sol";
+import { ERC4626RateProvider } from "../../../contracts/test/ERC4626RateProvider.sol";
 import { ERC4626BufferPoolMock } from "../utils/ERC4626BufferPoolMock.sol";
+
+import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 
 contract ERC4626RebalanceValidation is BaseVaultTest {
     using ArrayHelpers for *;
@@ -352,7 +353,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     }
 
     function _createBuffer(IERC4626 wrappedToken) private returns (address) {
-        return factory.createMocked(wrappedToken, IRateProvider(address(wrappedToken)));
+        return factory.createMocked(wrappedToken, new ERC4626RateProvider(wrappedToken));
     }
 
     function _transferTokensFromDonorToUsers() private {
