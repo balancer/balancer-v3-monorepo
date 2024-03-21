@@ -79,7 +79,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     }
 
     /// @dev Factories that require a custom-calculated salt can override to replace this default salt processing.
-    function _computeFinalSalt(bytes32 salt) internal virtual view returns (bytes32) {
+    function _computeFinalSalt(bytes32 salt) internal view virtual returns (bytes32) {
         return keccak256(abi.encode(msg.sender, block.chainid, salt));
     }
 
