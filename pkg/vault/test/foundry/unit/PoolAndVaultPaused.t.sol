@@ -36,6 +36,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vm.warp(_getTimeAfterPauseBufferPeriod());
 
         vault.manualSetPoolPaused(address(pool), true, _FIXED_PAUSE_END_TIME);
+        // If function does not revert, test passes
         vault.ensurePoolNotPaused(address(pool));
     }
 
@@ -44,6 +45,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vm.warp(_FIXED_PAUSE_END_TIME);
 
         vault.manualSetPoolPaused(address(pool), false, _FIXED_PAUSE_END_TIME);
+        // If function does not revert, test passes
         vault.ensurePoolNotPaused(address(pool));
     }
 
@@ -52,6 +54,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vm.warp(_getTimeAfterPauseBufferPeriod());
 
         vault.manualSetPoolPaused(address(pool), false, _FIXED_PAUSE_END_TIME);
+        // If function does not revert, test passes
         vault.ensurePoolNotPaused(address(pool));
     }
 
@@ -61,6 +64,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
 
     function testVaultPaused() public {
         vault.manualSetVaultState(true, false, 1e16, 1e16);
+
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultPaused.selector));
         vault.ensureUnpausedAndGetVaultState(address(pool));
     }
@@ -95,12 +99,13 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vault.manualSetPoolPaused(address(pool), false, _FIXED_PAUSE_END_TIME);
 
         VaultState memory vaultState = vault.ensureUnpausedAndGetVaultState(address(pool));
-        assertEq(vaultState.isVaultPaused, false);
-        assertEq(vaultState.isQueryDisabled, true);
-        assertEq(vaultState.protocolSwapFeePercentage, 3e16);
-        assertEq(vaultState.protocolYieldFeePercentage, 5e17);
+        assertEq(vaultState.isVaultPaused, false, 'vaultState.isVaultPaused should be false');
+        assertEq(vaultState.isQueryDisabled, true, 'vaultState.isQueryDisabled should be true');
+        assertEq(vaultState.protocolSwapFeePercentage, 3e16, 'vaultState.protocolSwapFeePercentage should be 3e16');
+        assertEq(vaultState.protocolYieldFeePercentage, 5e17, 'vaultState.protocolYieldFeePercentage should be 5e17');
     }
 
+    // Returns the correct block.timestamp to consider the pool unpaused
     function _getTimeAfterPauseBufferPeriod() private view returns (uint256) {
         uint256 bufferPeriodDuration = IVaultAdmin(address(vault)).getBufferPeriodDuration();
         return _FIXED_PAUSE_END_TIME + bufferPeriodDuration + 1;

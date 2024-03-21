@@ -3,6 +3,7 @@
 pragma solidity ^0.8.4;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -30,7 +31,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         // Generates a "random" address for a non-existent pool
         address newPool = address(bytes20(keccak256(abi.encode(block.timestamp))));
         (TokenConfig[] memory newTokenConfig, , , ) = vault.internalGetPoolTokenInfo(newPool);
-        assertEq(newTokenConfig.length, 0);
+        assertEq(newTokenConfig.length, 0, 'newTokenConfig should be empty');
     }
 
     function testNonEmptyPoolTokenConfig() public {
@@ -47,26 +48,12 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
 
         (TokenConfig[] memory newTokenConfig, , , ) = vault.internalGetPoolTokenInfo(newPool);
         assertEq(newTokenConfig.length, 3);
-        assertEq(address(newTokenConfig[0].token), address(tokens[0]));
-        assertEq(address(newTokenConfig[1].token), address(tokens[1]));
-        assertEq(address(newTokenConfig[2].token), address(tokens[2]));
-    }
-
-    function testEmptyPoolTokenBalance() public {
-        // Generates a "random" address for a non-existent pool
-        address newPool = address(bytes20(keccak256(abi.encode(block.timestamp))));
-        IERC20[] memory tokens = new IERC20[](3);
-        tokens[0] = usdc;
-        tokens[1] = dai;
-        tokens[2] = wsteth;
-        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
-        vault.manualSetPoolTokenConfig(newPool, tokens, tokenConfig);
-
-        (TokenConfig[] memory newTokenConfig, uint256[] memory balancesRaw, , ) = vault.internalGetPoolTokenInfo(
-            newPool
-        );
-        assertEq(newTokenConfig.length, 0);
-        assertEq(balancesRaw.length, 0);
+        for (uint256 i = 0; i < newTokenConfig.length; i++) {
+            assertEq(address(newTokenConfig[i].token), address(tokens[i]), string.concat('token', Strings.toString(i), 'address is not correct'));
+            assertEq(uint256(newTokenConfig[i].tokenType), uint256(TokenType.STANDARD), string.concat('token', Strings.toString(i), 'should be STANDARD type'));
+            assertEq(address(newTokenConfig[i].rateProvider), address(0), string.concat('token', Strings.toString(i), 'should have no rate provider'));
+            assertEq(newTokenConfig[i].yieldFeeExempt, false, string.concat('token', Strings.toString(i), 'yieldFeeExempt flag should be false'));
+        }
     }
 
     function testNonEmptyPoolTokenBalance() public {
@@ -78,23 +65,25 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         tokens[2] = wsteth;
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
         vault.manualSetPoolTokenConfig(newPool, tokens, tokenConfig);
-        uint256[] memory rawBalances = new uint256[](3);
-        rawBalances[0] = 1000;
-        rawBalances[1] = 2000;
-        rawBalances[2] = 3000;
-        vault.manualSetPoolTokenBalances(newPool, tokens, rawBalances);
+        uint256[] memory originalBalancesRaw = new uint256[](3);
+        originalBalancesRaw[0] = 1000;
+        originalBalancesRaw[1] = 2000;
+        originalBalancesRaw[2] = 3000;
+        vault.manualSetPoolTokenBalances(newPool, tokens, originalBalancesRaw);
 
         (TokenConfig[] memory newTokenConfig, uint256[] memory balancesRaw, , ) = vault.internalGetPoolTokenInfo(
             newPool
         );
         assertEq(newTokenConfig.length, 3);
-        assertEq(address(newTokenConfig[0].token), address(tokens[0]));
-        assertEq(address(newTokenConfig[1].token), address(tokens[1]));
-        assertEq(address(newTokenConfig[2].token), address(tokens[2]));
         assertEq(balancesRaw.length, 3);
-        assertEq(balancesRaw[0], rawBalances[0]);
-        assertEq(balancesRaw[1], rawBalances[1]);
-        assertEq(balancesRaw[2], rawBalances[2]);
+        for (uint256 i = 0; i < newTokenConfig.length; i++) {
+            assertEq(address(newTokenConfig[i].token), address(tokens[i]), string.concat('token', Strings.toString(i), 'address is not correct'));
+            assertEq(uint256(newTokenConfig[i].tokenType), uint256(TokenType.STANDARD), string.concat('token', Strings.toString(i), 'should be STANDARD type'));
+            assertEq(address(newTokenConfig[i].rateProvider), address(0), string.concat('token', Strings.toString(i), 'should have no rate provider'));
+            assertEq(newTokenConfig[i].yieldFeeExempt, false, string.concat('token', Strings.toString(i), 'yieldFeeExempt flag should be false'));
+
+            assertEq(balancesRaw[i], originalBalancesRaw[i], string.concat('token', Strings.toString(i), 'balance should match set pool balance'));
+        }
     }
 
     function testEmptyPoolConfig() public {
@@ -105,10 +94,11 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         (, , uint256[] memory decimalScalingFactors, PoolConfig memory poolConfig) = vault.internalGetPoolTokenInfo(
             newPool
         );
-        assertEq(decimalScalingFactors.length, 0);
+        assertEq(decimalScalingFactors.length, 0, 'should have no decimalScalingFactors');
         assertEq(
             bytes32(sha256(abi.encodePacked(poolConfig.fromPoolConfig()))),
-            bytes32(sha256(abi.encodePacked(emptyPoolConfig.fromPoolConfig())))
+            bytes32(sha256(abi.encodePacked(emptyPoolConfig.fromPoolConfig()))),
+            'poolConfig should match empty pool config'
         );
     }
 
@@ -130,23 +120,24 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         rawBalances[2] = 3000;
         vault.manualSetPoolTokenBalances(newPool, tokens, rawBalances);
 
-        PoolConfig memory poolConfig;
+        PoolConfig memory originalPoolConfig;
         uint8[] memory tokenDecimalDiffs = new uint8[](3);
         tokenDecimalDiffs[0] = 12;
         tokenDecimalDiffs[1] = 10;
         tokenDecimalDiffs[2] = 0;
-        poolConfig.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
-        vault.manualSetPoolConfig(newPool, poolConfig);
+        originalPoolConfig.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
+        vault.manualSetPoolConfig(newPool, originalPoolConfig);
 
         (, , uint256[] memory decimalScalingFactors, PoolConfig memory newPoolConfig) = vault
             .internalGetPoolTokenInfo(newPool);
-        assertEq(decimalScalingFactors.length, 3);
-        assertEq(decimalScalingFactors[0], 10 ** (18 + tokenDecimalDiffs[0]));
-        assertEq(decimalScalingFactors[1], 10 ** (18 + tokenDecimalDiffs[1]));
-        assertEq(decimalScalingFactors[2], 10 ** (18 + tokenDecimalDiffs[2]));
+        assertEq(decimalScalingFactors.length, 3, 'length of decimalScalingFactors should be equal to amount of tokens');
+        for (uint256 i = 0; i < decimalScalingFactors.length; i++) {
+            assertEq(decimalScalingFactors[i], 10 ** (18 + tokenDecimalDiffs[i]), string.concat('decimalScalingFactors of token', Strings.toString(i), 'should match tokenDecimalDiffs'));
+        }
         assertEq(
             bytes32(sha256(abi.encodePacked(newPoolConfig.fromPoolConfig()))),
-            bytes32(sha256(abi.encodePacked(poolConfig.fromPoolConfig())))
+            bytes32(sha256(abi.encodePacked(originalPoolConfig.fromPoolConfig()))),
+            'original and new poolConfigs should be the same'
         );
     }
 
@@ -182,13 +173,13 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         originalBalancesRaw[2] = balance3;
         vault.manualSetPoolTokenBalances(newPool, tokens, originalBalancesRaw);
 
-        PoolConfig memory poolConfig;
+        PoolConfig memory originalPoolConfig;
         uint8[] memory tokenDecimalDiffs = new uint8[](3);
         tokenDecimalDiffs[0] = decimalDiff1;
         tokenDecimalDiffs[1] = decimalDiff2;
         tokenDecimalDiffs[2] = decimalDiff3;
-        poolConfig.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
-        vault.manualSetPoolConfig(newPool, poolConfig);
+        originalPoolConfig.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
+        vault.manualSetPoolConfig(newPool, originalPoolConfig);
 
         (
             TokenConfig[] memory newTokenConfig,
@@ -198,22 +189,23 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         ) = vault.internalGetPoolTokenInfo(newPool);
 
         assertEq(newTokenConfig.length, 3);
-        assertEq(address(newTokenConfig[0].token), address(tokens[0]));
-        assertEq(address(newTokenConfig[1].token), address(tokens[1]));
-        assertEq(address(newTokenConfig[2].token), address(tokens[2]));
-
         assertEq(balancesRaw.length, 3);
-        assertEq(balancesRaw[0], originalBalancesRaw[0]);
-        assertEq(balancesRaw[1], originalBalancesRaw[1]);
-        assertEq(balancesRaw[2], originalBalancesRaw[2]);
-
         assertEq(decimalScalingFactors.length, 3);
-        assertEq(decimalScalingFactors[0], 10 ** (18 + tokenDecimalDiffs[0]));
-        assertEq(decimalScalingFactors[1], 10 ** (18 + tokenDecimalDiffs[1]));
-        assertEq(decimalScalingFactors[2], 10 ** (18 + tokenDecimalDiffs[2]));
+
+        for (uint256 i = 0; i < newTokenConfig.length; i++) {
+            assertEq(address(newTokenConfig[i].token), address(tokens[i]), string.concat('token', Strings.toString(i), 'address is not correct'));
+            assertEq(uint256(newTokenConfig[i].tokenType), uint256(TokenType.STANDARD), string.concat('token', Strings.toString(i), 'should be STANDARD type'));
+            assertEq(address(newTokenConfig[i].rateProvider), address(0), string.concat('token', Strings.toString(i), 'should have no rate provider'));
+            assertEq(newTokenConfig[i].yieldFeeExempt, false, string.concat('token', Strings.toString(i), 'yieldFeeExempt flag should be false'));
+
+            assertEq(balancesRaw[i], originalBalancesRaw[i], string.concat('token', Strings.toString(i), 'balance should match set pool balance'));
+            assertEq(decimalScalingFactors[i], 10 ** (18 + tokenDecimalDiffs[i]), string.concat('decimalScalingFactors of token', Strings.toString(i), 'should match tokenDecimalDiffs'));
+        }
+
         assertEq(
             bytes32(sha256(abi.encodePacked(newPoolConfig.fromPoolConfig()))),
-            bytes32(sha256(abi.encodePacked(poolConfig.fromPoolConfig())))
+            bytes32(sha256(abi.encodePacked(originalPoolConfig.fromPoolConfig()))),
+            'original and new poolConfigs should be the same'
         );
     }
 }
