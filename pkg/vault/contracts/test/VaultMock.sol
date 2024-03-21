@@ -135,16 +135,12 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolConfig[pool] = poolConfig.fromPoolConfig();
     }
 
-    // This function only works flawlessly for pools that are not registered by the vault,
-    // since mapping entries can't be deleted, only altered.
     function manualSetPoolTokenConfig(address pool, IERC20[] memory tokens, TokenConfig[] memory tokenConfig) public {
         for (uint256 i = 0; i < tokens.length; i++) {
             _poolTokenConfig[pool][tokens[i]] = tokenConfig[i];
         }
     }
 
-    // This function only works for pools that are not registered by the vault,
-    // since mapping entries can't be deleted, only altered.
     function manualSetPoolTokenBalances(address pool, IERC20[] memory tokens, uint256[] memory tokenBalanceRaw) public {
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
         for (uint256 i = 0; i < tokens.length; i++) {
