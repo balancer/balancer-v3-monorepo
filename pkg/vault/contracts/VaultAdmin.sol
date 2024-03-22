@@ -229,6 +229,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                 if (block.timestamp >= config.pauseWindowEndTime) {
                     revert PoolPauseWindowExpired(pool);
                 }
+
+                // Automatically enable recovery mode as well when pausing a pool (if it isn't already).
+                if (config.isPoolInRecoveryMode == false) {
+                    config.isPoolInRecoveryMode = true;
+                    emit PoolRecoveryModeStateChanged(pool, true);
+                }
             } else {
                 // Not paused, and we're trying to unpause it.
                 revert PoolNotPaused(pool);
