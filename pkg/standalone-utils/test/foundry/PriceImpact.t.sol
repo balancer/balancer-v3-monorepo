@@ -25,6 +25,7 @@ import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/W
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 import { Router } from "@balancer-labs/v3-vault/contracts/Router.sol";
@@ -37,6 +38,7 @@ import { PriceImpact } from "../../contracts/PriceImpact.sol";
 
 contract PriceImpactTest is BaseVaultTest {
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
 
     uint256 constant USDC_AMOUNT = 1e4 * 1e18;
     uint256 constant DAI_AMOUNT = 1e4 * 1e18;
@@ -86,11 +88,34 @@ contract PriceImpactTest is BaseVaultTest {
     }
 
     function testPriceImpact() public {
-        vm.prank(address(0), address(0));
-        uint256 priceImpact = priceImpactHelper.priceImpactForAddLiquidityUnbalanced(
+        vm.startPrank(address(0), address(0));
+
+        // calculate spotPrice
+        uint256 infinitesimalAmountIn = 1e5;
+        uint256 infinitesimalBptOut = priceImpactHelper.queryAddLiquidityUnbalanced(
             pool,
-            [DAI_AMOUNT / 4, 0].toMemoryArray()
+            [infinitesimalAmountIn, 0].toMemoryArray(),
+            0,
+            bytes("")
         );
-        assertEq(priceImpact, 52786404500042074, "Incorrect price impact for add liquidity unbalanced");
+        uint256 spotPrice = infinitesimalAmountIn.divDown(infinitesimalBptOut);
+
+        // calculate priceImpact
+        uint256 amountIn = DAI_AMOUNT / 4;
+        uint256[] memory amountsIn = [amountIn, 0].toMemoryArray();
+        uint256 priceImpact = priceImpactHelper.priceImpactForAddLiquidityUnbalanced(pool, amountsIn);
+
+        // calculate effectivePrice
+        uint256 bptOut = priceImpactHelper.queryAddLiquidityUnbalanced(pool, amountsIn, 0, bytes(""));
+        uint256 effectivePrice = amountIn.divDown(bptOut);
+
+        // calculate expectedPriceImpact for comparison
+        uint256 expectedPriceImpact = effectivePrice.divDown(spotPrice) - 1e18;
+
+        vm.stopPrank();
+
+        // assert within acceptable bounds of +-1%
+        assertLe(priceImpact, expectedPriceImpact + 0.01e18, "Price impact greater than expected");
+        assertGe(priceImpact, expectedPriceImpact - 0.01e18, "Price impact smaller than expected");
     }
 }
