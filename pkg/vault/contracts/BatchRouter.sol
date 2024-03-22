@@ -412,7 +412,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                                 uint160(stepMaxAmountIn - bptAmountIn),
                                 address(stepTokenIn)
                             );
-                        _vault.settle(IERC20(stepTokenIn));
+                            _vault.settle(IERC20(stepTokenIn));
                         }
                     }
                 } else if (address(step.tokenOut) == step.pool) {
