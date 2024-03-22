@@ -323,7 +323,7 @@ contract ERC4626BufferPool is
             decimalScalingFactors[_baseTokenIndex]
         );
 
-        if (_isBufferPoolBalanced(balancesScaled18) && percentageBase == FIFTY_PERCENT) {
+        if (percentageBase == FIFTY_PERCENT && _isBufferPoolBalanced(balancesScaled18)) {
             return;
         }
 
