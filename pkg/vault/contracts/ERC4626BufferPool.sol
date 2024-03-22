@@ -206,7 +206,7 @@ contract ERC4626BufferPool is
         if (params.amountGivenScaled18 <= totalBufferLiquidityScaled18 / 2) {
             _rebalance(FIFTY_PERCENT);
         } else {
-            // the trade amount is greater than half the liquidity - but less than all of it - so we
+            // The trade amount is greater than half the liquidity - but less than all of it - so we
             // need to do a more precise "counter swap" to enable the trade to succeed.
             uint256 desiredBaseTokenPercentage;
 
