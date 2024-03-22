@@ -233,7 +233,7 @@ contract ERC4626BufferPool is
 
                 // Swapping wrapped to base. We need to unbalance the pool to the base side, to make sure we
                 // have enough tokens to trade (desired base percentage + 1%)
-                desiredBaseTokenPercentage = desiredBaseTokenPercentage + ONE_PERCENT;
+                desiredBaseTokenPercentage += ONE_PERCENT;
                 if (desiredBaseTokenPercentage > FixedPoint.ONE) {
                     desiredBaseTokenPercentage = FixedPoint.ONE;
                 }
