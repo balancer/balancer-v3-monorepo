@@ -302,7 +302,7 @@ describe('Vault', function () {
       });
 
       it('Pools are temporarily pausable', async () => {
-        expect(await vault.isPoolPaused(poolAddress)).to.equal(false);
+        expect(await vault.isPoolPaused(poolAddress)).to.be.false;
 
         const paused = await vault.isPoolPaused(poolAddress);
         expect(paused).to.be.false;
@@ -322,6 +322,48 @@ describe('Vault', function () {
         await expect(await vault.manualUnpausePool(poolAddress))
           .to.emit(vault, 'PoolPausedStateChanged')
           .withArgs(poolAddress, false);
+      });
+
+      it('pausing a pool also puts it in recovery mode', async () => {
+        await expect(await vault.manualPausePool(poolAddress))
+          .to.emit(vault, 'PoolRecoveryModeStateChanged')
+          .withArgs(poolAddress, true);
+
+        expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.true;
+      });
+
+      it('pausing a pool already in recovery mode does not emit the recovery mode event', async () => {
+        await vault.manualEnableRecoveryMode(poolAddress);
+
+        const receipt = await vault.manualPausePool(poolAddress);
+        expectEvent.notEmitted(await receipt.wait(), 'PoolRecoveryModeStateChanged');
+
+        expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.true;
+        expect(await vault.isPoolPaused(poolAddress)).to.be.true;
+      });
+
+      it('pool remains in recovery mode after unpausing', async () => {
+        await expect(await vault.manualPausePool(poolAddress))
+          .to.emit(vault, 'PoolRecoveryModeStateChanged')
+          .withArgs(poolAddress, true);
+
+        expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.true;
+        expect(await vault.isPoolPaused(poolAddress)).to.be.true;
+
+        await vault.manualUnpausePool(poolAddress);
+        expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.true;
+        expect(await vault.isPoolPaused(poolAddress)).to.be.false;
+      });
+
+      it('recovery mode can be explicitly disabled when paused', async () => {
+        await vault.manualPausePool(poolAddress);
+
+        expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.true;
+        expect(await vault.isPoolPaused(poolAddress)).to.be.true;
+
+        await vault.manualDisableRecoveryMode(poolAddress);
+        expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.false;
+        expect(await vault.isPoolPaused(poolAddress)).to.be.true;
       });
     });
   });
