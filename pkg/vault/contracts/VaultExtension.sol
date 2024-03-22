@@ -564,6 +564,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Burning will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
         _burn(address(pool), from, exactBptAmountIn);
 
+        _ensureConsistentPoolState(pool);
+
         emit PoolBalanceChanged(
             pool,
             from,
@@ -571,6 +573,28 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // We can unsafely cast to int256 because balances are stored as uint128 (see PackedTokenBalance).
             amountsOutRaw.unsafeCastToInt256(false)
         );
+    }
+
+    /**
+     * @dev Note that Recovery Mode exits are enabled when *either* the pool was explicitly set to Recovery Mode *or*
+     * the Vault itself is paused. Since Recovery Mode exits cause the live balances to get out of sync, unpausing
+     * the Vault would block further recovery mode exits - but the pool would be in an inconsistent state, normally
+     * resolved by explicitly disabling Recovery Mode (which restores the state).
+     *
+     * To avoid this, detect the case where a pool is being exited due to a Vault pause, and manually put it in
+     * Recovery Mode. This way, when the Vault is unpaused, any pools that got into an inconsistent state through
+     * exits will remain in Recovery Mode, and can be restored by calling `disableRecoveryMode` on each such pool.
+     * Pools that were not actually exited will still be in a consistent state, and can no longer be exited in
+     * Recovery Mode after unpausing.
+     */
+    function _ensureConsistentPoolState(address pool) private {
+        if (_isVaultPaused() && _isPoolInRecoveryMode(pool) == false) {
+            PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+            config.isPoolInRecoveryMode = true;
+            _poolConfig[pool] = config.fromPoolConfig();
+
+            emit PoolRecoveryModeStateChanged(pool, true);
+        }
     }
 
     /*******************************************************************************
