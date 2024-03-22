@@ -93,6 +93,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
         BaseTest.setUp();
 
         permit2 = IPermit2(deployPermit2());
+        vm.label(address(permit2), "permit2");
         vault = IVaultMock(address(VaultMockDeployer.deploy()));
         vm.label(address(vault), "vault");
         authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
@@ -120,6 +121,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
         for (uint256 index = 0; index < tokens.length; index++) {
             tokens[index].approve(address(permit2), type(uint256).max);
             permit2.approve(address(tokens[index]), address(router), type(uint160).max, type(uint48).max);
+            permit2.approve(address(tokens[index]), address(batchRouter), type(uint160).max, type(uint48).max);
         }
 
         vm.stopPrank();
