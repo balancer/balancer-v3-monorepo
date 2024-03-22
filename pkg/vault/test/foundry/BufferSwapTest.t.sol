@@ -58,8 +58,8 @@ contract BufferSwapTest is BaseVaultTest {
         waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 18);
         vm.label(address(waUSDC), "waUSDC");
 
-        // Supplying a sufficient big amount of tokens to waDAI and waUSDC, so that the rate of the tokens don't change
-        // too much during the tests
+        // Supplying a sufficient big amount of tokens to waDAI and waUSDC, so that the rate of the tokens
+        // doesn't change too much during the tests
         uint256 quantityToDeposit = 1e9 * 1e18;
         vm.startPrank(lp);
         dai.mint(address(lp), quantityToDeposit);
