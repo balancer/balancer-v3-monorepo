@@ -110,4 +110,14 @@ interface IVaultMainMock {
         IRateProvider[] memory rateProviders,
         bool[] memory yieldFeeFlags
     ) external pure returns (TokenConfig[] memory tokenConfig);
+
+    function accountDelta(IERC20 token, int256 delta, address locker) external;
+
+    function supplyCredit(IERC20 token, uint256 credit, address locker) external;
+
+    function takeDebt(IERC20 token, uint256 debt, address locker) external;
+
+    function manualSetAccountDelta(IERC20 token, address locker, int256 delta) external;
+
+    function manualSetNonZeroDeltaCount(uint256 deltaCount) external;
 }
