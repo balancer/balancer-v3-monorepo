@@ -38,17 +38,6 @@ interface IVaultMain {
      */
     function sendTo(IERC20 token, address to, uint256 amount) external;
 
-    /**
-     * @notice Transfers tokens from a sender to the Vault.
-     * @dev This function can transfer tokens from users using allowances granted to the Vault.
-     * Only trusted routers are permitted to call it. Untrusted routers should use `settle` instead.
-     *
-     * @param token Token's address
-     * @param from Sender's address
-     * @param amount Amount of tokens to pull from the sender into the Vault
-     */
-    function takeFrom(IERC20 token, address from, uint256 amount) external;
-
     /***************************************************************************
                                    Add Liquidity
     ***************************************************************************/

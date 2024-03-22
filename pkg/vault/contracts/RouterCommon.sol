@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -32,6 +33,8 @@ contract RouterCommon {
     // solhint-disable-next-line var-name-mixedcase
     IWETH internal immutable _weth;
 
+    IPermit2 internal immutable _permit2;
+
     modifier onlyVault() {
         _ensureOnlyVault();
         _;
@@ -43,9 +46,10 @@ contract RouterCommon {
         }
     }
 
-    constructor(IVault vault, IWETH weth) {
+    constructor(IVault vault, IWETH weth, IPermit2 permit2) {
         _vault = vault;
         _weth = weth;
+        _permit2 = permit2;
         weth.approve(address(_vault), type(uint256).max);
     }
 
@@ -102,7 +106,8 @@ contract RouterCommon {
             _vault.settle(_weth);
         } else {
             // Send the tokenIn amount to the Vault
-            _vault.takeFrom(tokenIn, sender, amountIn);
+            _permit2.transferFrom(sender, address(_vault), uint160(amountIn), address(tokenIn));
+            _vault.settle(tokenIn);
         }
     }
 

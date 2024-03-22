@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -32,7 +33,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
     // to return the correct total amounts in and out for each token involved in the operation.
     mapping(address => uint256) private _settledTokenAmounts;
 
-    constructor(IVault vault, IWETH weth) RouterCommon(vault, weth) {
+    constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -236,7 +237,8 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                         stepTokenIn = step.tokenOut;
                         // If this is an intermediate step, we'll need to send it back to the vault
                         // to get credit for the BPT minted in the add liquidity operation.
-                        _vault.takeFrom(IERC20(step.pool), params.sender, bptAmountOut);
+                        _permit2.transferFrom(params.sender, address(_vault), uint160(bptAmountOut), step.pool);
+                        _vault.settle(IERC20(step.pool));
                     }
                 } else {
                     // No BPT involved in the operation: regular swap exact in
@@ -404,7 +406,13 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                         stepExactAmountOut = bptAmountIn;
                         // Refund unused portion of BPT flashloan to the Vault
                         if (bptAmountIn < stepMaxAmountIn) {
-                            _vault.takeFrom(stepTokenIn, params.sender, stepMaxAmountIn - bptAmountIn);
+                            _permit2.transferFrom(
+                                params.sender,
+                                address(_vault),
+                                uint160(stepMaxAmountIn - bptAmountIn),
+                                address(stepTokenIn)
+                            );
+                        _vault.settle(IERC20(stepTokenIn));
                         }
                     }
                 } else if (address(step.tokenOut) == step.pool) {
@@ -445,7 +453,13 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             // the vault owes the sender to make one less transfer.
                             _currentSwapTokenOutAmounts[address(step.tokenOut)] -= stepExactAmountOut;
                         } else {
-                            _vault.takeFrom(IERC20(step.pool), params.sender, stepExactAmountOut);
+                            _permit2.transferFrom(
+                                params.sender,
+                                address(_vault),
+                                uint160(stepExactAmountOut),
+                                step.pool
+                            );
+                            _vault.settle(IERC20(step.pool));
                         }
                     }
                 } else {

@@ -5,6 +5,8 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
+import { DeployPermit2 } from "permit2/test/utils/DeployPermit2.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
@@ -17,6 +19,7 @@ import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 
+import { Permit2Mock } from "../../../contracts/test/Permit2Mock.sol";
 import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
 import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
@@ -28,7 +31,7 @@ import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 
 import { VaultMockDeployer } from "./VaultMockDeployer.sol";
 
-abstract contract BaseVaultTest is VaultStorage, BaseTest {
+abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
     using ArrayHelpers for *;
 
     struct Balances {
@@ -42,6 +45,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     bytes32 constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     bytes32 constant ONE_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000001;
 
+    // Permit2 mock.
+    IPermit2 internal permit2;
     // Vault mock.
     IVaultMock internal vault;
     // Vault extension mock.
@@ -79,32 +84,34 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     function setUp() public virtual override {
         BaseTest.setUp();
 
+        permit2 = IPermit2(deployPermit2());
         vault = IVaultMock(address(VaultMockDeployer.deploy()));
         vm.label(address(vault), "vault");
         authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
         vm.label(address(authorizer), "authorizer");
-        router = new RouterMock(IVault(address(vault)), weth);
+        router = new RouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(router), "router");
-        batchRouter = new BatchRouter(IVault(address(vault)), weth);
+        batchRouter = new BatchRouter(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
         pool = createPool();
 
         // Approve vault allowances
-        approveVault(admin);
-        approveVault(lp);
-        approveVault(alice);
-        approveVault(bob);
-        approveVault(broke);
+        approveRouter(admin);
+        approveRouter(lp);
+        approveRouter(alice);
+        approveRouter(bob);
+        approveRouter(broke);
 
         // Add initial liquidity
         initPool();
     }
 
-    function approveVault(address user) internal {
+    function approveRouter(address user) internal {
         vm.startPrank(user);
 
         for (uint256 index = 0; index < tokens.length; index++) {
-            tokens[index].approve(address(vault), type(uint256).max);
+            tokens[index].approve(address(permit2), type(uint256).max);
+            permit2.approve(address(tokens[index]), address(router), type(uint160).max, type(uint48).max);
         }
 
         vm.stopPrank();

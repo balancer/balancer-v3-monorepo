@@ -120,14 +120,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         token.safeTransfer(to, amount);
     }
 
-    /// @inheritdoc IVaultMain
-    function takeFrom(IERC20 token, address from, uint256 amount) public nonReentrant withLocker onlyTrustedRouter {
-        _supplyCredit(token, amount, msg.sender);
-        _reservesOf[token] += amount;
-
-        token.safeTransferFrom(from, address(this), amount);
-    }
-
     /*******************************************************************************
                                     Pool Operations
     *******************************************************************************/
