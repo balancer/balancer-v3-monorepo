@@ -46,6 +46,31 @@ contract RecoveryModeTest is BaseVaultTest {
         assertRawAndLiveBalanceRelationship(true);
     }
 
+    function testRecoveryModeExitWhenPaused() public {
+        // Add initial liquidity
+        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+
+        vm.prank(alice);
+        uint256 bptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, defaultAmount, false, bytes(""));
+
+        vault.manualPauseVault();
+
+        // Pool itself should not be in recovery mode
+        assertFalse(vault.isPoolInRecoveryMode(pool));
+
+        // Recovery exit should succeed anyway when Vault is paused. Withdraw half.
+        vm.prank(alice);
+        router.removeLiquidityRecovery(address(pool), bptAmountOut / 2);
+
+        vault.manualUnpauseVault();
+
+        // After unpausing, recovery exits fail, because the pool is not actually in Recovery Mode.
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInRecoveryMode.selector, pool));
+        router.removeLiquidityRecovery(address(pool), bptAmountOut / 2);
+    }
+
     function assertRawAndLiveBalanceRelationship(bool shouldBeEqual) internal {
         // Ensure raw and last live balances are in sync after the operation
         uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
