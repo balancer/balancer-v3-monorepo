@@ -523,11 +523,14 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
-     * @dev Reverts if the pool is not in recovery mode.
+     * @dev Reverts if the pool is not in Recovery Mode AND the Vault isn't paused.
+     * Note that this effectively puts *all* pools in Recovery Mode when the Vault is
+     * paused.
+     *
      * @param pool The pool
      */
     function _ensurePoolInRecoveryMode(address pool) internal view {
-        if (!_isPoolInRecoveryMode(pool)) {
+        if (_isPoolInRecoveryMode(pool) == false && _isVaultPaused() == false) {
             revert PoolNotInRecoveryMode(pool);
         }
     }
