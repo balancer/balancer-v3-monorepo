@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
@@ -14,6 +15,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 contract RouterCommon {
     using Address for address payable;
+    using SafeERC20 for IWETH;
 
     /// @dev Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
@@ -101,7 +103,7 @@ contract RouterCommon {
             // wrap amountIn to WETH
             _weth.deposit{ value: amountIn }();
             // send WETH to Vault
-            _weth.transfer(address(_vault), amountIn);
+            _weth.safeTransfer(address(_vault), amountIn);
             // update Vault accounting
             _vault.settle(_weth);
         } else {

@@ -44,7 +44,7 @@ library PackedTokenBalance {
         return toPackedBalance(newRawBalance, getLastLiveBalanceScaled18(balance));
     }
 
-    /// @dev Replace a raw balance value, without modifying the live balance.
+    /// @dev Replace a raw balance value, without modifying the live balance. TODO: remove? only used in tests.
     function setLastLiveBalanceScaled18(bytes32 balance, uint256 newLastLiveBalance) internal pure returns (bytes32) {
         return toPackedBalance(getRawBalance(balance), newLastLiveBalance);
     }
