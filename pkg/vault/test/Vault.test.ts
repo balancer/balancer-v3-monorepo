@@ -275,6 +275,10 @@ describe('Vault', function () {
 
       expect(await vault.isVaultPaused()).to.be.true;
       expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.true;
+
+      // Pool still in Recovery Mode after unpausing.
+      await vault.manualUnpauseVault();
+      expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.true;
     });
 
     describe('rate providers', () => {
