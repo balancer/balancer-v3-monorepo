@@ -62,12 +62,13 @@ contract RecoveryModeTest is BaseVaultTest {
         vm.prank(alice);
         router.removeLiquidityRecovery(address(pool), bptAmountOut / 2);
 
+        // Actually doing a removal in this state will put the pool in recovery mode.
+        assertTrue(vault.isPoolInRecoveryMode(pool));
+
         vault.manualUnpauseVault();
 
-        // After unpausing, recovery exits fail, because the pool is not actually in Recovery Mode.
-
+        // After unpausing, recovery exits still succeed, because the pool has been placed in recovery mode
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInRecoveryMode.selector, pool));
         router.removeLiquidityRecovery(address(pool), bptAmountOut / 2);
     }
 
