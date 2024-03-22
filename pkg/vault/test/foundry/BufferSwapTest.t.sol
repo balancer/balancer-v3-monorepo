@@ -60,7 +60,7 @@ contract BufferSwapTest is BaseVaultTest {
 
         // Supplying a sufficient big amount of tokens to waDAI and waUSDC, so that the rate of the tokens don't change
         // too much during the tests
-        uint256 quantityToDeposit = 1e7 * 1e18;
+        uint256 quantityToDeposit = 1e9 * 1e18;
         vm.startPrank(lp);
         dai.mint(address(lp), quantityToDeposit);
         dai.approve(address(waDAI), quantityToDeposit);
@@ -265,8 +265,8 @@ contract BufferSwapTest is BaseVaultTest {
     }
 
     function testBoostedPoolSwapMoreThan50pLiquidityRebalance__Fuzz(uint256 amountDaiToSwap) public {
-        // Trading between 51% and 99% of pool liquidity
-        amountDaiToSwap = bound(amountDaiToSwap, (51 * defaultAmount) / 50, (99 * defaultAmount) / 50);
+        // Trading between 51% and 99.5% of pool liquidity
+        amountDaiToSwap = bound(amountDaiToSwap, (51 * defaultAmount) / 50, 995 * defaultAmount / 500);
 
         // Don't need to unbalance pool, it's balanced in 50% already and swap amount is higher
 
