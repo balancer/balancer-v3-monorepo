@@ -365,4 +365,24 @@ contract VaultMock is IVaultMainMock, Vault {
     function unguardedCheckNotEntered() external view {
         require(!reentrancyGuardEntered());
     }
+
+    function accountDelta(IERC20 token, int256 delta, address locker) external {
+        _accountDelta(token, delta, locker);
+    }
+
+    function supplyCredit(IERC20 token, uint256 credit, address locker) external {
+        _supplyCredit(token, credit, locker);
+    }
+
+    function takeDebt(IERC20 token, uint256 debt, address locker) external {
+        _takeDebt(token, debt, locker);
+    }
+
+    function manualSetAccountDelta(IERC20 token, address locker, int256 delta) external {
+        _tokenDeltas[locker][token] = delta;
+    }
+
+    function manualSetNonZeroDeltaCount(uint256 deltaCount) external {
+        _nonzeroDeltaCount = deltaCount;
+    }
 }
