@@ -480,8 +480,14 @@ contract RouterTest is BaseVaultTest {
     }
 
     function testPermitAndSwap() public {
-        bytes[] memory data = new bytes[](1);
+        // Revoke allowance
+        vm.prank(alice);
+        permit2.approve(address(usdc), address(router), 0, 0);
 
+        (uint160 amount, , ) = permit2.allowance(alice, address(usdc), address(router));
+        assertEq(amount, 0);
+
+        bytes[] memory data = new bytes[](1);
         bytes memory sig = getPermitSignature(
             address(router),
             address(usdc),
@@ -513,6 +519,10 @@ contract RouterTest is BaseVaultTest {
 
         vm.prank(alice);
         router.permitAndCall(permit, sig, data);
+
+        (amount, , ) = permit2.allowance(alice, address(usdc), address(router));
+        // Allowance is spent
+        assertEq(amount, 0);
     }
 
     function testGetSingleInputArray() public {
