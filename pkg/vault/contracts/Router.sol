@@ -6,6 +6,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
+import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -962,5 +963,32 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
         uint256 exactBptAmountIn
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
         return _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn);
+    }
+
+    /*******************************************************************************
+                                    Utils
+    *******************************************************************************/
+
+    /**
+     * @dev Permits and executes a batch of function calls on this contract.
+     */
+    function permitAndCall(
+        IAllowanceTransfer.PermitSingle calldata permit,
+        bytes calldata sig,
+        bytes[] calldata data
+    ) external virtual returns (bytes[] memory results) {
+        _permit2.permit(msg.sender, permit, sig);
+        return multicall(data);
+    }
+
+    /**
+     * @dev Receives and executes a batch of function calls on this contract.
+     */
+    function multicall(bytes[] calldata data) public virtual returns (bytes[] memory results) {
+        results = new bytes[](data.length);
+        for (uint256 i = 0; i < data.length; i++) {
+            results[i] = Address.functionDelegateCall(address(this), data[i]);
+        }
+        return results;
     }
 }

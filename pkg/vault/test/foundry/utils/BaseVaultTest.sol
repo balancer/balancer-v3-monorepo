@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
+import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import { DeployPermit2 } from "permit2/test/utils/DeployPermit2.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -19,7 +20,6 @@ import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 
-import { Permit2Mock } from "../../../contracts/test/Permit2Mock.sol";
 import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
 import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
@@ -44,6 +44,14 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
 
     bytes32 constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     bytes32 constant ONE_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000001;
+
+    bytes32 public constant _PERMIT_DETAILS_TYPEHASH =
+        keccak256("PermitDetails(address token,uint160 amount,uint48 expiration,uint48 nonce)");
+
+    bytes32 public constant _PERMIT_SINGLE_TYPEHASH =
+        keccak256(
+            "PermitSingle(PermitDetails details,address spender,uint256 sigDeadline)PermitDetails(address token,uint160 amount,uint48 expiration,uint48 nonce)"
+        );
 
     // Permit2 mock.
     IPermit2 internal permit2;
@@ -180,5 +188,45 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
 
     function getSalt(address addr) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(addr)));
+    }
+
+    function getSinglePermit(
+        address spender,
+        address token,
+        uint160 amount,
+        uint48 expiration,
+        uint48 nonce
+    ) internal view returns (IAllowanceTransfer.PermitSingle memory) {
+        IAllowanceTransfer.PermitDetails memory details = IAllowanceTransfer.PermitDetails({
+            token: token,
+            amount: amount,
+            expiration: expiration,
+            nonce: nonce
+        });
+        return
+            IAllowanceTransfer.PermitSingle({ details: details, spender: spender, sigDeadline: block.timestamp + 100 });
+    }
+
+    function getPermitSignature(
+        address spender,
+        address token,
+        uint160 amount,
+        uint48 expiration,
+        uint48 nonce,
+        uint256 key
+    ) internal view returns (bytes memory) {
+        IAllowanceTransfer.PermitSingle memory permit = getSinglePermit(spender, token, amount, expiration, nonce);
+        bytes32 permitHash = keccak256(abi.encode(_PERMIT_DETAILS_TYPEHASH, permit.details));
+
+        bytes32 msgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                permit2.DOMAIN_SEPARATOR(),
+                keccak256(abi.encode(_PERMIT_SINGLE_TYPEHASH, permitHash, permit.spender, permit.sigDeadline))
+            )
+        );
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, msgHash);
+        return bytes.concat(r, s, bytes1(v));
     }
 }

@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import { GasSnapshot } from "forge-gas-snapshot/GasSnapshot.sol";
+import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
+import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -475,6 +477,42 @@ contract RouterTest is BaseVaultTest {
         assertEq(weth.balanceOf(alice), defaultBalance, "Wrong WETH balance");
         assertEq(dai.balanceOf(alice), defaultBalance + ethAmountIn, "Wrong DAI balance");
         assertEq(alice.balance, defaultBalance - ethAmountIn, "Wrong ETH balance");
+    }
+
+    function testPermitAndSwap() public {
+        bytes[] memory data = new bytes[](1);
+
+        bytes memory sig = getPermitSignature(
+            address(router),
+            address(usdc),
+            uint160(defaultAmount),
+            type(uint48).max,
+            0,
+            aliceKey
+        );
+
+        IAllowanceTransfer.PermitSingle memory permit = getSinglePermit(
+            address(router),
+            address(usdc),
+            uint160(defaultAmount),
+            type(uint48).max,
+            0
+        );
+
+        data[0] = abi.encodeWithSelector(
+            IRouter.swapSingleTokenExactIn.selector,
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            type(uint256).max,
+            false,
+            bytes("")
+        );
+
+        vm.prank(alice);
+        router.permitAndCall(permit, sig, data);
     }
 
     function testGetSingleInputArray() public {
