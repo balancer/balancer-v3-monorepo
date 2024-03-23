@@ -86,8 +86,14 @@ contract VaultStorage {
     uint256 public constant MAX_PAUSE_WINDOW_DURATION = 356 days * 4;
     uint256 public constant MAX_BUFFER_PERIOD_DURATION = 90 days;
 
-    // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
-    // solhint-disable not-rely-on-time
+    // Maximum time the Vault can remain paused without enabling Recovery Mode (during which all operations,
+    // including withdrawals, are halted, and user funds are locked in the Vault).
+    // Recovery Mode exits for all pools start working after this period, even if Recovery Mode is never enabled.
+    uint256 public constant LOCKUP_PERIOD_DURATION = 5 days;
+
+    // Minimum time Recovery Mode exits are guaranteed to work after lockup period expiration.
+    // This buffer prevents defeating the lockup period by simply repeatedly pausing the Vault.
+    uint256 public constant RECOVERY_MODE_BUFFER_DURATION = 3 days;
 
     uint256 internal immutable _vaultPauseWindowEndTime;
     uint256 internal immutable _vaultBufferPeriodEndTime;
