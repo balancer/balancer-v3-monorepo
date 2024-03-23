@@ -26,7 +26,7 @@ library VaultStateLib {
     uint256 public constant VAULT_PAUSED_OFFSET = QUERY_DISABLED_OFFSET + 1;
     uint256 public constant PROTOCOL_SWAP_FEE_OFFSET = VAULT_PAUSED_OFFSET + 1;
     uint256 public constant PROTOCOL_YIELD_FEE_OFFSET = PROTOCOL_SWAP_FEE_OFFSET + FEE_BITLENGTH;
-    uint256 public constant LOCKUP_PERIOD_OFFSET = PROTOCOL_YIELD_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant LOCKUP_PERIOD_END_TIME_OFFSET = PROTOCOL_YIELD_FEE_OFFSET + FEE_BITLENGTH;
 
     function isQueryDisabled(VaultStateBits config) internal pure returns (bool) {
         return VaultStateBits.unwrap(config).decodeBool(QUERY_DISABLED_OFFSET);
@@ -45,7 +45,7 @@ library VaultStateLib {
     }
 
     function getLockupPeriodEndTime(VaultStateBits config) internal pure returns (uint256) {
-        return VaultStateBits.unwrap(config).decodeUint(LOCKUP_PERIOD_OFFSET, TIMESTAMP_BITLENGTH);
+        return VaultStateBits.unwrap(config).decodeUint(LOCKUP_PERIOD_END_TIME_OFFSET, TIMESTAMP_BITLENGTH);
     }
 
     function fromVaultState(VaultState memory config) internal pure returns (VaultStateBits) {
@@ -70,7 +70,7 @@ library VaultStateLib {
                     PROTOCOL_YIELD_FEE_OFFSET,
                     FEE_BITLENGTH
                 )
-                .insertUint(config.lockupPeriodEndTime, LOCKUP_PERIOD_OFFSET, TIMESTAMP_BITLENGTH);
+                .insertUint(config.lockupPeriodEndTime, LOCKUP_PERIOD_END_TIME_OFFSET, TIMESTAMP_BITLENGTH);
         }
 
         return VaultStateBits.wrap(configBits);
