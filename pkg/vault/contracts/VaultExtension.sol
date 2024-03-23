@@ -577,7 +577,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /**
      * @dev Note that Recovery Mode exits are enabled when *either* the pool was explicitly set to Recovery Mode *or*
-     * Recovery Mode was enabled implicitly by exceeding one of the lockout periods. Since Recovery Mode exits cause
+     * Recovery Mode was enabled implicitly by exceeding one of the lockup periods. Since Recovery Mode exits cause
      * the live balances to get out of sync, unpausing the Vault or pool would block further recovery mode exits -
      * but the pool would be in an inconsistent state, normally resolved by explicitly disabling Recovery Mode
      * (which restores the state).

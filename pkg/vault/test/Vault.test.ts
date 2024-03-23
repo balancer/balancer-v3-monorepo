@@ -2,19 +2,20 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
-import { MONTH, currentTimestamp, fromNow } from '@balancer-labs/v3-helpers/src/time';
+import { DAY, HOUR, MONTH, advanceTime, currentTimestamp, fromNow } from '@balancer-labs/v3-helpers/src/time';
 import { PoolConfigStructOutput } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
-import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { ANY_ADDRESS, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { FP_ONE, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { buildTokenConfig, setupEnvironment } from './poolSetup';
 import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer';
+import { WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
-import { RateProviderMock, VaultExtensionMock } from '../typechain-types';
+import { RateProviderMock, VaultExtensionMock, Router } from '../typechain-types';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
@@ -28,6 +29,7 @@ describe('Vault', function () {
 
   let vault: IVaultMock;
   let vaultExtension: VaultExtensionMock;
+  let router: Router;
   let poolA: PoolMock;
   let poolB: PoolMock;
   let tokenA: ERC20TestToken;
@@ -58,6 +60,9 @@ describe('Vault', function () {
       'VaultExtensionMock',
       await vault.getVaultExtension()
     )) as unknown as VaultExtensionMock;
+
+    const WETH: WETHTestToken = await deploy('v3-solidity-utils/WETHTestToken');
+    router = await deploy('v3-vault/Router', { args: [vault, await WETH.getAddress()] });
 
     tokenA = tokens[0];
     tokenB = tokens[1];
@@ -115,7 +120,7 @@ describe('Vault', function () {
     });
 
     it('pools are initially unpaused', async () => {
-      expect(await vault.isPoolPaused(poolA)).to.equal(false);
+      expect(await vault.isPoolPaused(poolA)).to.be.false;
     });
 
     it('registering a pool emits an event', async () => {
@@ -218,7 +223,7 @@ describe('Vault', function () {
     });
 
     it('is temporarily pausable', async () => {
-      expect(await timedVault.isVaultPaused()).to.equal(false);
+      expect(await timedVault.isVaultPaused()).to.be.false;
 
       const [paused, pauseWindowEndTime, bufferPeriodEndTime] = await timedVault.getVaultPausedState();
 
@@ -244,6 +249,51 @@ describe('Vault', function () {
       await expect(await timedVault.manualUnpauseVault())
         .to.emit(timedVault, 'VaultPausedStateChanged')
         .withArgs(false);
+    });
+
+    it('pausing the Vault and recovery exiting (after lockup expiration) emits an event', async () => {
+      const LOCKUP_PERIOD = 5 * DAY;
+
+      const poolAddress = await poolA.getAddress();
+      const amount = fp(100);
+
+      await tokenA.mint(alice, amount);
+      await tokenB.mint(alice, amount);
+      await tokenC.mint(alice, amount);
+
+      await tokenA.connect(alice).approve(vault, MAX_UINT256);
+      await tokenB.connect(alice).approve(vault, MAX_UINT256);
+      await tokenC.connect(alice).approve(vault, MAX_UINT256);
+
+      // initialize pool
+      await router.connect(alice).initialize(poolAddress, poolATokens, [amount, amount, amount], 0, false, '0x');
+
+      // pause Vault
+      await vault.manualPauseVault();
+
+      expect(await vault.isVaultPaused()).to.be.true;
+      // Recovery mode not enabled by pausing
+      expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.false;
+
+      // Recovery withdrawal should fail
+      await expect(router.connect(alice).removeLiquidityRecovery(poolAddress, 0)).to.be.revertedWithCustomError(
+        vault,
+        'PoolNotInRecoveryMode'
+      );
+
+      // Wait for lockup period
+      await advanceTime(LOCKUP_PERIOD + HOUR);
+
+      // Now it should succeed - and set the pool's recovery mode bit
+      expect(await router.connect(alice).removeLiquidityRecovery(poolAddress, 0))
+        .to.emit(vault, 'PoolRecoveryModeStateChanged')
+        .withArgs(poolA, true);
+
+      expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.true;
+
+      // Pool still in Recovery Mode after unpausing.
+      await vault.manualUnpauseVault();
+      expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.true;
     });
 
     describe('rate providers', () => {
@@ -302,7 +352,7 @@ describe('Vault', function () {
       });
 
       it('Pools are temporarily pausable', async () => {
-        expect(await vault.isPoolPaused(poolAddress)).to.equal(false);
+        expect(await vault.isPoolPaused(poolAddress)).to.be.false;
 
         const paused = await vault.isPoolPaused(poolAddress);
         expect(paused).to.be.false;
