@@ -6,6 +6,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import {
     FEE_BITLENGTH,
     FEE_SCALING_FACTOR,
+    TIMESTAMP_BITLENGTH,
     VaultState
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -23,9 +24,9 @@ library VaultStateLib {
     // Bit offsets for pool config
     uint256 public constant QUERY_DISABLED_OFFSET = 0;
     uint256 public constant VAULT_PAUSED_OFFSET = QUERY_DISABLED_OFFSET + 1;
-
     uint256 public constant PROTOCOL_SWAP_FEE_OFFSET = VAULT_PAUSED_OFFSET + 1;
     uint256 public constant PROTOCOL_YIELD_FEE_OFFSET = PROTOCOL_SWAP_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant LOCKUP_PERIOD_OFFSET = PROTOCOL_YIELD_FEE_OFFSET + FEE_BITLENGTH;
 
     function isQueryDisabled(VaultStateBits config) internal pure returns (bool) {
         return VaultStateBits.unwrap(config).decodeBool(QUERY_DISABLED_OFFSET);
@@ -43,18 +44,34 @@ library VaultStateLib {
         return VaultStateBits.unwrap(config).decodeUint(PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
+    function getLockupPeriodEndTime(VaultStateBits config) internal pure returns (uint256) {
+        return VaultStateBits.unwrap(config).decodeUint(LOCKUP_PERIOD_OFFSET, TIMESTAMP_BITLENGTH);
+    }
+
     function fromVaultState(VaultState memory config) internal pure returns (VaultStateBits) {
         bytes32 configBits = bytes32(0);
 
-        configBits = configBits
-            .insertBool(config.isQueryDisabled, QUERY_DISABLED_OFFSET)
-            .insertBool(config.isVaultPaused, VAULT_PAUSED_OFFSET)
-            .insertUint(config.protocolSwapFeePercentage / FEE_SCALING_FACTOR, PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH)
-            .insertUint(
-                config.protocolYieldFeePercentage / FEE_SCALING_FACTOR,
-                PROTOCOL_YIELD_FEE_OFFSET,
-                FEE_BITLENGTH
+        {
+            configBits = configBits.insertBool(config.isQueryDisabled, QUERY_DISABLED_OFFSET).insertBool(
+                config.isVaultPaused,
+                VAULT_PAUSED_OFFSET
             );
+        }
+
+        {
+            configBits = configBits
+                .insertUint(
+                    config.protocolSwapFeePercentage / FEE_SCALING_FACTOR,
+                    PROTOCOL_SWAP_FEE_OFFSET,
+                    FEE_BITLENGTH
+                )
+                .insertUint(
+                    config.protocolYieldFeePercentage / FEE_SCALING_FACTOR,
+                    PROTOCOL_YIELD_FEE_OFFSET,
+                    FEE_BITLENGTH
+                )
+                .insertUint(config.lockupPeriodEndTime, LOCKUP_PERIOD_OFFSET, TIMESTAMP_BITLENGTH);
+        }
 
         return VaultStateBits.wrap(configBits);
     }
@@ -65,7 +82,8 @@ library VaultStateLib {
                 isQueryDisabled: config.isQueryDisabled(),
                 isVaultPaused: config.isVaultPaused(),
                 protocolSwapFeePercentage: config.getProtocolSwapFeePercentage(),
-                protocolYieldFeePercentage: config.getProtocolYieldFeePercentage()
+                protocolYieldFeePercentage: config.getProtocolYieldFeePercentage(),
+                lockupPeriodEndTime: config.getLockupPeriodEndTime()
             });
     }
 }

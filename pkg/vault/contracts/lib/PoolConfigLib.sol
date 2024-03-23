@@ -39,13 +39,12 @@ library PoolConfigLib {
     uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
     uint256 public constant PAUSE_WINDOW_END_TIME_OFFSET =
         DECIMAL_SCALING_FACTORS_OFFSET + _TOKEN_DECIMAL_DIFFS_BITLENGTH;
+    uint256 public constant LOCKUP_PERIOD_END_TIME_OFFSET = PAUSE_WINDOW_END_TIME_OFFSET + TIMESTAMP_BITLENGTH;
 
     // Uses a uint24 (3 bytes): least significant 20 bits to store the values, and a 4-bit pad.
     // This maximum token count is also hard-coded in the Vault.
     uint8 private constant _TOKEN_DECIMAL_DIFFS_BITLENGTH = 24;
     uint8 private constant _DECIMAL_DIFF_BITLENGTH = 5;
-
-    uint8 private constant _TIMESTAMP_BITLENGTH = 32;
 
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_REGISTERED_OFFSET);
@@ -76,7 +75,11 @@ library PoolConfigLib {
     }
 
     function getPauseWindowEndTime(PoolConfigBits config) internal pure returns (uint256) {
-        return PoolConfigBits.unwrap(config).decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH);
+        return PoolConfigBits.unwrap(config).decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, TIMESTAMP_BITLENGTH);
+    }
+
+    function getLockupPeriodEndTime(PoolConfigBits config) internal pure returns (uint256) {
+        return PoolConfigBits.unwrap(config).decodeUint(LOCKUP_PERIOD_END_TIME_OFFSET, TIMESTAMP_BITLENGTH);
     }
 
     function shouldCallBeforeSwap(PoolConfigBits config) internal pure returns (bool) {
@@ -167,6 +170,12 @@ library PoolConfigLib {
                 .insertBool(config.liquidityManagement.supportsRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET);
         }
 
+        {
+            configBits = configBits
+                .insertUint(config.pauseWindowEndTime, PAUSE_WINDOW_END_TIME_OFFSET, TIMESTAMP_BITLENGTH)
+                .insertUint(config.lockupPeriodEndTime, LOCKUP_PERIOD_END_TIME_OFFSET, TIMESTAMP_BITLENGTH);
+        }
+
         return
             PoolConfigBits.wrap(
                 configBits
@@ -180,7 +189,6 @@ library PoolConfigLib {
                         STATIC_SWAP_FEE_OFFSET,
                         FEE_BITLENGTH
                     )
-                    .insertUint(config.pauseWindowEndTime, PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH)
             );
     }
 
@@ -224,6 +232,7 @@ library PoolConfigLib {
                 staticSwapFeePercentage: config.getStaticSwapFeePercentage(),
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 pauseWindowEndTime: config.getPauseWindowEndTime(),
+                lockupPeriodEndTime: config.getLockupPeriodEndTime(),
                 hooks: PoolHooks({
                     shouldCallBeforeInitialize: config.shouldCallBeforeInitialize(),
                     shouldCallAfterInitialize: config.shouldCallAfterInitialize(),
@@ -249,8 +258,9 @@ library PoolConfigLib {
      * @param config The encoded pool configuration
      * @return paused Whether the pool was paused (i.e., the bit was set)
      * @return pauseWindowEndTime The end of the pause period, used to determine whether the pool is actually paused
+     * @return lockupPeriodEndTime The end of the lockup period, after which Recovery Mode is enabled
      */
-    function getPoolPausedState(PoolConfigBits config) internal pure returns (bool, uint256) {
-        return (config.isPoolPaused(), config.getPauseWindowEndTime());
+    function getPoolPausedState(PoolConfigBits config) internal pure returns (bool, uint256, uint256) {
+        return (config.isPoolPaused(), config.getPauseWindowEndTime(), config.getLockupPeriodEndTime());
     }
 }
