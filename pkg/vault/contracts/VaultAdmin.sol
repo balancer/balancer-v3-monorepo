@@ -45,6 +45,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using SafeERC20 for IERC20;
     using VaultStateLib for VaultStateBits;
 
+    // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
+    // solhint-disable not-rely-on-time
+
     IVault private immutable _vault;
 
     /// @dev Functions with this modifier can only be delegate-called by the vault.
@@ -65,7 +68,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             revert PauseBufferPeriodDurationTooLarge();
         }
 
-        // solhint-disable-next-line not-rely-on-time
         uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
 
         _vaultPauseWindowEndTime = pauseWindowEndTime;
@@ -160,7 +162,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         } else {
             if (pausing) {
                 // Not already paused; we can pause within the window.
-                // solhint-disable-next-line not-rely-on-time
                 if (block.timestamp >= _vaultPauseWindowEndTime) {
                     revert VaultPauseWindowExpired();
                 }
@@ -172,6 +173,21 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
         VaultState memory vaultState = _vaultState.toVaultState();
         vaultState.isVaultPaused = pausing;
+
+        // If the Vault remains paused and Recovery Mode is never enabled explicitly, we want Recovery Mode exits to
+        // be permitted after the "lockup period" expires. To prevent extending the lockup period indefinitely,
+        // this value can only be updated *after* `lockupPeriodEndTime` + RECOVERY_MODE_BUFFER_DURATION.
+        // If the Vault is unpaused and paused again after the lockup period expires but before the end of the
+        // buffer period, `lockupPeriodEndTime` will remain unchanged, and Recovery Mode exits will still
+        // work, as long as the Vault remains paused.
+        if (
+            (pausing && vaultState.lockupPeriodEndTime == 0) ||
+            block.timestamp > vaultState.lockupPeriodEndTime + RECOVERY_MODE_BUFFER_DURATION
+        ) {
+            // Set this if the Vault has never been paused, or if it was paused longer ago than the lockup period +
+            // the recovery mode buffer duration.
+            vaultState.lockupPeriodEndTime = block.timestamp + LOCKUP_PERIOD_DURATION;
+        }
         _vaultState = VaultStateLib.fromVaultState(vaultState);
 
         emit VaultPausedStateChanged(pausing);
@@ -225,7 +241,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         } else {
             if (pausing) {
                 // Not already paused; we can pause within the window.
-                // solhint-disable-next-line not-rely-on-time
                 if (block.timestamp >= config.pauseWindowEndTime) {
                     revert PoolPauseWindowExpired(pool);
                 }
@@ -237,6 +252,21 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
         // Update poolConfig.
         config.isPoolPaused = pausing;
+
+        // If the Pool remains paused and Recovery Mode is never enabled explicitly, we want Recovery Mode exits to
+        // be permitted after the "lockup period" expires. To prevent extending the lockup period indefinitely,
+        // this value can only be updated *after* `lockupPeriodEndTime` + RECOVERY_MODE_BUFFER_DURATION.
+        // If the Pool is unpaused and paused again after the lockup period expires but before the end of the
+        // buffer period, `lockupPeriodEndTime` will remain unchanged, and Recovery Mode exits will still
+        // work, as long as the Pool remains paused.
+        if (
+            (pausing && config.lockupPeriodEndTime == 0) ||
+            block.timestamp > config.lockupPeriodEndTime + RECOVERY_MODE_BUFFER_DURATION
+        ) {
+            // Set this if the Pool has never been paused, or if it was paused longer ago than the lockup period +
+            // the recovery mode buffer duration.
+            config.lockupPeriodEndTime = block.timestamp + LOCKUP_PERIOD_DURATION;
+        }
         _poolConfig[pool] = config.fromPoolConfig();
 
         emit PoolPausedStateChanged(pool, pausing);
