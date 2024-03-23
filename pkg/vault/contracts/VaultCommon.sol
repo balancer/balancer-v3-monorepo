@@ -33,6 +33,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     using FixedPoint for *;
     using VaultStateLib for VaultStateBits;
 
+    // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
+    // solhint-disable not-rely-on-time
+
     /*******************************************************************************
                               Transient Accounting
     *******************************************************************************/
@@ -181,7 +184,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * timestamp, the expression short-circuits false, and the Vault is permanently unpaused.
      */
     function _isVaultPaused() internal view returns (bool) {
-        // solhint-disable-next-line not-rely-on-time
         return block.timestamp <= _vaultBufferPeriodEndTime && _vaultState.isVaultPaused();
     }
 
@@ -208,10 +210,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /// @dev Lowest level routine that plucks only the minimum necessary parts from storage.
     function _getPoolPausedState(address pool) internal view returns (bool, uint256) {
-        (bool pauseBit, uint256 pauseWindowEndTime) = PoolConfigLib.getPoolPausedState(_poolConfig[pool]);
+        (bool pauseBit, uint256 pauseWindowEndTime, ) = PoolConfigLib.getPoolPausedState(_poolConfig[pool]);
 
         // Use the Vault's buffer period.
-        // solhint-disable-next-line not-rely-on-time
         return (pauseBit && block.timestamp <= pauseWindowEndTime + _vaultBufferPeriodDuration, pauseWindowEndTime);
     }
 
@@ -523,11 +524,18 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
-     * @dev Reverts if the pool is not in recovery mode.
+     * @dev Reverts if the pool is not either explicitly in recovery mode (i.e., the PoolConfig bit is set), or
+     * we are past one of the lockup windows, and Recovery Mode is automatically enabled to prevent funds from
+     * being frozen in the Vault.
+     *
      * @param pool The pool
      */
     function _ensurePoolInRecoveryMode(address pool) internal view {
-        if (!_isPoolInRecoveryMode(pool)) {
+        if (
+            _isPoolInRecoveryMode(pool) == false &&
+            _isPausedVaultLockupExpired() == false &&
+            _isPausedPoolLockupExpired(pool) == false
+        ) {
             revert PoolNotInRecoveryMode(pool);
         }
     }
@@ -539,5 +547,41 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _isPoolInRecoveryMode(address pool) internal view returns (bool) {
         return _poolConfig[pool].isPoolInRecoveryMode();
+    }
+
+    /**
+     * @dev Automatically enable Recovery Mode exits if 1) the Vault is still pausable (i.e., hasn't passed the end
+     * time and become permissionless); 2) the Vault has been paused longer than the lockup period; and
+     * 3) it remains paused.
+     */
+    function _isPausedVaultLockupExpired() internal view returns (bool) {
+        // If we're in the future, and the Vault is unpausable, this returns false. When the Vault becomes
+        // permissionless, behavior reverts to "normal" unpaused operations, and Recovery Mode has to be explicitly
+        // enabled. We don't need to ensure lockupPeriodEndTime is initialized, since it must have been if the
+        // bit was set.
+        VaultState memory vaultState = _vaultState.toVaultState();
+
+        return
+            block.timestamp <= _vaultBufferPeriodEndTime &&
+            vaultState.isVaultPaused &&
+            block.timestamp > vaultState.lockupPeriodEndTime;
+    }
+
+    /**
+     * @dev Automatically enable Recovery Mode exits if 1) the Pool is still pausable (i.e., hasn't passed the end
+     * time and become permissionless); 2) the Pool has been paused longer than the lockup period; and
+     * 3) it remains paused.
+     */
+    function _isPausedPoolLockupExpired(address pool) internal view returns (bool) {
+        // If we're in the future, and the Pool is unpausable, this returns false. When the Pool becomes
+        // permissionless, behavior reverts to "normal" unpaused operations, and Recovery Mode has to be explicitly
+        // enabled. We don't need to ensure lockupPeriodEndTime is initialized, since it must have been if the bit
+        // was set.
+
+        (bool pauseBit, uint256 pauseWindowEndTime, uint256 lockupPeriodEndTime) = PoolConfigLib.getPoolPausedState(
+            _poolConfig[pool]
+        );
+
+        return block.timestamp <= pauseWindowEndTime && pauseBit && block.timestamp > lockupPeriodEndTime;
     }
 }
