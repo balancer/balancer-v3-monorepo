@@ -26,6 +26,7 @@ import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sorti
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
+  const LOCKUP_PERIOD = 5 * DAY;
 
   let vault: IVaultMock;
   let vaultExtension: VaultExtensionMock;
@@ -251,49 +252,84 @@ describe('Vault', function () {
         .withArgs(false);
     });
 
-    it('pausing the Vault and recovery exiting (after lockup expiration) emits an event', async () => {
-      const LOCKUP_PERIOD = 5 * DAY;
-
-      const poolAddress = await poolA.getAddress();
+    describe('pausing vs. recovery mode', () => {
       const amount = fp(100);
 
-      await tokenA.mint(alice, amount);
-      await tokenB.mint(alice, amount);
-      await tokenC.mint(alice, amount);
+      let poolAddress: string;
 
-      await tokenA.connect(alice).approve(vault, MAX_UINT256);
-      await tokenB.connect(alice).approve(vault, MAX_UINT256);
-      await tokenC.connect(alice).approve(vault, MAX_UINT256);
+      sharedBeforeEach('initialize pool', async () => {
+        poolAddress = await poolA.getAddress();
 
-      // initialize pool
-      await router.connect(alice).initialize(poolAddress, poolATokens, [amount, amount, amount], 0, false, '0x');
+        await tokenA.mint(alice, amount);
+        await tokenB.mint(alice, amount);
+        await tokenC.mint(alice, amount);
 
-      // pause Vault
-      await vault.manualPauseVault();
+        await tokenA.connect(alice).approve(vault, MAX_UINT256);
+        await tokenB.connect(alice).approve(vault, MAX_UINT256);
+        await tokenC.connect(alice).approve(vault, MAX_UINT256);
 
-      expect(await vault.isVaultPaused()).to.be.true;
-      // Recovery mode not enabled by pausing
-      expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.false;
+        // initialize pool
+        await router.connect(alice).initialize(poolAddress, poolATokens, [amount, amount, amount], 0, false, '0x');
+      });
 
-      // Recovery withdrawal should fail
-      await expect(router.connect(alice).removeLiquidityRecovery(poolAddress, 0)).to.be.revertedWithCustomError(
-        vault,
-        'PoolNotInRecoveryMode'
-      );
+      it('pausing the Vault and recovery exiting (after lockup expiration) emits an event', async () => {
+        // pause Vault
+        await vault.manualPauseVault();
 
-      // Wait for lockup period
-      await advanceTime(LOCKUP_PERIOD + HOUR);
+        expect(await vault.isVaultPaused()).to.be.true;
+        // Recovery mode not enabled by pausing
+        expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.false;
 
-      // Now it should succeed - and set the pool's recovery mode bit
-      expect(await router.connect(alice).removeLiquidityRecovery(poolAddress, 0))
-        .to.emit(vault, 'PoolRecoveryModeStateChanged')
-        .withArgs(poolA, true);
+        // Recovery withdrawal should fail
+        await expect(router.connect(alice).removeLiquidityRecovery(poolAddress, 0)).to.be.revertedWithCustomError(
+          vault,
+          'PoolNotInRecoveryMode'
+        );
 
-      expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.true;
+        // Wait for lockup period
+        await advanceTime(LOCKUP_PERIOD + HOUR);
 
-      // Pool still in Recovery Mode after unpausing.
-      await vault.manualUnpauseVault();
-      expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.true;
+        // Now it should succeed - and set the pool's recovery mode bit
+        expect(await router.connect(alice).removeLiquidityRecovery(poolAddress, 0))
+          .to.emit(vault, 'PoolRecoveryModeStateChanged')
+          .withArgs(poolA, true);
+
+        expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.true;
+
+        // Pool still in Recovery Mode after unpausing.
+        await vault.manualUnpauseVault();
+        expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.true;
+      });
+
+      it('pausing the Pool and recovery exiting (after lockup expiration) emits an event', async () => {
+        // pause Pool
+        await vault.manualPausePool(poolAddress);
+
+        expect(await vault.isVaultPaused()).to.be.false;
+        // Recovery mode not enabled by pausing
+        expect(await vault.isPoolPaused(poolAddress)).to.be.true;
+        expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.false;
+
+        // Recovery withdrawal should fail
+        await expect(router.connect(alice).removeLiquidityRecovery(poolAddress, 0)).to.be.revertedWithCustomError(
+          vault,
+          'PoolNotInRecoveryMode'
+        );
+
+        // Wait for lockup period
+        await advanceTime(LOCKUP_PERIOD + HOUR);
+
+        // Now it should succeed - and set the pool's recovery mode bit
+        expect(await router.connect(alice).removeLiquidityRecovery(poolAddress, 0))
+          .to.emit(vault, 'PoolRecoveryModeStateChanged')
+          .withArgs(poolA, true);
+
+        expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.true;
+
+        // Pool still in Recovery Mode after unpausing.
+        await vault.manualUnpausePool(poolAddress);
+        expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.true;
+      });
     });
 
     describe('rate providers', () => {
