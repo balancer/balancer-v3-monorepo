@@ -170,7 +170,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         vaultState = _vaultState.toVaultState();
         // Check vault and pool paused inline, instead of using modifier, to save some gas reading the
         // isVaultPaused state again in `_isVaultPaused`.
-        if (block.timestamp <= _vaultBufferPeriodEndTime && vaultState.isVaultPaused) {
+        if (vaultState.isVaultPaused && block.timestamp <= _vaultBufferPeriodEndTime) {
             revert VaultPaused();
         }
         _ensurePoolNotPaused(pool);
