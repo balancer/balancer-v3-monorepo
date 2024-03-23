@@ -32,6 +32,7 @@ library AmplificationDataLib {
     uint8 public constant END_TIME_OFFSET = START_TIME_OFFSET + _TIMESTAMP_BIT_LENGTH;
 
     uint8 private constant _AMP_VALUE_BIT_LENGTH = 64;
+    // Note that this timestamp differs from the VaultTypes standard of 32 bits.
     uint8 private constant _TIMESTAMP_BIT_LENGTH = 64;
 
     function getStartValue(AmplificationDataBits data) internal pure returns (uint64) {
