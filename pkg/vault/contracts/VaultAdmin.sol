@@ -181,8 +181,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         // buffer period, `lockupPeriodEndTime` will remain unchanged, and Recovery Mode exits will still
         // work, as long as the Vault remains paused.
         if (
-            pausing && (vaultState.lockupPeriodEndTime == 0 ||
-            block.timestamp > vaultState.lockupPeriodEndTime + RECOVERY_MODE_BUFFER_DURATION)
+            pausing &&
+            (vaultState.lockupPeriodEndTime == 0 ||
+                block.timestamp > vaultState.lockupPeriodEndTime + RECOVERY_MODE_BUFFER_DURATION)
         ) {
             // Set this if the Vault has never been paused, or if it was paused longer ago than the lockup period +
             // the recovery mode buffer duration.
@@ -260,8 +261,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         // buffer period, `lockupPeriodEndTime` will remain unchanged, and Recovery Mode exits will still
         // work, as long as the Pool remains paused.
         if (
-            pausing && (config.lockupPeriodEndTime == 0 ||
-            block.timestamp > config.lockupPeriodEndTime + RECOVERY_MODE_BUFFER_DURATION)
+            pausing &&
+            (config.lockupPeriodEndTime == 0 ||
+                block.timestamp > config.lockupPeriodEndTime + RECOVERY_MODE_BUFFER_DURATION)
         ) {
             // Set this if the Pool has never been paused, or if it was paused longer ago than the lockup period +
             // the recovery mode buffer duration.
