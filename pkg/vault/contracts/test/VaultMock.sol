@@ -343,6 +343,10 @@ contract VaultMock is IVaultMainMock, Vault {
         return tokenConfig;
     }
 
+    function getVaultState() external view returns (VaultState memory) {
+        return _vaultState.toVaultState();
+    }
+
     function guardedCheckEntered() external nonReentrant {
         require(reentrancyGuardEntered());
     }

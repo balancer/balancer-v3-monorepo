@@ -27,6 +27,7 @@ describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
   const LOCKUP_PERIOD = 5 * DAY;
+  const LOCKUP_BUFFER_DURATION = 3 * DAY;
 
   let vault: IVaultMock;
   let vaultExtension: VaultExtensionMock;
@@ -299,6 +300,22 @@ describe('Vault', function () {
         // Pool still in Recovery Mode after unpausing.
         await vault.manualUnpauseVault();
         expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.true;
+
+        // At this point, we are out of the lockup period, but still inside the buffer.
+        // Unpausing and pausing should not reset the lockup end time.
+        const { lockupPeriodEndTime } = await vault.getVaultState();
+        await vault.manualPauseVault();
+        const { lockupPeriodEndTime: newLockupPeriodEndTime } = await vault.getVaultState();
+
+        expect(newLockupPeriodEndTime).to.equal(lockupPeriodEndTime);
+
+        // Now we're past the buffer - unpausing and pausing show now update the lockup end time
+        await advanceTime(LOCKUP_BUFFER_DURATION);
+        await vault.manualUnpauseVault();
+        await vault.manualPauseVault();
+
+        const { lockupPeriodEndTime: finalLockupPeriodEndTime } = await vault.getVaultState();
+        expect(finalLockupPeriodEndTime).to.gt(lockupPeriodEndTime);
       });
 
       it('pausing the Pool and recovery exiting (after lockup expiration) emits an event', async () => {
@@ -329,6 +346,22 @@ describe('Vault', function () {
         // Pool still in Recovery Mode after unpausing.
         await vault.manualUnpausePool(poolAddress);
         expect(await vault.isPoolInRecoveryMode(poolAddress)).to.be.true;
+
+        // At this point, we are out of the lockup period, but still inside the buffer.
+        // Unpausing and pausing should not reset the lockup end time.
+        const { lockupPeriodEndTime } = await vault.getPoolConfig(poolAddress);
+        await vault.manualPausePool(poolAddress);
+        const { lockupPeriodEndTime: newLockupPeriodEndTime } = await vault.getPoolConfig(poolAddress);
+
+        expect(newLockupPeriodEndTime).to.equal(lockupPeriodEndTime);
+
+        // Now we're past the buffer - unpausing and pausing show now update the lockup end time
+        await advanceTime(LOCKUP_BUFFER_DURATION);
+        await vault.manualUnpausePool(poolAddress);
+        await vault.manualPausePool(poolAddress);
+
+        const { lockupPeriodEndTime: finalLockupPeriodEndTime } = await vault.getPoolConfig(poolAddress);
+        expect(finalLockupPeriodEndTime).to.gt(lockupPeriodEndTime);
       });
     });
 
