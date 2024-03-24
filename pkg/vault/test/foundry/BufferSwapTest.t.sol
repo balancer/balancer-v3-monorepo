@@ -206,6 +206,65 @@ contract BufferSwapTest is BaseVaultTest {
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
+    function testBoostedPoolSwapSimpleRebalance() public {
+        // We want to unbalance the pool such that the "low balance" = swapAmount
+        uint256 amountToUnwrap = defaultAmount - swapAmount;
+        ERC4626BufferPoolMock(waDAIBufferPool).unbalanceThePool(amountToUnwrap, SwapKind.EXACT_IN);
+
+        // Check that it is unbalanced
+        (uint256 wrappedIdx, uint256 baseIdx) = getSortedIndexes(address(waDAI), address(dai));
+        (, , uint256[] memory balancesRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
+
+        assertEq(balancesRaw[wrappedIdx], swapAmount, "Wrong waDAI buffer pool balance (waDAI)");
+        assertEq(balancesRaw[baseIdx], defaultAmount + amountToUnwrap, "Wrong waDAI buffer pool balance (DAI)");
+
+        // We are swapping DAI for waDAI, and the balances are: DAI: 1900, waDAI: 100.
+        // With Linear Math, we will be withdrawing the trade amount of the wrapped token.
+        // With a trade amount of 100 DAI in/100 waDAI out, the ending balances would be 2000/0.
+
+        // If we perform the swap with *twice* the available wrapped balance, we will not have enough waDAI.
+        // The pool should detect this, rebalance to 50/50, then perform the trade.
+        // Afterward then, the balances should be the same as if the pool were balanced: 1200/800
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount * 2);
+
+        vm.prank(alice);
+        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
+            .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        // It should now be balanced (except for the trade)
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount * 2, SwapKind.EXACT_IN, false);
+    }
+
+    function testBoostedPoolSwapMoreThan50pRebalance() public {
+        // Swapping 60% of pool's liquidity (`swapAmount = defaultAmount / 10` and `poolLiquidity = 2 * defaultAmount`)
+        uint256 amountToSwap = defaultAmount + 2 * swapAmount;
+
+        // Don't need to unbalance the pool, because the swap is greater than 50% the liquidity of the pool
+
+        // Check that it is balanced
+        (uint256 wrappedIdx, uint256 baseIdx) = getSortedIndexes(address(waDAI), address(dai));
+        (, , uint256[] memory balancesRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
+
+        assertEq(balancesRaw[wrappedIdx], defaultAmount, "Wrong waDAI buffer pool balance (waDAI)");
+        assertEq(balancesRaw[baseIdx], defaultAmount, "Wrong waDAI buffer pool balance (DAI)");
+
+        // We are swapping DAI for waDAI, and the balances are: DAI: 1000, waDAI: 1000.
+        // With Linear Math, we will be withdrawing the trade amount of the wrapped token.
+        // With a trade amount of 1200 DAI in/1200 waDAI out, the trade wouldn't be possible (not enough waDAI).
+
+        // If we perform the swap with 60% the available liquidity, we will not have enough waDAI.
+        // The pool should detect this, rebalance to 800 DAI/1200 waDAI, then perform the trade.
+        // Afterward then, the balances should be 2000 DAI/0 waDAI
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amountToSwap);
+
+        vm.prank(alice);
+        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
+            .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        // It should now be 2000 DAI/0 waDAI
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, amountToSwap, SwapKind.EXACT_IN, false);
+    }
+
     function testBoostedPoolSwapRebalance__Fuzz(
         uint256 amountDaiToSwap,
         uint256 unbalancedAmountDai,
