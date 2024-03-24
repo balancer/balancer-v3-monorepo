@@ -266,7 +266,7 @@ contract BufferSwapTest is BaseVaultTest {
 
     function testBoostedPoolSwapMoreThan50pLiquidityRebalance__Fuzz(uint256 amountDaiToSwap) public {
         // Trading between 51% and 99.5% of pool liquidity
-        amountDaiToSwap = bound(amountDaiToSwap, (51 * defaultAmount) / 50, 995 * defaultAmount / 500);
+        amountDaiToSwap = bound(amountDaiToSwap, (51 * defaultAmount) / 50, (995 * defaultAmount) / 500);
 
         // Don't need to unbalance pool, it's balanced in 50% already and swap amount is higher
 
