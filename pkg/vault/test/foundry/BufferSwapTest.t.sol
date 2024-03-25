@@ -80,10 +80,15 @@ contract BufferSwapTest is BaseVaultTest {
 
     function initializeBuffers() private {
         // Create and fund buffer pools
-        dai.mint(address(waDAI), defaultAmount);
-        waDAI.mint(defaultAmount, lp);
-        usdc.mint(address(waUSDC), defaultAmount);
-        waUSDC.mint(defaultAmount, lp);
+        vm.startPrank(lp);
+        dai.mint(address(lp), defaultAmount);
+        dai.approve(address(waDAI), defaultAmount);
+        waDAI.deposit(defaultAmount, address(lp));
+
+        usdc.mint(address(lp), defaultAmount);
+        usdc.approve(address(waUSDC), defaultAmount);
+        waUSDC.deposit(defaultAmount, address(lp));
+        vm.stopPrank();
 
         waDAIBufferPool = bufferFactory.createMocked(waDAI);
         vm.label(address(waDAIBufferPool), "waDAIBufferPool");
@@ -121,12 +126,15 @@ contract BufferSwapTest is BaseVaultTest {
         vm.label(address(newPool), "boosted pool");
         boostedPool = address(newPool);
 
-        dai.mint(address(waDAI), boostedPoolAmount);
-        waDAI.mint(boostedPoolAmount, bob);
-        usdc.mint(address(waUSDC), boostedPoolAmount);
-        waUSDC.mint(boostedPoolAmount, bob);
-
         vm.startPrank(bob);
+        dai.mint(address(bob), boostedPoolAmount);
+        dai.approve(address(waDAI), boostedPoolAmount);
+        waDAI.deposit(boostedPoolAmount, address(bob));
+
+        usdc.mint(address(bob), boostedPoolAmount);
+        usdc.approve(address(waUSDC), boostedPoolAmount);
+        waUSDC.deposit(boostedPoolAmount, address(bob));
+
         waDAI.approve(address(vault), MAX_UINT256);
         waUSDC.approve(address(vault), MAX_UINT256);
 
@@ -324,8 +332,8 @@ contract BufferSwapTest is BaseVaultTest {
     }
 
     function testBoostedPoolSwapMoreThan50pLiquidityRebalance__Fuzz(uint256 amountDaiToSwap) public {
-        // Trading between 51% and 99.5% of pool liquidity
-        amountDaiToSwap = bound(amountDaiToSwap, (51 * defaultAmount) / 50, (995 * defaultAmount) / 500);
+        // Trading between 51% and 100% of pool liquidity
+        amountDaiToSwap = bound(amountDaiToSwap, (51 * defaultAmount) / 50, 2 * defaultAmount);
 
         // Don't need to unbalance pool, it's balanced in 50% already and swap amount is higher
 
