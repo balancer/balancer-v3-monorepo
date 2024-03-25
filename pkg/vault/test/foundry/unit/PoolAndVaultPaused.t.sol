@@ -97,6 +97,17 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vault.ensureUnpausedAndGetVaultState(address(pool));
     }
 
+    function testVaultUnpausedButPoolPausedByFlagAfterBufferTime() public {
+        // sets the time before the pause buffer period
+        vm.warp(_getTimeAfterPoolPauseBufferPeriod());
+
+        vault.manualSetVaultPaused(false);
+        vault.manualSetPoolPaused(address(pool), true);
+
+        // Since buffer time has passed, the function should not revert
+        vault.ensureUnpausedAndGetVaultState(address(pool));
+    }
+
     function testVaultPausedButPoolUnpaused() public {
         // sets the time after the pool pause buffer period, but before vault pause buffer period (so flag is checked)
         vm.warp(_getTimeAfterPoolPauseBufferPeriod());
