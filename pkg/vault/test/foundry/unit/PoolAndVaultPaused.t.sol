@@ -13,7 +13,8 @@ import "@balancer-labs/v3-interfaces/contracts/test/IVaultMainMock.sol";
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
 contract PoolAndVaultPausedTest is BaseVaultTest {
-    // A number that is much smaller than vault pause buffer time, so we can play with pool and vault pauses
+    // A number that is much smaller than the vault pause buffer end time, so we can play with
+    // pool and vault pause windows.
     uint256 private constant _FIXED_POOL_PAUSE_END_TIME = 1e5;
     uint256 private _vaultBufferPeriodEndTimeTest;
 
@@ -134,7 +135,6 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
     }
 
     // Returns the correct block.timestamp to consider the pool unpaused
-    // (cannot be used to check vault pause. For that, use the variable _VAULT_BUFFER_END_TIME)
     function _getTimeAfterPoolPauseBufferPeriod() private view returns (uint256) {
         uint256 bufferPeriodDuration = vault.getBufferPeriodDuration();
         return _FIXED_POOL_PAUSE_END_TIME + bufferPeriodDuration + 1;
