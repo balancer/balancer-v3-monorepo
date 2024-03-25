@@ -3,6 +3,7 @@
 pragma solidity ^0.8.4;
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { SwapLocals } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { TokenConfig, PoolData } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -31,7 +32,7 @@ contract DynamicFeePoolMock is PoolMock, IBaseDynamicFeePool {
         address pauseManager
     ) PoolMock(vault, name, symbol, tokenConfig, registerPool, pauseWindowDuration, pauseManager) {}
 
-    function computeFee(PoolData memory) public view override returns (uint256 dynamicFee) {
+    function computeFee(PoolData memory, SwapLocals memory) public view override returns (uint256 dynamicFee) {
         return _swapFeePercentage;
     }
 

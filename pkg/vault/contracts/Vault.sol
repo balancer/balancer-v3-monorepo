@@ -13,7 +13,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
-import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
+import { IVaultMain, LiquidityLocals, SwapLocals } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBaseDynamicFeePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBaseDynamicFeePool.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
@@ -160,17 +160,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                                           Swaps
     *******************************************************************************/
 
-    struct SwapLocals {
-        // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
-        uint256 indexIn;
-        uint256 indexOut;
-        uint256 amountGivenScaled18;
-        uint256 amountCalculatedScaled18;
-        uint256 swapFeeAmountScaled18;
-        uint256 swapFeePercentage;
-        uint256 protocolSwapFeeAmountRaw;
-    }
-
     /// @inheritdoc IVaultMain
     function swap(
         SwapParams memory params
@@ -226,7 +215,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // to a lower calculated amountOut, favoring the pool.
         _updateAmountGivenInVars(vars, params, poolData);
 
-        vars.swapFeePercentage = _getSwapFeePercentage(params.pool, poolData);
+        vars.swapFeePercentage = _getSwapFeePercentage(params.pool, poolData, vars);
 
         if (vars.swapFeePercentage > 0 && params.kind == SwapKind.EXACT_OUT) {
             // Round up to avoid losses during precision loss.
@@ -409,10 +398,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @dev Returns swap fee for the pool.
-    function _getSwapFeePercentage(address poolAddress, PoolData memory poolData) internal view returns (uint256) {
+    function _getSwapFeePercentage(
+        address poolAddress,
+        PoolData memory poolData,
+        SwapLocals memory vars
+    ) internal view returns (uint256) {
         if (poolData.poolConfig.hasDynamicSwapFee) {
-            // TODO: add computeFee call parameters
-            return IBaseDynamicFeePool(poolAddress).computeFee(poolData);
+            return IBaseDynamicFeePool(poolAddress).computeFee(poolData, vars);
         } else {
             return poolData.poolConfig.staticSwapFeePercentage;
         }
@@ -457,13 +449,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     modifier onlyTrustedRouter() {
         _onlyTrustedRouter(msg.sender);
         _;
-    }
-
-    /// @dev Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
-    struct LiquidityLocals {
-        uint256 numTokens;
-        uint256 protocolSwapFeeAmountRaw;
-        uint256 tokenIndex;
     }
 
     /// @inheritdoc IVaultMain
@@ -593,13 +578,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 poolData.balancesLiveScaled18,
                 maxAmountsInScaled18,
                 _totalSupply(params.pool),
-                _getSwapFeePercentage(params.pool, poolData),
+                poolData.poolConfig.staticSwapFeePercentage,
                 IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             bptAmountOut = params.minBptAmountOut;
             vars.tokenIndex = InputHelpers.getSingleInputIndex(maxAmountsInScaled18);
-            uint256 swapFeePercentage = _getSwapFeePercentage(params.pool, poolData); // avoids stack too deep
 
             amountsInScaled18 = maxAmountsInScaled18;
             (amountsInScaled18[vars.tokenIndex], swapFeeAmountsScaled18) = BasePoolMath
@@ -608,7 +592,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     vars.tokenIndex,
                     bptAmountOut,
                     _totalSupply(params.pool),
-                    swapFeePercentage,
+                    poolData.poolConfig.staticSwapFeePercentage,
                     IBasePool(params.pool).computeBalance
                 );
         } else if (params.kind == AddLiquidityKind.CUSTOM) {
@@ -813,27 +797,25 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             amountsOutScaled18 = minAmountsOutScaled18;
             vars.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
 
-            uint256 swapFeePercentage = _getSwapFeePercentage(params.pool, poolData); // avoids stack too deep
             (amountsOutScaled18[vars.tokenIndex], swapFeeAmountsScaled18) = BasePoolMath
                 .computeRemoveLiquiditySingleTokenExactIn(
                     poolData.balancesLiveScaled18,
                     vars.tokenIndex,
                     bptAmountIn,
                     _totalSupply(params.pool),
-                    swapFeePercentage,
+                    poolData.poolConfig.staticSwapFeePercentage,
                     IBasePool(params.pool).computeBalance
                 );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             amountsOutScaled18 = minAmountsOutScaled18;
             vars.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
 
-            uint256 swapFeePercentage = _getSwapFeePercentage(params.pool, poolData); // avoids stack too deep
             (bptAmountIn, swapFeeAmountsScaled18) = BasePoolMath.computeRemoveLiquiditySingleTokenExactOut(
                 poolData.balancesLiveScaled18,
                 vars.tokenIndex,
                 amountsOutScaled18[vars.tokenIndex],
                 _totalSupply(params.pool),
-                swapFeePercentage,
+                poolData.poolConfig.staticSwapFeePercentage,
                 IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == RemoveLiquidityKind.CUSTOM) {
