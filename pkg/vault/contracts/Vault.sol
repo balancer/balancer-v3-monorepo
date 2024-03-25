@@ -67,44 +67,44 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     /**
      * @dev This modifier is used for functions that temporarily modify the `_tokenDeltas`
      * of the Vault but expect to revert or settle balances by the end of their execution.
-     * It works by tracking the lockers involved in the execution and ensures that the
-     * balances are properly settled by the time the last locker is executed.
+     * It works by tracking the unlockers involved in the execution and ensures that the
+     * balances are properly settled by the time the last unlocker is executed.
      *
-     * This is useful for functions like `lock`, which perform arbitrary external calls:
+     * This is useful for functions like `unlock`, which perform arbitrary external calls:
      * we can keep track of temporary deltas changes, and make sure they are settled by the
      * time the external call is complete.
      */
     modifier transient() {
-        // Add the current locker to the list
-        _lockers.push(msg.sender);
+        // Add the current unlocker to the list
+        _unlockers.push(msg.sender);
 
         // The caller does everything here and has to settle all outstanding balances
         _;
 
-        // Check if it's the last locker
-        if (_lockers.length == 1) {
+        // Check if it's the last unlocker
+        if (_unlockers.length == 1) {
             // Ensure all balances are settled
             if (_nonzeroDeltaCount != 0) revert BalanceNotSettled();
 
-            // Reset the lockers list
-            delete _lockers;
+            // Reset the unlockers list
+            delete _unlockers;
 
             // Reset the counter
             delete _nonzeroDeltaCount;
         } else {
-            // If it's not the last locker, simply remove it from the list
-            _lockers.pop();
+            // If it's not the last unlocker, simply remove it from the list
+            _unlockers.pop();
         }
     }
 
     /// @inheritdoc IVaultMain
-    function lock(bytes calldata data) external payable transient returns (bytes memory result) {
+    function unlock(bytes calldata data) external payable transient returns (bytes memory result) {
         // Executes the function call with value to the msg.sender.
         return (msg.sender).functionCallWithValue(data, msg.value);
     }
 
     /// @inheritdoc IVaultMain
-    function settle(IERC20 token) public nonReentrant withLocker returns (uint256 paid) {
+    function settle(IERC20 token) public nonReentrant onlyWhenUnlocked returns (uint256 paid) {
         uint256 reservesBefore = _reservesOf[token];
         _reservesOf[token] = token.balanceOf(address(this));
         paid = _reservesOf[token] - reservesBefore;
@@ -113,7 +113,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function sendTo(IERC20 token, address to, uint256 amount) public nonReentrant withLocker {
+    function sendTo(IERC20 token, address to, uint256 amount) public nonReentrant onlyWhenUnlocked {
         _takeDebt(token, amount, msg.sender);
         _reservesOf[token] -= amount;
 
@@ -121,7 +121,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function takeFrom(IERC20 token, address from, uint256 amount) public nonReentrant withLocker onlyTrustedRouter {
+    function takeFrom(IERC20 token, address from, uint256 amount) public nonReentrant onlyWhenUnlocked onlyTrustedRouter {
         _supplyCredit(token, amount, msg.sender);
         _reservesOf[token] += amount;
 
@@ -175,7 +175,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapParams memory params
     )
         public
-        withLocker
+        onlyWhenUnlocked
         withInitializedPool(params.pool)
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
     {
@@ -470,7 +470,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         AddLiquidityParams memory params
     )
         external
-        withLocker
+        onlyWhenUnlocked
         withInitializedPool(params.pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
@@ -686,7 +686,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         RemoveLiquidityParams memory params
     )
         external
-        withLocker
+        onlyWhenUnlocked
         withInitializedPool(params.pool)
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
     {

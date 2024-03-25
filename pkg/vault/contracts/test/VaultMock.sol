@@ -100,8 +100,8 @@ contract VaultMock is IVaultMainMock, Vault {
         );
     }
 
-    function manualSetLockers(address[] memory lockers) public {
-        _lockers = lockers;
+    function manualSetUnlockers(address[] memory unlockers) public {
+        _unlockers = unlockers;
     }
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) public {
@@ -154,7 +154,7 @@ contract VaultMock is IVaultMainMock, Vault {
         }
     }
 
-    function mockWithLocker() public view withLocker {}
+    function mockWithUnlocker() public view onlyWhenUnlocked {}
 
     function mockWithInitializedPool(address pool) public view withInitializedPool(pool) {}
 
@@ -351,20 +351,20 @@ contract VaultMock is IVaultMainMock, Vault {
         require(!reentrancyGuardEntered());
     }
 
-    function accountDelta(IERC20 token, int256 delta, address locker) external {
-        _accountDelta(token, delta, locker);
+    function accountDelta(IERC20 token, int256 delta, address unlocker) external {
+        _accountDelta(token, delta, unlocker);
     }
 
-    function supplyCredit(IERC20 token, uint256 credit, address locker) external {
-        _supplyCredit(token, credit, locker);
+    function supplyCredit(IERC20 token, uint256 credit, address unlocker) external {
+        _supplyCredit(token, credit, unlocker);
     }
 
-    function takeDebt(IERC20 token, uint256 debt, address locker) external {
-        _takeDebt(token, debt, locker);
+    function takeDebt(IERC20 token, uint256 debt, address unlocker) external {
+        _takeDebt(token, debt, unlocker);
     }
 
-    function manualSetAccountDelta(IERC20 token, address locker, int256 delta) external {
-        _tokenDeltas[locker][token] = delta;
+    function manualSetAccountDelta(IERC20 token, address unlocker, int256 delta) external {
+        _tokenDeltas[unlocker][token] = delta;
     }
 
     function manualSetNonZeroDeltaCount(uint256 deltaCount) external {

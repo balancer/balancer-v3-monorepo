@@ -88,16 +88,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function getLocker(uint256 index) external view onlyVault returns (address) {
-        if (index >= _lockers.length) {
-            revert LockerOutOfBounds(index);
+    function getUnlocker(uint256 index) external view onlyVault returns (address) {
+        if (index >= _unlockers.length) {
+            revert UnlockerOutOfBounds(index);
         }
-        return _lockers[index];
+        return _unlockers[index];
     }
 
     /// @inheritdoc IVaultExtension
-    function getLockersCount() external view onlyVault returns (uint256) {
-        return _lockers.length;
+    function getUnlockersCount() external view onlyVault returns (uint256) {
+        return _unlockers.length;
     }
 
     /// @inheritdoc IVaultExtension
@@ -257,7 +257,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external withLocker withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
+    ) external onlyWhenUnlocked withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
         VaultState memory vaultState = _ensureUnpausedAndGetVaultState(pool);
 
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
@@ -510,7 +510,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 exactBptAmountIn
     )
         external
-        withLocker
+        onlyWhenUnlocked
         nonReentrant
         withInitializedPool(pool)
         onlyInRecoveryMode(pool)
@@ -588,8 +588,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert QueriesDisabled();
         }
 
-        // Add the current locker to the list so `withLocker` does not revert
-        _lockers.push(msg.sender);
+        // Add the current locker to the list so `onlyWhenUnlocked` does not revert
+        _unlockers.push(msg.sender);
         _;
     }
 

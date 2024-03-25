@@ -237,37 +237,37 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
 
     function testAccountDeltaZero() public {
         vm.prank(alice);
-        // Does not revert even with wrong locker.
+        // Does not revert even with wrong unlocker.
         vault.accountDelta(dai, 0, bob);
     }
 
-    function testAccountDeltaWrongLocker() public {
+    function testAccountDeltaWrongUnlocker() public {
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, bob, alice));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongUnlocker.selector, bob, alice));
         vault.accountDelta(dai, 1, bob);
     }
 
     function testTakeDebtZero() public {
         vm.prank(alice);
-        // Does not revert even with wrong locker.
+        // Does not revert even with wrong unlocker.
         vault.takeDebt(dai, 0, bob);
     }
 
-    function testTakeDebtWrongLocker() public {
+    function testTakeDebtWrongUnlocker() public {
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, bob, alice));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongUnlocker.selector, bob, alice));
         vault.takeDebt(dai, 1, bob);
     }
 
     function testSupplyCreditZero() public {
         vm.prank(alice);
-        // Does not revert even with wrong locker.
+        // Does not revert even with wrong unlocker.
         vault.supplyCredit(dai, 0, bob);
     }
 
-    function testSupplyCreditWrongLocker() public {
+    function testSupplyCreditWrongUnlocker() public {
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, bob, alice));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongUnlocker.selector, bob, alice));
         vault.supplyCredit(dai, 1, bob);
     }
 

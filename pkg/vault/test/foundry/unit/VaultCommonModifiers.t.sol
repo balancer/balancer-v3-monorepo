@@ -10,47 +10,47 @@ contract VaultCommonModifiersTest is BaseVaultTest {
     }
 
     /*******************************************************************************
-                                      WithLocker
+                                      WithUnlocker
     *******************************************************************************/
 
-    function testEmptyLockers() public {
-        address[] memory lockers;
-        vault.manualSetLockers(lockers);
+    function testEmptyUnlockers() public {
+        address[] memory unlockers;
+        vault.manualSetUnlockers(unlockers);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.NoLocker.selector));
-        vault.mockWithLocker();
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.NoUnlocker.selector));
+        vault.mockWithUnlocker();
     }
 
-    function testLockersWithWrongAddress() public {
-        address[] memory lockers = new address[](1);
-        lockers[0] = address(alice);
-        vault.manualSetLockers(lockers);
+    function testUnlockersWithWrongAddress() public {
+        address[] memory unlockers = new address[](1);
+        unlockers[0] = address(alice);
+        vault.manualSetUnlockers(unlockers);
 
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, address(bob), address(alice)));
-        vault.mockWithLocker();
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongUnlocker.selector, address(bob), address(alice)));
+        vault.mockWithUnlocker();
     }
 
-    function testLockersWithRightAddressInWrongPosition() public {
-        address[] memory lockers = new address[](2);
-        lockers[0] = address(bob);
-        lockers[1] = address(alice);
-        vault.manualSetLockers(lockers);
+    function testUnlockersWithRightAddressInWrongPosition() public {
+        address[] memory unlockers = new address[](2);
+        unlockers[0] = address(bob);
+        unlockers[1] = address(alice);
+        vault.manualSetUnlockers(unlockers);
 
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, address(bob), address(alice)));
-        vault.mockWithLocker();
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongUnlocker.selector, address(bob), address(alice)));
+        vault.mockWithUnlocker();
     }
 
-    function testLockersWithRightAddress() public {
-        address[] memory lockers = new address[](2);
-        lockers[0] = address(alice);
-        lockers[1] = address(bob);
-        vault.manualSetLockers(lockers);
+    function testUnlockersWithRightAddress() public {
+        address[] memory unlockers = new address[](2);
+        unlockers[0] = address(alice);
+        unlockers[1] = address(bob);
+        vault.manualSetUnlockers(unlockers);
 
         // If function does not revert, test passes
         vm.prank(bob);
-        vault.mockWithLocker();
+        vault.mockWithUnlocker();
     }
 
     /*******************************************************************************
