@@ -165,7 +165,7 @@ contract RouterTest is BaseVaultTest {
         bool wethIsEth = false;
 
         // Revert when sending ETH while wethIsEth is false (caller holds no weth).
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, broke, 0, ethAmountIn));
+        vm.expectRevert("TRANSFER_FROM_FAILED");
         vm.prank(broke);
         router.initialize(address(wethPoolNoInit), wethDaiTokens, wethDaiAmountsIn, initBpt, wethIsEth, bytes(""));
     }
@@ -242,7 +242,7 @@ contract RouterTest is BaseVaultTest {
         checkAddLiquidityPreConditions();
 
         // Revert when sending ETH while wethIsEth is false (caller holds no weth).
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, broke, 0, ethAmountIn));
+        vm.expectRevert("TRANSFER_FROM_FAILED");
         vm.prank(broke);
         router.addLiquidityCustom(address(wethPool), wethDaiAmountsIn, bptAmountOut, false, bytes(""));
     }

@@ -78,8 +78,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     }
 
     function initPool() internal override {
-
-        console2.log('_transferTokensFromDonorToUsers');
+        console2.log("_transferTokensFromDonorToUsers");
         _transferTokensFromDonorToUsers();
         // The swap calculation of the buffer is a bit imprecise to save gas,
         // so it needs to have some ERC20 to rebalance
