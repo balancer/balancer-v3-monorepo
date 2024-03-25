@@ -158,17 +158,17 @@ contract VaultTokenTest is BaseVaultTest {
         // Establish assets and supply so that buffer creation doesn't fail
         vm.startPrank(alice);
 
-        dai.mint(address(alice), 2000e18);
+        dai.mint(address(alice), 2 * defaultAmount);
 
-        dai.approve(address(waDAI), 1000e18);
-        waDAI.deposit(1000e18, address(alice));
+        dai.approve(address(waDAI), defaultAmount);
+        waDAI.deposit(defaultAmount, address(alice));
 
-        dai.approve(address(cDAI), 1000e18);
-        cDAI.deposit(1000e18, address(alice));
+        dai.approve(address(cDAI), defaultAmount);
+        cDAI.deposit(defaultAmount, address(alice));
 
-        usdc.mint(address(alice), 1000e18);
-        usdc.approve(address(waUSDC), 1000e18);
-        waUSDC.deposit(1000e18, address(alice));
+        usdc.mint(address(alice), defaultAmount);
+        usdc.approve(address(waUSDC), defaultAmount);
+        waUSDC.deposit(defaultAmount, address(alice));
 
         waDAIBuffer = bufferFactory.create(waDAI, address(0), getSalt(address(waDAI)));
         cDAIBuffer = bufferFactory.create(cDAI, address(0), getSalt(address(cDAI)));
