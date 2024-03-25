@@ -65,17 +65,26 @@ describe('ERC4626BufferPool', function () {
 
   async function createBufferPool(): Promise<Contract> {
     // initialize assets and supply
+    console.log(1);
     await baseToken.mint(wrappedToken, TOKEN_AMOUNT);
+    console.log(2);
     await wrappedToken.mint(TOKEN_AMOUNT, alice);
+    console.log(3);
 
     const tx = await factory.connect(alice).create(wrappedToken, ANY_ADDRESS, ZERO_BYTES32);
+    console.log(4);
     const receipt = await tx.wait();
+    console.log(5);
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+    console.log(6);
 
     const poolAddress = event.args.pool;
+    console.log(7);
 
-    return await deployedAt('ERC4626BufferPool', poolAddress);
+    const contract = await deployedAt('ERC4626BufferPool', poolAddress);
+    console.log(8);
+    return contract;
   }
 
   async function createAndInitializeBufferPool(): Promise<Contract> {
