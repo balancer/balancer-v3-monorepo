@@ -110,10 +110,15 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolConfig[pool] = poolConfig.fromPoolConfig();
     }
 
-    function manualSetPoolPaused(address pool, bool isPoolPaused, uint256 pauseWindowEndTime) public {
+    function manualSetPoolPauseWindowEndTime(address pool, uint256 pauseWindowEndTime) public {
+        PoolConfig memory poolConfig = _poolConfig[pool].toPoolConfig();
+        poolConfig.pauseWindowEndTime = pauseWindowEndTime;
+        _poolConfig[pool] = poolConfig.fromPoolConfig();
+    }
+
+    function manualSetPoolPaused(address pool, bool isPoolPaused) public {
         PoolConfig memory poolConfig = _poolConfig[pool].toPoolConfig();
         poolConfig.isPoolPaused = isPoolPaused;
-        poolConfig.pauseWindowEndTime = pauseWindowEndTime;
         _poolConfig[pool] = poolConfig.fromPoolConfig();
     }
 
