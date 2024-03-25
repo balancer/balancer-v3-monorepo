@@ -21,11 +21,12 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+        // Generates a "random" address for a non-existent pool
+        pool = address(bytes20(keccak256(abi.encode(block.timestamp))));
     }
 
     function createPool() internal override returns (address) {
-        // Generates a "random" address for a non-existent pool
-        return address(bytes20(keccak256(abi.encode(block.timestamp))));
+        return address(0);
     }
 
     function initPool() internal override {}

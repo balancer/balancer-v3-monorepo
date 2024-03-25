@@ -57,6 +57,9 @@ contract RouterTest is BaseVaultTest {
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+
+        approveForPool(IERC20(wethPool));
+
     }
 
     function createPool() internal override returns (address) {

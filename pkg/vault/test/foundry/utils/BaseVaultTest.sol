@@ -105,26 +105,40 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
         pool = createPool();
 
         // Approve vault allowances
-        approveRouter(admin);
-        approveRouter(lp);
-        approveRouter(alice);
-        approveRouter(bob);
-        approveRouter(broke);
-
+        for (uint256 index = 0; index < users.length; index++) {
+            address user = users[index];
+            vm.startPrank(user);
+            approveForSender();
+            vm.stopPrank();
+        }
+        if (address(pool) != address(0)) {
+            approveForPool(IERC20(pool));
+        }
         // Add initial liquidity
         initPool();
     }
 
-    function approveRouter(address user) internal {
-        vm.startPrank(user);
-
+    function approveForSender() internal {
         for (uint256 index = 0; index < tokens.length; index++) {
             tokens[index].approve(address(permit2), type(uint256).max);
             permit2.approve(address(tokens[index]), address(router), type(uint160).max, type(uint48).max);
             permit2.approve(address(tokens[index]), address(batchRouter), type(uint160).max, type(uint48).max);
         }
+    }
 
-        vm.stopPrank();
+    function approveForPool(IERC20 btp) internal {
+        for (uint256 index = 0; index < users.length; index++) {
+            vm.startPrank(users[index]);
+
+            btp.approve(address(router), type(uint256).max);
+            btp.approve(address(batchRouter), type(uint256).max);
+
+            IERC20(btp).approve(address(permit2), type(uint256).max);
+            permit2.approve(address(btp), address(router), type(uint160).max, type(uint48).max);
+            permit2.approve(address(btp), address(batchRouter), type(uint160).max, type(uint48).max);
+
+            vm.stopPrank();
+        }
     }
 
     function initPool() internal virtual {

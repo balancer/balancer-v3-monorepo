@@ -105,10 +105,14 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     function testTransferFromToZero() public {
-        vault.mintERC20(address(pool), address(this), defaultAmount);
+        address from = address(0xABCD);
+        vault.mintERC20(address(pool), address(from), defaultAmount);
+
+        vm.prank(from);
+        poolToken.approve(address(this), defaultAmount);
 
         vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InvalidReceiver.selector, address(0)));
-        poolToken.transferFrom(address(this), address(0), defaultAmount);
+        poolToken.transferFrom(address(from), address(0), defaultAmount);
     }
 
     function testPermit() public {
