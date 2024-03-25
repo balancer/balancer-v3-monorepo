@@ -13,7 +13,8 @@ import "@balancer-labs/v3-interfaces/contracts/test/IVaultMainMock.sol";
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
 contract PoolAndVaultPausedTest is BaseVaultTest {
-    // A number that is much smaller than vault pause buffer time, so we can play with pool and vault pauses
+    // A number that is much smaller than the vault pause buffer end time, so we can play with
+    // pool and vault pause windows.
     uint256 private constant _FIXED_POOL_PAUSE_END_TIME = 1e5;
     uint256 private _vaultBufferPeriodEndTimeTest;
 
