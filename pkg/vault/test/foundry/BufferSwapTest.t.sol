@@ -65,6 +65,7 @@ contract BufferSwapTest is BaseVaultTest {
         dai.mint(address(lp), quantityToDeposit);
         dai.approve(address(waDAI), quantityToDeposit);
         waDAI.deposit(quantityToDeposit, address(lp));
+
         usdc.mint(address(lp), quantityToDeposit);
         usdc.approve(address(waUSDC), quantityToDeposit);
         waUSDC.deposit(quantityToDeposit, address(lp));
