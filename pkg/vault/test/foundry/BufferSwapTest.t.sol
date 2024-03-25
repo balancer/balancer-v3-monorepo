@@ -342,7 +342,7 @@ contract BufferSwapTest is BaseVaultTest {
 
         // If we perform the swap with more tokens than 50% of pool liquidity, we will not have enough waDAI.
         // The pool should detect this, rebalance to have enough tokens to swap, then perform the trade.
-        // Afterward, all the wrapped tokens were removed, so the pool state should be very close from: 0/2000
+        // Afterward, all the wrapped tokens were removed, so the pool state should be very close to 0/2000
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amountDaiToSwap);
 
         vm.prank(alice);
