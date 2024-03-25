@@ -75,8 +75,7 @@ describe('ERC4626BufferPool', function () {
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
     const poolAddress = event.args.pool;
 
-    const contract = await deployedAt('ERC4626BufferPool', poolAddress);
-    return contract;
+    return deployedAt('ERC4626BufferPool', poolAddress);
   }
 
   async function createAndInitializeBufferPool(): Promise<Contract> {
