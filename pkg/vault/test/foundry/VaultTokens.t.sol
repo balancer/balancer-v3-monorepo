@@ -155,8 +155,6 @@ contract VaultTokenTest is BaseVaultTest {
     }
 
     function registerBuffers() private {
-
-
         // Establish assets and supply so that buffer creation doesn't fail
         vm.startPrank(alice);
 
