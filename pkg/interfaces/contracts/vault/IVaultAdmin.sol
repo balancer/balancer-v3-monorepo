@@ -159,6 +159,13 @@ interface IVaultAdmin {
      */
     function collectProtocolFees(IERC20[] calldata tokens) external;
 
+    /**
+     * @notice Collects accumulated pool dev fees for the specified pool.
+     * @dev Fees are sent to msg.sender.
+     * @param pool The pool address for which the fees should be collected
+     */
+    function collectPoolDevFees(address pool) external;
+
     /*******************************************************************************
                                     Recovery Mode
     *******************************************************************************/

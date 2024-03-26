@@ -42,6 +42,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using PoolConfigLib for PoolConfig;
     using VaultExtensionsLib for IVault;
     using EnumerableSet for EnumerableSet.AddressSet;
+    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using SafeERC20 for IERC20;
     using VaultStateLib for VaultStateBits;
 
@@ -345,6 +346,22 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
                 token.safeTransfer(msg.sender, amount);
                 emit ProtocolFeeCollected(token, amount);
+            }
+        }
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function collectPoolDevFees(address pool) external withPoolDev(pool) nonReentrant onlyVault {
+        EnumerableMap.IERC20ToUint256Map storage poolDevFees = _poolDevFees[pool];
+        for (uint256 index = 0; index < poolDevFees.length(); index++) {
+            (IERC20 token, uint256 amount) = poolDevFees.unchecked_at(index);
+
+            if (amount > 0) {
+                // set fees to zero for the token
+                poolDevFees.unchecked_setAt(index, 0);
+
+                token.safeTransfer(msg.sender, amount);
+                emit PoolDevFeeCollected(pool, token, amount);
             }
         }
     }
