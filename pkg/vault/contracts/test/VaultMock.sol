@@ -214,7 +214,7 @@ contract VaultMock is IVaultMainMock, Vault {
     function buildTokenConfig(
         IERC20[] memory tokens,
         IRateProvider[] memory rateProviders,
-        bool[] memory yieldExemptFlags
+        bool[] memory yieldFeeFlags
     ) public pure returns (TokenConfig[] memory tokenConfig) {
         tokenConfig = new TokenConfig[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
@@ -223,7 +223,7 @@ contract VaultMock is IVaultMainMock, Vault {
             tokenConfig[i].tokenType = rateProviders[i] == IRateProvider(address(0))
                 ? TokenType.STANDARD
                 : TokenType.WITH_RATE;
-            tokenConfig[i].yieldFeeExempt = yieldExemptFlags[i];
+            tokenConfig[i].paysYieldFees = yieldFeeFlags[i];
         }
 
         tokenConfig = sortTokenConfig(tokenConfig);
@@ -233,14 +233,14 @@ contract VaultMock is IVaultMainMock, Vault {
         IERC20[] memory tokens,
         TokenType[] memory tokenTypes,
         IRateProvider[] memory rateProviders,
-        bool[] memory yieldExemptFlags
+        bool[] memory yieldFeeFlags
     ) public pure returns (TokenConfig[] memory tokenConfig) {
         tokenConfig = new TokenConfig[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
             tokenConfig[i].token = tokens[i];
             tokenConfig[i].tokenType = tokenTypes[i];
             tokenConfig[i].rateProvider = rateProviders[i];
-            tokenConfig[i].yieldFeeExempt = yieldExemptFlags[i];
+            tokenConfig[i].paysYieldFees = yieldFeeFlags[i];
         }
 
         tokenConfig = sortTokenConfig(tokenConfig);

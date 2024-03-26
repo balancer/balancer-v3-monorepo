@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -170,6 +169,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         vaultState = _vaultState.toVaultState();
         // Check vault and pool paused inline, instead of using modifier, to save some gas reading the
         // isVaultPaused state again in `_isVaultPaused`.
+        // solhint-disable-next-line not-rely-on-time
         if (vaultState.isVaultPaused && block.timestamp <= _vaultBufferPeriodEndTime) {
             revert VaultPaused();
         }
@@ -354,11 +354,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                 poolData.tokenRates[i] = FixedPoint.ONE;
             } else if (tokenType == TokenType.WITH_RATE) {
                 poolData.tokenRates[i] = poolData.tokenConfig[i].rateProvider.getRate();
-            } else if (tokenType == TokenType.ERC4626) {
-                // TODO: Review rates on ERC4626 tokens (and see if we still need a separate token type at all).
-                poolData.tokenRates[i] = IERC4626(address(poolData.tokenConfig[i].token)).convertToAssets(
-                    FixedPoint.ONE
-                );
             } else {
                 revert InvalidTokenConfiguration();
             }
@@ -399,7 +394,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             poolData.poolConfig.isPoolInRecoveryMode == false;
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            TokenType tokenType = poolData.tokenConfig[i].tokenType;
+            TokenConfig memory tokenConfig = poolData.tokenConfig[i];
 
             // This sets the live balance in poolData from the raw balance, applying scaling and rates,
             // and respecting the rounding direction. Charging a yield fee changes the raw
@@ -407,11 +402,11 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             // the live balance is to simply repeat the scaling (hence the second call below).
             _updateLiveTokenBalanceInPoolData(poolData, roundingDirection, i);
 
-            bool tokenSubjectToYieldFees = tokenType == TokenType.ERC4626 ||
-                (tokenType == TokenType.WITH_RATE && poolData.tokenConfig[i].yieldFeeExempt == false);
+            // The Vault actually guarantees a token with paysYieldFees set is a WITH_RATE token, so technically we
+            // could just check the flag, but we don't want to introduce that dependency for a slight gas savings.
+            bool tokenSubjectToYieldFees = tokenConfig.paysYieldFees && tokenConfig.tokenType == TokenType.WITH_RATE;
 
             // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
-            // ERC4626 tokens always pay yield fees; WITH_RATE tokens pay unless exempt.
             if (poolSubjectToYieldFees && tokenSubjectToYieldFees) {
                 uint256 yieldFeeAmountRaw = _computeYieldProtocolFeesDue(
                     poolData,

@@ -29,11 +29,7 @@ import { BasePoolAuthentication } from "./BasePoolAuthentication.sol";
 import { BalancerPoolToken } from "./BalancerPoolToken.sol";
 import { BasePoolHooks } from "./BasePoolHooks.sol";
 
-/**
- * @notice ERC4626 Buffer Pool, designed to be used internally for ERC4626 token types in standard pools.
- * @dev These "pools" reuse the code for pools, but are not registered with the Vault, guaranteeing they
- * cannot be used externally. To the outside world, they don't exist.
- */
+/// @notice ERC4626 Buffer Pool, designed to be used to facilitate swaps with ERC4626 tokens in standard pools.
 contract ERC4626BufferPool is
     IBasePool,
     IBufferPool,
