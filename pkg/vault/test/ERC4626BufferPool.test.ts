@@ -84,8 +84,8 @@ describe('ERC4626BufferPool', function () {
 
     await baseToken.mint(alice, TOKEN_AMOUNT);
 
-    wrappedToken.connect(alice).approve(vault, MAX_UINT256);
-    baseToken.connect(alice).approve(vault, MAX_UINT256);
+    await wrappedToken.connect(alice).approve(vault, MAX_UINT256);
+    await baseToken.connect(alice).approve(vault, MAX_UINT256);
 
     await router.connect(alice).initialize(pool, tokenAddresses, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
 
@@ -266,11 +266,11 @@ describe('ERC4626BufferPool', function () {
     });
 
     it('can add liquidity custom', async () => {
-      wrappedToken.mint(TOKEN_AMOUNT + MIN_BPT, bob);
-      baseToken.mint(bob, TOKEN_AMOUNT + MIN_BPT);
+      await wrappedToken.mint(TOKEN_AMOUNT + MIN_BPT, bob);
+      await baseToken.mint(bob, TOKEN_AMOUNT + MIN_BPT);
 
-      wrappedToken.connect(bob).approve(vault, MAX_UINT256);
-      baseToken.connect(bob).approve(vault, MAX_UINT256);
+      await wrappedToken.connect(bob).approve(vault, MAX_UINT256);
+      await baseToken.connect(bob).approve(vault, MAX_UINT256);
 
       const bptAmount = await pool.balanceOf(alice);
       const MAX_AMOUNT = TOKEN_AMOUNT + MIN_BPT;

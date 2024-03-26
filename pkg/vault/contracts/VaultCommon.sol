@@ -168,8 +168,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     function _ensureUnpausedAndGetVaultState(address pool) internal view returns (VaultState memory vaultState) {
         vaultState = _vaultState.toVaultState();
         // Check vault and pool paused inline, instead of using modifier, to save some gas reading the
-        // isVaultPaused state
-        if (vaultState.isVaultPaused) {
+        // isVaultPaused state again in `_isVaultPaused`.
+        if (vaultState.isVaultPaused && block.timestamp <= _vaultBufferPeriodEndTime) {
             revert VaultPaused();
         }
         _ensurePoolNotPaused(pool);
