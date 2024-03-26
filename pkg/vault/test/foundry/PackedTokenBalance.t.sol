@@ -37,15 +37,6 @@ contract PackedTokenBalanceTest is Test {
 
         assertEq(newRecoveredRaw, newBalanceValue);
         assertEq(newRecoveredLive, recoveredLive);
-
-        // Set new live balance (should not change raw).
-        newBalance = PackedTokenBalance.setLastLiveBalanceScaled18(balance, newBalanceValue);
-
-        newRecoveredRaw = PackedTokenBalance.getRawBalance(newBalance);
-        newRecoveredLive = PackedTokenBalance.getLastLiveBalanceScaled18(newBalance);
-
-        assertEq(newRecoveredRaw, recoveredRaw);
-        assertEq(newRecoveredLive, newBalanceValue);
     }
 
     function testOverflow__Fuzz(bytes32 balance, uint128 validBalanceValue, uint256 overMaxBalanceValue) public {
@@ -59,8 +50,5 @@ contract PackedTokenBalanceTest is Test {
 
         vm.expectRevert(PackedTokenBalance.BalanceOverflow.selector);
         PackedTokenBalance.setRawBalance(balance, overMaxBalanceValue);
-
-        vm.expectRevert(PackedTokenBalance.BalanceOverflow.selector);
-        PackedTokenBalance.setLastLiveBalanceScaled18(balance, overMaxBalanceValue);
     }
 }

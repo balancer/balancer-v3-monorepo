@@ -6,7 +6,6 @@ import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -572,7 +571,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         vars.numTokens = poolData.tokenConfig.length;
 
         uint256[] memory swapFeeAmountsScaled18;
-        if (params.kind == AddLiquidityKind.UNBALANCED) {
+        if (params.kind == AddLiquidityKind.PROPORTIONAL) {
+            bptAmountOut = params.minBptAmountOut;
+            // Initializes the swapFeeAmountsScaled18 empty array (no swap fees on proportional add liquidity)
+            swapFeeAmountsScaled18 = new uint256[](vars.numTokens);
+
+            amountsInScaled18 = BasePoolMath.computeProportionalAmountsIn(
+                poolData.balancesLiveScaled18,
+                _totalSupply(params.pool),
+                bptAmountOut
+            );
+        } else if (params.kind == AddLiquidityKind.UNBALANCED) {
             amountsInScaled18 = maxAmountsInScaled18;
             (bptAmountOut, swapFeeAmountsScaled18) = BasePoolMath.computeAddLiquidityUnbalanced(
                 poolData.balancesLiveScaled18,

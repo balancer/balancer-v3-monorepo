@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -205,16 +204,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             _poolTokenConfig[pool][token] = tokenData;
 
             if (tokenData.tokenType == TokenType.STANDARD) {
-                if (hasRateProvider) {
+                if (hasRateProvider || tokenData.paysYieldFees) {
                     revert InvalidTokenConfiguration();
                 }
             } else if (tokenData.tokenType == TokenType.WITH_RATE) {
                 if (hasRateProvider == false) {
-                    revert InvalidTokenConfiguration();
-                }
-            } else if (tokenData.tokenType == TokenType.ERC4626) {
-                // By definition, ERC4626 tokens are yield-bearing and subject to fees.
-                if (tokenData.yieldFeeExempt) {
                     revert InvalidTokenConfiguration();
                 }
             } else {

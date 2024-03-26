@@ -103,6 +103,21 @@ describe('Queries', function () {
     });
   });
 
+  describe('addLiquidityProportional', () => {
+    it('queries addLiquidityProportional correctly', async () => {
+      const amountsIn = await router
+        .connect(zero)
+        .queryAddLiquidityProportional.staticCall(pool, [DAI_AMOUNT_IN, USDC_AMOUNT_IN], BPT_AMOUNT, '0x');
+      expect(amountsIn).to.be.deep.eq([DAI_AMOUNT_IN, USDC_AMOUNT_IN]);
+    });
+
+    it('reverts if not a static call', async () => {
+      await expect(
+        router.queryAddLiquidityProportional.staticCall(pool, [DAI_AMOUNT_IN, USDC_AMOUNT_IN], BPT_AMOUNT, '0x')
+      ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
+    });
+  });
+
   describe('addLiquidityUnbalanced', () => {
     it('queries addLiquidityUnbalanced correctly', async () => {
       const bptAmountOut = await router

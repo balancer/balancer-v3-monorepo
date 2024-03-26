@@ -9,16 +9,18 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
-
 import { ERC4626BufferPoolFactoryMock } from "../utils/ERC4626BufferPoolFactoryMock.sol";
+import { ERC4626RateProvider } from "../../../contracts/test/ERC4626RateProvider.sol";
 import { ERC4626BufferPoolMock } from "../utils/ERC4626BufferPoolMock.sol";
+
+import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 
 contract ERC4626RebalanceValidation is BaseVaultTest {
     using ArrayHelpers for *;
@@ -352,7 +354,9 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     }
 
     function _createBuffer(IERC4626 wrappedToken) private returns (address) {
-        return factory.createMocked(wrappedToken);
+        // We need to deploy a rate provider that will call the ERC4626 function on the wrappedToken,
+        // Our test versions implement IRateProvider, but real wrappers typically do not do this.
+        return factory.createMocked(wrappedToken, new ERC4626RateProvider(wrappedToken));
     }
 
     function _transferTokensFromDonorToUsers() private {
