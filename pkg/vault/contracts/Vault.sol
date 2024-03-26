@@ -585,7 +585,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         vars.numTokens = poolData.tokenConfig.length;
 
         uint256[] memory swapFeeAmountsScaled18;
-        if (params.kind == AddLiquidityKind.UNBALANCED) {
+        if (params.kind == AddLiquidityKind.PROPORTIONAL) {
+            bptAmountOut = params.minBptAmountOut;
+            // Initializes the swapFeeAmountsScaled18 empty array (no swap fees on proportional add liquidity)
+            swapFeeAmountsScaled18 = new uint256[](vars.numTokens);
+
+            amountsInScaled18 = BasePoolMath.computeProportionalAmountsIn(
+                poolData.balancesLiveScaled18,
+                _totalSupply(params.pool),
+                bptAmountOut
+            );
+        } else if (params.kind == AddLiquidityKind.UNBALANCED) {
             amountsInScaled18 = maxAmountsInScaled18;
             (bptAmountOut, swapFeeAmountsScaled18) = BasePoolMath.computeAddLiquidityUnbalanced(
                 poolData.balancesLiveScaled18,
