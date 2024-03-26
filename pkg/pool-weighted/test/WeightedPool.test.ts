@@ -9,7 +9,13 @@ import { WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/
 import { PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/PoolMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { FP_ZERO, fp } from '@balancer-labs/v3-helpers/src/numbers';
-import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
+import {
+  MAX_UINT256,
+  MAX_UINT160,
+  MAX_UINT48,
+  ZERO_ADDRESS,
+  ZERO_BYTES32,
+} from '@balancer-labs/v3-helpers/src/constants';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
@@ -21,6 +27,8 @@ import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { TokenConfig } from '@balancer-labs/v3-helpers/src/models/types/types';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
+import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
+import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
 
 describe('WeightedPool', function () {
   const MAX_PROTOCOL_SWAP_FEE = fp(0.5);
@@ -30,6 +38,7 @@ describe('WeightedPool', function () {
   const TOKEN_AMOUNT = fp(100);
   const INITIAL_BALANCES = [TOKEN_AMOUNT, TOKEN_AMOUNT, FP_ZERO];
 
+  let permit2: IPermit2;
   let vault: IVaultMock;
   let pool: PoolMock;
   let router: Router;
@@ -51,8 +60,9 @@ describe('WeightedPool', function () {
   sharedBeforeEach('deploy vault, router, tokens, and pool', async function () {
     vault = await TypesConverter.toIVaultMock(await VaultDeployer.deployMock());
 
-    const WETH: WETHTestToken = await deploy('v3-solidity-utils/WETHTestToken');
-    router = await deploy('v3-vault/Router', { args: [vault, await WETH.getAddress()] });
+    const WETH = await deploy('v3-solidity-utils/WETHTestToken');
+    permit2 = await deployPermit2();
+    router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2] });
 
     tokenA = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });
     tokenB = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token B', 'TKNB', 6] });
@@ -85,9 +95,11 @@ describe('WeightedPool', function () {
         await tokenB.mint(alice, TOKEN_AMOUNT);
         await tokenC.mint(alice, TOKEN_AMOUNT);
 
-        await tokenA.connect(alice).approve(vault, MAX_UINT256);
-        await tokenB.connect(alice).approve(vault, MAX_UINT256);
-        await tokenC.connect(alice).approve(vault, MAX_UINT256);
+        await pool.connect(alice).approve(router, MAX_UINT256);
+        for (const token of [tokenA, tokenB, tokenC]) {
+          await token.connect(alice).approve(permit2, MAX_UINT256);
+          await permit2.connect(alice).approve(token, router, MAX_UINT160, MAX_UINT48);
+        }
 
         expect(await router.connect(alice).initialize(pool, poolTokens, INITIAL_BALANCES, FP_ZERO, false, '0x'))
           .to.emit(vault, 'PoolInitialized')
@@ -145,8 +157,11 @@ describe('WeightedPool', function () {
       await tokenA.mint(bob, TOKEN_AMOUNT + SWAP_AMOUNT);
       await tokenB.mint(bob, TOKEN_AMOUNT);
 
-      await tokenA.connect(bob).approve(vault, MAX_UINT256);
-      await tokenB.connect(bob).approve(vault, MAX_UINT256);
+      await realPool.connect(bob).approve(router, MAX_UINT256);
+      for (const token of [tokenA, tokenB ]) {
+        await token.connect(bob).approve(permit2, MAX_UINT256);
+        await permit2.connect(bob).approve(token, router, MAX_UINT160, MAX_UINT48);
+      }
 
       await expect(
         await router.connect(bob).initialize(realPool, realPoolTokens, REAL_POOL_INITIAL_BALANCES, FP_ZERO, false, '0x')
