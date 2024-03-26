@@ -25,6 +25,7 @@ import { PackedTokenBalance } from "../lib/PackedTokenBalance.sol";
 
 contract VaultMock is IVaultMainMock, Vault {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using ScalingHelpers for uint256;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
@@ -64,6 +65,7 @@ contract VaultMock is IVaultMainMock, Vault {
             pool,
             buildTokenConfig(tokens),
             address(0),
+            address(0),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
         );
@@ -79,6 +81,7 @@ contract VaultMock is IVaultMainMock, Vault {
             pool,
             tokenConfig,
             address(0),
+            address(0),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
         );
@@ -88,12 +91,14 @@ contract VaultMock is IVaultMainMock, Vault {
         address pool,
         IERC20[] memory tokens,
         uint256 timestamp,
-        address pauseManager
+        address pauseManager,
+        address poolDev
     ) external whenVaultNotPaused {
         _poolFactoryMock.registerPoolAtTimestamp(
             pool,
             buildTokenConfig(tokens),
             pauseManager,
+            poolDev,
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement,
             timestamp
@@ -333,6 +338,16 @@ contract VaultMock is IVaultMainMock, Vault {
             (, packedBalances) = poolTokenBalances.unchecked_at(i);
             lastLiveBalances[i] = packedBalances.getLastLiveBalanceScaled18();
         }
+    }
+
+    function getPoolDevFee(address pool, IERC20 token) external view returns (uint256 poolDevFee) {
+        EnumerableMap.IERC20ToUint256Map storage poolDevFees = _poolDevFees[pool];
+        uint256 index = poolDevFees.indexOf(token);
+        poolDevFee = poolDevFees.unchecked_valueAt(index);
+    }
+
+    function getPoolDev(address pool) external view returns (address poolDev) {
+        return _poolDev[pool];
     }
 
     function sortTokenConfig(TokenConfig[] memory tokenConfig) public pure returns (TokenConfig[] memory) {

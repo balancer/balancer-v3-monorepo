@@ -21,6 +21,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         address pool,
         TokenConfig[] memory tokenConfig,
         address pauseManager,
+        address poolDev,
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external {
@@ -29,6 +30,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             getNewPoolPauseWindowEndTime(),
             pauseManager,
+            poolDev,
             poolHooks,
             liquidityManagement
         );
@@ -39,10 +41,11 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         address pool,
         TokenConfig[] memory tokenConfig,
         address pauseManager,
+        address poolDev,
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement,
         uint256 timestamp
     ) external {
-        _vault.registerPool(pool, tokenConfig, timestamp, pauseManager, poolHooks, liquidityManagement);
+        _vault.registerPool(pool, tokenConfig, timestamp, pauseManager, poolDev, poolHooks, liquidityManagement);
     }
 }

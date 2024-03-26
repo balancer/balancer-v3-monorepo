@@ -39,7 +39,8 @@ contract PoolPauseTest is BaseVaultTest {
                 vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
                 true,
                 365 days,
-                admin
+                admin,
+                address(0)
             )
         );
 
@@ -51,6 +52,7 @@ contract PoolPauseTest is BaseVaultTest {
             vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             true,
             365 days,
+            address(0),
             address(0)
         );
 
@@ -61,6 +63,7 @@ contract PoolPauseTest is BaseVaultTest {
             vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             true,
             0,
+            address(0),
             address(0)
         );
 
@@ -71,6 +74,7 @@ contract PoolPauseTest is BaseVaultTest {
             vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             true,
             10000 days,
+            address(0),
             address(0)
         );
 
@@ -105,6 +109,7 @@ contract PoolPauseTest is BaseVaultTest {
             tokenConfig,
             true,
             maxEndTimeTimestamp + 1,
+            address(0),
             address(0)
         );
     }

@@ -123,6 +123,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         TokenConfig[] tokenConfig;
         uint256 pauseWindowEndTime;
         address pauseManager;
+        address poolDev;
         PoolHooks poolHooks;
         LiquidityManagement liquidityManagement;
     }
@@ -133,6 +134,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         TokenConfig[] memory tokenConfig,
         uint256 pauseWindowEndTime,
         address pauseManager,
+        address poolDev,
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
@@ -142,6 +144,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 tokenConfig: tokenConfig,
                 pauseWindowEndTime: pauseWindowEndTime,
                 pauseManager: pauseManager,
+                poolDev: poolDev,
                 poolHooks: poolHooks,
                 liquidityManagement: liquidityManagement
             })
@@ -232,7 +235,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _poolPauseManagers[pool] = params.pauseManager;
 
         // Store the pool dev as the caller of register pool.
-        _poolDev[pool] = msg.sender;
+        _poolDev[pool] = params.poolDev;
 
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);

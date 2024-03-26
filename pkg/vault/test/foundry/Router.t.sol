@@ -65,6 +65,7 @@ contract RouterTest is BaseVaultTest {
             vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             true,
             365 days,
+            address(0),
             address(0)
         );
         vm.label(address(newPool), "pool");
@@ -76,6 +77,7 @@ contract RouterTest is BaseVaultTest {
             vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
             true,
             365 days,
+            address(0),
             address(0)
         );
         vm.label(address(wethPool), "wethPool");
@@ -96,6 +98,7 @@ contract RouterTest is BaseVaultTest {
             vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
             true,
             365 days,
+            address(0),
             address(0)
         );
         vm.label(address(wethPoolNoInit), "wethPoolNoInit");

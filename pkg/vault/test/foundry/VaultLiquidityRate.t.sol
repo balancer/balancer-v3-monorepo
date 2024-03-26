@@ -47,6 +47,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
                     vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
                     true,
                     365 days,
+                    address(0),
                     address(0)
                 )
             );

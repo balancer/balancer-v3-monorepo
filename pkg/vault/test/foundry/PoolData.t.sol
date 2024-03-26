@@ -44,6 +44,7 @@ contract PoolDataTest is BaseVaultTest {
                     vault.buildTokenConfig([address(dai), address(wsteth)].toMemoryArray().asIERC20(), rateProviders),
                     true,
                     365 days,
+                    address(0),
                     address(0)
                 )
             );

@@ -22,7 +22,8 @@ interface IVaultMainMock {
         address pool,
         IERC20[] memory tokens,
         uint256 timestamp,
-        address pauseManager
+        address pauseManager,
+        address poolDev
     ) external;
 
     function manualSetLockers(address[] memory lockers) external;
@@ -65,6 +66,10 @@ interface IVaultMainMock {
     ) external returns (PoolData memory);
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw);
+
+    function getPoolDevFee(address pool, IERC20 token) external returns (uint256 poolDevFee);
+
+    function getPoolDev(address pool) external returns (address poolDev);
 
     function getCurrentLiveBalances(address pool) external view returns (uint256[] memory currentLiveBalances);
 

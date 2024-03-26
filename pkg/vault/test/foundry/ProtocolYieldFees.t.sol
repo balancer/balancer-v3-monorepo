@@ -62,6 +62,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
             ),
             true,
             365 days,
+            address(0),
             address(0)
         );
         vm.label(address(newPool), "pool");
