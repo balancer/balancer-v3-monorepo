@@ -979,9 +979,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // If swapFeeAmount equals zero no need to charge anything
         if (
-            swapFeeAmountScaled18 > 0 &&
-            poolDevFeePercentage > 0 &&
-            poolData.poolConfig.isPoolInRecoveryMode == false
+            swapFeeAmountScaled18 > 0 && poolDevFeePercentage > 0 && poolData.poolConfig.isPoolInRecoveryMode == false
         ) {
             // Always charge fees on token. Store amount in native decimals.
             // Since the swapFeeAmountScaled18 also contains the rate, undo it when converting to raw.

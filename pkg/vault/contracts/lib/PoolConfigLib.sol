@@ -174,16 +174,8 @@ library PoolConfigLib {
 
         {
             configBits = configBits
-            .insertUint(
-                config.staticSwapFeePercentage / FEE_SCALING_FACTOR,
-                STATIC_SWAP_FEE_OFFSET,
-                FEE_BITLENGTH
-            )
-            .insertUint(
-                config.poolDevFeePercentage / FEE_SCALING_FACTOR,
-                STATIC_SWAP_FEE_OFFSET,
-                FEE_BITLENGTH
-            );
+                .insertUint(config.staticSwapFeePercentage / FEE_SCALING_FACTOR, STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH)
+                .insertUint(config.poolDevFeePercentage / FEE_SCALING_FACTOR, STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH);
         }
 
         return
