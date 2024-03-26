@@ -141,10 +141,7 @@ interface IVaultAdmin {
      * @param pool The address of the pool for which the pool dev fee will be changed
      * @param poolDevFeePercentage The new pool dev fee percentage to apply to the pool
      */
-    function setPoolDevFeePercentage(
-        address pool,
-        uint256 poolDevFeePercentage
-    ) external;
+    function setPoolDevFeePercentage(address pool, uint256 poolDevFeePercentage) external;
 
     /**
      * @notice Emitted when the pool dev fee percentage of a pool is updated.
