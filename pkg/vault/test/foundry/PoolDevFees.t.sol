@@ -91,15 +91,6 @@ contract PoolDevFees is BaseVaultTest {
 
     function swapSingleTokenExactIn(IERC20 tokenIn, IERC20 tokenOut, uint256 amountIn) public {
         vm.prank(alice);
-        router.swapSingleTokenExactIn(
-            address(pool),
-            tokenIn,
-            tokenOut,
-            amountIn,
-            0,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
+        router.swapSingleTokenExactIn(address(pool), tokenIn, tokenOut, amountIn, 0, MAX_UINT256, false, bytes(""));
     }
 }
