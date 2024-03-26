@@ -105,8 +105,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable returns (uint256[] memory exactAmountsIn) {
-        (exactAmountsIn, , ) = abi.decode(
+    ) external payable returns (uint256[] memory amountsIn) {
+        (amountsIn, , ) = abi.decode(
             _vault.lock{ value: msg.value }(
                 abi.encodeWithSelector(
                     Router.addLiquidityHook.selector,
