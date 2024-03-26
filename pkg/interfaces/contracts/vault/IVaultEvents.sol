@@ -16,6 +16,7 @@ interface IVaultEvents {
      * @param pauseWindowEndTime The pool's pause window end time
      * @param pauseManager The pool's external pause manager (or 0 for governance)
      * @param poolDev The pool's dev address who can set pool dev fee and collect such fee
+     * @param hooks Flags mentioning each enabled hook in the pool
      * @param liquidityManagement Supported liquidity management hook flags
      */
     event PoolRegistered(
