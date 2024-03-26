@@ -63,7 +63,7 @@ contract RecoveryModeTest is BaseVaultTest {
 
     function testRecoveryModePermissionlessWhenVaultPaused() public {
         // When Vault is not paused, `enableRecoveryMode` is permissioned.
-        assertFalse(vault.isVaultPaused(), "Vault should not be paused initially");
+        require(vault.isVaultPaused() == false, "Vault should not be paused initially");
 
         vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
         vm.prank(lp);
@@ -85,9 +85,9 @@ contract RecoveryModeTest is BaseVaultTest {
 
     function testRecoveryModePermissionlessWhenPoolPaused() public {
         // When Pool is not paused, `enableRecoveryMode` is permissioned.
-        assertFalse(vault.isPoolPaused(pool), "Pool should not be paused initially");
+        require(vault.isPoolPaused(pool) == false, "Pool should not be paused initially");
         // Also ensure Vault is not paused.
-        assertFalse(vault.isVaultPaused(), "Vault should not be paused initially");
+        require(vault.isVaultPaused() == false, "Vault should not be paused initially");
 
         vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
         vm.prank(lp);
@@ -111,8 +111,8 @@ contract RecoveryModeTest is BaseVaultTest {
     function testRecoveryModePermissionedWhenVaultPermissionless() public {
         // Pause Vault
         vault.manualPauseVault();
-        assertTrue(vault.isVaultPaused(), "Vault should be paused initially");
-        assertFalse(vault.isPoolPaused(pool), "Pool should not be paused initially");
+        require(vault.isVaultPaused(), "Vault should be paused initially");
+        require(vault.isPoolPaused(pool) == false, "Pool should not be paused initially");
 
         // Enter the permissionless period of the Vault.
         skip(500 days);
@@ -138,7 +138,7 @@ contract RecoveryModeTest is BaseVaultTest {
 
     function testRecoveryModePermissionedWhenPoolPermissionless() public {
         // Also ensure Vault is not paused.
-        assertFalse(vault.isVaultPaused(), "Vault should not be paused initially");
+        require(vault.isVaultPaused() == false, "Vault should not be paused initially");
 
         // Pause pool
         vault.manualSetPoolPaused(pool, true);
