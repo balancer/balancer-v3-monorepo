@@ -55,6 +55,9 @@ interface IVaultErrors {
     /// @dev The data in a TokenConfig struct is inconsistent or unsupported.
     error InvalidTokenConfiguration();
 
+    /// @dev The pool configuration is invalid.
+    error InvalidPoolConfiguration();
+
     /**
      * @dev The token list passed into an operation does not match the pool tokens in the pool.
      * @param pool Address of the pool
@@ -143,6 +146,9 @@ interface IVaultErrors {
     /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
     error BptAmountOutBelowMin(uint256 amount, uint256 limit);
 
+    /// @dev Pool does not support adding liquidity with an unbalanced input.
+    error DoesNotSupportAddLiquidityUnbalanced();
+
     /// @dev Pool does not support adding liquidity with a customized input.
     error DoesNotSupportAddLiquidityCustom();
 
@@ -158,6 +164,9 @@ interface IVaultErrors {
 
     /// @dev The required BPT amount in exceeds the maximum limit specified for the operation.
     error BptAmountInAboveMax(uint256 amount, uint256 limit);
+
+    /// @dev Pool does not support removing liquidity with an unbalanced input.
+    error DoesNotSupportRemoveLiquidityUnbalanced();
 
     /// @dev Pool does not support removing liquidity with a customized input.
     error DoesNotSupportRemoveLiquidityCustom();

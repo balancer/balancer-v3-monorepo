@@ -161,7 +161,12 @@ contract VaultTokenTest is BaseVaultTest {
                 shouldCallBeforeSwap: false,
                 shouldCallAfterSwap: false
             }),
-            LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false })
+            LiquidityManagement({
+                supportsAddLiquidityUnbalanced: true,
+                supportsAddLiquidityCustom: false,
+                supportsRemoveLiquidityUnbalanced: true,
+                supportsRemoveLiquidityCustom: false
+            })
         );
     }
 

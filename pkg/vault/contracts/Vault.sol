@@ -596,6 +596,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 bptAmountOut
             );
         } else if (params.kind == AddLiquidityKind.UNBALANCED) {
+            _poolConfig[params.pool].requireSupportsAddLiquidityUnbalanced();
+
             amountsInScaled18 = maxAmountsInScaled18;
             (bptAmountOut, swapFeeAmountsScaled18) = BasePoolMath.computeAddLiquidityUnbalanced(
                 poolData.balancesLiveScaled18,
@@ -605,6 +607,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
+            _poolConfig[params.pool].requireSupportsAddLiquidityUnbalanced();
+
             bptAmountOut = params.minBptAmountOut;
             vars.tokenIndex = InputHelpers.getSingleInputIndex(maxAmountsInScaled18);
 
@@ -815,8 +819,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 bptAmountIn
             );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN) {
+            _poolConfig[params.pool].requireSupportsRemoveLiquidityUnbalanced();
             bptAmountIn = params.maxBptAmountIn;
-
             amountsOutScaled18 = minAmountsOutScaled18;
             vars.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
             (amountsOutScaled18[vars.tokenIndex], swapFeeAmountsScaled18) = BasePoolMath
@@ -829,6 +833,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     IBasePool(params.pool).computeBalance
                 );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
+            _poolConfig[params.pool].requireSupportsRemoveLiquidityUnbalanced();
             amountsOutScaled18 = minAmountsOutScaled18;
             vars.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
 

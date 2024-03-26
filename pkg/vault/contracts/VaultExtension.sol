@@ -224,6 +224,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
 
+        if (false /* dynamicFee && (addLiquidityUnbalanced || removeLiquidityUnbalanced) */) {
+            revert InvalidPoolConfiguration();
+        }
+
         config.isPoolRegistered = true;
         config.hooks = params.poolHooks;
         config.liquidityManagement = params.liquidityManagement;
