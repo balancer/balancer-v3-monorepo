@@ -26,6 +26,23 @@ contract VaultLiquidityTest is BaseVaultTest {
 
     /// Add
 
+    function addLiquidityProportional() public returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
+        bptAmountOut = defaultAmount;
+        amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+
+        vm.prank(alice);
+        snapStart("vaultAddLiquidityProportional");
+        amountsIn = router.addLiquidityProportional(address(pool), amountsIn, bptAmountOut, false, bytes(""));
+        snapEnd();
+
+        // should mint correct amount of BPT tokens
+        assertEq(bptAmountOut, defaultAmount, "Invalid amount of BPT");
+    }
+
+    function testAddLiquidityProportional() public {
+        assertAddLiquidity(addLiquidityProportional);
+    }
+
     function addLiquidityUnbalanced() public returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
