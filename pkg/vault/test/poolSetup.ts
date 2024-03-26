@@ -52,7 +52,11 @@ export async function setupEnvironment(pauseWindowDuration: number): Promise<{
   return { vault: await TypesConverter.toIVaultMock(vault), tokens: [tokenA, tokenB, tokenC], pools: [poolA, poolB] };
 }
 
-export function buildTokenConfig(tokens: string[], rateProviders: string[] = []): TokenConfigStruct[] {
+export function buildTokenConfig(
+  tokens: string[],
+  rateProviders: string[] = [],
+  paysYieldFees: boolean[] = []
+): TokenConfigStruct[] {
   const result: TokenConfigStruct[] = [];
   if (rateProviders.length == 0) {
     rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
@@ -63,7 +67,7 @@ export function buildTokenConfig(tokens: string[], rateProviders: string[] = [])
       token: token,
       tokenType: rateProviders[i] == ZERO_ADDRESS ? TokenType.STANDARD : TokenType.WITH_RATE,
       rateProvider: rateProviders[i],
-      yieldFeeExempt: false,
+      paysYieldFees: paysYieldFees.length == 0 ? rateProviders[i] != ZERO_ADDRESS : paysYieldFees[i],
     };
   });
 

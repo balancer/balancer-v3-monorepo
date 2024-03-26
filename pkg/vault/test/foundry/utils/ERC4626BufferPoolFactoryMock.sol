@@ -5,10 +5,10 @@ pragma solidity ^0.8.24;
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ERC4626BufferPoolFactory } from "vault/contracts/factories/ERC4626BufferPoolFactory.sol";
-
+import { ERC4626BufferPoolFactory } from "../../../contracts/factories/ERC4626BufferPoolFactory.sol";
 import { ERC4626BufferPoolMock } from "./ERC4626BufferPoolMock.sol";
 
 /// @notice Factory for Mock ERC4626 Buffer Pools
@@ -25,7 +25,7 @@ contract ERC4626BufferPoolFactoryMock is ERC4626BufferPoolFactory {
      *
      * @param wrappedToken The ERC4626 wrapped token associated with the buffer and pool
      */
-    function createMocked(IERC4626 wrappedToken) external returns (address pool) {
+    function createMocked(IERC4626 wrappedToken, IRateProvider rateProvider) external returns (address pool) {
         // Ensure the wrappedToken is compatible with the Vault
         if (_isValidWrappedToken(wrappedToken) == false) {
             revert IncompatibleWrappedToken(address(wrappedToken));
@@ -45,6 +45,7 @@ contract ERC4626BufferPoolFactoryMock is ERC4626BufferPoolFactory {
         _registerPoolWithVault(
             pool,
             wrappedToken,
+            rateProvider,
             getNewPoolPauseWindowEndTime(),
             address(0),
             _getDefaultPoolHooks(),

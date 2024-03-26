@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
@@ -39,13 +40,24 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
      * @notice Deploys a new `ERC4626BufferPool`.
      * @dev Buffers might need an external pause manager (e.g., a large depositor). This is permissionless,
      * so anyone can create a buffer for any wrapper. As a safety measure, we validate the wrapper for
-     * ERC4626-compatibility.
+     * ERC4626-compatibility. In particular, we check that the wrapped token supports the interface we need,
+     * has value, and the "rate" is linear, which means that converting between assets and shares is
+     * symmetrical and independent of the amount.
+     *
+     * NB: this is a "best effort" to check for basic compatibility, and does not guarantee that a particular
+     * wrapped token is fully compliant with the Vault.
      *
      * @param wrappedToken The ERC4626 wrapped token associated with the buffer and pool
+     * @param rateProvider The rate provider associated with the wrapped token
      * @param pauseManager The pause manager for this pool (or 0)
      * @param salt The salt value that will be passed to create3 deployment
      */
-    function create(IERC4626 wrappedToken, address pauseManager, bytes32 salt) external returns (address pool) {
+    function create(
+        IERC4626 wrappedToken,
+        IRateProvider rateProvider,
+        address pauseManager,
+        bytes32 salt
+    ) external returns (address pool) {
         ensureValidWrappedToken(wrappedToken);
 
         pool = _create(
@@ -63,6 +75,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         _registerPoolWithVault(
             pool,
             wrappedToken,
+            rateProvider,
             getNewPoolPauseWindowEndTime(),
             pauseManager,
             _getDefaultPoolHooks(),
@@ -73,6 +86,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
     function _registerPoolWithVault(
         address pool,
         IERC4626 wrappedToken,
+        IRateProvider rateProvider,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolHooks memory poolHooks,
@@ -82,7 +96,10 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         uint256 baseTokenIndex = IBufferPool(pool).getBaseTokenIndex();
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[wrappedTokenIndex].token = IERC20(wrappedToken);
-        tokenConfig[wrappedTokenIndex].tokenType = TokenType.ERC4626;
+        tokenConfig[wrappedTokenIndex].tokenType = TokenType.WITH_RATE;
+        tokenConfig[wrappedTokenIndex].rateProvider = rateProvider;
+        // ERC4626 wrapped tokens always pay yield fees.
+        tokenConfig[wrappedTokenIndex].paysYieldFees = true;
         // We are assuming the baseToken is STANDARD (the default type, with enum value 0).
         tokenConfig[baseTokenIndex].token = IERC20(wrappedToken.asset());
 

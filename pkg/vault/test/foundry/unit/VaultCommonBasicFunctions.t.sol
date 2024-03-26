@@ -74,9 +74,9 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
                 string.concat("token", Strings.toString(i), "should have no rate provider")
             );
             assertEq(
-                newTokenConfig[i].yieldFeeExempt,
+                newTokenConfig[i].paysYieldFees,
                 false,
-                string.concat("token", Strings.toString(i), "yieldFeeExempt flag should be false")
+                string.concat("token", Strings.toString(i), "paysYieldFees flag should be false")
             );
 
             assertEq(
@@ -211,9 +211,9 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
                 string.concat("token", Strings.toString(i), "should have no rate provider")
             );
             assertEq(
-                newTokenConfig[i].yieldFeeExempt,
+                newTokenConfig[i].paysYieldFees,
                 false,
-                string.concat("token", Strings.toString(i), "yieldFeeExempt flag should be false")
+                string.concat("token", Strings.toString(i), "paysYieldFees flag should be false")
             );
 
             assertEq(
