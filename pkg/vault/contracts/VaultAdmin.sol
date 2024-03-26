@@ -319,14 +319,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _ensurePoolNotInRecoveryMode(pool);
 
         // If the Vault or pool is pausable (and currently paused), this call is permissionless.
-        // `poolPaused` will be true if the Pool is pausable and currently paused.
-        (bool poolPaused, ) = _getPoolPausedState(pool);
-
-        // `vaultPaused` will be true if the Vault is pausable and currently paused.
-        // solhint-disable-next-line not-rely-on-time
-        bool vaultPaused = VaultStateLib.isVaultPaused(_vaultState) && block.timestamp <= _vaultBufferPeriodEndTime;
-
-        if (poolPaused == false && vaultPaused == false) {
+        if (_isPoolPaused(pool) == false && _isVaultPaused() == false) {
             // If not permissionless, authenticate with governance.
             _authenticateCaller();
         }
