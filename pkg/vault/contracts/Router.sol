@@ -680,6 +680,34 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
     }
 
     /// @inheritdoc IRouter
+    function queryAddLiquidityProportional(
+        address pool,
+        uint256[] memory maxAmountsIn,
+        uint256 exactBptAmountOut,
+        bytes memory userData
+    ) external returns (uint256[] memory amountsIn) {
+        (amountsIn, , ) = abi.decode(
+            _vault.quote(
+                abi.encodeWithSelector(
+                    Router.queryAddLiquidityHook.selector,
+                    AddLiquidityHookParams({
+                        // we use router as a sender to simplify basic query functions
+                        // but it is possible to add liquidity to any recipient
+                        sender: address(this),
+                        pool: pool,
+                        maxAmountsIn: maxAmountsIn,
+                        minBptAmountOut: exactBptAmountOut,
+                        kind: AddLiquidityKind.UNBALANCED,
+                        wethIsEth: false,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256[], uint256, bytes)
+        );
+    }
+
+    /// @inheritdoc IRouter
     function queryAddLiquidityUnbalanced(
         address pool,
         uint256[] memory exactAmountsIn,
