@@ -65,7 +65,7 @@ describe('WeightedPool', function () {
     poolTokens = sortAddresses([tokenAAddress, tokenBAddress, tokenCAddress]);
 
     pool = await deploy('v3-vault/PoolMock', {
-      args: [vault, 'Pool', 'POOL', buildTokenConfig(poolTokens), true, 365 * 24 * 3600, ZERO_ADDRESS],
+      args: [vault, 'Pool', 'POOL', buildTokenConfig(poolTokens), true, 365 * 24 * 3600, ZERO_ADDRESS, ZERO_ADDRESS],
     });
   });
 
