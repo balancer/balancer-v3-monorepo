@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
@@ -18,6 +19,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { RouterCommon } from "./RouterCommon.sol";
 
 contract Router is IRouter, RouterCommon, ReentrancyGuard {
+    using SafeERC20 for IERC20;
     using Address for address payable;
 
     constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {
@@ -936,6 +938,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
         onlyVault
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
     {
+        // If router is sender have to approve itself.
+        IERC20(params.pool).approve(address(this), type(uint256).max);
         return
             _vault.removeLiquidity(
                 RemoveLiquidityParams({

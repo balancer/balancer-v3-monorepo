@@ -1,12 +1,15 @@
 import { ethers } from 'hardhat';
-import { VoidSigner } from 'ethers';
+import { impersonate } from '@balancer-labs/v3-helpers/src/signers';
+import { VoidSigner, AddressLike, BigNumberish } from 'ethers';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { MAX_UINT256, MAX_UINT160, MAX_UINT48, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { fp, pct } from '@balancer-labs/v3-helpers/src/numbers';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
+import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
+
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
 import { BatchRouter, Router, Vault } from '../typechain-types';
 import { BalanceChange, expectBalanceChange } from '@balancer-labs/v3-helpers/src/test/tokenBalance';
@@ -14,11 +17,28 @@ import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/Vault
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { buildTokenConfig } from './poolSetup';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
+import { deployPermit2 } from './Permit2Deployer';
+import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
+
+async function permit2Approve(
+  tokens: ERC20TokenList,
+  permit2: IPermit2,
+  to: AddressLike,
+  from: SignerWithAddress,
+  amount: BigNumberish
+): Promise<void> {
+  for (const token of tokens.tokens) {
+    await token.connect(from).approve(permit2, MAX_UINT256);
+    await permit2.connect(from).approve(token, to, amount, MAX_UINT48);
+  }
+}
 
 describe('BatchSwap', function () {
+  let permit2: IPermit2;
   let vault: Vault;
   let poolA: PoolMock, poolB: PoolMock, poolC: PoolMock;
   let poolAB: PoolMock, poolAC: PoolMock, poolBC: PoolMock;
+  let pools: PoolMock[];
   let tokens: ERC20TokenList;
   let router: BatchRouter, basicRouter: Router;
 
@@ -38,8 +58,9 @@ describe('BatchSwap', function () {
     vault = await VaultDeployer.deploy();
     vaultAddress = await vault.getAddress();
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
-    router = await deploy('BatchRouter', { args: [vaultAddress, WETH] });
-    basicRouter = await deploy('Router', { args: [vaultAddress, WETH] });
+    permit2 = await deployPermit2();
+    router = await deploy('BatchRouter', { args: [vaultAddress, WETH, permit2] });
+    basicRouter = await deploy('Router', { args: [vaultAddress, WETH, permit2] });
 
     tokens = await ERC20TokenList.create(3, { sorted: true });
 
@@ -83,12 +104,25 @@ describe('BatchSwap', function () {
     });
   });
 
-  sharedBeforeEach('initialize pools', async () => {
-    tokens.mint({ to: lp, amount: fp(1e12) });
-    tokens.mint({ to: sender, amount: fp(1e12) });
-    tokens.approve({ to: await vault.getAddress(), from: lp, amount: MAX_UINT256 });
-    tokens.approve({ to: await vault.getAddress(), from: sender, amount: MAX_UINT256 });
+  sharedBeforeEach('allowances', async () => {
+    pools = [poolA, poolB, poolC, poolAB, poolAC, poolBC];
 
+    await tokens.mint({ to: lp, amount: fp(1e12) });
+    await tokens.mint({ to: sender, amount: fp(1e12) });
+    for (const pool of pools) {
+      await pool.connect(lp).approve(router, MAX_UINT256);
+      await pool.connect(lp).approve(basicRouter, MAX_UINT256);
+      await pool.connect(sender).approve(router, MAX_UINT256);
+      await pool.connect(sender).approve(basicRouter, MAX_UINT256);
+    }
+    const permit2TokenList = new ERC20TokenList([...tokens.tokens, poolA, poolB, poolC, poolAB, poolAC, poolBC]);
+    await permit2Approve(permit2TokenList, permit2, router, lp, MAX_UINT160);
+    await permit2Approve(permit2TokenList, permit2, basicRouter, lp, MAX_UINT160);
+    await permit2Approve(permit2TokenList, permit2, router, sender, MAX_UINT160);
+    await permit2Approve(permit2TokenList, permit2, basicRouter, sender, MAX_UINT160);
+  });
+
+  sharedBeforeEach('initialize pools', async () => {
     await basicRouter
       .connect(lp)
       .initialize(poolA, poolATokens, Array(poolATokens.length).fill(fp(10000)), 0, false, '0x');
