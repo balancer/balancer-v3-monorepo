@@ -24,9 +24,13 @@ import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/h
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import {
+    TransientStorageHelpers
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
+import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import { Slots } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/Slots.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -44,6 +48,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using PoolConfigLib for PoolConfig;
     using ScalingHelpers for *;
     using VaultStateLib for VaultStateBits;
+    using TransientStorageHelpers for *;
+    using Slots for Slots.Uint256Slot;
 
     constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) {
         if (address(vaultExtension.vault()) != address(this)) {
@@ -75,25 +81,21 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      */
     modifier transient() {
         // Add the current locker to the list
-        _lockers.push(msg.sender);
+        _lockers().tPush(msg.sender);
 
         // The caller does everything here and has to settle all outstanding balances
         _;
 
         // Check if it's the last locker
-        if (_lockers.length == 1) {
+        if (_lockers().tLength() == 1) {
             // Ensure all balances are settled
-            if (_nonzeroDeltaCount != 0) revert BalanceNotSettled();
-
-            // Reset the lockers list
-            delete _lockers;
+            if (_nonzeroDeltaCount().tload() != 0) revert BalanceNotSettled();
 
             // Reset the counter
-            delete _nonzeroDeltaCount;
-        } else {
-            // If it's not the last locker, simply remove it from the list
-            _lockers.pop();
+            _nonzeroDeltaCount().tstore(0);
         }
+        // Remove locker from the list (applies to the last one too, which resets the array)
+        _lockers().tPop();
     }
 
     /// @inheritdoc IVaultMain

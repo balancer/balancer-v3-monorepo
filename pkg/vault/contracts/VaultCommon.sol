@@ -11,8 +11,12 @@ import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import {
+    TransientStorageHelpers
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import { Slots } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/Slots.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -31,6 +35,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     using SafeCast for *;
     using FixedPoint for *;
     using VaultStateLib for VaultStateBits;
+    using TransientStorageHelpers for *;
+    using Slots for Slots.Uint256Slot;
 
     /*******************************************************************************
                               Transient Accounting
@@ -50,14 +56,15 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     function _ensureWithLocker() internal view {
+        uint256 lockersLength = _lockers().tLength();
         // If there are no handlers in the list, revert with an error.
-        if (_lockers.length == 0) {
+        if (lockersLength == 0) {
             revert NoLocker();
         }
 
         // Get the last locker from the `_lockers` array.
         // This represents the current active locker.
-        address locker = _lockers[_lockers.length - 1];
+        address locker = _lockers().tUncheckedAt(lockersLength - 1);
 
         // If the current function caller is not the active locker, revert.
         if (msg.sender != locker) {
@@ -115,7 +122,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         }
 
         // Get the current recorded delta for this token and locker.
-        int256 current = _tokenDeltas[locker][token];
+        int256 current = _tokenDeltas().tGet(locker, token);
 
         // Calculate the new delta after accounting for the change.
         int256 next = current + delta;
@@ -124,17 +131,17 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             // If the resultant delta becomes zero after this operation,
             // decrease the count of non-zero deltas.
             if (next == 0) {
-                _nonzeroDeltaCount--;
+                _nonzeroDeltaCount().tstore(_nonzeroDeltaCount().tload() - 1);
             }
             // If there was no previous delta (i.e., it was zero) and now we have one,
             // increase the count of non-zero deltas.
             else if (current == 0) {
-                _nonzeroDeltaCount++;
+                _nonzeroDeltaCount().tstore(_nonzeroDeltaCount().tload() + 1);
             }
         }
 
         // Update the delta for this token and locker.
-        _tokenDeltas[locker][token] = next;
+        _tokenDeltas().tSet(locker, token, next);
     }
 
     function _isTrustedRouter(address) internal pure returns (bool) {
