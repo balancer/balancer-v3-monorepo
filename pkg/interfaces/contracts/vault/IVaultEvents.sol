@@ -101,6 +101,16 @@ interface IVaultEvents {
     event ProtocolYieldFeeCharged(address indexed pool, address indexed token, uint256 amount);
 
     /**
+     * @notice Emitted when a pool dev fee is incurred.
+     * @dev This is included for traceability of fees to pools.
+     *
+     * @param pool The pool associated with this charge
+     * @param token The token whose protocol fee balance increased
+     * @param amount The amount of the pool dev fee
+     */
+    event PoolDevFeeCharged(address indexed pool, address indexed token, uint256 amount);
+
+    /**
      * @dev Recovery mode has been enabled or disabled for a pool.
      * @param pool The pool
      * @param recoveryMode True if recovery mode was enabled

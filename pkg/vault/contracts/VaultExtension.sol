@@ -44,6 +44,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using Address for *;
     using ArrayHelpers for uint256[];
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using EnumerableSet for EnumerableSet.AddressSet;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
@@ -175,6 +176,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         // Retrieve or create the pool's token balances mapping.
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        // Retrieve or create the pool's dev fee mapping.
+        EnumerableMap.IERC20ToUint256Map storage poolDevFees = _poolDevFees[pool];
+
         uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
         IERC20 previousToken;
 
@@ -200,6 +204,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 revert TokenAlreadyRegistered(token);
             }
 
+            // Register the token dev fee with an initial balance of zero.
+            // Note: EnumerableMaps require an explicit initial value when creating a key-value pair.
+            if (poolDevFees.set(token, 0) == false) {
+                revert TokenAlreadyRegistered(token);
+            }
+
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
             _poolTokenConfig[pool][token] = tokenData;
 
@@ -220,6 +230,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         // Store the pause manager. A zero address means default to the authorizer.
         _poolPauseManagers[pool] = params.pauseManager;
+
+        // Store the pool dev as the caller of register pool.
+        _poolDev[pool] = msg.sender;
 
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);

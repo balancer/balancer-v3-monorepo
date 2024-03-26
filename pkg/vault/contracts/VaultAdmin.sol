@@ -294,6 +294,45 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         emit SwapFeePercentageChanged(pool, swapFeePercentage);
     }
 
+    modifier withPoolDev(address pool) {
+        _ensurePoolDev(pool);
+        _;
+    }
+
+    function _ensurePoolDev(address pool) private view {
+        address poolDev = _poolDev[pool];
+
+        if (msg.sender != poolDev) {
+            revert SenderIsNotPoolDev(pool);
+        }
+    }
+
+    /**
+     * @inheritdoc IVaultAdmin
+     * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
+     * MAX_POOL_DEV_FEE_PERCENTAGE. Emits the PoolDevFeePercentageChanged event.
+     */
+    function setPoolDevFeePercentage(
+        address pool,
+        uint256 poolDevFeePercentage
+    ) external withRegisteredPool(pool) withPoolDev(pool) onlyVault {
+        // Saving bits by not implementing a new modifier
+        _ensureUnpausedAndGetVaultState(pool);
+        _setPoolDevFeePercentage(pool, poolDevFeePercentage);
+    }
+
+    function _setPoolDevFeePercentage(address pool, uint256 poolDevFeePercentage) internal virtual {
+        if (poolDevFeePercentage > _MAX_POOL_DEV_FEE_PERCENTAGE) {
+            revert PoolDevFeePercentageTooHigh();
+        }
+
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        config.poolDevFeePercentage = poolDevFeePercentage;
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        emit PoolDevFeePercentageChanged(pool, poolDevFeePercentage);
+    }
+
     /// @inheritdoc IVaultAdmin
     function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant onlyVault {
         for (uint256 index = 0; index < tokens.length; index++) {

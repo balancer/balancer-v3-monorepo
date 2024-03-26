@@ -137,6 +137,22 @@ interface IVaultAdmin {
     event SwapFeePercentageChanged(address indexed pool, uint256 indexed swapFeePercentage);
 
     /**
+     * @notice Assigns a new pool dev fee percentage to the specified pool.
+     * @param pool The address of the pool for which the pool dev fee will be changed
+     * @param poolDevFeePercentage The new pool dev fee percentage to apply to the pool
+     */
+    function setPoolDevFeePercentage(
+        address pool,
+        uint256 poolDevFeePercentage
+    ) external;
+
+    /**
+     * @notice Emitted when the pool dev fee percentage of a pool is updated.
+     * @param poolDevFeePercentage The new pool dev fee percentage for the pool
+     */
+    event PoolDevFeePercentageChanged(address indexed pool, uint256 indexed poolDevFeePercentage);
+
+    /**
      * @notice Collects accumulated protocol fees for the specified array of tokens.
      * @dev Fees are sent to msg.sender.
      * @param tokens An array of token addresses for which the fees should be collected

@@ -175,6 +175,9 @@ interface IVaultErrors {
     /// @dev Error raised when the swap fee percentage exceeds the maximum allowed value.
     error SwapFeePercentageTooHigh();
 
+    /// @dev Error raised when the pool dev fee percentage exceeds the maximum allowed value.
+    error PoolDevFeePercentageTooHigh();
+
     /*******************************************************************************
                                     Queries
     *******************************************************************************/
@@ -272,4 +275,10 @@ interface IVaultErrors {
 
     /// @dev The vault admin was configured with an incorrect Vault address.
     error WrongVaultAdminDeployment();
+
+    /**
+     * @dev The caller is not the registered pool dev for the pool.
+     * @param pool The pool
+     */
+    error SenderIsNotPoolDev(address pool);
 }
