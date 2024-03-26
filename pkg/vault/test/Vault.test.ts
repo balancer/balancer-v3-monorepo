@@ -95,8 +95,15 @@ describe('Vault', function () {
   });
 
   describe('registration', () => {
+    it('pool must support ERC165', async () => {
+      await expect(vault.manualRegisterPoolPassThruTokens(ANY_ADDRESS, poolATokens)).to.be.revertedWithCustomError(
+        vaultExtension,
+        'PoolMustSupportERC165'
+      );
+    });
+
     it('cannot register a pool with unsorted tokens', async () => {
-      await expect(vault.manualRegisterPoolPassThruTokens(ANY_ADDRESS, unsortedTokens)).to.be.revertedWithCustomError(
+      await expect(vault.manualRegisterPoolPassThruTokens(poolB, unsortedTokens)).to.be.revertedWithCustomError(
         vaultExtension,
         'TokensNotSorted'
       );
