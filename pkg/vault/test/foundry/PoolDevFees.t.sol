@@ -13,6 +13,10 @@ contract PoolDevFees is BaseVaultTest {
         BaseVaultTest.setUp();
     }
 
+    function testPoolDevWasSet() public {
+        assertEq(vault.getPoolDev(pool), address(lp));
+    }
+
     function testSwapWithoutDevFee() public {
         assertEq(vault.getPoolDevFee(address(pool), usdc), 0);
         assertEq(vault.getPoolDevFee(address(pool), dai), 0);
@@ -22,9 +26,7 @@ contract PoolDevFees is BaseVaultTest {
     }
 
     function testSwapWithDevFee() public {
-        console.log("lp address", address(lp));
-        console.log("pool dev address", vault.getPoolDev(pool));
-
+        vm.prank(lp);
         vault.setPoolDevFeePercentage(address(pool), 1e17); // 10%
 
         assertEq(vault.getPoolDevFee(address(pool), usdc), 0);
