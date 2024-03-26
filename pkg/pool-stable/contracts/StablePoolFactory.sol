@@ -58,6 +58,7 @@ contract StablePoolFactory is BasePoolFactory {
             tokens,
             getNewPoolPauseWindowEndTime(),
             address(0), // no pause manager
+            address(0), // no pool dev
             PoolHooks({
                 shouldCallBeforeInitialize: false,
                 shouldCallAfterInitialize: false,
