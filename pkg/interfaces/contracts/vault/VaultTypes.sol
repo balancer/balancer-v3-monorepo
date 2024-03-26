@@ -136,6 +136,7 @@ struct SwapParams {
 *******************************************************************************/
 
 enum AddLiquidityKind {
+    PROPORTIONAL,
     UNBALANCED,
     SINGLE_TOKEN_EXACT_OUT,
     CUSTOM

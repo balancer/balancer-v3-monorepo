@@ -371,8 +371,15 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
-    function enableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate onlyVault {
+    function enableRecoveryMode(address pool) external withRegisteredPool(pool) onlyVault {
         _ensurePoolNotInRecoveryMode(pool);
+
+        // If the Vault or pool is pausable (and currently paused), this call is permissionless.
+        if (_isPoolPaused(pool) == false && _isVaultPaused() == false) {
+            // If not permissionless, authenticate with governance.
+            _authenticateCaller();
+        }
+
         _setPoolRecoveryMode(pool, true);
     }
 
