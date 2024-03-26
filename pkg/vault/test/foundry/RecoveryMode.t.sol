@@ -50,7 +50,7 @@ contract RecoveryModeTest is BaseVaultTest {
         uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
         uint256[] memory lastLiveBalances = vault.getLastLiveBalances(pool);
 
-        assertEq(currentLiveBalances.length, lastLiveBalances.length);
+        assertEq(currentLiveBalances.length, lastLiveBalances.length, "current/last live balance length mismatch");
 
         for (uint256 i = 0; i < currentLiveBalances.length; i++) {
             bool areEqual = currentLiveBalances[i] == lastLiveBalances[i];
@@ -63,7 +63,7 @@ contract RecoveryModeTest is BaseVaultTest {
 
     function testRecoveryModePermissionlessWhenVaultPaused() public {
         // When Vault is not paused, `enableRecoveryMode` is permissioned.
-        assertFalse(vault.isVaultPaused());
+        assertFalse(vault.isVaultPaused(), "Vault should not be paused initially");
 
         vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
         vm.prank(lp);
@@ -72,22 +72,22 @@ contract RecoveryModeTest is BaseVaultTest {
         // Pause Vault
         vault.manualPauseVault();
 
-        assertTrue(vault.isVaultPaused());
-        assertFalse(vault.isPoolInRecoveryMode(pool));
+        assertTrue(vault.isVaultPaused(), "Vault should be paused");
+        assertFalse(vault.isPoolInRecoveryMode(pool), "Pool should not be in Recovery Mode after pausing");
 
         // Can enable recovery mode by an LP with no permission grant.
         vm.prank(lp);
         vault.enableRecoveryMode(pool);
 
-        assertTrue(vault.isVaultPaused());
-        assertTrue(vault.isPoolInRecoveryMode(pool));
+        assertTrue(vault.isVaultPaused(), "Vault should still be paused");
+        assertTrue(vault.isPoolInRecoveryMode(pool), "Pool should be in Recovery Mode");
     }
 
     function testRecoveryModePermissionlessWhenPoolPaused() public {
         // When Pool is not paused, `enableRecoveryMode` is permissioned.
-        assertFalse(vault.isPoolPaused(pool));
+        assertFalse(vault.isPoolPaused(pool), "Pool should not be paused initially");
         // Also ensure Vault is not paused.
-        assertFalse(vault.isVaultPaused());
+        assertFalse(vault.isVaultPaused(), "Vault should not be paused initially");
 
         vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
         vm.prank(lp);
@@ -96,33 +96,33 @@ contract RecoveryModeTest is BaseVaultTest {
         // Pause Pool
         vault.manualSetPoolPaused(pool, true);
 
-        assertTrue(vault.isPoolPaused(pool));
-        assertFalse(vault.isPoolInRecoveryMode(pool));
+        assertTrue(vault.isPoolPaused(pool), "Pool should be paused");
+        assertFalse(vault.isPoolInRecoveryMode(pool), "Pool should not be in Recovery Mode after pausing");
 
         // Can enable recovery mode by an LP with no permission grant.
         vm.prank(lp);
         vault.enableRecoveryMode(pool);
 
-        assertFalse(vault.isVaultPaused());
-        assertTrue(vault.isPoolPaused(pool));
-        assertTrue(vault.isPoolInRecoveryMode(pool));
+        assertFalse(vault.isVaultPaused(), "Vault should still not be paused");
+        assertTrue(vault.isPoolPaused(pool), "Pool should still be paused");
+        assertTrue(vault.isPoolInRecoveryMode(pool), "Pool should be in Recovery Mode");
     }
 
     function testRecoveryModePermissionedWhenVaultPermissionless() public {
         // Pause Vault
         vault.manualPauseVault();
-        assertTrue(vault.isVaultPaused());
-        assertFalse(vault.isPoolPaused(pool));
+        assertTrue(vault.isVaultPaused(), "Vault should be paused initially");
+        assertFalse(vault.isPoolPaused(pool), "Pool should not be paused initially");
 
         // Enter the permissionless period of the Vault.
         skip(500 days);
 
         // Confirm the Vault is permissionless
         uint256 bufferPeriodEndTime = vault.getBufferPeriodEndTime();
-        assertTrue(block.timestamp > bufferPeriodEndTime);
+        assertTrue(block.timestamp > bufferPeriodEndTime, "Time should be after the bufferPeriodEndTime");
 
         // Recovery Mode is permissioned even though the Vault's pause bit is set, because it's no longer pausable.
-        assertFalse(vault.isVaultPaused());
+        assertFalse(vault.isVaultPaused(), "Vault should unpause itself after buffer expiration");
         vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
         vm.prank(lp);
         vault.enableRecoveryMode(pool);
@@ -133,28 +133,28 @@ contract RecoveryModeTest is BaseVaultTest {
         vm.prank(admin);
         vault.enableRecoveryMode(pool);
 
-        assertTrue(vault.isPoolInRecoveryMode(pool));
+        assertTrue(vault.isPoolInRecoveryMode(pool), "Pool should be in Recovery Mode");
     }
 
     function testRecoveryModePermissionedWhenPoolPermissionless() public {
         // Also ensure Vault is not paused.
-        assertFalse(vault.isVaultPaused());
+        assertFalse(vault.isVaultPaused(), "Vault should not be paused initially");
 
         // Pause pool
         vault.manualSetPoolPaused(pool, true);
 
-        assertTrue(vault.isPoolPaused(pool));
-        assertFalse(vault.isPoolInRecoveryMode(pool));
+        assertTrue(vault.isPoolPaused(pool), "Pool should be paused");
+        assertFalse(vault.isPoolInRecoveryMode(pool), "Pool should not be in Recovery Mode after pausing");
 
         // Enter the permissionless period of the Pool.
         skip(500 days);
 
         // Confirm the Pool is permissionless
         (, , uint256 bufferPeriodEndTime, ) = vault.getPoolPausedState(pool);
-        assertTrue(block.timestamp > bufferPeriodEndTime);
+        assertTrue(block.timestamp > bufferPeriodEndTime, "Time should be after Pool's buffer period end time");
 
         // Recovery Mode is permissioned even though the Pool's pause bit is set, because it's no longer pausable.
-        assertFalse(vault.isPoolPaused(pool));
+        assertFalse(vault.isPoolPaused(pool), "Pool should unpause itself after buffer expiration");
         vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
         vm.prank(lp);
         vault.enableRecoveryMode(pool);
@@ -165,6 +165,6 @@ contract RecoveryModeTest is BaseVaultTest {
         vm.prank(admin);
         vault.enableRecoveryMode(pool);
 
-        assertTrue(vault.isPoolInRecoveryMode(pool));
+        assertTrue(vault.isPoolInRecoveryMode(pool), "Pool should be in Recovery Mode");
     }
 }
