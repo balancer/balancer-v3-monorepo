@@ -520,7 +520,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         }
 
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.staticSwapFeePercentage = swapFeePercentage.toUint64();
+        config.staticSwapFeePercentage = swapFeePercentage;
         _poolConfig[pool] = config.fromPoolConfig();
 
         emit SwapFeePercentageChanged(pool, swapFeePercentage);
