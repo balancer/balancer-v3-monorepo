@@ -31,7 +31,9 @@ interface IVaultMainMock {
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) external;
 
-    function manualSetPoolPaused(address, bool, uint256) external;
+    function manualSetPoolPaused(address, bool) external;
+
+    function manualSetPoolPauseWindowEndTime(address, uint256) external;
 
     function manualSetVaultPaused(bool) external;
 
