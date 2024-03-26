@@ -20,7 +20,7 @@ export type TokenConfig = {
   token: string;
   tokenType: TokenType;
   rateProvider: string;
-  yieldFeeExempt: boolean;
+  paysYieldFees: boolean;
 };
 
 export function defaultPoolHooks(): PoolHooksStruct {

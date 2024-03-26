@@ -90,13 +90,19 @@ contract WeightedPool8020FactoryTest is Test {
         IERC20 highWeightToken = IERC20(tokenA);
         IERC20 lowWeightToken = IERC20(tokenB);
 
-        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
-        tokenConfig[0].token = highWeightToken;
-        tokenConfig[0].rateProvider = IRateProvider(address(1));
-        tokenConfig[0].tokenType = TokenType.ERC4626;
-        tokenConfig[1].token = lowWeightToken;
-        tokenConfig[1].rateProvider = IRateProvider(address(2));
-        tokenConfig[1].tokenType = TokenType.WITH_RATE;
+        TokenConfig[] memory tokens = new TokenConfig[](2);
+        tokens[0].token = highWeightToken;
+        tokens[1].token = lowWeightToken;
+
+        WeightedPool(factory.create(tokens[0], tokens[1]));
+
+        vm.expectRevert("DEPLOYMENT_FAILED");
+        WeightedPool(factory.create(tokens[0], tokens[1]));
+
+        tokens[0].rateProvider = IRateProvider(address(1));
+        tokens[0].tokenType = TokenType.WITH_RATE;
+        tokens[1].rateProvider = IRateProvider(address(2));
+        tokens[1].tokenType = TokenType.WITH_RATE;
 
         // Trying to create the same pool with same tokens but different token configs should revert
         vm.expectRevert("DEPLOYMENT_FAILED");
