@@ -15,6 +15,7 @@ interface IVaultEvents {
      * @param tokenConfig The pool's tokens
      * @param pauseWindowEndTime The pool's pause window end time
      * @param pauseManager The pool's external pause manager (or 0 for governance)
+     * @param poolDev The pool's dev address who can set pool dev fee and collect such fee
      * @param liquidityManagement Supported liquidity management hook flags
      */
     event PoolRegistered(
@@ -23,6 +24,7 @@ interface IVaultEvents {
         TokenConfig[] tokenConfig,
         uint256 pauseWindowEndTime,
         address pauseManager,
+        address poolDev,
         PoolHooks hooks,
         LiquidityManagement liquidityManagement
     );

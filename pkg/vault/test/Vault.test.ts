@@ -135,12 +135,19 @@ describe('Vault', function () {
         tokenConfig,
         pauseWindowEndTime: pauseWindowEndTime.toString(),
         pauseManager: ANY_ADDRESS,
+        poolDev: ANY_ADDRESS,
         hooks: [false, false, false, false, false, false, false, false],
         liquidityManagement: [true, true],
       };
 
       // Use expectEvent here to prevent errors with structs of arrays with hardhat matchers.
-      const tx = await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS);
+      const tx = await vault.manualRegisterPoolAtTimestamp(
+        poolB,
+        poolBTokens,
+        pauseWindowEndTime,
+        ANY_ADDRESS,
+        ANY_ADDRESS
+      );
       expectEvent.inReceipt(await tx.wait(), 'PoolRegistered', expectedArgs);
     });
 
@@ -267,6 +274,7 @@ describe('Vault', function () {
             true,
             365 * 24 * 3600,
             ZERO_ADDRESS,
+            ZERO_ADDRESS,
           ],
         });
       });
@@ -296,7 +304,16 @@ describe('Vault', function () {
 
       sharedBeforeEach('deploy pool', async () => {
         pool = await deploy('v3-vault/PoolMock', {
-          args: [vault, 'Pool X', 'POOLX', buildTokenConfig(poolATokens), true, 365 * 24 * 3600, ZERO_ADDRESS],
+          args: [
+            vault,
+            'Pool X',
+            'POOLX',
+            buildTokenConfig(poolATokens),
+            true,
+            365 * 24 * 3600,
+            ZERO_ADDRESS,
+            ZERO_ADDRESS,
+          ],
         });
         poolAddress = await pool.getAddress();
       });
