@@ -102,7 +102,7 @@ contract WeightedPool8020FactoryTest is Test {
         WeightedPool(factory.create(tokens[0], tokens[1]));
 
         tokens[0].rateProvider = IRateProvider(address(1));
-        tokens[0].tokenType = TokenType.ERC4626;
+        tokens[0].tokenType = TokenType.WITH_RATE;
         tokens[1].rateProvider = IRateProvider(address(2));
         tokens[1].tokenType = TokenType.WITH_RATE;
 

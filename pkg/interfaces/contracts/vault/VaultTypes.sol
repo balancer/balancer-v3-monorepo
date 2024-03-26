@@ -58,37 +58,36 @@ struct VaultState {
 /**
  * @dev Token types supported by the Vault. In general, pools may contain any combination of these tokens.
  * STANDARD tokens (e.g., BAL, WETH) have no rate provider.
- * WITH_RATE tokens (e.g., wstETH) require rates but cannot be directly wrapped or unwrapped.
- * In the case of wstETH, this is because the underlying stETH token is rebasing, and such tokens are unsupported
- * by the Vault.
- * ERC4626 tokens (e.g., waDAI) have rates, and can be directly wrapped and unwrapped. The token must conform to
- * a subset of IERC4626, and functions as its own rate provider. To the outside world (e.g., callers of
- * `getPoolTokens`), the pool will appear to contain the underlying base token (DAI, for waDAI), though the
- * wrapped token will be registered and stored in the pool's balance in the Vault.
+ * WITH_RATE tokens (e.g., wstETH) require a rate provider. These may be tokens like wstETH, which need to be wrapped
+ * because the underlying stETH token is rebasing, and such tokens are unsupported by the Vault. They may also be
+ * tokens like sEUR, which track an underlying asset, but are not yield-bearing. Finally, this encompasses
+ * yield-bearing ERC4626 tokens, which can be used with ERC4626BufferPools to facilitate swaps without requiring
+ * wrapping or unwrapping in most cases. The `paysYieldFees` flag can be used to indicate whether a token is
+ * yield-bearing (e.g., waDAI), not yield-bearing (e.g., sEUR), or yield-bearing but exempt from fees (e.g., in
+ * certain nested pools, where protocol yield fees are charged elsewhere).
  *
  * NB: STANDARD must always be the first enum element, so that newly initialized data structures default to Standard.
  */
 enum TokenType {
     STANDARD,
-    WITH_RATE,
-    ERC4626
+    WITH_RATE
 }
 
 /**
  * @dev Encapsulate the data required for the Vault to support a token of the given type.
- * For STANDARD or ERC4626 tokens, the rate provider address will be 0. By definition, ERC4626 tokens cannot be
- * yield exempt, so the `yieldFeeExempt` flag must be false when registering them.
+ * For STANDARD tokens, the rate provider address must be 0, and paysYieldFees must be false.
+ * All WITH_RATE tokens need a rate provider, and may or may not be yield-bearing.
  *
  * @param token The token address
  * @param tokenType The token type (see the enum for supported types)
  * @param rateProvider The rate provider for a token (see further documentation above)
- * @param yieldFeeExempt Flag indicating whether yield fees should be charged on this token
+ * @param paysYieldFees Flag indicating whether yield fees should be charged on this token
  */
 struct TokenConfig {
     IERC20 token;
     TokenType tokenType;
     IRateProvider rateProvider;
-    bool yieldFeeExempt;
+    bool paysYieldFees;
 }
 
 struct PoolData {
