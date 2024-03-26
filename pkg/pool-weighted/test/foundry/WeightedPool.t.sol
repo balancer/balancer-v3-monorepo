@@ -232,7 +232,10 @@ contract WeightedPoolTest is BaseVaultTest {
 
     function testSupportsIERC165() public {
         assertTrue(weightedPool.supportsInterface(type(IERC165).interfaceId), "Pool does not support IERC165");
-        assertTrue(weightedPool.supportsInterface(type(IMinimumSwapFee).interfaceId), "Pool does not support IMinimumSwapFee");
+        assertTrue(
+            weightedPool.supportsInterface(type(IMinimumSwapFee).interfaceId),
+            "Pool does not support IMinimumSwapFee"
+        );
     }
 
     function testMinimumSwapFee() public {
