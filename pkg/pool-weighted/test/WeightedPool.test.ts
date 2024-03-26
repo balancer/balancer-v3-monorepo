@@ -5,7 +5,6 @@ import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
-import { WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/WETHTestToken';
 import { PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/PoolMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { FP_ZERO, fp } from '@balancer-labs/v3-helpers/src/numbers';
@@ -158,7 +157,7 @@ describe('WeightedPool', function () {
       await tokenB.mint(bob, TOKEN_AMOUNT);
 
       await realPool.connect(bob).approve(router, MAX_UINT256);
-      for (const token of [tokenA, tokenB ]) {
+      for (const token of [tokenA, tokenB]) {
         await token.connect(bob).approve(permit2, MAX_UINT256);
         await permit2.connect(bob).approve(token, router, MAX_UINT160, MAX_UINT48);
       }
