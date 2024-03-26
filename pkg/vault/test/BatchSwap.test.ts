@@ -1,5 +1,4 @@
 import { ethers } from 'hardhat';
-import { impersonate } from '@balancer-labs/v3-helpers/src/signers';
 import { VoidSigner, AddressLike, BigNumberish } from 'ethers';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
@@ -8,7 +7,6 @@ import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { MAX_UINT256, MAX_UINT160, MAX_UINT48, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { fp, pct } from '@balancer-labs/v3-helpers/src/numbers';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
-import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
 import { BatchRouter, Router, Vault } from '../typechain-types';

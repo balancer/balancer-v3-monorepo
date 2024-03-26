@@ -307,18 +307,14 @@ describe('BalancerPoolToken', function () {
 
     it('indirect transfer emits a transfer event on the ERC20 BPT token', async () => {
       await expect(
-        await vault
-          .connect(poolASigner)
-          .transferFrom(relayer.address, user.address, relayer.address, bptAmount)
+        await vault.connect(poolASigner).transferFrom(relayer.address, user.address, relayer.address, bptAmount)
       )
         .to.emit(poolA, 'Transfer')
         .withArgs(user.address, relayer.address, bptAmount);
     });
 
     it('cannot transfer ERC20 BPT to zero address', async () => {
-      await expect(
-        vault.connect(poolASigner).transferFrom(relayer.address, user.address, ZERO_ADDRESS, bptAmount)
-      )
+      await expect(vault.connect(poolASigner).transferFrom(relayer.address, user.address, ZERO_ADDRESS, bptAmount))
         .to.be.revertedWithCustomError(vault, 'ERC20InvalidReceiver')
         .withArgs(ZERO_ADDRESS);
     });
@@ -337,9 +333,7 @@ describe('BalancerPoolToken', function () {
     it('cannot transfer more than ERC20 BPT allowance', async () => {
       const allowance = await vault.connect(user).allowance(poolA, user, relayer);
 
-      await expect(
-        vault.connect(poolASigner).transferFrom(relayer, user, other, allowance + 1n)
-      )
+      await expect(vault.connect(poolASigner).transferFrom(relayer, user, other, allowance + 1n))
         .to.be.revertedWithCustomError(vault, 'ERC20InsufficientAllowance')
         .withArgs(relayer.address, bptAmount, allowance + 1n);
     });
