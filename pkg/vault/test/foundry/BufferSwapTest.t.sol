@@ -11,6 +11,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -91,9 +92,9 @@ contract BufferSwapTest is BaseVaultTest {
         waUSDC.deposit(defaultAmount, address(lp));
         vm.stopPrank();
 
-        waDAIBufferPool = bufferFactory.createMocked(waDAI);
+        waDAIBufferPool = bufferFactory.createMocked(waDAI, IRateProvider(address(waDAI)));
         vm.label(address(waDAIBufferPool), "waDAIBufferPool");
-        waUSDCBufferPool = bufferFactory.createMocked(waUSDC);
+        waUSDCBufferPool = bufferFactory.createMocked(waUSDC, IRateProvider(address(waUSDC)));
         vm.label(address(waUSDCBufferPool), "waUSDCBufferPool");
 
         // Give some tokens to buffer pool contracts to pay for rebalancing rounding issues
@@ -112,8 +113,10 @@ contract BufferSwapTest is BaseVaultTest {
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[waDaiIdx].token = IERC20(waDAI);
         tokenConfig[waUsdcIdx].token = IERC20(waUSDC);
-        tokenConfig[0].tokenType = TokenType.ERC4626;
-        tokenConfig[1].tokenType = TokenType.ERC4626;
+        tokenConfig[0].tokenType = TokenType.WITH_RATE;
+        tokenConfig[1].tokenType = TokenType.WITH_RATE;
+        tokenConfig[waDaiIdx].rateProvider = IRateProvider(address(waDAI));
+        tokenConfig[waUsdcIdx].rateProvider = IRateProvider(address(waUSDC));
 
         PoolMock newPool = new PoolMock(
             IVault(address(vault)),

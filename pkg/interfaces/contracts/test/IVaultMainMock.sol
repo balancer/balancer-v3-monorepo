@@ -29,7 +29,9 @@ interface IVaultMainMock {
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) external;
 
-    function manualSetPoolPaused(address, bool, uint256) external;
+    function manualSetPoolPaused(address, bool) external;
+
+    function manualSetPoolPauseWindowEndTime(address, uint256) external;
 
     function manualSetVaultPaused(bool) external;
 
@@ -101,14 +103,14 @@ interface IVaultMainMock {
     function buildTokenConfig(
         IERC20[] memory tokens,
         IRateProvider[] memory rateProviders,
-        bool[] memory yieldExemptFlags
+        bool[] memory yieldFeeFlags
     ) external pure returns (TokenConfig[] memory tokenConfig);
 
     function buildTokenConfig(
         IERC20[] memory tokens,
         TokenType[] memory tokenTypes,
         IRateProvider[] memory rateProviders,
-        bool[] memory yieldExemptFlags
+        bool[] memory yieldFeeFlags
     ) external pure returns (TokenConfig[] memory tokenConfig);
 
     function accountDelta(IERC20 token, int256 delta, address locker) external;
