@@ -158,7 +158,7 @@ interface IVaultAdmin {
 
     /**
      * @notice Collects accumulated pool dev fees for the specified pool.
-     * @dev Fees are sent to msg.sender.
+     * @dev Fees are sent to msg.sender, which a modifier on the function guarantees is the PoolDev.
      * @param pool The pool address for which the fees should be collected
      */
     function collectPoolDevFees(address pool) external;
