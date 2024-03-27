@@ -132,16 +132,16 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
         }
     }
 
-    function approveForPool(IERC20 btp) internal {
+    function approveForPool(IERC20 bpt) internal {
         for (uint256 index = 0; index < users.length; index++) {
             vm.startPrank(users[index]);
 
-            btp.approve(address(router), type(uint256).max);
-            btp.approve(address(batchRouter), type(uint256).max);
+            bpt.approve(address(router), type(uint256).max);
+            bpt.approve(address(batchRouter), type(uint256).max);
 
             IERC20(btp).approve(address(permit2), type(uint256).max);
-            permit2.approve(address(btp), address(router), type(uint160).max, type(uint48).max);
-            permit2.approve(address(btp), address(batchRouter), type(uint160).max, type(uint48).max);
+            permit2.approve(address(bpt), address(router), type(uint160).max, type(uint48).max);
+            permit2.approve(address(bpt), address(batchRouter), type(uint160).max, type(uint48).max);
 
             vm.stopPrank();
         }
