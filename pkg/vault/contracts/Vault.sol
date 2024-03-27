@@ -168,7 +168,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 swapFeeAmountScaled18;
         uint256 swapFeePercentage;
         uint256 protocolSwapFeeAmountRaw;
-        uint256 poolDevFeeAmountRaw;
+        uint256 poolCreatorFeeAmountRaw;
     }
 
     /// @inheritdoc IVaultMain
@@ -393,7 +393,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vars.indexOut
         );
 
-        vars.poolDevFeeAmountRaw = _computeAndChargePoolDevFees(
+        vars.poolCreatorFeeAmountRaw = _computeAndChargepoolCreatorFees(
             poolData,
             vars.swapFeeAmountScaled18,
             params.pool,
@@ -406,7 +406,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.balancesRaw[vars.indexOut] -
             amountOut -
             vars.protocolSwapFeeAmountRaw -
-            vars.poolDevFeeAmountRaw;
+            vars.poolCreatorFeeAmountRaw;
 
         // Set both raw and last live balances.
         _setPoolBalances(params.pool, poolData);
@@ -975,36 +975,36 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /**
      * @dev Preconditions: poolConfig, decimalScalingFactors, tokenRates in `poolData`.
-     * Side effects: updates `_poolDevFees ` storage (and emits event).
+     * Side effects: updates `_poolCreatorFees ` storage (and emits event).
      * Should only be called in a non-reentrant context.
      */
-    function _computeAndChargePoolDevFees(
+    function _computeAndChargepoolCreatorFees(
         PoolData memory poolData,
         uint256 swapFeeAmountScaled18,
         address pool,
         IERC20 token,
         uint256 index
-    ) internal returns (uint256 poolDevFeeAmountRaw) {
-        uint256 poolDevFeePercentage = poolData.poolConfig.poolDevFeePercentage;
+    ) internal returns (uint256 poolCreatorFeeAmountRaw) {
+        uint256 poolCreatorFeePercentage = poolData.poolConfig.poolCreatorFeePercentage;
 
         // If swapFeeAmount equals zero no need to charge anything
         if (
-            swapFeeAmountScaled18 > 0 && poolDevFeePercentage > 0 && poolData.poolConfig.isPoolInRecoveryMode == false
+            swapFeeAmountScaled18 > 0 && poolCreatorFeePercentage > 0 && poolData.poolConfig.isPoolInRecoveryMode == false
         ) {
             // Always charge fees on token. Store amount in native decimals.
             // Since the swapFeeAmountScaled18 also contains the rate, undo it when converting to raw.
-            poolDevFeeAmountRaw = swapFeeAmountScaled18.mulUp(poolDevFeePercentage).toRawUndoRateRoundDown(
+            poolCreatorFeeAmountRaw = swapFeeAmountScaled18.mulUp(poolCreatorFeePercentage).toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[index],
                 poolData.tokenRates[index]
             );
 
-            EnumerableMap.IERC20ToUint256Map storage poolDevFees = _poolDevFees[pool];
+            EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
             // unchecked indexOf returns index + 1, or 0 if token is not present.
-            uint256 feeIndex = poolDevFees.indexOf(token);
-            (, uint256 currentPoolDevFee) = poolDevFees.unchecked_at(feeIndex);
-            poolDevFees.unchecked_setAt(feeIndex, currentPoolDevFee + poolDevFeeAmountRaw);
+            uint256 feeIndex = poolCreatorFees.indexOf(token);
+            (, uint256 currentpoolCreatorFee) = poolCreatorFees.unchecked_at(feeIndex);
+            poolCreatorFees.unchecked_setAt(feeIndex, currentpoolCreatorFee + poolCreatorFeeAmountRaw);
 
-            emit PoolDevFeeCharged(pool, address(token), poolDevFeeAmountRaw);
+            emit poolCreatorFeeCharged(pool, address(token), poolCreatorFeeAmountRaw);
         }
     }
 

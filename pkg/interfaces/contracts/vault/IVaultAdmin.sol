@@ -137,17 +137,17 @@ interface IVaultAdmin {
     event SwapFeePercentageChanged(address indexed pool, uint256 indexed swapFeePercentage);
 
     /**
-     * @notice Assigns a new pool dev fee percentage to the specified pool.
-     * @param pool The address of the pool for which the pool dev fee will be changed
-     * @param poolDevFeePercentage The new pool dev fee percentage to apply to the pool
+     * @notice Assigns a new pool creator fee percentage to the specified pool.
+     * @param pool The address of the pool for which the pool creator fee will be changed
+     * @param poolCreatorFeePercentage The new pool creator fee percentage to apply to the pool
      */
-    function setPoolDevFeePercentage(address pool, uint256 poolDevFeePercentage) external;
+    function setpoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) external;
 
     /**
-     * @notice Emitted when the pool dev fee percentage of a pool is updated.
-     * @param poolDevFeePercentage The new pool dev fee percentage for the pool
+     * @notice Emitted when the pool creator fee percentage of a pool is updated.
+     * @param poolCreatorFeePercentage The new pool creator fee percentage for the pool
      */
-    event PoolDevFeePercentageChanged(address indexed pool, uint256 indexed poolDevFeePercentage);
+    event poolCreatorFeePercentageChanged(address indexed pool, uint256 indexed poolCreatorFeePercentage);
 
     /**
      * @notice Collects accumulated protocol fees for the specified array of tokens.
@@ -157,11 +157,11 @@ interface IVaultAdmin {
     function collectProtocolFees(IERC20[] calldata tokens) external;
 
     /**
-     * @notice Collects accumulated pool dev fees for the specified pool.
-     * @dev Fees are sent to msg.sender, which a modifier on the function guarantees is the PoolDev.
+     * @notice Collects accumulated pool creator fees for the specified pool.
+     * @dev Fees are sent to msg.sender, which a modifier on the function guarantees is the poolCreator.
      * @param pool The pool address for which the fees should be collected
      */
-    function collectPoolDevFees(address pool) external;
+    function collectpoolCreatorFees(address pool) external;
 
     /*******************************************************************************
                                     Recovery Mode

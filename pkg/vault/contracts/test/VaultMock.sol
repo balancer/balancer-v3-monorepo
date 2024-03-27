@@ -92,13 +92,13 @@ contract VaultMock is IVaultMainMock, Vault {
         IERC20[] memory tokens,
         uint256 timestamp,
         address pauseManager,
-        address poolDev
+        address poolCreator
     ) external whenVaultNotPaused {
         _poolFactoryMock.registerPoolAtTimestamp(
             pool,
             buildTokenConfig(tokens),
             pauseManager,
-            poolDev,
+            poolCreator,
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement,
             timestamp
@@ -340,14 +340,14 @@ contract VaultMock is IVaultMainMock, Vault {
         }
     }
 
-    function getPoolDevFee(address pool, IERC20 token) external view returns (uint256 poolDevFee) {
-        EnumerableMap.IERC20ToUint256Map storage poolDevFees = _poolDevFees[pool];
-        uint256 index = poolDevFees.indexOf(token);
-        poolDevFee = poolDevFees.unchecked_valueAt(index);
+    function getpoolCreatorFee(address pool, IERC20 token) external view returns (uint256 poolCreatorFee) {
+        EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
+        uint256 index = poolCreatorFees.indexOf(token);
+        poolCreatorFee = poolCreatorFees.unchecked_valueAt(index);
     }
 
-    function getPoolDev(address pool) external view returns (address poolDev) {
-        return _poolDev[pool];
+    function getpoolCreator(address pool) external view returns (address poolCreator) {
+        return _poolCreator[pool];
     }
 
     function sortTokenConfig(TokenConfig[] memory tokenConfig) public pure returns (TokenConfig[] memory) {

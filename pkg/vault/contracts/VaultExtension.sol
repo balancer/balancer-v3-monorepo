@@ -123,7 +123,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         TokenConfig[] tokenConfig;
         uint256 pauseWindowEndTime;
         address pauseManager;
-        address poolDev;
+        address poolCreator;
         PoolHooks poolHooks;
         LiquidityManagement liquidityManagement;
     }
@@ -134,7 +134,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         TokenConfig[] memory tokenConfig,
         uint256 pauseWindowEndTime,
         address pauseManager,
-        address poolDev,
+        address poolCreator,
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
@@ -144,7 +144,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 tokenConfig: tokenConfig,
                 pauseWindowEndTime: pauseWindowEndTime,
                 pauseManager: pauseManager,
-                poolDev: poolDev,
+                poolCreator: poolCreator,
                 poolHooks: poolHooks,
                 liquidityManagement: liquidityManagement
             })
@@ -180,7 +180,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Retrieve or create the pool's token balances mapping.
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
         // Retrieve or create the pool's dev fee mapping.
-        EnumerableMap.IERC20ToUint256Map storage poolDevFees = _poolDevFees[pool];
+        EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
 
         uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
         IERC20 previousToken;
@@ -209,7 +209,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
             // Register the token dev fee with an initial balance of zero.
             // Note: EnumerableMaps require an explicit initial value when creating a key-value pair.
-            poolDevFees.set(token, 0);
+            poolCreatorFees.set(token, 0);
 
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
             _poolTokenConfig[pool][token] = tokenData;
@@ -233,7 +233,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _poolPauseManagers[pool] = params.pauseManager;
 
         // Store the pool dev as the caller of register pool.
-        _poolDev[pool] = params.poolDev;
+        _poolCreator[pool] = params.poolCreator;
 
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
@@ -252,7 +252,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             params.tokenConfig,
             params.pauseWindowEndTime,
             params.pauseManager,
-            params.poolDev,
+            params.poolCreator,
             params.poolHooks,
             params.liquidityManagement
         );

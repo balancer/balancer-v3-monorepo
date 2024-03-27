@@ -130,7 +130,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     }
 
     function _createPool(address[] memory tokens, string memory label) internal virtual returns (address) {
-        address poolDev = address(lp);
+        address poolCreator = address(lp);
         PoolMock newPool = new PoolMock(
             IVault(address(vault)),
             "ERC20 Pool",
@@ -139,7 +139,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
             true,
             365 days,
             address(0),
-            poolDev
+            poolCreator
         );
         vm.label(address(newPool), label);
         return address(newPool);

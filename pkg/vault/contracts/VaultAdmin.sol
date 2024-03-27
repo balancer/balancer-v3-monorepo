@@ -295,41 +295,41 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         emit SwapFeePercentageChanged(pool, swapFeePercentage);
     }
 
-    modifier withPoolDev(address pool) {
-        _ensurePoolDev(pool);
+    modifier withpoolCreator(address pool) {
+        _ensurepoolCreator(pool);
         _;
     }
 
-    function _ensurePoolDev(address pool) private view {
-        if (msg.sender != _poolDev[pool]) {
-            revert SenderIsNotPoolDev(pool);
+    function _ensurepoolCreator(address pool) private view {
+        if (msg.sender != _poolCreator[pool]) {
+            revert SenderIsNotpoolCreator(pool);
         }
     }
 
     /**
      * @inheritdoc IVaultAdmin
      * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
-     * MAX_POOL_DEV_FEE_PERCENTAGE. Emits the PoolDevFeePercentageChanged event.
+     * MAX_POOL_DEV_FEE_PERCENTAGE. Emits the poolCreatorFeePercentageChanged event.
      */
-    function setPoolDevFeePercentage(
+    function setpoolCreatorFeePercentage(
         address pool,
-        uint256 poolDevFeePercentage
-    ) external withRegisteredPool(pool) withPoolDev(pool) onlyVault {
+        uint256 poolCreatorFeePercentage
+    ) external withRegisteredPool(pool) withpoolCreator(pool) onlyVault {
         // Saving bits by not implementing a new modifier
         _ensureUnpausedAndGetVaultState(pool);
-        _setPoolDevFeePercentage(pool, poolDevFeePercentage);
+        _setpoolCreatorFeePercentage(pool, poolCreatorFeePercentage);
     }
 
-    function _setPoolDevFeePercentage(address pool, uint256 poolDevFeePercentage) internal virtual {
-        if (poolDevFeePercentage > _MAX_POOL_DEV_FEE_PERCENTAGE) {
-            revert PoolDevFeePercentageTooHigh();
+    function _setpoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) internal virtual {
+        if (poolCreatorFeePercentage > _MAX_POOL_DEV_FEE_PERCENTAGE) {
+            revert poolCreatorFeePercentageTooHigh();
         }
 
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.poolDevFeePercentage = poolDevFeePercentage;
+        config.poolCreatorFeePercentage = poolCreatorFeePercentage;
         _poolConfig[pool] = config.fromPoolConfig();
 
-        emit PoolDevFeePercentageChanged(pool, poolDevFeePercentage);
+        emit poolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -349,17 +349,17 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectPoolDevFees(address pool) external withPoolDev(pool) nonReentrant onlyVault {
-        EnumerableMap.IERC20ToUint256Map storage poolDevFees = _poolDevFees[pool];
-        for (uint256 index = 0; index < poolDevFees.length(); index++) {
-            (IERC20 token, uint256 amount) = poolDevFees.unchecked_at(index);
+    function collectpoolCreatorFees(address pool) external withpoolCreator(pool) nonReentrant onlyVault {
+        EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
+        for (uint256 index = 0; index < poolCreatorFees.length(); index++) {
+            (IERC20 token, uint256 amount) = poolCreatorFees.unchecked_at(index);
 
             if (amount > 0) {
                 // set fees to zero for the token
-                poolDevFees.unchecked_setAt(index, 0);
+                poolCreatorFees.unchecked_setAt(index, 0);
 
                 token.safeTransfer(msg.sender, amount);
-                emit PoolDevFeeCollected(pool, token, amount);
+                emit poolCreatorFeeCollected(pool, token, amount);
             }
         }
     }

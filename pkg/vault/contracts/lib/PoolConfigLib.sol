@@ -72,7 +72,7 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
-    function getPoolDevFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
+    function getpoolCreatorFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
         return PoolConfigBits.unwrap(config).decodeUint(POOL_DEV_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
@@ -175,7 +175,7 @@ library PoolConfigLib {
         {
             configBits = configBits
                 .insertUint(config.staticSwapFeePercentage / FEE_SCALING_FACTOR, STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH)
-                .insertUint(config.poolDevFeePercentage / FEE_SCALING_FACTOR, POOL_DEV_FEE_OFFSET, FEE_BITLENGTH);
+                .insertUint(config.poolCreatorFeePercentage / FEE_SCALING_FACTOR, POOL_DEV_FEE_OFFSET, FEE_BITLENGTH);
         }
 
         return
@@ -228,7 +228,7 @@ library PoolConfigLib {
                 isPoolInRecoveryMode: config.isPoolInRecoveryMode(),
                 hasDynamicSwapFee: config.hasDynamicSwapFee(),
                 staticSwapFeePercentage: config.getStaticSwapFeePercentage(),
-                poolDevFeePercentage: config.getPoolDevFeePercentage(),
+                poolCreatorFeePercentage: config.getpoolCreatorFeePercentage(),
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 pauseWindowEndTime: config.getPauseWindowEndTime(),
                 hooks: PoolHooks({

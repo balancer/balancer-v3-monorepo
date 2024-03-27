@@ -38,7 +38,7 @@ contract VaultStorage {
     // Maximum pool swap fee percentage.
     uint256 internal constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
-    // Maximum pool dev fee percentage.
+    // Maximum pool creator fee percentage.
     uint256 internal constant _MAX_POOL_DEV_FEE_PERCENTAGE = 10e16; // 10%
 
     // Code extension for Vault.
@@ -51,7 +51,7 @@ contract VaultStorage {
     mapping(address => address) internal _poolPauseManagers;
 
     // Store pool dev addresses.
-    mapping(address => address) internal _poolDev;
+    mapping(address => address) internal _poolCreator;
 
     // Pool -> (token -> PackedTokenBalance): structure containing the current raw and "last live" scaled balances.
     // Last live balances are used for yield fee computation, and since these have rates applied, they are stored
@@ -85,8 +85,8 @@ contract VaultStorage {
     // Token -> fee: Protocol fees (from both swap and yield) accumulated in the Vault for harvest.
     mapping(IERC20 => uint256) internal _protocolFees;
 
-    // Pool -> (Token -> fee): Pool dev fees (from swap) accumulated in the Vault for harvest.
-    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolDevFees;
+    // Pool -> (Token -> fee): pool creator fees (from swap) accumulated in the Vault for harvest.
+    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolCreatorFees;
 
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer internal _authorizer;
