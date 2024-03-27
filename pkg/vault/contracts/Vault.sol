@@ -596,7 +596,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 bptAmountOut
             );
         } else if (params.kind == AddLiquidityKind.UNBALANCED) {
-            _poolConfig[params.pool].requireSupportsAddLiquidityUnbalanced();
+            _poolConfig[params.pool].requireSupportsUnbalancedLiquidity();
 
             amountsInScaled18 = maxAmountsInScaled18;
             (bptAmountOut, swapFeeAmountsScaled18) = BasePoolMath.computeAddLiquidityUnbalanced(
@@ -607,7 +607,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
-            _poolConfig[params.pool].requireSupportsAddLiquidityUnbalanced();
+            _poolConfig[params.pool].requireSupportsUnbalancedLiquidity();
 
             bptAmountOut = params.minBptAmountOut;
             vars.tokenIndex = InputHelpers.getSingleInputIndex(maxAmountsInScaled18);
@@ -819,7 +819,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 bptAmountIn
             );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN) {
-            _poolConfig[params.pool].requireSupportsRemoveLiquidityUnbalanced();
+            _poolConfig[params.pool].requireSupportsUnbalancedLiquidity();
             bptAmountIn = params.maxBptAmountIn;
             amountsOutScaled18 = minAmountsOutScaled18;
             vars.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
@@ -833,7 +833,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     IBasePool(params.pool).computeBalance
                 );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
-            _poolConfig[params.pool].requireSupportsRemoveLiquidityUnbalanced();
+            _poolConfig[params.pool].requireSupportsUnbalancedLiquidity();
             amountsOutScaled18 = minAmountsOutScaled18;
             vars.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
 

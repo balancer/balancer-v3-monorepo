@@ -18,8 +18,7 @@ struct PoolHooks {
 }
 
 struct LiquidityManagement {
-    bool supportsAddLiquidityUnbalanced;
-    bool supportsRemoveLiquidityUnbalanced;
+    bool supportsUnbalancedLiquidity;
     bool supportsAddLiquidityCustom;
     bool supportsRemoveLiquidityCustom;
 }

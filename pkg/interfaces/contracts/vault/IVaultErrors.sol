@@ -146,9 +146,6 @@ interface IVaultErrors {
     /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
     error BptAmountOutBelowMin(uint256 amount, uint256 limit);
 
-    /// @dev Pool does not support adding liquidity with an unbalanced input.
-    error DoesNotSupportAddLiquidityUnbalanced();
-
     /// @dev Pool does not support adding liquidity with a customized input.
     error DoesNotSupportAddLiquidityCustom();
 
@@ -164,9 +161,6 @@ interface IVaultErrors {
 
     /// @dev The required BPT amount in exceeds the maximum limit specified for the operation.
     error BptAmountInAboveMax(uint256 amount, uint256 limit);
-
-    /// @dev Pool does not support removing liquidity with an unbalanced input.
-    error DoesNotSupportRemoveLiquidityUnbalanced();
 
     /// @dev Pool does not support removing liquidity with a customized input.
     error DoesNotSupportRemoveLiquidityCustom();
@@ -266,6 +260,9 @@ interface IVaultErrors {
 
     /// @dev Optional User Data should be empty in the current add / remove liquidity kind.
     error UserDataNotSupported();
+
+    /// @dev Pool does not support adding / removing liquidity with an unbalanced input.
+    error DoesNotSupportUnbalancedLiquidity();
 
     /// @dev The contract should not receive ETH.
     error CannotReceiveEth();
