@@ -192,13 +192,11 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         // If no account assigned at all, default to governance.
         if (roleAssignment.account == address(0)) {
             _authenticateCaller();
-        }
-        else if (msg.sender != roleAssignment.account) {
+        } else if (msg.sender != roleAssignment.account) {
             // If it is onlyOwner, the sender must be the assigned account.
             if (roleAssignment.onlyOwner) {
                 revert SenderNotAllowed();
-            }
-            else {
+            } else {
                 // Otherwise, authenticate with governance.
                 _authenticateCaller();
             }
