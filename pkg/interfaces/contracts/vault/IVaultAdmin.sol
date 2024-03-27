@@ -141,7 +141,7 @@ interface IVaultAdmin {
      * @param pool The address of the pool for which the pool creator fee will be changed
      * @param poolCreatorFeePercentage The new pool creator fee percentage to apply to the pool
      */
-    function setpoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) external;
+    function setPoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) external;
 
     /**
      * @notice Emitted when the pool creator fee percentage of a pool is updated.
@@ -161,7 +161,7 @@ interface IVaultAdmin {
      * @dev Fees are sent to msg.sender, which a modifier on the function guarantees is the poolCreator.
      * @param pool The pool address for which the fees should be collected
      */
-    function collectpoolCreatorFees(address pool) external;
+    function collectPoolCreatorFees(address pool) external;
 
     /*******************************************************************************
                                     Recovery Mode

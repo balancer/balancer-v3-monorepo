@@ -38,9 +38,6 @@ contract VaultStorage {
     // Maximum pool swap fee percentage.
     uint256 internal constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
-    // Maximum pool creator fee percentage.
-    uint256 internal constant _MAX_POOL_DEV_FEE_PERCENTAGE = 10e16; // 10%
-
     // Code extension for Vault.
     IVaultExtension internal immutable _vaultExtension;
 

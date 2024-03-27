@@ -18,76 +18,73 @@ contract poolCreatorFees is BaseVaultTest {
         BaseVaultTest.setUp();
     }
 
-    function testpoolCreatorWasSet() public {
-        assertEq(vault.getpoolCreator(pool), address(lp));
+    function testPoolCreatorWasSet() public {
+        assertEq(vault.getPoolCreator(pool), address(lp));
     }
 
     function testSwapWithoutDevFee() public {
-        assertEq(vault.getpoolCreatorFee(address(pool), usdc), 0);
-        assertEq(vault.getpoolCreatorFee(address(pool), dai), 0);
+        assertEq(vault.getPoolCreatorFee(address(pool), usdc), 0);
+        assertEq(vault.getPoolCreatorFee(address(pool), dai), 0);
         swapSingleTokenExactIn(usdc, dai, defaultAmount / 10);
-        assertEq(vault.getpoolCreatorFee(address(pool), usdc), 0);
-        assertEq(vault.getpoolCreatorFee(address(pool), dai), 0);
+        assertEq(vault.getPoolCreatorFee(address(pool), usdc), 0);
+        assertEq(vault.getPoolCreatorFee(address(pool), dai), 0);
     }
 
     function testSwapWithDevFee() public {
         uint256 amountToSwap = defaultAmount / 10;
         uint256 swapFeePercentage = 1e17; //10%
+        uint64 protocolFeePercentage = 5e17; //50%
         uint256 poolCreatorFeePercentage = 1e17; //10%
-        uint256 poolCreatorFeeDai = amountToSwap.mulDown(swapFeePercentage).mulDown(poolCreatorFeePercentage);
 
+        uint256 poolCreatorFeeDai = amountToSwap
+            .mulDown(swapFeePercentage)
+            .mulDown(FixedPoint.ONE - protocolFeePercentage)
+            .mulDown(poolCreatorFeePercentage);
+
+        setProtocolSwapFeePercentage(protocolFeePercentage);
         setSwapFeePercentage(swapFeePercentage);
         vm.prank(lp);
-        vault.setpoolCreatorFeePercentage(address(pool), poolCreatorFeePercentage);
+        vault.setPoolCreatorFeePercentage(address(pool), poolCreatorFeePercentage);
 
-        assertEq(vault.getpoolCreatorFee(address(pool), usdc), 0);
-        assertEq(vault.getpoolCreatorFee(address(pool), dai), 0);
+        assertEq(vault.getPoolCreatorFee(address(pool), usdc), 0);
+        assertEq(vault.getPoolCreatorFee(address(pool), dai), 0);
         swapSingleTokenExactIn(usdc, dai, amountToSwap);
-        assertEq(vault.getpoolCreatorFee(address(pool), usdc), 0);
-        assertEq(vault.getpoolCreatorFee(address(pool), dai), poolCreatorFeeDai);
+        assertEq(vault.getPoolCreatorFee(address(pool), usdc), 0);
+        assertEq(vault.getPoolCreatorFee(address(pool), dai), poolCreatorFeeDai);
     }
 
-    function testCollectpoolCreatorFee() public {
+    function testCollectPoolCreatorFee() public {
         uint256 amountToSwap = defaultAmount / 10;
         uint256 swapFeePercentage = 1e17; //10%
+        uint64 protocolFeePercentage = 5e17; //50%
         uint256 poolCreatorFeePercentage = 1e17; //10%
-        uint256 poolCreatorFeeDai = amountToSwap.mulDown(swapFeePercentage).mulDown(poolCreatorFeePercentage);
+        uint256 poolCreatorFeeDai = amountToSwap
+            .mulDown(swapFeePercentage)
+            .mulDown(FixedPoint.ONE - protocolFeePercentage)
+            .mulDown(poolCreatorFeePercentage);
 
         uint256 lpBalanceDaiBefore = dai.balanceOf(address(lp));
 
+        setProtocolSwapFeePercentage(protocolFeePercentage);
         setSwapFeePercentage(swapFeePercentage);
         vm.prank(lp);
-        vault.setpoolCreatorFeePercentage(address(pool), poolCreatorFeePercentage);
+        vault.setPoolCreatorFeePercentage(address(pool), poolCreatorFeePercentage);
 
-        assertEq(vault.getpoolCreatorFee(address(pool), usdc), 0);
-        assertEq(vault.getpoolCreatorFee(address(pool), dai), 0);
+        assertEq(vault.getPoolCreatorFee(address(pool), usdc), 0);
+        assertEq(vault.getPoolCreatorFee(address(pool), dai), 0);
         swapSingleTokenExactIn(usdc, dai, amountToSwap);
-        assertEq(vault.getpoolCreatorFee(address(pool), usdc), 0);
-        assertEq(vault.getpoolCreatorFee(address(pool), dai), poolCreatorFeeDai);
+        assertEq(vault.getPoolCreatorFee(address(pool), usdc), 0);
+        assertEq(vault.getPoolCreatorFee(address(pool), dai), poolCreatorFeeDai);
 
         vm.prank(lp);
-        vault.collectpoolCreatorFees(address(pool));
-        assertEq(vault.getpoolCreatorFee(address(pool), dai), 0);
+        vault.collectPoolCreatorFees(address(pool));
+        assertEq(vault.getPoolCreatorFee(address(pool), dai), 0);
 
         uint256 lpBalanceDaiAfter = dai.balanceOf(address(lp));
         assertEq(lpBalanceDaiAfter - lpBalanceDaiBefore, poolCreatorFeeDai);
     }
 
-    function testCannotCollectIfNotpoolCreator() public {
-        uint256 amountToSwap = defaultAmount / 10;
-        uint256 swapFeePercentage = 1e17; //10%
-        uint256 poolCreatorFeePercentage = 1e17; //10%
-
-        setSwapFeePercentage(swapFeePercentage);
-        vm.prank(lp);
-        vault.setpoolCreatorFeePercentage(address(pool), poolCreatorFeePercentage);
-
-        swapSingleTokenExactIn(usdc, dai, amountToSwap);
-
-        vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotpoolCreator.selector, address(pool)));
-        vault.collectpoolCreatorFees(address(pool));
-    }
+    // test collect to pool creator no matter who calls the function
 
     function swapSingleTokenExactIn(IERC20 tokenIn, IERC20 tokenOut, uint256 amountIn) public {
         vm.prank(alice);

@@ -340,13 +340,13 @@ contract VaultMock is IVaultMainMock, Vault {
         }
     }
 
-    function getpoolCreatorFee(address pool, IERC20 token) external view returns (uint256 poolCreatorFee) {
+    function getPoolCreatorFee(address pool, IERC20 token) external view returns (uint256 poolCreatorFee) {
         EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
         uint256 index = poolCreatorFees.indexOf(token);
         poolCreatorFee = poolCreatorFees.unchecked_valueAt(index);
     }
 
-    function getpoolCreator(address pool) external view returns (address poolCreator) {
+    function getPoolCreator(address pool) external view returns (address poolCreator) {
         return _poolCreator[pool];
     }
 

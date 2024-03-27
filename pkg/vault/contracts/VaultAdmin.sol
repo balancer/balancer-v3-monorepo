@@ -15,6 +15,7 @@ import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHo
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -22,6 +23,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
@@ -295,33 +297,33 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         emit SwapFeePercentageChanged(pool, swapFeePercentage);
     }
 
-    modifier withpoolCreator(address pool) {
-        _ensurepoolCreator(pool);
+    modifier withPoolCreator(address pool) {
+        _ensurePoolCreator(pool);
         _;
     }
 
-    function _ensurepoolCreator(address pool) private view {
+    function _ensurePoolCreator(address pool) private view {
         if (msg.sender != _poolCreator[pool]) {
-            revert SenderIsNotpoolCreator(pool);
+            revert SenderIsNotPoolCreator(pool);
         }
     }
 
     /**
      * @inheritdoc IVaultAdmin
-     * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
-     * MAX_POOL_DEV_FEE_PERCENTAGE. Emits the poolCreatorFeePercentageChanged event.
+     * @dev This can only be executed by the pool creator and is disabled if the pool is paused.
+     * The creator fee must be <= 100%. Emits the poolCreatorFeePercentageChanged event.
      */
-    function setpoolCreatorFeePercentage(
+    function setPoolCreatorFeePercentage(
         address pool,
         uint256 poolCreatorFeePercentage
-    ) external withRegisteredPool(pool) withpoolCreator(pool) onlyVault {
+    ) external withRegisteredPool(pool) withPoolCreator(pool) onlyVault {
         // Saving bits by not implementing a new modifier
         _ensureUnpausedAndGetVaultState(pool);
-        _setpoolCreatorFeePercentage(pool, poolCreatorFeePercentage);
+        _setPoolCreatorFeePercentage(pool, poolCreatorFeePercentage);
     }
 
-    function _setpoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) internal virtual {
-        if (poolCreatorFeePercentage > _MAX_POOL_DEV_FEE_PERCENTAGE) {
+    function _setPoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) internal virtual {
+        if (poolCreatorFeePercentage > FixedPoint.ONE) {
             revert poolCreatorFeePercentageTooHigh();
         }
 
@@ -349,7 +351,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectpoolCreatorFees(address pool) external withpoolCreator(pool) nonReentrant onlyVault {
+    function collectPoolCreatorFees(address pool) external nonReentrant onlyVault {
         EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
         for (uint256 index = 0; index < poolCreatorFees.length(); index++) {
             (IERC20 token, uint256 amount) = poolCreatorFees.unchecked_at(index);
@@ -358,7 +360,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                 // set fees to zero for the token
                 poolCreatorFees.unchecked_setAt(index, 0);
 
-                token.safeTransfer(msg.sender, amount);
+                token.safeTransfer(_poolCreator[pool], amount);
                 emit poolCreatorFeeCollected(pool, token, amount);
             }
         }

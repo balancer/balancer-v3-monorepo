@@ -280,5 +280,5 @@ interface IVaultErrors {
      * @dev The caller is not the registered pool dev for the pool.
      * @param pool The pool
      */
-    error SenderIsNotpoolCreator(address pool);
+    error SenderIsNotPoolCreator(address pool);
 }

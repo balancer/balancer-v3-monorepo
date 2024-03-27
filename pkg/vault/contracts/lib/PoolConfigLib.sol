@@ -72,7 +72,7 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
-    function getpoolCreatorFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
+    function getPoolCreatorFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
         return PoolConfigBits.unwrap(config).decodeUint(POOL_DEV_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
@@ -228,7 +228,7 @@ library PoolConfigLib {
                 isPoolInRecoveryMode: config.isPoolInRecoveryMode(),
                 hasDynamicSwapFee: config.hasDynamicSwapFee(),
                 staticSwapFeePercentage: config.getStaticSwapFeePercentage(),
-                poolCreatorFeePercentage: config.getpoolCreatorFeePercentage(),
+                poolCreatorFeePercentage: config.getPoolCreatorFeePercentage(),
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 pauseWindowEndTime: config.getPauseWindowEndTime(),
                 hooks: PoolHooks({
