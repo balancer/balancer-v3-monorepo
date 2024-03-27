@@ -121,7 +121,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     struct PoolRegistrationParams {
         TokenConfig[] tokenConfig;
         uint256 pauseWindowEndTime;
-        address pauseManager;
+        PoolRoleAccounts roleAccounts;
         PoolHooks poolHooks;
         LiquidityManagement liquidityManagement;
     }
@@ -131,7 +131,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address pool,
         TokenConfig[] memory tokenConfig,
         uint256 pauseWindowEndTime,
-        address pauseManager,
+        PoolRoleAccounts calldata roleAccounts,
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
@@ -140,7 +140,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             PoolRegistrationParams({
                 tokenConfig: tokenConfig,
                 pauseWindowEndTime: pauseWindowEndTime,
-                pauseManager: pauseManager,
+                roleAccounts: roleAccounts,
                 poolHooks: poolHooks,
                 liquidityManagement: liquidityManagement
             })
@@ -218,8 +218,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
         }
 
-        // Store the pause manager. A zero address means default to the authorizer.
-        _poolPauseManagers[pool] = params.pauseManager;
+        // Make pool role assignments. A zero address means default to the authorizer.
+        _assignPoolRoles(params.roleAccounts);
 
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
@@ -237,10 +237,28 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             msg.sender,
             params.tokenConfig,
             params.pauseWindowEndTime,
-            params.pauseManager,
+            //params.pauseManager,
+            address(0), // TODO fix events later
             params.poolHooks,
             params.liquidityManagement
         );
+    }
+
+    function _assignPoolRoles(PoolRoleAccounts memory roleAccounts) private {
+        if (roleAssignments.pauseManager != address(0)) {
+            _poolRoleAssigments[_getActionId(IVaultAdmin.pausePool.selector)] = PoolRoleAssignments({account: roleAccounts.pauseManager, onlyOwner: false});
+            _poolRoleAssigments[_getActionId(IVaultAdmin.unpausePool.selector)] = PoolRoleAssignments({account: roleAccounts.pauseManager, onlyOwner: false});
+        }
+
+        if (roleAssignments.swapFeeSetter != address(0)) {
+            bytes32 swapFeeAction = _getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector);
+
+            _poolRoleAssigments[swapFeeAction] = PoolRoleAssignments({account: roleAccounts.swapFeeSetter, onlyOwner: true});
+        }
+    }
+
+    function _getActionId(bytes4 selector) private returns (bytes32) {
+        return keccak256(abi.encode(selector));
     }
 
     /// @inheritdoc IVaultExtension

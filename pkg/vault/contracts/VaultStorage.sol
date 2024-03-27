@@ -95,4 +95,17 @@ contract VaultStorage {
 
     // Bytes32 with protocol fees and paused flags
     VaultStateBits internal _vaultState;
+
+    /**
+     * @dev Record pool assignments (a sort of local authorizer).
+     * @param account The account with permission to perform the role
+     * @param onlyOwner Flag indicating whether it is reserved to the account alone, or also governance
+     */
+    struct PoolRoleAssignment {
+        address account;
+        bool onlyOwner;
+    }
+
+    // actionId -> 
+    mapping(bytes32 => PoolRoleAssignment) private _poolRoleAssigments;
 }

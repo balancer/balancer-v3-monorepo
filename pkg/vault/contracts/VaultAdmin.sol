@@ -181,32 +181,33 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                                      Pool Pausing
     *******************************************************************************/
 
-    modifier onlyAuthenticatedPauser(address pool) {
-        _ensureAuthenticatedPauser(pool);
+    modifier onlyAuthenticatedByRole(address pool) {
+        _ensureAuthenticatedByRole(pool);
         _;
     }
 
-    function _ensureAuthenticatedPauser(address pool) private view {
-        address pauseManager = _poolPauseManagers[pool];
+    function _ensureAuthenticatedByRole(address pool) private view {
+        // If there was no assignment (e.g., the user pased in 0 for the pauseManager),
+        // then onlyOwner will be false, so it will fall through and check governance.
 
-        if (pauseManager == address(0)) {
-            // If there is no pause manager, default to the authorizer.
-            _authenticateCaller();
+        PoolRoleAssignment memory roleAssignment = _poolRoleAssigments[_getActionId(msg.sig)];
+
+        // If it is onlyOwner, the sender must be the assigned account.
+        if (roleAssignment.onlyOwner && msg.sender != roleAssignment.account) {
+            revert SenderNotAllowed();
         } else {
-            // Sender must be the pause manager.
-            if (msg.sender != pauseManager) {
-                revert SenderIsNotPauseManager(pool);
-            }
+            // Otherwise, authenticate with governance.
+            _authenticateCaller();
         }
     }
 
     /// @inheritdoc IVaultAdmin
-    function pausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) onlyVault {
+    function pausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedByRole(pool) onlyVault {
         _setPoolPaused(pool, true);
     }
 
     /// @inheritdoc IVaultAdmin
-    function unpausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) onlyVault {
+    function unpausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedByRole(pool) onlyVault {
         _setPoolPaused(pool, false);
     }
 
@@ -276,7 +277,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function setStaticSwapFeePercentage(
         address pool,
         uint256 swapFeePercentage
-    ) external authenticate withRegisteredPool(pool) onlyVault {
+    ) external withRegisteredPool(pool) onlyAuthenticatedByRole(pool) onlyVault {
         // Saving bits by not implementing a new modifier
         _ensureUnpausedAndGetVaultState(pool);
         _setStaticSwapFeePercentage(pool, swapFeePercentage);

@@ -58,6 +58,12 @@ interface IVaultExtension {
                                     Pool Registration
     *******************************************************************************/
 
+    struct PoolRoleAccounts {
+        address pauseManager;
+        address swapFeeSetter;
+        // ...
+    }
+
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
      * @dev A pool can opt-out of pausing by providing a zero value for the pause window, or allow pausing indefinitely
@@ -75,7 +81,7 @@ interface IVaultExtension {
      * @param pool The address of the pool being registered
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
-     * @param pauseManager Optional contract the Vault will allow to pause the pool
+     * @param roleAccounts Optional contracts the Vault will allow to change certain pool settings
      * @param hookConfig Flags indicating which hooks the pool supports
      * @param liquidityManagement Liquidity management flags with implemented methods
      */
@@ -83,7 +89,7 @@ interface IVaultExtension {
         address pool,
         TokenConfig[] memory tokenConfig,
         uint256 pauseWindowEndTime,
-        address pauseManager,
+        PoolRoleAccounts calldata roleAccounts,
         PoolHooks calldata hookConfig,
         LiquidityManagement calldata liquidityManagement
     ) external;
