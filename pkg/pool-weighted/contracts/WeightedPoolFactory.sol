@@ -59,7 +59,7 @@ contract WeightedPoolFactory is BasePoolFactory {
             pool,
             tokens,
             getNewPoolPauseWindowEndTime(),
-            address(0), // no pause manager
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeSetter: address(0) }),
             PoolHooks({
                 shouldCallBeforeInitialize: false,
                 shouldCallAfterInitialize: false,
