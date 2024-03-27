@@ -516,7 +516,11 @@ interface IRouter {
     *******************************************************************************/
 
     /**
-     * @dev Permits and executes a batch of function calls on this contract.
+     * @notice Permits multiple allowances and executes a batch of function calls on this contract.
+     * @param permitBatch Struct containing the permit information for multiple tokens.
+     * @param sig Signature proving the user authorized the permitBatch.
+     * @param data Encoded function calls to execute, after permits have been successfully processed.
+     * @return results Array of bytes representing the return data of each executed call.
      */
     function permitBatchAndCall(
         IAllowanceTransfer.PermitBatch calldata permitBatch,
@@ -525,7 +529,11 @@ interface IRouter {
     ) external returns (bytes[] memory results);
 
     /**
-     * @dev Permits and executes a batch of function calls on this contract.
+     * @notice Permits a single allowance and executes a batch of function calls on this contract.
+     * @param permit Struct containing the permit information for a single token.
+     * @param sig Signature by the token holder to authorize the operation.
+     * @param data Encoded function calls to execute post-permit approval.
+     * @return results Array of bytes arrays, each representing the return data from each function call executed.
      */
     function permitAndCall(
         IAllowanceTransfer.PermitSingle calldata permit,
@@ -534,7 +542,9 @@ interface IRouter {
     ) external returns (bytes[] memory results);
 
     /**
-     * @dev Receives and executes a batch of function calls on this contract.
+     * @notice Executes a batch of function calls on this contract.
+     * @param data Encoded function calls to be executed in the batch.
+     * @return results Array of bytes arrays, each representing the return data from each function call executed.
      */
     function multicall(bytes[] calldata data) external returns (bytes[] memory results);
 }
