@@ -220,15 +220,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
         uint256 nonce,
         uint256 deadline,
         uint256 key
-    )
-        internal
-        view
-        returns (
-            uint8 v,
-            bytes32 r,
-            bytes32 s
-        )
-    {
+    ) internal view returns (uint8 v, bytes32 r, bytes32 s) {
         (v, r, s) = vm.sign(
             key,
             keccak256(

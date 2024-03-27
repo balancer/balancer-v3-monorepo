@@ -516,29 +516,32 @@ interface IRouter {
     *******************************************************************************/
 
     /**
-     * @notice Permits multiple allowances and executes a batch of function calls on this contract.
-     * @param permitBatch Struct containing the permit information for multiple tokens.
-     * @param sig Signature proving the user authorized the permitBatch.
-     * @param data Encoded function calls to execute, after permits have been successfully processed.
-     * @return results Array of bytes representing the return data of each executed call.
      */
-    function permitBatchAndCall(
-        IAllowanceTransfer.PermitBatch calldata permitBatch,
-        bytes calldata sig,
-        bytes[] calldata data
-    ) external returns (bytes[] memory results);
+    struct PermitAproval {
+        address token;
+        address owner;
+        address spender;
+        uint256 amount;
+        uint256 nonce;
+        uint256 deadline;
+    }
 
     /**
-     * @notice Permits a single allowance and executes a batch of function calls on this contract.
-     * @param permit Struct containing the permit information for a single token.
-     * @param sig Signature by the token holder to authorize the operation.
-     * @param data Encoded function calls to execute post-permit approval.
+     * @notice Permits multiple allowances and executes a batch of function calls on this contract.
+     * @param permitBatch An array of `PermitApproval` structs, each representing an ERC20 permit request.
+     * @param permitSignatures An array of bytes, each corresponding to the signature for the permit request in `permitBatch`.
+     * @param permit2Batch A batch of permit2 approvals.
+     * @param permit2Signature A permit2 signature for the batch approval.
+     * @param multicallData An array of bytes arrays, each representing an encoded function call to be executed on this contract.
      * @return results Array of bytes arrays, each representing the return data from each function call executed.
+     *
      */
-    function permitAndCall(
-        IAllowanceTransfer.PermitSingle calldata permit,
-        bytes calldata sig,
-        bytes[] calldata data
+    function permitBatchAndCall(
+        PermitAproval[] calldata permitBatch,
+        bytes[] calldata permitSignatures,
+        IAllowanceTransfer.PermitBatch calldata permit2Batch,
+        bytes calldata permit2Signature,
+        bytes[] calldata multicallData
     ) external returns (bytes[] memory results);
 
     /**

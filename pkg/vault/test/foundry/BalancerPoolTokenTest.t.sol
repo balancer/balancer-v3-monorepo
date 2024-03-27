@@ -194,12 +194,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v, r, s);
     }
 
-    function testPermit__Fuzz(
-        uint248 privKey,
-        address to,
-        uint256 amount,
-        uint256 deadline
-    ) public {
+    function testPermit__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
         deadline = bound(deadline, block.timestamp, MAX_UINT256);
         vm.assume(privKey != 0);
 
@@ -254,12 +249,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     // @dev Just test for general fail as it is hard to compute error arguments
-    function testFailPermitBadDeadline__Fuzz(
-        uint248 privKey,
-        address to,
-        uint256 amount,
-        uint256 deadline
-    ) public {
+    function testFailPermitBadDeadline__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
         deadline = bound(deadline, 0, block.timestamp - 1);
         vm.assume(privKey != 0);
         vm.assume(to != address(0));
@@ -279,12 +269,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(usr, to, amount, deadline + 1, v, r, s);
     }
 
-    function testPermitPastDeadline__Fuzz(
-        uint248 privKey,
-        address to,
-        uint256 amount,
-        uint256 deadline
-    ) public {
+    function testPermitPastDeadline__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
         vm.assume(privKey != 0);
         vm.assume(to != address(0));
         deadline = bound(deadline, 0, block.timestamp - 1);
@@ -306,12 +291,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     // @dev Just test for general fail as it is hard to compute error arguments
-    function testFailPermitReplay__Fuzz(
-        uint248 privKey,
-        address to,
-        uint256 amount,
-        uint256 deadline
-    ) public {
+    function testFailPermitReplay__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
         vm.assume(privKey != 0);
         vm.assume(to != address(0));
         deadline = bound(deadline, block.timestamp, MAX_UINT256);

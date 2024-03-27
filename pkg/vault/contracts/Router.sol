@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
@@ -1030,22 +1031,41 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
 
     /// @inheritdoc IRouter
     function permitBatchAndCall(
-        IAllowanceTransfer.PermitBatch calldata permitBatch,
-        bytes calldata sig,
-        bytes[] calldata data
+        PermitAproval[] calldata permitBatch,
+        bytes[] calldata permitSignatures,
+        IAllowanceTransfer.PermitBatch calldata permit2Batch,
+        bytes calldata permit2Signature,
+        bytes[] calldata multicallData
     ) external virtual returns (bytes[] memory results) {
-        _permit2.permit(msg.sender, permitBatch, sig);
-        return multicall(data);
-    }
-
-    /// @inheritdoc IRouter
-    function permitAndCall(
-        IAllowanceTransfer.PermitSingle calldata permit,
-        bytes calldata sig,
-        bytes[] calldata data
-    ) external virtual returns (bytes[] memory results) {
-        _permit2.permit(msg.sender, permit, sig);
-        return multicall(data);
+        // Use Permit (ERC-2612) to grant allowances to Permit2 for swapable tokens,
+        // and grant allowances to Vault for BPT tokens.
+        for (uint256 index = 0; index < permitBatch.length; index++) {
+            bytes32 r;
+            bytes32 s;
+            uint8 v;
+            bytes memory signature = permitSignatures[index];
+            /// @solidity memory-safe-assembly
+            // solhint-disable-next-line no-inline-assembly
+            assembly {
+                r := mload(add(signature, 0x20))
+                s := mload(add(signature, 0x40))
+                v := byte(0, mload(add(signature, 0x60)))
+            }
+            IRouter.PermitAproval memory permitApproval = permitBatch[index];
+            IERC20Permit(permitApproval.token).permit(
+                permitApproval.owner,
+                address(this),
+                permitApproval.amount,
+                permitApproval.deadline,
+                v,
+                r,
+                s
+            );
+        }
+        // Use Permit2 for tokens that are swapped and added into the Vault.
+        _permit2.permit(msg.sender, permit2Batch, permit2Signature);
+        // Execute all the required operations once permissions have been granted.
+        return multicall(multicallData);
     }
 
     /// @inheritdoc IRouter

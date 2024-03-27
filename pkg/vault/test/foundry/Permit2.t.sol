@@ -21,6 +21,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
+import { BalancerPoolToken } from "vault/contracts/BalancerPoolToken.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Router } from "../../contracts/Router.sol";
 import { RouterCommon } from "../../contracts/RouterCommon.sol";
@@ -41,87 +42,8 @@ contract Permit2Test is BaseVaultTest {
     uint256 internal initBpt = 10e18;
     uint256 internal bptAmountOut = 1e18;
 
-    PoolMock internal wethPool;
-    PoolMock internal wethPoolNoInit;
-
-    // Track the indices for the local dai/weth pool.
-    uint256 internal daiIdxWethPool;
-    uint256 internal wethIdx;
-
-    // Track the indices for the standard dai/usdc pool.
-    uint256 internal daiIdx;
-    uint256 internal usdcIdx;
-
-    uint256[] internal wethDaiAmountsIn;
-    IERC20[] internal wethDaiTokens;
-
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-
-        approveForPool(IERC20(wethPool));
-    }
-
-    function createPool() internal override returns (address) {
-        PoolMock newPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            true,
-            365 days,
-            address(0)
-        );
-        vm.label(address(newPool), "pool");
-
-        wethPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 weth Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
-            true,
-            365 days,
-            address(0)
-        );
-        vm.label(address(wethPool), "wethPool");
-
-        (daiIdxWethPool, wethIdx) = getSortedIndexes(address(dai), address(weth));
-        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
-
-        wethDaiTokens = InputHelpers.sortTokens([address(weth), address(dai)].toMemoryArray().asIERC20());
-
-        wethDaiAmountsIn = new uint256[](2);
-        wethDaiAmountsIn[wethIdx] = ethAmountIn;
-        wethDaiAmountsIn[daiIdxWethPool] = daiAmountIn;
-
-        wethPoolNoInit = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 weth Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
-            true,
-            365 days,
-            address(0)
-        );
-        vm.label(address(wethPoolNoInit), "wethPoolNoInit");
-
-        return address(newPool);
-    }
-
-    function initPool() internal override {
-        (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(address(pool));
-        vm.prank(lp);
-        router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
-
-        vm.prank(lp);
-        bool wethIsEth = true;
-        router.initialize{ value: ethAmountIn }(
-            address(wethPool),
-            wethDaiTokens,
-            wethDaiAmountsIn,
-            initBpt,
-            wethIsEth,
-            bytes("")
-        );
     }
 
     function testNoPermitCall() public {
@@ -145,69 +67,48 @@ contract Permit2Test is BaseVaultTest {
         );
     }
 
-    function testPermitAndCall() public {
-        // Revoke allowance
-        vm.prank(alice);
-        permit2.approve(address(usdc), address(router), 0, 0);
-
-        (uint160 amount, , ) = permit2.allowance(alice, address(usdc), address(router));
-        assertEq(amount, 0);
-
-        bytes[] memory data = new bytes[](1);
-        bytes memory sig = getPermit2Signature(
-            address(router),
-            address(usdc),
-            uint160(defaultAmount),
-            type(uint48).max,
-            0,
-            aliceKey
-        );
-
-        IAllowanceTransfer.PermitSingle memory permit = getSinglePermit2(
-            address(router),
-            address(usdc),
-            uint160(defaultAmount),
-            type(uint48).max,
-            0
-        );
-
-        data[0] = abi.encodeWithSelector(
-            IRouter.swapSingleTokenExactIn.selector,
-            address(pool),
-            usdc,
-            dai,
-            defaultAmount,
-            defaultAmount,
-            type(uint256).max,
-            false,
-            bytes("")
-        );
-
-        vm.prank(alice);
-        router.permitAndCall(permit, sig, data);
-
-        (amount, , ) = permit2.allowance(alice, address(usdc), address(router));
-        // Allowance is spent
-        assertEq(amount, 0);
-    }
-
     function testPermitBatchAndCall() public {
         // Revoke allowance
         vm.prank(alice);
         permit2.approve(address(usdc), address(router), 0, 0);
         vm.prank(alice);
         permit2.approve(address(dai), address(router), 0, 0);
+        vm.prank(alice);
+        IERC20(pool).approve(address(router), 0);
 
         (uint160 amount, , ) = permit2.allowance(alice, address(usdc), address(router));
         assertEq(amount, 0);
         (amount, , ) = permit2.allowance(alice, address(dai), address(router));
         assertEq(amount, 0);
+        assertEq(IERC20(pool).allowance(alice, address(router)), 0, "Router allowance is not zero");
 
         bptAmountOut = defaultAmount * 2;
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
-        bytes[] memory data = new bytes[](1);
-        bytes memory sig = getPermit2BatchSignature(
+        IRouter.PermitAproval[] memory permitBatch = new IRouter.PermitAproval[](1);
+        permitBatch[0] = IRouter.PermitAproval(pool, alice, address(router), bptAmountOut, 0, block.timestamp);
+
+        bytes[] memory permitSignatures = new bytes[](1);
+        (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
+            BalancerPoolToken(address(pool)),
+            alice,
+            address(router),
+            bptAmountOut,
+            0,
+            block.timestamp,
+            aliceKey
+        );
+        permitSignatures[0] = abi.encodePacked(r, s, v);
+
+        IAllowanceTransfer.PermitBatch memory permit2Batch = getPermit2Batch(
+            address(router),
+            [address(usdc), address(dai)].toMemoryArray(),
+            uint160(defaultAmount),
+            type(uint48).max,
+            0
+        );
+
+        bytes memory permit2Signature = getPermit2BatchSignature(
             address(router),
             [address(usdc), address(dai)].toMemoryArray(),
             uint160(defaultAmount),
@@ -216,15 +117,8 @@ contract Permit2Test is BaseVaultTest {
             aliceKey
         );
 
-        IAllowanceTransfer.PermitBatch memory permit = getPermit2Batch(
-            address(router),
-            [address(usdc), address(dai)].toMemoryArray(),
-            uint160(defaultAmount),
-            type(uint48).max,
-            0
-        );
-
-        data[0] = abi.encodeWithSelector(
+        bytes[] memory multicallData = new bytes[](2);
+        multicallData[0] = abi.encodeWithSelector(
             IRouter.addLiquidityUnbalanced.selector,
             address(pool),
             amountsIn,
@@ -233,11 +127,21 @@ contract Permit2Test is BaseVaultTest {
             bytes("")
         );
 
-        vm.prank(alice);
-        router.permitBatchAndCall(permit, sig, data);
+        uint256[] memory minAmountsOut = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        multicallData[1] = abi.encodeWithSelector(
+            IRouter.removeLiquidityProportional.selector,
+            address(pool),
+            bptAmountOut,
+            minAmountsOut,
+            false,
+            bytes("")
+        );
 
-        // Alice has BPT
-        assertEq(bptAmountOut, IERC20(pool).balanceOf(alice), "Alice has wrong about of pool tokens");
+        vm.prank(alice);
+        router.permitBatchAndCall(permitBatch, permitSignatures, permit2Batch, permit2Signature, multicallData);
+
+        // Alice has no BPT
+        assertEq(IERC20(pool).balanceOf(alice), 0, "Alice has pool tokens");
 
         (amount, , ) = permit2.allowance(alice, address(dai), address(router));
         // Allowance is spent
