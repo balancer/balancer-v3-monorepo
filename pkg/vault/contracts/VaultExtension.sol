@@ -220,6 +220,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         // Make pool role assignments. A zero address means default to the authorizer.
         _assignPoolRoles(pool, params.roleAccounts);
+        _poolRoleAccounts[pool] = params.roleAccounts;
 
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
@@ -237,8 +238,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             msg.sender,
             params.tokenConfig,
             params.pauseWindowEndTime,
-            //params.pauseManager,
-            address(0), // TODO fix events later
+            params.roleAccounts,
             params.poolHooks,
             params.liquidityManagement
         );
@@ -485,7 +485,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     ) external view withRegisteredPool(pool) onlyVault returns (bool, uint256, uint256, address) {
         (bool paused, uint256 pauseWindowEndTime) = _getPoolPausedState(pool);
 
-        return (paused, pauseWindowEndTime, pauseWindowEndTime + _vaultBufferPeriodDuration, _poolPauseManagers[pool]);
+        return (
+            paused,
+            pauseWindowEndTime,
+            pauseWindowEndTime + _vaultBufferPeriodDuration,
+            _poolRoleAccounts[pool].pauseManager
+        );
     }
 
     /*******************************************************************************

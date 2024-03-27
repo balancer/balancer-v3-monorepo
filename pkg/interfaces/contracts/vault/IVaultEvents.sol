@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthorizer } from "./IAuthorizer.sol";
-import { LiquidityManagement, PoolHooks, TokenConfig } from "./VaultTypes.sol";
+import { LiquidityManagement, PoolHooks, PoolRoleAccounts, TokenConfig } from "./VaultTypes.sol";
 
 interface IVaultEvents {
     /**
@@ -14,7 +14,7 @@ interface IVaultEvents {
      * @param factory The factory creating the pool
      * @param tokenConfig The pool's tokens
      * @param pauseWindowEndTime The pool's pause window end time
-     * @param pauseManager The pool's external pause manager (or 0 for governance)
+     * @param roleAccounts Optional contracts the Vault will allow to change certain pool settings
      * @param liquidityManagement Supported liquidity management hook flags
      */
     event PoolRegistered(
@@ -22,7 +22,7 @@ interface IVaultEvents {
         address indexed factory,
         TokenConfig[] tokenConfig,
         uint256 pauseWindowEndTime,
-        address pauseManager,
+        PoolRoleAccounts roleAccounts,
         PoolHooks hooks,
         LiquidityManagement liquidityManagement
     );

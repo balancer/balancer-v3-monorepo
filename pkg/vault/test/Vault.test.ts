@@ -134,7 +134,7 @@ describe('Vault', function () {
         factory: await vault.getPoolFactoryMock(),
         tokenConfig,
         pauseWindowEndTime: pauseWindowEndTime.toString(),
-        pauseManager: ANY_ADDRESS,
+        roleAccounts: [ANY_ADDRESS, ZERO_ADDRESS],
         hooks: [false, false, false, false, false, false, false, false],
         liquidityManagement: [true, true],
       };
