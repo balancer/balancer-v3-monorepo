@@ -76,7 +76,7 @@ interface IVaultExtension {
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param pauseManager Optional contract the Vault will allow to pause the pool
-     * @param poolDev Optional contract the Vault will allow to set pool dev fee percentage and collect such fees
+     * @param poolDev Optional contract the Vault will allow to set the pool dev fee percentage and collect fees
      * @param hookConfig Flags indicating which hooks the pool supports
      * @param liquidityManagement Liquidity management flags with implemented methods
      */
