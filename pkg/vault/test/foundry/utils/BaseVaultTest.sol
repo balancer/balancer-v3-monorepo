@@ -24,6 +24,7 @@ import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
 import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
 import { Router } from "../../../contracts/Router.sol";
+import { BalancerPoolToken } from "vault/contracts/BalancerPoolToken.sol";
 import { BatchRouter } from "../../../contracts/BatchRouter.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
@@ -209,6 +210,35 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
 
     function getSalt(address addr) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(addr)));
+    }
+
+    function getPermitSignature(
+        BalancerPoolToken token,
+        address owner,
+        address spender,
+        uint256 amount,
+        uint256 nonce,
+        uint256 deadline,
+        uint256 key
+    )
+        internal
+        view
+        returns (
+            uint8 v,
+            bytes32 r,
+            bytes32 s
+        )
+    {
+        (v, r, s) = vm.sign(
+            key,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    token.DOMAIN_SEPARATOR(),
+                    keccak256(abi.encode(token.PERMIT_TYPEHASH(), owner, spender, amount, nonce, deadline))
+                )
+            )
+        );
     }
 
     function getSinglePermit2(
