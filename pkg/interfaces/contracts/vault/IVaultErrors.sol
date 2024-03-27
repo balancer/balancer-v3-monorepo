@@ -277,7 +277,7 @@ interface IVaultErrors {
     error WrongVaultAdminDeployment();
 
     /**
-     * @dev The caller is not the registered pool dev for the pool.
+     * @dev The caller is not the registered pool creator for the pool.
      * @param pool The pool
      */
     error SenderIsNotPoolCreator(address pool);

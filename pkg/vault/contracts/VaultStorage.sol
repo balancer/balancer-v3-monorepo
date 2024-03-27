@@ -47,7 +47,7 @@ contract VaultStorage {
     // Store pool pause managers.
     mapping(address => address) internal _poolPauseManagers;
 
-    // Store pool dev addresses.
+    // Store pool creator addresses.
     mapping(address => address) internal _poolCreator;
 
     // Pool -> (token -> PackedTokenBalance): structure containing the current raw and "last live" scaled balances.

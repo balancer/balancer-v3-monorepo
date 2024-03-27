@@ -232,7 +232,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Store the pause manager. A zero address means default to the authorizer.
         _poolPauseManagers[pool] = params.pauseManager;
 
-        // Store the pool dev as the caller of register pool.
+        // Store the pool creator.
         _poolCreator[pool] = params.poolCreator;
 
         // Store config and mark the pool as registered
