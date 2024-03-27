@@ -154,7 +154,7 @@ contract Permit2Test is BaseVaultTest {
         assertEq(amount, 0);
 
         bytes[] memory data = new bytes[](1);
-        bytes memory sig = getPermitSignature(
+        bytes memory sig = getPermit2Signature(
             address(router),
             address(usdc),
             uint160(defaultAmount),
@@ -163,7 +163,7 @@ contract Permit2Test is BaseVaultTest {
             aliceKey
         );
 
-        IAllowanceTransfer.PermitSingle memory permit = getSinglePermit(
+        IAllowanceTransfer.PermitSingle memory permit = getSinglePermit2(
             address(router),
             address(usdc),
             uint160(defaultAmount),
@@ -207,7 +207,7 @@ contract Permit2Test is BaseVaultTest {
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
         bytes[] memory data = new bytes[](1);
-        bytes memory sig = getPermitBatchSignature(
+        bytes memory sig = getPermit2BatchSignature(
             address(router),
             [address(usdc), address(dai)].toMemoryArray(),
             uint160(defaultAmount),
@@ -216,7 +216,7 @@ contract Permit2Test is BaseVaultTest {
             aliceKey
         );
 
-        IAllowanceTransfer.PermitBatch memory permit = getPermitBatch(
+        IAllowanceTransfer.PermitBatch memory permit = getPermit2Batch(
             address(router),
             [address(usdc), address(dai)].toMemoryArray(),
             uint160(defaultAmount),

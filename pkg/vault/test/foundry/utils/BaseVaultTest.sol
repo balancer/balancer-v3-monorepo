@@ -211,7 +211,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
         return bytes32(uint256(uint160(addr)));
     }
 
-    function getSinglePermit(
+    function getSinglePermit2(
         address spender,
         address token,
         uint160 amount,
@@ -228,7 +228,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
             IAllowanceTransfer.PermitSingle({ details: details, spender: spender, sigDeadline: block.timestamp + 100 });
     }
 
-    function getPermitSignature(
+    function getPermit2Signature(
         address spender,
         address token,
         uint160 amount,
@@ -236,7 +236,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
         uint48 nonce,
         uint256 key
     ) internal view returns (bytes memory) {
-        IAllowanceTransfer.PermitSingle memory permit = getSinglePermit(spender, token, amount, expiration, nonce);
+        IAllowanceTransfer.PermitSingle memory permit = getSinglePermit2(spender, token, amount, expiration, nonce);
         bytes32 permitHash = keccak256(abi.encode(_PERMIT_DETAILS_TYPEHASH, permit.details));
 
         bytes32 msgHash = keccak256(
@@ -251,7 +251,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
         return bytes.concat(r, s, bytes1(v));
     }
 
-    function getPermitBatch(
+    function getPermit2Batch(
         address spender,
         address[] memory tokens,
         uint160 amount,
@@ -273,7 +273,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
             IAllowanceTransfer.PermitBatch({ details: details, spender: spender, sigDeadline: block.timestamp + 100 });
     }
 
-    function getPermitBatchSignature(
+    function getPermit2BatchSignature(
         address spender,
         address[] memory tokens,
         uint160 amount,
@@ -281,7 +281,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
         uint48 nonce,
         uint256 key
     ) internal view returns (bytes memory sig) {
-        IAllowanceTransfer.PermitBatch memory permit = getPermitBatch(spender, tokens, amount, expiration, nonce);
+        IAllowanceTransfer.PermitBatch memory permit = getPermit2Batch(spender, tokens, amount, expiration, nonce);
         bytes32[] memory permitHashes = new bytes32[](permit.details.length);
         for (uint256 i = 0; i < permit.details.length; ++i) {
             permitHashes[i] = keccak256(abi.encode(_PERMIT_DETAILS_TYPEHASH, permit.details[i]));
