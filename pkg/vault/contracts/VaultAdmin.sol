@@ -187,17 +187,21 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     function _ensureAuthenticatedByRole(address pool) private view {
-        // If there was no assignment (e.g., the user pased in 0 for the pauseManager),
-        // then onlyOwner will be false, so it will fall through and check governance.
-
         PoolFunctionPermission memory roleAssignment = _poolFunctionPermissions[pool][getRoleId(msg.sig)];
 
-        // If it is onlyOwner, the sender must be the assigned account.
-        if (roleAssignment.onlyOwner && msg.sender != roleAssignment.account) {
-            revert SenderNotAllowed();
-        } else {
-            // Otherwise, authenticate with governance.
+        // If no account assigned at all, default to governance.
+        if (roleAssignment.account == address(0)) {
             _authenticateCaller();
+        }
+        else if (msg.sender != roleAssignment.account) {
+            // If it is onlyOwner, the sender must be the assigned account.
+            if (roleAssignment.onlyOwner) {
+                revert SenderNotAllowed();
+            }
+            else {
+                // Otherwise, authenticate with governance.
+                _authenticateCaller();
+            }
         }
     }
 
