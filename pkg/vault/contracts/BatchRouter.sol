@@ -187,7 +187,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                     if (params.sender == address(this)) {
                         // Needed for queries.
                         // If router is sender have to approve itself.
-                        IERC20(step.pool).approve(address(this), type(uint256).max);
+                        IERC20(step.pool).safeIncreaseAllowance(address(this), type(uint256).max);
                     }
                     (, amountsOut, ) = _vault.removeLiquidity(
                         RemoveLiquidityParams({
