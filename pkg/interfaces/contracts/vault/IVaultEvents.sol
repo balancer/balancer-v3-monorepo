@@ -116,7 +116,7 @@ interface IVaultEvents {
      * @notice Logs the collection of pool dev fees in a specific pool, by token and amount.
      * @param pool The address of the pool for which the fee has been collected
      * @param token The token in which the fee has been collected
-     * @param amount The amount of the token collected as fees
+     * @param amount The amount of the token collected in fees
      */
     event PoolDevFeeCollected(address pool, IERC20 indexed token, uint256 indexed amount);
 
