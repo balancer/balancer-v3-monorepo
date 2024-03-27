@@ -135,7 +135,7 @@ describe('Vault', function () {
         tokenConfig,
         pauseWindowEndTime: pauseWindowEndTime.toString(),
         pauseManager: ANY_ADDRESS,
-        poolDev: ANY_ADDRESS,
+        poolCreator: ANY_ADDRESS,
         hooks: [false, false, false, false, false, false, false, false],
         liquidityManagement: [true, true],
       };
