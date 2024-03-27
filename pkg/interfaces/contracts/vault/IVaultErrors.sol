@@ -55,9 +55,6 @@ interface IVaultErrors {
     /// @dev The data in a TokenConfig struct is inconsistent or unsupported.
     error InvalidTokenConfiguration();
 
-    /// @dev The pool configuration is invalid.
-    error InvalidPoolConfiguration();
-
     /**
      * @dev The token list passed into an operation does not match the pool tokens in the pool.
      * @param pool Address of the pool
