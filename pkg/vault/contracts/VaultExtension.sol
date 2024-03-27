@@ -209,9 +209,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
             // Register the token dev fee with an initial balance of zero.
             // Note: EnumerableMaps require an explicit initial value when creating a key-value pair.
-            if (poolDevFees.set(token, 0) == false) {
-                revert TokenAlreadyRegistered(token);
-            }
+            poolDevFees.set(token, 0);
 
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
             _poolTokenConfig[pool][token] = tokenData;
