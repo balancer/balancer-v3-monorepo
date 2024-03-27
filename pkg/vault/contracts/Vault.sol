@@ -975,7 +975,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /**
      * @dev Preconditions: poolConfig, decimalScalingFactors, tokenRates in `poolData`.
-     * Side effects: updates `_protocolFees` storage (and emits event).
+     * Side effects: updates `_poolDevFees ` storage (and emits event).
      * Should only be called in a non-reentrant context.
      */
     function _computeAndChargePoolDevFees(
