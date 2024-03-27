@@ -203,8 +203,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         }
     }
 
-    function getRoleId(bytes4 selector) public pure returns (bytes32) {
-        return keccak256(abi.encode(selector));
+    /**
+     * @dev Encode a roleId (like the Authorizer's actionId). We probably don't need a disambiguator here,
+     * but there are multiple contracts involved, and maybe versions, and it doesn't hurt anything.
+     */
+    function getRoleId(bytes4 selector) public view returns (bytes32) {
+        return keccak256(abi.encodePacked(_vault, selector));
     }
 
     /// @inheritdoc IVaultAdmin
