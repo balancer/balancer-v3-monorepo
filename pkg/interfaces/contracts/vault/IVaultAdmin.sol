@@ -178,4 +178,10 @@ interface IVaultAdmin {
      * Emits an `AuthorizerChanged` event.
      */
     function setAuthorizer(IAuthorizer newAuthorizer) external;
+
+    /**
+     * @notice Compute a "roleId" (like an Authorizer actionId) for a given function.
+     * @param selector The function being called
+     */
+    function getRoleId(bytes4 selector) external view returns (bytes32);
 }

@@ -181,7 +181,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                                      Pool Pausing
     *******************************************************************************/
 
-    modifier onlyAuthenticatedByRole(address pool) {
+    modifier authenticatedByRole(address pool) {
         _ensureAuthenticatedByRole(pool);
         _;
     }
@@ -190,7 +190,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         // If there was no assignment (e.g., the user pased in 0 for the pauseManager),
         // then onlyOwner will be false, so it will fall through and check governance.
 
-        PoolRoleAssignment memory roleAssignment = _poolRoleAssigments[_getActionId(msg.sig)];
+        PoolFunctionPermission memory roleAssignment = _poolFunctionPermissions[pool][getRoleId(msg.sig)];
 
         // If it is onlyOwner, the sender must be the assigned account.
         if (roleAssignment.onlyOwner && msg.sender != roleAssignment.account) {
@@ -201,13 +201,17 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         }
     }
 
+    function getRoleId(bytes4 selector) public pure returns (bytes32) {
+        return keccak256(abi.encode(selector));
+    }
+
     /// @inheritdoc IVaultAdmin
-    function pausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedByRole(pool) onlyVault {
+    function pausePool(address pool) external withRegisteredPool(pool) authenticatedByRole(pool) onlyVault {
         _setPoolPaused(pool, true);
     }
 
     /// @inheritdoc IVaultAdmin
-    function unpausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedByRole(pool) onlyVault {
+    function unpausePool(address pool) external withRegisteredPool(pool) authenticatedByRole(pool) onlyVault {
         _setPoolPaused(pool, false);
     }
 
@@ -277,7 +281,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function setStaticSwapFeePercentage(
         address pool,
         uint256 swapFeePercentage
-    ) external withRegisteredPool(pool) onlyAuthenticatedByRole(pool) onlyVault {
+    ) external withRegisteredPool(pool) authenticatedByRole(pool) onlyVault {
         // Saving bits by not implementing a new modifier
         _ensureUnpausedAndGetVaultState(pool);
         _setStaticSwapFeePercentage(pool, swapFeePercentage);

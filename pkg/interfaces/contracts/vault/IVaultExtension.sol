@@ -58,12 +58,6 @@ interface IVaultExtension {
                                     Pool Registration
     *******************************************************************************/
 
-    struct PoolRoleAccounts {
-        address pauseManager;
-        address swapFeeSetter;
-        // ...
-    }
-
     /**
      * @notice Registers a pool, associating it with its factory and the tokens it manages.
      * @dev A pool can opt-out of pausing by providing a zero value for the pause window, or allow pausing indefinitely

@@ -219,7 +219,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
 
         // Make pool role assignments. A zero address means default to the authorizer.
-        _assignPoolRoles(params.roleAccounts);
+        _assignPoolRoles(pool, params.roleAccounts);
 
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
@@ -244,21 +244,29 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         );
     }
 
-    function _assignPoolRoles(PoolRoleAccounts memory roleAccounts) private {
-        if (roleAssignments.pauseManager != address(0)) {
-            _poolRoleAssigments[_getActionId(IVaultAdmin.pausePool.selector)] = PoolRoleAssignments({account: roleAccounts.pauseManager, onlyOwner: false});
-            _poolRoleAssigments[_getActionId(IVaultAdmin.unpausePool.selector)] = PoolRoleAssignments({account: roleAccounts.pauseManager, onlyOwner: false});
+    function _assignPoolRoles(address pool, PoolRoleAccounts memory roleAccounts) private {
+        mapping(bytes32 => PoolFunctionPermission) storage roleAssignments = _poolFunctionPermissions[pool];
+        IVaultAdmin vaultAdmin = _vaultAdmin;
+
+        if (roleAccounts.pauseManager != address(0)) {
+            roleAssignments[vaultAdmin.getRoleId(IVaultAdmin.pausePool.selector)] = PoolFunctionPermission({
+                account: roleAccounts.pauseManager,
+                onlyOwner: false
+            });
+            roleAssignments[vaultAdmin.getRoleId(IVaultAdmin.unpausePool.selector)] = PoolFunctionPermission({
+                account: roleAccounts.pauseManager,
+                onlyOwner: false
+            });
         }
 
-        if (roleAssignments.swapFeeSetter != address(0)) {
-            bytes32 swapFeeAction = _getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector);
+        if (roleAccounts.swapFeeSetter != address(0)) {
+            bytes32 swapFeeAction = vaultAdmin.getRoleId(IVaultAdmin.setStaticSwapFeePercentage.selector);
 
-            _poolRoleAssigments[swapFeeAction] = PoolRoleAssignments({account: roleAccounts.swapFeeSetter, onlyOwner: true});
+            roleAssignments[swapFeeAction] = PoolFunctionPermission({
+                account: roleAccounts.swapFeeSetter,
+                onlyOwner: true
+            });
         }
-    }
-
-    function _getActionId(bytes4 selector) private returns (bytes32) {
-        return keccak256(abi.encode(selector));
     }
 
     /// @inheritdoc IVaultExtension
