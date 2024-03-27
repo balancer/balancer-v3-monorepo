@@ -301,9 +301,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     function _ensurePoolDev(address pool) private view {
-        address poolDev = _poolDev[pool];
-
-        if (msg.sender != poolDev) {
+        if (msg.sender != _poolDev[pool]) {
             revert SenderIsNotPoolDev(pool);
         }
     }
