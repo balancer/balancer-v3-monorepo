@@ -14,6 +14,7 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
@@ -63,9 +64,9 @@ contract RouterTest is BaseVaultTest {
             "ERC20 Pool",
             "ERC20POOL",
             vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
             true,
-            365 days,
-            address(0)
+            365 days
         );
         vm.label(address(newPool), "pool");
 
@@ -74,9 +75,9 @@ contract RouterTest is BaseVaultTest {
             "ERC20 weth Pool",
             "ERC20POOL",
             vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
             true,
-            365 days,
-            address(0)
+            365 days
         );
         vm.label(address(wethPool), "wethPool");
 
@@ -94,9 +95,9 @@ contract RouterTest is BaseVaultTest {
             "ERC20 weth Pool",
             "ERC20POOL",
             vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
             true,
-            365 days,
-            address(0)
+            365 days
         );
         vm.label(address(wethPoolNoInit), "wethPoolNoInit");
 

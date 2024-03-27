@@ -56,9 +56,9 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         string memory name,
         string memory symbol,
         TokenConfig[] memory tokenConfig,
+        PoolRoleAccounts memory roleAccounts,
         bool registerPool,
-        uint256 pauseWindowDuration,
-        address pauseManager
+        uint256 pauseWindowDuration
     ) BalancerPoolToken(vault, name, symbol) {
         if (registerPool) {
             PoolFactoryMock factory = new PoolFactoryMock(vault, pauseWindowDuration);
@@ -66,7 +66,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
             factory.registerPool(
                 address(this),
                 tokenConfig,
-                pauseManager,
+                roleAccounts,
                 PoolConfigBits.wrap(0).toPoolConfig().hooks,
                 PoolConfigBits.wrap(bytes32(type(uint256).max)).toPoolConfig().liquidityManagement
             );

@@ -259,11 +259,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             });
         }
 
-        if (roleAccounts.swapFeeSetter != address(0)) {
+        if (roleAccounts.swapFeeManager != address(0)) {
             bytes32 swapFeeAction = vaultAdmin.getRoleId(IVaultAdmin.setStaticSwapFeePercentage.selector);
 
             roleAssignments[swapFeeAction] = PoolFunctionPermission({
-                account: roleAccounts.swapFeeSetter,
+                account: roleAccounts.swapFeeManager,
                 onlyOwner: true
             });
         }
@@ -517,6 +517,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (uint256) {
         return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getStaticSwapFeeManager(address pool) external view withRegisteredPool(pool) onlyVault returns (address) {
+        return _poolRoleAccounts[pool].swapFeeManager;
     }
 
     /*******************************************************************************

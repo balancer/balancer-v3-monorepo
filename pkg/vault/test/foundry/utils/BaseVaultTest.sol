@@ -11,9 +11,9 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
-
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 
@@ -135,9 +135,9 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
             "ERC20 Pool",
             "ERC20POOL",
             vault.buildTokenConfig(tokens.asIERC20()),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
             true,
-            365 days,
-            address(0)
+            365 days
         );
         vm.label(address(newPool), label);
         return address(newPool);

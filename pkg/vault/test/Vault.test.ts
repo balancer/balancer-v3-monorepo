@@ -21,6 +21,7 @@ import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConv
 import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
+import { PoolRoleAccountsStruct } from '../typechain-types/contracts/Vault';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -139,8 +140,10 @@ describe('Vault', function () {
         liquidityManagement: [true, true],
       };
 
+      const roleAccounts: PoolRoleAccountsStruct = { pauseManager: ANY_ADDRESS, swapFeeManager: ZERO_ADDRESS };
+
       // Use expectEvent here to prevent errors with structs of arrays with hardhat matchers.
-      const tx = await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS);
+      const tx = await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, roleAccounts);
       expectEvent.inReceipt(await tx.wait(), 'PoolRegistered', expectedArgs);
     });
 
@@ -264,9 +267,9 @@ describe('Vault', function () {
             'Pool C',
             'POOLC',
             buildTokenConfig(poolATokens, rateProviders),
+            { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS },
             true,
             365 * 24 * 3600,
-            ZERO_ADDRESS,
           ],
         });
       });
@@ -296,7 +299,15 @@ describe('Vault', function () {
 
       sharedBeforeEach('deploy pool', async () => {
         pool = await deploy('v3-vault/PoolMock', {
-          args: [vault, 'Pool X', 'POOLX', buildTokenConfig(poolATokens), true, 365 * 24 * 3600, ZERO_ADDRESS],
+          args: [
+            vault,
+            'Pool X',
+            'POOLX',
+            buildTokenConfig(poolATokens),
+            { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS },
+            true,
+            365 * 24 * 3600,
+          ],
         });
         poolAddress = await pool.getAddress();
       });

@@ -274,6 +274,13 @@ interface IVaultExtension {
      */
     function getStaticSwapFeePercentage(address pool) external view returns (uint256);
 
+    /**
+     * @notice Fetches the static swap fee manager for a given pool (or zero).
+     * @param pool The address of the pool whose static swap fee manager is being queried
+     * @return The current static swap fee manager for the specified pool
+     */
+    function getStaticSwapFeeManager(address pool) external view returns (address);
+
     /*******************************************************************************
                                     Recovery Mode
     *******************************************************************************/

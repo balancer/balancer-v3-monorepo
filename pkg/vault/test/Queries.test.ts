@@ -44,7 +44,15 @@ describe('Queries', function () {
     const tokenAddresses = sortAddresses([await DAI.getAddress(), await USDC.getAddress()]);
 
     pool = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool', 'POOL', buildTokenConfig(tokenAddresses), true, 365 * 24 * 3600, ZERO_ADDRESS],
+      args: [
+        vaultAddress,
+        'Pool',
+        'POOL',
+        buildTokenConfig(tokenAddresses),
+        { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS },
+        true,
+        365 * 24 * 3600,
+      ],
     });
 
     await USDC.mint(alice, 2n * USDC_AMOUNT_IN);

@@ -150,7 +150,7 @@ contract VaultTokenTest is BaseVaultTest {
         poolFactory.registerPool(
             poolAddress,
             tokenConfig,
-            address(0),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
             PoolHooks({
                 shouldCallBeforeInitialize: false,
                 shouldCallAfterInitialize: false,

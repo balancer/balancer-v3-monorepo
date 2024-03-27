@@ -38,11 +38,27 @@ export async function setupEnvironment(pauseWindowDuration: number): Promise<{
   const poolBTokens = sortAddresses([tokenAAddress, tokenCAddress]);
 
   const poolA: PoolMock = await deploy('v3-vault/PoolMock', {
-    args: [vaultAddress, 'Pool A', 'POOLA', buildTokenConfig(poolATokens), true, 365 * 24 * 3600, ZERO_ADDRESS],
+    args: [
+      vaultAddress,
+      'Pool A',
+      'POOLA',
+      buildTokenConfig(poolATokens),
+      { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS },
+      true,
+      365 * 24 * 3600,
+    ],
   });
 
   const poolB: PoolMock = await deploy('v3-vault/PoolMock', {
-    args: [vaultAddress, 'Pool B', 'POOLB', buildTokenConfig(poolBTokens), false, 365 * 24 * 3600, ZERO_ADDRESS],
+    args: [
+      vaultAddress,
+      'Pool B',
+      'POOLB',
+      buildTokenConfig(poolBTokens),
+      { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS },
+      false,
+      365 * 24 * 3600,
+    ],
   });
 
   return { vault: await TypesConverter.toIVaultMock(vault), tokens: [tokenA, tokenB, tokenC], pools: [poolA, poolB] };

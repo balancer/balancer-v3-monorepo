@@ -9,6 +9,7 @@ import { PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -45,9 +46,9 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
                     "ERC20 Pool",
                     "ERC20POOL",
                     vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
+                    PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
                     true,
-                    365 days,
-                    address(0)
+                    365 days
                 )
             );
     }

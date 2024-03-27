@@ -8,6 +8,7 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { FEE_SCALING_FACTOR, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -60,9 +61,9 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
                 rateProviders,
                 yieldFeeFlags
             ),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
             true,
-            365 days,
-            address(0)
+            365 days
         );
         vm.label(address(newPool), "pool");
         return address(newPool);
