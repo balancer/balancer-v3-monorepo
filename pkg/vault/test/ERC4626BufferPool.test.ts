@@ -136,6 +136,7 @@ describe('ERC4626BufferPool', function () {
       expect(poolConfig.hooks.shouldCallAfterRemoveLiquidity).to.be.false;
       expect(poolConfig.hooks.shouldCallBeforeSwap).to.be.true;
       expect(poolConfig.hooks.shouldCallAfterSwap).to.be.false;
+      expect(poolConfig.liquidityManagement.supportsUnbalancedLiquidity).to.be.true;
       expect(poolConfig.liquidityManagement.supportsAddLiquidityCustom).to.be.true;
       expect(poolConfig.liquidityManagement.supportsRemoveLiquidityCustom).to.be.false;
     });
