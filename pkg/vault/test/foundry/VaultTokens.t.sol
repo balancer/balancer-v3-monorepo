@@ -56,7 +56,7 @@ contract VaultTokenTest is BaseVaultTest {
         pool = vm.addr(1);
     }
 
-    function createPool() internal override returns (address) {
+    function createPool() internal pure override returns (address) {
         return address(0);
     }
 

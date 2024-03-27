@@ -3,6 +3,8 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
+import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 import { IBasePool } from "./IBasePool.sol";
@@ -148,7 +150,14 @@ interface IRouter {
         uint256 minBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
+    )
+        external
+        payable
+        returns (
+            uint256[] memory amountsIn,
+            uint256 bptAmountOut,
+            bytes memory returnData
+        );
 
     /***************************************************************************
                                  Remove Liquidity
@@ -251,7 +260,13 @@ interface IRouter {
         uint256[] memory minAmountsOut,
         bool wethIsEth,
         bytes memory userData
-    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
+    )
+        external
+        returns (
+            uint256 bptAmountIn,
+            uint256[] memory amountsOut,
+            bytes memory returnData
+        );
 
     /**
      * @notice Removes liquidity proportionally, burning an exact pool token amount. Only available in Recovery Mode.
@@ -259,10 +274,9 @@ interface IRouter {
      * @param exactBptAmountIn Exact amount of pool tokens provided
      * @return amountsOut Actual amounts of tokens received, sorted in token registration order
      */
-    function removeLiquidityRecovery(
-        address pool,
-        uint256 exactBptAmountIn
-    ) external returns (uint256[] memory amountsOut);
+    function removeLiquidityRecovery(address pool, uint256 exactBptAmountIn)
+        external
+        returns (uint256[] memory amountsOut);
 
     /***************************************************************************
                                        Swaps
@@ -402,7 +416,13 @@ interface IRouter {
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
+    )
+        external
+        returns (
+            uint256[] memory amountsIn,
+            uint256 bptAmountOut,
+            bytes memory returnData
+        );
 
     /**
      * @notice Queries `removeLiquidityProportional` operation without actually executing it.
@@ -462,7 +482,13 @@ interface IRouter {
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOut,
         bytes memory userData
-    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
+    )
+        external
+        returns (
+            uint256 bptAmountIn,
+            uint256[] memory amountsOut,
+            bytes memory returnData
+        );
 
     /**
      * @notice Queries `removeLiquidityRecovery` operation without actually executing it.
@@ -470,10 +496,9 @@ interface IRouter {
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
      * @return amountsOut Expected amounts of tokens to receive, sorted in token registration order
      */
-    function queryRemoveLiquidityRecovery(
-        address pool,
-        uint256 exactBptAmountIn
-    ) external returns (uint256[] memory amountsOut);
+    function queryRemoveLiquidityRecovery(address pool, uint256 exactBptAmountIn)
+        external
+        returns (uint256[] memory amountsOut);
 
     /**
      * @notice Queries a swap operation specifying an exact input token amount without actually executing it.
@@ -508,4 +533,31 @@ interface IRouter {
         uint256 exactAmountOut,
         bytes calldata userData
     ) external returns (uint256 amountIn);
+
+    /*******************************************************************************
+                                    Utils
+    *******************************************************************************/
+
+    /**
+     * @dev Permits and executes a batch of function calls on this contract.
+     */
+    function permitBatchAndCall(
+        IAllowanceTransfer.PermitBatch calldata permitBatch,
+        bytes calldata sig,
+        bytes[] calldata data
+    ) external returns (bytes[] memory results);
+
+    /**
+     * @dev Permits and executes a batch of function calls on this contract.
+     */
+    function permitAndCall(
+        IAllowanceTransfer.PermitSingle calldata permit,
+        bytes calldata sig,
+        bytes[] calldata data
+    ) external returns (bytes[] memory results);
+
+    /**
+     * @dev Receives and executes a batch of function calls on this contract.
+     */
+    function multicall(bytes[] calldata data) external returns (bytes[] memory results);
 }

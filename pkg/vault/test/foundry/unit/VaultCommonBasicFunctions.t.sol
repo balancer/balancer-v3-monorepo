@@ -27,7 +27,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         pool = address(bytes20(keccak256(abi.encode(block.timestamp))));
     }
 
-    function createPool() internal override returns (address) {
+    function createPool() internal pure override returns (address) {
         return address(0);
     }
 

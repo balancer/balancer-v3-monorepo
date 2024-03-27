@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { VoidSigner, AddressLike, BigNumberish } from 'ethers';
+import { VoidSigner } from 'ethers';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
@@ -17,19 +17,6 @@ import { buildTokenConfig } from './poolSetup';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 import { deployPermit2 } from './Permit2Deployer';
 import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
-
-async function permit2Approve(
-  tokens: ERC20TokenList,
-  permit2: IPermit2,
-  to: AddressLike,
-  from: SignerWithAddress,
-  amount: BigNumberish
-): Promise<void> {
-  for (const token of tokens.tokens) {
-    await token.connect(from).approve(permit2, MAX_UINT256);
-    await permit2.connect(from).approve(token, to, amount, MAX_UINT48);
-  }
-}
 
 describe('BatchSwap', function () {
   let permit2: IPermit2;
@@ -113,11 +100,14 @@ describe('BatchSwap', function () {
       await pool.connect(sender).approve(router, MAX_UINT256);
       await pool.connect(sender).approve(basicRouter, MAX_UINT256);
     }
-    const permit2TokenList = new ERC20TokenList([...tokens.tokens, poolA, poolB, poolC, poolAB, poolAC, poolBC]);
-    await permit2Approve(permit2TokenList, permit2, router, lp, MAX_UINT160);
-    await permit2Approve(permit2TokenList, permit2, basicRouter, lp, MAX_UINT160);
-    await permit2Approve(permit2TokenList, permit2, router, sender, MAX_UINT160);
-    await permit2Approve(permit2TokenList, permit2, basicRouter, sender, MAX_UINT160);
+    for (const token of [...tokens.tokens, poolA, poolB, poolC, poolAB, poolAC, poolBC]) {
+      for (const from of [lp, sender]) {
+        await token.connect(from).approve(permit2, MAX_UINT256);
+        for (const to of [router, basicRouter]) {
+          await permit2.connect(from).approve(token, to, MAX_UINT160, MAX_UINT48);
+        }
+      }
+    }
   });
 
   sharedBeforeEach('initialize pools', async () => {

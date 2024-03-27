@@ -1028,9 +1028,17 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
                                     Utils
     *******************************************************************************/
 
-    /**
-     * @dev Permits and executes a batch of function calls on this contract.
-     */
+    /// @inheritdoc IRouter
+    function permitBatchAndCall(
+        IAllowanceTransfer.PermitBatch calldata permitBatch,
+        bytes calldata sig,
+        bytes[] calldata data
+    ) external virtual returns (bytes[] memory results) {
+        _permit2.permit(msg.sender, permitBatch, sig);
+        return multicall(data);
+    }
+
+    /// @inheritdoc IRouter
     function permitAndCall(
         IAllowanceTransfer.PermitSingle calldata permit,
         bytes calldata sig,
@@ -1040,9 +1048,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
         return multicall(data);
     }
 
-    /**
-     * @dev Receives and executes a batch of function calls on this contract.
-     */
+    /// @inheritdoc IRouter
     function multicall(bytes[] calldata data) public virtual returns (bytes[] memory results) {
         results = new bytes[](data.length);
         for (uint256 i = 0; i < data.length; i++) {
