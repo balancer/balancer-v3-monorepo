@@ -189,8 +189,7 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
 
     function _spendAllowance(address pool, address owner, address spender, uint256 amount) internal {
         uint256 currentAllowance = _allowance(pool, owner, spender);
-        // Since Permit2 use uint160 for max allowance
-        if (currentAllowance <= type(uint160).max) {
+        if (currentAllowance != type(uint256).max) {
             if (amount > currentAllowance) {
                 revert ERC20InsufficientAllowance(spender, currentAllowance, amount);
             }
