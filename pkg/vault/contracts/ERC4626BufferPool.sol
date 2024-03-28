@@ -51,7 +51,6 @@ contract ERC4626BufferPool is
     // When the swap is settled, these extra tokens are either added to the pool balance or are left behind
     // in the buffer contract as dust, to fund subsequent operations.
     uint256 public constant DUST_BUFFER = 2;
-    uint256 public constant ONE_PERCENT = 1e16;
     uint256 public constant FIFTY_PERCENT = 5e17;
 
     IERC4626 internal immutable _wrappedToken;
@@ -217,9 +216,9 @@ contract ERC4626BufferPool is
                 );
 
                 // Swapping base to wrapped. We need to unbalance the pool to the wrapped side, to make sure we
-                // have enough tokens to trade (desired base percentage - 1%)
-                if (desiredBaseTokenPercentage > ONE_PERCENT) {
-                    desiredBaseTokenPercentage -= ONE_PERCENT;
+                // have enough tokens to trade (desired base percentage - 1)
+                if (desiredBaseTokenPercentage >= 1) {
+                    desiredBaseTokenPercentage -= 1;
                 } else {
                     desiredBaseTokenPercentage = 0;
                 }
@@ -228,8 +227,8 @@ contract ERC4626BufferPool is
                 desiredBaseTokenPercentage = params.amountGivenScaled18.divDown(totalBufferLiquidityScaled18);
 
                 // Swapping wrapped to base. We need to unbalance the pool to the base side, to make sure we
-                // have enough tokens to trade (desired base percentage + 1%)
-                desiredBaseTokenPercentage += ONE_PERCENT;
+                // have enough tokens to trade (desired base percentage + 1)
+                desiredBaseTokenPercentage += 1;
                 if (desiredBaseTokenPercentage > FixedPoint.ONE) {
                     desiredBaseTokenPercentage = FixedPoint.ONE;
                 }

@@ -179,7 +179,7 @@ contract BufferSwapTest is BaseVaultTest {
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN, true);
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN, swapAmount);
     }
 
     function testBoostedPoolSwapExactOut() public {
@@ -189,7 +189,7 @@ contract BufferSwapTest is BaseVaultTest {
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT, true);
+        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT, swapAmount);
     }
 
     function testBoostedPoolSwapTooLarge() public {
@@ -231,7 +231,7 @@ contract BufferSwapTest is BaseVaultTest {
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         // It should now be balanced (except for the trade)
-        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount * 2, SwapKind.EXACT_IN, false);
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount * 2, SwapKind.EXACT_IN, swapAmount * 2);
     }
 
     function testBoostedPoolSwapMoreThan50pRebalance() public {
@@ -261,7 +261,7 @@ contract BufferSwapTest is BaseVaultTest {
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         // It should now be 2000 DAI/0 waDAI
-        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, amountToSwap, SwapKind.EXACT_IN, false);
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, amountToSwap, SwapKind.EXACT_IN, defaultAmount);
     }
 
     function testBoostedPoolSwapRebalance__Fuzz(
@@ -319,9 +319,10 @@ contract BufferSwapTest is BaseVaultTest {
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         // It should now be balanced (except for the trade)
-        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, amountDaiToSwap, SwapKind.EXACT_IN, false);
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, amountDaiToSwap, SwapKind.EXACT_IN, amountDaiToSwap);
     }
 
+    //
     function testBoostedPoolSwapMoreThan50pLiquidityRebalance__Fuzz(uint256 amountDaiToSwap) public {
         // Trading between 51% and 100% of pool liquidity
         amountDaiToSwap = bound(amountDaiToSwap, (51 * defaultAmount) / 50, 2 * defaultAmount);
@@ -340,7 +341,8 @@ contract BufferSwapTest is BaseVaultTest {
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, amountDaiToSwap, SwapKind.EXACT_IN, false);
+        // It should now be 2000 DAI/0 waDAI
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, amountDaiToSwap, SwapKind.EXACT_IN, defaultAmount);
     }
 
     function _buildExactInPaths(
@@ -395,7 +397,7 @@ contract BufferSwapTest is BaseVaultTest {
         uint256[] memory amounts,
         uint256 expectedDelta,
         SwapKind kind,
-        bool balanced
+        uint256 bufferExpectedDelta
     ) private {
         assertEq(paths.length, 1, "Incorrect output array length");
 
@@ -418,16 +420,40 @@ contract BufferSwapTest is BaseVaultTest {
         assertEq(balancesRaw[daiIdx], boostedPoolAmount + expectedDelta, "Wrong boosted pool DAI balance");
         assertEq(balancesRaw[usdcIdx], boostedPoolAmount - expectedDelta, "Wrong boosted pool USDC balance");
 
-        if (balanced) {
-            (uint256 wrappedIdx, uint256 baseIdx) = getSortedIndexes(address(waDAI), address(dai));
-            (, , balancesRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
-            assertEq(balancesRaw[baseIdx], defaultAmount + expectedDelta, "Wrong DAI buffer pool base balance");
-            assertEq(balancesRaw[wrappedIdx], defaultAmount - expectedDelta, "Wrong DAI buffer pool wrapped balance");
+        // Pool Liquidity = 2*defaultAmount
+        // DUST_BUFFER is 2, so tolerance1 is 2 units of pool liquidity
+        // tolerance1 = 2 * (Pool Liquidity)/FixedPoint.ONE
+        // tolerance2 = 10 // sometimes the buffer contract injects some tokens in the buffer pool to rebalance
+        // tolerance = tolerance1 + tolerance2
+        uint256 tolerance = (4 * defaultAmount) / FixedPoint.ONE + 10;
+        (uint256 wrappedIdx, uint256 baseIdx) = getSortedIndexes(address(waDAI), address(dai));
+        (, , balancesRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
+        assertApproxEqAbs(
+            balancesRaw[baseIdx],
+            defaultAmount + bufferExpectedDelta,
+            tolerance,
+            "Wrong DAI buffer pool base balance"
+        );
+        assertApproxEqAbs(
+            balancesRaw[wrappedIdx],
+            defaultAmount - bufferExpectedDelta,
+            tolerance,
+            "Wrong DAI buffer pool wrapped balance"
+        );
 
-            (wrappedIdx, baseIdx) = getSortedIndexes(address(waUSDC), address(usdc));
-            (, , balancesRaw, , ) = vault.getPoolTokenInfo(waUSDCBufferPool);
-            assertEq(balancesRaw[baseIdx], defaultAmount - expectedDelta, "Wrong USDC buffer pool base balance");
-            assertEq(balancesRaw[wrappedIdx], defaultAmount + expectedDelta, "Wrong USDC buffer pool wrapped balance");
-        }
+        (wrappedIdx, baseIdx) = getSortedIndexes(address(waUSDC), address(usdc));
+        (, , balancesRaw, , ) = vault.getPoolTokenInfo(waUSDCBufferPool);
+        assertApproxEqAbs(
+            balancesRaw[baseIdx],
+            defaultAmount - bufferExpectedDelta,
+            tolerance,
+            "Wrong USDC buffer pool base balance"
+        );
+        assertApproxEqAbs(
+            balancesRaw[wrappedIdx],
+            defaultAmount + bufferExpectedDelta,
+            tolerance,
+            "Wrong USDC buffer pool wrapped balance"
+        );
     }
 }
