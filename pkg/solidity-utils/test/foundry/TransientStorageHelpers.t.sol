@@ -1,0 +1,121 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+pragma solidity ^0.8.24;
+
+import "forge-std/Test.sol";
+
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import "../../contracts/helpers/TransientStorageHelpers.sol";
+import "../../contracts/openzeppelin/Slots.sol";
+
+contract TransientStorageHelpersTest is Test {
+    using TransientStorageHelpers for *;
+    using Slots for Slots.Uint256Slot;
+
+    mapping(address => mapping(IERC20 => int256)) private nestedMapping;
+    address[] private addressArray;
+    uint256 private storageUint;
+
+    function testTransientNestedMapping(address k1, address k2, int256 value) public {
+        nestedMapping[k1][IERC20(k2)] = 1234;
+
+        NestedAddressMappingSlot transientMapping;
+        assembly {
+            transientMapping := nestedMapping.slot
+        }
+
+        assertEq(transientMapping.tGet(k1, IERC20(k2)), 0, "Mapping: Initial nonzero value");
+
+        transientMapping.tSet(k1, IERC20(k2), value);
+        assertEq(transientMapping.tGet(k1, IERC20(k2)), value, "Mapping: Incorrect value set");
+        assertEq(nestedMapping[k1][IERC20(k2)], 1234, "Mapping: storage was modified");
+    }
+
+    function testTransientAddressArray() public {
+        addressArray.push(address(1));
+        addressArray.push(address(2));
+        addressArray.push(address(3));
+        require(addressArray.length == 3, "Array: wrong initial conditions");
+
+        AddressArraySlot transientArray;
+        assembly {
+            transientArray := addressArray.slot
+        }
+
+        assertEq(transientArray.tLength(), 0, "Array: Initial nonzero value");
+
+        transientArray.tPush(address(9));
+        transientArray.tPush(address(8));
+        transientArray.tPush(address(7));
+        transientArray.tPush(address(6));
+
+        assertEq(transientArray.tLength(), 4, "Array: incorrect length after push");
+        assertEq(addressArray.length, 3, "Array: storage modified");
+
+        assertEq(transientArray.tAt(0), address(9), "Array[0]: incorrect value");
+        assertEq(transientArray.tAt(1), address(8), "Array[1]: incorrect value");
+        assertEq(transientArray.tAt(2), address(7), "Array[2]: incorrect value");
+        assertEq(transientArray.tAt(3), address(6), "Array[3]: incorrect value");
+
+        assertEq(transientArray.tUncheckedAt(0), address(9), "Array[0] (unchecked): incorrect value");
+        assertEq(transientArray.tUncheckedAt(1), address(8), "Array[1] (unchecked): incorrect value");
+        assertEq(transientArray.tUncheckedAt(2), address(7), "Array[2] (unchecked): incorrect value");
+        assertEq(transientArray.tUncheckedAt(3), address(6), "Array[3] (unchecked): incorrect value");
+
+        transientArray.tSet(1, address(1111));
+        assertEq(transientArray.tAt(1), address(1111), "Array[1]: incorrect value after edit");
+        assertEq(transientArray.tUncheckedAt(1), address(1111), "Array[1]: incorrect value after edit");
+
+        transientArray.tUncheckedSet(2, address(2222));
+        assertEq(transientArray.tAt(2), address(2222), "Array[2]: incorrect value after edit");
+        assertEq(transientArray.tUncheckedAt(2), address(2222), "Array[2]: incorrect value after edit");
+
+        assertEq(transientArray.tPop(), address(6), "Pop[3]: incorrect value");
+        assertEq(transientArray.tLength(), 3, "Pop[3]: incorrect length");
+        assertEq(transientArray.tPop(), address(2222), "Pop[2]: incorrect value");
+        assertEq(transientArray.tLength(), 2, "Pop[2]: incorrect length");
+        assertEq(transientArray.tPop(), address(1111), "Pop[1]: incorrect value");
+        assertEq(transientArray.tLength(), 1, "Pop[1]: incorrect length");
+        assertEq(transientArray.tPop(), address(9), "Pop[0]: incorrect value");
+        assertEq(transientArray.tLength(), 0, "Pop[0]: incorrect length");
+
+        assertEq(addressArray.length, 3, "Array: storage modified");
+    }
+
+    function testTransientArrayFailures() public {
+        AddressArraySlot transientArray;
+        assembly {
+            transientArray := addressArray.slot
+        }
+
+        vm.expectRevert(stdError.arithmeticError);
+        transientArray.tPop();
+
+        transientArray.tPush(address(1));
+        transientArray.tPush(address(2));
+        transientArray.tPush(address(3));
+
+        assertEq(transientArray.tLength(), 3, "Array: incorrect length after push");
+
+        vm.expectRevert(TransientStorageHelpers.TransientIndexOutOfBounds.selector);
+        transientArray.tAt(4);
+
+        vm.expectRevert(TransientStorageHelpers.TransientIndexOutOfBounds.selector);
+        transientArray.tSet(4, address(1));
+    }
+
+    function testTransientUint(uint256 value) public {
+        storageUint = 1234;
+
+        Slots.Uint256Slot transientUint;
+        assembly {
+            transientUint := storageUint.slot
+        }
+
+        assertEq(transientUint.tload(), 0, "Uint: initial nonzero value");
+        transientUint.tstore(value);
+        assertEq(transientUint.tload(), value, "Uint: incorrect value after edit");
+        assertEq(storageUint, 1234, "Uint: storage modified");
+    }
+}
