@@ -147,7 +147,7 @@ interface IVaultAdmin {
      * @notice Emitted when the pool creator fee percentage of a pool is updated.
      * @param poolCreatorFeePercentage The new pool creator fee percentage for the pool
      */
-    event poolCreatorFeePercentageChanged(address indexed pool, uint256 indexed poolCreatorFeePercentage);
+    event PoolCreatorFeePercentageChanged(address indexed pool, uint256 indexed poolCreatorFeePercentage);
 
     /**
      * @notice Collects accumulated protocol fees for the specified array of tokens.
