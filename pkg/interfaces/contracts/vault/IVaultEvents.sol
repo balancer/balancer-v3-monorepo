@@ -14,7 +14,7 @@ interface IVaultEvents {
      * @param factory The factory creating the pool
      * @param tokenConfig The pool's tokens
      * @param pauseWindowEndTime The pool's pause window end time
-     * @param roleAccounts Optional contracts the Vault will allow to change certain pool settings
+     * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param liquidityManagement Supported liquidity management hook flags
      */
     event PoolRegistered(

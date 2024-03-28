@@ -75,7 +75,7 @@ interface IVaultExtension {
      * @param pool The address of the pool being registered
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
-     * @param roleAccounts Optional contracts the Vault will allow to change certain pool settings
+     * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param hookConfig Flags indicating which hooks the pool supports
      * @param liquidityManagement Liquidity management flags with implemented methods
      */
