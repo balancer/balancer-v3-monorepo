@@ -411,14 +411,14 @@ contract BufferSwapTest is BaseVaultTest {
         assertApproxEqAbs(dai.balanceOf(alice), defaultBalance - expectedDelta, 1, "Wrong ending balance of DAI");
         assertApproxEqAbs(usdc.balanceOf(alice), defaultBalance + expectedDelta, 1, "Wrong ending balance of USDC");
 
+        uint256[] memory balancesRaw;
+
+        (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
+        (, , balancesRaw, , ) = vault.getPoolTokenInfo(boostedPool);
+        assertEq(balancesRaw[daiIdx], boostedPoolAmount + expectedDelta, "Wrong boosted pool DAI balance");
+        assertEq(balancesRaw[usdcIdx], boostedPoolAmount - expectedDelta, "Wrong boosted pool USDC balance");
+
         if (balanced) {
-            uint256[] memory balancesRaw;
-
-            (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
-            (, , balancesRaw, , ) = vault.getPoolTokenInfo(boostedPool);
-            assertEq(balancesRaw[daiIdx], boostedPoolAmount + expectedDelta, "Wrong boosted pool DAI balance");
-            assertEq(balancesRaw[usdcIdx], boostedPoolAmount - expectedDelta, "Wrong boosted pool DAI balance");
-
             (uint256 wrappedIdx, uint256 baseIdx) = getSortedIndexes(address(waDAI), address(dai));
             (, , balancesRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
             assertEq(balancesRaw[baseIdx], defaultAmount + expectedDelta, "Wrong DAI buffer pool base balance");
