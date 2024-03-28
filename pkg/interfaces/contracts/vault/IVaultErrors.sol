@@ -176,7 +176,7 @@ interface IVaultErrors {
     error SwapFeePercentageTooHigh();
 
     /// @dev Error raised when the pool creator fee percentage exceeds the maximum allowed value.
-    error poolCreatorFeePercentageTooHigh();
+    error PoolCreatorFeePercentageTooHigh();
 
     /*******************************************************************************
                                     Queries
