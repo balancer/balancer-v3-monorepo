@@ -218,9 +218,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
         }
 
+        // Store the role account addresses (for getters).
+        _poolRoleAccounts[pool] = params.roleAccounts;
+
         // Make pool role assignments. A zero address means default to the authorizer.
         _assignPoolRoles(pool, params.roleAccounts);
-        _poolRoleAccounts[pool] = params.roleAccounts;
 
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);

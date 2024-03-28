@@ -207,7 +207,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         }
 
         // Delegate to governance.
-        if (!_canPerform(actionId, msg.sender, pool)) {
+        if (_canPerform(actionId, msg.sender, pool) == false) {
             revert SenderNotAllowed();
         }
     }
