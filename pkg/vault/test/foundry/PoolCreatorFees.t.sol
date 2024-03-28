@@ -17,8 +17,11 @@ contract PoolCreatorFeesTest is BaseVaultTest {
     using FixedPoint for uint256;
     using SafeCast for *;
 
+    uint256 private _defaultAmountToSwap;
+
     function setUp() public override {
         BaseVaultTest.setUp();
+        _defaultAmountToSwap = defaultAmount / 10;
     }
 
     function testPoolCreatorWasSet() public {
@@ -26,8 +29,7 @@ contract PoolCreatorFeesTest is BaseVaultTest {
     }
 
     function testSwapWithoutFees() public {
-        uint256 amountToSwap = defaultAmount / 10;
-        _swapExactInWithFees(usdc, dai, amountToSwap, 0, 0, 0);
+        _swapExactInWithFees(usdc, dai, _defaultAmountToSwap, 0, 0, 0);
     }
 
     function testSwapWithCreatorFee_Fuzz(
@@ -36,7 +38,7 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         uint64 protocolFeePercentage,
         uint64 poolCreatorFeePercentage
     ) public {
-        amountToSwap = bound(amountToSwap, defaultAmount / 10, defaultAmount / 2);
+        amountToSwap = bound(amountToSwap, _defaultAmountToSwap, defaultAmount / 2);
         // 0 to 10%
         swapFeePercentage = (bound(swapFeePercentage, 0, 1e17 / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR).toUint64();
         // 0 to 50%
@@ -56,11 +58,21 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         );
     }
 
-    function testCollectPoolCreatorFee() public {
-        uint256 amountToSwap = defaultAmount / 10;
-        uint256 swapFeePercentage = 1e17; //10%
-        uint64 protocolFeePercentage = 5e17; //50%
-        uint256 poolCreatorFeePercentage = 1e17; //10%
+    function testCollectPoolCreatorFee__Fuzz(
+        uint256 amountToSwap,
+        uint64 swapFeePercentage,
+        uint64 protocolFeePercentage,
+        uint64 poolCreatorFeePercentage
+    ) public {
+        amountToSwap = bound(amountToSwap, _defaultAmountToSwap, defaultAmount / 2);
+        // 0 to 10%
+        swapFeePercentage = (bound(swapFeePercentage, 0, 1e17 / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR).toUint64();
+        // 0 to 50%
+        protocolFeePercentage = (bound(protocolFeePercentage, 0, 5e17 / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR)
+            .toUint64();
+        // 0 to 100%
+        poolCreatorFeePercentage = (bound(poolCreatorFeePercentage, 0, 1e18 / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR)
+            .toUint64();
 
         uint256 lpBalanceDaiBefore = dai.balanceOf(address(lp));
 
