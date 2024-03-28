@@ -274,14 +274,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             bytes32 setFeeAction = vaultAdmin.getRoleId(IVaultAdmin.setPoolCreatorFeePercentage.selector);
 
             roleAssignments[setFeeAction] = PoolFunctionPermission({
-                account: roleAccounts.swapFeeManager,
+                account: roleAccounts.poolCreator,
                 onlyOwner: true
             });
 
             bytes32 collectFeesAction = vaultAdmin.getRoleId(IVaultAdmin.collectPoolCreatorFees.selector);
 
             roleAssignments[collectFeesAction] = PoolFunctionPermission({
-                account: roleAccounts.swapFeeManager,
+                account: roleAccounts.poolCreator,
                 onlyOwner: true
             });
         }
