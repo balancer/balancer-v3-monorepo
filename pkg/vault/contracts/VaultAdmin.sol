@@ -187,28 +187,29 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     function _ensureAuthenticatedByRole(address pool) private view {
-        PoolFunctionPermission memory roleAssignment = _poolFunctionPermissions[pool][getRoleId(msg.sig)];
+        bytes32 actionId = getActionId(msg.sig);
 
-        // If no account assigned at all, default to governance.
-        if (roleAssignment.account == address(0)) {
-            _authenticateCaller();
-        } else if (msg.sender != roleAssignment.account) {
-            // If it is onlyOwner, the sender must be the assigned account.
+        PoolFunctionPermission memory roleAssignment = _poolFunctionPermissions[pool][actionId];
+
+        // If there is no role assigment, fall through and delegate to goverannce.
+        if (roleAssignment.account != address(0)) {
+            // If the sender matches the permissioned account, all good; just return.
+            if (msg.sender == roleAssignment.account) {
+                return;
+            }
+            
+            // If it doesn't, check whether it's onlyOwner. onlyOwner means *only* the permissioned account
+            // may call the function, so revert if this is the case. Otherwise, fall through and check
+            // governance.
             if (roleAssignment.onlyOwner) {
                 revert SenderNotAllowed();
-            } else {
-                // Otherwise, authenticate with governance.
-                _authenticateCaller();
             }
         }
-    }
 
-    /**
-     * @dev Encode a roleId (like the Authorizer's actionId). We probably don't need a disambiguator here,
-     * but there are multiple contracts involved, and maybe versions, and it doesn't hurt anything.
-     */
-    function getRoleId(bytes4 selector) public view returns (bytes32) {
-        return keccak256(abi.encodePacked(_vault, selector));
+        // Delegate to governance.
+        if (!_canPerform(actionId, msg.sender, pool)) {
+            revert SenderNotAllowed();
+        }
     }
 
     /// @inheritdoc IVaultAdmin
@@ -411,5 +412,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /// @dev Access control is delegated to the Authorizer
     function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
         return _authorizer.canPerform(actionId, user, address(this));
+    }
+
+    function _canPerform(bytes32 actionId, address user, address where) internal view returns (bool) {
+        return _authorizer.canPerform(actionId, user, where);
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getRoleId(bytes4 selector) external view returns (bytes32) {
+        return getActionId(selector);
     }
 }
