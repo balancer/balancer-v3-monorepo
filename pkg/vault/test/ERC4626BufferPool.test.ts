@@ -277,6 +277,9 @@ describe('ERC4626BufferPool', function () {
       const MAX_AMOUNT = TOKEN_AMOUNT + MIN_BPT;
 
       await router.connect(bob).addLiquidityCustom(pool, [MAX_AMOUNT, MAX_AMOUNT], bptAmount, false, '0x');
+
+      // Should withdraw almost all. Contrived test to ensure proportional amounts in calculated correctly.
+      expect(await baseToken.balanceOf(bob)).to.equal((MIN_BPT * 3n) / 2n);
     });
   });
 
