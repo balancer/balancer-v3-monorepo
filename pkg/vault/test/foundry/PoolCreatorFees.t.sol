@@ -4,15 +4,18 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-contract poolCreatorFees is BaseVaultTest {
+contract PoolCreatorFeesTest is BaseVaultTest {
     using FixedPoint for uint256;
+    using SafeCast for *;
 
     function setUp() public override {
         BaseVaultTest.setUp();
@@ -27,11 +30,21 @@ contract poolCreatorFees is BaseVaultTest {
         _swapExactInWithFees(usdc, dai, amountToSwap, 0, 0, 0);
     }
 
-    function testSwapWithCreatorFee() public {
-        uint256 amountToSwap = defaultAmount / 10;
-        uint256 swapFeePercentage = 1e17; //10%
-        uint64 protocolFeePercentage = 5e17; //50%
-        uint256 poolCreatorFeePercentage = 1e17; //10%
+    function testSwapWithCreatorFee_Fuzz(
+        uint256 amountToSwap,
+        uint64 swapFeePercentage,
+        uint64 protocolFeePercentage,
+        uint64 poolCreatorFeePercentage
+    ) public {
+        amountToSwap = bound(amountToSwap, defaultAmount / 10, defaultAmount / 2);
+        // 0 to 10%
+        swapFeePercentage = (bound(swapFeePercentage, 0, 1e17 / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR).toUint64();
+        // 0 to 50%
+        protocolFeePercentage = (bound(protocolFeePercentage, 0, 5e17 / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR)
+            .toUint64();
+        // 0 to 100%
+        poolCreatorFeePercentage = (bound(poolCreatorFeePercentage, 0, 1e18 / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR)
+            .toUint64();
 
         _swapExactInWithFees(
             usdc,
@@ -103,14 +116,14 @@ contract poolCreatorFees is BaseVaultTest {
         vault.setPoolCreatorFeePercentage(address(pool), creatorFeePercentage);
 
         // totalFees = amountIn * swapFee%
-        vars.totalFees = amountIn.mulDown(swapFeePercentage);
+        vars.totalFees = amountIn.mulUp(swapFeePercentage);
 
         // protocolFees = totalFees * protocolFee%
-        vars.protocolFees = vars.totalFees.mulDown(protocolFeePercentage);
+        vars.protocolFees = vars.totalFees.mulUp(protocolFeePercentage);
 
         // creatorAndLPFees = totalFees - protocolFees
         // creatorFees = creatorAndLPFees * creatorFee%
-        chargedCreatorFee = (vars.totalFees - vars.protocolFees).mulDown(creatorFeePercentage);
+        chargedCreatorFee = (vars.totalFees - vars.protocolFees).mulUp(creatorFeePercentage);
 
         // Get swap user (alice) balances before transfer
         vars.aliceTokenInBalanceBefore = tokenIn.balanceOf(address(alice));
