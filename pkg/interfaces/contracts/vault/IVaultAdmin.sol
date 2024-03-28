@@ -159,7 +159,7 @@ interface IVaultAdmin {
     /**
      * @notice Collects accumulated pool creator fees for the specified pool.
      * @dev Fees are sent to the pool creator address.
-     * @param pool The pool address for which the fees should be collected
+     * @param pool The address of the pool on which we are collecting pool creator fees
      */
     function collectPoolCreatorFees(address pool) external;
 
