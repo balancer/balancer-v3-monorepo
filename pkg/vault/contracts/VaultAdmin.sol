@@ -197,7 +197,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             if (msg.sender == roleAssignment.account) {
                 return;
             }
-            
+
             // If it doesn't, check whether it's onlyOwner. onlyOwner means *only* the permissioned account
             // may call the function, so revert if this is the case. Otherwise, fall through and check
             // governance.
