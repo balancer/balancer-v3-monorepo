@@ -135,7 +135,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
             "ERC20 Pool",
             "ERC20POOL",
             vault.buildTokenConfig(tokens.asIERC20()),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            getDefaultPoolRoleAccounts(),
             true,
             365 days
         );
@@ -173,5 +173,9 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
 
     function getSalt(address addr) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(addr)));
+    }
+
+    function getDefaultPoolRoleAccounts() internal pure returns (PoolRoleAccounts memory roleAccounts) {
+        return PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) });
     }
 }

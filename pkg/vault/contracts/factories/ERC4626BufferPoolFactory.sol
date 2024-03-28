@@ -107,7 +107,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
             pool,
             tokenConfig,
             pauseWindowEndTime,
-            PoolRoleAccounts({ pauseManager: pauseManager, swapFeeManager: address(0) }),
+            PoolRoleAccounts({ pauseManager: pauseManager, swapFeeManager: address(0), poolCreator: address(0) }),
             poolHooks,
             liquidityManagement
         );

@@ -45,7 +45,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             "ERC20 Pool",
             "ERC20POOL",
             vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20(), rateProviders),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            getDefaultPoolRoleAccounts(),
             true,
             365 days
         );
@@ -93,7 +93,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             "ERC20 Pool",
             "ERC20POOL",
             vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20(), rateProviders),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            getDefaultPoolRoleAccounts(),
             true,
             365 days
         );

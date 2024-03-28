@@ -61,7 +61,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
                 rateProviders,
                 yieldFeeFlags
             ),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            getDefaultPoolRoleAccounts(),
             true,
             365 days
         );

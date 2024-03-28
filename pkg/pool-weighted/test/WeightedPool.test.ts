@@ -70,7 +70,7 @@ describe('WeightedPool', function () {
         'Pool',
         'POOL',
         buildTokenConfig(poolTokens),
-        { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS },
+        { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS, poolCreator: ZERO_ADDRESS },
         true,
         365 * 24 * 3600,
       ],

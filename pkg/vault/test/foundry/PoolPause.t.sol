@@ -37,7 +37,7 @@ contract PoolPauseTest is BaseVaultTest {
                 "ERC20 Pool",
                 "ERC20POOL",
                 vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-                PoolRoleAccounts({ pauseManager: admin, swapFeeManager: address(0) }),
+                PoolRoleAccounts({ pauseManager: admin, swapFeeManager: address(0), poolCreator: address(0) }),
                 true,
                 365 days
             )
@@ -49,7 +49,7 @@ contract PoolPauseTest is BaseVaultTest {
             "ERC20 Pool",
             "ERC20POOL",
             vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            getDefaultPoolRoleAccounts(),
             true,
             365 days
         );
@@ -59,7 +59,7 @@ contract PoolPauseTest is BaseVaultTest {
             "ERC20 Pool",
             "ERC20POOL",
             vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            getDefaultPoolRoleAccounts(),
             true,
             0
         );
@@ -69,7 +69,7 @@ contract PoolPauseTest is BaseVaultTest {
             "ERC20 Pool",
             "ERC20POOL",
             vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            getDefaultPoolRoleAccounts(),
             true,
             10000 days
         );
@@ -107,7 +107,7 @@ contract PoolPauseTest is BaseVaultTest {
             "ERC20 Pool",
             "ERC20POOL",
             tokenConfig,
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            getDefaultPoolRoleAccounts(),
             true,
             maxEndTimeTimestamp + 1
         );

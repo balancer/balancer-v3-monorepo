@@ -95,7 +95,7 @@ contract BufferSwapTest is BaseVaultTest {
             "Boosted Pool",
             "BOOSTYBOI",
             tokenConfig,
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            getDefaultPoolRoleAccounts(),
             true,
             365 days
         );

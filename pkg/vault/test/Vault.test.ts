@@ -135,12 +135,16 @@ describe('Vault', function () {
         factory: await vault.getPoolFactoryMock(),
         tokenConfig,
         pauseWindowEndTime: pauseWindowEndTime.toString(),
-        roleAccounts: [ANY_ADDRESS, ZERO_ADDRESS],
+        roleAccounts: [ANY_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
         hooks: [false, false, false, false, false, false, false, false],
         liquidityManagement: [true, true],
       };
 
-      const roleAccounts: PoolRoleAccountsStruct = { pauseManager: ANY_ADDRESS, swapFeeManager: ZERO_ADDRESS };
+      const roleAccounts: PoolRoleAccountsStruct = {
+        pauseManager: ANY_ADDRESS,
+        swapFeeManager: ZERO_ADDRESS,
+        poolCreator: ZERO_ADDRESS,
+      };
 
       // Use expectEvent here to prevent errors with structs of arrays with hardhat matchers.
       const tx = await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, roleAccounts);
@@ -267,7 +271,7 @@ describe('Vault', function () {
             'Pool C',
             'POOLC',
             buildTokenConfig(poolATokens, rateProviders),
-            { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS },
+            { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS, poolCreator: ZERO_ADDRESS },
             true,
             365 * 24 * 3600,
           ],
@@ -304,7 +308,7 @@ describe('Vault', function () {
             'Pool X',
             'POOLX',
             buildTokenConfig(poolATokens),
-            { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS },
+            { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS, poolCreator: ZERO_ADDRESS },
             true,
             365 * 24 * 3600,
           ],

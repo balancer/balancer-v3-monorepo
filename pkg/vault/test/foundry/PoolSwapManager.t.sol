@@ -36,7 +36,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
                 "ERC20 Pool",
                 "ERC20POOL",
                 vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-                PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: admin }),
+                PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: admin, poolCreator: address(0) }),
                 true,
                 365 days
             )
@@ -48,7 +48,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
             "Unmanaged Pool",
             "UNMANAGED",
             vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            getDefaultPoolRoleAccounts(),
             true,
             365 days
         );
@@ -59,7 +59,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
             "Other Pool",
             "OTHER",
             vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            getDefaultPoolRoleAccounts(),
             true,
             365 days
         );

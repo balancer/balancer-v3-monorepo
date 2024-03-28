@@ -46,7 +46,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
                     "ERC20 Pool",
                     "ERC20POOL",
                     vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
-                    PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+                    getDefaultPoolRoleAccounts(),
                     true,
                     365 days
                 )

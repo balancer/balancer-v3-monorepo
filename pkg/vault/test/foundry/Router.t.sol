@@ -64,7 +64,7 @@ contract RouterTest is BaseVaultTest {
             "ERC20 Pool",
             "ERC20POOL",
             vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            getDefaultPoolRoleAccounts(),
             true,
             365 days
         );
@@ -75,7 +75,7 @@ contract RouterTest is BaseVaultTest {
             "ERC20 weth Pool",
             "ERC20POOL",
             vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            getDefaultPoolRoleAccounts(),
             true,
             365 days
         );
@@ -95,7 +95,7 @@ contract RouterTest is BaseVaultTest {
             "ERC20 weth Pool",
             "ERC20POOL",
             vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            getDefaultPoolRoleAccounts(),
             true,
             365 days
         );
