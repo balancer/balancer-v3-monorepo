@@ -5,8 +5,10 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -57,6 +59,49 @@ contract RecoveryModeTest is BaseVaultTest {
 
             shouldBeEqual ? assertTrue(areEqual) : assertFalse(areEqual);
         }
+    }
+
+    // Test recovery window
+
+    function testRecoveryWindow() public {
+        // When Pool is not paused, `enableRecoveryMode` is permissioned.
+        require(vault.isPoolInRecoveryMode(pool) == false, "Pool should not be in recovery mode initially");
+
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.enableRecoveryMode.selector), admin);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.disableRecoveryMode.selector), admin);
+
+        vm.prank(admin);
+        vault.enableRecoveryMode(pool);
+
+        PoolConfig memory config = vault.getPoolConfig(address(pool));
+        uint256 firstEndTime = block.timestamp + RECOVERY_WINDOW_DURATION;
+
+        assertEq(config.recoveryWindowEndTime, firstEndTime, "Wrong initial recovery window end time");
+
+        assertTrue(vault.isPoolInRecoveryMode(pool), "Pool not in recovery mode");
+
+        // cannot disable it immediately
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.RecoveryWindowNotExpired.selector, pool));
+        vault.disableRecoveryMode(pool);
+
+        // Should be able to disable after the window expires
+        skip(RECOVERY_WINDOW_DURATION + 1);
+
+        vm.prank(admin);
+        vault.disableRecoveryMode(pool);
+        assertFalse(vault.isPoolInRecoveryMode(pool), "Pool still in recovery mode");
+
+        // Can re-enable recovery mode, and it updates the end time.
+        vm.prank(admin);
+        vault.enableRecoveryMode(pool);
+
+        config = vault.getPoolConfig(address(pool));
+        uint256 secondEndTime = block.timestamp + RECOVERY_WINDOW_DURATION;
+
+        assertTrue(secondEndTime > firstEndTime, "Recovery window end times inconsistent");
+
+        assertEq(config.recoveryWindowEndTime, secondEndTime, "Wrong second recovery window end time");
     }
 
     // Test permissionless Recovery Mode scenarios
