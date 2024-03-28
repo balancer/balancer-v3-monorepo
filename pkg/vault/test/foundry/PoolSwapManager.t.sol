@@ -22,12 +22,14 @@ contract PoolSwapManagerTest is BaseVaultTest {
     uint256 internal constant NEW_SWAP_FEE = 0.012345e18;
 
     PoolMock internal unmanagedPool;
+    PoolMock internal otherPool;
 
     PoolFactoryMock internal factory;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
+        // Make admin the swap fee manager.
         pool = address(
             new PoolMock(
                 IVault(address(vault)),
@@ -40,11 +42,22 @@ contract PoolSwapManagerTest is BaseVaultTest {
             )
         );
 
-        // Pass zero for the pause manager
+        // Pass zero for the swap fee manager.
         unmanagedPool = new PoolMock(
             IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
+            "Unmanaged Pool",
+            "UNMANAGED",
+            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            true,
+            365 days
+        );
+
+        // Pass zero for the swap fee manager.
+        otherPool = new PoolMock(
+            IVault(address(vault)),
+            "Other Pool",
+            "OTHER",
             vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
             true,
@@ -88,12 +101,17 @@ contract PoolSwapManagerTest is BaseVaultTest {
         vault.setStaticSwapFeePercentage(address(unmanagedPool), NEW_SWAP_FEE);
 
         bytes32 setSwapFeeRole = vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector);
-        authorizer.grantRole(setSwapFeeRole, bob);
+        authorizer.grantSpecificRole(setSwapFeeRole, bob, address(unmanagedPool));
 
         vm.prank(bob);
         vault.setStaticSwapFeePercentage(address(unmanagedPool), NEW_SWAP_FEE);
 
         assertEq(vault.getStaticSwapFeePercentage(address(unmanagedPool)), NEW_SWAP_FEE, "Could not set swap fee");
+
+        // Granting speciic permission to bob on unmanagedPool doesn't grant it on otherPool
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vault.setStaticSwapFeePercentage(address(otherPool), NEW_SWAP_FEE);
     }
 
     // It is onlyOwner, so governance cannot override
