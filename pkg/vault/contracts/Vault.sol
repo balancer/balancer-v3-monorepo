@@ -999,7 +999,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 (, uint256 currentPoolCreatorFee) = poolCreatorFees.unchecked_at(feeIndex);
                 poolCreatorFees.unchecked_setAt(feeIndex, currentPoolCreatorFee + poolCreatorFeeAmountRaw);
 
-                emit poolCreatorFeeCharged(pool, address(token), poolCreatorFeeAmountRaw);
+                emit PoolCreatorFeeCharged(pool, address(token), poolCreatorFeeAmountRaw);
             }
         }
     }

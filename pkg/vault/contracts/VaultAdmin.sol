@@ -324,14 +324,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     function _setPoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) internal virtual {
         if (poolCreatorFeePercentage > FixedPoint.ONE) {
-            revert poolCreatorFeePercentageTooHigh();
+            revert PoolCreatorFeePercentageTooHigh();
         }
 
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
         config.poolCreatorFeePercentage = poolCreatorFeePercentage;
         _poolConfig[pool] = config.fromPoolConfig();
 
-        emit poolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
+        emit PoolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -361,7 +361,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                 poolCreatorFees.unchecked_setAt(index, 0);
 
                 token.safeTransfer(_poolCreator[pool], amount);
-                emit poolCreatorFeeCollected(pool, token, amount);
+                emit PoolCreatorFeeCollected(pool, token, amount);
             }
         }
     }

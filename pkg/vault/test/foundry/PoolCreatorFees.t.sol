@@ -62,7 +62,7 @@ contract poolCreatorFees is BaseVaultTest {
 
         vault.collectPoolCreatorFees(address(pool));
         assertEq(
-            vault.getPoolCreatorFee(address(pool), dai),
+            vault.getPoolCreatorFees(address(pool), dai),
             0,
             "creatorFees in the vault should be 0 after fee collected"
         );
@@ -121,8 +121,8 @@ contract poolCreatorFees is BaseVaultTest {
         vars.protocolTokenOutFeesBefore = vault.getProtocolFees(address(tokenOut));
 
         // Get creator fees before transfer
-        vars.creatorTokenInFeesBefore = vault.getPoolCreatorFee(address(pool), tokenIn);
-        vars.creatorTokenOutFeesBefore = vault.getPoolCreatorFee(address(pool), tokenOut);
+        vars.creatorTokenInFeesBefore = vault.getPoolCreatorFees(address(pool), tokenIn);
+        vars.creatorTokenOutFeesBefore = vault.getPoolCreatorFees(address(pool), tokenOut);
 
         vm.prank(alice);
         router.swapSingleTokenExactIn(address(pool), tokenIn, tokenOut, amountIn, 0, MAX_UINT256, false, bytes(""));
@@ -154,12 +154,12 @@ contract poolCreatorFees is BaseVaultTest {
 
         // Check creator fees after balance
         assertEq(
-            vault.getPoolCreatorFee(address(pool), tokenIn),
+            vault.getPoolCreatorFees(address(pool), tokenIn),
             vars.creatorTokenInFeesBefore,
             "tokenIn creator fees should not change"
         );
         assertEq(
-            vault.getPoolCreatorFee(address(pool), tokenOut),
+            vault.getPoolCreatorFees(address(pool), tokenOut),
             vars.creatorTokenOutFeesBefore + chargedCreatorFee,
             "tokenOut creator fees should increase by chargedCreatorFee after swap"
         );
