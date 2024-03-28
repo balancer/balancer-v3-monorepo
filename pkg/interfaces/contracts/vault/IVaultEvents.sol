@@ -118,7 +118,7 @@ interface IVaultEvents {
      * @param token The token in which the fee has been collected
      * @param amount The amount of the token collected in fees
      */
-    event poolCreatorFeeCollected(address pool, IERC20 indexed token, uint256 indexed amount);
+    event PoolCreatorFeeCollected(address pool, IERC20 indexed token, uint256 indexed amount);
 
     /**
      * @dev Recovery mode has been enabled or disabled for a pool.
