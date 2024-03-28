@@ -134,9 +134,9 @@ contract VaultTokenTest is BaseVaultTest {
         usdc.approve(address(waUSDC), defaultAmount);
         waUSDC.deposit(defaultAmount, address(alice));
 
-        waDAIBuffer = bufferFactory.create(waDAI, waDAI, address(0), getSalt(address(waDAI)));
-        cDAIBuffer = bufferFactory.create(cDAI, cDAI, address(0), getSalt(address(cDAI)));
-        waUSDCBuffer = bufferFactory.create(waUSDC, waUSDC, address(0), getSalt(address(waUSDC)));
+        waDAIBuffer = bufferFactory.create(waDAI, waDAI, address(0), address(0), getSalt(address(waDAI)));
+        cDAIBuffer = bufferFactory.create(cDAI, cDAI, address(0), address(0), getSalt(address(cDAI)));
+        waUSDCBuffer = bufferFactory.create(waUSDC, waUSDC, address(0), address(0), getSalt(address(waUSDC)));
         vm.stopPrank();
     }
 
