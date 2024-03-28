@@ -198,6 +198,13 @@ interface IVaultErrors {
      */
     error PoolNotInRecoveryMode(address pool);
 
+    /**
+     * @dev Cannot disable recovery mode during the recovery window.
+     * @param pool The pool
+     */
+    error RecoveryWindowNotExpired(address pool);
+
+
     /*******************************************************************************
                                 Authentication
     *******************************************************************************/

@@ -85,6 +85,9 @@ contract VaultStorage {
     uint256 public constant MAX_PAUSE_WINDOW_DURATION = 356 days * 4;
     uint256 public constant MAX_BUFFER_PERIOD_DURATION = 90 days;
 
+    // Period after enabling Recovery Mode during which Recovery Mode cannot be disabled.
+    uint256 public constant RECOVERY_WINDOW_DURATION = 5 days;
+
     // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
     // solhint-disable not-rely-on-time
 

@@ -330,6 +330,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /// @inheritdoc IVaultAdmin
     function disableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate onlyVault {
         _ensurePoolInRecoveryMode(pool);
+
+        // Ensure we are not within the recovery mode window.
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp <= config.recoveryWindowEndTime) {
+            revert RecoveryWindowNotExpired(pool);
+        }
+
         _setPoolRecoveryMode(pool, false);
     }
 
@@ -354,6 +362,16 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         // Update poolConfig
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
         config.isPoolInRecoveryMode = recoveryMode;
+
+        if (recoveryMode) {
+            // We don't need to check anything here. If this is the first time we're entering Recovery Mode, it will
+            // be 0, and we're initializing it. Since it cannot be disabled until the recovery window expires, we must
+            // be beyond that timestamp in order to get here again, so we can just overwrite the last value.
+
+            // solhint-disable-next-line not-rely-on-time
+            config.recoveryWindowEndTime = block.timestamp + RECOVERY_WINDOW_DURATION;
+        }
+
         _poolConfig[pool] = config.fromPoolConfig();
 
         if (recoveryMode == false) {
