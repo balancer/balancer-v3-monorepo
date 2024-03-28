@@ -963,6 +963,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * @dev Preconditions: poolConfig, decimalScalingFactors, tokenRates in `poolData`.
      * Side effects: updates `_protocolFees` and `_poolCreatorFees` storage (and emits events).
      * Should only be called in a non-reentrant context.
+     * IMPORTANT: creator fees are calculated based on creatorAndLpFees, and not in totalFees. See example below
+     * Example:
+     * tokenOutAmount = 10000; poolSwapFeePerc = 10%; protocolFeePerc = 40%; creatorFeePerc = 60%
+     * totalFees = tokenOutAmount * poolSwapFeePerc = 10000 * 10% = 1000
+     * protocolFees = totalFees * protocolFeePerc = 1000 * 40% = 400
+     * creatorAndLpFees = totalFees - protocolFees = 1000 - 400 = 600
+     * creatorFees = creatorAndLpFees * creatorFeePerc = 600 * 60% = 360
+     * lpFees (will stay in the pool) = creatorAndLpFees - creatorFees = 600 - 360 = 240
      */
     function _computeAndChargeProtocolAndCreatorFees(
         PoolData memory poolData,
