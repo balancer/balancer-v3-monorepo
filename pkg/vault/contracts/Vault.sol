@@ -994,7 +994,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     .toRawUndoRateRoundDown(poolData.decimalScalingFactors[index], poolData.tokenRates[index]);
 
                 EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
-                // unchecked indexOf returns index + 1, or 0 if token is not present.
+                // Reverts with KeyNotFound if the token isn't present (should not happen; token entries created on pool registration).
                 uint256 feeIndex = poolCreatorFees.indexOf(token);
                 (, uint256 currentPoolCreatorFee) = poolCreatorFees.unchecked_at(feeIndex);
                 poolCreatorFees.unchecked_setAt(feeIndex, currentPoolCreatorFee + poolCreatorFeeAmountRaw);
