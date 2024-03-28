@@ -110,7 +110,7 @@ interface IVaultEvents {
      * @param token The token whose protocol fee balance increased
      * @param amount The amount of the pool creator fee
      */
-    event poolCreatorFeeCharged(address indexed pool, address indexed token, uint256 amount);
+    event PoolCreatorFeeCharged(address indexed pool, address indexed token, uint256 amount);
 
     /**
      * @notice Logs the collection of pool creator fees in a specific pool, by token and amount.
