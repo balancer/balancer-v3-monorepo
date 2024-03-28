@@ -322,6 +322,31 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         }
     }
 
+    /**
+     * @inheritdoc IVaultAdmin
+     * @dev This can only be executed by the pool creator and is disabled if the pool is paused.
+     * The creator fee must be <= 100%. Emits the poolCreatorFeePercentageChanged event.
+     */
+    function setPoolCreatorFeePercentage(
+        address pool,
+        uint256 poolCreatorFeePercentage
+    ) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
+        // Saving bits by not implementing a new modifier
+        _ensureUnpausedAndGetVaultState(pool);
+        _setPoolCreatorFeePercentage(pool, poolCreatorFeePercentage);
+    }
+
+    // TODO: implement
+    function _setPoolCreatorFeePercentage(address, uint256) internal virtual {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    /// @inheritdoc IVaultAdmin
+    // TODO implement
+    function collectPoolCreatorFees(address pool) external authenticateByRole(pool) nonReentrant onlyVault {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
     /*******************************************************************************
                                     Recovery Mode
     *******************************************************************************/

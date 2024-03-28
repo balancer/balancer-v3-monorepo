@@ -269,6 +269,22 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 onlyOwner: true
             });
         }
+
+        if (roleAccounts.poolCreator != address(0)) {
+            bytes32 setFeeAction = vaultAdmin.getRoleId(IVaultAdmin.setPoolCreatorFeePercentage.selector);
+
+            roleAssignments[setFeeAction] = PoolFunctionPermission({
+                account: roleAccounts.swapFeeManager,
+                onlyOwner: true
+            });
+
+            bytes32 collectFeesAction = vaultAdmin.getRoleId(IVaultAdmin.collectPoolCreatorFees.selector);
+
+            roleAssignments[collectFeesAction] = PoolFunctionPermission({
+                account: roleAccounts.swapFeeManager,
+                onlyOwner: true
+            });
+        }
     }
 
     /// @inheritdoc IVaultExtension

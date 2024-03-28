@@ -143,6 +143,20 @@ interface IVaultAdmin {
      */
     function collectProtocolFees(IERC20[] calldata tokens) external;
 
+    /**
+     * @notice Assigns a new pool creator fee percentage to the specified pool.
+     * @param pool The address of the pool for which the pool creator fee will be changed
+     * @param poolCreatorFeePercentage The new pool creator fee percentage to apply to the pool
+     */
+    function setPoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) external;
+
+    /**
+     * @notice Collects accumulated pool creator fees for the specified pool.
+     * @dev Fees are sent to pool creator address.
+     * @param pool The pool address for which the fees should be collected
+     */
+    function collectPoolCreatorFees(address pool) external;
+
     /*******************************************************************************
                                     Recovery Mode
     *******************************************************************************/
