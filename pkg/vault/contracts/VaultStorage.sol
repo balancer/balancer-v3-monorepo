@@ -60,8 +60,8 @@ contract VaultStorage {
     // Pool -> (token -> TokenConfig): The token configuration of each Pool's tokens.
     mapping(address => mapping(IERC20 => TokenConfig)) internal _poolTokenConfig;
 
-    /// @notice List of lockers. It is empty except during `lock` calls.
-    address[] private __lockers;
+    /// @notice Main tab. Open to operate with the vault.
+    bool private __openTab;
 
     /**
      * @notice The total number of nonzero deltas over all active + completed lockers.
@@ -101,10 +101,10 @@ contract VaultStorage {
     // Bytes32 with protocol fees and paused flags
     VaultStateBits internal _vaultState;
 
-    function _lockers() internal pure returns (AddressArraySlot slot) {
+    function _openTab() internal pure returns (Slots.BoolSlot slot) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            slot := __lockers.slot
+            slot := __openTab.slot
         }
     }
 

@@ -241,34 +241,16 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         vault.accountDelta(dai, 0, bob);
     }
 
-    function testAccountDeltaWrongLocker() public {
-        vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, bob, alice));
-        vault.accountDelta(dai, 1, bob);
-    }
-
     function testTakeDebtZero() public {
         vm.prank(alice);
         // Does not revert even with wrong locker.
         vault.takeDebt(dai, 0, bob);
     }
 
-    function testTakeDebtWrongLocker() public {
-        vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, bob, alice));
-        vault.takeDebt(dai, 1, bob);
-    }
-
     function testSupplyCreditZero() public {
         vm.prank(alice);
         // Does not revert even with wrong locker.
         vault.supplyCredit(dai, 0, bob);
-    }
-
-    function testSupplyCreditWrongLocker() public {
-        vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, bob, alice));
-        vault.supplyCredit(dai, 1, bob);
     }
 
     function testAccountDeltaNonZeroUp__Fuzz(int256 delta) public {

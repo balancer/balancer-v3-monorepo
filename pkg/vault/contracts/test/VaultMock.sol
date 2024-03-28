@@ -34,7 +34,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using PoolConfigLib for PoolConfig;
     using VaultStateLib for VaultState;
     using TransientStorageHelpers for *;
-    using Slots for Slots.Uint256Slot;
+    using Slots for *;
 
     PoolFactoryMock private immutable _poolFactoryMock;
 
@@ -106,15 +106,8 @@ contract VaultMock is IVaultMainMock, Vault {
         );
     }
 
-    function manualSetLockers(address[] memory lockers) public {
-        // Reset existing array
-        for (uint256 i = 0; i < _lockers().tLength(); ++i) {
-            _lockers().tPop();
-        }
-
-        for (uint256 i = 0; i < lockers.length; ++i) {
-            _lockers().tPush(lockers[i]);
-        }
+    function manualSetOpenTab(bool status) public {
+        _openTab().tstore(status);
     }
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) public {
@@ -172,7 +165,7 @@ contract VaultMock is IVaultMainMock, Vault {
         }
     }
 
-    function mockWithLocker() public view withLocker {}
+    function mockWithOpenTab() public view withOpenTab {}
 
     function mockWithInitializedPool(address pool) public view withInitializedPool(pool) {}
 
