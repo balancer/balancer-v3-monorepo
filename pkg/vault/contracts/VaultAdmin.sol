@@ -181,7 +181,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                                      Pool Pausing
     *******************************************************************************/
 
-    modifier authenticatedByRole(address pool) {
+    modifier authenticateByRole(address pool) {
         _ensureAuthenticatedByRole(pool);
         _;
     }
@@ -213,12 +213,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function pausePool(address pool) external withRegisteredPool(pool) authenticatedByRole(pool) onlyVault {
+    function pausePool(address pool) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
         _setPoolPaused(pool, true);
     }
 
     /// @inheritdoc IVaultAdmin
-    function unpausePool(address pool) external withRegisteredPool(pool) authenticatedByRole(pool) onlyVault {
+    function unpausePool(address pool) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
         _setPoolPaused(pool, false);
     }
 
@@ -288,7 +288,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function setStaticSwapFeePercentage(
         address pool,
         uint256 swapFeePercentage
-    ) external withRegisteredPool(pool) authenticatedByRole(pool) onlyVault {
+    ) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
         // Saving bits by not implementing a new modifier
         _ensureUnpausedAndGetVaultState(pool);
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
