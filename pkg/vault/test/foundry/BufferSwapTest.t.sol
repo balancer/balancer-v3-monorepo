@@ -59,19 +59,6 @@ contract BufferSwapTest is BaseVaultTest {
         waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 18);
         vm.label(address(waUSDC), "waUSDC");
 
-        // Supplying a sufficient big amount of tokens to waDAI and waUSDC, so that the rate of the tokens
-        // doesn't change too much during the tests
-        uint256 quantityToDeposit = 1e9 * 1e18;
-        vm.startPrank(lp);
-        dai.mint(address(lp), quantityToDeposit);
-        dai.approve(address(waDAI), quantityToDeposit);
-        waDAI.deposit(quantityToDeposit, address(lp));
-
-        usdc.mint(address(lp), quantityToDeposit);
-        usdc.approve(address(waUSDC), quantityToDeposit);
-        waUSDC.deposit(quantityToDeposit, address(lp));
-        vm.stopPrank();
-
         bufferFactory = new ERC4626BufferPoolFactoryMock(vault, 365 days);
 
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
