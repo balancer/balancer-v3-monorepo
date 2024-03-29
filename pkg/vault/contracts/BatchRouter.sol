@@ -150,7 +150,6 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
             // a set with unique addresses that can be iterated later on.
             // For example, if all paths share the same token in, the set will end up with only one entry.
             _currentSwapTokensIn.add(address(stepTokenIn));
-            //_currentSwapTokenInAmounts[address(stepTokenIn)] += stepExactAmountIn;
             _currentSwapTokenInAmounts().tSet(
                 address(stepTokenIn),
                 _currentSwapTokenInAmounts().tGet(address(stepTokenIn)) + stepExactAmountIn
