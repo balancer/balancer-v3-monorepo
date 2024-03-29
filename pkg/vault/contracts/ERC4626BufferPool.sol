@@ -24,6 +24,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import { Slots } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/Slots.sol";
 
 import { BasePoolAuthentication } from "./BasePoolAuthentication.sol";
 import { BalancerPoolToken } from "./BalancerPoolToken.sol";
@@ -43,6 +44,7 @@ contract ERC4626BufferPool is
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
+    using Slots for *;
 
     uint256 internal immutable _wrappedTokenIndex;
     uint256 internal immutable _baseTokenIndex;
@@ -58,14 +60,13 @@ contract ERC4626BufferPool is
 
     // If we trigger a rebalance from the `onBeforeSwap` hook, the internal swap on the pool will call this hook again.
     // Use this flag as an internal reentrancy guard to avoid recursion.
-    // TODO: Should be transient.
-    bool private _inSwapContext;
+    bool private __inSwapContext;
 
     // Apply to edge-case handling functions so that we don't need to remember to set/clear the context flag.
     modifier performsInternalSwap() {
-        _inSwapContext = true;
+        _inSwapContext().sstore(true);
         _;
-        _inSwapContext = false;
+        _inSwapContext().sstore(false);
     }
 
     // Uses the factory as the Authentication disambiguator.
@@ -163,7 +164,7 @@ contract ERC4626BufferPool is
     /// @inheritdoc BasePoolHooks
     function onBeforeSwap(IBasePool.PoolSwapParams calldata params) external override onlyVault returns (bool) {
         // Short-circuit if we're already inside an `onBeforeSwap` hook.
-        if (_inSwapContext) {
+        if (_inSwapContext().sload()) {
             return true;
         }
 
@@ -485,5 +486,14 @@ contract ERC4626BufferPool is
     ) external pure returns (uint256, uint256[] memory, uint256[] memory, bytes memory) {
         // Should throw `DoesNotSupportRemoveLiquidityCustom` before getting here, but need to implement the interface.
         revert IVaultErrors.OperationNotSupported();
+    }
+
+    // Transient Storage
+
+    function _inSwapContext() internal pure returns (Slots.BoolSlot slot) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            slot := __inSwapContext.slot
+        }
     }
 }
