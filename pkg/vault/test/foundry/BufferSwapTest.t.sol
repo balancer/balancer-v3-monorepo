@@ -15,6 +15,7 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
@@ -26,6 +27,7 @@ import { RouterCommon } from "../../contracts/RouterCommon.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract BufferSwapTest is BaseVaultTest {
+    using FixedPoint for uint256;
     using ArrayHelpers for *;
 
     ERC4626TestToken internal waDAI;
@@ -52,8 +54,11 @@ contract BufferSwapTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
+        vm.label(address(waDAI), "waDAI");
+
         // "USDC" is deliberately 18 decimals to test one thing at a time.
         waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 18);
+        vm.label(address(waUSDC), "waUSDC");
 
         bufferFactory = new ERC4626BufferPoolFactoryMock(vault, 365 days);
 
@@ -65,13 +70,24 @@ contract BufferSwapTest is BaseVaultTest {
 
     function initializeBuffers() private {
         // Create and fund buffer pools
-        dai.mint(address(waDAI), defaultAmount);
-        waDAI.mint(defaultAmount, lp);
-        usdc.mint(address(waUSDC), defaultAmount);
-        waUSDC.mint(defaultAmount, lp);
+        vm.startPrank(lp);
+        dai.mint(address(lp), defaultAmount);
+        dai.approve(address(waDAI), defaultAmount);
+        waDAI.deposit(defaultAmount, address(lp));
+
+        usdc.mint(address(lp), defaultAmount);
+        usdc.approve(address(waUSDC), defaultAmount);
+        waUSDC.deposit(defaultAmount, address(lp));
+        vm.stopPrank();
 
         waDAIBufferPool = bufferFactory.createMocked(waDAI, IRateProvider(address(waDAI)));
+        vm.label(address(waDAIBufferPool), "waDAIBufferPool");
         waUSDCBufferPool = bufferFactory.createMocked(waUSDC, IRateProvider(address(waUSDC)));
+        vm.label(address(waUSDCBufferPool), "waUSDCBufferPool");
+
+        // Give some tokens to buffer pool contracts to pay for rebalancing rounding issues
+        dai.mint(address(waDAIBufferPool), 10);
+        usdc.mint(address(waUSDCBufferPool), 10);
 
         vm.startPrank(lp);
         waDAI.approve(address(vault), MAX_UINT256);
@@ -102,12 +118,15 @@ contract BufferSwapTest is BaseVaultTest {
         vm.label(address(newPool), "boosted pool");
         boostedPool = address(newPool);
 
-        dai.mint(address(waDAI), boostedPoolAmount);
-        waDAI.mint(boostedPoolAmount, bob);
-        usdc.mint(address(waUSDC), boostedPoolAmount);
-        waUSDC.mint(boostedPoolAmount, bob);
-
         vm.startPrank(bob);
+        dai.mint(address(bob), boostedPoolAmount);
+        dai.approve(address(waDAI), boostedPoolAmount);
+        waDAI.deposit(boostedPoolAmount, address(bob));
+
+        usdc.mint(address(bob), boostedPoolAmount);
+        usdc.approve(address(waUSDC), boostedPoolAmount);
+        waUSDC.deposit(boostedPoolAmount, address(bob));
+
         waDAI.approve(address(vault), MAX_UINT256);
         waUSDC.approve(address(vault), MAX_UINT256);
 
@@ -161,7 +180,7 @@ contract BufferSwapTest is BaseVaultTest {
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN, true);
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN, swapAmount);
     }
 
     function testBoostedPoolSwapExactOut() public {
@@ -171,7 +190,7 @@ contract BufferSwapTest is BaseVaultTest {
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT, true);
+        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT, swapAmount);
     }
 
     function testBoostedPoolSwapTooLarge() public {
@@ -213,7 +232,118 @@ contract BufferSwapTest is BaseVaultTest {
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         // It should now be balanced (except for the trade)
-        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount * 2, SwapKind.EXACT_IN, false);
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount * 2, SwapKind.EXACT_IN, swapAmount * 2);
+    }
+
+    function testBoostedPoolSwapMoreThan50pRebalance() public {
+        // Swapping 60% of pool's liquidity (`swapAmount = defaultAmount / 10` and `poolLiquidity = 2 * defaultAmount`)
+        uint256 amountToSwap = defaultAmount + 2 * swapAmount;
+
+        // Don't need to unbalance the pool, because the swap is greater than 50% the liquidity of the pool
+
+        // Check that it is balanced
+        (uint256 wrappedIdx, uint256 baseIdx) = getSortedIndexes(address(waDAI), address(dai));
+        (, , uint256[] memory balancesRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
+
+        assertEq(balancesRaw[wrappedIdx], defaultAmount, "Wrong waDAI buffer pool balance (waDAI)");
+        assertEq(balancesRaw[baseIdx], defaultAmount, "Wrong waDAI buffer pool balance (DAI)");
+
+        // We are swapping DAI for waDAI, and the balances are: DAI: 1000, waDAI: 1000.
+        // With Linear Math, we will be withdrawing the trade amount of the wrapped token.
+        // With a trade amount of 1200 DAI in/1200 waDAI out, the trade wouldn't be possible (not enough waDAI).
+
+        // If we perform the swap with 60% the available liquidity, we will not have enough waDAI.
+        // The pool should detect this, rebalance to 800 DAI/1200 waDAI, then perform the trade.
+        // Afterward then, the balances should be 2000 DAI/0 waDAI
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amountToSwap);
+
+        vm.prank(alice);
+        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
+            .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        // It should now be 2000 DAI/0 waDAI
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, amountToSwap, SwapKind.EXACT_IN, defaultAmount);
+    }
+
+    function testBoostedPoolSwapRebalance__Fuzz(
+        uint256 amountDaiToSwap,
+        uint256 unbalancedAmountDai,
+        uint256 unbalancedAmountUsdc
+    ) public {
+        // Trading between 1 DAI and 49% liquidity
+        amountDaiToSwap = bound(amountDaiToSwap, 1e18, (49 * defaultAmount) / 50);
+
+        // Unbalancing at least the amount needed to swap, so that a rebalance is always needed
+        unbalancedAmountDai = bound(unbalancedAmountDai, defaultAmount - amountDaiToSwap + 1, defaultAmount);
+        unbalancedAmountUsdc = bound(unbalancedAmountUsdc, defaultAmount - amountDaiToSwap + 1, defaultAmount);
+
+        // makes sure the pool is unbalanced and has no liquidity at all
+        ERC4626BufferPoolMock(waDAIBufferPool).unbalanceThePool(unbalancedAmountDai, SwapKind.EXACT_IN);
+        ERC4626BufferPoolMock(waUSDCBufferPool).unbalanceThePool(unbalancedAmountUsdc, SwapKind.EXACT_OUT);
+
+        // Check that it is unbalanced
+        {
+            (uint256 wrappedDaiIdx, uint256 baseDaiIdx) = getSortedIndexes(address(waDAI), address(dai));
+            (, , uint256[] memory balancesDaiRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
+            assertEq(
+                balancesDaiRaw[wrappedDaiIdx],
+                defaultAmount - unbalancedAmountDai,
+                "Wrong waDAI buffer pool balance (waDAI)"
+            );
+            assertEq(
+                balancesDaiRaw[baseDaiIdx],
+                defaultAmount + unbalancedAmountDai,
+                "Wrong waDAI buffer pool balance (DAI)"
+            );
+
+            (uint256 wrappedUsdcIdx, uint256 baseUsdcIdx) = getSortedIndexes(address(waUSDC), address(usdc));
+            (, , uint256[] memory balancesUsdcRaw, , ) = vault.getPoolTokenInfo(waUSDCBufferPool);
+            assertEq(
+                balancesUsdcRaw[wrappedUsdcIdx],
+                defaultAmount + unbalancedAmountUsdc,
+                "Wrong waUSDC buffer pool balance (waUSDC)"
+            );
+            assertEq(
+                balancesUsdcRaw[baseUsdcIdx],
+                defaultAmount - unbalancedAmountUsdc,
+                "Wrong waUSDC buffer pool balance (USDC)"
+            );
+        }
+
+        // The pools are unbalanced, in a way that we're sure there's not enough tokens to trade
+        // The pool should detect this, rebalance to 50/50, then perform the trade.
+        // Afterward then, the balances should be the same as if the pool were balanced (except for the trade)
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amountDaiToSwap);
+
+        vm.prank(alice);
+        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
+            .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        // It should now be balanced (except for the trade)
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, amountDaiToSwap, SwapKind.EXACT_IN, amountDaiToSwap);
+    }
+
+    //
+    function testBoostedPoolSwapMoreThan50pLiquidityRebalance__Fuzz(uint256 amountDaiToSwap) public {
+        // Trading between 51% and 100% of pool liquidity
+        amountDaiToSwap = bound(amountDaiToSwap, (51 * defaultAmount) / 50, 2 * defaultAmount);
+
+        // Don't need to unbalance pool, it's balanced in 50% already and swap amount is higher
+
+        // We are swapping DAI for waDAI, and the balances are: DAI: 1000, waDAI: 1000.
+        // With Linear Math, we will be withdrawing the trade amount of the wrapped token.
+
+        // If we perform the swap with more tokens than 50% of pool liquidity, we will not have enough waDAI.
+        // The pool should detect this, rebalance to have enough tokens to swap, then perform the trade.
+        // Afterward, all the wrapped tokens were removed, so the pool state should be very close to 0/2000
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amountDaiToSwap);
+
+        vm.prank(alice);
+        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
+            .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        // It should now be 2000 DAI/0 waDAI
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, amountDaiToSwap, SwapKind.EXACT_IN, defaultAmount);
     }
 
     function _buildExactInPaths(
@@ -268,7 +398,7 @@ contract BufferSwapTest is BaseVaultTest {
         uint256[] memory amounts,
         uint256 expectedDelta,
         SwapKind kind,
-        bool balanced
+        uint256 bufferExpectedDelta
     ) private {
         assertEq(paths.length, 1, "Incorrect output array length");
 
@@ -284,23 +414,47 @@ contract BufferSwapTest is BaseVaultTest {
         assertApproxEqAbs(dai.balanceOf(alice), defaultBalance - expectedDelta, 1, "Wrong ending balance of DAI");
         assertApproxEqAbs(usdc.balanceOf(alice), defaultBalance + expectedDelta, 1, "Wrong ending balance of USDC");
 
-        if (balanced) {
-            uint256[] memory balancesRaw;
+        uint256[] memory balancesRaw;
 
-            (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
-            (, , balancesRaw, , ) = vault.getPoolTokenInfo(boostedPool);
-            assertEq(balancesRaw[daiIdx], boostedPoolAmount + expectedDelta, "Wrong boosted pool DAI balance");
-            assertEq(balancesRaw[usdcIdx], boostedPoolAmount - expectedDelta, "Wrong boosted pool DAI balance");
+        (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
+        (, , balancesRaw, , ) = vault.getPoolTokenInfo(boostedPool);
+        assertEq(balancesRaw[daiIdx], boostedPoolAmount + expectedDelta, "Wrong boosted pool DAI balance");
+        assertEq(balancesRaw[usdcIdx], boostedPoolAmount - expectedDelta, "Wrong boosted pool USDC balance");
 
-            (uint256 wrappedIdx, uint256 baseIdx) = getSortedIndexes(address(waDAI), address(dai));
-            (, , balancesRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
-            assertEq(balancesRaw[baseIdx], defaultAmount + expectedDelta, "Wrong DAI buffer pool base balance");
-            assertEq(balancesRaw[wrappedIdx], defaultAmount - expectedDelta, "Wrong DAI buffer pool wrapped balance");
+        // Pool Liquidity = 2*defaultAmount
+        // DUST_BUFFER is 2, so tolerance1 is 2 units of pool liquidity
+        // tolerance1 = 2 * (Pool Liquidity)/FixedPoint.ONE
+        // tolerance2 = 10 // sometimes the buffer contract injects some tokens in the buffer pool to rebalance
+        // tolerance = tolerance1 + tolerance2
+        uint256 tolerance = (4 * defaultAmount) / FixedPoint.ONE + 10;
+        (uint256 wrappedIdx, uint256 baseIdx) = getSortedIndexes(address(waDAI), address(dai));
+        (, , balancesRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
+        assertApproxEqAbs(
+            balancesRaw[baseIdx],
+            defaultAmount + bufferExpectedDelta,
+            tolerance,
+            "Wrong DAI buffer pool base balance"
+        );
+        assertApproxEqAbs(
+            balancesRaw[wrappedIdx],
+            defaultAmount - bufferExpectedDelta,
+            tolerance,
+            "Wrong DAI buffer pool wrapped balance"
+        );
 
-            (wrappedIdx, baseIdx) = getSortedIndexes(address(waUSDC), address(usdc));
-            (, , balancesRaw, , ) = vault.getPoolTokenInfo(waUSDCBufferPool);
-            assertEq(balancesRaw[baseIdx], defaultAmount - expectedDelta, "Wrong USDC buffer pool base balance");
-            assertEq(balancesRaw[wrappedIdx], defaultAmount + expectedDelta, "Wrong USDC buffer pool wrapped balance");
-        }
+        (wrappedIdx, baseIdx) = getSortedIndexes(address(waUSDC), address(usdc));
+        (, , balancesRaw, , ) = vault.getPoolTokenInfo(waUSDCBufferPool);
+        assertApproxEqAbs(
+            balancesRaw[baseIdx],
+            defaultAmount - bufferExpectedDelta,
+            tolerance,
+            "Wrong USDC buffer pool base balance"
+        );
+        assertApproxEqAbs(
+            balancesRaw[wrappedIdx],
+            defaultAmount + bufferExpectedDelta,
+            tolerance,
+            "Wrong USDC buffer pool wrapped balance"
+        );
     }
 }
