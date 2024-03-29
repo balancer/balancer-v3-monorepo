@@ -34,6 +34,16 @@ library TransientStorageHelpers {
         AddressMappingSlot.unwrap(slot).deriveMapping(key).asUint256Slot().tstore(value);
     }
 
+    // Implement the common "+=" operation: map[key] += value.
+    function tAdd(AddressMappingSlot slot, address key, uint256 value) internal {
+        AddressMappingSlot.unwrap(slot).deriveMapping(key).asUint256Slot().tstore(tGet(slot, key) + value);
+    }
+
+    // Implement the common "-=" operation: map[key] -= value.
+    function tSub(AddressMappingSlot slot, address key, uint256 value) internal {
+        AddressMappingSlot.unwrap(slot).deriveMapping(key).asUint256Slot().tstore(tGet(slot, key) - value);
+    }
+
     /// Arrays
 
     function tLength(AddressArraySlot slot) internal view returns (uint256) {
