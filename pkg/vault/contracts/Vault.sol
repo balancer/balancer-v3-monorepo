@@ -30,6 +30,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
+import { BufferPackedTokenBalance } from "./lib/BufferPackedTokenBalance.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 
 contract Vault is IVaultMain, VaultCommon, Proxy {
@@ -43,6 +44,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using PoolConfigLib for PoolConfig;
     using ScalingHelpers for *;
     using VaultStateLib for VaultStateBits;
+    using BufferPackedTokenBalance for bytes32;
 
     constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) {
         if (address(vaultExtension.vault()) != address(this)) {
@@ -1026,5 +1028,94 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      */
     function _implementation() internal view override returns (address) {
         return address(_vaultExtension);
+    }
+
+
+    struct WrapParams {
+        SwapKind kind;
+        IERC4626 wrappedToken;
+        uint256 amountGiven;
+    }
+
+    function bufferWrap(
+        WrapParams memory params
+    ) public withLocker returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountUnderlying) {
+        bytes32 buffer = _bufferTokenBalances[IERC20(params.wrappedToken)];
+
+        amountCalculated = params.kind == SwapKind.EXACT_IN
+                ? wrappedToken.convertToShares(params.amountGiven)
+                : wrappedToken.convertToAssets(params.amountGiven);
+
+        (amountUnderlying, uint256 amountWrappedExpected) = params.kind == SwapKind.EXACT_IN
+                ? (params.amountGiven, amountCalculated)
+                : (amountCalculated, params.amountGiven);
+
+        if (buffer.isEmpty()) {
+            // no liquidity in the buffer, just wrap the tokens
+            amountWrapped = wrappedToken.deposit(amountUnderlying, address(this));
+        } else if (buffer.getWrappedBalance() > amountWrappedExpected) {
+            // the buffer has enough liquidity to facilitate the wrap without making an external call.
+            amountWrapped = amountWrappedExpected;
+
+            buffer = buffer.setUnderlyingBalance(buffer.getUnderlyingBalance() + amountUnderlying);
+            buffer = buffer.setWrappedBalance(buffer.getWrappedBalance() - amountWrapped);
+            _bufferTokenBalances[IERC20(params.wrappedToken)] = buffer;
+        } else {
+            // the buffer has liquidity, but not enough to facilitate the wrap without making an external call.
+            // We wrap the user's tokens via an external call and additionally rebalance the buffer if it has a
+            // surplus of underlying tokens.
+            uint256 wrappedBalance = buffer.getWrappedBalance();
+            uint256 underlyingBalance = buffer.getUnderlyingBalance();
+            uint256 wrappedBalanceInUnderlying = wrappedToken.convertToAssets(wrappedBalance);
+
+            uint256 bufferUnderlyingAmountToWrap = underlyingBalance > wrappedBalanceInUnderlying
+                    ? (underlyingBalance - wrappedBalanceInUnderlying) / 2
+                    : 0;
+
+            uint256 totalAmountWrapped = wrappedToken.deposit(amountUnderlying + bufferUnderlyingAmountToWrap, address(this));
+
+            buffer = buffer.setUnderlyingBalance(underlyingBalance - bufferUnderlyingAmountToWrap);
+            buffer = buffer.setWrappedBalance(wrappedBalance + (totalAmountWrapped - amountWrappedExpected));
+            _bufferTokenBalances[IERC20(params.wrappedToken)] = buffer;
+
+            amountWrapped = amountWrappedExpected;
+        }
+
+        _takeDebt(params.wrappedToken.asset(), amountUnderlying, msg.sender);
+
+        _supplyCredit(address(params.wrappedToken), amountWrapped, msg.sender);
+    }
+
+    function bufferUnwrap(
+        WrapParams memory params
+    ) public withLocker returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountUnderlying) {
+        // TODO: same as bufferWrap but for unwrap, this could also get merged into a single function bufferWrapUnwrap
+    }
+
+
+    function bufferAddLiquidity(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlying,
+        uint256 amountWrapped
+    ) public withLocker returns (uint256 lpAmount) {
+        bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
+        uint256 amountTotalInUnderlying = wrappedToken.convertToAssets(amountWrapped) + amountUnderlying;
+        uint256 bufferBalanceInUnderlying = 
+                wrappedToken.convertToAssets(buffer.getWrappedBalance()) + buffer.getUnderlyingBalance();
+
+        uint256 sharesToIssue = 0; //TODO: determine amount of shares to issue
+
+        //TODO: could potentially burn a minimum amount of shares if the supply is 0;
+        _bufferLpShares[IERC20(wrappedToken)][msg.sender] += sharesToIssue;
+        _bufferTotalShares[IERC20(wrappedToken)] += sharesToIssue;
+
+        buffer.setUnderlyingBalance(buffer.getUnderlyingBalance() + amountUnderlying);
+        buffer.setWrappedBalance(buffer.getWrappedBalance() + amountWrapped);
+    }
+
+    function bufferRemoveLiquidity(
+        
+    ) public withLocker returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountUnderlying) {
+        //TODO: removal in proportional only for simplicity
     }
 }

@@ -95,4 +95,21 @@ contract VaultStorage {
 
     // Bytes32 with protocol fees and paused flags
     VaultStateBits internal _vaultState;
+
+    // We key buffers on the wrapped token address. Buffers are a vault internal concept,
+    // there will only ever be one buffer per wrapped token. This also means they are permissionless and
+    // have no registration function. You can always add liquidity to a buffer.
+
+    // A buffer will only ever have two tokens: wrapped and underlying
+    // we pack the wrapped and underlying balance into a single bytes32
+    // wrapped token address -> PackedTokenBalance
+    mapping(IERC20 => bytes32) internal _bufferTokenBalances;
+
+    // The LP balances for buffers. To start, LP balances will not be represented as ERC20 shares.
+    // If we end up with a need to incentivize buffers, we can wrap this in an ERC20 wrapper without
+    // introducing more complexity to the vault.
+    // wrapped token address -> user address -> LP balance
+    mapping(IERC20 => mapping(address => uint256)) internal _bufferLpShares;
+    // total LP shares
+    mapping(IERC20 => uint256) internal _bufferTotalShares;
 }

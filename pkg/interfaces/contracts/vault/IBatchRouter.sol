@@ -16,6 +16,10 @@ interface IBatchRouter {
     struct SwapPathStep {
         address pool;
         IERC20 tokenOut;
+        // if true, we wrap tokenIn
+        bool fromUnderlying;
+        // if true, we unwrap tokenOut
+        bool toUnderlying;
     }
 
     struct SwapPathExactAmountIn {
