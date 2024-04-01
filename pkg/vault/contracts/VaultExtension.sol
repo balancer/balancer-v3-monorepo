@@ -19,9 +19,13 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
+import {
+    TransientStorageHelpers
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
+import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
-import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
+import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
@@ -51,6 +55,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using ScalingHelpers for *;
     using VaultExtensionsLib for IVault;
     using VaultStateLib for VaultStateBits;
+    using TransientStorageHelpers for *;
+    using StorageSlot for StorageSlot.Uint256SlotType;
 
     IVault private immutable _vault;
     IVaultAdmin private immutable _vaultAdmin;
@@ -88,25 +94,25 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function getLocker(uint256 index) external view onlyVault returns (address) {
-        if (index >= _lockers.length) {
+        if (index >= _lockers().tLength()) {
             revert LockerOutOfBounds(index);
         }
-        return _lockers[index];
+        return _lockers().tUncheckedAt(index);
     }
 
     /// @inheritdoc IVaultExtension
     function getLockersCount() external view onlyVault returns (uint256) {
-        return _lockers.length;
+        return _lockers().tLength();
     }
 
     /// @inheritdoc IVaultExtension
     function getNonzeroDeltaCount() external view onlyVault returns (uint256) {
-        return _nonzeroDeltaCount;
+        return _nonzeroDeltaCount().tload();
     }
 
     /// @inheritdoc IVaultExtension
     function getTokenDelta(address user, IERC20 token) external view onlyVault returns (int256) {
-        return _tokenDeltas[user][token];
+        return _tokenDeltas().tGet(user, token);
     }
 
     /// @inheritdoc IVaultExtension
@@ -583,7 +589,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
 
         // Add the current locker to the list so `withLocker` does not revert
-        _lockers.push(msg.sender);
+        _lockers().tPush(msg.sender);
         _;
     }
 
