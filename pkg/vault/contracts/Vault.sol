@@ -1046,7 +1046,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         } else if (_bufferTokenBalances[params.tokenOut] > 0) {
             // tokenOut is wrappedToken, user wants to wrap
             wrappedToken = IERC4626(address(params.tokenOut));
-            (amountCalculated, amountWrapped, amountUnderlying) = _bufferUnwrap(
+            (amountCalculated, amountWrapped, amountUnderlying) = _bufferWrap(
                 params.kind,
                 wrappedToken,
                 params.amountGivenRaw
