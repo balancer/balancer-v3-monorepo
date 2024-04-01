@@ -123,9 +123,9 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
     function _getDefaultLiquidityManagement() internal pure returns (LiquidityManagement memory) {
         return
             LiquidityManagement({
-                supportsUnbalancedLiquidity: true,
-                supportsAddLiquidityCustom: true,
-                supportsRemoveLiquidityCustom: false
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: true,
+                enableRemoveLiquidityCustom: false
             });
     }
 

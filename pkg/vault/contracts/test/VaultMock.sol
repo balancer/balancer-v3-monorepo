@@ -65,7 +65,11 @@ contract VaultMock is IVaultMainMock, Vault {
             buildTokenConfig(tokens),
             address(0),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
-            PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: true,
+                enableRemoveLiquidityCustom: true
+            })
         );
     }
 
@@ -80,7 +84,11 @@ contract VaultMock is IVaultMainMock, Vault {
             tokenConfig,
             address(0),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
-            PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: true,
+                enableRemoveLiquidityCustom: true
+            })
         );
     }
 
@@ -95,7 +103,11 @@ contract VaultMock is IVaultMainMock, Vault {
             buildTokenConfig(tokens),
             pauseManager,
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
-            PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement,
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: true,
+                enableRemoveLiquidityCustom: true
+            }),
             timestamp
         );
     }
