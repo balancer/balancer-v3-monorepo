@@ -11,10 +11,10 @@ import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IV
 
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
-import { Slots } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/Slots.sol";
+import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 import {
-    AddressArraySlot,
-    NestedAddressMappingSlot
+    AddressArraySlotType,
+    NestedAddressMappingSlotType
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
@@ -101,21 +101,21 @@ contract VaultStorage {
     // Bytes32 with protocol fees and paused flags
     VaultStateBits internal _vaultState;
 
-    function _lockers() internal pure returns (AddressArraySlot slot) {
+    function _lockers() internal pure returns (AddressArraySlotType slot) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             slot := __lockers.slot
         }
     }
 
-    function _nonzeroDeltaCount() internal pure returns (Slots.Uint256Slot slot) {
+    function _nonzeroDeltaCount() internal pure returns (StorageSlot.Uint256SlotType slot) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             slot := __nonzeroDeltaCount.slot
         }
     }
 
-    function _tokenDeltas() internal pure returns (NestedAddressMappingSlot slot) {
+    function _tokenDeltas() internal pure returns (NestedAddressMappingSlotType slot) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             slot := __tokenDeltas.slot

@@ -7,11 +7,11 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../contracts/helpers/TransientStorageHelpers.sol";
-import "../../contracts/openzeppelin/Slots.sol";
+import "../../contracts/openzeppelin/StorageSlot.sol";
 
 contract TransientStorageHelpersTest is Test {
     using TransientStorageHelpers for *;
-    using Slots for Slots.Uint256Slot;
+    using StorageSlot for StorageSlot.Uint256SlotType;
 
     mapping(address => mapping(IERC20 => int256)) private nestedMapping;
     address[] private addressArray;
@@ -20,7 +20,7 @@ contract TransientStorageHelpersTest is Test {
     function testTransientNestedMapping__Fuzz(address k1, address k2, int256 value) public {
         nestedMapping[k1][IERC20(k2)] = 1234;
 
-        NestedAddressMappingSlot transientMapping;
+        NestedAddressMappingSlotType transientMapping;
         assembly {
             transientMapping := nestedMapping.slot
         }
@@ -38,7 +38,7 @@ contract TransientStorageHelpersTest is Test {
         addressArray.push(address(3));
         require(addressArray.length == 3, "Array: wrong initial conditions");
 
-        AddressArraySlot transientArray;
+        AddressArraySlotType transientArray;
         assembly {
             transientArray := addressArray.slot
         }
@@ -84,7 +84,7 @@ contract TransientStorageHelpersTest is Test {
     }
 
     function testTransientArrayFailures() public {
-        AddressArraySlot transientArray;
+        AddressArraySlotType transientArray;
         assembly {
             transientArray := addressArray.slot
         }
@@ -108,7 +108,7 @@ contract TransientStorageHelpersTest is Test {
     function testTransientUint__Fuzz(uint256 value) public {
         storageUint = 1234;
 
-        Slots.Uint256Slot transientUint;
+        StorageSlot.Uint256SlotType transientUint;
         assembly {
             transientUint := storageUint.slot
         }
