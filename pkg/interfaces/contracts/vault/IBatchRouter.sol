@@ -16,10 +16,9 @@ interface IBatchRouter {
     struct SwapPathStep {
         address pool;
         IERC20 tokenOut;
-        // if true, we wrap tokenIn
-        bool fromUnderlying;
-        // if true, we unwrap tokenOut
-        bool toUnderlying;
+        // if true, pool is a yield-bearing token buffer. Used to wrap/unwrap tokens if pool doesn't have
+        // enough liquidity
+        bool isBuffer;
     }
 
     struct SwapPathExactAmountIn {
