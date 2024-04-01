@@ -3,9 +3,6 @@
 
 // Taken from https://raw.githubusercontent.com/Amxx/openzeppelin-contracts/ce497cb05ca05bb9aa2b86ec1d99e6454e7ab2e9/contracts/utils/SlotDerivation.sol
 
-// solhint-disable max-line-length
-// solhint-disable no-inline-assembly
-
 pragma solidity ^0.8.20;
 
 /**

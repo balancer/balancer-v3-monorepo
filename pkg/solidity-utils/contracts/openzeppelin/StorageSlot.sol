@@ -2,9 +2,6 @@
 // OpenZeppelin Contracts (last updated v5.0.0) (utils/StorageSlot.sol)
 // This file was procedurally generated from scripts/generate/templates/StorageSlot.js.
 
-// solhint-disable max-line-length
-// solhint-disable no-inline-assembly
-
 // Taken from https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/ce497cb05ca05bb9aa2b86ec1d99e6454e7ab2e9/contracts/utils/StorageSlot.sol.
 
 pragma solidity ^0.8.24;
