@@ -356,9 +356,9 @@ contract BufferSwapTest is BaseVaultTest {
         // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waUSDC in the boosted pool,
         // and finally post-swap the waUSDC through the USDC buffer to calculate the USDC amount out.
         // The only token transfers are DAI in (given) and USDC out (calculated).
-        steps[0] = IBatchRouter.SwapPathStep({ pool: waDAIBufferPool, tokenOut: waDAI });
-        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC });
-        steps[2] = IBatchRouter.SwapPathStep({ pool: waUSDCBufferPool, tokenOut: usdc });
+        steps[0] = IBatchRouter.SwapPathStep({ pool: waDAIBufferPool, tokenOut: waDAI, isBuffer: false });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC, isBuffer: false });
+        steps[2] = IBatchRouter.SwapPathStep({ pool: waUSDCBufferPool, tokenOut: usdc, isBuffer: false });
 
         paths[0] = IBatchRouter.SwapPathExactAmountIn({
             tokenIn: dai,
@@ -379,9 +379,11 @@ contract BufferSwapTest is BaseVaultTest {
         // Pre-swap through the USDC buffer to get waUSDC, then main swap waUSDC for waDAI in the boosted pool,
         // and finally post-swap the waDAI for DAI through the DAI buffer to calculate the DAI amount in.
         // The only token transfers are DAI in (calculated) and USDC out (given).
-        steps[0] = IBatchRouter.SwapPathStep({ pool: waDAIBufferPool, tokenOut: waDAI });
-        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC });
-        steps[2] = IBatchRouter.SwapPathStep({ pool: waUSDCBufferPool, tokenOut: usdc });
+
+        // NOTE: Set isBuffer as false so buffer pools are used, instead of internal buffers
+        steps[0] = IBatchRouter.SwapPathStep({ pool: waDAIBufferPool, tokenOut: waDAI, isBuffer: false });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC, isBuffer: false });
+        steps[2] = IBatchRouter.SwapPathStep({ pool: waUSDCBufferPool, tokenOut: usdc, isBuffer: false });
 
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
             tokenIn: dai,

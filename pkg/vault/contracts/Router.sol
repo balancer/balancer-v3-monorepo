@@ -4,9 +4,11 @@ pragma solidity ^0.8.24;
 
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
@@ -597,6 +599,37 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
                 userData: params.userData
             })
         );
+    }
+
+    /*******************************************************************************
+                                    Buffers
+    *******************************************************************************/
+
+    function addLiquidityBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlying,
+        uint256 amountWrapped
+    ) external returns (uint256) {
+        return
+            abi.decode(
+                _vault.lock(
+                    abi.encodeWithSelector(
+                        Router.addLiquidityBufferHook.selector,
+                        wrappedToken,
+                        amountUnderlying,
+                        amountWrapped
+                    )
+                ),
+                (uint256)
+            );
+    }
+
+    function addLiquidityBufferHook(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlying,
+        uint256 amountWrapped
+    ) external nonReentrant onlyVault returns (uint256) {
+        return _vault.bufferAddLiquidity(wrappedToken, amountUnderlying, amountWrapped);
     }
 
     /*******************************************************************************

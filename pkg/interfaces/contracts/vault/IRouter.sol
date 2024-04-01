@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 import { IBasePool } from "./IBasePool.sol";
@@ -51,6 +52,8 @@ interface IRouter {
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256 bptAmountOut);
+
+    function addLiquidityBuffer(IERC4626, uint256, uint256) external returns (uint256);
 
     /***************************************************************************
                                    Add Liquidity

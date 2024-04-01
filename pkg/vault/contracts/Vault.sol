@@ -1035,7 +1035,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         WrapParams memory params
     ) public withLocker returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountUnderlying) {
         IERC4626 wrappedToken;
-        if (_bufferTokenBalances[params.tokenIn] != bytes32("")) {
+        if (_bufferTokenBalances[params.tokenIn] > 0) {
             // tokenIn is wrappedToken, user wants to unwrap
             wrappedToken = IERC4626(address(params.tokenIn));
             (amountCalculated, amountWrapped, amountUnderlying) = _bufferUnwrap(
@@ -1043,7 +1043,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 wrappedToken,
                 params.amountGivenRaw
             );
-        } else if (_bufferTokenBalances[params.tokenOut] != bytes32("")) {
+        } else if (_bufferTokenBalances[params.tokenOut] > 0) {
             // tokenOut is wrappedToken, user wants to wrap
             wrappedToken = IERC4626(address(params.tokenOut));
             (amountCalculated, amountWrapped, amountUnderlying) = _bufferUnwrap(
@@ -1183,8 +1183,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _bufferLpShares[IERC20(wrappedToken)][msg.sender] += issuedShares;
         _bufferTotalShares[IERC20(wrappedToken)] += issuedShares;
 
-        buffer.setUnderlyingBalance(buffer.getUnderlyingBalance() + amountUnderlying);
-        buffer.setWrappedBalance(buffer.getWrappedBalance() + amountWrapped);
+        buffer = buffer.setUnderlyingBalance(buffer.getUnderlyingBalance() + amountUnderlying);
+        buffer = buffer.setWrappedBalance(buffer.getWrappedBalance() + amountWrapped);
+
+        _bufferTokenBalances[IERC20(wrappedToken)] = buffer;
     }
 
     function bufferRemoveLiquidity()

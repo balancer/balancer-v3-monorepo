@@ -241,7 +241,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                 } else {
                     uint256 amountOut;
                     if (step.isBuffer) {
-                        (,,amountOut) = _vault.bufferWrapUnwrap(
+                        (, , amountOut) = _vault.bufferWrapUnwrap(
                             WrapParams({
                                 kind: SwapKind.EXACT_IN,
                                 tokenIn: stepTokenIn,
@@ -464,7 +464,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                     // No BPT involved in the operation: regular swap exact out
                     uint256 amountIn;
                     if (step.isBuffer) {
-                        (,amountIn,) = _vault.bufferWrapUnwrap(
+                        (, amountIn, ) = _vault.bufferWrapUnwrap(
                             WrapParams({
                                 kind: SwapKind.EXACT_OUT,
                                 tokenIn: stepTokenIn,
