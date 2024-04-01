@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { IRateProvider } from "./IRateProvider.sol";
@@ -152,4 +153,12 @@ interface IVaultMain {
      * @notice Returns the Vault Extension address.
      */
     function getVaultExtension() external view returns (address);
+
+    /*******************************************************************************
+                            Yield-bearing tokens buffers
+    *******************************************************************************/
+
+    function bufferWrapUnwrap(WrapParams memory) external returns (uint256, uint256, uint256);
+
+    function bufferAddLiquidity(IERC4626, uint256, uint256) external returns (uint256);
 }

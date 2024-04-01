@@ -130,6 +130,20 @@ struct SwapParams {
     bytes userData;
 }
 
+/**
+ * @dev Data for a wrap/unwrap operation using a vault buffer for a yield-bearing token.
+ * @param kind Type of swap (Exact In or Exact Out)
+ * @param tokenIn The token entering the Buffer (balance increases)
+ * @param tokenOut The token leaving the Buffer (balance decreases)
+ * @param amountGiven Amount specified for tokenIn or tokenOut (depending on the type of swap)
+ */
+struct WrapParams {
+    SwapKind kind;
+    IERC20 tokenIn;
+    IERC20 tokenOut;
+    uint256 amountGivenRaw;
+}
+
 /*******************************************************************************
                                 Add liquidity
 *******************************************************************************/

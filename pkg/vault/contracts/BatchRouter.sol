@@ -239,18 +239,30 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                         _vault.takeFrom(IERC20(step.pool), params.sender, bptAmountOut);
                     }
                 } else {
-                    // No BPT involved in the operation: regular swap exact in
-                    (, , uint256 amountOut) = _vault.swap(
-                        SwapParams({
-                            kind: SwapKind.EXACT_IN,
-                            pool: step.pool,
-                            tokenIn: stepTokenIn,
-                            tokenOut: step.tokenOut,
-                            amountGivenRaw: stepExactAmountIn,
-                            limitRaw: minAmountOut,
-                            userData: params.userData
-                        })
-                    );
+                    uint256 amountOut;
+                    if (step.isBuffer) {
+                        (,,amountOut) = _vault.bufferWrapUnwrap(
+                            WrapParams({
+                                kind: SwapKind.EXACT_IN,
+                                tokenIn: stepTokenIn,
+                                tokenOut: step.tokenOut,
+                                amountGivenRaw: stepExactAmountIn
+                            })
+                        );
+                    } else {
+                        // No BPT involved in the operation: regular swap exact in
+                        (, , amountOut) = _vault.swap(
+                            SwapParams({
+                                kind: SwapKind.EXACT_IN,
+                                pool: step.pool,
+                                tokenIn: stepTokenIn,
+                                tokenOut: step.tokenOut,
+                                amountGivenRaw: stepExactAmountIn,
+                                limitRaw: minAmountOut,
+                                userData: params.userData
+                            })
+                        );
+                    }
 
                     if (isLastStep) {
                         // The amount out for the last step of the path should be recorded for the return value, and the
@@ -450,17 +462,29 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                     }
                 } else {
                     // No BPT involved in the operation: regular swap exact out
-                    (, uint256 amountIn, ) = _vault.swap(
-                        SwapParams({
-                            kind: SwapKind.EXACT_OUT,
-                            pool: step.pool,
-                            tokenIn: stepTokenIn,
-                            tokenOut: step.tokenOut,
-                            amountGivenRaw: stepExactAmountOut,
-                            limitRaw: stepMaxAmountIn,
-                            userData: params.userData
-                        })
-                    );
+                    uint256 amountIn;
+                    if (step.isBuffer) {
+                        (,amountIn,) = _vault.bufferWrapUnwrap(
+                            WrapParams({
+                                kind: SwapKind.EXACT_OUT,
+                                tokenIn: stepTokenIn,
+                                tokenOut: step.tokenOut,
+                                amountGivenRaw: stepExactAmountOut
+                            })
+                        );
+                    } else {
+                        (, amountIn, ) = _vault.swap(
+                            SwapParams({
+                                kind: SwapKind.EXACT_OUT,
+                                pool: step.pool,
+                                tokenIn: stepTokenIn,
+                                tokenOut: step.tokenOut,
+                                amountGivenRaw: stepExactAmountOut,
+                                limitRaw: stepMaxAmountIn,
+                                userData: params.userData
+                            })
+                        );
+                    }
 
                     if (isLastStep) {
                         pathAmountsIn[i] = amountIn;

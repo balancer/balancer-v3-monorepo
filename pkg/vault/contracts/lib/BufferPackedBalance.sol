@@ -55,7 +55,7 @@ library BufferPackedTokenBalance {
         // TODO: could set some lower bounds here
         return getUnderlyingBalance(balance) == 0 && getWrappedBalance(balance) == 0;
     }
-    
+
     /// @dev Packs two uint128 values into a bytes32.
     function _pack(uint256 leastSignificant, uint256 mostSignificant) private pure returns (bytes32) {
         return bytes32((mostSignificant << 128) + leastSignificant);
