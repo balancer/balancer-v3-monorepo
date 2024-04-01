@@ -107,8 +107,9 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetLockers(address[] memory lockers) public {
+        uint256 lockersLength = _lockers().tLength();
         // Reset existing array
-        for (uint256 i = 0; i < _lockers().tLength(); ++i) {
+        for (uint256 i = 0; i < lockersLength; ++i) {
             _lockers().tPop();
         }
 

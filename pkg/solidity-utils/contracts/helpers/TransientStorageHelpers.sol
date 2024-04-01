@@ -14,7 +14,7 @@ library TransientStorageHelpers {
 
     error TransientIndexOutOfBounds();
 
-    /// Mappings
+    // Mappings
 
     function tGet(NestedAddressMappingSlot slot, address k1, IERC20 k2) internal view returns (int256) {
         return
@@ -25,7 +25,7 @@ library TransientStorageHelpers {
         NestedAddressMappingSlot.unwrap(slot).deriveMapping(k1).deriveMapping(address(k2)).asInt256Slot().tstore(value);
     }
 
-    /// Arrays
+    // Arrays
 
     function tLength(AddressArraySlot slot) internal view returns (uint256) {
         return AddressArraySlot.unwrap(slot).asUint256Slot().tload();
@@ -57,23 +57,25 @@ library TransientStorageHelpers {
     }
 
     function tPush(AddressArraySlot slot, address value) internal {
+        // Store the value at offset corresponding to the current length.
         uint256 length = AddressArraySlot.unwrap(slot).asUint256Slot().tload();
         AddressArraySlot.unwrap(slot).deriveArray().offset(length).asAddressSlot().tstore(value);
+        // Update current length to consider the new value.
         AddressArraySlot.unwrap(slot).asUint256Slot().tstore(length + 1);
     }
 
     function tPop(AddressArraySlot slot) internal returns (address value) {
         uint256 lastElementIndex = AddressArraySlot.unwrap(slot).asUint256Slot().tload() - 1;
-        // Update length to last element
+        // Update length to last element. When the index is 0, the slot that holds the length is cleared out.
         AddressArraySlot.unwrap(slot).asUint256Slot().tstore(lastElementIndex);
-        Slots.AddressSlot lastElementOffset = AddressArraySlot
+        Slots.AddressSlot lastElementSlot = AddressArraySlot
             .unwrap(slot)
             .deriveArray()
             .offset(lastElementIndex)
             .asAddressSlot();
-        // Return last element
-        value = lastElementOffset.tload();
-        // Clear value in temporary storage
-        lastElementOffset.tstore(address(0));
+        // Return last element.
+        value = lastElementSlot.tload();
+        // Clear value in temporary storage.
+        lastElementSlot.tstore(address(0));
     }
 }

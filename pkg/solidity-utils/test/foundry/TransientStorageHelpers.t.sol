@@ -17,7 +17,7 @@ contract TransientStorageHelpersTest is Test {
     address[] private addressArray;
     uint256 private storageUint;
 
-    function testTransientNestedMapping(address k1, address k2, int256 value) public {
+    function testTransientNestedMapping__Fuzz(address k1, address k2, int256 value) public {
         nestedMapping[k1][IERC20(k2)] = 1234;
 
         NestedAddressMappingSlot transientMapping;
@@ -105,7 +105,7 @@ contract TransientStorageHelpersTest is Test {
         transientArray.tSet(4, address(1));
     }
 
-    function testTransientUint(uint256 value) public {
+    function testTransientUint__Fuzz(uint256 value) public {
         storageUint = 1234;
 
         Slots.Uint256Slot transientUint;
