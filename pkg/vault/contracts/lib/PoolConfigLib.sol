@@ -117,7 +117,7 @@ library PoolConfigLib {
         return !PoolConfigBits.unwrap(config).decodeBool(BALANCED_LIQUIDITY_OFFSET);
     }
 
-    function requireSupportsUnbalancedLiquidity(PoolConfig memory config) internal pure {
+    function requireUnbalancedLiquidityEnabled(PoolConfig memory config) internal pure {
         if (config.liquidityManagement.disableUnbalancedLiquidity == true) {
             revert IVaultErrors.DoesNotSupportUnbalancedLiquidity();
         }
@@ -127,7 +127,7 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(ADD_LIQUIDITY_CUSTOM_OFFSET);
     }
 
-    function requireSupportsAddLiquidityCustom(PoolConfig memory config) internal pure {
+    function requireAddCustomLiquidityEnabled(PoolConfig memory config) internal pure {
         if (config.liquidityManagement.enableAddLiquidityCustom == false) {
             revert IVaultErrors.DoesNotSupportAddLiquidityCustom();
         }
@@ -137,7 +137,7 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(REMOVE_LIQUIDITY_CUSTOM_OFFSET);
     }
 
-    function requireSupportsRemoveLiquidityCustom(PoolConfig memory config) internal pure {
+    function requireRemoveCustomLiquidityEnabled(PoolConfig memory config) internal pure {
         if (config.liquidityManagement.enableRemoveLiquidityCustom == false) {
             revert IVaultErrors.DoesNotSupportRemoveLiquidityCustom();
         }
