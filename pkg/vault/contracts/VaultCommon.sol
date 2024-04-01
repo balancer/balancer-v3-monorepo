@@ -131,12 +131,12 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             // If the resultant delta becomes zero after this operation,
             // decrease the count of non-zero deltas.
             if (next == 0) {
-                _nonzeroDeltaCount().tstore(_nonzeroDeltaCount().tload() - 1);
+                _nonzeroDeltaCount().tDecrement();
             }
             // If there was no previous delta (i.e., it was zero) and now we have one,
             // increase the count of non-zero deltas.
             else if (current == 0) {
-                _nonzeroDeltaCount().tstore(_nonzeroDeltaCount().tload() + 1);
+                _nonzeroDeltaCount().tIncrement();
             }
         }
 

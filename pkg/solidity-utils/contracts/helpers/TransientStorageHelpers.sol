@@ -80,4 +80,14 @@ library TransientStorageHelpers {
         // Clear value in temporary storage.
         lastElementSlot.tstore(address(0));
     }
+
+    // Uint256
+
+    function tIncrement(StorageSlot.Uint256SlotType slot) internal {
+        slot.tstore(slot.tload() + 1);
+    }
+
+    function tDecrement(StorageSlot.Uint256SlotType slot) internal {
+        slot.tstore(slot.tload() - 1);
+    }
 }

@@ -118,4 +118,62 @@ contract TransientStorageHelpersTest is Test {
         assertEq(transientUint.tload(), value, "Uint: incorrect value after edit");
         assertEq(storageUint, 1234, "Uint: storage modified");
     }
+
+    function testTransientUintIncrement__Fuzz(uint256 value) public {
+        vm.assume(value != type(uint256).max);
+        storageUint = 1234;
+
+        StorageSlot.Uint256SlotType transientUint;
+        assembly {
+            transientUint := storageUint.slot
+        }
+
+        assertEq(transientUint.tload(), 0, "Uint: initial nonzero value");
+        transientUint.tstore(value);
+        transientUint.tIncrement();
+        assertEq(transientUint.tload(), value + 1, "Uint: incorrect value after increment");
+
+        assertEq(storageUint, 1234, "Uint: storage modified");
+    }
+
+    function testTransientUintDecrement__Fuzz(uint256 value) public {
+        vm.assume(value != 0);
+        storageUint = 1234;
+
+        StorageSlot.Uint256SlotType transientUint;
+        assembly {
+            transientUint := storageUint.slot
+        }
+
+        assertEq(transientUint.tload(), 0, "Uint: initial nonzero value");
+        transientUint.tstore(value);
+        transientUint.tDecrement();
+        assertEq(transientUint.tload(), value - 1, "Uint: incorrect value after increment");
+
+        assertEq(storageUint, 1234, "Uint: storage modified");
+    }
+
+    function testTransientIncrementOverflow() public {
+        StorageSlot.Uint256SlotType transientUint;
+        assembly {
+            transientUint := storageUint.slot
+        }
+
+        transientUint.tstore(type(uint256).max);
+
+        vm.expectRevert(stdError.arithmeticError);
+        transientUint.tIncrement();
+    }
+
+    function testTransientDecrementUnderflow() public {
+        StorageSlot.Uint256SlotType transientUint;
+        assembly {
+            transientUint := storageUint.slot
+        }
+
+        transientUint.tstore(0);
+
+        vm.expectRevert(stdError.arithmeticError);
+        transientUint.tDecrement();
+    }
 }
