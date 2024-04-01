@@ -51,6 +51,7 @@ contract ERC4626BufferPool is
     // When the swap is settled, these extra tokens are either added to the pool balance or are left behind
     // in the buffer contract as dust, to fund subsequent operations.
     uint256 public constant DUST_BUFFER = 2;
+    uint256 public constant FIFTY_PERCENT = 5e17;
 
     IERC4626 internal immutable _wrappedToken;
     uint256 internal immutable _wrappedTokenScalingFactor;
@@ -174,17 +175,17 @@ contract ERC4626BufferPool is
         // Since it's Linear Math, the "available balance" is the amount of tokenOut, regardless of whether the trade
         // is ExactIn or ExactOut.
         if (params.amountGivenScaled18 > params.balancesScaled18[params.indexOut]) {
-            uint256 totalBufferLiquidity = params.balancesScaled18[0] + params.balancesScaled18[1];
+            uint256 totalBufferLiquidityScaled18 = params.balancesScaled18[0] + params.balancesScaled18[1];
 
             // If there is not enough total liquidity in the buffer to support the trade, we can't use the buffer.
-            if (params.amountGivenScaled18 > totalBufferLiquidity) {
+            if (params.amountGivenScaled18 > totalBufferLiquidityScaled18) {
                 // TODO: Should be handled somehow at the pool level (e.g., pool detects buffer failure and
                 //  wraps/unwraps by itself).
                 return false;
             } else {
                 // The buffer pool is currently too unbalanced to allow the trade, so we need to "counter swap" to fix
                 // this and allow the trade to proceed.
-                _handleUnbalancedPoolSwaps(params, totalBufferLiquidity);
+                _handleUnbalancedPoolSwaps(params, totalBufferLiquidityScaled18);
             }
         }
 
@@ -193,16 +194,47 @@ contract ERC4626BufferPool is
 
     function _handleUnbalancedPoolSwaps(
         IBasePool.PoolSwapParams calldata params,
-        uint256 totalBufferLiquidity
+        uint256 totalBufferLiquidityScaled18
     ) private performsInternalSwap {
         // If the trade amount is less than half the total liquidity, the built-in 50/50 rebalance will allow
         // the trade to succeed.
-        if (params.amountGivenScaled18 <= totalBufferLiquidity / 2) {
-            _rebalance();
+        if (params.amountGivenScaled18 <= totalBufferLiquidityScaled18 / 2) {
+            _rebalance(FIFTY_PERCENT);
         } else {
-            // solhint-disable-previous-line no-empty-blocks
-            // TODO: the trade amount is greater than half the liquidity - but less than all of it - so we
+            // The trade amount is greater than half the liquidity - but less than all of it - so we
             // need to do a more precise "counter swap" to enable the trade to succeed.
+            uint256 desiredBaseTokenPercentage;
+
+            if (
+                (params.kind == SwapKind.EXACT_IN && params.indexIn == _baseTokenIndex) ||
+                (params.kind == SwapKind.EXACT_OUT && params.indexOut == _wrappedTokenIndex)
+            ) {
+                // amountGivenScaled18 is the amount of wrapped out, so we need to calculate the proportion of
+                // base tokens which is: baseAmount = liquidity - wrappedAmount
+                desiredBaseTokenPercentage = (totalBufferLiquidityScaled18 - params.amountGivenScaled18).divDown(
+                    totalBufferLiquidityScaled18
+                );
+
+                // Swapping base to wrapped. We need to unbalance the pool to the wrapped side, to make sure we
+                // have enough tokens to trade (desired base percentage - 1)
+                if (desiredBaseTokenPercentage >= 1) {
+                    desiredBaseTokenPercentage -= 1;
+                } else {
+                    desiredBaseTokenPercentage = 0;
+                }
+            } else {
+                // amountGivenScaled18 is the amount of base out, so we can calculate the percentage directly
+                desiredBaseTokenPercentage = params.amountGivenScaled18.divDown(totalBufferLiquidityScaled18);
+
+                // Swapping wrapped to base. We need to unbalance the pool to the base side, to make sure we
+                // have enough tokens to trade (desired base percentage + 1)
+                desiredBaseTokenPercentage += 1;
+                if (desiredBaseTokenPercentage > FixedPoint.ONE) {
+                    desiredBaseTokenPercentage = FixedPoint.ONE;
+                }
+            }
+
+            _rebalance(desiredBaseTokenPercentage);
         }
     }
 
@@ -264,11 +296,11 @@ contract ERC4626BufferPool is
     }
 
     function forcedRebalanceHook() external payable onlyVault {
-        _rebalance();
+        _rebalance(FIFTY_PERCENT);
     }
 
     /// @dev Non-reentrant to ensure we don't try to externally rebalance during an internal rebalance.
-    function _rebalance() internal nonReentrant {
+    function _rebalance(uint256 percentageBase) internal nonReentrant {
         address poolAddress = address(this);
         IVault vault = getVault();
 
@@ -290,20 +322,22 @@ contract ERC4626BufferPool is
             decimalScalingFactors[_baseTokenIndex]
         );
 
-        if (_isBufferPoolBalanced(balancesScaled18)) {
+        if (percentageBase == FIFTY_PERCENT && _isBufferPoolBalanced(balancesScaled18)) {
             return;
         }
 
         uint256 exchangeAmountRaw;
-        if (balanceWrappedAssetsRaw > balanceBaseAssetsRaw) {
+        uint256 totalLiquidityRaw = balanceWrappedAssetsRaw + balanceBaseAssetsRaw;
+        uint256 desiredBaseAssetsRaw = totalLiquidityRaw.mulDown(percentageBase);
+        if (balanceBaseAssetsRaw < desiredBaseAssetsRaw) {
             unchecked {
-                exchangeAmountRaw = (balanceWrappedAssetsRaw - balanceBaseAssetsRaw) / 2;
+                exchangeAmountRaw = desiredBaseAssetsRaw - balanceBaseAssetsRaw;
             }
 
             _rebalanceInternal(poolAddress, tokens, exchangeAmountRaw, SwapKind.EXACT_IN);
-        } else if (balanceBaseAssetsRaw > balanceWrappedAssetsRaw) {
+        } else {
             unchecked {
-                exchangeAmountRaw = (balanceBaseAssetsRaw - balanceWrappedAssetsRaw) / 2;
+                exchangeAmountRaw = balanceBaseAssetsRaw - desiredBaseAssetsRaw;
             }
 
             _rebalanceInternal(poolAddress, tokens, exchangeAmountRaw, SwapKind.EXACT_OUT);
@@ -332,15 +366,16 @@ contract ERC4626BufferPool is
 
             // In this case, since there is more wrapped than base assets, wrapped tokens will be removed (tokenOut)
             // and then unwrapped, and the resulting base assets will be deposited in the pool (tokenIn).
-            rebalanceHook(SwapParams({
-                        kind: SwapKind.EXACT_IN,
-                        pool: poolAddress,
-                        tokenIn: tokens[_baseTokenIndex],
-                        tokenOut: tokens[_wrappedTokenIndex],
-                        amountGivenRaw: exchangeAmountRaw,
-                        limitRaw: limitRaw,
-                        userData: ""
-                    })
+            rebalanceHook(
+                SwapParams({
+                    kind: SwapKind.EXACT_IN,
+                    pool: poolAddress,
+                    tokenIn: tokens[_baseTokenIndex],
+                    tokenOut: tokens[_wrappedTokenIndex],
+                    amountGivenRaw: exchangeAmountRaw,
+                    limitRaw: limitRaw,
+                    userData: ""
+                })
             );
         } else {
             // Since onSwap will consider a slightly bigger rate for the wrapped token, we need to account that
@@ -352,15 +387,15 @@ contract ERC4626BufferPool is
             // In this case, since there is more base than wrapped assets, base assets will be removed (tokenOut)
             // and then wrapped, and the resulting wrapped assets will be deposited in the pool (tokenIn).
             rebalanceHook(
-                    SwapParams({
-                        kind: SwapKind.EXACT_OUT,
-                        pool: poolAddress,
-                        tokenIn: tokens[_wrappedTokenIndex],
-                        tokenOut: tokens[_baseTokenIndex],
-                        amountGivenRaw: exchangeAmountRaw,
-                        limitRaw: limitRaw,
-                        userData: ""
-                    })
+                SwapParams({
+                    kind: SwapKind.EXACT_OUT,
+                    pool: poolAddress,
+                    tokenIn: tokens[_wrappedTokenIndex],
+                    tokenOut: tokens[_baseTokenIndex],
+                    amountGivenRaw: exchangeAmountRaw,
+                    limitRaw: limitRaw,
+                    userData: ""
+                })
             );
         }
     }

@@ -18,7 +18,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import {
     TransientStorageHelpers
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
-import { Slots } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/Slots.sol";
+import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 
 import { VaultStateLib } from "../lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
@@ -34,7 +34,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using PoolConfigLib for PoolConfig;
     using VaultStateLib for VaultState;
     using TransientStorageHelpers for *;
-    using Slots for *;
+    using StorageSlot for *;
 
     PoolFactoryMock private immutable _poolFactoryMock;
 
