@@ -613,9 +613,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     function bufferRemoveLiquidity()
-    public
-    withLocker
-    returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountUnderlying)
+        public
+        withLocker
+        returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountUnderlying)
     {
         // solhint-disable-previous-line no-empty-blocks
         //TODO: removal in proportional only for simplicity
