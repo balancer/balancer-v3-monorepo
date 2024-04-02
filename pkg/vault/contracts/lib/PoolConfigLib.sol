@@ -32,8 +32,8 @@ library PoolConfigLib {
     uint8 public constant POOL_RECOVERY_MODE_OFFSET = AFTER_INITIALIZE_OFFSET + 1;
 
     // Supported liquidity API bit offsets
-    uint8 public constant BALANCED_LIQUIDITY_OFFSET = POOL_RECOVERY_MODE_OFFSET + 1;
-    uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = BALANCED_LIQUIDITY_OFFSET + 1;
+    uint8 public constant UNBALANCED_LIQUIDITY_OFFSET = POOL_RECOVERY_MODE_OFFSET + 1;
+    uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = UNBALANCED_LIQUIDITY_OFFSET + 1;
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
 
     uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
@@ -114,7 +114,7 @@ library PoolConfigLib {
 
     function supportsUnbalancedLiquidity(PoolConfigBits config) internal pure returns (bool) {
         // NOTE: The unbalanced liquidity flag is default-on (false means it is supported)
-        return !PoolConfigBits.unwrap(config).decodeBool(BALANCED_LIQUIDITY_OFFSET);
+        return !PoolConfigBits.unwrap(config).decodeBool(UNBALANCED_LIQUIDITY_OFFSET);
     }
 
     function requireUnbalancedLiquidityEnabled(PoolConfig memory config) internal pure {
@@ -179,7 +179,7 @@ library PoolConfigLib {
 
         {
             configBits = configBits
-                .insertBool(config.liquidityManagement.disableUnbalancedLiquidity, BALANCED_LIQUIDITY_OFFSET)
+                .insertBool(config.liquidityManagement.disableUnbalancedLiquidity, UNBALANCED_LIQUIDITY_OFFSET)
                 .insertBool(config.liquidityManagement.enableAddLiquidityCustom, ADD_LIQUIDITY_CUSTOM_OFFSET)
                 .insertBool(config.liquidityManagement.enableRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET);
         }
