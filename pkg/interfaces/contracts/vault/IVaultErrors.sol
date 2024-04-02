@@ -66,6 +66,9 @@ interface IVaultErrors {
     /// @dev Error thrown on registration if the pool does not support interface queries.
     error PoolMustSupportERC165();
 
+    /// @dev Error thrown on registration if the pool does not support dynamic fee interface.
+    error PoolMustSupportDynamicFee();
+
     /*******************************************************************************
                                  Transient Accounting
     *******************************************************************************/
