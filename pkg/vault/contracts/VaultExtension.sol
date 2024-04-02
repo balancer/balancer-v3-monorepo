@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -34,6 +35,7 @@ import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
+import { BufferPackedTokenBalance } from "./lib/BufferPackedBalance.sol";
 
 /**
  * @dev Bytecode extension for Vault.
@@ -58,6 +60,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
     using StorageSlot for StorageSlot.Uint256SlotType;
+    using BufferPackedTokenBalance for bytes32;
 
     IVault private immutable _vault;
     IVaultAdmin private immutable _vaultAdmin;
@@ -581,6 +584,41 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // We can unsafely cast to int256 because balances are stored as uint128 (see PackedTokenBalance).
             amountsOutRaw.unsafeCastToInt256(false)
         );
+    }
+
+    /*******************************************************************************
+                            Yield-bearing tokens buffers
+    *******************************************************************************/
+
+    function bufferAddLiquidity(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlying,
+        uint256 amountWrapped,
+        address sharesOwner
+    ) public withLocker returns (uint256 issuedShares) {
+        bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
+        uint256 amountTotalInUnderlying = wrappedToken.convertToAssets(amountWrapped) + amountUnderlying;
+
+        //TODO: determine amount of shares to issue
+        issuedShares = amountTotalInUnderlying;
+
+        //TODO: could potentially burn a minimum amount of shares if the supply is 0;
+        _bufferLpShares[IERC20(wrappedToken)][sharesOwner] += issuedShares;
+        _bufferTotalShares[IERC20(wrappedToken)] += issuedShares;
+
+        buffer = buffer.setUnderlyingBalance(buffer.getUnderlyingBalance() + amountUnderlying);
+        buffer = buffer.setWrappedBalance(buffer.getWrappedBalance() + amountWrapped);
+
+        _bufferTokenBalances[IERC20(wrappedToken)] = buffer;
+    }
+
+    function bufferRemoveLiquidity()
+    public
+    withLocker
+    returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountUnderlying)
+    {
+        // solhint-disable-previous-line no-empty-blocks
+        //TODO: removal in proportional only for simplicity
     }
 
     /*******************************************************************************

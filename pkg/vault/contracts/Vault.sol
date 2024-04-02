@@ -1179,35 +1179,4 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         _supplyCredit(IERC20(wrappedToken.asset()), amountUnderlying, msg.sender);
     }
-
-    function bufferAddLiquidity(
-        IERC4626 wrappedToken,
-        uint256 amountUnderlying,
-        uint256 amountWrapped,
-        address sharesOwner
-    ) public withLocker returns (uint256 issuedShares) {
-        bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
-        uint256 amountTotalInUnderlying = wrappedToken.convertToAssets(amountWrapped) + amountUnderlying;
-
-        //TODO: determine amount of shares to issue
-        issuedShares = amountTotalInUnderlying;
-
-        //TODO: could potentially burn a minimum amount of shares if the supply is 0;
-        _bufferLpShares[IERC20(wrappedToken)][sharesOwner] += issuedShares;
-        _bufferTotalShares[IERC20(wrappedToken)] += issuedShares;
-
-        buffer = buffer.setUnderlyingBalance(buffer.getUnderlyingBalance() + amountUnderlying);
-        buffer = buffer.setWrappedBalance(buffer.getWrappedBalance() + amountWrapped);
-
-        _bufferTokenBalances[IERC20(wrappedToken)] = buffer;
-    }
-
-    function bufferRemoveLiquidity()
-        public
-        withLocker
-        returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountUnderlying)
-    {
-        // solhint-disable-previous-line no-empty-blocks
-        //TODO: removal in proportional only for simplicity
-    }
 }

@@ -162,9 +162,11 @@ contract BufferInsideVaultTest is BaseVaultTest {
     function testBoostedPoolSwapWithinBufferRangeExactIn() public {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount);
 
+        snapStart("boostedPoolSwapWithinBufferRangeExactIn");
         vm.prank(alice);
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
 
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN, swapAmount);
     }
@@ -172,9 +174,11 @@ contract BufferInsideVaultTest is BaseVaultTest {
     function testBoostedPoolSwapWithinBufferRangeExactOut() public {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount);
 
+        snapStart("boostedPoolSwapWithinBufferRangeExactOut");
         vm.prank(alice);
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
 
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT, swapAmount);
     }
@@ -182,9 +186,11 @@ contract BufferInsideVaultTest is BaseVaultTest {
     function testBoostedPoolSwapOutOfBufferRangeExactIn() public {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(tooLargeSwapAmount);
 
+        snapStart("boostedPoolSwapOutOfBufferRangeExactIn");
         vm.prank(alice);
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
 
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, tooLargeSwapAmount, SwapKind.EXACT_IN, 0);
     }
@@ -192,9 +198,11 @@ contract BufferInsideVaultTest is BaseVaultTest {
     function testBoostedPoolSwapOutOfBufferRangeExactOut() public {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(tooLargeSwapAmount);
 
+        snapStart("boostedPoolSwapOutOfBufferRangeExactOut");
         vm.prank(alice);
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
 
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, tooLargeSwapAmount, SwapKind.EXACT_OUT, 0);
     }

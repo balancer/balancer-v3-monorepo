@@ -144,9 +144,6 @@ interface IVaultMain {
         WrapParams memory wrapParams
     ) external returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut);
 
-    // TODO document
-    function bufferAddLiquidity(IERC4626, uint256, uint256, address) external returns (uint256);
-
     /*******************************************************************************
                                 Authentication
     *******************************************************************************/
