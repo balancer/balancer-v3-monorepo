@@ -64,9 +64,9 @@ contract ERC4626BufferPool is
 
     // Apply to edge-case handling functions so that we don't need to remember to set/clear the context flag.
     modifier performsInternalSwap() {
-        _inSwapContext().sstore(true);
+        _inSwapContext().tstore(true);
         _;
-        _inSwapContext().sstore(false);
+        _inSwapContext().tstore(false);
     }
 
     // Uses the factory as the Authentication disambiguator.
@@ -164,7 +164,7 @@ contract ERC4626BufferPool is
     /// @inheritdoc BasePoolHooks
     function onBeforeSwap(IBasePool.PoolSwapParams calldata params) external override onlyVault returns (bool) {
         // Short-circuit if we're already inside an `onBeforeSwap` hook.
-        if (_inSwapContext().sload()) {
+        if (_inSwapContext().tload()) {
             return true;
         }
 
