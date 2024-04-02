@@ -387,7 +387,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function getBufferBalance(IERC20 token) external view returns (uint256, uint256) {
-        return (_bufferTokenBalances[token].getUnderlyingBalance(), _bufferTokenBalances[token].getWrappedBalance());
+        return (_bufferTokenBalances[token].getBaseBalance(), _bufferTokenBalances[token].getWrappedBalance());
     }
 
     function sortTokenConfig(TokenConfig[] memory tokenConfig) public pure returns (TokenConfig[] memory) {

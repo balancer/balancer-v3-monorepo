@@ -1040,12 +1040,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     function bufferWrapUnwrap(
         WrapParams memory params
-    ) public withLocker returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountUnderlying) {
+    ) public withLocker returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountBase) {
         IERC4626 wrappedToken;
         if (params.wrappedToken == params.tokenIn) {
             // tokenIn is wrappedToken, user wants to unwrap
             wrappedToken = IERC4626(address(params.tokenIn));
-            (amountCalculated, amountWrapped, amountUnderlying) = _bufferUnwrap(
+            (amountCalculated, amountWrapped, amountBase) = _bufferUnwrap(
                 params.kind,
                 wrappedToken,
                 params.amountGivenRaw
@@ -1053,7 +1053,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         } else if (params.wrappedToken == params.tokenOut) {
             // tokenOut is wrappedToken, user wants to wrap
             wrappedToken = IERC4626(address(params.tokenOut));
-            (amountCalculated, amountWrapped, amountUnderlying) = _bufferWrap(
+            (amountCalculated, amountWrapped, amountBase) = _bufferWrap(
                 params.kind,
                 wrappedToken,
                 params.amountGivenRaw
@@ -1068,7 +1068,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapKind kind,
         IERC4626 wrappedToken,
         uint256 amountGivenRaw
-    ) private withLocker returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountUnderlying) {
+    ) private withLocker returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountBase) {
         bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
 
         amountCalculated = kind == SwapKind.EXACT_IN
@@ -1076,50 +1076,44 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             : wrappedToken.convertToAssets(amountGivenRaw);
 
         uint256 amountWrappedExpected;
-        (amountUnderlying, amountWrappedExpected) = kind == SwapKind.EXACT_IN
+        (amountBase, amountWrappedExpected) = kind == SwapKind.EXACT_IN
             ? (amountGivenRaw, amountCalculated)
             : (amountCalculated, amountGivenRaw);
 
         if (buffer.isEmpty()) {
             // no liquidity in the buffer, just wrap the tokens
-            IERC20(wrappedToken.asset()).approve(address(wrappedToken), amountUnderlying);
-            amountWrapped = wrappedToken.deposit(amountUnderlying, address(this));
+            IERC20(wrappedToken.asset()).approve(address(wrappedToken), amountBase);
+            amountWrapped = wrappedToken.deposit(amountBase, address(this));
         } else if (buffer.getWrappedBalance() > amountWrappedExpected) {
             // the buffer has enough liquidity to facilitate the wrap without making an external call.
             amountWrapped = amountWrappedExpected;
 
-            buffer = buffer.setUnderlyingBalance(buffer.getUnderlyingBalance() + amountUnderlying);
+            buffer = buffer.setBaseBalance(buffer.getBaseBalance() + amountBase);
             buffer = buffer.setWrappedBalance(buffer.getWrappedBalance() - amountWrapped);
             _bufferTokenBalances[IERC20(wrappedToken)] = buffer;
         } else {
             // the buffer has liquidity, but not enough to facilitate the wrap without making an external call.
             // We wrap the user's tokens via an external call and additionally rebalance the buffer if it has a
-            // surplus of underlying tokens.
+            // surplus of base tokens.
             uint256 wrappedBalance = buffer.getWrappedBalance();
-            uint256 underlyingBalance = buffer.getUnderlyingBalance();
-            uint256 wrappedBalanceInUnderlying = wrappedToken.convertToAssets(wrappedBalance);
+            uint256 baseBalance = buffer.getBaseBalance();
+            uint256 wrappedBalanceInBase = wrappedToken.convertToAssets(wrappedBalance);
 
-            uint256 bufferUnderlyingAmountToWrap = underlyingBalance > wrappedBalanceInUnderlying
-                ? (underlyingBalance - wrappedBalanceInUnderlying) / 2
+            uint256 bufferBaseAmountToWrap = baseBalance > wrappedBalanceInBase
+                ? (baseBalance - wrappedBalanceInBase) / 2
                 : 0;
 
-            IERC20(wrappedToken.asset()).approve(
-                address(wrappedToken),
-                amountUnderlying + bufferUnderlyingAmountToWrap
-            );
-            uint256 totalAmountWrapped = wrappedToken.deposit(
-                amountUnderlying + bufferUnderlyingAmountToWrap,
-                address(this)
-            );
+            IERC20(wrappedToken.asset()).approve(address(wrappedToken), amountBase + bufferBaseAmountToWrap);
+            uint256 totalAmountWrapped = wrappedToken.deposit(amountBase + bufferBaseAmountToWrap, address(this));
 
-            buffer = buffer.setUnderlyingBalance(underlyingBalance - bufferUnderlyingAmountToWrap);
+            buffer = buffer.setBaseBalance(baseBalance - bufferBaseAmountToWrap);
             buffer = buffer.setWrappedBalance(wrappedBalance + (totalAmountWrapped - amountWrappedExpected));
             _bufferTokenBalances[IERC20(wrappedToken)] = buffer;
 
             amountWrapped = amountWrappedExpected;
         }
 
-        _takeDebt(IERC20(wrappedToken.asset()), amountUnderlying, msg.sender);
+        _takeDebt(IERC20(wrappedToken.asset()), amountBase, msg.sender);
 
         _supplyCredit(wrappedToken, amountWrapped, msg.sender);
     }
@@ -1128,38 +1122,38 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapKind kind,
         IERC4626 wrappedToken,
         uint256 amountGivenRaw
-    ) private withLocker returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountUnderlying) {
+    ) private withLocker returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountBase) {
         bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
 
         amountCalculated = kind == SwapKind.EXACT_IN
             ? wrappedToken.convertToAssets(amountGivenRaw)
             : wrappedToken.convertToShares(amountGivenRaw);
 
-        uint256 amountUnderlyingExpected;
-        (amountUnderlyingExpected, amountWrapped) = kind == SwapKind.EXACT_IN
+        uint256 amountBaseExpected;
+        (amountBaseExpected, amountWrapped) = kind == SwapKind.EXACT_IN
             ? (amountGivenRaw, amountCalculated)
             : (amountCalculated, amountGivenRaw);
 
         if (buffer.isEmpty()) {
             // no liquidity in the buffer, just wrap the tokens
-            amountUnderlying = wrappedToken.redeem(amountWrapped, address(this), address(this));
-        } else if (buffer.getUnderlyingBalance() > amountUnderlyingExpected) {
+            amountBase = wrappedToken.redeem(amountWrapped, address(this), address(this));
+        } else if (buffer.getBaseBalance() > amountBaseExpected) {
             // the buffer has enough liquidity to facilitate the wrap without making an external call.
-            amountUnderlying = amountUnderlyingExpected;
+            amountBase = amountBaseExpected;
 
-            buffer = buffer.setUnderlyingBalance(buffer.getUnderlyingBalance() - amountUnderlying);
+            buffer = buffer.setBaseBalance(buffer.getBaseBalance() - amountBase);
             buffer = buffer.setWrappedBalance(buffer.getWrappedBalance() + amountWrapped);
             _bufferTokenBalances[IERC20(wrappedToken)] = buffer;
         } else {
             // the buffer has liquidity, but not enough to facilitate the wrap without making an external call.
             // We wrap the user's tokens via an external call and additionally rebalance the buffer if it has a
-            // surplus of underlying tokens.
+            // surplus of base tokens.
             uint256 wrappedBalance = buffer.getWrappedBalance();
-            uint256 underlyingBalance = buffer.getUnderlyingBalance();
-            uint256 underlyingBalanceInShares = wrappedToken.convertToShares(underlyingBalance);
+            uint256 baseBalance = buffer.getBaseBalance();
+            uint256 baseBalanceInShares = wrappedToken.convertToShares(baseBalance);
 
-            uint256 bufferSharesToUnwrap = wrappedBalance > underlyingBalanceInShares
-                ? (wrappedBalance - underlyingBalanceInShares) / 2
+            uint256 bufferSharesToUnwrap = wrappedBalance > baseBalanceInShares
+                ? (wrappedBalance - baseBalanceInShares) / 2
                 : 0;
 
             uint256 totalAmountUnwrapped = wrappedToken.redeem(
@@ -1168,15 +1162,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 address(this)
             );
 
-            buffer = buffer.setUnderlyingBalance(underlyingBalance + (totalAmountUnwrapped - amountUnderlyingExpected));
+            buffer = buffer.setBaseBalance(baseBalance + (totalAmountUnwrapped - amountBaseExpected));
             buffer = buffer.setWrappedBalance(wrappedBalance - bufferSharesToUnwrap);
             _bufferTokenBalances[IERC20(wrappedToken)] = buffer;
 
-            amountUnderlying = amountUnderlyingExpected;
+            amountBase = amountBaseExpected;
         }
 
         _takeDebt(wrappedToken, amountWrapped, msg.sender);
 
-        _supplyCredit(IERC20(wrappedToken.asset()), amountUnderlying, msg.sender);
+        _supplyCredit(IERC20(wrappedToken.asset()), amountBase, msg.sender);
     }
 }

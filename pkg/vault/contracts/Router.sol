@@ -610,7 +610,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
         uint256 amountUnderlying,
         uint256 amountWrapped,
         address sharesOwner
-    ) external returns (uint256) {
+    ) external returns (uint256 issuedShares) {
         return
             abi.decode(
                 _vault.lock(
@@ -631,8 +631,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
         uint256 amountUnderlying,
         uint256 amountWrapped,
         address sharesOwner
-    ) external nonReentrant onlyVault returns (uint256) {
-        return _vault.bufferAddLiquidity(wrappedToken, amountUnderlying, amountWrapped, sharesOwner);
+    ) external nonReentrant onlyVault returns (uint256 issuedShares) {
+        issuedShares = _vault.bufferAddLiquidity(wrappedToken, amountUnderlying, amountWrapped, sharesOwner);
+        _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountUnderlying, true);
+        _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrapped, true);
     }
 
     /*******************************************************************************

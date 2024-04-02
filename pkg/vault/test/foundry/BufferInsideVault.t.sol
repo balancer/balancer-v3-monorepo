@@ -134,7 +134,7 @@ contract BufferInsideVaultTest is BaseVaultTest {
         assertEq(balancesRaw[0], boostedPoolAmount, "Wrong boosted pool balance [0]");
         assertEq(balancesRaw[1], boostedPoolAmount, "Wrong boosted pool balance [1]");
 
-        // LP should have correct amount of shares from buffer (total invested amount in underlying)
+        // LP should have correct amount of shares from buffer (total invested amount in base)
         assertEq(
             vault.getBufferShareOfUser(IERC20(waDAI), address(lp)),
             bufferAmount * 2,
