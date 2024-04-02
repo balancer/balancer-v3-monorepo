@@ -1146,8 +1146,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // the buffer has enough liquidity to facilitate the wrap without making an external call.
             amountUnderlying = amountUnderlyingExpected;
 
+            buffer = buffer.setUnderlyingBalance(buffer.getUnderlyingBalance() - amountUnderlying);
             buffer = buffer.setWrappedBalance(buffer.getWrappedBalance() + amountWrapped);
-            buffer = buffer.setWrappedBalance(buffer.getWrappedBalance() - amountWrapped);
             _bufferTokenBalances[IERC20(wrappedToken)] = buffer;
         } else {
             // the buffer has liquidity, but not enough to facilitate the wrap without making an external call.

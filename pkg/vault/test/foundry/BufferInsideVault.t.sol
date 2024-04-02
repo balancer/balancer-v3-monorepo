@@ -206,7 +206,7 @@ contract BufferInsideVaultTest is BaseVaultTest {
             amountsOut,
             tooLargeSwapAmount,
             SwapKind.EXACT_IN,
-            tooLargeSwapAmount
+            0
         );
     }
 
@@ -223,7 +223,7 @@ contract BufferInsideVaultTest is BaseVaultTest {
             amountsIn,
             tooLargeSwapAmount,
             SwapKind.EXACT_OUT,
-            tooLargeSwapAmount
+            0
         );
     }
 
@@ -303,40 +303,40 @@ contract BufferInsideVaultTest is BaseVaultTest {
         assertEq(balancesRaw[usdcIdx], boostedPoolAmount - expectedDelta, "Wrong boosted pool USDC balance");
 
         // TODO refactor
-        // Pool Liquidity = 2*defaultAmount
+        // Pool Liquidity = 2*bufferAmount
         // DUST_BUFFER is 2, so tolerance1 is 2 units of pool liquidity
         // tolerance1 = 2 * (Pool Liquidity)/FixedPoint.ONE
         // tolerance2 = 10 // sometimes the buffer contract injects some tokens in the buffer pool to rebalance
         // tolerance = tolerance1 + tolerance2
-        //        uint256 tolerance = (4 * defaultAmount) / FixedPoint.ONE + 10;
-        //        (uint256 wrappedIdx, uint256 baseIdx) = getSortedIndexes(address(waDAI), address(dai));
-        //        (, , balancesRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
-        //        assertApproxEqAbs(
-        //            balancesRaw[baseIdx],
-        //            defaultAmount + bufferExpectedDelta,
-        //            tolerance,
-        //            "Wrong DAI buffer pool base balance"
-        //        );
-        //        assertApproxEqAbs(
-        //            balancesRaw[wrappedIdx],
-        //            defaultAmount - bufferExpectedDelta,
-        //            tolerance,
-        //            "Wrong DAI buffer pool wrapped balance"
-        //        );
-        //
-        //        (wrappedIdx, baseIdx) = getSortedIndexes(address(waUSDC), address(usdc));
-        //        (, , balancesRaw, , ) = vault.getPoolTokenInfo(waUSDCBufferPool);
-        //        assertApproxEqAbs(
-        //            balancesRaw[baseIdx],
-        //            defaultAmount - bufferExpectedDelta,
-        //            tolerance,
-        //            "Wrong USDC buffer pool base balance"
-        //        );
-        //        assertApproxEqAbs(
-        //            balancesRaw[wrappedIdx],
-        //            defaultAmount + bufferExpectedDelta,
-        //            tolerance,
-        //            "Wrong USDC buffer pool wrapped balance"
-        //        );
+        uint256 baseBalance;
+        uint256 wrappedBalance;
+        uint256 tolerance = (4 * bufferAmount) / FixedPoint.ONE + 10;
+        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
+        assertApproxEqAbs(
+            baseBalance,
+            bufferAmount + bufferExpectedDelta,
+            tolerance,
+            "Wrong DAI buffer pool base balance"
+        );
+        assertApproxEqAbs(
+            wrappedBalance,
+            bufferAmount - bufferExpectedDelta,
+            tolerance,
+            "Wrong DAI buffer pool wrapped balance"
+        );
+
+        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
+        assertApproxEqAbs(
+            baseBalance,
+            bufferAmount - bufferExpectedDelta,
+            tolerance,
+            "Wrong USDC buffer pool base balance"
+        );
+        assertApproxEqAbs(
+            wrappedBalance,
+            bufferAmount + bufferExpectedDelta,
+            tolerance,
+            "Wrong USDC buffer pool wrapped balance"
+        );
     }
 }
