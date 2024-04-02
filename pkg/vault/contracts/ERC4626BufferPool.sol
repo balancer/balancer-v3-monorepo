@@ -196,46 +196,36 @@ contract ERC4626BufferPool is
         IBasePool.PoolSwapParams calldata params,
         uint256 totalBufferLiquidityScaled18
     ) private performsInternalSwap {
-        // If the trade amount is less than half the total liquidity, the built-in 50/50 rebalance will allow
-        // the trade to succeed.
+        // Calculate the desired base token percentage to rebalance the pool to 50/50 or as close as possible.
+        uint256 desiredBaseTokenPercentage;
+        // If the trade amount is less than half the total liquidity, we rebalance so that the buffer is
+        // 50/50 after the trade.
         if (params.amountGivenScaled18 <= totalBufferLiquidityScaled18 / 2) {
-            _rebalance(FIFTY_PERCENT);
-        } else {
-            // The trade amount is greater than half the liquidity - but less than all of it - so we
-            // need to do a more precise "counter swap" to enable the trade to succeed.
-            uint256 desiredBaseTokenPercentage;
-
             if (
                 (params.kind == SwapKind.EXACT_IN && params.indexIn == _baseTokenIndex) ||
                 (params.kind == SwapKind.EXACT_OUT && params.indexOut == _wrappedTokenIndex)
             ) {
-                // amountGivenScaled18 is the amount of wrapped out, so we need to calculate the proportion of
-                // base tokens which is: baseAmount = liquidity - wrappedAmount
-                desiredBaseTokenPercentage = (totalBufferLiquidityScaled18 - params.amountGivenScaled18).divDown(
+                // if the amountGivenScaled18 is the amount of base in, we set the desired base percentage to
+                // 50% - amountGivenScaled18 to unbalance the pool to the wrapped side.
+                desiredBaseTokenPercentage = (totalBufferLiquidityScaled18 / 2 - params.amountGivenScaled18).divDown(
                     totalBufferLiquidityScaled18
                 );
-
-                // Swapping base to wrapped. We need to unbalance the pool to the wrapped side, to make sure we
-                // have enough tokens to trade (desired base percentage - 1)
-                if (desiredBaseTokenPercentage >= 1) {
-                    desiredBaseTokenPercentage -= 1;
-                } else {
-                    desiredBaseTokenPercentage = 0;
-                }
             } else {
-                // amountGivenScaled18 is the amount of base out, so we can calculate the percentage directly
-                desiredBaseTokenPercentage = params.amountGivenScaled18.divDown(totalBufferLiquidityScaled18);
-
-                // Swapping wrapped to base. We need to unbalance the pool to the base side, to make sure we
-                // have enough tokens to trade (desired base percentage + 1)
-                desiredBaseTokenPercentage += 1;
-                if (desiredBaseTokenPercentage > FixedPoint.ONE) {
-                    desiredBaseTokenPercentage = FixedPoint.ONE;
-                }
+                // if the amountGivenScaled18 is the amount of wrapped in, we set the desired base percentage to
+                // 50% + amountGivenScaled18 to unbalance the pool to the base side.
+                desiredBaseTokenPercentage = (totalBufferLiquidityScaled18 / 2 + params.amountGivenScaled18).divDown(
+                    totalBufferLiquidityScaled18
+                );
             }
-
-            _rebalance(desiredBaseTokenPercentage);
+        } else {
+            // The trade amount is greater than half the liquidity - but less than all of it - so we
+            // need to do a more precise "counter swap" to enable the trade to succeed.
+            desiredBaseTokenPercentage = (params.kind == SwapKind.EXACT_IN && params.indexIn == _baseTokenIndex) ||
+                (params.kind == SwapKind.EXACT_OUT && params.indexOut == _wrappedTokenIndex)
+                ? 0
+                : FixedPoint.ONE;
         }
+        _rebalance(desiredBaseTokenPercentage);
     }
 
     /// @inheritdoc IBasePool
@@ -318,10 +308,6 @@ contract ERC4626BufferPool is
             decimalScalingFactors[_baseTokenIndex]
         );
 
-        if (percentageBase == FIFTY_PERCENT && _isBufferPoolBalanced(balancesScaled18)) {
-            return;
-        }
-
         uint256 exchangeAmountRaw;
         uint256 totalLiquidityRaw = balanceWrappedAssetsRaw + balanceBaseAssetsRaw;
         uint256 desiredBaseAssetsRaw = totalLiquidityRaw.mulDown(percentageBase);
@@ -334,7 +320,6 @@ contract ERC4626BufferPool is
             unchecked {
                 exchangeAmountRaw = balanceBaseAssetsRaw - desiredBaseAssetsRaw;
             }
-
             _rebalanceInternal(vault, poolAddress, tokens, exchangeAmountRaw, SwapKind.EXACT_OUT);
         }
     }
