@@ -63,6 +63,9 @@ interface IVaultErrors {
      */
     error TokensMismatch(address pool, address expectedToken, address actualToken);
 
+    /// @dev Error thrown on registration if the pool does not support interface queries.
+    error PoolMustSupportERC165();
+
     /*******************************************************************************
                                  Transient Accounting
     *******************************************************************************/
@@ -174,6 +177,16 @@ interface IVaultErrors {
 
     /// @dev Error raised when the swap fee percentage exceeds the maximum allowed value.
     error SwapFeePercentageTooHigh();
+
+    /**
+     * @dev  Error raised when the swap fee percentage is less than the minimum allowed value.
+     * The Vault itself does not impose a universal minimum. Rather, it asks each pool whether
+     * it supports the `IMinimumSwapFee` interface. If it does, the Vault validates against the
+     * minimum value returned by the pool.
+     *
+     * Pools with dynamic fees do not check for a lower limit.
+     */
+    error SwapFeePercentageTooLow();
 
     /*******************************************************************************
                                     Queries

@@ -2,4 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-interface IVaultExtensionMock {}
+interface IVaultExtensionMock {
+    // Used in tests to circumvent minimum swap fees.
+    function manuallySetSwapFee(address pool, uint256 swapFeePercentage) external;
+}
