@@ -15,6 +15,10 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import {
+    TransientStorageHelpers
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
+import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 
 import { VaultStateLib } from "../lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
@@ -29,6 +33,8 @@ contract VaultMock is IVaultMainMock, Vault {
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
     using VaultStateLib for VaultState;
+    using TransientStorageHelpers for *;
+    using StorageSlot for StorageSlot.Uint256SlotType;
 
     PoolFactoryMock private immutable _poolFactoryMock;
 
@@ -116,7 +122,15 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetLockers(address[] memory lockers) public {
-        _lockers = lockers;
+        uint256 lockersLength = _lockers().tLength();
+        // Reset existing array
+        for (uint256 i = 0; i < lockersLength; ++i) {
+            _lockers().tPop();
+        }
+
+        for (uint256 i = 0; i < lockers.length; ++i) {
+            _lockers().tPush(lockers[i]);
+        }
     }
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) public {
@@ -384,10 +398,10 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetAccountDelta(IERC20 token, address locker, int256 delta) external {
-        _tokenDeltas[locker][token] = delta;
+        _tokenDeltas().tSet(locker, token, delta);
     }
 
     function manualSetNonZeroDeltaCount(uint256 deltaCount) external {
-        _nonzeroDeltaCount = deltaCount;
+        _nonzeroDeltaCount().tstore(deltaCount);
     }
 }
