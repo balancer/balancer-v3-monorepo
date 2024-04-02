@@ -5,9 +5,11 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
+import { IMinimumSwapFee } from "@balancer-labs/v3-interfaces/contracts/vault/IMinimumSwapFee.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
@@ -16,7 +18,7 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
-import { Slots } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/Slots.sol";
+import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -31,12 +33,13 @@ import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, ReentrancyGuard, ERC20MultiToken {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using PackedTokenBalance for bytes32;
+    using PoolConfigLib for PoolConfig;
     using ScalingHelpers for *;
     using SafeCast for *;
     using FixedPoint for *;
     using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
-    using Slots for Slots.Uint256Slot;
+    using StorageSlot for StorageSlot.Uint256SlotType;
 
     /*******************************************************************************
                               Transient Accounting
@@ -131,12 +134,12 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             // If the resultant delta becomes zero after this operation,
             // decrease the count of non-zero deltas.
             if (next == 0) {
-                _nonzeroDeltaCount().tstore(_nonzeroDeltaCount().tload() - 1);
+                _nonzeroDeltaCount().tDecrement();
             }
             // If there was no previous delta (i.e., it was zero) and now we have one,
             // increase the count of non-zero deltas.
             else if (current == 0) {
-                _nonzeroDeltaCount().tstore(_nonzeroDeltaCount().tload() + 1);
+                _nonzeroDeltaCount().tIncrement();
             }
         }
 
@@ -509,6 +512,25 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             poolData.decimalScalingFactors[tokenIndex],
             poolData.tokenRates[tokenIndex]
         );
+    }
+
+    function _setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) internal virtual {
+        if (swapFeePercentage > _MAX_SWAP_FEE_PERCENTAGE) {
+            revert SwapFeePercentageTooHigh();
+        }
+
+        // This cannot be called during pool construction. Pools must be deployed first, then registered.
+        if (IERC165(pool).supportsInterface(type(IMinimumSwapFee).interfaceId)) {
+            if (swapFeePercentage < IMinimumSwapFee(pool).getMinimumSwapFeePercentage()) {
+                revert SwapFeePercentageTooLow();
+            }
+        }
+
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        config.staticSwapFeePercentage = swapFeePercentage;
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        emit SwapFeePercentageChanged(pool, swapFeePercentage);
     }
 
     /*******************************************************************************

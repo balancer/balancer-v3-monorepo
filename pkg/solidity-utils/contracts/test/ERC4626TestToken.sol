@@ -30,10 +30,4 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
     function getRate() external view returns (uint256) {
         return _convertToAssets(FixedPoint.ONE, Math.Rounding.Floor);
     }
-
-    function mint(uint256 shares, address receiver) public override returns (uint256) {
-        _mint(receiver, shares);
-
-        return shares;
-    }
 }

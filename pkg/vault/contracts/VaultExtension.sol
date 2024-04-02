@@ -7,6 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
@@ -25,7 +26,7 @@ import {
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
-import { Slots } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/Slots.sol";
+import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
@@ -56,7 +57,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using VaultExtensionsLib for IVault;
     using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
-    using Slots for Slots.Uint256Slot;
+    using StorageSlot for StorageSlot.Uint256SlotType;
 
     IVault private immutable _vault;
     IVaultAdmin private immutable _vaultAdmin;
@@ -126,6 +127,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     struct PoolRegistrationParams {
         TokenConfig[] tokenConfig;
+        uint256 swapFeePercentage;
         uint256 pauseWindowEndTime;
         address pauseManager;
         PoolHooks poolHooks;
@@ -136,6 +138,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
+        uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolHooks calldata poolHooks,
@@ -145,6 +148,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             pool,
             PoolRegistrationParams({
                 tokenConfig: tokenConfig,
+                swapFeePercentage: swapFeePercentage,
                 pauseWindowEndTime: pauseWindowEndTime,
                 pauseManager: pauseManager,
                 poolHooks: poolHooks,
@@ -177,6 +181,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
         if (numTokens > _MAX_TOKENS) {
             revert MaxTokens();
+        }
+
+        if (ERC165Checker.supportsERC165(pool) == false) {
+            revert PoolMustSupportERC165();
         }
 
         // Retrieve or create the pool's token balances mapping.
@@ -236,6 +244,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = params.pauseWindowEndTime;
         _poolConfig[pool] = config.fromPoolConfig();
+
+        _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
         emit PoolRegistered(

@@ -7,20 +7,20 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../contracts/helpers/TransientStorageHelpers.sol";
-import "../../contracts/openzeppelin/Slots.sol";
+import "../../contracts/openzeppelin/StorageSlot.sol";
 
 contract TransientStorageHelpersTest is Test {
     using TransientStorageHelpers for *;
-    using Slots for Slots.Uint256Slot;
+    using StorageSlot for StorageSlot.Uint256SlotType;
 
     mapping(address => mapping(IERC20 => int256)) private nestedMapping;
     address[] private addressArray;
     uint256 private storageUint;
 
-    function testTransientNestedMapping(address k1, address k2, int256 value) public {
+    function testTransientNestedMapping__Fuzz(address k1, address k2, int256 value) public {
         nestedMapping[k1][IERC20(k2)] = 1234;
 
-        NestedAddressMappingSlot transientMapping;
+        NestedAddressMappingSlotType transientMapping;
         assembly {
             transientMapping := nestedMapping.slot
         }
@@ -38,7 +38,7 @@ contract TransientStorageHelpersTest is Test {
         addressArray.push(address(3));
         require(addressArray.length == 3, "Array: wrong initial conditions");
 
-        AddressArraySlot transientArray;
+        AddressArraySlotType transientArray;
         assembly {
             transientArray := addressArray.slot
         }
@@ -84,7 +84,7 @@ contract TransientStorageHelpersTest is Test {
     }
 
     function testTransientArrayFailures() public {
-        AddressArraySlot transientArray;
+        AddressArraySlotType transientArray;
         assembly {
             transientArray := addressArray.slot
         }
@@ -105,10 +105,10 @@ contract TransientStorageHelpersTest is Test {
         transientArray.tSet(4, address(1));
     }
 
-    function testTransientUint(uint256 value) public {
+    function testTransientUint__Fuzz(uint256 value) public {
         storageUint = 1234;
 
-        Slots.Uint256Slot transientUint;
+        StorageSlot.Uint256SlotType transientUint;
         assembly {
             transientUint := storageUint.slot
         }
@@ -117,5 +117,63 @@ contract TransientStorageHelpersTest is Test {
         transientUint.tstore(value);
         assertEq(transientUint.tload(), value, "Uint: incorrect value after edit");
         assertEq(storageUint, 1234, "Uint: storage modified");
+    }
+
+    function testTransientUintIncrement__Fuzz(uint256 value) public {
+        vm.assume(value != type(uint256).max);
+        storageUint = 1234;
+
+        StorageSlot.Uint256SlotType transientUint;
+        assembly {
+            transientUint := storageUint.slot
+        }
+
+        assertEq(transientUint.tload(), 0, "Uint: initial nonzero value");
+        transientUint.tstore(value);
+        transientUint.tIncrement();
+        assertEq(transientUint.tload(), value + 1, "Uint: incorrect value after increment");
+
+        assertEq(storageUint, 1234, "Uint: storage modified");
+    }
+
+    function testTransientUintDecrement__Fuzz(uint256 value) public {
+        vm.assume(value != 0);
+        storageUint = 1234;
+
+        StorageSlot.Uint256SlotType transientUint;
+        assembly {
+            transientUint := storageUint.slot
+        }
+
+        assertEq(transientUint.tload(), 0, "Uint: initial nonzero value");
+        transientUint.tstore(value);
+        transientUint.tDecrement();
+        assertEq(transientUint.tload(), value - 1, "Uint: incorrect value after increment");
+
+        assertEq(storageUint, 1234, "Uint: storage modified");
+    }
+
+    function testTransientIncrementOverflow() public {
+        StorageSlot.Uint256SlotType transientUint;
+        assembly {
+            transientUint := storageUint.slot
+        }
+
+        transientUint.tstore(type(uint256).max);
+
+        vm.expectRevert(stdError.arithmeticError);
+        transientUint.tIncrement();
+    }
+
+    function testTransientDecrementUnderflow() public {
+        StorageSlot.Uint256SlotType transientUint;
+        assembly {
+            transientUint := storageUint.slot
+        }
+
+        transientUint.tstore(0);
+
+        vm.expectRevert(stdError.arithmeticError);
+        transientUint.tDecrement();
     }
 }
