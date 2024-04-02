@@ -32,6 +32,8 @@ contract BufferInsideVaultTest is BaseVaultTest {
     ERC4626TestToken internal waDAI;
     ERC4626TestToken internal waUSDC;
 
+    ERC4626BufferPoolFactoryMock bufferFactory;
+
     // For two-token pools with waDAI/waUSDC, keep track of sorted token order.
     uint256 internal waDaiIdx;
     uint256 internal waUsdcIdx;
@@ -54,6 +56,8 @@ contract BufferInsideVaultTest is BaseVaultTest {
         // "USDC" is deliberately 18 decimals to test one thing at a time.
         waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 18);
         vm.label(address(waUSDC), "waUSDC");
+
+        bufferFactory = new ERC4626BufferPoolFactoryMock(vault, 365 days);
 
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
 
@@ -96,15 +100,10 @@ contract BufferInsideVaultTest is BaseVaultTest {
         tokenConfig[waDaiIdx].rateProvider = IRateProvider(address(waDAI));
         tokenConfig[waUsdcIdx].rateProvider = IRateProvider(address(waUSDC));
 
-        PoolMock newPool = new PoolMock(
-            IVault(address(vault)),
-            "Boosted Pool",
-            "BOOSTYBOI",
-            tokenConfig,
-            true,
-            365 days,
-            address(0)
-        );
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "Boosted Pool", "BOOSTYBOI");
+
+        factoryMock.registerTestPool(address(newPool), tokenConfig);
+
         vm.label(address(newPool), "boosted pool");
         boostedPool = address(newPool);
 
