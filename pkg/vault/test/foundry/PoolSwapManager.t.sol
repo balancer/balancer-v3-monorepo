@@ -8,6 +8,7 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -29,40 +30,35 @@ contract PoolSwapManagerTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(usdc)].toMemoryArray().asIERC20()
+        );
+
+        PoolRoleAccounts memory defaultRoleAccounts = PoolRoleAccounts({
+            pauseManager: address(0),
+            swapFeeManager: address(0)
+        });
+
+        PoolRoleAccounts memory adminRoleAccounts = PoolRoleAccounts({
+            pauseManager: address(0),
+            swapFeeManager: admin
+        });
+
+        pool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+
         // Make admin the swap fee manager.
-        pool = address(
-            new PoolMock(
-                IVault(address(vault)),
-                "ERC20 Pool",
-                "ERC20POOL",
-                vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-                PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: admin }),
-                true,
-                365 days
-            )
-        );
+        factoryMock.registerGeneralTestPool(address(pool), tokenConfig, 0, 365 days, adminRoleAccounts);
+
+        unmanagedPool = new PoolMock(IVault(address(vault)), "Unmanaged Pool", "UNMANAGED");
 
         // Pass zero for the swap fee manager.
-        unmanagedPool = new PoolMock(
-            IVault(address(vault)),
-            "Unmanaged Pool",
-            "UNMANAGED",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
-            true,
-            365 days
-        );
+        factoryMock.registerGeneralTestPool(address(unmanagedPool), tokenConfig, 0, 365 days, defaultRoleAccounts);
 
         // Pass zero for the swap fee manager.
-        otherPool = new PoolMock(
-            IVault(address(vault)),
-            "Other Pool",
-            "OTHER",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
-            true,
-            365 days
-        );
+        otherPool = new PoolMock(IVault(address(vault)), "Other Pool", "OTHER");
+
+        // Pass zero for the swap fee manager.
+        factoryMock.registerGeneralTestPool(address(otherPool), tokenConfig, 0, 365 days, defaultRoleAccounts);
 
         factory = new PoolFactoryMock(IVault(address(vault)), 365 days);
     }

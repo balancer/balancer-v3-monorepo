@@ -59,30 +59,24 @@ contract RouterTest is BaseVaultTest {
     }
 
     function createPool() internal override returns (address) {
-        PoolMock newPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
-            true,
-            365 days
-        );
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
 
-        wethPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 weth Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
-            true,
-            365 days
+        factoryMock.registerTestPool(
+            address(newPool),
+            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20())
         );
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+
+        wethPool = new PoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
         vm.label(address(wethPool), "wethPool");
 
+        factoryMock.registerTestPool(
+            address(wethPool),
+            vault.buildTokenConfig([address(dai), address(weth)].toMemoryArray().asIERC20())
+        );
+
         (daiIdxWethPool, wethIdx) = getSortedIndexes(address(dai), address(weth));
-        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
         wethDaiTokens = InputHelpers.sortTokens([address(weth), address(dai)].toMemoryArray().asIERC20());
 
@@ -90,16 +84,13 @@ contract RouterTest is BaseVaultTest {
         wethDaiAmountsIn[wethIdx] = ethAmountIn;
         wethDaiAmountsIn[daiIdxWethPool] = daiAmountIn;
 
-        wethPoolNoInit = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 weth Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
-            true,
-            365 days
-        );
+        wethPoolNoInit = new PoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
         vm.label(address(wethPoolNoInit), "wethPoolNoInit");
+
+        factoryMock.registerTestPool(
+            address(wethPoolNoInit),
+            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20())
+        );
 
         return address(newPool);
     }

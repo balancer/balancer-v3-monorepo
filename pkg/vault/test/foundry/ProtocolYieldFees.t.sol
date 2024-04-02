@@ -52,19 +52,17 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         rateProviders[1] = daiRateProvider;
         yieldFeeFlags[0] = true;
 
-        PoolMock newPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+
+        factoryMock.registerTestPool(
+            address(newPool),
             vault.buildTokenConfig(
                 [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
                 rateProviders,
                 yieldFeeFlags
-            ),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
-            true,
-            365 days
+            )
         );
+
         vm.label(address(newPool), "pool");
         return address(newPool);
     }
