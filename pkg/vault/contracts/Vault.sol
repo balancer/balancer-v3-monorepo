@@ -1082,6 +1082,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (buffer.isEmpty()) {
             // no liquidity in the buffer, just wrap the tokens
+            IERC20(wrappedToken.asset()).approve(address(wrappedToken), amountUnderlying);
             amountWrapped = wrappedToken.deposit(amountUnderlying, address(this));
         } else if (buffer.getWrappedBalance() > amountWrappedExpected) {
             // the buffer has enough liquidity to facilitate the wrap without making an external call.
