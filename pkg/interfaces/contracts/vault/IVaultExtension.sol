@@ -311,6 +311,12 @@ interface IVaultExtension {
     // TODO document
     function bufferAddLiquidity(IERC4626, uint256, uint256, address) external returns (uint256);
 
+    //    // TODO document
+    //    function bufferRemoveLiquidity()
+    //    public
+    //    withLocker
+    //    returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountBase)
+
     /*******************************************************************************
                                     Queries
     *******************************************************************************/
