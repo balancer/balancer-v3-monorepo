@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/Test.sol";
+
 import { FixedPoint } from "./FixedPoint.sol";
 
 library BasePoolMath {
@@ -295,10 +297,14 @@ library BasePoolMath {
         // Calculate the new balance of the output token after the BPT burn.
         // "divUp" leads to a higher "newBalance," which in turn results in a lower "amountOut."
         // This leads to giving less tokens for the same amount of BTP burned.
+        console.log('exact bpt in: ', exactBptAmountIn);
+        console.log('new supply: ', newSupply);
+        console.log('invariant ratio: ',newSupply.divUp(totalSupply));
         uint256 newBalance = computeBalance(currentBalances, tokenOutIndex, newSupply.divUp(totalSupply));
 
         // Compute the amount to be withdrawn from the pool.
         uint256 amountOut = currentBalances[tokenOutIndex] - newBalance;
+        console.log('amount out: ', amountOut);
 
         // Calculate the non-taxable balance proportionate to the BPT burnt.
         uint256 nonTaxableBalance = newSupply.mulUp(currentBalances[tokenOutIndex]).divDown(totalSupply);

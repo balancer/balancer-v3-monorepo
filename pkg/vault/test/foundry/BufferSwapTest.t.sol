@@ -45,7 +45,7 @@ contract BufferSwapTest is BaseVaultTest {
 
     // `defaultAmount` from BaseVaultTest (e.g., 1,000), corresponds to the funding of the buffer.
     // We will swap with 10% of the buffer
-    uint256 internal swapAmount = defaultAmount / 10;
+    uint256 internal swapAmount = defaultAmount * 5;
     // The boosted pool will have 10x the liquidity of the buffer
     uint256 internal boostedPoolAmount = defaultAmount * 10;
 

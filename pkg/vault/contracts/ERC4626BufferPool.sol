@@ -2,18 +2,23 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/Test.sol";
+
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
 import {
     AddLiquidityKind,
+    AddLiquidityParams,
     RemoveLiquidityKind,
+    RemoveLiquidityParams,
     SwapParams,
     SwapKind
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -24,6 +29,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 
 import { BasePoolAuthentication } from "./BasePoolAuthentication.sol";
 import { BalancerPoolToken } from "./BalancerPoolToken.sol";
@@ -43,6 +49,7 @@ contract ERC4626BufferPool is
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
+    using StorageSlot for *;
 
     uint256 internal immutable _wrappedTokenIndex;
     uint256 internal immutable _baseTokenIndex;
@@ -61,12 +68,17 @@ contract ERC4626BufferPool is
     // Use this flag as an internal reentrancy guard to avoid recursion.
     // TODO: Should be transient.
     bool private _inSwapContext;
+    bool private _afterSwapHookRequired;
 
     // Apply to edge-case handling functions so that we don't need to remember to set/clear the context flag.
     modifier performsInternalSwap() {
-        _inSwapContext = true;
+        StorageSlot.BooleanSlotType slot;
+        assembly {
+            slot := _inSwapContext.slot
+        }
+        slot.tstore(true);
         _;
-        _inSwapContext = false;
+        slot.tstore(false);
     }
 
     // Uses the factory as the Authentication disambiguator.
@@ -119,7 +131,7 @@ contract ERC4626BufferPool is
         bytes memory
     ) external view override onlyVault returns (bool) {
         // Only support custom add liquidity.
-        return kind == AddLiquidityKind.CUSTOM;
+        return true;
     }
 
     /// @inheritdoc IPoolLiquidity
@@ -158,14 +170,22 @@ contract ERC4626BufferPool is
         bytes memory
     ) external view override onlyVault returns (bool) {
         // Only support proportional remove liquidity.
-        return kind == RemoveLiquidityKind.PROPORTIONAL;
+        return true;
     }
 
     /// @inheritdoc BasePoolHooks
     function onBeforeSwap(IBasePool.PoolSwapParams calldata params) external override onlyVault returns (bool) {
-        // Short-circuit if we're already inside an `onBeforeSwap` hook.
-        if (_inSwapContext) {
-            return true;
+        {
+            StorageSlot.BooleanSlotType slot;
+            assembly {
+                slot := _inSwapContext.slot
+            }
+
+            // Short-circuit if we're already inside an `onBeforeSwap` hook.
+            if (slot.tload() == true) {
+                return true;
+            }
+
         }
 
         // Ensure we have enough liquidity to accommodate the trade. Since these pools use Linear Math in the swap
@@ -181,7 +201,30 @@ contract ERC4626BufferPool is
             if (params.amountGivenScaled18 > totalBufferLiquidityScaled18) {
                 // TODO: Should be handled somehow at the pool level (e.g., pool detects buffer failure and
                 //  wraps/unwraps by itself).
-                return false;
+                IVault vault = getVault();
+                uint256[] memory rates = vault.getPoolTokenRates(address(this));
+                uint256[] memory amountsIn = new uint256[](2);
+                amountsIn[params.indexIn] = params.amountGivenScaled18.divDown(rates[params.indexIn]);
+                (, uint256 bptAmountOut,) = vault.addLiquidity(AddLiquidityParams({
+                    pool: address(this),
+                    to: address(this),
+                    maxAmountsIn: amountsIn,
+                    minBptAmountOut: 1,
+                    kind: AddLiquidityKind.UNBALANCED,
+                    userData: ""
+                }));
+
+                console.log('##### BPT AMOUNT OUT: ', bptAmountOut);
+
+                totalBufferLiquidityScaled18 += params.amountGivenScaled18;
+
+                _handleUnbalancedPoolSwaps(params, totalBufferLiquidityScaled18);
+
+                StorageSlot.BooleanSlotType slot;
+                assembly {
+                    slot := _afterSwapHookRequired.slot
+                }
+                slot.tstore(true);
             } else {
                 // The buffer pool is currently too unbalanced to allow the trade, so we need to "counter swap" to fix
                 // this and allow the trade to proceed.
@@ -278,6 +321,40 @@ contract ERC4626BufferPool is
             // If onSwap wasn't triggered by the rebalance function, use linear math
             return request.amountGivenScaled18;
         }
+    }
+
+    function onAfterSwap(AfterSwapParams calldata params, uint256) external virtual override returns (bool) {
+        {
+            StorageSlot.BooleanSlotType slot;
+            assembly {
+                slot := _afterSwapHookRequired.slot
+            }
+            
+            if (slot.tload() == false) {
+                return true;
+            } else {
+                slot.tstore(false);
+            }
+        }
+    
+        IVault vault = getVault();
+
+        uint256[] memory minAmountsOut = new uint256[](2);
+        console.log('tokenIn balance: ', params.tokenInBalanceScaled18);
+        console.log('tokenOut balance: ', params.tokenOutBalanceScaled18);
+        minAmountsOut[address(params.tokenIn) == address(_wrappedToken) ? _wrappedTokenIndex : _baseTokenIndex] = 1;
+        vault.removeLiquidity(
+            RemoveLiquidityParams({
+                pool: address(this),
+                from: address(this),
+                maxBptAmountIn: IERC20(this).balanceOf(address(this)),
+                minAmountsOut: minAmountsOut,
+                kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
+                userData: params.userData
+            })
+        );
+
+        return true;
     }
 
     /// @inheritdoc IBasePool
@@ -497,13 +574,13 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IBasePool
     function computeBalance(
-        uint256[] memory, // balancesLiveScaled18,
-        uint256, // tokenInIndex,
-        uint256 // invariantRatio
+        uint256[] memory balancesLiveScaled18,
+        uint256 tokenInIndex,
+        uint256 invariantRatio
     ) external pure returns (uint256) {
         // This pool doesn't support single token add/remove liquidity, so this function is not needed.
         // Should never get here, but need to implement the interface.
-        revert IVaultErrors.OperationNotSupported();
+        return balancesLiveScaled18[tokenInIndex].mulDown(invariantRatio);
     }
 
     /// @inheritdoc IPoolLiquidity
