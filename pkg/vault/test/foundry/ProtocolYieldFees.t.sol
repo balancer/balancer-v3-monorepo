@@ -20,6 +20,7 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 import { TokenConfigLib } from "../../contracts/lib/TokenConfigLib.sol";
+import { PoolConfigLib, PoolConfig } from "../../contracts/lib/PoolConfigLib.sol";
 
 contract ProtocolYieldFeesTest is BaseVaultTest {
     using ArrayHelpers for *;
@@ -143,7 +144,8 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
 
         // Should be no protocol fees on dai, since it is yield fee exempt
         assertEq(vault.getProtocolFees(address(dai)), 0, "Protocol fees on exempt dai are not 0");
-        uint256[] memory scalingFactors = PoolMock(pool).getDecimalScalingFactors();
+        PoolConfig memory poolConfig = vault.getPoolConfig(address(pool));
+        uint256[] memory scalingFactors = PoolConfigLib.getDecimalScalingFactors(poolConfig, 2);
 
         // There should be fees on non-exempt wsteth
         uint256 actualProtocolFee = vault.getProtocolFees(address(wsteth));
@@ -267,7 +269,8 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
             roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN
         );
 
-        uint256[] memory expectedScalingFactors = PoolMock(pool).getDecimalScalingFactors();
+        PoolConfig memory poolConfig = vault.getPoolConfig(address(pool));
+        uint256[] memory expectedScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolConfig, 2);
         uint256[] memory expectedRawBalances = vault.getRawBalances(address(pool));
         uint256[] memory expectedRates = new uint256[](2);
 

@@ -159,13 +159,6 @@ contract VaultMock is IVaultMainMock, Vault {
         (tokenConfig, balancesRaw, decimalScalingFactors, poolConfig) = _getPoolTokenInfo(pool);
     }
 
-    function getDecimalScalingFactors(address pool) external view returns (uint256[] memory) {
-        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
-        IERC20[] memory tokens = _getPoolTokens(pool);
-
-        return PoolConfigLib.getDecimalScalingFactors(config, tokens.length);
-    }
-
     function recoveryModeExit(address pool) external view onlyInRecoveryMode(pool) {
         // solhint-disable-previous-line no-empty-blocks
     }

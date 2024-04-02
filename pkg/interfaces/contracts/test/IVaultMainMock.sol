@@ -44,8 +44,6 @@ interface IVaultMainMock {
         address
     ) external view returns (TokenConfig[] memory, uint256[] memory, uint256[] memory, PoolConfig memory);
 
-    function getDecimalScalingFactors(address pool) external view returns (uint256[] memory);
-
     function recoveryModeExit(address pool) external view;
 
     function computePoolDataUpdatingBalancesAndFees(

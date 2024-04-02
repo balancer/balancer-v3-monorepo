@@ -331,16 +331,6 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         return (maxBptAmountIn, minAmountsOut, new uint256[](minAmountsOut.length), userData);
     }
 
-    /// @dev Even though pools do not handle scaling, we still need this for the tests.
-    function getDecimalScalingFactors() external view returns (uint256[] memory scalingFactors) {
-        IERC20[] memory tokens = getPoolTokens();
-        scalingFactors = new uint256[](tokens.length);
-
-        for (uint256 i = 0; i < tokens.length; i++) {
-            scalingFactors[i] = ScalingHelpers.computeScalingFactor(tokens[i]);
-        }
-    }
-
     function _updateTokenRate() private {
         _rateProvider.mockRate(_newTokenRate);
     }

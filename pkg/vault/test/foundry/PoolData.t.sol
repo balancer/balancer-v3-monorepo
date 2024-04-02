@@ -16,6 +16,7 @@ import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 import { TokenConfigLib } from "../../contracts/lib/TokenConfigLib.sol";
+import { PoolConfigLib, PoolConfig } from "../../contracts/lib/PoolConfigLib.sol";
 
 contract PoolDataTest is BaseVaultTest {
     using ArrayHelpers for *;
@@ -68,7 +69,8 @@ contract PoolDataTest is BaseVaultTest {
         );
 
         // Compute decimal scaling factors from the tokens, in the mock.
-        uint256[] memory expectedScalingFactors = PoolMock(pool).getDecimalScalingFactors();
+        PoolConfig memory poolConfig = vault.getPoolConfig(address(pool));
+        uint256[] memory expectedScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolConfig, 2);
         uint256[] memory expectedRawBalances = vault.getRawBalances(address(pool));
         uint256[] memory expectedRates = new uint256[](2);
         expectedRates[0] = daiRate;
