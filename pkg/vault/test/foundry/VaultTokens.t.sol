@@ -24,7 +24,6 @@ contract VaultTokenTest is BaseVaultTest {
 
     address poolAddress;
 
-    PoolFactoryMock poolFactory;
     ERC4626BufferPoolFactory bufferFactory;
 
     address waDAIBuffer;
@@ -50,7 +49,6 @@ contract VaultTokenTest is BaseVaultTest {
         cDAI = new ERC4626TestToken(dai, "Wrapped cDAI", "cDAI", 18);
         waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 6);
 
-        poolFactory = new PoolFactoryMock(vault, 365 days);
         bufferFactory = new ERC4626BufferPoolFactory(vault, 365 days);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
@@ -157,7 +155,7 @@ contract VaultTokenTest is BaseVaultTest {
     }
 
     function _registerPool(TokenConfig[] memory tokenConfig) private {
-        poolFactory.registerPool(
+        factoryMock.registerPool(
             poolAddress,
             tokenConfig,
             address(0),

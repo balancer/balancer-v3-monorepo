@@ -104,7 +104,16 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         tokenConfig[baseTokenIndex].token = IERC20(wrappedToken.asset());
 
         // Buffers always have 0 swap fees.
-        getVault().registerPool(pool, tokenConfig, 0, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement, false);
+        getVault().registerPool(
+            pool,
+            tokenConfig,
+            0,
+            pauseWindowEndTime,
+            pauseManager,
+            poolHooks,
+            liquidityManagement,
+            false
+        );
     }
 
     function _getDefaultPoolHooks() internal pure returns (PoolHooks memory) {
