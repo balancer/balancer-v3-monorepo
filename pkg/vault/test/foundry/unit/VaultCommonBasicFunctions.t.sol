@@ -31,7 +31,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         return address(0);
     }
 
-    function initPool() internal override {}
+    function initPool() internal pure override {}
 
     /*******************************************************************************
                                   _getPoolTokenInfo

@@ -29,7 +29,7 @@
     "forge-std": "https://github.com/foundry-rs/forge-std.git#v1.7.1",
     "hardhat-contract-sizer": "^2.10.0",
     "hardhat-gas-reporter": "^1.0.9",
-    "hardhat-ignore-warnings": "^0.2.4",
+    "hardhat-ignore-warnings": "^0.2.11",
     "permit2": "https://github.com/Uniswap/permit2.git#cc56ad0f3439c502c246fc5cfcc3db92bb8b7219",
     "prettier": "^2.8.8",
     "prettier-plugin-solidity": "^1.1.3",

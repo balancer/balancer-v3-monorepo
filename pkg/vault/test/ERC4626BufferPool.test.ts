@@ -78,14 +78,14 @@ describe('ERC4626BufferPool', function () {
 
   async function createBufferPool(): Promise<ERC20PoolMock> {
     // initialize assets and supply
-    await baseToken.mint(wrappedToken, TOKEN_AMOUNT);
-    await wrappedToken.mint(TOKEN_AMOUNT, alice);
+    await baseToken.mint(alice, TOKEN_AMOUNT);
+    await baseToken.connect(alice).approve(wrappedToken, TOKEN_AMOUNT);
+    await wrappedToken.connect(alice).deposit(TOKEN_AMOUNT, alice);
 
     const tx = await factory.connect(alice).create(wrappedToken, wrappedToken, ANY_ADDRESS, ZERO_BYTES32);
     const receipt = await tx.wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-
     const poolAddress = event.args.pool;
 
     return (await deployedAt('ERC4626BufferPool', poolAddress)) as unknown as ERC20PoolMock;
@@ -284,8 +284,9 @@ describe('ERC4626BufferPool', function () {
     });
 
     it('can add liquidity custom', async () => {
-      await wrappedToken.mint(TOKEN_AMOUNT + MIN_BPT, bob);
-      await baseToken.mint(bob, TOKEN_AMOUNT + MIN_BPT);
+      await baseToken.mint(bob, 2n * (TOKEN_AMOUNT + MIN_BPT));
+      await baseToken.connect(bob).approve(wrappedToken, TOKEN_AMOUNT + MIN_BPT);
+      await wrappedToken.connect(bob).deposit(TOKEN_AMOUNT + MIN_BPT, bob);
 
       await pool.connect(bob).approve(router, MAX_UINT256);
       for (const token of [wrappedToken, baseToken]) {
@@ -297,6 +298,9 @@ describe('ERC4626BufferPool', function () {
       const MAX_AMOUNT = TOKEN_AMOUNT + MIN_BPT;
 
       await router.connect(bob).addLiquidityCustom(pool, [MAX_AMOUNT, MAX_AMOUNT], bptAmount, false, '0x');
+
+      // Should withdraw almost all. Contrived test to ensure proportional amounts in calculated correctly.
+      expect(await baseToken.balanceOf(bob)).to.equal((MIN_BPT * 3n) / 2n);
     });
   });
 

@@ -29,6 +29,7 @@ import { BatchRouter } from "../../../contracts/BatchRouter.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
+import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
 
 import { VaultMockDeployer } from "./VaultMockDeployer.sol";
 
@@ -75,6 +76,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
     address internal pool;
     // Rate provider mock.
     RateProviderMock internal rateProvider;
+    // Pool Factory
+    PoolFactoryMock internal factoryMock;
 
     // Default amount to use in tests for user operations.
     uint256 internal defaultAmount = 1e3 * 1e18;
@@ -95,6 +98,9 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
     // Default protocol swap fee percentage.
     uint64 internal protocolSwapFeePercentage = 0.50e18; // 50%
 
+    // Applies to Weighted Pools.
+    uint256 constant MIN_SWAP_FEE = 1e12; // 0.00001%
+
     function setUp() public virtual override {
         BaseTest.setUp();
 
@@ -104,6 +110,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
         vm.label(address(vault), "vault");
         authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
         vm.label(address(authorizer), "authorizer");
+        factoryMock = PoolFactoryMock(address(vault.getPoolFactoryMock()));
+        vm.label(address(factoryMock), "factory");
         router = new RouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(router), "router");
         batchRouter = new BatchRouter(IVault(address(vault)), weth, permit2);
@@ -167,16 +175,11 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
     }
 
     function _createPool(address[] memory tokens, string memory label) internal virtual returns (address) {
-        PoolMock newPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig(tokens.asIERC20()),
-            true,
-            365 days,
-            address(0)
-        );
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), label);
+
+        factoryMock.registerTestPool(address(newPool), vault.buildTokenConfig(tokens.asIERC20()));
+
         return address(newPool);
     }
 
@@ -185,9 +188,13 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
     }
 
     function _setSwapFeePercentage(address setPool, uint256 percentage) internal {
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), admin);
-        vm.prank(admin);
-        vault.setStaticSwapFeePercentage(setPool, percentage);
+        if (percentage < MIN_SWAP_FEE) {
+            vault.manuallySetSwapFee(setPool, percentage);
+        } else {
+            authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), admin);
+            vm.prank(admin);
+            vault.setStaticSwapFeePercentage(setPool, percentage);
+        }
     }
 
     function setProtocolSwapFeePercentage(uint64 percentage) internal {

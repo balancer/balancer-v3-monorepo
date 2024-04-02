@@ -15,6 +15,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 import { ERC4626BufferPoolFactory } from "../../contracts/factories/ERC4626BufferPoolFactory.sol";
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -53,7 +54,7 @@ contract VaultTokenTest is BaseVaultTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
 
-        pool = vm.addr(1);
+        pool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
     }
 
     function createPool() internal pure override returns (address) {
@@ -118,14 +119,20 @@ contract VaultTokenTest is BaseVaultTest {
 
     function registerBuffers() private {
         // Establish assets and supply so that buffer creation doesn't fail
-        dai.mint(address(waDAI), 1000e18);
-        waDAI.mint(1000e18, alice);
-        dai.mint(address(cDAI), 1000e18);
-        cDAI.mint(1000e18, alice);
-        usdc.mint(address(waUSDC), 1000e18);
-        waUSDC.mint(1000e18, alice);
-
         vm.startPrank(alice);
+
+        dai.mint(address(alice), 2 * defaultAmount);
+
+        dai.approve(address(waDAI), defaultAmount);
+        waDAI.deposit(defaultAmount, address(alice));
+
+        dai.approve(address(cDAI), defaultAmount);
+        cDAI.deposit(defaultAmount, address(alice));
+
+        usdc.mint(address(alice), defaultAmount);
+        usdc.approve(address(waUSDC), defaultAmount);
+        waUSDC.deposit(defaultAmount, address(alice));
+
         waDAIBuffer = bufferFactory.create(waDAI, waDAI, address(0), getSalt(address(waDAI)));
         cDAIBuffer = bufferFactory.create(cDAI, cDAI, address(0), getSalt(address(cDAI)));
         waUSDCBuffer = bufferFactory.create(waUSDC, waUSDC, address(0), getSalt(address(waUSDC)));

@@ -5,6 +5,9 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+
+import { IMinimumSwapFee } from "@balancer-labs/v3-interfaces/contracts/vault/IMinimumSwapFee.sol";
 
 import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 
@@ -310,5 +313,10 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
         poolToken.permit(usr, to, amount, deadline, v, r, s);
         poolToken.permit(usr, to, amount, deadline, v, r, s);
+    }
+
+    function testSupportsIERC165() public {
+        assertTrue(poolToken.supportsInterface(type(IERC165).interfaceId));
+        assertFalse(poolToken.supportsInterface(type(IMinimumSwapFee).interfaceId));
     }
 }

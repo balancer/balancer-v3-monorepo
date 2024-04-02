@@ -66,6 +66,7 @@ describe('StablePool', () => {
       `STABLE-${numTokens}`,
       buildTokenConfig(poolTokens.slice(0, numTokens)),
       200n,
+      0, // swap fee
       TypesConverter.toBytes32(bn(numTokens))
     );
     const receipt = await tx.wait();
