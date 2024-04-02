@@ -492,8 +492,4 @@ contract LiquidityApproximationDynamicFeeTest is BaseVaultTest {
             "Bob has too much USDC compare to Alice"
         );
     }
-
-    function _setSwapFeePercentage(address pool, uint256 swapFeePercentage) internal virtual override {
-        DynamicFeePoolMock(pool).setSwapFeePercentage(swapFeePercentage);
-    }
 }

@@ -18,8 +18,9 @@ struct PoolHooks {
 }
 
 struct LiquidityManagement {
-    bool supportsAddLiquidityCustom;
-    bool supportsRemoveLiquidityCustom;
+    bool disableUnbalancedLiquidity;
+    bool enableAddLiquidityCustom;
+    bool enableRemoveLiquidityCustom;
 }
 
 /// @dev Represents a pool's configuration, including hooks.
@@ -135,6 +136,7 @@ struct SwapParams {
 *******************************************************************************/
 
 enum AddLiquidityKind {
+    PROPORTIONAL,
     UNBALANCED,
     SINGLE_TOKEN_EXACT_OUT,
     CUSTOM

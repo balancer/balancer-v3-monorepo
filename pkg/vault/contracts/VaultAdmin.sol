@@ -282,18 +282,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 
-    function _setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) internal virtual {
-        if (swapFeePercentage > _MAX_SWAP_FEE_PERCENTAGE) {
-            revert SwapFeePercentageTooHigh();
-        }
-
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.staticSwapFeePercentage = swapFeePercentage;
-        _poolConfig[pool] = config.fromPoolConfig();
-
-        emit SwapFeePercentageChanged(pool, swapFeePercentage);
-    }
-
     /// @inheritdoc IVaultAdmin
     function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant onlyVault {
         for (uint256 index = 0; index < tokens.length; index++) {
@@ -315,8 +303,15 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
-    function enableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate onlyVault {
+    function enableRecoveryMode(address pool) external withRegisteredPool(pool) onlyVault {
         _ensurePoolNotInRecoveryMode(pool);
+
+        // If the Vault or pool is pausable (and currently paused), this call is permissionless.
+        if (_isPoolPaused(pool) == false && _isVaultPaused() == false) {
+            // If not permissionless, authenticate with governance.
+            _authenticateCaller();
+        }
+
         _setPoolRecoveryMode(pool, true);
     }
 

@@ -18,7 +18,7 @@ contract DynamicFeePoolMock is PoolMock, IBaseDynamicFeePool {
 
     uint256 internal _swapFeePercentage;
 
-    function _hasDynamicSwapFee() internal pure virtual override returns (bool) {
+    function _hasDynamicSwapFee() internal pure virtual returns (bool) {
         return true;
     }
 
@@ -30,7 +30,7 @@ contract DynamicFeePoolMock is PoolMock, IBaseDynamicFeePool {
         bool registerPool,
         uint256 pauseWindowDuration,
         address pauseManager
-    ) PoolMock(vault, name, symbol, tokenConfig, registerPool, pauseWindowDuration, pauseManager) {}
+    ) PoolMock(vault, name, symbol) {}
 
     function computeFee(PoolData memory, SwapLocals memory) public view override returns (uint256 dynamicFee) {
         return _swapFeePercentage;

@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { MAX_UINT256 } from '@balancer-labs/v3-helpers/src/constants';
 import { Router } from '../typechain-types/contracts/Router';
 import { ERC20PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/ERC20PoolMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
@@ -10,13 +10,15 @@ import { VoidSigner } from 'ethers';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
-import { Vault } from '@balancer-labs/v3-vault/typechain-types';
 import { buildTokenConfig } from './poolSetup';
+import { MONTH } from '@balancer-labs/v3-helpers/src/time';
+import { Vault, PoolFactoryMock } from '../typechain-types';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
 describe('Queries', function () {
   let vault: Vault;
   let router: Router;
+  let factory: PoolFactoryMock;
   let pool: ERC20PoolMock;
   let DAI: ERC20TestToken;
   let USDC: ERC20TestToken;
@@ -44,8 +46,12 @@ describe('Queries', function () {
     const tokenAddresses = sortAddresses([await DAI.getAddress(), await USDC.getAddress()]);
 
     pool = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool', 'POOL', buildTokenConfig(tokenAddresses), true, 365 * 24 * 3600, ZERO_ADDRESS],
+      args: [vaultAddress, 'Pool', 'POOL'],
     });
+
+    factory = await deploy('PoolFactoryMock', { args: [vaultAddress, 12 * MONTH] });
+
+    await factory.registerTestPool(pool, buildTokenConfig([await DAI.getAddress(), await USDC.getAddress()]));
 
     await USDC.mint(alice, 2n * USDC_AMOUNT_IN);
     await DAI.mint(alice, 2n * DAI_AMOUNT_IN);
@@ -92,6 +98,21 @@ describe('Queries', function () {
     it('reverts if not a static call (exact out)', async () => {
       await expect(
         router.querySwapSingleTokenExactOut.staticCall(pool, USDC, DAI, DAI_AMOUNT_OUT, '0x')
+      ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
+    });
+  });
+
+  describe('addLiquidityProportional', () => {
+    it('queries addLiquidityProportional correctly', async () => {
+      const amountsIn = await router
+        .connect(zero)
+        .queryAddLiquidityProportional.staticCall(pool, [DAI_AMOUNT_IN, USDC_AMOUNT_IN], BPT_AMOUNT, '0x');
+      expect(amountsIn).to.be.deep.eq([DAI_AMOUNT_IN, USDC_AMOUNT_IN]);
+    });
+
+    it('reverts if not a static call', async () => {
+      await expect(
+        router.queryAddLiquidityProportional.staticCall(pool, [DAI_AMOUNT_IN, USDC_AMOUNT_IN], BPT_AMOUNT, '0x')
       ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
     });
   });

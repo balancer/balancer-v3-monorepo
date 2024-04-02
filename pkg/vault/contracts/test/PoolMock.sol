@@ -51,31 +51,8 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     // Amounts in are multiplied by the multiplier, amounts out are divided by it
     uint256 private _multiplier = FixedPoint.ONE;
 
-    function _hasDynamicSwapFee() internal pure virtual returns (bool) {
-        return false;
-    }
-
-    constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
-        TokenConfig[] memory tokenConfig,
-        bool registerPool,
-        uint256 pauseWindowDuration,
-        address pauseManager
-    ) BalancerPoolToken(vault, name, symbol) {
-        if (registerPool) {
-            PoolFactoryMock factory = new PoolFactoryMock(vault, pauseWindowDuration);
-
-            factory.registerPool(
-                address(this),
-                tokenConfig,
-                pauseManager,
-                PoolConfigBits.wrap(0).toPoolConfig().hooks,
-                PoolConfigBits.wrap(bytes32(type(uint256).max)).toPoolConfig().liquidityManagement,
-                _hasDynamicSwapFee()
-            );
-        }
+    constructor(IVault vault, string memory name, string memory symbol) BalancerPoolToken(vault, name, symbol) {
+        // solhint-previous-line no-empty-blocks
     }
 
     function computeInvariant(uint256[] memory balances) public pure returns (uint256) {
