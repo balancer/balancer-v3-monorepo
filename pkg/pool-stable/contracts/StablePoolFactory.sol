@@ -39,6 +39,7 @@ contract StablePoolFactory is BasePoolFactory {
         string memory symbol,
         TokenConfig[] memory tokens,
         uint256 amplificationParameter,
+        uint256 swapFeePercentage,
         bytes32 salt
     ) external returns (address pool) {
         pool = _create(
@@ -56,6 +57,7 @@ contract StablePoolFactory is BasePoolFactory {
         getVault().registerPool(
             pool,
             tokens,
+            swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
             address(0), // no pause manager
             PoolHooks({
@@ -68,7 +70,11 @@ contract StablePoolFactory is BasePoolFactory {
                 shouldCallBeforeSwap: false,
                 shouldCallAfterSwap: false
             }),
-            LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false })
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: false,
+                enableRemoveLiquidityCustom: false
+            })
         );
 
         _registerPoolWithFactory(pool);

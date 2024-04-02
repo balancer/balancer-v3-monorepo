@@ -8,6 +8,7 @@ type SolcConfig = {
       enabled: boolean;
       runs?: number;
     };
+    evmVersion: string;
   };
 };
 
@@ -19,6 +20,7 @@ export const compilers: [SolcConfig] = [
         enabled: true,
         runs: 9999,
       },
+      evmVersion: 'cancun',
     },
   },
 ];
@@ -53,6 +55,8 @@ export const warnings = {
     'code-size': 'warn' as WarningRule,
     'unused-param': 'warn' as WarningRule,
     'shadowing-opcode': 'off' as WarningRule,
+    'transient-storage': 'off' as WarningRule,
+    'initcode-size': 'off' as WarningRule,
     default: 'error' as WarningRule,
   },
 };
@@ -68,6 +72,7 @@ export const overrides = (packageName: string): Record<string, SolcConfig> => {
           enabled: true,
           runs: contractSettings[contract].runs,
         },
+        evmVersion: 'cancun',
       },
     };
   }

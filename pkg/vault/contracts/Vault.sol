@@ -20,13 +20,17 @@ import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBuffe
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import {
+    TransientStorageHelpers
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
+import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -46,6 +50,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using ScalingHelpers for *;
     using VaultStateLib for VaultStateBits;
     using BufferPackedTokenBalance for bytes32;
+    using TransientStorageHelpers for *;
+    using StorageSlot for StorageSlot.Uint256SlotType;
 
     constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) {
         if (address(vaultExtension.vault()) != address(this)) {
@@ -77,25 +83,21 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      */
     modifier transient() {
         // Add the current locker to the list
-        _lockers.push(msg.sender);
+        _lockers().tPush(msg.sender);
 
         // The caller does everything here and has to settle all outstanding balances
         _;
 
         // Check if it's the last locker
-        if (_lockers.length == 1) {
+        if (_lockers().tLength() == 1) {
             // Ensure all balances are settled
-            if (_nonzeroDeltaCount != 0) revert BalanceNotSettled();
-
-            // Reset the lockers list
-            delete _lockers;
+            if (_nonzeroDeltaCount().tload() != 0) revert BalanceNotSettled();
 
             // Reset the counter
-            delete _nonzeroDeltaCount;
-        } else {
-            // If it's not the last locker, simply remove it from the list
-            _lockers.pop();
+            _nonzeroDeltaCount().tstore(0);
         }
+        // Remove locker from the list (applies to the last one too, which resets the array)
+        _lockers().tPop();
     }
 
     /// @inheritdoc IVaultMain
@@ -598,6 +600,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 bptAmountOut
             );
         } else if (params.kind == AddLiquidityKind.UNBALANCED) {
+            poolData.poolConfig.requireUnbalancedLiquidityEnabled();
+
             amountsInScaled18 = maxAmountsInScaled18;
             (bptAmountOut, swapFeeAmountsScaled18) = BasePoolMath.computeAddLiquidityUnbalanced(
                 poolData.balancesLiveScaled18,
@@ -607,6 +611,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
+            poolData.poolConfig.requireUnbalancedLiquidityEnabled();
+
             bptAmountOut = params.minBptAmountOut;
             vars.tokenIndex = InputHelpers.getSingleInputIndex(maxAmountsInScaled18);
 
@@ -621,7 +627,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     IBasePool(params.pool).computeBalance
                 );
         } else if (params.kind == AddLiquidityKind.CUSTOM) {
-            _poolConfig[params.pool].requireSupportsAddLiquidityCustom();
+            poolData.poolConfig.requireAddCustomLiquidityEnabled();
 
             (amountsInScaled18, bptAmountOut, swapFeeAmountsScaled18, returnData) = IPoolLiquidity(params.pool)
                 .onAddLiquidityCustom(
@@ -817,8 +823,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 bptAmountIn
             );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN) {
+            poolData.poolConfig.requireUnbalancedLiquidityEnabled();
             bptAmountIn = params.maxBptAmountIn;
-
             amountsOutScaled18 = minAmountsOutScaled18;
             vars.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
             (amountsOutScaled18[vars.tokenIndex], swapFeeAmountsScaled18) = BasePoolMath
@@ -831,6 +837,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     IBasePool(params.pool).computeBalance
                 );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
+            poolData.poolConfig.requireUnbalancedLiquidityEnabled();
             amountsOutScaled18 = minAmountsOutScaled18;
             vars.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
 
@@ -843,7 +850,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == RemoveLiquidityKind.CUSTOM) {
-            _poolConfig[params.pool].requireSupportsRemoveLiquidityCustom();
+            poolData.poolConfig.requireRemoveCustomLiquidityEnabled();
             (bptAmountIn, amountsOutScaled18, swapFeeAmountsScaled18, returnData) = IPoolLiquidity(params.pool)
                 .onRemoveLiquidityCustom(
                     params.from,
