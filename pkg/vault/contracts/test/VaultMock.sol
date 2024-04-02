@@ -38,20 +38,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using TransientStorageHelpers for *;
     using StorageSlot for StorageSlot.Uint256SlotType;
 
-    PoolFactoryMock private immutable _poolFactoryMock;
-
-    bytes32 private constant _ALL_BITS_SET = bytes32(type(uint256).max);
-
-    constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) Vault(vaultExtension, authorizer) {
-        _poolFactoryMock = new PoolFactoryMock(
-            IVault(address(this)),
-            _vaultPauseWindowEndTime - _vaultBufferPeriodDuration
-        );
-    }
-
-    function getPoolFactoryMock() external view returns (address) {
-        return address(_poolFactoryMock);
-    }
+    constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) Vault(vaultExtension, authorizer) {}
 
     function burnERC20(address token, address from, uint256 amount) external {
         _burn(token, from, amount);
