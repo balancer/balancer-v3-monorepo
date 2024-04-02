@@ -271,6 +271,9 @@ interface IVaultErrors {
     /// @dev Optional User Data should be empty in the current add / remove liquidity kind.
     error UserDataNotSupported();
 
+    /// @dev Pool does not support adding / removing liquidity with an unbalanced input.
+    error DoesNotSupportUnbalancedLiquidity();
+
     /// @dev The contract should not receive ETH.
     error CannotReceiveEth();
 
