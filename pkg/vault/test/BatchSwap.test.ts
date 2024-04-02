@@ -17,8 +17,6 @@ import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
 describe('BatchSwap', function () {
-  const DEFAULT_ROLE_ACCOUNTS = { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS, poolCreator: ZERO_ADDRESS };
-
   let vault: Vault;
   let factory: PoolFactoryMock;
   let poolA: PoolMock, poolB: PoolMock, poolC: PoolMock;
