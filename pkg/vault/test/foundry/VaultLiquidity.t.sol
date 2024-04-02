@@ -131,7 +131,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     }
 
     function testAddLiquidityCustomDisabled() public {
-        // Disable unbalanced liquidity
+        // Disable add custom liquidity
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
         poolConfig.liquidityManagement.enableAddLiquidityCustom = false;
         vault.manualSetPoolConfig(pool, poolConfig);
@@ -312,7 +312,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     }
 
     function testRemoveLiquidityCustomDisabled() public {
-        // Disable unbalanced liquidity
+        // Disable remove custom liquidity
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
         poolConfig.liquidityManagement.enableRemoveLiquidityCustom = false;
         vault.manualSetPoolConfig(pool, poolConfig);
