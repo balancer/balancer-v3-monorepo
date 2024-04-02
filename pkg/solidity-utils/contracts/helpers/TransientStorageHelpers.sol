@@ -44,7 +44,7 @@ library TransientStorageHelpers {
     function tSub(AddressMappingSlot slot, address key, uint256 value) internal {
         AddressMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(tGet(slot, key) - value);
     }
-    
+
     // Arrays
 
     function tLength(AddressArraySlotType slot) internal view returns (uint256) {
