@@ -27,6 +27,7 @@ import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts
 import { WeightedPoolFactory } from "pool-weighted/contracts/WeightedPoolFactory.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { TokenConfigLib } from "@balancer-labs/v3-vault/contracts/lib/TokenConfigLib.sol";
 
 contract WeightedPoolTest is BaseVaultTest {
     using ArrayHelpers for *;
@@ -55,7 +56,7 @@ contract WeightedPoolTest is BaseVaultTest {
             factory.create(
                 "ERC20 Pool",
                 "ERC20POOL",
-                vault.buildTokenConfig(tokens.asIERC20()),
+                TokenConfigLib.buildTokenConfig(tokens.asIERC20()),
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                 ZERO_BYTES32
             )

@@ -18,6 +18,7 @@ import { FactoryWidePauseWindow } from "../../contracts/factories/FactoryWidePau
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { TokenConfigLib } from "../../contracts/lib/TokenConfigLib.sol";
 
 contract PoolPauseTest is BaseVaultTest {
     using ArrayHelpers for *;
@@ -36,7 +37,7 @@ contract PoolPauseTest is BaseVaultTest {
                 IVault(address(vault)),
                 "ERC20 Pool",
                 "ERC20POOL",
-                vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
+                TokenConfigLib.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
                 true,
                 365 days,
                 admin
@@ -48,7 +49,7 @@ contract PoolPauseTest is BaseVaultTest {
             IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
+            TokenConfigLib.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             true,
             365 days,
             address(0)
@@ -58,7 +59,7 @@ contract PoolPauseTest is BaseVaultTest {
             IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
+            TokenConfigLib.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             true,
             0,
             address(0)
@@ -68,7 +69,7 @@ contract PoolPauseTest is BaseVaultTest {
             IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
+            TokenConfigLib.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             true,
             10000 days,
             address(0)
@@ -93,7 +94,7 @@ contract PoolPauseTest is BaseVaultTest {
         uint256 maxEndTimeTimestamp = type(uint32).max - block.timestamp;
 
         // Have to call separately, or it will be the call the vm expects to revert.
-        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+        TokenConfig[] memory tokenConfig = TokenConfigLib.buildTokenConfig(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
 

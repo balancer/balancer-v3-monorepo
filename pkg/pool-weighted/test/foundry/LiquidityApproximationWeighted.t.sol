@@ -12,6 +12,7 @@ import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
 
 import { LiquidityApproximationTest } from "@balancer-labs/v3-vault/test/foundry/LiquidityApproximation.t.sol";
+import { TokenConfigLib } from "@balancer-labs/v3-vault/contracts/lib/TokenConfigLib.sol";
 
 contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     using ArrayHelpers for *;
@@ -29,7 +30,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
             factory.create(
                 "ERC20 Pool",
                 "ERC20POOL",
-                vault.buildTokenConfig(tokens.asIERC20()),
+                TokenConfigLib.buildTokenConfig(tokens.asIERC20()),
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                 // NOTE: sends a unique salt
                 bytes32(poolCreationNonce++)

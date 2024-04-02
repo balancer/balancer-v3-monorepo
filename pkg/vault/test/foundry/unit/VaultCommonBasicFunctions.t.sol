@@ -13,6 +13,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
 
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
+import { TokenConfigLib } from "../../../contracts/lib/TokenConfigLib.sol";
 
 contract VaultCommonBasicFunctionsTest is BaseVaultTest {
     using PoolConfigLib for PoolConfig;
@@ -46,7 +47,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         tokens[0] = usdc;
         tokens[1] = dai;
         tokens[2] = wsteth;
-        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
+        TokenConfig[] memory tokenConfig = TokenConfigLib.buildTokenConfig(tokens);
         vault.manualSetPoolTokenConfig(pool, tokens, tokenConfig);
         uint256[] memory originalBalancesRaw = new uint256[](3);
         originalBalancesRaw[0] = 1000;
@@ -106,7 +107,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         tokens[0] = usdc;
         tokens[1] = dai;
         tokens[2] = wsteth;
-        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
+        TokenConfig[] memory tokenConfig = TokenConfigLib.buildTokenConfig(tokens);
         vault.manualSetPoolTokenConfig(pool, tokens, tokenConfig);
 
         // decimalScalingFactors depends on balances array (it's used gto calculate number of tokens)
@@ -165,7 +166,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         tokens[0] = usdc;
         tokens[1] = dai;
         tokens[2] = wsteth;
-        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
+        TokenConfig[] memory tokenConfig = TokenConfigLib.buildTokenConfig(tokens);
         vault.manualSetPoolTokenConfig(pool, tokens, tokenConfig);
 
         // decimalScalingFactors depends on balances array (it's used gto calculate number of tokens)

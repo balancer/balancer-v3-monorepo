@@ -27,6 +27,8 @@ import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
 import { PackedTokenBalance } from "../lib/PackedTokenBalance.sol";
 
+import { TokenConfigLib } from "../lib/TokenConfigLib.sol";
+
 contract VaultMock is IVaultMainMock, Vault {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using ScalingHelpers for uint256;
@@ -41,9 +43,10 @@ contract VaultMock is IVaultMainMock, Vault {
     bytes32 private constant _ALL_BITS_SET = bytes32(type(uint256).max);
 
     constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) Vault(vaultExtension, authorizer) {
-        uint256 pauseWindowEndTime = IVaultAdmin(address(vaultExtension)).getPauseWindowEndTime();
-        uint256 bufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
-        _poolFactoryMock = new PoolFactoryMock(IVault(address(this)), pauseWindowEndTime - bufferPeriodDuration);
+        _poolFactoryMock = new PoolFactoryMock(
+            IVault(address(this)),
+            _vaultPauseWindowEndTime - _vaultBufferPeriodDuration
+        );
     }
 
     function getPoolFactoryMock() external view returns (address) {
@@ -60,50 +63,6 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function setConfig(address pool, PoolConfig calldata config) external {
         _poolConfig[pool] = config.fromPoolConfig();
-    }
-
-    // Used for testing pool registration, which is ordinarily done in the pool factory.
-    // The Mock pool has an argument for whether or not to register on deployment. To call register pool
-    // separately, deploy it with the registration flag false, then call this function.
-    function manualRegisterPool(address pool, IERC20[] memory tokens) external whenVaultNotPaused {
-        _poolFactoryMock.registerPool(
-            pool,
-            buildTokenConfig(tokens),
-            address(0),
-            PoolConfigBits.wrap(0).toPoolConfig().hooks,
-            PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
-        );
-    }
-
-    function manualRegisterPoolPassThruTokens(address pool, IERC20[] memory tokens) external {
-        TokenConfig[] memory tokenConfig = new TokenConfig[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
-            tokenConfig[i].token = tokens[i];
-        }
-
-        _poolFactoryMock.registerPool(
-            pool,
-            tokenConfig,
-            address(0),
-            PoolConfigBits.wrap(0).toPoolConfig().hooks,
-            PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
-        );
-    }
-
-    function manualRegisterPoolAtTimestamp(
-        address pool,
-        IERC20[] memory tokens,
-        uint256 timestamp,
-        address pauseManager
-    ) external whenVaultNotPaused {
-        _poolFactoryMock.registerPoolAtTimestamp(
-            pool,
-            buildTokenConfig(tokens),
-            pauseManager,
-            PoolConfigBits.wrap(0).toPoolConfig().hooks,
-            PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement,
-            timestamp
-        );
     }
 
     function manualSetLockers(address[] memory lockers) public {
@@ -200,66 +159,6 @@ contract VaultMock is IVaultMainMock, Vault {
         (tokenConfig, balancesRaw, decimalScalingFactors, poolConfig) = _getPoolTokenInfo(pool);
     }
 
-    function buildTokenConfig(IERC20[] memory tokens) public pure returns (TokenConfig[] memory tokenConfig) {
-        tokenConfig = new TokenConfig[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
-            tokenConfig[i].token = tokens[i];
-        }
-
-        tokenConfig = sortTokenConfig(tokenConfig);
-    }
-
-    function buildTokenConfig(
-        IERC20[] memory tokens,
-        IRateProvider[] memory rateProviders
-    ) public pure returns (TokenConfig[] memory tokenConfig) {
-        tokenConfig = new TokenConfig[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
-            tokenConfig[i].token = tokens[i];
-            tokenConfig[i].rateProvider = rateProviders[i];
-            tokenConfig[i].tokenType = rateProviders[i] == IRateProvider(address(0))
-                ? TokenType.STANDARD
-                : TokenType.WITH_RATE;
-        }
-
-        tokenConfig = sortTokenConfig(tokenConfig);
-    }
-
-    function buildTokenConfig(
-        IERC20[] memory tokens,
-        IRateProvider[] memory rateProviders,
-        bool[] memory yieldFeeFlags
-    ) public pure returns (TokenConfig[] memory tokenConfig) {
-        tokenConfig = new TokenConfig[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
-            tokenConfig[i].token = tokens[i];
-            tokenConfig[i].rateProvider = rateProviders[i];
-            tokenConfig[i].tokenType = rateProviders[i] == IRateProvider(address(0))
-                ? TokenType.STANDARD
-                : TokenType.WITH_RATE;
-            tokenConfig[i].paysYieldFees = yieldFeeFlags[i];
-        }
-
-        tokenConfig = sortTokenConfig(tokenConfig);
-    }
-
-    function buildTokenConfig(
-        IERC20[] memory tokens,
-        TokenType[] memory tokenTypes,
-        IRateProvider[] memory rateProviders,
-        bool[] memory yieldFeeFlags
-    ) public pure returns (TokenConfig[] memory tokenConfig) {
-        tokenConfig = new TokenConfig[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
-            tokenConfig[i].token = tokens[i];
-            tokenConfig[i].tokenType = tokenTypes[i];
-            tokenConfig[i].rateProvider = rateProviders[i];
-            tokenConfig[i].paysYieldFees = yieldFeeFlags[i];
-        }
-
-        tokenConfig = sortTokenConfig(tokenConfig);
-    }
-
     function getDecimalScalingFactors(address pool) external view returns (uint256[] memory) {
         PoolConfig memory config = _poolConfig[pool].toPoolConfig();
         IERC20[] memory tokens = _getPoolTokens(pool);
@@ -347,19 +246,6 @@ contract VaultMock is IVaultMainMock, Vault {
             (, packedBalances) = poolTokenBalances.unchecked_at(i);
             lastLiveBalances[i] = packedBalances.getLastLiveBalanceScaled18();
         }
-    }
-
-    function sortTokenConfig(TokenConfig[] memory tokenConfig) public pure returns (TokenConfig[] memory) {
-        for (uint256 i = 0; i < tokenConfig.length - 1; i++) {
-            for (uint256 j = 0; j < tokenConfig.length - i - 1; j++) {
-                if (tokenConfig[j].token > tokenConfig[j + 1].token) {
-                    // Swap if they're out of order.
-                    (tokenConfig[j], tokenConfig[j + 1]) = (tokenConfig[j + 1], tokenConfig[j]);
-                }
-            }
-        }
-
-        return tokenConfig;
     }
 
     function guardedCheckEntered() external nonReentrant {

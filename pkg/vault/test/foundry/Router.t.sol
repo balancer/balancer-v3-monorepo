@@ -28,6 +28,7 @@ import { VaultExtensionMock } from "../../contracts/test/VaultExtensionMock.sol"
 import { VaultMockDeployer } from "./utils/VaultMockDeployer.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { TokenConfigLib } from "../../contracts/lib/TokenConfigLib.sol";
 
 contract RouterTest is BaseVaultTest {
     using ArrayHelpers for *;
@@ -62,7 +63,7 @@ contract RouterTest is BaseVaultTest {
             IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
+            TokenConfigLib.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             true,
             365 days,
             address(0)
@@ -73,7 +74,7 @@ contract RouterTest is BaseVaultTest {
             IVault(address(vault)),
             "ERC20 weth Pool",
             "ERC20POOL",
-            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
+            TokenConfigLib.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
             true,
             365 days,
             address(0)
@@ -93,7 +94,7 @@ contract RouterTest is BaseVaultTest {
             IVault(address(vault)),
             "ERC20 weth Pool",
             "ERC20POOL",
-            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
+            TokenConfigLib.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
             true,
             365 days,
             address(0)

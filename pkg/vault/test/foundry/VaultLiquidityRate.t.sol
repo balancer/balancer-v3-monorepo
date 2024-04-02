@@ -17,6 +17,7 @@ import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { TokenConfigLib } from "../../contracts/lib/TokenConfigLib.sol";
 
 contract VaultLiquidityWithRatesTest is BaseVaultTest {
     using ArrayHelpers for *;
@@ -44,7 +45,10 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
                     IVault(address(vault)),
                     "ERC20 Pool",
                     "ERC20POOL",
-                    vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
+                    TokenConfigLib.buildTokenConfig(
+                        [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
+                        rateProviders
+                    ),
                     true,
                     365 days,
                     address(0)

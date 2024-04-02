@@ -25,6 +25,7 @@ import { BatchRouter } from "../../../contracts/BatchRouter.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
+import { TokenConfigLib } from "../../../contracts/lib/TokenConfigLib.sol";
 
 import { VaultMockDeployer } from "./VaultMockDeployer.sol";
 
@@ -134,7 +135,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
             IVault(address(vault)),
             "ERC20 Pool",
             "ERC20POOL",
-            vault.buildTokenConfig(tokens.asIERC20()),
+            TokenConfigLib.buildTokenConfig(tokens.asIERC20()),
             true,
             365 days,
             address(0)

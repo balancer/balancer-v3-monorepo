@@ -12,6 +12,7 @@ import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
 
 import { LiquidityApproximationTest } from "@balancer-labs/v3-vault/test/foundry/LiquidityApproximation.t.sol";
+import { TokenConfigLib } from "@balancer-labs/v3-vault/contracts/lib/TokenConfigLib.sol";
 
 contract LiquidityApproximationStableTest is LiquidityApproximationTest {
     using ArrayHelpers for *;
@@ -30,7 +31,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
             factory.create(
                 "ERC20 Pool",
                 "ERC20POOL",
-                vault.buildTokenConfig(tokens.asIERC20()),
+                TokenConfigLib.buildTokenConfig(tokens.asIERC20()),
                 DEFAULT_AMP_FACTOR,
                 ZERO_BYTES32
             )
