@@ -148,7 +148,7 @@ describe('Vault', function () {
         pauseWindowEndTime: pauseWindowEndTime.toString(),
         pauseManager: ANY_ADDRESS,
         hooks: [false, false, false, false, false, false, false, false],
-        liquidityManagement: [true, true],
+        liquidityManagement: [false, true, true],
       };
 
       // Use expectEvent here to prevent errors with structs of arrays with hardhat matchers.
