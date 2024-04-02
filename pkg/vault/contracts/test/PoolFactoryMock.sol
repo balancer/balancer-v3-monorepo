@@ -28,7 +28,11 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             getNewPoolPauseWindowEndTime(),
             address(0),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
-            PoolConfigBits.wrap(bytes32(type(uint256).max)).toPoolConfig().liquidityManagement
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: true,
+                enableRemoveLiquidityCustom: true
+            })
         );
     }
 
@@ -46,7 +50,11 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             block.timestamp + pauseWindowDuration,
             pauseManager,
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
-            PoolConfigBits.wrap(bytes32(type(uint256).max)).toPoolConfig().liquidityManagement
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: true,
+                enableRemoveLiquidityCustom: true
+            })
         );
     }
 
