@@ -1042,7 +1042,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         WrapParams memory params
     ) public withLocker returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountUnderlying) {
         IERC4626 wrappedToken;
-        if (_bufferTokenBalances[params.tokenIn] > 0) {
+        if (params.wrappedToken == params.tokenIn) {
             // tokenIn is wrappedToken, user wants to unwrap
             wrappedToken = IERC4626(address(params.tokenIn));
             (amountCalculated, amountWrapped, amountUnderlying) = _bufferUnwrap(
@@ -1050,7 +1050,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 wrappedToken,
                 params.amountGivenRaw
             );
-        } else if (_bufferTokenBalances[params.tokenOut] > 0) {
+        } else if (params.wrappedToken == params.tokenOut) {
             // tokenOut is wrappedToken, user wants to wrap
             wrappedToken = IERC4626(address(params.tokenOut));
             (amountCalculated, amountWrapped, amountUnderlying) = _bufferWrap(
@@ -1059,7 +1059,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 params.amountGivenRaw
             );
         } else {
-            revert("Buffer does not exist");
+            revert WrongBufferPool();
         }
     }
 

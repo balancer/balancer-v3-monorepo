@@ -210,9 +210,9 @@ contract BufferInsideVaultTest is BaseVaultTest {
         // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waUSDC in the boosted pool,
         // and finally post-swap the waUSDC through the USDC buffer to calculate the USDC amount out.
         // The only token transfers are DAI in (given) and USDC out (calculated).
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(0), tokenOut: waDAI, isBuffer: true });
+        steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
         steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC, isBuffer: false });
-        steps[2] = IBatchRouter.SwapPathStep({ pool: address(0), tokenOut: usdc, isBuffer: true });
+        steps[2] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
 
         paths[0] = IBatchRouter.SwapPathExactAmountIn({
             tokenIn: dai,
@@ -233,9 +233,9 @@ contract BufferInsideVaultTest is BaseVaultTest {
         // Pre-swap through the USDC buffer to get waUSDC, then main swap waUSDC for waDAI in the boosted pool,
         // and finally post-swap the waDAI for DAI through the DAI buffer to calculate the DAI amount in.
         // The only token transfers are DAI in (calculated) and USDC out (given).
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(0), tokenOut: waDAI, isBuffer: true });
+        steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
         steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC, isBuffer: false });
-        steps[2] = IBatchRouter.SwapPathStep({ pool: address(0), tokenOut: usdc, isBuffer: true });
+        steps[2] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
 
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
             tokenIn: dai,

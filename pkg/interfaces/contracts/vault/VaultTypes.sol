@@ -136,12 +136,14 @@ struct SwapParams {
  * @param kind Type of swap (Exact In or Exact Out)
  * @param tokenIn The token entering the Buffer (balance increases)
  * @param tokenOut The token leaving the Buffer (balance decreases)
+ * @param wrappedToken The wrapped token implementation (should be equal to tokenIn or tokenOut)
  * @param amountGiven Amount specified for tokenIn or tokenOut (depending on the type of swap)
  */
 struct WrapParams {
     SwapKind kind;
     IERC20 tokenIn;
     IERC20 tokenOut;
+    IERC20 wrappedToken;
     uint256 amountGivenRaw;
 }
 

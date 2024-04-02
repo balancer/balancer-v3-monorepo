@@ -288,4 +288,7 @@ interface IVaultErrors {
 
     /// @dev The vault admin was configured with an incorrect Vault address.
     error WrongVaultAdminDeployment();
+
+    /// @dev The buffer pool in the swap path is not tokenIn or tokenOut
+    error WrongBufferPool();
 }

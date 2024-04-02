@@ -157,7 +157,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
 
                 SwapPathStep memory step = path.steps[j];
 
-                if (address(stepTokenIn) == step.pool) {
+                if (!step.isBuffer && address(stepTokenIn) == step.pool) {
                     // Token in is BPT: remove liquidity - Single token exact in
 
                     // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
@@ -203,7 +203,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                         // The token in for the next step is the token out of the current step.
                         stepTokenIn = step.tokenOut;
                     }
-                } else if (address(step.tokenOut) == step.pool) {
+                } else if (!step.isBuffer && address(step.tokenOut) == step.pool) {
                     // Token out is BPT: add liquidity - Single token exact in (unbalanced)
                     (uint256[] memory exactAmountsIn, ) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
@@ -246,6 +246,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                                 kind: SwapKind.EXACT_IN,
                                 tokenIn: stepTokenIn,
                                 tokenOut: step.tokenOut,
+                                wrappedToken: IERC20(step.pool),
                                 amountGivenRaw: stepExactAmountIn
                             })
                         );
@@ -377,7 +378,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                     }
                 }
 
-                if (address(stepTokenIn) == step.pool) {
+                if (!step.isBuffer && address(stepTokenIn) == step.pool) {
                     // Token in is BPT: remove liquidity - Single token exact out
 
                     // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
@@ -419,7 +420,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             _vault.takeFrom(stepTokenIn, params.sender, stepMaxAmountIn - bptAmountIn);
                         }
                     }
-                } else if (address(step.tokenOut) == step.pool) {
+                } else if (!step.isBuffer && address(step.tokenOut) == step.pool) {
                     // Token out is BPT: add liquidity - Single token exact out
                     (uint256[] memory stepAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
@@ -469,6 +470,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                                 kind: SwapKind.EXACT_OUT,
                                 tokenIn: stepTokenIn,
                                 tokenOut: step.tokenOut,
+                                wrappedToken: IERC20(step.pool),
                                 amountGivenRaw: stepExactAmountOut
                             })
                         );
