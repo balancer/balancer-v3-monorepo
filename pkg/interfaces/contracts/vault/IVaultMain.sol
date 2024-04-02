@@ -136,6 +136,18 @@ interface IVaultMain {
     function getPoolTokenCountAndIndexOfToken(address pool, IERC20 token) external view returns (uint256, uint256);
 
     /*******************************************************************************
+                            Yield-bearing tokens buffers
+    *******************************************************************************/
+
+    // TODO document
+    function bufferWrapUnwrap(
+        WrapParams memory wrapParams
+    ) external returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut);
+
+    // TODO document
+    function bufferAddLiquidity(IERC4626, uint256, uint256, address) external returns (uint256);
+
+    /*******************************************************************************
                                 Authentication
     *******************************************************************************/
 
@@ -153,12 +165,4 @@ interface IVaultMain {
      * @notice Returns the Vault Extension address.
      */
     function getVaultExtension() external view returns (address);
-
-    /*******************************************************************************
-                            Yield-bearing tokens buffers
-    *******************************************************************************/
-
-    function bufferWrapUnwrap(WrapParams memory) external returns (uint256, uint256, uint256);
-
-    function bufferAddLiquidity(IERC4626, uint256, uint256) external returns (uint256);
 }

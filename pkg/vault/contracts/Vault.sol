@@ -1095,6 +1095,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 ? (underlyingBalance - wrappedBalanceInUnderlying) / 2
                 : 0;
 
+            IERC20(wrappedToken.asset()).approve(
+                address(wrappedToken),
+                amountUnderlying + bufferUnderlyingAmountToWrap
+            );
             uint256 totalAmountWrapped = wrappedToken.deposit(
                 amountUnderlying + bufferUnderlyingAmountToWrap,
                 address(this)
@@ -1171,7 +1175,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function bufferAddLiquidity(
         IERC4626 wrappedToken,
         uint256 amountUnderlying,
-        uint256 amountWrapped
+        uint256 amountWrapped,
+        address sharesOwner
     ) public withLocker returns (uint256 issuedShares) {
         bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
         uint256 amountTotalInUnderlying = wrappedToken.convertToAssets(amountWrapped) + amountUnderlying;
@@ -1180,7 +1185,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         issuedShares = amountTotalInUnderlying;
 
         //TODO: could potentially burn a minimum amount of shares if the supply is 0;
-        _bufferLpShares[IERC20(wrappedToken)][msg.sender] += issuedShares;
+        _bufferLpShares[IERC20(wrappedToken)][sharesOwner] += issuedShares;
         _bufferTotalShares[IERC20(wrappedToken)] += issuedShares;
 
         buffer = buffer.setUnderlyingBalance(buffer.getUnderlyingBalance() + amountUnderlying);

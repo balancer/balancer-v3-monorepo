@@ -22,6 +22,7 @@ import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
 import { PackedTokenBalance } from "../lib/PackedTokenBalance.sol";
+import { BufferPackedTokenBalance } from "../lib/BufferPackedBalance.sol";
 
 contract VaultMock is IVaultMainMock, Vault {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -29,6 +30,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
     using VaultStateLib for VaultState;
+    using BufferPackedTokenBalance for bytes32;
 
     PoolFactoryMock private immutable _poolFactoryMock;
 
@@ -157,6 +159,10 @@ contract VaultMock is IVaultMainMock, Vault {
         for (uint256 i = 0; i < tokens.length; i++) {
             poolTokenBalances.set(tokens[i], bytes32(tokenBalanceRaw[i]));
         }
+    }
+
+    function manualAddReserveOf(IERC20 token, uint256 delta) public {
+        _reservesOf[token] += delta;
     }
 
     function mockWithLocker() public view withLocker {}
@@ -333,6 +339,14 @@ contract VaultMock is IVaultMainMock, Vault {
             (, packedBalances) = poolTokenBalances.unchecked_at(i);
             lastLiveBalances[i] = packedBalances.getLastLiveBalanceScaled18();
         }
+    }
+
+    function getBufferShareOfUser(IERC20 token, address user) external view returns (uint256 shares) {
+        return _bufferLpShares[token][user];
+    }
+
+    function getBufferBalance(IERC20 token) external view returns (uint256, uint256) {
+        return (_bufferTokenBalances[token].getUnderlyingBalance(), _bufferTokenBalances[token].getWrappedBalance());
     }
 
     function sortTokenConfig(TokenConfig[] memory tokenConfig) public pure returns (TokenConfig[] memory) {

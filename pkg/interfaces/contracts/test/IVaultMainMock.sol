@@ -43,6 +43,8 @@ interface IVaultMainMock {
 
     function manualSetPoolTokenBalances(address, IERC20[] memory, uint256[] memory) external;
 
+    function manualAddReserveOf(IERC20, uint256) external;
+
     function mockWithLocker() external view;
 
     function mockWithInitializedPool(address pool) external view;
@@ -69,6 +71,10 @@ interface IVaultMainMock {
     function getCurrentLiveBalances(address pool) external view returns (uint256[] memory currentLiveBalances);
 
     function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances);
+
+    function getBufferShareOfUser(IERC20 wrappedToken, address user) external view returns (uint256);
+
+    function getBufferBalance(IERC20 wrappedToken) external view returns (uint256, uint256);
 
     function sortTokenConfig(TokenConfig[] memory tokenConfig) external pure returns (TokenConfig[] memory);
 

@@ -608,7 +608,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
     function addLiquidityBuffer(
         IERC4626 wrappedToken,
         uint256 amountUnderlying,
-        uint256 amountWrapped
+        uint256 amountWrapped,
+        address sharesOwner
     ) external returns (uint256) {
         return
             abi.decode(
@@ -617,7 +618,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
                         Router.addLiquidityBufferHook.selector,
                         wrappedToken,
                         amountUnderlying,
-                        amountWrapped
+                        amountWrapped,
+                        sharesOwner
                     )
                 ),
                 (uint256)
@@ -627,9 +629,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
     function addLiquidityBufferHook(
         IERC4626 wrappedToken,
         uint256 amountUnderlying,
-        uint256 amountWrapped
+        uint256 amountWrapped,
+        address sharesOwner
     ) external nonReentrant onlyVault returns (uint256) {
-        return _vault.bufferAddLiquidity(wrappedToken, amountUnderlying, amountWrapped);
+        return _vault.bufferAddLiquidity(wrappedToken, amountUnderlying, amountWrapped, sharesOwner);
     }
 
     /*******************************************************************************

@@ -53,8 +53,6 @@ interface IRouter {
         bytes memory userData
     ) external payable returns (uint256 bptAmountOut);
 
-    function addLiquidityBuffer(IERC4626, uint256, uint256) external returns (uint256);
-
     /***************************************************************************
                                    Add Liquidity
     ***************************************************************************/
@@ -152,6 +150,22 @@ interface IRouter {
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
+
+    /**
+     * @notice Adds liquidity to a buffer of yield-bearing tokens (linear pools embedded in the vault).
+     * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
+     * @param amountUnderlying Amount of base tokens that will be deposited into the buffer
+     * @param amountWrapped Amount of wrapped tokens that will be deposited into the buffer
+     * @param sharesOwner Address of contract that will own the deposited liquidity. Only
+     *        this contract will be able to remove liquidity from the buffer
+     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in base token amounts
+     */
+    function addLiquidityBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlying,
+        uint256 amountWrapped,
+        address sharesOwner
+    ) external returns (uint256 issuedShares);
 
     /***************************************************************************
                                  Remove Liquidity
