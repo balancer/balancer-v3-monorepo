@@ -1206,6 +1206,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         withLocker
         returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountUnderlying)
     {
+        // solhint-disable-previous-line no-empty-blocks
         //TODO: removal in proportional only for simplicity
     }
 }
