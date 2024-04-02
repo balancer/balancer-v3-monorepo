@@ -12,6 +12,11 @@ import { PoolFunctionPermission, PoolRoleAccounts } from "@balancer-labs/v3-inte
 
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
+import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import {
+    AddressArraySlotType,
+    NestedAddressMappingSlotType
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
@@ -19,7 +24,7 @@ import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
 // solhint-disable max-states-count
 
 /**
- * @dev Storage layout for Vault. This contract has no code.
+ * @dev Storage layout for Vault. This contract has no code other than a thin abstraction for transient storage slots.
  */
 contract VaultStorage {
     // Minimum BPT amount minted upon initialization.
@@ -57,19 +62,19 @@ contract VaultStorage {
     mapping(address => mapping(IERC20 => TokenConfig)) internal _poolTokenConfig;
 
     /// @notice List of lockers. It is empty except during `lock` calls.
-    address[] internal _lockers;
+    address[] private __lockers;
 
     /**
      * @notice The total number of nonzero deltas over all active + completed lockers.
      * @dev It is non-zero only during `lock` calls.
      */
-    uint256 internal _nonzeroDeltaCount;
+    uint256 private __nonzeroDeltaCount;
 
     /**
      * @notice Represents the token due/owed to each locker.
      * @dev Must all net to zero when the last locker is released.
      */
-    mapping(address => mapping(IERC20 => int256)) internal _tokenDeltas;
+    mapping(address => mapping(IERC20 => int256)) private __tokenDeltas;
 
     /**
      * @notice Represents the total reserve of each ERC20 token.
@@ -102,4 +107,25 @@ contract VaultStorage {
 
     // pool -> PoolRoleAccounts (accounts assigned to specific roles; e.g., pauseManager).
     mapping(address => PoolRoleAccounts) internal _poolRoleAccounts;
+
+    function _lockers() internal pure returns (AddressArraySlotType slot) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            slot := __lockers.slot
+        }
+    }
+
+    function _nonzeroDeltaCount() internal pure returns (StorageSlot.Uint256SlotType slot) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            slot := __nonzeroDeltaCount.slot
+        }
+    }
+
+    function _tokenDeltas() internal pure returns (NestedAddressMappingSlotType slot) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            slot := __tokenDeltas.slot
+        }
+    }
 }

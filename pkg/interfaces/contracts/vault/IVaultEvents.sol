@@ -101,6 +101,12 @@ interface IVaultEvents {
     event ProtocolYieldFeeCharged(address indexed pool, address indexed token, uint256 amount);
 
     /**
+     * @notice Emitted when the swap fee percentage of a pool is updated.
+     * @param swapFeePercentage The new swap fee percentage for the pool
+     */
+    event SwapFeePercentageChanged(address indexed pool, uint256 indexed swapFeePercentage);
+
+    /**
      * @dev Recovery mode has been enabled or disabled for a pool.
      * @param pool The pool
      * @param recoveryMode True if recovery mode was enabled

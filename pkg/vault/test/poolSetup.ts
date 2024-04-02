@@ -1,4 +1,4 @@
-import { deploy } from '@balancer-labs/v3-helpers/src/contract';
+import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
@@ -25,6 +25,8 @@ export async function setupEnvironment(pauseWindowDuration: number): Promise<{
     bufferPeriodDuration: BUFFER_PERIOD_DURATION,
   });
   const vaultAddress = await vault.getAddress();
+  const factoryAddress = await vault.getPoolFactoryMock();
+  const factory = await deployedAt('PoolFactoryMock', factoryAddress);
 
   const tokenA: ERC20TestToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });
   const tokenB: ERC20TestToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token B', 'TKNB', 6] });
@@ -35,30 +37,16 @@ export async function setupEnvironment(pauseWindowDuration: number): Promise<{
   const tokenCAddress = await tokenC.getAddress();
 
   const poolATokens = sortAddresses([tokenAAddress, tokenBAddress, tokenCAddress]);
-  const poolBTokens = sortAddresses([tokenAAddress, tokenCAddress]);
 
   const poolA: PoolMock = await deploy('v3-vault/PoolMock', {
-    args: [
-      vaultAddress,
-      'Pool A',
-      'POOLA',
-      buildTokenConfig(poolATokens),
-      { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS, poolCreator: ZERO_ADDRESS },
-      true,
-      365 * 24 * 3600,
-    ],
+    args: [vaultAddress, 'Pool A', 'POOLA'],
   });
 
+  await factory.registerTestPool(poolA, buildTokenConfig(poolATokens));
+
+  // Don't register PoolB.
   const poolB: PoolMock = await deploy('v3-vault/PoolMock', {
-    args: [
-      vaultAddress,
-      'Pool B',
-      'POOLB',
-      buildTokenConfig(poolBTokens),
-      { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS, poolCreator: ZERO_ADDRESS },
-      false,
-      365 * 24 * 3600,
-    ],
+    args: [vaultAddress, 'Pool B', 'POOLB'],
   });
 
   return { vault: await TypesConverter.toIVaultMock(vault), tokens: [tokenA, tokenB, tokenC], pools: [poolA, poolB] };

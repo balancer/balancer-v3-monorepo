@@ -8,14 +8,15 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { FactoryWidePauseWindow } from "../../contracts/factories/FactoryWidePauseWindow.sol";
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
+import { PoolConfigBits, PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -31,48 +32,38 @@ contract PoolPauseTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        pool = address(
-            new PoolMock(
-                IVault(address(vault)),
-                "ERC20 Pool",
-                "ERC20POOL",
-                vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-                PoolRoleAccounts({ pauseManager: admin, swapFeeManager: address(0), poolCreator: address(0) }),
-                true,
-                365 days
-            )
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
+
+        PoolRoleAccounts memory defaultRoleAccounts = PoolRoleAccounts({
+            pauseManager: address(0),
+            swapFeeManager: address(0),
+            poolCreator: address(0)
+        });
+
+        PoolRoleAccounts memory adminRoleAccounts = PoolRoleAccounts({
+            pauseManager: admin,
+            swapFeeManager: address(0),
+            poolCreator: address(0)
+        });
+
+        pool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+
+        factoryMock.registerGeneralTestPool(address(pool), tokenConfig, 0, 365 days, adminRoleAccounts);
 
         // Pass zero for the pause manager
-        unmanagedPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            getDefaultPoolRoleAccounts(),
-            true,
-            365 days
-        );
+        unmanagedPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
 
-        permissionlessPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            getDefaultPoolRoleAccounts(),
-            true,
-            0
-        );
+        factoryMock.registerGeneralTestPool(address(unmanagedPool), tokenConfig, 0, 365 days, defaultRoleAccounts);
 
-        infinityPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            getDefaultPoolRoleAccounts(),
-            true,
-            10000 days
-        );
+        permissionlessPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+
+        factoryMock.registerGeneralTestPool(address(permissionlessPool), tokenConfig, 0, 0, defaultRoleAccounts);
+
+        infinityPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+
+        factoryMock.registerGeneralTestPool(address(infinityPool), tokenConfig, 0, 10000 days, defaultRoleAccounts);
 
         factory = new PoolFactoryMock(IVault(address(vault)), 365 days);
     }
@@ -94,23 +85,10 @@ contract PoolPauseTest is BaseVaultTest {
     }
 
     function testInvalidDuration() public {
-        uint256 maxEndTimeTimestamp = type(uint32).max - block.timestamp;
-
-        // Have to call separately, or it will be the call the vm expects to revert.
-        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
-            [address(dai), address(usdc)].toMemoryArray().asIERC20()
-        );
+        uint256 maxDuration = type(uint32).max - block.timestamp;
 
         vm.expectRevert(FactoryWidePauseWindow.PoolPauseWindowDurationOverflow.selector);
-        new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
-            tokenConfig,
-            getDefaultPoolRoleAccounts(),
-            true,
-            maxEndTimeTimestamp + 1
-        );
+        new PoolFactoryMock(vault, maxDuration + 1);
     }
 
     function testHasPauseManager() public {
