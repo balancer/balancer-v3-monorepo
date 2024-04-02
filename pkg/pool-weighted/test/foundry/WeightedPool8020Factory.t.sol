@@ -9,8 +9,10 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { TokenConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+
 import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
+import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 
@@ -18,6 +20,8 @@ import { WeightedPool8020Factory } from "../../contracts/WeightedPool8020Factory
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
 
 contract WeightedPool8020FactoryTest is Test {
+    uint256 internal DEFAULT_SWAP_FEE = 1e16; // 1%
+
     VaultMock vault;
     WeightedPool8020Factory factory;
     RateProviderMock rateProvider;
@@ -45,7 +49,7 @@ contract WeightedPool8020FactoryTest is Test {
         tokens[1].token = tokenB;
         tokens[0].rateProvider = rateProvider;
 
-        WeightedPool pool = WeightedPool(factory.create(tokens[0], tokens[1]));
+        WeightedPool pool = WeightedPool(factory.create(tokens[0], tokens[1], DEFAULT_SWAP_FEE));
         address expectedPoolAddress = factory.getPool(tokenA, tokenB);
 
         bytes32 salt = keccak256(abi.encode(block.chainid, tokenA, tokenB));
@@ -59,10 +63,9 @@ contract WeightedPool8020FactoryTest is Test {
         TokenConfig[] memory tokens = new TokenConfig[](2);
         tokens[0].token = tokenA;
         tokens[1].token = tokenB;
-        uint256 highWeightIdx = tokenA > tokenB ? 1 : 0;
-        uint256 lowWeightIdx = highWeightIdx == 0 ? 1 : 0;
+        (uint256 highWeightIdx, uint256 lowWeightIdx) = tokenA > tokenB ? (1, 0) : (0, 1);
 
-        WeightedPool pool = WeightedPool(factory.create(tokens[0], tokens[1]));
+        WeightedPool pool = WeightedPool(factory.create(tokens[0], tokens[1], DEFAULT_SWAP_FEE));
 
         uint256[] memory poolWeights = pool.getNormalizedWeights();
         assertEq(poolWeights[highWeightIdx], 8e17, "Higher weight token is not 80%");
@@ -79,8 +82,8 @@ contract WeightedPool8020FactoryTest is Test {
         tokens[0].token = highWeightToken;
         tokens[1].token = lowWeightToken;
 
-        WeightedPool pool = WeightedPool(factory.create(tokens[0], tokens[1]));
-        WeightedPool invertedPool = WeightedPool(factory.create(tokens[1], tokens[0]));
+        WeightedPool pool = WeightedPool(factory.create(tokens[0], tokens[1], DEFAULT_SWAP_FEE));
+        WeightedPool invertedPool = WeightedPool(factory.create(tokens[1], tokens[0], DEFAULT_SWAP_FEE));
 
         assertFalse(
             address(pool) == address(invertedPool),
@@ -96,10 +99,10 @@ contract WeightedPool8020FactoryTest is Test {
         tokens[0].token = highWeightToken;
         tokens[1].token = lowWeightToken;
 
-        WeightedPool(factory.create(tokens[0], tokens[1]));
+        WeightedPool(factory.create(tokens[0], tokens[1], DEFAULT_SWAP_FEE));
 
         vm.expectRevert("DEPLOYMENT_FAILED");
-        WeightedPool(factory.create(tokens[0], tokens[1]));
+        WeightedPool(factory.create(tokens[0], tokens[1], DEFAULT_SWAP_FEE));
 
         tokens[0].rateProvider = IRateProvider(address(1));
         tokens[0].tokenType = TokenType.WITH_RATE;
@@ -108,7 +111,7 @@ contract WeightedPool8020FactoryTest is Test {
 
         // Trying to create the same pool with same tokens but different token configs should revert
         vm.expectRevert("DEPLOYMENT_FAILED");
-        WeightedPool(factory.create(tokens[0], tokens[1]));
+        WeightedPool(factory.create(tokens[0], tokens[1], DEFAULT_SWAP_FEE));
     }
 
     /// forge-config: default.fuzz.runs = 10
@@ -121,12 +124,12 @@ contract WeightedPool8020FactoryTest is Test {
         tokens[0].rateProvider = rateProvider;
 
         vm.prank(alice);
-        WeightedPool poolMainnet = WeightedPool(factory.create(tokens[0], tokens[1]));
+        WeightedPool poolMainnet = WeightedPool(factory.create(tokens[0], tokens[1], DEFAULT_SWAP_FEE));
 
         vm.chainId(chainId);
 
         vm.prank(alice);
-        WeightedPool poolL2 = WeightedPool(factory.create(tokens[0], tokens[1]));
+        WeightedPool poolL2 = WeightedPool(factory.create(tokens[0], tokens[1], DEFAULT_SWAP_FEE));
 
         // Same salt parameters, should still be different because of the chainId.
         assertFalse(address(poolL2) == address(poolMainnet), "L2 and mainnet pool addresses are equal");

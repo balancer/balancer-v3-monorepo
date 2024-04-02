@@ -131,12 +131,6 @@ interface IVaultAdmin {
     function setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) external;
 
     /**
-     * @notice Emitted when the swap fee percentage of a pool is updated.
-     * @param swapFeePercentage The new swap fee percentage for the pool
-     */
-    event SwapFeePercentageChanged(address indexed pool, uint256 indexed swapFeePercentage);
-
-    /**
      * @notice Collects accumulated protocol fees for the specified array of tokens.
      * @dev Fees are sent to msg.sender.
      * @param tokens An array of token addresses for which the fees should be collected

@@ -33,6 +33,7 @@ contract WeightedPoolFactory is BasePoolFactory {
      * @param symbol The symbol of the pool
      * @param tokens An array of descriptors for the tokens the pool will manage
      * @param normalizedWeights The pool weights (must add to FixedPoint.ONE)
+     * @param swapFeePercentage Initial swap fee percentage
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
@@ -40,6 +41,7 @@ contract WeightedPoolFactory is BasePoolFactory {
         string memory symbol,
         TokenConfig[] memory tokens,
         uint256[] memory normalizedWeights,
+        uint256 swapFeePercentage,
         bytes32 salt
     ) external returns (address pool) {
         pool = _create(
@@ -58,6 +60,7 @@ contract WeightedPoolFactory is BasePoolFactory {
         getVault().registerPool(
             pool,
             tokens,
+            swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
             address(0), // no pause manager
             PoolHooks({
@@ -70,7 +73,11 @@ contract WeightedPoolFactory is BasePoolFactory {
                 shouldCallBeforeSwap: false,
                 shouldCallAfterSwap: false
             }),
-            LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false })
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: false,
+                enableRemoveLiquidityCustom: false
+            })
         );
 
         _registerPoolWithFactory(pool);

@@ -159,11 +159,12 @@ contract RecoveryModeTest is BaseVaultTest {
         require(vault.isVaultPaused(), "Vault should be paused initially");
         require(vault.isPoolPaused(pool) == false, "Pool should not be paused initially");
 
-        // Enter the permissionless period of the Vault.
-        skip(500 days);
+        uint256 bufferPeriodEndTime = vault.getBufferPeriodEndTime();
+
+        // Ensure we are in the permissionless period of the Vault.
+        skip(bufferPeriodEndTime);
 
         // Confirm the Vault is permissionless
-        uint256 bufferPeriodEndTime = vault.getBufferPeriodEndTime();
         assertTrue(block.timestamp > bufferPeriodEndTime, "Time should be after the bufferPeriodEndTime");
 
         // Recovery Mode is permissioned even though the Vault's pause bit is set, because it's no longer pausable.
@@ -191,11 +192,13 @@ contract RecoveryModeTest is BaseVaultTest {
         assertTrue(vault.isPoolPaused(pool), "Pool should be paused");
         assertFalse(vault.isPoolInRecoveryMode(pool), "Pool should not be in Recovery Mode after pausing");
 
-        // Enter the permissionless period of the Pool.
-        skip(500 days);
+        // Ensure we are in the permissionless period of the Pool.
+        (, , uint256 bufferPeriodEndTime, ) = vault.getPoolPausedState(pool);
+
+        // Going too far can make the 32-bit timestamp overflow.
+        skip(bufferPeriodEndTime - block.timestamp + 1);
 
         // Confirm the Pool is permissionless
-        (, , uint256 bufferPeriodEndTime, ) = vault.getPoolPausedState(pool);
         assertTrue(block.timestamp > bufferPeriodEndTime, "Time should be after Pool's buffer period end time");
 
         // Recovery Mode is permissioned even though the Pool's pause bit is set, because it's no longer pausable.
