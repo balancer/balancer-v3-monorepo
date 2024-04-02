@@ -102,8 +102,6 @@ contract VaultLiquidityTest is BaseVaultTest {
     }
 
     function testAddLiquiditySingleTokenExactOutDisabled() public {
-        uint256 bptAmountOut = defaultAmount;
-
         // Disable unbalanced liquidity
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
         poolConfig.liquidityManagement.disableUnbalancedLiquidity = true;
@@ -111,7 +109,7 @@ contract VaultLiquidityTest is BaseVaultTest {
 
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector));
-        router.addLiquiditySingleTokenExactOut(address(pool), dai, defaultAmount, bptAmountOut, false, bytes(""));
+        router.addLiquiditySingleTokenExactOut(address(pool), dai, defaultAmount, defaultAmount, false, bytes(""));
     }
 
     function addLiquidityCustom() public returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
