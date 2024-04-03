@@ -39,44 +39,27 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
             limit += limit / 100;
         }
 
-        getVault().lock(
-            abi.encodeWithSelector(
-                ERC4626BufferPoolMock.unbalanceHook.selector,
-                VaultSwapParams({
-                    kind: kind,
-                    pool: address(this),
-                    tokenIn: tokens[indexIn],
-                    tokenOut: tokens[indexOut],
-                    amountGivenRaw: assetsToTransferRaw,
-                    limitRaw: limit,
-                    userData: ""
-                })
-            )
-        );
-    }
+        // (, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
-    function unbalanceHook(VaultSwapParams calldata params) external onlyVault {
-        (, uint256 amountIn, uint256 amountOut) = _swapHook(params);
+        // IERC20 underlyingToken;
+        // IERC20 wrappedToken;
+        // if (params.kind == SwapKind.EXACT_IN) {
+        //     underlyingToken = params.tokenIn;
+        //     wrappedToken = params.tokenOut;
 
-        IERC20 underlyingToken;
-        IERC20 wrappedToken;
-        if (params.kind == SwapKind.EXACT_IN) {
-            underlyingToken = params.tokenIn;
-            wrappedToken = params.tokenOut;
+        //     getVault().sendTo(wrappedToken, address(this), amountOut);
+        //     IERC4626(address(wrappedToken)).withdraw(amountIn, address(this), address(this));
+        //     underlyingToken.safeTransfer(address(getVault()), amountIn);
+        //     getVault().settle(underlyingToken);
+        // } else {
+        //     underlyingToken = params.tokenOut;
+        //     wrappedToken = params.tokenIn;
 
-            getVault().sendTo(wrappedToken, address(this), amountOut);
-            IERC4626(address(wrappedToken)).withdraw(amountIn, address(this), address(this));
-            underlyingToken.safeTransfer(address(getVault()), amountIn);
-            getVault().settle(underlyingToken);
-        } else {
-            underlyingToken = params.tokenOut;
-            wrappedToken = params.tokenIn;
-
-            getVault().sendTo(underlyingToken, address(this), amountOut);
-            underlyingToken.approve(address(wrappedToken), amountOut);
-            IERC4626(address(wrappedToken)).deposit(amountOut, address(this));
-            wrappedToken.safeTransfer(address(getVault()), amountIn);
-            getVault().settle(wrappedToken);
-        }
+        //     getVault().sendTo(underlyingToken, address(this), amountOut);
+        //     underlyingToken.approve(address(wrappedToken), amountOut);
+        //     IERC4626(address(wrappedToken)).deposit(amountOut, address(this));
+        //     wrappedToken.safeTransfer(address(getVault()), amountIn);
+        //     getVault().settle(wrappedToken);
+        // }
     }
 }

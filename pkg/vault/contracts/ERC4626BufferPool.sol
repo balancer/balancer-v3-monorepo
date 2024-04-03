@@ -28,6 +28,12 @@ import { BasePoolAuthentication } from "./BasePoolAuthentication.sol";
 import { BalancerPoolToken } from "./BalancerPoolToken.sol";
 import { BasePoolHooks } from "./BasePoolHooks.sol";
 
+interface VaultV2 {
+    function wrapERC4626(IERC4626 wrappedToken, uint256 wrappedAmount) external returns (uint256 paid);
+    function unwrapERC4626(IERC4626 wrappedToken, uint256 wrappedAmount) external returns (uint256 paid);
+
+}
+
 /// @notice ERC4626 Buffer Pool, designed to be used to facilitate swaps with ERC4626 tokens in standard pools.
 contract ERC4626BufferPool is
     IBasePool,
@@ -134,11 +140,6 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc BasePoolHooks
     function onBeforeSwap(IBasePool.PoolSwapParams calldata params) external override onlyVault returns (bool) {
-        // Short-circuit if we're already inside an `onBeforeSwap` hook.
-        if (_inSwapContext) {
-            return true;
-        }
-
         // Ensure we have enough liquidity to accommodate the trade. Since these pools use Linear Math in the swap
         // context, we can use amountGiven as the trade amount, and assume amountCalculated = amountGiven.
 
@@ -211,44 +212,8 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IBasePool
     function onSwap(IBasePool.PoolSwapParams memory request) public view onlyVault returns (uint256) {
-        // If onSwap was triggered by the rebalance function, use the rate (expensive, but more precise)
-        // Since the rebalance function is the only one marked non-reentrant, we can use that guard directly.
-        // Note that this ReentrancyGuard is local to the pool, not related to the Vault's separate ReentrancyGuard.
-        // NB: If this ever changes, we would need to create another modifier on the rebalance function and check that.
-        if (_reentrancyGuardEntered()) {
-            // Rate used by the vault to scale values
-            uint256 wrappedRate = _getRate();
-
-            uint256 sharesRaw = request.amountGivenScaled18.divDown(wrappedRate).divDown(_wrappedTokenScalingFactor);
-
-            uint256 assetsRaw;
-            if (request.kind == SwapKind.EXACT_IN) {
-                // Adds DUST_BUFFER to the amount of assets to make sure we return fewer wrapped tokens than we
-                // obtained from amountIn. Since the buffer will unwrap less than amountIn, this contract
-                // must be funded with enough base tokens to make up the difference.
-                assetsRaw = _wrappedToken.previewRedeem(sharesRaw) + DUST_BUFFER;
-            } else {
-                // Subtract DUST_BUFFER-1 (due to rounding direction, we need to remove 1 from DUST_BUFFER)
-                // from the amount of assets to make sure we return more wrapped than we obtained from amountOut.
-                // Since the buffer will wrap more assets than amountOut, this contract must be funded with enough
-                // base tokens to make up the difference.
-                assetsRaw = _wrappedToken.previewRedeem(sharesRaw) - DUST_BUFFER + 1;
-            }
-            uint256 preciseAssetsScaled18 = assetsRaw.mulDown(_wrappedTokenScalingFactor);
-
-            // amountGivenScaled18 has some imprecision when calculating the rate (we store only 18 decimals of rate,
-            // therefore it's less precise than using preview or convertToAssets directly).
-            // So, we need to return the linear math value (amountGivenScaled18), but add the error introduced by
-            // the rate difference, which is calculated by (amountGivenScaled18 - preciseAssetsScaled18), i.e.:
-            //
-            // amountGivenScaled18 + (error)
-            //
-            //     where error is (amountGivenScaled18 - preciseAssetsScaled18)
-            return 2 * request.amountGivenScaled18 - preciseAssetsScaled18;
-        } else {
-            // If onSwap wasn't triggered by the rebalance function, use linear math
-            return request.amountGivenScaled18;
-        }
+        // Use linear math
+        return request.amountGivenScaled18;
     }
 
     /// @inheritdoc IBasePool
@@ -300,124 +265,13 @@ contract ERC4626BufferPool is
             unchecked {
                 exchangeAmountRaw = desiredBaseAssetsRaw - balanceBaseAssetsRaw;
             }
-            _rebalanceInternal(vault, poolAddress, tokens, exchangeAmountRaw, SwapKind.EXACT_IN);
+            VaultV2(address(vault)).unwrapERC4626(IERC4626(address(tokens[_wrappedTokenIndex])), exchangeAmountRaw);
         } else {
             unchecked {
                 exchangeAmountRaw = balanceBaseAssetsRaw - desiredBaseAssetsRaw;
             }
-
-            _rebalanceInternal(vault, poolAddress, tokens, exchangeAmountRaw, SwapKind.EXACT_OUT);
+            VaultV2(address(vault)).wrapERC4626(IERC4626(address(tokens[_wrappedTokenIndex])), exchangeAmountRaw);
         }
-    }
-
-    /**
-     * @dev Shift the balances in a given direction (on an external rebalance, to the equal value point).
-     * ExactIn unwraps wrapped and deposits more base tokens: shifts balance from wrapped to base.
-     * ExactOut does the opposite: wraps base tokens and deposits more wrapped: shifts balances from base to wrapped.
-     * `exchangeAmountRaw` should be in raw base decimals.
-     */
-    function _rebalanceInternal(
-        IVault vault,
-        address poolAddress,
-        IERC20[] memory tokens,
-        uint256 exchangeAmountRaw,
-        SwapKind kind
-    ) private {
-        uint256 limitRaw;
-        if (kind == SwapKind.EXACT_IN) {
-            // Since onSwap will consider a slightly bigger rate for the wrapped token, we need to account that
-            // in the minimum limit of amountOut calculation, and that's why (exchangeAmountRaw - 2) is converted.
-            // Also, since the unwrap operation has RoundDown divisions, DUST_BUFFER needs to be subtracted
-            // from amountOut too
-            limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw - DUST_BUFFER) - DUST_BUFFER;
-
-            // In this case, since there is more wrapped than base assets, wrapped tokens will be removed (tokenOut)
-            // and then unwrapped, and the resulting base assets will be deposited in the pool (tokenIn).
-            vault.lock(
-                abi.encodeWithSelector(
-                    ERC4626BufferPool.rebalanceHook.selector,
-                    SwapParams({
-                        kind: SwapKind.EXACT_IN,
-                        pool: poolAddress,
-                        tokenIn: tokens[_baseTokenIndex],
-                        tokenOut: tokens[_wrappedTokenIndex],
-                        amountGivenRaw: exchangeAmountRaw,
-                        limitRaw: limitRaw,
-                        userData: ""
-                    })
-                )
-            );
-        } else {
-            // Since onSwap will consider a slightly bigger rate for the wrapped token, we need to account that
-            // in the maximum limit of amountIn calculation, and that's why (exchangeAmountRaw + 2) is converted.
-            // Also, since the wrap operation has RoundDown divisions, DUST_BUFFER needs to be added
-            // to amountIn too
-            limitRaw = _wrappedToken.convertToShares(exchangeAmountRaw + DUST_BUFFER) + DUST_BUFFER;
-
-            // In this case, since there is more base than wrapped assets, base assets will be removed (tokenOut)
-            // and then wrapped, and the resulting wrapped assets will be deposited in the pool (tokenIn).
-            vault.lock(
-                abi.encodeWithSelector(
-                    ERC4626BufferPool.rebalanceHook.selector,
-                    SwapParams({
-                        kind: SwapKind.EXACT_OUT,
-                        pool: poolAddress,
-                        tokenIn: tokens[_wrappedTokenIndex],
-                        tokenOut: tokens[_baseTokenIndex],
-                        amountGivenRaw: exchangeAmountRaw,
-                        limitRaw: limitRaw,
-                        userData: ""
-                    })
-                )
-            );
-        }
-    }
-
-    function rebalanceHook(SwapParams calldata params) external payable onlyVault {
-        IVault vault = getVault();
-
-        (, uint256 amountIn, uint256 amountOut) = _swapHook(params);
-
-        IERC20 baseToken;
-        IERC20 wrappedToken;
-
-        if (params.kind == SwapKind.EXACT_IN) {
-            baseToken = params.tokenIn;
-            wrappedToken = params.tokenOut;
-
-            vault.sendTo(wrappedToken, address(this), amountOut);
-            // Using redeem, instead of withdraw, to pass the amount of shares (amountOut) instead of the
-            // amount of assets. That's because amount of shares is an output of onSwap, so we make sure
-            // the buffer contract will never have a different balance of wrapped tokens after the rebalance
-            // occurs
-            IERC4626(address(wrappedToken)).redeem(amountOut, address(this), address(this));
-            // The explicit transfer is needed, because onSwap considers a slightly larger rate for the wrapped token,
-            // so the redeem function returns a bit less assets than amountIn
-            baseToken.safeTransfer(address(vault), amountIn);
-            vault.settle(baseToken);
-        } else {
-            baseToken = params.tokenOut;
-            wrappedToken = params.tokenIn;
-            // Since the rate used by onSwap is a bit larger than the real rate, the mint operation
-            // will take more assets than amountOut. So, we need to recalculate the amount of assets
-            // taken to approve the exact amount that will be minted
-            uint256 preciseAmountOut = IERC4626(address(wrappedToken)).previewMint(amountIn);
-
-            vault.sendTo(baseToken, address(this), amountOut);
-            baseToken.approve(address(wrappedToken), preciseAmountOut);
-            // Using mint, instead of deposit, to pass the amount of shares (amountIn) instead of the
-            // amount of assets. That's because amount of shares is an output of onSwap, so we make sure
-            // the buffer contract will never have a different balance of wrapped tokens after the rebalance
-            // occurs
-            IERC4626(address(wrappedToken)).mint(amountIn, address(vault));
-            vault.settle(wrappedToken);
-        }
-    }
-
-    function _swapHook(
-        SwapParams calldata params
-    ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
-        (amountCalculated, amountIn, amountOut) = getVault().swap(params);
     }
 
     function _isBufferPoolBalanced(uint256[] memory balancesScaled18) private view returns (bool) {

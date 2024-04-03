@@ -38,6 +38,11 @@ import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 import { BufferPackedTokenBalance } from "./lib/BufferPackedBalance.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 
+interface ERC4626BufferPool {
+    function getWrappedTokenIndex() external view returns (uint256);
+    function getBaseTokenIndex() external view returns (uint256);
+}
+
 contract Vault is IVaultMain, VaultCommon, Proxy {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using PackedTokenBalance for bytes32;
@@ -129,6 +134,65 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _reservesOf[token] += amount;
 
         token.safeTransferFrom(from, address(this), amount);
+    }
+
+    function wrapERC4626(IERC4626 wrappedToken, uint256 baseInAmount) public /* nonReentrant withLocker */ returns (uint256 wrappedOutAmount) {
+            ERC4626BufferPool bufferPool = ERC4626BufferPool(address(msg.sender));
+            IERC20 baseToken = IERC20(wrappedToken.asset());
+
+            uint256 baseReservesBefore = _reservesOf[baseToken];
+            uint256 wrappedReservesBefore = _reservesOf[wrappedToken];
+            baseToken.approve(address(wrappedToken), baseInAmount);
+            wrappedToken.deposit(baseInAmount, address(this));
+
+            _reservesOf[wrappedToken] = wrappedToken.balanceOf(address(this));
+            _reservesOf[baseToken] = baseToken.balanceOf(address(this));
+
+            wrappedOutAmount = _reservesOf[wrappedToken] - wrappedReservesBefore;
+            require(baseReservesBefore - _reservesOf[baseToken] == baseInAmount, "WRAP_AMOUNT_MISMATCH");
+    
+            PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
+                address(bufferPool),
+                Rounding.ROUND_DOWN,
+                0
+            );
+
+            uint256 wrappedTokenIndex = bufferPool.getWrappedTokenIndex();
+            uint256 baseTokenIndex = bufferPool.getBaseTokenIndex();
+
+            poolData.balancesRaw[wrappedTokenIndex] += wrappedOutAmount;
+            poolData.balancesRaw[baseTokenIndex] -= baseInAmount;
+
+            _setPoolBalances(address(wrappedToken), poolData);
+    }
+
+    function unwrapERC4626(IERC4626 wrappedToken, uint256 baseOutAmount) public /* nonReentrant withLocker */ returns (uint256 wrappedInAmount) {
+            ERC4626BufferPool bufferPool = ERC4626BufferPool(address(msg.sender));
+            IERC20 baseToken = IERC20(wrappedToken.asset());
+
+            uint256 baseReservesBefore = _reservesOf[baseToken];
+            uint256 wrappedReservesBefore = _reservesOf[wrappedToken];
+            wrappedToken.withdraw(baseOutAmount, address(this), address(this));
+
+            _reservesOf[wrappedToken] = wrappedToken.balanceOf(address(this));
+            _reservesOf[baseToken] = baseToken.balanceOf(address(this));
+
+            require(_reservesOf[baseToken] - baseReservesBefore == baseOutAmount, "UNWRAP_AMOUNT_MISMATCH");
+            wrappedInAmount = wrappedReservesBefore - _reservesOf[wrappedToken];
+
+            PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
+                address(bufferPool),
+                Rounding.ROUND_DOWN,
+                0
+            );
+
+            uint256 wrappedTokenIndex = bufferPool.getWrappedTokenIndex();
+            uint256 baseTokenIndex = bufferPool.getBaseTokenIndex();
+
+            poolData.balancesRaw[wrappedTokenIndex] -= wrappedInAmount;
+            poolData.balancesRaw[baseTokenIndex] += baseOutAmount;
+
+            _setPoolBalances(address(bufferPool), poolData);
     }
 
     /*******************************************************************************
