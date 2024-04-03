@@ -479,4 +479,13 @@ contract ERC4626BufferPool is
         // Should never get here, but need to implement the interface.
         revert IVaultErrors.OperationNotSupported();
     }
+
+    // Transient Storage
+
+    function _inSwapContext() internal pure returns (StorageSlot.BooleanSlotType slot) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            slot := __inSwapContext.slot
+        }
+    }
 }
