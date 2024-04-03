@@ -49,7 +49,7 @@ contract StablePoolTest is BaseVaultTest {
     uint256 internal bptAmountOut;
 
     InputHelpersMock internal immutable inputHelpersMock = new InputHelpersMock();
-    
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
     }
