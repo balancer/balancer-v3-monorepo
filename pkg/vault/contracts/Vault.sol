@@ -163,7 +163,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.balancesRaw[wrappedTokenIndex] += wrappedOutAmount;
             poolData.balancesRaw[baseTokenIndex] -= baseInAmount;
 
-            _setPoolBalances(address(wrappedToken), poolData);
+            _setPoolBalances(address(bufferPool), poolData);
     }
 
     function unwrapERC4626(IERC4626 wrappedToken, uint256 baseOutAmount) public /* nonReentrant withLocker */ returns (uint256 wrappedInAmount) {
