@@ -196,15 +196,13 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
     ) private {
         assertEq(paths.length, 1, "Incorrect output array length");
 
-        // TODO adjust test to receive 2 tokens instead of 1 in some cases
-        //        assertEq(paths.length, tokens.length, "Output array length mismatch");
+        assertEq(paths.length, tokens.length, "Output array length mismatch");
         assertEq(tokens.length, amounts.length, "Output array length mismatch");
 
         // Check results
         assertApproxEqAbs(paths[0], expectedDelta, 1, "Wrong path count");
         assertApproxEqAbs(amounts[0], expectedDelta, 1, "Wrong amounts count");
-        // TODO adjust test to receive 2 tokens instead of 1 in some cases
-        //        assertEq(tokens[0], kind == SwapKind.EXACT_IN ? address(usdc) : address(dai), "Wrong token for SwapKind");
+        assertEq(tokens[0], kind == SwapKind.EXACT_IN ? address(usdc) : address(dai), "Wrong token for SwapKind");
 
         // Tokens were transferred
         assertApproxEqAbs(dai.balanceOf(alice), defaultBalance - expectedDelta, 1, "Wrong ending balance of DAI");

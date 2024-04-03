@@ -257,13 +257,13 @@ contract BufferInsideVaultTest is BaseVaultTest {
     ) private {
         assertEq(paths.length, 1, "Incorrect output array length");
 
-        //        assertEq(paths.length, tokens.length, "Output array length mismatch");
+        assertEq(paths.length, tokens.length, "Output array length mismatch");
         assertEq(tokens.length, amounts.length, "Output array length mismatch");
 
         // Check results
         assertApproxEqAbs(paths[0], expectedDelta, 1, "Wrong path count");
         assertApproxEqAbs(amounts[0], expectedDelta, 1, "Wrong amounts count");
-        //        assertEq(tokens[0], kind == SwapKind.EXACT_IN ? address(usdc) : address(dai), "Wrong token for SwapKind");
+        assertEq(tokens[0], kind == SwapKind.EXACT_IN ? address(usdc) : address(dai), "Wrong token for SwapKind");
 
         // Tokens were transferred
         assertApproxEqAbs(dai.balanceOf(alice), defaultBalance - expectedDelta, 1, "Wrong ending balance of DAI");
@@ -276,40 +276,29 @@ contract BufferInsideVaultTest is BaseVaultTest {
         assertEq(balancesRaw[daiIdx], boostedPoolAmount + expectedDelta, "Wrong boosted pool DAI balance");
         assertEq(balancesRaw[usdcIdx], boostedPoolAmount - expectedDelta, "Wrong boosted pool USDC balance");
 
-        // TODO refactor
-        // Pool Liquidity = 2*bufferAmount
-        // DUST_BUFFER is 2, so tolerance1 is 2 units of pool liquidity
-        // tolerance1 = 2 * (Pool Liquidity)/FixedPoint.ONE
-        // tolerance2 = 10 // sometimes the buffer contract injects some tokens in the buffer pool to rebalance
-        // tolerance = tolerance1 + tolerance2
         uint256 baseBalance;
         uint256 wrappedBalance;
-        uint256 tolerance = (4 * bufferAmount) / FixedPoint.ONE + 10;
         (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
-        assertApproxEqAbs(
+        assertEq(
             baseBalance,
             bufferAmount + bufferExpectedDelta,
-            tolerance,
             "Wrong DAI buffer pool base balance"
         );
-        assertApproxEqAbs(
+        assertEq(
             wrappedBalance,
             bufferAmount - bufferExpectedDelta,
-            tolerance,
             "Wrong DAI buffer pool wrapped balance"
         );
 
         (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
-        assertApproxEqAbs(
+        assertEq(
             baseBalance,
             bufferAmount - bufferExpectedDelta,
-            tolerance,
             "Wrong USDC buffer pool base balance"
         );
-        assertApproxEqAbs(
+        assertEq(
             wrappedBalance,
             bufferAmount + bufferExpectedDelta,
-            tolerance,
             "Wrong USDC buffer pool wrapped balance"
         );
     }

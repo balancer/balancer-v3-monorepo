@@ -155,8 +155,16 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
             // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses in
             // a set with unique addresses that can be iterated later on.
             // For example, if all paths share the same token in, the set will end up with only one entry.
-            _currentSwapTokensIn.add(address(stepTokenIn));
-            _currentSwapTokenInAmounts[address(stepTokenIn)] += stepExactAmountIn;
+            if (_currentSwapTokenOutAmounts[address(stepTokenIn)] > stepExactAmountIn) {
+                _currentSwapTokenOutAmounts[address(stepTokenIn)] -= stepExactAmountIn;
+            } else {
+                _currentSwapTokensIn.add(address(stepTokenIn));
+                if (_currentSwapTokenOutAmounts[address(stepTokenIn)] > 0) {
+                    _currentSwapTokenInAmounts[address(stepTokenIn)] += stepExactAmountIn - _currentSwapTokenOutAmounts[address(stepTokenIn)];
+                    _currentSwapTokensOut.remove(address(stepTokenIn));
+                    _currentSwapTokenOutAmounts[address(stepTokenIn)] = 0;
+                }
+            }
 
             for (uint256 j = 0; j < path.steps.length; ++j) {
                 bool isLastStep = (j == path.steps.length - 1);
