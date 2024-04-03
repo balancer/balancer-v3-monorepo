@@ -99,6 +99,20 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
         onlyVault
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
     {
+        // If first step of path is buffer, get user tokens
+        for (uint256 i = 0; i < params.paths.length; i++) {
+            SwapPathExactAmountIn memory path = params.paths[i];
+            if (path.steps.length == 0) {
+                continue;
+            }
+            SwapPathStep memory firstStep = path.steps[0];
+            if (firstStep.isBuffer) {
+                _takeTokenIn(params.sender, path.tokenIn, path.exactAmountIn, false);
+                _currentSwapTokensOut.add(address(path.tokenIn));
+                _currentSwapTokenOutAmounts[address(path.tokenIn)] += path.exactAmountIn;
+            }
+        }
+
         (pathAmountsOut, tokensOut, amountsOut) = _swapExactInHook(params);
 
         _settlePaths(params.sender, params.wethIsEth);
@@ -291,6 +305,20 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
         onlyVault
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
     {
+        // If first step of path is buffer, get user tokens
+        for (uint256 i = 0; i < params.paths.length; i++) {
+            SwapPathExactAmountOut memory path = params.paths[i];
+            if (path.steps.length == 0) {
+                continue;
+            }
+            SwapPathStep memory firstStep = path.steps[0];
+            if (firstStep.isBuffer) {
+                _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, false);
+                _currentSwapTokensOut.add(address(path.tokenIn));
+                _currentSwapTokenOutAmounts[address(path.tokenIn)] += path.maxAmountIn;
+            }
+        }
+
         (pathAmountsIn, tokensIn, amountsIn) = _swapExactOutHook(params);
 
         _settlePaths(params.sender, params.wethIsEth);
@@ -583,18 +611,30 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
         // in which case there is nothing to settle. Then, since we're iterating backwards below, we need to be able
         // to subtract 1 from these quantities without reverting, which is why we use signed integers.
         int256 numTokensIn = int256(_currentSwapTokensIn.length());
-        int256 numTokensOut = int256(_currentSwapTokensOut.length());
         uint256 ethAmountIn = 0;
 
         // Iterate backwards, from the last element to 0 (included).
         // Removing the last element from a set is cheaper than removing the first one.
         for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
             address tokenIn = _currentSwapTokensIn.unchecked_at(uint256(i));
-            ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts[tokenIn], wethIsEth);
+            if (_currentSwapTokenOutAmounts[tokenIn] > 0) {
+                if (_currentSwapTokenOutAmounts[tokenIn] > _currentSwapTokenInAmounts[tokenIn]) {
+                    _currentSwapTokenOutAmounts[tokenIn] -= _currentSwapTokenInAmounts[tokenIn];
+                } else {
+                    _currentSwapTokenInAmounts[tokenIn] -= _currentSwapTokenOutAmounts[tokenIn];
+                    _currentSwapTokensOut.remove(tokenIn);
+                    _currentSwapTokenOutAmounts[tokenIn] = 0;
+                    ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts[tokenIn], wethIsEth);
+                }
+            } else {
+                ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts[tokenIn], wethIsEth);
+            }
 
             _currentSwapTokensIn.remove(tokenIn);
             _currentSwapTokenInAmounts[tokenIn] = 0;
         }
+
+        int256 numTokensOut = int256(_currentSwapTokensOut.length());
 
         for (int256 i = int256(numTokensOut - 1); i >= 0; --i) {
             address tokenOut = _currentSwapTokensOut.unchecked_at(uint256(i));

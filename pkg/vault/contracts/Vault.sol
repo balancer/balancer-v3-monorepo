@@ -1084,6 +1084,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // no liquidity in the buffer, just wrap the tokens
             IERC20(wrappedToken.asset()).approve(address(wrappedToken), amountBase);
             amountWrapped = wrappedToken.deposit(amountBase, address(this));
+            _reservesOf[IERC20(address(wrappedToken))] += amountWrapped;
+            _reservesOf[IERC20(wrappedToken.asset())] -= amountBase;
         } else if (buffer.getWrappedBalance() > amountWrappedExpected) {
             // the buffer has enough liquidity to facilitate the wrap without making an external call.
             amountWrapped = amountWrappedExpected;
@@ -1105,6 +1107,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             IERC20(wrappedToken.asset()).approve(address(wrappedToken), amountBase + bufferBaseAmountToWrap);
             uint256 totalAmountWrapped = wrappedToken.deposit(amountBase + bufferBaseAmountToWrap, address(this));
+            _reservesOf[IERC20(address(wrappedToken))] += totalAmountWrapped;
+            _reservesOf[IERC20(wrappedToken.asset())] -= (amountBase + bufferBaseAmountToWrap);
 
             buffer = buffer.setBaseBalance(baseBalance - bufferBaseAmountToWrap);
             buffer = buffer.setWrappedBalance(wrappedBalance + (totalAmountWrapped - amountWrappedExpected));
@@ -1137,6 +1141,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (buffer.isEmpty()) {
             // no liquidity in the buffer, just wrap the tokens
             amountBase = wrappedToken.redeem(amountWrapped, address(this), address(this));
+            _reservesOf[IERC20(address(wrappedToken))] -= amountWrapped;
+            _reservesOf[IERC20(wrappedToken.asset())] += amountBase;
         } else if (buffer.getBaseBalance() > amountBaseExpected) {
             // the buffer has enough liquidity to facilitate the wrap without making an external call.
             amountBase = amountBaseExpected;
@@ -1161,6 +1167,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 address(this),
                 address(this)
             );
+            _reservesOf[IERC20(address(wrappedToken))] -= (amountWrapped + bufferSharesToUnwrap);
+            _reservesOf[IERC20(wrappedToken.asset())] += totalAmountUnwrapped;
 
             buffer = buffer.setBaseBalance(baseBalance + (totalAmountUnwrapped - amountBaseExpected));
             buffer = buffer.setWrappedBalance(wrappedBalance - bufferSharesToUnwrap);

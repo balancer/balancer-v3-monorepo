@@ -61,12 +61,6 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
 
         initializeBoostedPool();
-
-        // giving vault enough tokens to wrap without user
-        dai.mint(address(vault), boostedPoolAmount);
-        vault.manualAddReserveOf(dai, boostedPoolAmount);
-        usdc.mint(address(vault), boostedPoolAmount);
-        vault.manualAddReserveOf(usdc, boostedPoolAmount);
     }
 
     function initializeBoostedPool() private {
