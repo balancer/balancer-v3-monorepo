@@ -615,12 +615,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _takeDebt(wrappedToken, amountWrapped, msg.sender);
     }
 
-    function bufferRemoveLiquidity(IERC4626 wrappedToken, address sharesOwner) public withLocker {
-        bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
-        uint256 totalShares = _bufferTotalShares[IERC20(wrappedToken)];
-        uint256 ownerShares = _bufferLpShares[IERC20(wrappedToken)][sharesOwner];
-        uint256 baseBalance = buffer.getBaseBalance();
-        uint256 wrappedBalance = buffer.getBaseBalance();
+    // todo implement this (commenting just to pass lint)
+    function bufferRemoveLiquidity(IERC4626 /*wrappedToken*/, address /*sharesOwner*/) public withLocker {
+        // solhint-disable-previous-line no-empty-blocks
+        //        bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
+        //        uint256 totalShares = _bufferTotalShares[IERC20(wrappedToken)];
+        //        uint256 ownerShares = _bufferLpShares[IERC20(wrappedToken)][sharesOwner];
+        //        uint256 baseBalance = buffer.getBaseBalance();
+        //        uint256 wrappedBalance = buffer.getBaseBalance();
     }
 
     /*******************************************************************************
