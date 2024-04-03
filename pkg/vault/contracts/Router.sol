@@ -605,6 +605,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
                                     Buffers
     *******************************************************************************/
 
+    /// @inheritdoc IRouter
     function addLiquidityBuffer(
         IERC4626 wrappedToken,
         uint256 amountUnderlying,
@@ -633,8 +634,42 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
         address sharesOwner
     ) external nonReentrant onlyVault returns (uint256 issuedShares) {
         issuedShares = _vault.bufferAddLiquidity(wrappedToken, amountUnderlying, amountWrapped, sharesOwner);
-        _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountUnderlying, true);
-        _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrapped, true);
+        _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountUnderlying, false);
+        _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrapped, false);
+    }
+
+    /// @inheritdoc IRouter
+    function removeLiquidityBuffer(
+        IERC4626 wrappedToken,
+        uint256 sharesToRemove,
+        address sharesOwner
+    ) external returns (uint256 removedBaseBalance, uint256 removedWrappedBalance) {
+        return
+            abi.decode(
+                _vault.lock(
+                    abi.encodeWithSelector(
+                        Router.removeLiquidityBufferHook.selector,
+                        wrappedToken,
+                        sharesToRemove,
+                        sharesOwner
+                    )
+                ),
+                (uint256, uint256)
+            );
+    }
+
+    function removeLiquidityBufferHook(
+        IERC4626 wrappedToken,
+        uint256 sharesToRemove,
+        address sharesOwner
+    ) external nonReentrant onlyVault returns (uint256 removedBaseBalance, uint256 removedWrappedBalance) {
+        (removedBaseBalance, removedWrappedBalance) = _vault.bufferRemoveLiquidity(
+            wrappedToken,
+            sharesToRemove,
+            sharesOwner
+        );
+        _sendTokenOut(sharesOwner, IERC20(wrappedToken.asset()), removedBaseBalance, false);
+        _sendTokenOut(sharesOwner, IERC20(address(wrappedToken)), removedWrappedBalance, false);
     }
 
     /*******************************************************************************

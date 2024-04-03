@@ -597,10 +597,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address sharesOwner
     ) public withLocker returns (uint256 issuedShares) {
         bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
-        uint256 amountTotalInBase = wrappedToken.convertToAssets(amountWrapped) + amountBase;
 
         // amount of shares to issue is the total base token that the user is depositing
-        issuedShares = amountTotalInBase;
+        issuedShares = wrappedToken.convertToAssets(amountWrapped) + amountBase;
 
         //TODO: could potentially burn a minimum amount of shares if the supply is 0;
         _bufferLpShares[IERC20(wrappedToken)][sharesOwner] += issuedShares;
@@ -615,14 +614,35 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _takeDebt(wrappedToken, amountWrapped, msg.sender);
     }
 
-    // todo implement this (commenting just to pass lint)
-    function bufferRemoveLiquidity(IERC4626 /*wrappedToken*/, address /*sharesOwner*/) public withLocker {
-        // solhint-disable-previous-line no-empty-blocks
-        //        bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
-        //        uint256 totalShares = _bufferTotalShares[IERC20(wrappedToken)];
-        //        uint256 ownerShares = _bufferLpShares[IERC20(wrappedToken)][sharesOwner];
-        //        uint256 baseBalance = buffer.getBaseBalance();
-        //        uint256 wrappedBalance = buffer.getBaseBalance();
+    function bufferRemoveLiquidity(
+        IERC4626 wrappedToken,
+        uint256 sharesToRemove,
+        address sharesOwner
+    ) public withLocker returns (uint256 removedBaseBalance, uint256 removedWrappedBalance) {
+        bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
+
+        uint256 ownerShares = _bufferLpShares[IERC20(wrappedToken)][sharesOwner];
+        if (sharesToRemove > totalShares) {
+            return NotEnoughBufferShares();
+        }
+        uint256 totalShares = _bufferTotalShares[IERC20(wrappedToken)];
+
+        uint256 baseBalance = buffer.getBaseBalance();
+        uint256 wrappedBalance = buffer.getWrappedBalance();
+
+        removedBaseBalance = (baseBalance * sharesToRemove) / totalShares;
+        removedWrappedBalance = (wrappedBalance * sharesToRemove) / totalShares;
+
+        _bufferLpShares[IERC20(wrappedToken)][sharesOwner] -= sharesToRemove;
+        _bufferTotalShares[IERC20(wrappedToken)] -= sharesToRemove;
+
+        buffer = buffer.setBaseBalance(buffer.getBaseBalance() - removedBaseBalance);
+        buffer = buffer.setWrappedBalance(buffer.getWrappedBalance() - removedWrappedBalance);
+
+        _bufferTokenBalances[IERC20(wrappedToken)] = buffer;
+
+        _supplyCredit(IERC20(wrappedToken.asset()), removedBaseBalance, msg.sender);
+        _supplyCredit(wrappedToken, removedWrappedBalance, msg.sender);
     }
 
     /*******************************************************************************

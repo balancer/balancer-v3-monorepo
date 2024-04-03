@@ -291,4 +291,7 @@ interface IVaultErrors {
 
     /// @dev The buffer pool in the swap path is not tokenIn or tokenOut
     error WrongBufferPool();
+
+    /// @dev The user is trying to remove more shares than it has in the buffer
+    error NotEnoughBufferShares();
 }
