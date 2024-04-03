@@ -137,7 +137,7 @@ describe('ERC4626BufferPool', function () {
       expect(poolConfig.hooks.shouldCallBeforeSwap).to.be.true;
       expect(poolConfig.hooks.shouldCallAfterSwap).to.be.false;
       expect(poolConfig.liquidityManagement.disableUnbalancedLiquidity).to.be.false;
-      expect(poolConfig.liquidityManagement.enableAddLiquidityCustom).to.be.true;
+      expect(poolConfig.liquidityManagement.enableAddLiquidityCustom).to.be.false;
       expect(poolConfig.liquidityManagement.enableRemoveLiquidityCustom).to.be.false;
     });
   });
@@ -266,7 +266,7 @@ describe('ERC4626BufferPool', function () {
       });
     });
 
-    it('can add liquidity custom', async () => {
+    it('can add liquidity proportional', async () => {
       await baseToken.mint(bob, 2n * (TOKEN_AMOUNT + MIN_BPT));
       await baseToken.connect(bob).approve(wrappedToken, TOKEN_AMOUNT + MIN_BPT);
       await wrappedToken.connect(bob).deposit(TOKEN_AMOUNT + MIN_BPT, bob);
@@ -277,7 +277,7 @@ describe('ERC4626BufferPool', function () {
       const bptAmount = await pool.balanceOf(alice);
       const MAX_AMOUNT = TOKEN_AMOUNT + MIN_BPT;
 
-      await router.connect(bob).addLiquidityCustom(pool, [MAX_AMOUNT, MAX_AMOUNT], bptAmount, false, '0x');
+      await router.connect(bob).addLiquidityProportional(pool, [MAX_AMOUNT, MAX_AMOUNT], bptAmount, false, '0x');
 
       // Should withdraw almost all. Contrived test to ensure proportional amounts in calculated correctly.
       expect(await baseToken.balanceOf(bob)).to.equal((MIN_BPT * 3n) / 2n);
