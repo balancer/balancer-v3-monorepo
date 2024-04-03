@@ -18,7 +18,6 @@ import {
     SwapKind
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
@@ -35,7 +34,6 @@ contract ERC4626BufferPool is
     IBasePool,
     IBufferPool,
     IRateProvider,
-    IPoolLiquidity,
     BalancerPoolToken,
     BasePoolHooks,
     BasePoolAuthentication,
@@ -119,34 +117,7 @@ contract ERC4626BufferPool is
         uint256[] memory,
         bytes memory
     ) external view override onlyVault returns (bool) {
-        // Only support custom add liquidity.
-        return kind == AddLiquidityKind.CUSTOM;
-    }
-
-    /// @inheritdoc IPoolLiquidity
-    function onAddLiquidityCustom(
-        address,
-        uint256[] memory,
-        uint256 exactBptAmountOut,
-        uint256[] memory balancesScaled18,
-        bytes memory
-    )
-        external
-        view
-        onlyVault
-        returns (
-            uint256[] memory amountsInScaled18,
-            uint256 bptAmountOut,
-            uint256[] memory swapFeeAmountsScaled18,
-            bytes memory returnData
-        )
-    {
-        // This is a proportional join
-        bptAmountOut = exactBptAmountOut;
-        returnData = "";
-
-        amountsInScaled18 = BasePoolMath.computeProportionalAmountsIn(balancesScaled18, totalSupply(), bptAmountOut);
-        swapFeeAmountsScaled18 = new uint256[](balancesScaled18.length);
+        return kind == AddLiquidityKind.PROPORTIONAL;
     }
 
     /// @inheritdoc BasePoolHooks
@@ -507,26 +478,5 @@ contract ERC4626BufferPool is
         // This pool doesn't support single token add/remove liquidity, so this function is not needed.
         // Should never get here, but need to implement the interface.
         revert IVaultErrors.OperationNotSupported();
-    }
-
-    /// @inheritdoc IPoolLiquidity
-    function onRemoveLiquidityCustom(
-        address,
-        uint256,
-        uint256[] memory,
-        uint256[] memory,
-        bytes memory
-    ) external pure returns (uint256, uint256[] memory, uint256[] memory, bytes memory) {
-        // Should throw `DoesNotSupportRemoveLiquidityCustom` before getting here, but need to implement the interface.
-        revert IVaultErrors.OperationNotSupported();
-    }
-
-    // Transient Storage
-
-    function _inSwapContext() internal pure returns (StorageSlot.BooleanSlotType slot) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            slot := __inSwapContext.slot
-        }
     }
 }
