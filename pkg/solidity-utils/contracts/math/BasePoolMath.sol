@@ -41,7 +41,7 @@ library BasePoolMath {
         uint256 bptRatio = bptAmountOut.divUp(bptTotalSupply);
 
         amountsIn = new uint256[](balances.length);
-        for (uint256 i = 0; i < balances.length; i++) {
+        for (uint256 i = 0; i < balances.length; ++i) {
             amountsIn[i] = balances[i].mulUp(bptRatio);
         }
     }
@@ -80,7 +80,7 @@ library BasePoolMath {
         uint256 bptRatio = bptAmountIn.divDown(bptTotalSupply);
 
         amountsOut = new uint256[](balances.length);
-        for (uint256 i = 0; i < balances.length; i++) {
+        for (uint256 i = 0; i < balances.length; ++i) {
             amountsOut[i] = balances[i].mulDown(bptRatio);
         }
     }
@@ -127,7 +127,7 @@ library BasePoolMath {
         swapFeeAmounts = new uint256[](numTokens);
 
         // Loop through each token, updating the balance with the added amount.
-        for (uint256 index = 0; index < currentBalances.length; index++) {
+        for (uint256 index = 0; index < numTokens; ++index) {
             newBalances[index] = currentBalances[index] + exactAmounts[index];
         }
 
@@ -141,11 +141,11 @@ library BasePoolMath {
         uint256 invariantRatio = newInvariant.divDown(currentInvariant);
 
         // Loop through each token to apply fees if necessary.
-        for (uint256 index = 0; index < currentBalances.length; index++) {
+        for (uint256 index = 0; index < numTokens; ++index) {
             // Check if the new balance is greater than the proportional balance.
             // If so, calculate the taxable amount.
-            if (newBalances[index] > invariantRatio.mulUp(currentBalances[index])) {
-                uint256 taxableAmount = newBalances[index] - invariantRatio.mulUp(currentBalances[index]);
+            if (newBalances[index] > invariantRatio.mulDown(currentBalances[index])) {
+                uint256 taxableAmount = newBalances[index] - invariantRatio.mulDown(currentBalances[index]);
                 // Calculate fee amount
                 swapFeeAmounts[index] = taxableAmount.mulUp(swapFeePercentage);
                 // Subtract the fee from the new balance.
@@ -159,7 +159,7 @@ library BasePoolMath {
 
         // Calculate the amount of BPT to mint. This is done by multiplying the
         // total supply with the ratio of the change in invariant.
-        // mulDown/divDown minize amount of pool tokens to mint.
+        // mulDown/divDown minimize amount of pool tokens to mint.
         bptAmountOut = totalSupply.mulDown((invariantWithFeesApplied - currentInvariant).divDown(currentInvariant));
     }
 
@@ -191,13 +191,13 @@ library BasePoolMath {
         uint256 newSupply = exactBptAmountOut + totalSupply;
         // Calculate the initial amount of the input token needed for the desired amount of BPT out
         // "divUp" leads to a higher "newBalance," which in turn results in a larger "amountIn."
-        // This leads to receiving more tokens for the same amount of BTP minted.
+        // This leads to receiving more tokens for the same amount of BPT minted.
         uint256 newBalance = computeBalance(currentBalances, tokenInIndex, newSupply.divUp(totalSupply));
         uint256 amountIn = newBalance - currentBalances[tokenInIndex];
 
         // Calculate the taxable amount, which is the difference
         // between the actual amount in and the non-taxable balance
-        uint256 nonTaxableBalance = newSupply.mulUp(currentBalances[tokenInIndex]).divDown(totalSupply);
+        uint256 nonTaxableBalance = newSupply.mulDown(currentBalances[tokenInIndex]).divDown(totalSupply);
 
         uint256 taxableAmount = (amountIn + currentBalances[tokenInIndex]) - nonTaxableBalance;
 
@@ -238,7 +238,7 @@ library BasePoolMath {
 
         // Copy currentBalances to newBalances
         // TODO: Optimize with assembly
-        for (uint256 index = 0; index < currentBalances.length; index++) {
+        for (uint256 index = 0; index < numTokens; ++index) {
             newBalances[index] = currentBalances[index];
         }
         // Update the balance of tokenOutIndex with exactAmountOut.
@@ -265,8 +265,8 @@ library BasePoolMath {
         swapFeeAmounts = new uint256[](numTokens);
         swapFeeAmounts[tokenOutIndex] = fee;
 
-        // mulUp/divDown maximize the amount of tokens burned for the security reasons
-        bptAmountIn = totalSupply.mulUp(currentInvariant - invariantWithFeesApplied).divDown(currentInvariant);
+        // mulUp/divUp maximize the amount of tokens burned for the security reasons
+        bptAmountIn = totalSupply.mulUp(currentInvariant - invariantWithFeesApplied).divUp(currentInvariant);
     }
 
     /**
@@ -294,14 +294,14 @@ library BasePoolMath {
         uint256 newSupply = totalSupply - exactBptAmountIn;
         // Calculate the new balance of the output token after the BPT burn.
         // "divUp" leads to a higher "newBalance," which in turn results in a lower "amountOut."
-        // This leads to giving less tokens for the same amount of BTP burned.
+        // This leads to giving less tokens for the same amount of BPT burned.
         uint256 newBalance = computeBalance(currentBalances, tokenOutIndex, newSupply.divUp(totalSupply));
 
         // Compute the amount to be withdrawn from the pool.
         uint256 amountOut = currentBalances[tokenOutIndex] - newBalance;
 
         // Calculate the non-taxable balance proportionate to the BPT burnt.
-        uint256 nonTaxableBalance = newSupply.mulUp(currentBalances[tokenOutIndex]).divDown(totalSupply);
+        uint256 nonTaxableBalance = newSupply.mulUp(currentBalances[tokenOutIndex]).divUp(totalSupply);
 
         // Compute the taxable amount: the difference between the non-taxable balance and actual withdrawal.
         uint256 taxableAmount = nonTaxableBalance - newBalance;
