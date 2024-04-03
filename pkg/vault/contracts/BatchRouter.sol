@@ -563,6 +563,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
         int256 numTokensOut = int256(_currentSwapTokensOut.length());
         uint256 ethAmountIn = 0;
 
+        // Hack: this is already settled for given-ins.
         // Iterate backwards, from the last element to 0 (included).
         // Removing the last element from a set is cheaper than removing the first one.
         // for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {

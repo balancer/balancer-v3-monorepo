@@ -78,7 +78,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * @param locker The account credited with the amount.
      */
     function _supplyCredit(IERC20 token, uint256 credit, address locker) internal {
-        _accountDelta(token, -credit.toInt256(), address(1));
+        _accountDelta(token, -credit.toInt256(), locker);
     }
 
     /**
@@ -88,7 +88,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * @param locker The account responsible for the debt.
      */
     function _takeDebt(IERC20 token, uint256 debt, address locker) internal {
-        _accountDelta(token, debt.toInt256(), address(1));
+        _accountDelta(token, debt.toInt256(), locker);
     }
 
     /**
