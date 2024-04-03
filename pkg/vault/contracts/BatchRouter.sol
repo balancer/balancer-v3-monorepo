@@ -166,7 +166,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                     _currentSwapTokensOut.remove(address(stepTokenIn));
                     _currentSwapTokenOutAmounts[address(stepTokenIn)] = 0;
                 } else {
-                    _currentSwapTokenInAmounts[address(stepTokenIn)] = stepExactAmountIn;
+                    _currentSwapTokenInAmounts[address(stepTokenIn)] += stepExactAmountIn;
                 }
             }
 
