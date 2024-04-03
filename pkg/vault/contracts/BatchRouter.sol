@@ -624,7 +624,12 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                     _currentSwapTokenInAmounts[tokenIn] -= _currentSwapTokenOutAmounts[tokenIn];
                     _currentSwapTokensOut.remove(tokenIn);
                     _currentSwapTokenOutAmounts[tokenIn] = 0;
-                    ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts[tokenIn], wethIsEth);
+                    ethAmountIn += _takeTokenIn(
+                        sender,
+                        IERC20(tokenIn),
+                        _currentSwapTokenInAmounts[tokenIn],
+                        wethIsEth
+                    );
                 }
             } else {
                 ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts[tokenIn], wethIsEth);
