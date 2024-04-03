@@ -622,8 +622,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
 
         uint256 ownerShares = _bufferLpShares[IERC20(wrappedToken)][sharesOwner];
-        if (sharesToRemove > totalShares) {
-            return NotEnoughBufferShares();
+        if (sharesToRemove > ownerShares) {
+            revert NotEnoughBufferShares();
         }
         uint256 totalShares = _bufferTotalShares[IERC20(wrappedToken)];
 
