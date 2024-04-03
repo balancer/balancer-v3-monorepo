@@ -61,7 +61,7 @@ contract StablePoolTest is BaseVaultTest {
             factory.create(
                 "ERC20 Pool",
                 "ERC20POOL",
-                vault.sortTokenConfig(tokens),
+                sortTokenConfig(tokens),
                 DEFAULT_AMP_FACTOR,
                 address(0),
                 DEFAULT_SWAP_FEE,
