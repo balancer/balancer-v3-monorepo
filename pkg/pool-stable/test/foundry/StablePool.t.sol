@@ -24,6 +24,7 @@ import { Router } from "@balancer-labs/v3-vault/contracts/Router.sol";
 import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
 import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 import { BasePoolFactory } from "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
+import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/test/InputHelpersMock.sol";
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
@@ -47,6 +48,8 @@ contract StablePoolTest is BaseVaultTest {
     StablePool internal stablePool;
     uint256 internal bptAmountOut;
 
+    InputHelpersMock internal immutable inputHelpersMock = new InputHelpersMock();
+    
     function setUp() public virtual override {
         BaseVaultTest.setUp();
     }
@@ -61,7 +64,7 @@ contract StablePoolTest is BaseVaultTest {
             factory.create(
                 "ERC20 Pool",
                 "ERC20POOL",
-                sortTokenConfig(tokens),
+                inputHelpersMock.sortTokenConfig(tokens),
                 DEFAULT_AMP_FACTOR,
                 address(0),
                 DEFAULT_SWAP_FEE,
