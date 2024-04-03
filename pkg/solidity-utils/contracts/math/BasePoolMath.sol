@@ -237,10 +237,15 @@ library BasePoolMath {
         uint256[] memory newBalances = new uint256[](numTokens);
 
         // Copy currentBalances to newBalances
-        // TODO: Optimize with assembly
-        for (uint256 index = 0; index < numTokens; ++index) {
-            newBalances[index] = currentBalances[index];
+        assembly {
+            let cap := add(numTokens, 1)
+            for { let i := 1 } lt(i, cap) { i := add(i, 1) }
+            {   
+                let pos := mul(i, 0x20)
+                mstore(add(newBalances, pos), mload(add(currentBalances, pos)))
+            }
         }
+
         // Update the balance of tokenOutIndex with exactAmountOut.
         newBalances[tokenOutIndex] = newBalances[tokenOutIndex] - exactAmountOut;
 
