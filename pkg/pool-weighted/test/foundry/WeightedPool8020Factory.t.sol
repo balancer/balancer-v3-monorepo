@@ -8,8 +8,11 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
+import { TokenConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+
 import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
+import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -18,6 +21,8 @@ import { WeightedPool8020Factory } from "../../contracts/WeightedPool8020Factory
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
 
 contract WeightedPool8020FactoryTest is Test {
+    uint256 internal DEFAULT_SWAP_FEE = 1e16; // 1%
+
     VaultMock vault;
     WeightedPool8020Factory factory;
     RateProviderMock rateProvider;
@@ -39,7 +44,7 @@ contract WeightedPool8020FactoryTest is Test {
         tokenConfig[0].token = highToken;
         tokenConfig[1].token = lowToken;
 
-        return WeightedPool(factory.create(tokenConfig[0], tokenConfig[1], address(0)));
+        return WeightedPool(factory.create(tokenConfig[0], tokenConfig[1], address(0), DEFAULT_SWAP_FEE));
     }
 
     function testFactoryPausedState() public {
@@ -98,7 +103,7 @@ contract WeightedPool8020FactoryTest is Test {
 
         // Trying to create the same pool with same tokens but different token configs should revert
         vm.expectRevert("DEPLOYMENT_FAILED");
-        factory.create(tokenConfig[0], tokenConfig[1], address(0));
+        factory.create(tokenConfig[0], tokenConfig[1], address(0), DEFAULT_SWAP_FEE);
     }
 
     /// forge-config: default.fuzz.runs = 10

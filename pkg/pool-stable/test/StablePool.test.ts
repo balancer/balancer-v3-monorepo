@@ -55,7 +55,7 @@ describe('StablePool', () => {
   for (let i = 2; i <= 4; i++) {
     itDeploysAStablePool(i);
   }
-
+  
   async function deployPool(numTokens: number) {
     const tokenConfig: TokenConfig[] = buildTokenConfig(poolTokens.slice(0, numTokens));
 
@@ -65,6 +65,7 @@ describe('StablePool', () => {
       tokenConfig,
       200n,
       ZERO_ADDRESS,
+      0, // swap fee
       TypesConverter.toBytes32(bn(numTokens))
     );
     const receipt = await tx.wait();

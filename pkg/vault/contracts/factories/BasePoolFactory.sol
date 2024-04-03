@@ -92,6 +92,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     function _registerPoolWithVault(
         address pool,
         TokenConfig[] memory tokens,
+        uint256 swapFeePercentage,
         address pauseManager,
         PoolHooks memory poolHooks,
         LiquidityManagement memory liquidityManagement
@@ -99,6 +100,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         getVault().registerPool(
             pool,
             tokens,
+            swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
             pauseManager,
             poolHooks,

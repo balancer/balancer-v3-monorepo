@@ -15,6 +15,8 @@ import { WeightedPool } from "../../contracts/WeightedPool.sol";
 import { LiquidityApproximationTest } from "@balancer-labs/v3-vault/test/foundry/LiquidityApproximation.t.sol";
 
 contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
+    uint256 constant DEFAULT_SWAP_FEE = 1e16; // 1%
+
     using ArrayHelpers for *;
 
     uint256 poolCreationNonce;
@@ -33,6 +35,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
                 vault.buildTokenConfig(tokens.asIERC20()),
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                 address(0),
+                DEFAULT_SWAP_FEE,
                 // NOTE: sends a unique salt
                 bytes32(poolCreationNonce++)
             )

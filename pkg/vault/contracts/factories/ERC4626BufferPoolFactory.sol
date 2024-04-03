@@ -103,7 +103,8 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         // We are assuming the baseToken is STANDARD (the default type, with enum value 0).
         tokenConfig[baseTokenIndex].token = IERC20(wrappedToken.asset());
 
-        getVault().registerPool(pool, tokenConfig, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
+        // Buffers always have 0 swap fees.
+        getVault().registerPool(pool, tokenConfig, 0, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
     }
 
     function _getDefaultPoolHooks() internal pure returns (PoolHooks memory) {
@@ -121,7 +122,12 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
     }
 
     function _getDefaultLiquidityManagement() internal pure returns (LiquidityManagement memory) {
-        return LiquidityManagement({ supportsAddLiquidityCustom: true, supportsRemoveLiquidityCustom: false });
+        return
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: true,
+                enableRemoveLiquidityCustom: false
+            });
     }
 
     /**

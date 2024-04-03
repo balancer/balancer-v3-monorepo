@@ -42,6 +42,7 @@ contract StablePoolTest is BaseVaultTest {
     uint256 constant DELTA = 1e9;
 
     uint256 constant DEFAULT_AMP_FACTOR = 200;
+    uint256 constant DEFAULT_SWAP_FEE = 0;
 
     StablePool internal stablePool;
     uint256 internal bptAmountOut;
@@ -63,6 +64,7 @@ contract StablePoolTest is BaseVaultTest {
                 vault.sortTokenConfig(tokens),
                 DEFAULT_AMP_FACTOR,
                 address(0),
+                DEFAULT_SWAP_FEE,
                 ZERO_BYTES32
             )
         );

@@ -33,6 +33,7 @@ contract StablePoolFactory is BasePoolFactory {
      * @param tokens An array of descriptors for the tokens the pool will manage
      * @param amplificationParameter The starting Amplification Parameter
      * @param pauseManager An account with permission to pause the pool (or zero to default to governance)
+     * @param swapFeePercentage Initial swap fee percentage
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
@@ -41,6 +42,7 @@ contract StablePoolFactory is BasePoolFactory {
         TokenConfig[] memory tokens,
         uint256 amplificationParameter,
         address pauseManager,
+        uint256 swapFeePercentage,
         bytes32 salt
     ) external returns (address pool) {
         pool = _create(
@@ -55,6 +57,6 @@ contract StablePoolFactory is BasePoolFactory {
             salt
         );
 
-        _registerPoolWithVault(pool, tokens, pauseManager, getDefaultPoolHooks(), getDefaultLiquidityManagement());
+        _registerPoolWithVault(pool, tokens, swapFeePercentage, pauseManager, getDefaultPoolHooks(), getDefaultLiquidityManagement());
     }
 }
