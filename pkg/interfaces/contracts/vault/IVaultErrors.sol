@@ -294,4 +294,7 @@ interface IVaultErrors {
 
     /// @dev The user is trying to remove more shares than it has in the buffer
     error NotEnoughBufferShares();
+
+    /// @dev The wrapped token asset does not match the base token of the swap path.
+    error WrongWrappedTokenAsset(address token);
 }
