@@ -279,27 +279,11 @@ contract BufferInsideVaultTest is BaseVaultTest {
         uint256 baseBalance;
         uint256 wrappedBalance;
         (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
-        assertEq(
-            baseBalance,
-            bufferAmount + bufferExpectedDelta,
-            "Wrong DAI buffer pool base balance"
-        );
-        assertEq(
-            wrappedBalance,
-            bufferAmount - bufferExpectedDelta,
-            "Wrong DAI buffer pool wrapped balance"
-        );
+        assertEq(baseBalance, bufferAmount + bufferExpectedDelta, "Wrong DAI buffer pool base balance");
+        assertEq(wrappedBalance, bufferAmount - bufferExpectedDelta, "Wrong DAI buffer pool wrapped balance");
 
         (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
-        assertEq(
-            baseBalance,
-            bufferAmount - bufferExpectedDelta,
-            "Wrong USDC buffer pool base balance"
-        );
-        assertEq(
-            wrappedBalance,
-            bufferAmount + bufferExpectedDelta,
-            "Wrong USDC buffer pool wrapped balance"
-        );
+        assertEq(baseBalance, bufferAmount - bufferExpectedDelta, "Wrong USDC buffer pool base balance");
+        assertEq(wrappedBalance, bufferAmount + bufferExpectedDelta, "Wrong USDC buffer pool wrapped balance");
     }
 }
