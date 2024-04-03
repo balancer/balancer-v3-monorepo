@@ -759,7 +759,7 @@ describe('WeightedMath', function () {
   });
 
   describe('computeBptOutAddToken', () => {
-    it('computes the amount of BTP which should be minted when adding a new token', async () => {
+    it('computes the amount of BPT which should be minted when adding a new token', async () => {
       const normalizedWeight = bn(5e17);
       const bptTotalSupply = bn(1e20);
 
