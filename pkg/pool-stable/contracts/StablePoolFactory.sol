@@ -57,6 +57,13 @@ contract StablePoolFactory is BasePoolFactory {
             salt
         );
 
-        _registerPoolWithVault(pool, tokens, swapFeePercentage, pauseManager, getDefaultPoolHooks(), getDefaultLiquidityManagement());
+        _registerPoolWithVault(
+            pool,
+            tokens,
+            swapFeePercentage,
+            pauseManager,
+            getDefaultPoolHooks(),
+            getDefaultLiquidityManagement()
+        );
     }
 }

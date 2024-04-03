@@ -55,7 +55,7 @@ describe('StablePool', () => {
   for (let i = 2; i <= 4; i++) {
     itDeploysAStablePool(i);
   }
-  
+
   async function deployPool(numTokens: number) {
     const tokenConfig: TokenConfig[] = buildTokenConfig(poolTokens.slice(0, numTokens));
 
