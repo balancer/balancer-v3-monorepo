@@ -142,7 +142,10 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
             // a set with unique addresses that can be iterated later on.
             // For example, if all paths share the same token in, the set will end up with only one entry.
             _currentSwapTokensIn.add(address(stepTokenIn));
-            _currentSwapTokenInAmounts[address(stepTokenIn)] += stepExactAmountIn;
+            // _currentSwapTokenInAmounts[address(stepTokenIn)] += stepExactAmountIn;
+            // Hack: settle preemptively
+            _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, false);
+
 
             for (uint256 j = 0; j < path.steps.length; ++j) {
                 bool isLastStep = (j == path.steps.length - 1);
@@ -562,13 +565,13 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
 
         // Iterate backwards, from the last element to 0 (included).
         // Removing the last element from a set is cheaper than removing the first one.
-        for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
-            address tokenIn = _currentSwapTokensIn.unchecked_at(uint256(i));
-            ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts[tokenIn], wethIsEth);
+        // for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
+        //     address tokenIn = _currentSwapTokensIn.unchecked_at(uint256(i));
+        //     ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts[tokenIn], wethIsEth);
 
-            _currentSwapTokensIn.remove(tokenIn);
-            _currentSwapTokenInAmounts[tokenIn] = 0;
-        }
+        //     _currentSwapTokensIn.remove(tokenIn);
+        //     _currentSwapTokenInAmounts[tokenIn] = 0;
+        // }
 
         for (int256 i = int256(numTokensOut - 1); i >= 0; --i) {
             address tokenOut = _currentSwapTokensOut.unchecked_at(uint256(i));
