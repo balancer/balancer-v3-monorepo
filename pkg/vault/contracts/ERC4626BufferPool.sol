@@ -24,7 +24,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import { Slots } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/Slots.sol";
+import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 
 import { BasePoolAuthentication } from "./BasePoolAuthentication.sol";
 import { BalancerPoolToken } from "./BalancerPoolToken.sol";
@@ -44,7 +44,7 @@ contract ERC4626BufferPool is
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
-    using Slots for *;
+    using StorageSlot for *;
 
     uint256 internal immutable _wrappedTokenIndex;
     uint256 internal immutable _baseTokenIndex;
@@ -523,7 +523,7 @@ contract ERC4626BufferPool is
 
     // Transient Storage
 
-    function _inSwapContext() internal pure returns (Slots.BoolSlot slot) {
+    function _inSwapContext() internal pure returns (StorageSlot.BooleanSlotType slot) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             slot := __inSwapContext.slot
