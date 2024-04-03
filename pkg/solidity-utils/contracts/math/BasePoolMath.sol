@@ -237,10 +237,14 @@ library BasePoolMath {
         uint256[] memory newBalances = new uint256[](numTokens);
 
         // Copy currentBalances to newBalances
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             let cap := add(numTokens, 1)
-            for { let i := 1 } lt(i, cap) { i := add(i, 1) }
-            {   
+            for {
+                let i := 1
+            } lt(i, cap) {
+                i := add(i, 1)
+            } {
                 let pos := mul(i, 0x20)
                 mstore(add(newBalances, pos), mload(add(currentBalances, pos)))
             }
