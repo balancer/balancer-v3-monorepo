@@ -7,8 +7,8 @@ import "forge-std/Test.sol";
 import { PoolConfig, PoolConfigBits, PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 
 contract PoolConfigLibTest is Test {
-    // 15 flags + 24 bit fee + 24 bit token diffs + 32 bit timestamp = 95 total bits used.
-    uint256 private constant CONFIG_MSB = 95;
+    // 16 flags + 24 bit fee + 24 bit token diffs + 32 bit timestamp = 96 total bits used.
+    uint256 private constant CONFIG_MSB = 96;
 
     function testToAndFromConfigBits__Fuzz(uint256 rawConfigInt) public {
         rawConfigInt = bound(rawConfigInt, 0, uint256(1 << CONFIG_MSB) - 1);
