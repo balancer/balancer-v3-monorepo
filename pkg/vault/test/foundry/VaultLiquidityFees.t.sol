@@ -38,14 +38,14 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         // protocol swap fee = (defaultAmount * 1% / 2 ) * 50%
         protocolSwapFees[daiIdx] = uint256((defaultAmount) / 400);
 
-        // expectedBtpAmountOut = defaultAmount - defaultAmount * 1% / 2
-        uint256 expectedBtpAmountOut = (defaultAmount * 995) / 1000;
+        // expectedBptAmountOut = defaultAmount - defaultAmount * 1% / 2
+        uint256 expectedBptAmountOut = (defaultAmount * 995) / 1000;
 
         vm.prank(alice);
-        bptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, expectedBtpAmountOut, false, bytes(""));
+        bptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, expectedBptAmountOut, false, bytes(""));
 
         // should mint correct amount of BPT tokens
-        assertEq(bptAmountOut, expectedBtpAmountOut, "Invalid amount of BPT");
+        assertEq(bptAmountOut, expectedBptAmountOut, "Invalid amount of BPT");
     }
 
     function testAddLiquidityUnbalanced() public {
