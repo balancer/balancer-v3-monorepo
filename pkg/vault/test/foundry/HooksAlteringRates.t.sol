@@ -40,17 +40,16 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         rateProvider = new RateProviderMock();
         rateProviders[0] = rateProvider;
 
-        PoolMock newPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20(), rateProviders),
-            true,
-            365 days,
-            address(0),
-            address(0)
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            rateProviders
         );
+
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
+
+        factoryMock.registerTestPool(address(newPool), tokenConfig);
+
         return address(newPool);
     }
 
@@ -89,17 +88,15 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProviders[0] = rateProvider;
 
-        PoolMock newPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20(), rateProviders),
-            true,
-            365 days,
-            address(0),
-            address(0)
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            rateProviders
         );
+
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "new-pool");
+
+        factoryMock.registerTestPool(address(newPool), tokenConfig);
 
         PoolConfig memory config = vault.getPoolConfig(address(newPool));
         config.hooks.shouldCallBeforeInitialize = true;

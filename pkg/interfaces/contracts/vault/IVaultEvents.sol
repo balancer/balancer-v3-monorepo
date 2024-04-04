@@ -104,6 +104,12 @@ interface IVaultEvents {
     event ProtocolYieldFeeCharged(address indexed pool, address indexed token, uint256 amount);
 
     /**
+     * @notice Emitted when the swap fee percentage of a pool is updated.
+     * @param swapFeePercentage The new swap fee percentage for the pool
+     */
+    event SwapFeePercentageChanged(address indexed pool, uint256 indexed swapFeePercentage);
+
+    /**
      * @notice Emitted when a pool creator fee is incurred.
      * @dev This is included for traceability of fees to pools.
      * @param pool The pool associated with this charge

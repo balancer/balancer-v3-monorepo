@@ -74,19 +74,21 @@ interface IVaultExtension {
      *
      * @param pool The address of the pool being registered
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
+     * @param swapFeePercentage Initial value of the swap fee
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param pauseManager address the Vault will allow to pause the pool
      * @param poolCreator address the Vault will allow to set the pool creator fee percentage and collect fees
-     * @param hookConfig Flags indicating which hooks the pool supports
+     * @param poolHooks Flags indicating which hooks the pool supports
      * @param liquidityManagement Liquidity management flags with implemented methods
      */
     function registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
+        uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         address pauseManager,
         address poolCreator,
-        PoolHooks calldata hookConfig,
+        PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external;
 

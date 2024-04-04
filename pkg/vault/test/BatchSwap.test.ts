@@ -8,15 +8,17 @@ import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constan
 import { fp, pct } from '@balancer-labs/v3-helpers/src/numbers';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
-import { BatchRouter, Router, Vault } from '../typechain-types';
+import { BatchRouter, Router, PoolFactoryMock, Vault } from '../typechain-types';
 import { BalanceChange, expectBalanceChange } from '@balancer-labs/v3-helpers/src/test/tokenBalance';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { buildTokenConfig } from './poolSetup';
+import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
 describe('BatchSwap', function () {
   let vault: Vault;
+  let factory: PoolFactoryMock;
   let poolA: PoolMock, poolB: PoolMock, poolC: PoolMock;
   let poolAB: PoolMock, poolAC: PoolMock, poolBC: PoolMock;
   let tokens: ERC20TokenList;
@@ -41,8 +43,9 @@ describe('BatchSwap', function () {
     router = await deploy('BatchRouter', { args: [vaultAddress, WETH] });
     basicRouter = await deploy('Router', { args: [vaultAddress, WETH] });
 
-    tokens = await ERC20TokenList.create(3, { sorted: true });
+    factory = await deploy('PoolFactoryMock', { args: [vaultAddress, 12 * MONTH] });
 
+    tokens = await ERC20TokenList.create(3, { sorted: true });
     token0 = await tokens.get(0).getAddress();
     token1 = await tokens.get(1).getAddress();
     token2 = await tokens.get(2).getAddress();
@@ -52,35 +55,43 @@ describe('BatchSwap', function () {
 
     // Pool A has tokens 0 and 1.
     poolA = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool A', 'POOLA', buildTokenConfig(poolATokens), true, 0, ZERO_ADDRESS, ZERO_ADDRESS],
+      args: [vaultAddress, 'Pool A', 'POOLA'],
     });
 
     // Pool A has tokens 1 and 2.
     poolB = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool B', 'POOLB', buildTokenConfig(poolBTokens), true, 0, ZERO_ADDRESS, ZERO_ADDRESS],
+      args: [vaultAddress, 'Pool B', 'POOLB'],
     });
 
     // Pool C has tokens 0 and 2.
     poolC = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool C', 'POOLC', buildTokenConfig(poolCTokens), true, 0, ZERO_ADDRESS, ZERO_ADDRESS],
+      args: [vaultAddress, 'Pool C', 'POOLC'],
     });
+
+    factory.registerTestPool(poolA, buildTokenConfig(poolATokens));
+    factory.registerTestPool(poolB, buildTokenConfig(poolBTokens));
+    factory.registerTestPool(poolC, buildTokenConfig(poolCTokens));
   });
 
   sharedBeforeEach('nested pools', async () => {
     poolABTokens = sortAddresses([await poolA.getAddress(), await poolB.getAddress()]);
     poolAB = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool A-B', 'POOL-AB', buildTokenConfig(poolABTokens), true, 0, ZERO_ADDRESS, ZERO_ADDRESS],
+      args: [vaultAddress, 'Pool A-B', 'POOL-AB'],
     });
 
     poolACTokens = sortAddresses([await poolA.getAddress(), await poolC.getAddress()]);
     poolAC = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool A-C', 'POOL-AC', buildTokenConfig(poolACTokens), true, 0, ZERO_ADDRESS, ZERO_ADDRESS],
+      args: [vaultAddress, 'Pool A-C', 'POOL-AC'],
     });
 
     poolBCTokens = sortAddresses([await poolB.getAddress(), await poolC.getAddress()]);
     poolBC = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool B-C', 'POOL-BC', buildTokenConfig(poolBCTokens), true, 0, ZERO_ADDRESS, ZERO_ADDRESS],
+      args: [vaultAddress, 'Pool B-C', 'POOL-BC'],
     });
+
+    factory.registerTestPool(poolAB, buildTokenConfig(poolABTokens));
+    factory.registerTestPool(poolAC, buildTokenConfig(poolACTokens));
+    factory.registerTestPool(poolBC, buildTokenConfig(poolBCTokens));
   });
 
   sharedBeforeEach('initialize pools', async () => {
