@@ -1031,7 +1031,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
 
     /// @inheritdoc IRouter
     function permitBatchAndCall(
-        PermitAproval[] calldata permitBatch,
+        PermitApproval[] calldata permitBatch,
         bytes[] calldata permitSignatures,
         IAllowanceTransfer.PermitBatch calldata permit2Batch,
         bytes calldata permit2Signature,
@@ -1051,7 +1051,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
                 s := mload(add(signature, 0x40))
                 v := byte(0, mload(add(signature, 0x60)))
             }
-            IRouter.PermitAproval memory permitApproval = permitBatch[index];
+            IRouter.PermitApproval memory permitApproval = permitBatch[index];
             IERC20Permit(permitApproval.token).permit(
                 permitApproval.owner,
                 address(this),

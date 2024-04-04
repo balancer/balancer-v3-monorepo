@@ -85,8 +85,8 @@ contract Permit2Test is BaseVaultTest {
         bptAmountOut = defaultAmount * 2;
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
-        IRouter.PermitAproval[] memory permitBatch = new IRouter.PermitAproval[](1);
-        permitBatch[0] = IRouter.PermitAproval(pool, alice, address(router), bptAmountOut, 0, block.timestamp);
+        IRouter.PermitApproval[] memory permitBatch = new IRouter.PermitApproval[](1);
+        permitBatch[0] = IRouter.PermitApproval(pool, alice, address(router), bptAmountOut, 0, block.timestamp);
 
         bytes[] memory permitSignatures = new bytes[](1);
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(

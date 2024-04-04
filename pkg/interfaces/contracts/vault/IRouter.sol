@@ -517,7 +517,7 @@ interface IRouter {
 
     /**
      */
-    struct PermitAproval {
+    struct PermitApproval {
         address token;
         address owner;
         address spender;
@@ -537,7 +537,7 @@ interface IRouter {
      *
      */
     function permitBatchAndCall(
-        PermitAproval[] calldata permitBatch,
+        PermitApproval[] calldata permitBatch,
         bytes[] calldata permitSignatures,
         IAllowanceTransfer.PermitBatch calldata permit2Batch,
         bytes calldata permit2Signature,
