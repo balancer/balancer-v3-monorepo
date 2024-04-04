@@ -121,14 +121,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         token.safeTransfer(to, amount);
     }
 
-    /// @inheritdoc IVaultMain
-    function takeFrom(IERC20 token, address from, uint256 amount) public nonReentrant withLocker onlyTrustedRouter {
-        _supplyCredit(token, amount, msg.sender);
-        _reservesOf[token] += amount;
-
-        token.safeTransferFrom(from, address(this), amount);
-    }
-
     /*******************************************************************************
                                     Pool Operations
     *******************************************************************************/
@@ -455,12 +447,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     /*******************************************************************************
                                 Pool Operations
     *******************************************************************************/
-
-    /// @dev Rejects routers not approved by governance and users
-    modifier onlyTrustedRouter() {
-        _onlyTrustedRouter(msg.sender);
-        _;
-    }
 
     /// @dev Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
     struct LiquidityLocals {
@@ -912,10 +898,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         _setPoolBalances(params.pool, poolData);
 
-        // Trusted routers use Vault's allowances, which are infinite anyways for pool tokens.
-        if (!_isTrustedRouter(msg.sender)) {
-            _spendAllowance(address(params.pool), params.from, msg.sender, bptAmountIn);
-        }
+        _spendAllowance(address(params.pool), params.from, msg.sender, bptAmountIn);
 
         if (!vaultState.isQueryDisabled && EVMCallModeHelpers.isStaticCall()) {
             // Increase `from` balance to ensure the burn function succeeds.
@@ -933,12 +916,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // We can unsafely cast to int256 because balances are stored as uint128 (see PackedTokenBalance).
             amountsOutRaw.unsafeCastToInt256(false)
         );
-    }
-
-    function _onlyTrustedRouter(address sender) internal pure {
-        if (!_isTrustedRouter(sender)) {
-            revert RouterNotTrusted();
-        }
     }
 
     /**
