@@ -40,7 +40,8 @@ contract PoolDataTest is BaseVaultTest {
 
         factoryMock.registerTestPool(
             newPool,
-            vault.buildTokenConfig([address(dai), address(wsteth)].toMemoryArray().asIERC20(), rateProviders)
+            vault.buildTokenConfig([address(dai), address(wsteth)].toMemoryArray().asIERC20(), rateProviders),
+            address(lp)
         );
 
         return newPool;

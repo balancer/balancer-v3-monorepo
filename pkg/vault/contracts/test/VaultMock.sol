@@ -29,6 +29,7 @@ import { PackedTokenBalance } from "../lib/PackedTokenBalance.sol";
 
 contract VaultMock is IVaultMainMock, Vault {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using ScalingHelpers for uint256;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
@@ -69,7 +70,7 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolFactoryMock.registerPool(
             pool,
             buildTokenConfig(tokens),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
@@ -102,7 +103,7 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolFactoryMock.registerPool(
             pool,
             tokenConfig,
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,

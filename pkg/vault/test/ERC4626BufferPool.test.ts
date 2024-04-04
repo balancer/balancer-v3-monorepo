@@ -70,7 +70,7 @@ describe('ERC4626BufferPool', function () {
     await baseToken.connect(alice).approve(wrappedToken, TOKEN_AMOUNT);
     await wrappedToken.connect(alice).deposit(TOKEN_AMOUNT, alice);
 
-    const tx = await factory.connect(alice).create(wrappedToken, wrappedToken, ANY_ADDRESS, ZERO_BYTES32);
+    const tx = await factory.connect(alice).create(wrappedToken, wrappedToken, ANY_ADDRESS, ANY_ADDRESS, ZERO_BYTES32);
     const receipt = await tx.wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');

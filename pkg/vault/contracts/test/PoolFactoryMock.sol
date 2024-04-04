@@ -20,13 +20,13 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         _vault = vault;
     }
 
-    function registerTestPool(address pool, TokenConfig[] memory tokenConfig) external {
+    function registerTestPool(address pool, TokenConfig[] memory tokenConfig, address poolCreator) external {
         _vault.registerPool(
             pool,
             tokenConfig,
             DEFAULT_SWAP_FEE,
             getNewPoolPauseWindowEndTime(),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: poolCreator }),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
@@ -88,7 +88,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
             poolHooks,
             liquidityManagement
         );

@@ -59,7 +59,7 @@ contract StablePoolFactory is BasePoolFactory {
             tokens,
             swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
             PoolHooks({
                 shouldCallBeforeInitialize: false,
                 shouldCallAfterInitialize: false,

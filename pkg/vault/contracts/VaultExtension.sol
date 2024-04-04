@@ -49,6 +49,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using Address for *;
     using ArrayHelpers for uint256[];
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using EnumerableSet for EnumerableSet.AddressSet;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
@@ -189,6 +190,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         // Retrieve or create the pool's token balances mapping.
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        // Retrieve or create the pool's dev fee mapping.
+        EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
+
         uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
         IERC20 previousToken;
 
@@ -213,6 +217,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             if (poolTokenBalances.set(token, bytes32(0)) == false) {
                 revert TokenAlreadyRegistered(token);
             }
+
+            // Register the token dev fee with an initial balance of zero.
+            // Note: EnumerableMaps require an explicit initial value when creating a key-value pair.
+            poolCreatorFees.set(token, 0);
 
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
             _poolTokenConfig[pool][token] = tokenData;
@@ -282,6 +290,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
             roleAssignments[swapFeeAction] = PoolFunctionPermission({
                 account: roleAccounts.swapFeeManager,
+                onlyOwner: true
+            });
+        }
+
+        if (roleAccounts.poolCreator != address(0)) {
+            bytes32 creatorFeeAction = vaultAdmin.getRoleId(IVaultAdmin.setPoolCreatorFeePercentage.selector);
+
+            roleAssignments[creatorFeeAction] = PoolFunctionPermission({
+                account: roleAccounts.poolCreator,
                 onlyOwner: true
             });
         }
@@ -540,6 +557,18 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function getStaticSwapFeeManager(address pool) external view withRegisteredPool(pool) onlyVault returns (address) {
         return _poolRoleAccounts[pool].swapFeeManager;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getPoolCreatorFees(address pool, IERC20 token) external view returns (uint256 poolCreatorFee) {
+        EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
+        uint256 index = poolCreatorFees.indexOf(token);
+        poolCreatorFee = poolCreatorFees.unchecked_valueAt(index);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getPoolCreator(address pool) external view returns (address poolCreator) {
+        return _poolRoleAccounts[pool].poolCreator;
     }
 
     /*******************************************************************************

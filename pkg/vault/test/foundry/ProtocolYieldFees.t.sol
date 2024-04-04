@@ -60,7 +60,8 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
                 [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
                 rateProviders,
                 yieldFeeFlags
-            )
+            ),
+            address(lp)
         );
 
         vm.label(address(newPool), "pool");

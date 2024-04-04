@@ -50,12 +50,14 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
      * @param wrappedToken The ERC4626 wrapped token associated with the buffer and pool
      * @param rateProvider The rate provider associated with the wrapped token
      * @param pauseManager The pause manager for this pool (or 0)
+     * @param poolCreator The pool dev who will collect pool creator fees for this pool (or 0)
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
         IERC4626 wrappedToken,
         IRateProvider rateProvider,
         address pauseManager,
+        address poolCreator,
         bytes32 salt
     ) external returns (address pool) {
         ensureValidWrappedToken(wrappedToken);
@@ -77,7 +79,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
             wrappedToken,
             rateProvider,
             getNewPoolPauseWindowEndTime(),
-            PoolRoleAccounts({ pauseManager: pauseManager, swapFeeManager: address(0) }),
+            PoolRoleAccounts({ pauseManager: pauseManager, swapFeeManager: address(0), poolCreator: address(0) }),
             _getDefaultPoolHooks(),
             _getDefaultLiquidityManagement()
         );
