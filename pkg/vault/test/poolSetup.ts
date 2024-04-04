@@ -42,8 +42,7 @@ export async function setupEnvironment(pauseWindowDuration: number): Promise<{
     args: [vaultAddress, 'Pool A', 'POOLA'],
   });
 
-  await factory.registerTestPool(poolA, buildTokenConfig(poolATokens));
-
+  await factory.registerTestPool(poolA, buildTokenConfig(poolATokens), ZERO_ADDRESS);
   // Don't register PoolB.
   const poolB: PoolMock = await deploy('v3-vault/PoolMock', {
     args: [vaultAddress, 'Pool B', 'POOLB'],
