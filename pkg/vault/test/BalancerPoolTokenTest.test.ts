@@ -22,7 +22,7 @@ describe('BalancerPoolToken', function () {
   let other: SignerWithAddress;
   let relayer: SignerWithAddress;
 
-  let registeredPoolSigner: SignerWithAddress;
+  let poolASigner: SignerWithAddress;
 
   let poolAAddress: string;
   let poolBAddress: string;
@@ -54,7 +54,7 @@ describe('BalancerPoolToken', function () {
   sharedBeforeEach('', async () => {
     // Simulate a call from the real Pool by "casting" it as a Signer,
     // so it can be used with `connect` like an EOA
-    registeredPoolSigner = await impersonate(poolAAddress);
+    poolASigner = await impersonate(poolAAddress);
   });
 
   describe('minting', async () => {
@@ -165,7 +165,7 @@ describe('BalancerPoolToken', function () {
       });
 
       it('indirect ERC20 BPT transfer emits a transfer event on the token', async () => {
-        await expect(await vault.connect(registeredPoolSigner).transfer(user.address, other.address, bptAmount))
+        await expect(await vault.connect(poolASigner).transfer(user.address, other.address, bptAmount))
           .to.emit(poolA, 'Transfer')
           .withArgs(user.address, other.address, bptAmount);
       });
@@ -178,25 +178,25 @@ describe('BalancerPoolToken', function () {
     });
 
     it('transfers ERC20 BPT through the vault', async () => {
-      await vault.connect(registeredPoolSigner).transfer(user.address, other.address, bptAmount);
+      await vault.connect(poolASigner).transfer(user.address, other.address, bptAmount);
 
       itTransfersBPTCorrectly();
     });
 
     it('cannot transfer ERC20 BPT from zero address', async () => {
-      await expect(vault.connect(registeredPoolSigner).transfer(ZERO_ADDRESS, other.address, bptAmount))
+      await expect(vault.connect(poolASigner).transfer(ZERO_ADDRESS, other.address, bptAmount))
         .to.be.revertedWithCustomError(vault, 'ERC20InvalidSender')
         .withArgs(ZERO_ADDRESS);
     });
 
     it('cannot transfer ERC20 BPT to zero address', async () => {
-      await expect(vault.connect(registeredPoolSigner).transfer(user.address, ZERO_ADDRESS, bptAmount))
+      await expect(vault.connect(poolASigner).transfer(user.address, ZERO_ADDRESS, bptAmount))
         .to.be.revertedWithCustomError(vault, 'ERC20InvalidReceiver')
         .withArgs(ZERO_ADDRESS);
     });
 
     it('cannot transfer more than balance', async () => {
-      await expect(vault.connect(registeredPoolSigner).transfer(user.address, other.address, totalSupply + 1n))
+      await expect(vault.connect(poolASigner).transfer(user.address, other.address, totalSupply + 1n))
         .to.be.revertedWithCustomError(vault, 'ERC20InsufficientBalance')
         .withArgs(user.address, totalSupply, totalSupply + 1n);
     });
@@ -233,7 +233,7 @@ describe('BalancerPoolToken', function () {
       });
 
       it('indirect ERC20 approval emits an event on the token', async () => {
-        await expect(await vault.connect(registeredPoolSigner).approve(user, relayer, bptAmount))
+        await expect(await vault.connect(poolASigner).approve(user, relayer, bptAmount))
           .to.emit(poolA, 'Approval')
           .withArgs(user.address, relayer.address, bptAmount);
       });
@@ -249,14 +249,14 @@ describe('BalancerPoolToken', function () {
 
     context('sets approval through the vault', async () => {
       sharedBeforeEach('set approval', async () => {
-        await vault.connect(registeredPoolSigner).approve(user, relayer, bptAmount);
+        await vault.connect(poolASigner).approve(user, relayer, bptAmount);
       });
 
       itSetsApprovalsCorrectly();
     });
 
     it('cannot approve to zero address', async () => {
-      await expect(vault.connect(registeredPoolSigner).approve(user, ZERO_ADDRESS, bptAmount))
+      await expect(vault.connect(poolASigner).approve(user, ZERO_ADDRESS, bptAmount))
         .to.be.revertedWithCustomError(vault, 'ERC20InvalidSpender')
         .withArgs(ZERO_ADDRESS);
     });
@@ -293,7 +293,7 @@ describe('BalancerPoolToken', function () {
 
     context('transfers ERC20 BPT through the vault', async () => {
       sharedBeforeEach('indirect transferFrom', async () => {
-        await vault.connect(registeredPoolSigner).transfer(user.address, relayer.address, bptAmount);
+        await vault.connect(poolASigner).transfer(user.address, relayer.address, bptAmount);
       });
 
       itTransfersBPTCorrectly();
@@ -307,18 +307,14 @@ describe('BalancerPoolToken', function () {
 
     it('indirect transfer emits a transfer event on the ERC20 BPT token', async () => {
       await expect(
-        await vault
-          .connect(registeredPoolSigner)
-          .transferFrom(relayer.address, user.address, relayer.address, bptAmount)
+        await vault.connect(poolASigner).transferFrom(relayer.address, user.address, relayer.address, bptAmount)
       )
         .to.emit(poolA, 'Transfer')
         .withArgs(user.address, relayer.address, bptAmount);
     });
 
     it('cannot transfer ERC20 BPT to zero address', async () => {
-      await expect(
-        vault.connect(registeredPoolSigner).transferFrom(relayer.address, user.address, ZERO_ADDRESS, bptAmount)
-      )
+      await expect(vault.connect(poolASigner).transferFrom(relayer.address, user.address, ZERO_ADDRESS, bptAmount))
         .to.be.revertedWithCustomError(vault, 'ERC20InvalidReceiver')
         .withArgs(ZERO_ADDRESS);
     });
@@ -328,18 +324,18 @@ describe('BalancerPoolToken', function () {
       await poolA.connect(user).approve(relayer.address, MAX_UINT256);
 
       await expect(
-        vault.connect(registeredPoolSigner).transferFrom(relayer.address, user.address, other.address, totalSupply + 1n)
+        vault.connect(poolASigner).transferFrom(relayer.address, user.address, other.address, totalSupply + 1n)
       )
         .to.be.revertedWithCustomError(vault, 'ERC20InsufficientBalance')
         .withArgs(user.address, totalSupply, totalSupply + 1n);
     });
 
     it('cannot transfer more than ERC20 BPT allowance', async () => {
-      await expect(
-        vault.connect(registeredPoolSigner).transferFrom(relayer.address, user.address, other.address, bptAmount + 1n)
-      )
+      const allowance = await vault.connect(user).allowance(poolA, user, relayer);
+
+      await expect(vault.connect(poolASigner).transferFrom(relayer, user, other, allowance + 1n))
         .to.be.revertedWithCustomError(vault, 'ERC20InsufficientAllowance')
-        .withArgs(relayer.address, bptAmount, bptAmount + 1n);
+        .withArgs(relayer.address, bptAmount, allowance + 1n);
     });
   });
 });

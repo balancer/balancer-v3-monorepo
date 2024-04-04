@@ -65,12 +65,12 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         donor = payable(DONOR_WALLET_ADDRESS);
         vm.label(donor, "TokenDonor");
 
-        _setupTokens();
-
         BaseVaultTest.setUp();
     }
 
     function createPool() internal override returns (address) {
+        _setupTokens();
+
         factory = new ERC4626BufferPoolFactoryMock(IVault(address(vault)), 365 days);
 
         bufferPoolDai = ERC4626BufferPoolMock(_createBuffer(waDAI));
@@ -370,12 +370,16 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             vm.stopPrank();
 
             vm.startPrank(userAddress);
-            daiMainnet.approve(address(vault), MAX_UINT256);
-            waDAI.approve(address(vault), MAX_UINT256);
+            daiMainnet.approve(address(permit2), MAX_UINT256);
+            permit2.approve(address(daiMainnet), address(router), type(uint160).max, type(uint48).max);
+            waDAI.approve(address(permit2), MAX_UINT256);
+            permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
             daiMainnet.approve(address(waDAI), MAX_UINT256);
 
-            usdcMainnet.approve(address(vault), MAX_UINT256);
-            waUSDC.approve(address(vault), MAX_UINT256);
+            usdcMainnet.approve(address(permit2), MAX_UINT256);
+            permit2.approve(address(usdcMainnet), address(router), type(uint160).max, type(uint48).max);
+            waUSDC.approve(address(permit2), MAX_UINT256);
+            permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
             usdcMainnet.approve(address(waUSDC), MAX_UINT256);
             vm.stopPrank();
         }
@@ -411,8 +415,12 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
 
     function _setupTokens() private {
         daiMainnet = IERC20(DAI_ADDRESS);
-        waDAI = IERC4626(aDAI_ADDRESS);
         vm.label(DAI_ADDRESS, "DAI");
+        vm.startPrank(lp);
+        daiMainnet.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(daiMainnet), address(router), type(uint160).max, type(uint48).max);
+
+        waDAI = IERC4626(aDAI_ADDRESS);
         vm.label(aDAI_ADDRESS, "aDAI");
 
         usdcMainnet = IERC20(USDC_ADDRESS);
