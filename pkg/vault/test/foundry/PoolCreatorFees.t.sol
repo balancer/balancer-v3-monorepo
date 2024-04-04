@@ -232,9 +232,13 @@ contract PoolCreatorFeesTest is BaseVaultTest {
                 );
             } else if (tokens[i] == tokenOut) {
                 // Fees are charged from amountIn, but lpFees stay in the pool
-                assertEq(
-                    liveBalancesBefore[i] - amountIn + vars.lpFees,
-                    liveBalancesAfter[i],
+                uint256 expectedLiveBalancesAfter = liveBalancesBefore[i] - amountIn + vars.lpFees;
+                // Rounding should always favor the protocol when charging fees. We assert that
+                // expectedLiveBalancesAfter >= liveBalancesAfter[i], but difference is not greater than 1
+                // to tolerate rounding
+                assertLe(
+                    expectedLiveBalancesAfter - liveBalancesAfter[i],
+                    1,
                     "Live Balance for tokenOut does not match after swap"
                 );
             }
