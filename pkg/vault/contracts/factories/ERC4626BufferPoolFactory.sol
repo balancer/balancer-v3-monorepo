@@ -50,12 +50,14 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
      * @param wrappedToken The ERC4626 wrapped token associated with the buffer and pool
      * @param rateProvider The rate provider associated with the wrapped token
      * @param pauseManager The pause manager for this pool (or 0)
+     * @param poolCreator The pool dev who will collect pool creator fees for this pool (or 0)
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
         IERC4626 wrappedToken,
         IRateProvider rateProvider,
         address pauseManager,
+        address poolCreator,
         bytes32 salt
     ) external returns (address pool) {
         ensureValidWrappedToken(wrappedToken);
@@ -78,6 +80,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
             rateProvider,
             getNewPoolPauseWindowEndTime(),
             pauseManager,
+            poolCreator,
             _getDefaultPoolHooks(),
             _getDefaultLiquidityManagement()
         );
@@ -89,6 +92,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         IRateProvider rateProvider,
         uint256 pauseWindowEndTime,
         address pauseManager,
+        address poolCreator,
         PoolHooks memory poolHooks,
         LiquidityManagement memory liquidityManagement
     ) internal {
@@ -104,7 +108,16 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         tokenConfig[baseTokenIndex].token = IERC20(wrappedToken.asset());
 
         // Buffers always have 0 swap fees.
-        getVault().registerPool(pool, tokenConfig, 0, pauseWindowEndTime, pauseManager, poolHooks, liquidityManagement);
+        getVault().registerPool(
+            pool,
+            tokenConfig,
+            0,
+            pauseWindowEndTime,
+            pauseManager,
+            poolCreator,
+            poolHooks,
+            liquidityManagement
+        );
     }
 
     function _getDefaultPoolHooks() internal pure returns (PoolHooks memory) {

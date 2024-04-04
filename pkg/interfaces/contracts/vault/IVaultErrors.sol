@@ -188,6 +188,9 @@ interface IVaultErrors {
      */
     error SwapFeePercentageTooLow();
 
+    /// @dev Error raised when the pool creator fee percentage exceeds the maximum allowed value.
+    error PoolCreatorFeePercentageTooHigh();
+
     /*******************************************************************************
                                     Queries
     *******************************************************************************/
@@ -294,4 +297,10 @@ interface IVaultErrors {
 
     /// @dev The vault admin was configured with an incorrect Vault address.
     error WrongVaultAdminDeployment();
+
+    /**
+     * @dev The caller is not the registered pool creator for the pool.
+     * @param pool The pool
+     */
+    error SenderIsNotPoolCreator(address pool);
 }
