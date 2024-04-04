@@ -57,7 +57,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         (TokenConfig[] memory newTokenConfig, uint256[] memory balancesRaw, , ) = vault.internalGetPoolTokenInfo(pool);
         assertEq(newTokenConfig.length, 3);
         assertEq(balancesRaw.length, 3);
-        for (uint256 i = 0; i < newTokenConfig.length; i++) {
+        for (uint256 i = 0; i < newTokenConfig.length; ++i) {
             assertEq(
                 address(newTokenConfig[i].token),
                 address(tokens[i]),
@@ -132,7 +132,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             3,
             "length of decimalScalingFactors should be equal to amount of tokens"
         );
-        for (uint256 i = 0; i < decimalScalingFactors.length; i++) {
+        for (uint256 i = 0; i < decimalScalingFactors.length; ++i) {
             assertEq(
                 decimalScalingFactors[i],
                 10 ** (18 + tokenDecimalDiffs[i]),
@@ -194,7 +194,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         assertEq(balancesRaw.length, 3);
         assertEq(decimalScalingFactors.length, 3);
 
-        for (uint256 i = 0; i < newTokenConfig.length; i++) {
+        for (uint256 i = 0; i < newTokenConfig.length; ++i) {
             assertEq(
                 address(newTokenConfig[i].token),
                 address(tokens[i]),

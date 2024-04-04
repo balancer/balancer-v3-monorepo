@@ -361,7 +361,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     function _transferTokensFromDonorToUsers() private {
         address[] memory usersToTransfer = [address(lp)].toMemoryArray();
 
-        for (uint256 index = 0; index < usersToTransfer.length; index++) {
+        for (uint256 index = 0; index < usersToTransfer.length; ++index) {
             address userAddress = usersToTransfer[index];
 
             vm.startPrank(donor);
@@ -384,7 +384,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     function _transferTokensFromDonorToBuffers() private {
         address[] memory buffersToTransfer = [address(bufferPoolUsdc), address(bufferPoolDai)].toMemoryArray();
 
-        for (uint256 index = 0; index < buffersToTransfer.length; index++) {
+        for (uint256 index = 0; index < buffersToTransfer.length; ++index) {
             address bufferAddress = buffersToTransfer[index];
 
             vm.startPrank(donor);

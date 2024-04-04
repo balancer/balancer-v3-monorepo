@@ -111,7 +111,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     function approveVault(address user) internal {
         vm.startPrank(user);
 
-        for (uint256 index = 0; index < tokens.length; index++) {
+        for (uint256 index = 0; index < tokens.length; ++index) {
             tokens[index].approve(address(vault), type(uint256).max);
         }
 
@@ -172,7 +172,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
         (IERC20[] memory tokens, , uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(pool);
         balances.poolTokens = poolBalances;
         balances.userTokens = new uint256[](poolBalances.length);
-        for (uint256 i = 0; i < poolBalances.length; i++) {
+        for (uint256 i = 0; i < poolBalances.length; ++i) {
             // Don't assume token ordering.
             balances.userTokens[i] = tokens[i].balanceOf(user);
         }
