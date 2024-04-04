@@ -8,7 +8,13 @@ import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types
 import { PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/PoolMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { FP_ZERO, fp } from '@balancer-labs/v3-helpers/src/numbers';
-import { MAX_UINT256, MAX_UINT160, MAX_UINT48, ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
+import {
+  MAX_UINT256,
+  MAX_UINT160,
+  MAX_UINT48,
+  ZERO_BYTES32,
+  ZERO_ADDRESS,
+} from '@balancer-labs/v3-helpers/src/constants';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
@@ -74,7 +80,7 @@ describe('WeightedPool', function () {
       args: [vault, 'Pool', 'POOL'],
     });
 
-    await factory.registerTestPool(pool, buildTokenConfig(poolTokens));
+    await factory.registerTestPool(pool, buildTokenConfig(poolTokens), ZERO_ADDRESS);
   });
 
   describe('initialization', () => {
