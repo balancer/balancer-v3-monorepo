@@ -256,7 +256,7 @@ contract WeightedPoolTest is BaseVaultTest {
             ZERO_BYTES32
         );
 
-        factoryMock.registerTestPool(lowFeeWeightedPool, tokens);
+        factoryMock.registerTestPool(lowFeeWeightedPool, tokens, address(0));
     }
 
     function testSetSwapFeeTooLow() public {

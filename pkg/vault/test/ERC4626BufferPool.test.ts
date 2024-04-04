@@ -70,7 +70,7 @@ describe('ERC4626BufferPool', function () {
     await baseToken.connect(alice).approve(wrappedToken, TOKEN_AMOUNT);
     await wrappedToken.connect(alice).deposit(TOKEN_AMOUNT, alice);
 
-    const tx = await factory.connect(alice).create(wrappedToken, wrappedToken, ANY_ADDRESS, ZERO_BYTES32);
+    const tx = await factory.connect(alice).create(wrappedToken, wrappedToken, ANY_ADDRESS, ANY_ADDRESS, ZERO_BYTES32);
     const receipt = await tx.wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
@@ -130,13 +130,13 @@ describe('ERC4626BufferPool', function () {
       expect(poolConfig.pauseWindowEndTime).to.gt(currentTime);
       expect(poolConfig.hooks.shouldCallBeforeInitialize).to.be.true;
       expect(poolConfig.hooks.shouldCallAfterInitialize).to.be.false;
-      expect(poolConfig.hooks.shouldCallBeforeAddLiquidity).to.be.true;
+      expect(poolConfig.hooks.shouldCallBeforeAddLiquidity).to.be.false;
       expect(poolConfig.hooks.shouldCallAfterAddLiquidity).to.be.false;
-      expect(poolConfig.hooks.shouldCallBeforeRemoveLiquidity).to.be.true;
+      expect(poolConfig.hooks.shouldCallBeforeRemoveLiquidity).to.be.false;
       expect(poolConfig.hooks.shouldCallAfterRemoveLiquidity).to.be.false;
       expect(poolConfig.hooks.shouldCallBeforeSwap).to.be.true;
       expect(poolConfig.hooks.shouldCallAfterSwap).to.be.false;
-      expect(poolConfig.liquidityManagement.disableUnbalancedLiquidity).to.be.false;
+      expect(poolConfig.liquidityManagement.disableUnbalancedLiquidity).to.be.true;
       expect(poolConfig.liquidityManagement.enableAddLiquidityCustom).to.be.false;
       expect(poolConfig.liquidityManagement.enableRemoveLiquidityCustom).to.be.false;
     });
@@ -254,7 +254,7 @@ describe('ERC4626BufferPool', function () {
       it('cannot add liquidity unbalanced', async () => {
         await expect(
           router.connect(alice).addLiquidityUnbalanced(pool, [0, TOKEN_AMOUNT], 0, false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'BeforeAddLiquidityHookFailed');
+        ).to.be.revertedWithCustomError(vault, 'DoesNotSupportUnbalancedLiquidity');
       });
 
       it('cannot add liquidity single token exact out', async () => {
@@ -262,7 +262,7 @@ describe('ERC4626BufferPool', function () {
           router
             .connect(alice)
             .addLiquiditySingleTokenExactOut(pool, baseTokenAddress, TOKEN_AMOUNT, TOKEN_AMOUNT, false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'BeforeAddLiquidityHookFailed');
+        ).to.be.revertedWithCustomError(vault, 'DoesNotSupportUnbalancedLiquidity');
       });
     });
 
@@ -302,7 +302,7 @@ describe('ERC4626BufferPool', function () {
       it('cannot remove liquidity single token exact in', async () => {
         await expect(
           router.connect(alice).removeLiquiditySingleTokenExactIn(pool, TOKEN_AMOUNT, baseTokenAddress, 0, false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'BeforeRemoveLiquidityHookFailed');
+        ).to.be.revertedWithCustomError(vault, 'DoesNotSupportUnbalancedLiquidity');
       });
 
       it('cannot remove liquidity single token exact out', async () => {
@@ -310,13 +310,13 @@ describe('ERC4626BufferPool', function () {
           router
             .connect(alice)
             .removeLiquiditySingleTokenExactOut(pool, TOKEN_AMOUNT, baseTokenAddress, TOKEN_AMOUNT, false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'BeforeRemoveLiquidityHookFailed');
+        ).to.be.revertedWithCustomError(vault, 'DoesNotSupportUnbalancedLiquidity');
       });
 
       it('cannot remove liquidity custom', async () => {
         await expect(
           router.connect(alice).removeLiquidityCustom(pool, TOKEN_AMOUNT, [0, 0], false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'BeforeRemoveLiquidityHookFailed');
+        ).to.be.revertedWithCustomError(vault, 'DoesNotSupportRemoveLiquidityCustom');
       });
     });
 

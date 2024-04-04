@@ -108,31 +108,6 @@ contract ERC4626BufferPool is
     }
 
     /// @inheritdoc BasePoolHooks
-    function onBeforeAddLiquidity(
-        address,
-        AddLiquidityKind kind,
-        uint256[] memory,
-        uint256,
-        uint256[] memory,
-        bytes memory
-    ) external view override onlyVault returns (bool) {
-        return kind == AddLiquidityKind.PROPORTIONAL;
-    }
-
-    /// @inheritdoc BasePoolHooks
-    function onBeforeRemoveLiquidity(
-        address,
-        RemoveLiquidityKind kind,
-        uint256,
-        uint256[] memory,
-        uint256[] memory,
-        bytes memory
-    ) external view override onlyVault returns (bool) {
-        // Only support proportional remove liquidity.
-        return kind == RemoveLiquidityKind.PROPORTIONAL;
-    }
-
-    /// @inheritdoc BasePoolHooks
     function onBeforeSwap(IBasePool.PoolSwapParams calldata params) external override onlyVault returns (bool) {
         // Short-circuit if we're already inside an `onBeforeSwap` hook.
         if (_inSwapContext) {
