@@ -245,10 +245,11 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                         stepTokenIn = step.tokenOut;
                         // If this is an intermediate step, we'll need to send it back to the vault
                         // to get credit for the BPT minted in the add liquidity operation.
-                        if (params.sender != address(this)) {
-                            _permit2.transferFrom(params.sender, address(_vault), uint160(bptAmountOut), step.pool);
-                        } else {
+                        if (params.sender == address(this)) {
+                            // Required for queries or in case router holds tokens.
                             IERC20(step.pool).safeTransfer(address(_vault), bptAmountOut);
+                        } else {
+                            _permit2.transferFrom(params.sender, address(_vault), uint160(bptAmountOut), step.pool);
                         }
                         _vault.settle(IERC20(step.pool));
                     }
@@ -423,15 +424,16 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                         stepExactAmountOut = bptAmountIn;
                         // Refund unused portion of BPT flashloan to the Vault
                         if (bptAmountIn < stepMaxAmountIn) {
-                            if (params.sender != address(this)) {
+                            if (params.sender == address(this)) {
+                                // Required for queries or in case router holds tokens.
+                                IERC20(stepTokenIn).safeTransfer(address(_vault), stepMaxAmountIn - bptAmountIn);
+                            } else {
                                 _permit2.transferFrom(
                                     params.sender,
                                     address(_vault),
                                     uint160(stepMaxAmountIn - bptAmountIn),
                                     address(stepTokenIn)
                                 );
-                            } else {
-                                IERC20(stepTokenIn).safeTransfer(address(_vault), stepMaxAmountIn - bptAmountIn);
                             }
                             _vault.settle(IERC20(stepTokenIn));
                         }
@@ -474,15 +476,15 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             // the vault owes the sender to make one less transfer.
                             _currentSwapTokenOutAmounts[address(step.tokenOut)] -= stepExactAmountOut;
                         } else {
-                            if (params.sender != address(this)) {
+                            if (params.sender == address(this)) {
+                                IERC20(step.pool).safeTransfer(address(_vault), stepExactAmountOut);
+                            } else {
                                 _permit2.transferFrom(
                                     params.sender,
                                     address(_vault),
                                     uint160(stepExactAmountOut),
                                     step.pool
                                 );
-                            } else {
-                                IERC20(step.pool).safeTransfer(address(_vault), stepExactAmountOut);
                             }
                             _vault.settle(IERC20(step.pool));
                         }

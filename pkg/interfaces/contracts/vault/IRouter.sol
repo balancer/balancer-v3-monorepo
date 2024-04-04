@@ -534,7 +534,6 @@ interface IRouter {
      * @param permit2Signature A permit2 signature for the batch approval
      * @param multicallData An array of bytes arrays, each representing an encoded function call to be executed on this contract
      * @return results Array of bytes arrays, each representing the return data from each function call executed
-     *
      */
     function permitBatchAndCall(
         PermitApproval[] calldata permitBatch,

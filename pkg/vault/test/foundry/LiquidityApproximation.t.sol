@@ -91,7 +91,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         swapPool = _createPool(tokens, "swapPool");
 
         // NOTE: stores address in `pool` (unused in this test)
-        return address(0x0);
+        return address(0);
     }
 
     function initPool() internal override {

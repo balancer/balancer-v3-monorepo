@@ -38,7 +38,7 @@ abstract contract BaseTest is Test, GasSnapshot {
     uint256 internal hackerKey;
     // Broke user.
     address payable internal broke;
-    uint256 internal brokeKey;
+    uint256 internal brokeUserKey;
 
     // List of all users
     address payable[] internal users;
@@ -83,7 +83,7 @@ abstract contract BaseTest is Test, GasSnapshot {
         (bob, bobKey) = createUser("bob");
         (hacker, hackerKey) = createUser("hacker");
         address brokeNonPay;
-        (brokeNonPay, brokeKey) = makeAddrAndKey("broke");
+        (brokeNonPay, brokeUserKey) = makeAddrAndKey("broke");
         broke = payable(brokeNonPay);
         vm.label(broke, "broke");
 
@@ -97,7 +97,7 @@ abstract contract BaseTest is Test, GasSnapshot {
         users.push(bob);
         userKeys.push(bobKey);
         users.push(broke);
-        userKeys.push(brokeKey);
+        userKeys.push(brokeUserKey);
     }
 
     function getSortedIndexes(

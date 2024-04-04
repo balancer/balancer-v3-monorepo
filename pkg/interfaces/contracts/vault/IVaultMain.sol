@@ -32,6 +32,8 @@ interface IVaultMain {
 
     /**
      * @notice Sends tokens to a recipient.
+     * @dev There is no inverse operation for this function. Transfer funds to the Vault and call `settle` to cancel
+     * debts.
      * @param token Token's address
      * @param to Recipient's address
      * @param amount Amount of tokens to send
