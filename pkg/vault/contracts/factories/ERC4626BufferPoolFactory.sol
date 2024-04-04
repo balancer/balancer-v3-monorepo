@@ -119,9 +119,9 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
             PoolHooks({
                 shouldCallBeforeInitialize: true, // ensure proportional
                 shouldCallAfterInitialize: false,
-                shouldCallBeforeAddLiquidity: true, // ensure custom
+                shouldCallBeforeAddLiquidity: false,
                 shouldCallAfterAddLiquidity: false,
-                shouldCallBeforeRemoveLiquidity: true, // ensure proportional
+                shouldCallBeforeRemoveLiquidity: false,
                 shouldCallAfterRemoveLiquidity: false,
                 shouldCallBeforeSwap: true, // rebalancing
                 shouldCallAfterSwap: false
@@ -131,7 +131,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
     function _getDefaultLiquidityManagement() internal pure returns (LiquidityManagement memory) {
         return
             LiquidityManagement({
-                disableUnbalancedLiquidity: false,
+                disableUnbalancedLiquidity: true,
                 enableAddLiquidityCustom: false,
                 enableRemoveLiquidityCustom: false
             });
