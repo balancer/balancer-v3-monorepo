@@ -116,7 +116,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             DEFAULT_SWAP_FEE,
             timestamp,
             pauseManager,
-            address(0),
+            poolCreator,
             poolHooks,
             liquidityManagement
         );
