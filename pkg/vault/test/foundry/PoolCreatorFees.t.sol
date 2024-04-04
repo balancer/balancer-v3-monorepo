@@ -220,6 +220,13 @@ contract PoolCreatorFeesTest is BaseVaultTest {
             "tokenOut creator fees should increase by chargedCreatorFee after swap"
         );
 
+        // Check protocol + creator fees are always smaller than total fees
+        assertLe(
+            vars.protocolFees + chargedCreatorFee,
+            vars.totalFees,
+            "total fees should be >= protocol + creator fees"
+        );
+
         // Check live balances after transfer
         (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(address(pool));
         uint256[] memory liveBalancesAfter = vault.getLastLiveBalances(address(pool));
