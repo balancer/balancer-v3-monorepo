@@ -186,7 +186,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                     // Reusing `amountsOut` as input argument and function output to prevent stack too deep error.
                     if (params.sender == address(this)) {
                         // Needed for queries.
-                        // If router is sender have to approve itself.
+                        // If router is the sender, it has to approve itself.
                         IERC20(step.pool).safeIncreaseAllowance(address(this), type(uint256).max);
                     }
                     (, amountsOut, ) = _vault.removeLiquidity(
@@ -400,7 +400,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
 
                     if (params.sender == address(this)) {
                         // Needed for queries.
-                        // If router is sender have to approve itself.
+                        // If router is the sender, it has to approve itself.
                         IERC20(step.pool).approve(address(this), type(uint256).max);
                     }
                     (uint256 bptAmountIn, , ) = _vault.removeLiquidity(
