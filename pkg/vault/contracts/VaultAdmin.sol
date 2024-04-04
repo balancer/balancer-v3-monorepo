@@ -326,8 +326,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     /// @inheritdoc IVaultAdmin
     function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant onlyVault {
-        for (uint256 index = 0; index < tokens.length; ++index) {
-            IERC20 token = tokens[index];
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
             uint256 amount = _protocolFees[token];
 
             if (amount > 0) {
@@ -343,12 +343,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /// @inheritdoc IVaultAdmin
     function collectPoolCreatorFees(address pool) external nonReentrant onlyVault {
         EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
-        for (uint256 index = 0; index < poolCreatorFees.length(); ++index) {
-            (IERC20 token, uint256 amount) = poolCreatorFees.unchecked_at(index);
+        for (uint256 i = 0; i < poolCreatorFees.length(); ++i) {
+            (IERC20 token, uint256 amount) = poolCreatorFees.unchecked_at(i);
 
             if (amount > 0) {
                 // set fees to zero for the token
-                poolCreatorFees.unchecked_setAt(index, 0);
+                poolCreatorFees.unchecked_setAt(i, 0);
 
                 token.safeTransfer(_poolCreator[pool], amount);
                 emit PoolCreatorFeeCollected(pool, token, amount);

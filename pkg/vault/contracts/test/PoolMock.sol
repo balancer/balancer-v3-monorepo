@@ -58,8 +58,8 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     function computeInvariant(uint256[] memory balances) public pure returns (uint256) {
         // inv = x + y
         uint256 invariant;
-        for (uint256 index = 0; index < balances.length; ++index) {
-            invariant += balances[index];
+        for (uint256 i = 0; i < balances.length; ++i) {
+            invariant += balances[i];
         }
         return invariant;
     }

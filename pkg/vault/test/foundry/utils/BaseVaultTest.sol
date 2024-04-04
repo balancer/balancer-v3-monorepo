@@ -111,8 +111,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest {
     function approveVault(address user) internal {
         vm.startPrank(user);
 
-        for (uint256 index = 0; index < tokens.length; ++index) {
-            tokens[index].approve(address(vault), type(uint256).max);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            tokens[i].approve(address(vault), type(uint256).max);
         }
 
         vm.stopPrank();
