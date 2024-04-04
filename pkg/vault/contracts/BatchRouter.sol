@@ -10,7 +10,9 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { TransientEnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
+import {
+    TransientEnumerableSet
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
 import {
     TransientStorageHelpers,
     AddressMappingSlot
