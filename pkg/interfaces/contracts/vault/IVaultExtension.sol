@@ -278,6 +278,22 @@ interface IVaultExtension {
      */
     function getStaticSwapFeePercentage(address pool) external view returns (uint256);
 
+    /**
+     * @notice Fetches the creator fee of a pool for a specific token.
+     * @param pool The address of the pool whose creator fee is being queried
+     * @param token The token in which the creator fee was charged
+     * @return poolCreatorFee The creator fee of the pool and token
+     */
+    function getPoolCreatorFees(address pool, IERC20 token) external returns (uint256 poolCreatorFee);
+
+    /**
+     * @notice Fetches the address of the creator of a pool, who can collect creator fees.
+     * @param pool The address of the pool whose creator is being queried
+     * @return poolCreator The address of the creator
+     */
+    function getPoolCreator(address pool) external returns (address poolCreator);
+
+
     /*******************************************************************************
                                     Recovery Mode
     *******************************************************************************/

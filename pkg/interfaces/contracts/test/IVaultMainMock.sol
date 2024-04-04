@@ -69,10 +69,6 @@ interface IVaultMainMock {
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw);
 
-    function getPoolCreatorFees(address pool, IERC20 token) external returns (uint256 poolCreatorFee);
-
-    function getPoolCreator(address pool) external returns (address poolCreator);
-
     function getCurrentLiveBalances(address pool) external view returns (uint256[] memory currentLiveBalances);
 
     function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances);

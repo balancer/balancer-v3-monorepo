@@ -519,6 +519,18 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
     }
 
+    /// @inheritdoc IVaultExtension
+    function getPoolCreatorFees(address pool, IERC20 token) external view returns (uint256 poolCreatorFee) {
+        EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
+        uint256 index = poolCreatorFees.indexOf(token);
+        poolCreatorFee = poolCreatorFees.unchecked_valueAt(index);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getPoolCreator(address pool) external view returns (address poolCreator) {
+        return _poolCreator[pool];
+    }
+
     /*******************************************************************************
                                     Recovery Mode
     *******************************************************************************/
