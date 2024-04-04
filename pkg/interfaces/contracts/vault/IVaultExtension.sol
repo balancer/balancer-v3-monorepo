@@ -293,7 +293,6 @@ interface IVaultExtension {
      */
     function getPoolCreator(address pool) external returns (address poolCreator);
 
-
     /*******************************************************************************
                                     Recovery Mode
     *******************************************************************************/
