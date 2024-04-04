@@ -28,6 +28,7 @@ struct PoolConfig {
     PoolHooks hooks;
     LiquidityManagement liquidityManagement;
     uint256 staticSwapFeePercentage;
+    uint256 poolCreatorFeePercentage;
     uint256 tokenDecimalDiffs;
     uint256 pauseWindowEndTime;
     bool isPoolRegistered;
