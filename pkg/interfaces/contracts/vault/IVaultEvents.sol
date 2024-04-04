@@ -110,6 +110,12 @@ interface IVaultEvents {
     event SwapFeePercentageChanged(address indexed pool, uint256 indexed swapFeePercentage);
 
     /**
+     * @notice Emitted when the pool creator fee percentage of a pool is updated.
+     * @param poolCreatorFeePercentage The new pool creator fee percentage for the pool
+     */
+    event PoolCreatorFeePercentageChanged(address indexed pool, uint256 indexed poolCreatorFeePercentage);
+
+    /**
      * @notice Emitted when a pool creator fee is incurred.
      * @dev This is included for traceability of fees to pools.
      * @param pool The pool associated with this charge

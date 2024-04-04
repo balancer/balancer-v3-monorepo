@@ -27,6 +27,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             DEFAULT_SWAP_FEE,
             getNewPoolPauseWindowEndTime(),
             address(0),
+            address(0),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
@@ -49,6 +50,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             swapFee,
             block.timestamp + pauseWindowDuration,
             pauseManager,
+            address(0),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
@@ -92,6 +94,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
             pauseManager,
+            address(0),
             poolHooks,
             liquidityManagement
         );
@@ -113,6 +116,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             DEFAULT_SWAP_FEE,
             timestamp,
             pauseManager,
+            address(0),
             poolHooks,
             liquidityManagement
         );

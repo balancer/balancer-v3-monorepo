@@ -285,18 +285,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 
-    function _setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) internal virtual {
-        if (swapFeePercentage > _MAX_SWAP_FEE_PERCENTAGE) {
-            revert SwapFeePercentageTooHigh();
-        }
-
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.staticSwapFeePercentage = swapFeePercentage;
-        _poolConfig[pool] = config.fromPoolConfig();
-
-        emit SwapFeePercentageChanged(pool, swapFeePercentage);
-    }
-
     modifier withPoolCreator(address pool) {
         _ensurePoolCreator(pool);
         _;
