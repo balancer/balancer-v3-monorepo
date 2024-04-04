@@ -248,7 +248,6 @@ library BasePoolMath {
         uint256[] memory newBalances = new uint256[](numTokens);
 
         // Copy currentBalances to newBalances
-        // TODO: Optimize with assembly
         for (uint256 index = 0; index < currentBalances.length; index++) {
             newBalances[index] = currentBalances[index];
         }
