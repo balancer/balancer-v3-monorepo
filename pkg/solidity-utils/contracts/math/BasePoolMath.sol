@@ -196,7 +196,7 @@ library BasePoolMath {
         // Calculate new supply after minting exactBptAmountOut
         uint256 newSupply = exactBptAmountOut + totalSupply;
         // Calculate the initial amount of the input token needed for the desired amount of BPT out
-        // "divUp" leads to a higher "newBalance," which in turn results in a larger "amountIn."
+        // "divUp" leads to a higher "newBalance", which in turn results in a larger "amountIn".
         // This leads to receiving more tokens for the same amount of BPT minted.
         uint256 newBalance = computeBalance(currentBalances, tokenInIndex, newSupply.divUp(totalSupply));
 
@@ -311,8 +311,10 @@ library BasePoolMath {
         // Calculate new supply accounting for burning exactBptAmountIn
         uint256 newSupply = totalSupply - exactBptAmountIn;
         // Calculate the new balance of the output token after the BPT burn.
-        // "divUp" leads to a higher "newBalance," which in turn results in a lower "amountOut."
-        // This leads to giving less tokens for the same amount of BPT burned.
+        // "divUp" leads to a higher "newBalance", which in turn results in a lower "amountOut", but also a lower
+        // "taxableAmount". Although the former leads to giving less tokens for the same amount of BPT burned,
+        // the latter leads to charging less swap fees. In consequence, a conflict of interests arises regarding
+        // the rounding of "newBalance"; we prioritize getting a lower "amountOut".
         uint256 newBalance = computeBalance(currentBalances, tokenOutIndex, newSupply.divUp(totalSupply));
 
         // Compute the amount to be withdrawn from the pool.
