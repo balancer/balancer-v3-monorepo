@@ -1011,9 +1011,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
                 // Reverts with KeyNotFound if the token isn't present (should not happen; token entries
                 // created on pool registration).
-                uint256 feeIndex = poolCreatorFees.indexOf(token);
-                (, uint256 currentPoolCreatorFee) = poolCreatorFees.unchecked_at(feeIndex);
-                poolCreatorFees.unchecked_setAt(feeIndex, currentPoolCreatorFee + creatorSwapFeeAmountRaw);
+                uint256 currentPoolCreatorFee = poolCreatorFees.get(token);
+                poolCreatorFees.set(token, currentPoolCreatorFee + creatorSwapFeeAmountRaw);
 
                 emit PoolCreatorFeeCharged(pool, address(token), creatorSwapFeeAmountRaw);
             }
