@@ -123,6 +123,7 @@ contract PoolCreatorFeesTest is BaseVaultTest {
     struct SwapTestLocals {
         uint256 totalFees;
         uint256 protocolFees;
+        uint256 lpFees;
         uint256 aliceTokenInBalanceBefore;
         uint256 aliceTokenOutBalanceBefore;
         uint256 protocolTokenInFeesBefore;
@@ -157,6 +158,8 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         // creatorFees = creatorAndLPFees * creatorFee%
         chargedCreatorFee = (vars.totalFees - vars.protocolFees).mulUp(creatorFeePercentage);
 
+        vars.lpFees = (vars.totalFees - vars.protocolFees).mulUp(FixedPoint.ONE - creatorFeePercentage);
+
         // Get swap user (alice) balances before transfer
         vars.aliceTokenInBalanceBefore = tokenIn.balanceOf(address(alice));
         vars.aliceTokenOutBalanceBefore = tokenOut.balanceOf(address(alice));
@@ -168,6 +171,8 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         // Get creator fees before transfer
         vars.creatorTokenInFeesBefore = vault.getPoolCreatorFees(address(pool), tokenIn);
         vars.creatorTokenOutFeesBefore = vault.getPoolCreatorFees(address(pool), tokenOut);
+
+        uint256[] memory liveBalancesBefore = vault.getLastLiveBalances(address(pool));
 
         vm.prank(alice);
         if (shouldSnapSwap) {
@@ -203,7 +208,7 @@ contract PoolCreatorFeesTest is BaseVaultTest {
             "tokenOut protocol fees should increase by vars.protocolFees after swap"
         );
 
-        // Check creator fees after balance
+        // Check creator fees after transfer
         assertEq(
             vault.getPoolCreatorFees(address(pool), tokenIn),
             vars.creatorTokenInFeesBefore,
@@ -214,5 +219,25 @@ contract PoolCreatorFeesTest is BaseVaultTest {
             vars.creatorTokenOutFeesBefore + chargedCreatorFee,
             "tokenOut creator fees should increase by chargedCreatorFee after swap"
         );
+
+        // Check live balances after transfer
+        (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(address(pool));
+        uint256[] memory liveBalancesAfter = vault.getLastLiveBalances(address(pool));
+        for (uint256 i = 0; i < liveBalancesAfter.length; i++) {
+            if (tokens[i] == tokenIn) {
+                assertEq(
+                    liveBalancesBefore[i] + amountIn,
+                    liveBalancesAfter[i],
+                    "Live Balance for tokenIn does not match after swap"
+                );
+            } else if (tokens[i] == tokenOut) {
+                // Fees are charged from amountIn, but lpFees stay in the pool
+                assertEq(
+                    liveBalancesBefore[i] - amountIn + vars.lpFees,
+                    liveBalancesAfter[i],
+                    "Live Balance for tokenOut does not match after swap"
+                );
+            }
+        }
     }
 }
