@@ -7,6 +7,10 @@ import { FixedPoint } from "./FixedPoint.sol";
 library BasePoolMath {
     using FixedPoint for uint256;
 
+    // For security reasons, to help ensure that for all possible "round trip" paths
+    // the caller always receives the same or fewer tokens than supplied,
+    // we have chosen the rounding direction to favor the protocol in all cases.
+
     /**
      * @notice Computes the proportional amounts of tokens to be deposited into the pool.
      * @dev This function computes the amount of each token that needs to be deposited in order to mint a specific
@@ -142,8 +146,10 @@ library BasePoolMath {
 
         // Loop through each token to apply fees if necessary.
         for (uint256 index = 0; index < numTokens; ++index) {
-            // Check if the new balance is greater than the proportional balance.
-            // If so, calculate the taxable amount.
+            // Check if the new balance is greater than the equivalent proportional balance.
+            // If so, calculate the taxable amount, rounding in favor of the protocol.
+            // We round the second term down to subtract less and get a higher `taxableAmount`,
+            // which charges higher swap fees, reducing the amount of BPT that will be minted.
             if (newBalances[index] > invariantRatio.mulDown(currentBalances[index])) {
                 uint256 taxableAmount = newBalances[index] - invariantRatio.mulDown(currentBalances[index]);
                 // Calculate fee amount
@@ -159,7 +165,7 @@ library BasePoolMath {
 
         // Calculate the amount of BPT to mint. This is done by multiplying the
         // total supply with the ratio of the change in invariant.
-        // mulDown/divDown minimize amount of pool tokens to mint.
+        // mulDown/divDown minimizes the amount of pool tokens to mint for security reasons.
         bptAmountOut = totalSupply.mulDown((invariantWithFeesApplied - currentInvariant).divDown(currentInvariant));
     }
 
@@ -193,13 +199,18 @@ library BasePoolMath {
         // "divUp" leads to a higher "newBalance," which in turn results in a larger "amountIn."
         // This leads to receiving more tokens for the same amount of BPT minted.
         uint256 newBalance = computeBalance(currentBalances, tokenInIndex, newSupply.divUp(totalSupply));
+
+        // Compute the amount to be deposited into the pool.
         uint256 amountIn = newBalance - currentBalances[tokenInIndex];
 
-        // Calculate the taxable amount, which is the difference
-        // between the actual amount in and the non-taxable balance
+        // Calculate the non-taxable amount, which is the new balance proportionate to the BPT minted.
+        // Round the `nonTaxableBalance` down to favor the protocol by increasing the taxable amount, which charges
+        // higher swap fees, ultimately increasing the amount of `tokenIn` that will be transferred from the caller.
         uint256 nonTaxableBalance = newSupply.mulDown(currentBalances[tokenInIndex]).divDown(totalSupply);
 
-        uint256 taxableAmount = (amountIn + currentBalances[tokenInIndex]) - nonTaxableBalance;
+        // Calculate the taxable amount, which is the difference
+        // between the actual new balance and the non-taxable balance
+        uint256 taxableAmount = newBalance - nonTaxableBalance;
 
         // Calculate the swap fee based on the taxable amount and the swap fee percentage
         uint256 fee = taxableAmount.divUp(swapFeePercentage.complement()) - taxableAmount;
@@ -253,15 +264,20 @@ library BasePoolMath {
         // Update the balance of tokenOutIndex with exactAmountOut.
         newBalances[tokenOutIndex] = newBalances[tokenOutIndex] - exactAmountOut;
 
-        // Calculate the invariant using the current balances.
+        // Calculate the invariant using the current balances (before the removal).
         uint256 currentInvariant = computeInvariant(currentBalances);
 
-        // Calculate the new invariant ratio by dividing the new invariant by the current invariant.
-        // Calculate the taxable amount by subtracting the new balance from the equivalent proportional balance.
+        // Calculate the new invariant using the new balances (after the removal).
+        // Calculate the new invariant ratio by dividing the new invariant by the old invariant.
+        // Calculate the new proportional balance by multiplying the new invariant ratio by the current balance.
+        // Calculate the taxable amount by subtracting the new balance from the equivalent proportional balance,
+        // rounding in favor of the protocol. We round the first term up to subtract from more and get a higher
+        // `taxableAmount`, which charges higher swap fees, augmenting the amount of BPT that will be burned.
         uint256 taxableAmount = computeInvariant(newBalances).divUp(currentInvariant).mulUp(
             currentBalances[tokenOutIndex]
         ) - newBalances[tokenOutIndex];
 
+        // Calculate the swap fee based on the taxable amount and the swap fee percentage
         uint256 fee = taxableAmount.divUp(swapFeePercentage.complement()) - taxableAmount;
 
         // Update new balances array with a fee
@@ -274,7 +290,9 @@ library BasePoolMath {
         swapFeeAmounts = new uint256[](numTokens);
         swapFeeAmounts[tokenOutIndex] = fee;
 
-        // mulUp/divUp maximize the amount of tokens burned for the security reasons
+        // Calculate the amount of BPT to burn. This is done by multiplying the
+        // total supply with the ratio of the change in invariant.
+        // mulUp/divUp maximizes the amount of pool tokens to burn for security reasons.
         bptAmountIn = totalSupply.mulUp(currentInvariant - invariantWithFeesApplied).divUp(currentInvariant);
     }
 
@@ -309,11 +327,13 @@ library BasePoolMath {
         // Compute the amount to be withdrawn from the pool.
         uint256 amountOut = currentBalances[tokenOutIndex] - newBalance;
 
-        // Calculate the non-taxable balance proportionate to the BPT burnt.
-        uint256 nonTaxableBalance = newSupply.mulUp(currentBalances[tokenOutIndex]).divUp(totalSupply);
+        // Calculate the new balance proportionate to the BPT burnt.
+        // Round the `newBalanceBeforeTax` up to favor the protocol by increasing the taxable amount, which charges
+        // higher swap fees, ultimately decreasing the amount of `tokenOut` that will be transferred to the caller.
+        uint256 newBalanceBeforeTax = newSupply.mulUp(currentBalances[tokenOutIndex]).divUp(totalSupply);
 
-        // Compute the taxable amount: the difference between the non-taxable balance and actual withdrawal.
-        uint256 taxableAmount = nonTaxableBalance - newBalance;
+        // Compute the taxable amount: the difference between the new proportional and disproportional balances.
+        uint256 taxableAmount = newBalanceBeforeTax - newBalance;
 
         // Calculate the swap fee on the taxable amount.
         uint256 fee = taxableAmount.mulUp(swapFeePercentage);
