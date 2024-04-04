@@ -45,7 +45,7 @@ library BasePoolMath {
         uint256 bptRatio = bptAmountOut.divUp(bptTotalSupply);
 
         amountsIn = new uint256[](balances.length);
-        for (uint256 i = 0; i < balances.length; ++i) {
+        for (uint256 i = 0; i < balances.length; i++) {
             amountsIn[i] = balances[i].mulUp(bptRatio);
         }
     }
@@ -84,7 +84,7 @@ library BasePoolMath {
         uint256 bptRatio = bptAmountIn.divDown(bptTotalSupply);
 
         amountsOut = new uint256[](balances.length);
-        for (uint256 i = 0; i < balances.length; ++i) {
+        for (uint256 i = 0; i < balances.length; i++) {
             amountsOut[i] = balances[i].mulDown(bptRatio);
         }
     }
@@ -131,7 +131,7 @@ library BasePoolMath {
         swapFeeAmounts = new uint256[](numTokens);
 
         // Loop through each token, updating the balance with the added amount.
-        for (uint256 index = 0; index < numTokens; ++index) {
+        for (uint256 index = 0; index < numTokens; index++) {
             newBalances[index] = currentBalances[index] + exactAmounts[index];
         }
 
@@ -145,7 +145,7 @@ library BasePoolMath {
         uint256 invariantRatio = newInvariant.divDown(currentInvariant);
 
         // Loop through each token to apply fees if necessary.
-        for (uint256 index = 0; index < numTokens; ++index) {
+        for (uint256 index = 0; index < numTokens; index++) {
             // Check if the new balance is greater than the equivalent proportional balance.
             // If so, calculate the taxable amount, rounding in favor of the protocol.
             // We round the second term down to subtract less and get a higher `taxableAmount`,
@@ -248,17 +248,9 @@ library BasePoolMath {
         uint256[] memory newBalances = new uint256[](numTokens);
 
         // Copy currentBalances to newBalances
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            let cap := add(numTokens, 1)
-            for {
-                let i := 1
-            } lt(i, cap) {
-                i := add(i, 1)
-            } {
-                let pos := mul(i, 0x20)
-                mstore(add(newBalances, pos), mload(add(currentBalances, pos)))
-            }
+        // TODO: Optimize with assembly
+        for (uint256 index = 0; index < currentBalances.length; index++) {
+            newBalances[index] = currentBalances[index];
         }
 
         // Update the balance of tokenOutIndex with exactAmountOut.
