@@ -35,6 +35,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
                 vault.buildTokenConfig(tokens.asIERC20()),
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                 address(0),
+                address(0),
                 DEFAULT_SWAP_FEE,
                 // NOTE: sends a unique salt
                 bytes32(poolCreationNonce++)

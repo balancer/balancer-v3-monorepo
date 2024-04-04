@@ -38,6 +38,7 @@ import { VaultCommon } from "./VaultCommon.sol";
 
 contract Vault is IVaultMain, VaultCommon, Proxy {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using PackedTokenBalance for bytes32;
     using InputHelpers for uint256;
     using FixedPoint for *;
@@ -168,6 +169,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 swapFeeAmountScaled18;
         uint256 swapFeePercentage;
         uint256 protocolSwapFeeAmountRaw;
+        uint256 creatorSwapFeeAmountRaw;
     }
 
     /// @inheritdoc IVaultMain
@@ -381,12 +383,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
         }
 
-        // Compute and charge protocol fees. Note that protocol fee storage is updated before balance storage,
-        // as the final raw balances need to take the protocol fees into account.
-        vars.protocolSwapFeeAmountRaw = _computeAndChargeProtocolFees(
+        // Compute and charge protocol and creator fees. Note that protocol fee storage is updated
+        // before balance storage, as the final raw balances need to take the fees into account.
+        (vars.protocolSwapFeeAmountRaw, vars.creatorSwapFeeAmountRaw) = _computeAndChargeProtocolAndCreatorFees(
             poolData,
             vars.swapFeeAmountScaled18,
             vaultState.protocolSwapFeePercentage,
+            poolData.poolConfig.poolCreatorFeePercentage,
             params.pool,
             params.tokenOut,
             vars.indexOut
@@ -396,7 +399,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         poolData.balancesRaw[vars.indexOut] =
             poolData.balancesRaw[vars.indexOut] -
             amountOut -
-            vars.protocolSwapFeeAmountRaw;
+            vars.protocolSwapFeeAmountRaw -
+            vars.creatorSwapFeeAmountRaw;
 
         // Set both raw and last live balances.
         _setPoolBalances(params.pool, poolData);
@@ -941,6 +945,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * @dev Preconditions: poolConfig, decimalScalingFactors, tokenRates in `poolData`.
      * Side effects: updates `_protocolFees` storage (and emits event).
      * Should only be called in a non-reentrant context.
+     * Used to avoid stack too deep in add and remove liquidity
      */
     function _computeAndChargeProtocolFees(
         PoolData memory poolData,
@@ -950,21 +955,67 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 token,
         uint256 index
     ) internal returns (uint256 protocolSwapFeeAmountRaw) {
-        // If swapFeeAmount equals zero no need to charge anything
-        if (
-            swapFeeAmountScaled18 > 0 &&
-            protocolSwapFeePercentage > 0 &&
-            poolData.poolConfig.isPoolInRecoveryMode == false
-        ) {
-            // Always charge fees on token. Store amount in native decimals.
-            // Since the swapFeeAmountScaled18 also contains the rate, undo it when converting to raw.
-            protocolSwapFeeAmountRaw = swapFeeAmountScaled18.mulUp(protocolSwapFeePercentage).toRawUndoRateRoundDown(
-                poolData.decimalScalingFactors[index],
-                poolData.tokenRates[index]
-            );
+        (protocolSwapFeeAmountRaw, ) = _computeAndChargeProtocolAndCreatorFees(
+            poolData,
+            swapFeeAmountScaled18,
+            protocolSwapFeePercentage,
+            0,
+            pool,
+            token,
+            index
+        );
+    }
 
-            _protocolFees[token] += protocolSwapFeeAmountRaw;
-            emit ProtocolSwapFeeCharged(pool, address(token), protocolSwapFeeAmountRaw);
+    /**
+     * @dev Preconditions: poolConfig, decimalScalingFactors, tokenRates in `poolData`.
+     * Side effects: updates `_protocolFees` and `_poolCreatorFees` storage (and emits events).
+     * Should only be called in a non-reentrant context.
+     * IMPORTANT: creator fees are calculated based on creatorAndLpFees, and not in totalFees. See example below
+     * Example:
+     * tokenOutAmount = 10000; poolSwapFeePerc = 10%; protocolFeePerc = 40%; creatorFeePerc = 60%
+     * totalFees = tokenOutAmount * poolSwapFeePerc = 10000 * 10% = 1000
+     * protocolFees = totalFees * protocolFeePerc = 1000 * 40% = 400
+     * creatorAndLpFees = totalFees - protocolFees = 1000 - 400 = 600
+     * creatorFees = creatorAndLpFees * creatorFeePerc = 600 * 60% = 360
+     * lpFees (will stay in the pool) = creatorAndLpFees - creatorFees = 600 - 360 = 240
+     */
+    function _computeAndChargeProtocolAndCreatorFees(
+        PoolData memory poolData,
+        uint256 swapFeeAmountScaled18,
+        uint256 protocolSwapFeePercentage,
+        uint256 creatorFeePercentage,
+        address pool,
+        IERC20 token,
+        uint256 index
+    ) internal returns (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) {
+        // If swapFeeAmount equals zero no need to charge anything
+        if (swapFeeAmountScaled18 > 0 && poolData.poolConfig.isPoolInRecoveryMode == false) {
+            if (protocolSwapFeePercentage > 0) {
+                // Always charge fees on token. Store amount in native decimals.
+                // Since the swapFeeAmountScaled18 also contains the rate, undo it when converting to raw.
+                protocolSwapFeeAmountRaw = swapFeeAmountScaled18
+                    .mulUp(protocolSwapFeePercentage)
+                    .toRawUndoRateRoundDown(poolData.decimalScalingFactors[index], poolData.tokenRates[index]);
+
+                _protocolFees[token] += protocolSwapFeeAmountRaw;
+                emit ProtocolSwapFeeCharged(pool, address(token), protocolSwapFeeAmountRaw);
+            }
+
+            if (creatorFeePercentage > 0) {
+                // Always charge fees on token. Store amount in native decimals.
+                // Since the swapFeeAmountScaled18 also contains the rate, undo it when converting to raw.
+                creatorSwapFeeAmountRaw = (swapFeeAmountScaled18 - protocolSwapFeeAmountRaw)
+                    .mulUp(creatorFeePercentage)
+                    .toRawUndoRateRoundDown(poolData.decimalScalingFactors[index], poolData.tokenRates[index]);
+
+                EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
+                // Reverts with KeyNotFound if the token isn't present (should not happen; token entries
+                // created on pool registration).
+                uint256 currentPoolCreatorFee = poolCreatorFees.get(token);
+                poolCreatorFees.set(token, currentPoolCreatorFee + creatorSwapFeeAmountRaw);
+
+                emit PoolCreatorFeeCharged(pool, address(token), creatorSwapFeeAmountRaw);
+            }
         }
     }
 

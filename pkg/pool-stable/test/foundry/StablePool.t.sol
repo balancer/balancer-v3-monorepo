@@ -67,6 +67,7 @@ contract StablePoolTest is BaseVaultTest {
                 inputHelpersMock.sortTokenConfig(tokens),
                 DEFAULT_AMP_FACTOR,
                 address(0),
+                address(0),
                 DEFAULT_SWAP_FEE,
                 ZERO_BYTES32
             )

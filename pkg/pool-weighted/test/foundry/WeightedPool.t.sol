@@ -64,6 +64,7 @@ contract WeightedPoolTest is BaseVaultTest {
                 vault.buildTokenConfig(tokens.asIERC20()),
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                 address(0),
+                address(0),
                 DEFAULT_SWAP_FEE,
                 ZERO_BYTES32
             )
@@ -254,11 +255,12 @@ contract WeightedPoolTest is BaseVaultTest {
             tokens,
             [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
             address(0),
+            address(0),
             MIN_SWAP_FEE - 1, // Swap fee too low
             ZERO_BYTES32
         );
 
-        factoryMock.registerTestPool(lowFeeWeightedPool, tokens);
+        factoryMock.registerTestPool(lowFeeWeightedPool, tokens, address(0));
     }
 
     function testSetSwapFeeTooLow() public {

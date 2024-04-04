@@ -94,6 +94,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         TokenConfig[] memory tokens,
         uint256 swapFeePercentage,
         address pauseManager,
+        address poolCreator,
         PoolHooks memory poolHooks,
         LiquidityManagement memory liquidityManagement
     ) internal {
@@ -103,6 +104,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
             swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
             pauseManager,
+            poolCreator,
             poolHooks,
             liquidityManagement
         );
