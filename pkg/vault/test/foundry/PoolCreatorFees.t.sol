@@ -29,7 +29,24 @@ contract PoolCreatorFeesTest is BaseVaultTest {
     }
 
     function testSwapWithoutFees() public {
-        _swapExactInWithFees(usdc, dai, _defaultAmountToSwap, 0, 0, 0);
+        _swapExactInWithFees(usdc, dai, _defaultAmountToSwap, 0, 0, 0, false);
+    }
+
+    function testSwapWithCreatorFee() public {
+        uint256 amountToSwap = _defaultAmountToSwap;
+        uint64 swapFeePercentage = 1e17; // 10%
+        uint64 protocolFeePercentage = 3e17; // 30%
+        uint64 poolCreatorFeePercentage = 5e17; // 50%
+
+        _swapExactInWithFees(
+            usdc,
+            dai,
+            amountToSwap,
+            swapFeePercentage,
+            protocolFeePercentage,
+            poolCreatorFeePercentage,
+            true
+        );
     }
 
     function testSwapWithCreatorFee_Fuzz(
@@ -54,7 +71,8 @@ contract PoolCreatorFeesTest is BaseVaultTest {
             amountToSwap,
             swapFeePercentage,
             protocolFeePercentage,
-            poolCreatorFeePercentage
+            poolCreatorFeePercentage,
+            false
         );
     }
 
@@ -82,7 +100,8 @@ contract PoolCreatorFeesTest is BaseVaultTest {
             amountToSwap,
             swapFeePercentage,
             protocolFeePercentage,
-            poolCreatorFeePercentage
+            poolCreatorFeePercentage,
+            false
         );
 
         vault.collectPoolCreatorFees(address(pool));
@@ -118,7 +137,8 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         uint256 amountIn,
         uint256 swapFeePercentage,
         uint64 protocolFeePercentage,
-        uint256 creatorFeePercentage
+        uint256 creatorFeePercentage,
+        bool shouldSnapSwap
     ) private returns (uint256 chargedCreatorFee) {
         SwapTestLocals memory vars;
 
@@ -150,7 +170,13 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         vars.creatorTokenOutFeesBefore = vault.getPoolCreatorFees(address(pool), tokenOut);
 
         vm.prank(alice);
+        if (shouldSnapSwap) {
+            snapStart("swapWithCreatorFee");
+        }
         router.swapSingleTokenExactIn(address(pool), tokenIn, tokenOut, amountIn, 0, MAX_UINT256, false, bytes(""));
+        if (shouldSnapSwap) {
+            snapEnd();
+        }
 
         // Check swap user (alice) after transfer
         assertEq(
