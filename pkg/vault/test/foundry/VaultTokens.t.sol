@@ -22,8 +22,6 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract VaultTokenTest is BaseVaultTest {
     using ArrayHelpers for *;
 
-    address poolAddress;
-
     PoolFactoryMock poolFactory;
     ERC4626BufferPoolFactory bufferFactory;
 
@@ -55,15 +53,12 @@ contract VaultTokenTest is BaseVaultTest {
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
+
+        pool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
     }
 
-    function createPool() internal override returns (address) {
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
-        vm.label(address(newPool), "pool");
-
-        poolAddress = address(newPool);
-
-        return poolAddress;
+    function createPool() internal pure override returns (address) {
+        return address(0);
     }
 
     function initPool() internal override {
@@ -74,7 +69,7 @@ contract VaultTokenTest is BaseVaultTest {
         registerBuffers();
         registerPool();
 
-        IERC20[] memory tokens = vault.getPoolTokens(poolAddress);
+        IERC20[] memory tokens = vault.getPoolTokens(pool);
 
         assertEq(tokens.length, 2);
 
@@ -158,7 +153,7 @@ contract VaultTokenTest is BaseVaultTest {
 
     function _registerPool(TokenConfig[] memory tokenConfig) private {
         poolFactory.registerPool(
-            poolAddress,
+            pool,
             tokenConfig,
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
             PoolHooks({

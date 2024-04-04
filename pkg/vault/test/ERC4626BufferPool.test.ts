@@ -4,11 +4,19 @@ import { Contract } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
+import { Router } from '@balancer-labs/v3-vault/typechain-types';
+import { ERC20PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/ERC20PoolMock';
 import { ERC4626BufferPoolFactory, Router } from '@balancer-labs/v3-vault/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { MONTH, currentTimestamp } from '@balancer-labs/v3-helpers/src/time';
 import { ERC20TestToken, ERC4626TestToken, WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
-import { ANY_ADDRESS, MAX_UINT256, ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
+import {
+  ANY_ADDRESS,
+  MAX_UINT256,
+  MAX_UINT160,
+  MAX_UINT48,
+  ZERO_BYTES32,
+} from '@balancer-labs/v3-helpers/src/constants';
 import { PoolConfigStructOutput, VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
@@ -17,12 +25,15 @@ import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
+import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
+import { deployPermit2 } from './Permit2Deployer';
 import '@balancer-labs/v3-common/setupTests';
 
 describe('ERC4626BufferPool', function () {
   const TOKEN_AMOUNT = fp(1000);
   const MIN_BPT = bn(1e6);
 
+  let permit2: IPermit2;
   let vault: IVaultMock;
   let authorizer: Contract;
   let router: Router;
@@ -36,7 +47,7 @@ describe('ERC4626BufferPool', function () {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
 
-  let pool: Contract;
+  let pool: ERC20PoolMock;
 
   before('setup signers', async () => {
     [, alice, bob] = await ethers.getSigners();
@@ -49,8 +60,9 @@ describe('ERC4626BufferPool', function () {
     const authorizerAddress = await vault.getAuthorizer();
     authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
 
+    permit2 = await deployPermit2();
     const WETH: WETHTestToken = await deploy('v3-solidity-utils/WETHTestToken');
-    router = await deploy('v3-vault/Router', { args: [vault, await WETH.getAddress()] });
+    router = await deploy('v3-vault/Router', { args: [vault, await WETH.getAddress(), permit2] });
 
     baseToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Dai Stablecoin', 'DAI', 18] });
     wrappedToken = await deploy('v3-solidity-utils/ERC4626TestToken', {
@@ -64,7 +76,7 @@ describe('ERC4626BufferPool', function () {
     factory = await deploy('v3-vault/ERC4626BufferPoolFactory', { args: [vault, 12 * MONTH] });
   });
 
-  async function createBufferPool(): Promise<Contract> {
+  async function createBufferPool(): Promise<ERC20PoolMock> {
     // initialize assets and supply
     await baseToken.mint(alice, TOKEN_AMOUNT);
     await baseToken.connect(alice).approve(wrappedToken, TOKEN_AMOUNT);
@@ -76,16 +88,19 @@ describe('ERC4626BufferPool', function () {
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
     const poolAddress = event.args.pool;
 
-    return deployedAt('ERC4626BufferPool', poolAddress);
+    return (await deployedAt('ERC4626BufferPool', poolAddress)) as unknown as ERC20PoolMock;
   }
 
-  async function createAndInitializeBufferPool(): Promise<Contract> {
+  async function createAndInitializeBufferPool(): Promise<ERC20PoolMock> {
     pool = await createBufferPool();
 
     await baseToken.mint(alice, TOKEN_AMOUNT);
 
-    await wrappedToken.connect(alice).approve(vault, MAX_UINT256);
-    await baseToken.connect(alice).approve(vault, MAX_UINT256);
+    await pool.connect(alice).approve(router, MAX_UINT256);
+    for (const token of [wrappedToken, baseToken]) {
+      await token.connect(alice).approve(permit2, MAX_UINT256);
+      await permit2.connect(alice).approve(token, router, MAX_UINT160, MAX_UINT48);
+    }
 
     await router.connect(alice).initialize(pool, tokenAddresses, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
 
@@ -148,8 +163,11 @@ describe('ERC4626BufferPool', function () {
 
       await baseToken.mint(alice, TOKEN_AMOUNT);
 
-      await wrappedToken.connect(alice).approve(vault, MAX_UINT256);
-      await baseToken.connect(alice).approve(vault, MAX_UINT256);
+      await pool.connect(alice).approve(router, MAX_UINT256);
+      for (const token of [wrappedToken, baseToken]) {
+        await token.connect(alice).approve(permit2, MAX_UINT256);
+        await permit2.connect(alice).approve(token, router, MAX_UINT160, MAX_UINT48);
+      }
     });
 
     it('satisfies preconditions', async () => {
@@ -271,8 +289,11 @@ describe('ERC4626BufferPool', function () {
       await baseToken.connect(bob).approve(wrappedToken, TOKEN_AMOUNT + MIN_BPT);
       await wrappedToken.connect(bob).deposit(TOKEN_AMOUNT + MIN_BPT, bob);
 
-      await wrappedToken.connect(bob).approve(vault, MAX_UINT256);
-      await baseToken.connect(bob).approve(vault, MAX_UINT256);
+      await pool.connect(bob).approve(router, MAX_UINT256);
+      for (const token of [wrappedToken, baseToken]) {
+        await token.connect(bob).approve(permit2, MAX_UINT256);
+        await permit2.connect(bob).approve(token, router, MAX_UINT160, MAX_UINT48);
+      }
 
       const bptAmount = await pool.balanceOf(alice);
       const MAX_AMOUNT = TOKEN_AMOUNT + MIN_BPT;
