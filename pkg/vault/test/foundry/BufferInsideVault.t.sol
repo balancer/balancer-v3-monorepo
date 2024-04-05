@@ -78,9 +78,14 @@ contract BufferInsideVaultTest is BaseVaultTest {
         vm.stopPrank();
 
         vm.startPrank(lp);
-        waDAI.approve(address(vault), MAX_UINT256);
+        waDAI.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
+        waUSDC.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
+
         router.addLiquidityBuffer(waDAI, bufferAmount, bufferAmount, address(lp));
-        waUSDC.approve(address(vault), MAX_UINT256);
         router.addLiquidityBuffer(waUSDC, bufferAmount, bufferAmount, address(lp));
         vm.stopPrank();
     }
@@ -102,6 +107,13 @@ contract BufferInsideVaultTest is BaseVaultTest {
         boostedPool = address(newPool);
 
         vm.startPrank(bob);
+        waDAI.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
+        waUSDC.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
+
         dai.mint(address(bob), boostedPoolAmount);
         dai.approve(address(waDAI), boostedPoolAmount);
         waDAI.deposit(boostedPoolAmount, address(bob));
@@ -109,9 +121,6 @@ contract BufferInsideVaultTest is BaseVaultTest {
         usdc.mint(address(bob), boostedPoolAmount);
         usdc.approve(address(waUSDC), boostedPoolAmount);
         waUSDC.deposit(boostedPoolAmount, address(bob));
-
-        waDAI.approve(address(vault), MAX_UINT256);
-        waUSDC.approve(address(vault), MAX_UINT256);
 
         _initPool(boostedPool, [boostedPoolAmount, boostedPoolAmount].toMemoryArray(), boostedPoolAmount * 2 - MIN_BPT);
         vm.stopPrank();
