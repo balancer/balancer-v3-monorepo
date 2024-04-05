@@ -149,6 +149,7 @@ describe('Vault', function () {
         pauseManager: ANY_ADDRESS,
         hooks: [false, false, false, false, false, false, false, false],
         liquidityManagement: [false, true, true],
+        hasDynamicSwapFee: false,
       };
 
       // Use expectEvent here to prevent errors with structs of arrays with hardhat matchers.

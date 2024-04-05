@@ -73,6 +73,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         vm.startPrank(lp);
         _initPool(swapPool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
+        // TODO: rename swapPool and liquidityPool for pool and witnessPool respectively
         _initPool(liquidityPool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
         vm.stopPrank();
     }
@@ -100,7 +101,61 @@ contract DynamicFeePoolTest is BaseVaultTest {
         );
     }
 
-    function testScaffolding() public {
-        // NOTE: test that the setup is run correctly
+    function testSwapCallsComputeFee() public {
+        vm.expectCall(
+            address(swapPool),
+            abi.encodeWithSelector(DynamicFeePoolMock.computeFee.selector),
+            1 // callCount
+        );
+
+        vm.prank(alice);
+        // Perform a swap in the pool
+        uint256 swapAmountOut = router.swapSingleTokenExactIn(
+            address(swapPool),
+            dai,
+            usdc,
+            defaultAmount,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+    }
+
+    function testSwapChargesFees_Fuzz(uint256 dynamicSwapFeePercentage) public {
+        dynamicSwapFeePercentage = bound(dynamicSwapFeePercentage, 0, 1e18);
+        DynamicFeePoolMock(swapPool).setSwapFeePercentage(dynamicSwapFeePercentage);
+
+        vm.prank(alice);
+        uint256 swapAmountOut = router.swapSingleTokenExactIn(
+            address(swapPool),
+            dai,
+            usdc,
+            defaultAmount,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        DynamicFeePoolMock(liquidityPool).setSwapFeePercentage(0);
+
+        vm.prank(bob);
+        uint256 liquidityAmountOut = router.swapSingleTokenExactIn(
+            address(liquidityPool),
+            dai,
+            usdc,
+            defaultAmount,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        assertEq(
+            swapAmountOut,
+            (liquidityAmountOut * (1e18 - dynamicSwapFeePercentage)) / 1e18,
+            "Swap and liquidity amounts are not correct"
+        );
     }
 }

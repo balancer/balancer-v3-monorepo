@@ -265,8 +265,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             params.pauseWindowEndTime,
             params.pauseManager,
             params.poolHooks,
-            params.liquidityManagement
-            // TODO: add hasDynamicSwapFee to the event
+            params.liquidityManagement,
+            params.hasDynamicSwapFee
         );
     }
 

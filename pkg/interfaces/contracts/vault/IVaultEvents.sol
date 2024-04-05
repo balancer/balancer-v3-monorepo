@@ -16,6 +16,7 @@ interface IVaultEvents {
      * @param pauseWindowEndTime The pool's pause window end time
      * @param pauseManager The pool's external pause manager (or 0 for governance)
      * @param liquidityManagement Supported liquidity management hook flags
+     * @param hasDynamicSwapFee True if the pool implements a dynamic swap fee
      */
     event PoolRegistered(
         address indexed pool,
@@ -24,7 +25,8 @@ interface IVaultEvents {
         uint256 pauseWindowEndTime,
         address pauseManager,
         PoolHooks hooks,
-        LiquidityManagement liquidityManagement
+        LiquidityManagement liquidityManagement,
+        bool hasDynamicSwapFee
     );
 
     /**

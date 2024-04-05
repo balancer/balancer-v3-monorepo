@@ -23,4 +23,8 @@ contract DynamicFeePoolMock is PoolMock, BaseDynamicFeePool {
     function supportsInterface(bytes4 interfaceId) public view override(BaseDynamicFeePool, ERC165) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
+
+    function setSwapFeePercentage(uint256 swapFeePercentage) external {
+        _swapFeePercentage = swapFeePercentage;
+    }
 }
