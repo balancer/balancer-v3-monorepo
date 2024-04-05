@@ -188,6 +188,9 @@ interface IVaultErrors {
      */
     error SwapFeePercentageTooLow();
 
+    /// @dev Error raised when the pool creator fee percentage exceeds the maximum allowed value.
+    error PoolCreatorFeePercentageTooHigh();
+
     /*******************************************************************************
                                     Queries
     *******************************************************************************/
@@ -297,4 +300,10 @@ interface IVaultErrors {
 
     /// @dev The wrapped token asset does not match the base token of the swap path.
     error WrongWrappedTokenAsset(address token);
+
+    /**
+     * @dev The caller is not the registered pool creator for the pool.
+     * @param pool The pool
+     */
+    error SenderIsNotPoolCreator(address pool);
 }

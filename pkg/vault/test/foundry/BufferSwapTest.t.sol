@@ -89,9 +89,13 @@ contract BufferSwapTest is BaseVaultTest {
         usdc.mint(address(waUSDCBufferPool), 10);
 
         vm.startPrank(lp);
-        waDAI.approve(address(vault), MAX_UINT256);
+        waDAI.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
         _initPool(waDAIBufferPool, [defaultAmount, defaultAmount].toMemoryArray(), defaultAmount * 2 - MIN_BPT);
-        waUSDC.approve(address(vault), MAX_UINT256);
+        waUSDC.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
         _initPool(waUSDCBufferPool, [defaultAmount, defaultAmount].toMemoryArray(), defaultAmount * 2 - MIN_BPT);
         vm.stopPrank();
     }
@@ -107,12 +111,19 @@ contract BufferSwapTest is BaseVaultTest {
 
         PoolMock newPool = new PoolMock(IVault(address(vault)), "Boosted Pool", "BOOSTYBOI");
 
-        factoryMock.registerTestPool(address(newPool), tokenConfig);
+        factoryMock.registerTestPool(address(newPool), tokenConfig, address(lp));
 
         vm.label(address(newPool), "boosted pool");
         boostedPool = address(newPool);
 
         vm.startPrank(bob);
+        waDAI.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
+        waUSDC.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
+
         dai.mint(address(bob), boostedPoolAmount);
         dai.approve(address(waDAI), boostedPoolAmount);
         waDAI.deposit(boostedPoolAmount, address(bob));
@@ -120,9 +131,6 @@ contract BufferSwapTest is BaseVaultTest {
         usdc.mint(address(bob), boostedPoolAmount);
         usdc.approve(address(waUSDC), boostedPoolAmount);
         waUSDC.deposit(boostedPoolAmount, address(bob));
-
-        waDAI.approve(address(vault), MAX_UINT256);
-        waUSDC.approve(address(vault), MAX_UINT256);
 
         _initPool(boostedPool, [boostedPoolAmount, boostedPoolAmount].toMemoryArray(), boostedPoolAmount * 2 - MIN_BPT);
         vm.stopPrank();
@@ -171,8 +179,10 @@ contract BufferSwapTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount);
 
         vm.prank(alice);
+        snapStart("boostedPoolSwapExactIn");
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
 
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN, swapAmount);
     }
@@ -181,8 +191,10 @@ contract BufferSwapTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount);
 
         vm.prank(alice);
+        snapStart("boostedPoolSwapExactOut");
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
 
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT, swapAmount);
     }
@@ -197,7 +209,9 @@ contract BufferSwapTest is BaseVaultTest {
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeSwapHookFailed.selector));
         vm.prank(alice);
+        snapStart("boostedPoolSwapTooLarge");
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
     }
 
     function testBoostedPoolSwapSimpleRebalance() public {
@@ -222,8 +236,10 @@ contract BufferSwapTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount * 2);
 
         vm.prank(alice);
+        snapStart("boostedPoolSwapSimpleRebalance");
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
 
         // It should now be balanced (except for the trade)
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount * 2, SwapKind.EXACT_IN, swapAmount * 2);
@@ -252,8 +268,10 @@ contract BufferSwapTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amountToSwap);
 
         vm.prank(alice);
+        snapStart("boostedPoolSwapMoreThan50pRebalance");
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
 
         // It should now be 2000 DAI/0 waDAI
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, amountToSwap, SwapKind.EXACT_IN, defaultAmount);

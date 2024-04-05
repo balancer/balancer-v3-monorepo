@@ -57,7 +57,7 @@ library StableMath {
         // Always round down, to match Vyper's arithmetic (which always truncates).
         uint256 sum = 0; // S in the Curve version
         uint256 numTokens = balances.length;
-        for (uint256 i = 0; i < numTokens; i++) {
+        for (uint256 i = 0; i < numTokens; ++i) {
             sum = sum + balances[i];
         }
         if (sum == 0) {
@@ -68,9 +68,9 @@ library StableMath {
         uint256 invariant = sum; // D in the Curve version
         uint256 ampTimesTotal = amplificationParameter * numTokens; // Ann in the Curve version
 
-        for (uint256 i = 0; i < 255; i++) {
+        for (uint256 i = 0; i < 255; ++i) {
             uint256 D_P = invariant;
-            for (uint256 j = 0; j < numTokens; j++) {
+            for (uint256 j = 0; j < numTokens; ++j) {
                 D_P = (D_P * invariant) / (balances[j] * numTokens);
             }
 
@@ -181,7 +181,7 @@ library StableMath {
         // First loop calculates the sum of all token balances, which will be used to calculate
         // the current weights of each token, relative to this sum
         uint256 sumBalances = 0;
-        for (uint256 i = 0; i < balances.length; i++) {
+        for (uint256 i = 0; i < balances.length; ++i) {
             sumBalances += balances[i];
         }
 
@@ -189,7 +189,7 @@ library StableMath {
         uint256[] memory balanceRatiosWithFee = new uint256[](amountsIn.length);
         // The weighted sum of token balance ratios with fee
         uint256 invariantRatioWithFees = 0;
-        for (uint256 i = 0; i < balances.length; i++) {
+        for (uint256 i = 0; i < balances.length; ++i) {
             uint256 currentWeight = balances[i].divDown(sumBalances);
             balanceRatiosWithFee[i] = (balances[i] + amountsIn[i]).divDown(balances[i]);
             invariantRatioWithFees = invariantRatioWithFees + (balanceRatiosWithFee[i].mulDown(currentWeight));
@@ -197,7 +197,7 @@ library StableMath {
 
         // Second loop calculates new amounts in, taking into account the fee on the percentage excess
         uint256[] memory newBalances = new uint256[](balances.length);
-        for (uint256 i = 0; i < balances.length; i++) {
+        for (uint256 i = 0; i < balances.length; ++i) {
             uint256 amountInWithoutFee;
 
             // Check if the balance ratio is greater than the ideal ratio to charge fees or not
@@ -243,7 +243,7 @@ library StableMath {
         // First calculate the sum of all token balances, which will be used to calculate
         // the current weight of each token
         uint256 sumBalances = 0;
-        for (uint256 i = 0; i < balances.length; i++) {
+        for (uint256 i = 0; i < balances.length; ++i) {
             sumBalances += balances[i];
         }
 
@@ -275,14 +275,14 @@ library StableMath {
         // First loop calculates the sum of all token balances, which will be used to calculate
         // the current weights of each token relative to this sum
         uint256 sumBalances = 0;
-        for (uint256 i = 0; i < balances.length; i++) {
+        for (uint256 i = 0; i < balances.length; ++i) {
             sumBalances += balances[i];
         }
 
         // Calculate the weighted balance ratio without considering fees
         uint256[] memory balanceRatiosWithoutFee = new uint256[](amountsOut.length);
         uint256 invariantRatioWithoutFees = 0;
-        for (uint256 i = 0; i < balances.length; i++) {
+        for (uint256 i = 0; i < balances.length; ++i) {
             uint256 currentWeight = balances[i].divUp(sumBalances);
             balanceRatiosWithoutFee[i] = (balances[i] - amountsOut[i]).divUp(balances[i]);
             invariantRatioWithoutFees = invariantRatioWithoutFees + (balanceRatiosWithoutFee[i].mulUp(currentWeight));
@@ -290,7 +290,7 @@ library StableMath {
 
         // Second loop calculates new amounts in, taking into account the fee on the percentage excess
         uint256[] memory newBalances = new uint256[](balances.length);
-        for (uint256 i = 0; i < balances.length; i++) {
+        for (uint256 i = 0; i < balances.length; ++i) {
             // Swap fees are typically charged on 'token in', but there is no 'token in' here, so we apply it to
             // 'token out'. This results in slightly larger price impact.
 
@@ -333,7 +333,7 @@ library StableMath {
         // First calculate the sum of all token balances, which will be used to calculate
         // the current weight of each token
         uint256 sumBalances = 0;
-        for (uint256 i = 0; i < balances.length; i++) {
+        for (uint256 i = 0; i < balances.length; ++i) {
             sumBalances += balances[i];
         }
 
@@ -362,7 +362,7 @@ library StableMath {
         uint256 ampTimesTotal = amplificationParameter * balances.length;
         uint256 sum = balances[0];
         uint256 P_D = balances[0] * balances.length;
-        for (uint256 j = 1; j < balances.length; j++) {
+        for (uint256 j = 1; j < balances.length; ++j) {
             P_D = (P_D * balances[j] * balances.length) / invariant;
             sum = sum + balances[j];
         }
@@ -379,7 +379,7 @@ library StableMath {
         // initial approximation.
         uint256 tokenBalance = (inv2 + c).divUpRaw(invariant + b);
 
-        for (uint256 i = 0; i < 255; i++) {
+        for (uint256 i = 0; i < 255; ++i) {
             prevTokenBalance = tokenBalance;
 
             // Use divUpRaw with tokenBalance, as it is a "raw" 36 decimal value

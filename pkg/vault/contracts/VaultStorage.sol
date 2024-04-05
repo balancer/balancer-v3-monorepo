@@ -52,6 +52,9 @@ contract VaultStorage {
     // Store pool pause managers.
     mapping(address => address) internal _poolPauseManagers;
 
+    // Store pool creator addresses.
+    mapping(address => address) internal _poolCreator;
+
     // Pool -> (token -> PackedTokenBalance): structure containing the current raw and "last live" scaled balances.
     // Last live balances are used for yield fee computation, and since these have rates applied, they are stored
     // as scaled 18-decimal FP values. Each value takes up half the storage slot (i.e., 128 bits).
@@ -83,6 +86,9 @@ contract VaultStorage {
 
     // Token -> fee: Protocol fees (from both swap and yield) accumulated in the Vault for harvest.
     mapping(IERC20 => uint256) internal _protocolFees;
+
+    // Pool -> (Token -> fee): pool creator fees (from swap) accumulated in the Vault for harvest.
+    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolCreatorFees;
 
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer internal _authorizer;

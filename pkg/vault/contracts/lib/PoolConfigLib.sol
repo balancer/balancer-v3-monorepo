@@ -37,7 +37,8 @@ library PoolConfigLib {
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
 
     uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
-    uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant POOL_DEV_FEE_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = POOL_DEV_FEE_OFFSET + FEE_BITLENGTH;
     uint256 public constant PAUSE_WINDOW_END_TIME_OFFSET =
         DECIMAL_SCALING_FACTORS_OFFSET + _TOKEN_DECIMAL_DIFFS_BITLENGTH;
 
@@ -70,6 +71,10 @@ library PoolConfigLib {
 
     function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
         return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
+    }
+
+    function getPoolCreatorFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
+        return PoolConfigBits.unwrap(config).decodeUint(POOL_DEV_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
     function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint256) {
@@ -183,6 +188,12 @@ library PoolConfigLib {
                 .insertBool(config.liquidityManagement.enableAddLiquidityCustom, ADD_LIQUIDITY_CUSTOM_OFFSET)
                 .insertBool(config.liquidityManagement.enableRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET);
         }
+        {
+            configBits = configBits
+                .insertUint(config.staticSwapFeePercentage / FEE_SCALING_FACTOR, STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH)
+                .insertUint(config.poolCreatorFeePercentage / FEE_SCALING_FACTOR, POOL_DEV_FEE_OFFSET, FEE_BITLENGTH);
+        }
+
         return
             PoolConfigBits.wrap(
                 configBits
@@ -190,11 +201,6 @@ library PoolConfigLib {
                         config.tokenDecimalDiffs,
                         DECIMAL_SCALING_FACTORS_OFFSET,
                         _TOKEN_DECIMAL_DIFFS_BITLENGTH
-                    )
-                    .insertUint(
-                        config.staticSwapFeePercentage / FEE_SCALING_FACTOR,
-                        STATIC_SWAP_FEE_OFFSET,
-                        FEE_BITLENGTH
                     )
                     .insertUint(config.pauseWindowEndTime, PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH)
             );
@@ -204,7 +210,7 @@ library PoolConfigLib {
     function toTokenDecimalDiffs(uint8[] memory tokenDecimalDiffs) internal pure returns (uint256) {
         bytes32 value;
 
-        for (uint256 i = 0; i < tokenDecimalDiffs.length; i++) {
+        for (uint256 i = 0; i < tokenDecimalDiffs.length; ++i) {
             value = value.insertUint(tokenDecimalDiffs[i], i * _DECIMAL_DIFF_BITLENGTH, _DECIMAL_DIFF_BITLENGTH);
         }
 
@@ -219,7 +225,7 @@ library PoolConfigLib {
 
         bytes32 tokenDecimalDiffs = bytes32(uint256(config.tokenDecimalDiffs));
 
-        for (uint256 i = 0; i < numTokens; i++) {
+        for (uint256 i = 0; i < numTokens; ++i) {
             uint256 decimalDiff = tokenDecimalDiffs.decodeUint(i * _DECIMAL_DIFF_BITLENGTH, _DECIMAL_DIFF_BITLENGTH);
 
             // This is equivalent to `10**(18+decimalsDifference)` but this form optimizes for 18 decimal tokens.
@@ -238,6 +244,7 @@ library PoolConfigLib {
                 isPoolInRecoveryMode: config.isPoolInRecoveryMode(),
                 hasDynamicSwapFee: config.hasDynamicSwapFee(),
                 staticSwapFeePercentage: config.getStaticSwapFeePercentage(),
+                poolCreatorFeePercentage: config.getPoolCreatorFeePercentage(),
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 pauseWindowEndTime: config.getPauseWindowEndTime(),
                 hooks: PoolHooks({

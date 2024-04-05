@@ -15,6 +15,7 @@ import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHo
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -22,6 +23,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
@@ -42,6 +44,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using PoolConfigLib for PoolConfig;
     using VaultExtensionsLib for IVault;
     using EnumerableSet for EnumerableSet.AddressSet;
+    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using SafeERC20 for IERC20;
     using VaultStateLib for VaultStateBits;
 
@@ -282,10 +285,49 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 
+    modifier withPoolCreator(address pool) {
+        _ensurePoolCreator(pool);
+        _;
+    }
+
+    function _ensurePoolCreator(address pool) private view {
+        if (msg.sender != _poolCreator[pool]) {
+            revert SenderIsNotPoolCreator(pool);
+        }
+    }
+
+    /**
+     * @inheritdoc IVaultAdmin
+     * @dev This can only be executed by the pool creator and is disabled if the pool is paused.
+     * The creator fee must be <= 100%. It's the percentage of creatorAndLpFees that will be accrued by the creator
+     * of the pool. For more details, check comment of vault's _computeAndChargeProtocolAndCreatorFees function
+     * Emits the poolCreatorFeePercentageChanged event.
+     */
+    function setPoolCreatorFeePercentage(
+        address pool,
+        uint256 poolCreatorFeePercentage
+    ) external withRegisteredPool(pool) withPoolCreator(pool) onlyVault {
+        // Saving bits by not implementing a new modifier
+        _ensureUnpausedAndGetVaultState(pool);
+        _setPoolCreatorFeePercentage(pool, poolCreatorFeePercentage);
+    }
+
+    function _setPoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) internal virtual {
+        if (poolCreatorFeePercentage > FixedPoint.ONE) {
+            revert PoolCreatorFeePercentageTooHigh();
+        }
+
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        config.poolCreatorFeePercentage = poolCreatorFeePercentage;
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        emit PoolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
+    }
+
     /// @inheritdoc IVaultAdmin
     function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant onlyVault {
-        for (uint256 index = 0; index < tokens.length; index++) {
-            IERC20 token = tokens[index];
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
             uint256 amount = _protocolFees[token];
 
             if (amount > 0) {
@@ -294,6 +336,22 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
                 token.safeTransfer(msg.sender, amount);
                 emit ProtocolFeeCollected(token, amount);
+            }
+        }
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function collectPoolCreatorFees(address pool) external nonReentrant onlyVault {
+        EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
+        for (uint256 i = 0; i < poolCreatorFees.length(); ++i) {
+            (IERC20 token, uint256 amount) = poolCreatorFees.unchecked_at(i);
+
+            if (amount > 0) {
+                // set fees to zero for the token
+                poolCreatorFees.unchecked_setAt(i, 0);
+
+                token.safeTransfer(_poolCreator[pool], amount);
+                emit PoolCreatorFeeCollected(pool, token, amount);
             }
         }
     }

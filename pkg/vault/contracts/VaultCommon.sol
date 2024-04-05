@@ -147,11 +147,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         _tokenDeltas().tSet(locker, token, next);
     }
 
-    function _isTrustedRouter(address) internal pure returns (bool) {
-        //TODO: Implement based on approval by governance and user
-        return true;
-    }
-
     /*******************************************************************************
                                     Vault Pausing
     *******************************************************************************/
@@ -341,7 +336,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         bytes32 packedBalance;
         IERC20 token;
 
-        for (uint256 i = 0; i < numTokens; i++) {
+        for (uint256 i = 0; i < numTokens; ++i) {
             (token, packedBalance) = poolTokenBalances.unchecked_at(i);
             balancesRaw[i] = packedBalance.getRawBalance();
             tokenConfig[i] = poolTokenConfig[token];

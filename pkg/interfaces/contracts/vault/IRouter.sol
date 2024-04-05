@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
+import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 import { IBasePool } from "./IBasePool.sol";
@@ -540,4 +542,43 @@ interface IRouter {
         uint256 exactAmountOut,
         bytes calldata userData
     ) external returns (uint256 amountIn);
+
+    /*******************************************************************************
+                                    Utils
+    *******************************************************************************/
+
+    /**
+     */
+    struct PermitApproval {
+        address token;
+        address owner;
+        address spender;
+        uint256 amount;
+        uint256 nonce;
+        uint256 deadline;
+    }
+
+    /**
+     * @notice Permits multiple allowances and executes a batch of function calls on this contract.
+     * @param permitBatch An array of `PermitApproval` structs, each representing an ERC20 permit request
+     * @param permitSignatures An array of bytes, each corresponding to the signature for the permit request in `permitBatch`
+     * @param permit2Batch A batch of permit2 approvals
+     * @param permit2Signature A permit2 signature for the batch approval
+     * @param multicallData An array of bytes arrays, each representing an encoded function call to be executed on this contract
+     * @return results Array of bytes arrays, each representing the return data from each function call executed
+     */
+    function permitBatchAndCall(
+        PermitApproval[] calldata permitBatch,
+        bytes[] calldata permitSignatures,
+        IAllowanceTransfer.PermitBatch calldata permit2Batch,
+        bytes calldata permit2Signature,
+        bytes[] calldata multicallData
+    ) external returns (bytes[] memory results);
+
+    /**
+     * @notice Executes a batch of function calls on this contract.
+     * @param data Encoded function calls to be executed in the batch.
+     * @return results Array of bytes arrays, each representing the return data from each function call executed.
+     */
+    function multicall(bytes[] calldata data) external returns (bytes[] memory results);
 }

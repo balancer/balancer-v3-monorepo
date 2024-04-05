@@ -60,6 +60,7 @@ contract StablePoolFactory is BasePoolFactory {
             swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
             address(0), // no pause manager
+            address(0), // no pool creator
             PoolHooks({
                 shouldCallBeforeInitialize: false,
                 shouldCallAfterInitialize: false,

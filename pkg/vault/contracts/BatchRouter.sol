@@ -4,6 +4,9 @@ pragma solidity ^0.8.24;
 
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -15,6 +18,7 @@ import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openze
 import { RouterCommon } from "./RouterCommon.sol";
 
 contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
+    using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // We use transient storage to track tokens and amounts flowing in and out of a batch swap.
@@ -32,7 +36,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
     // to return the correct total amounts in and out for each token involved in the operation.
     mapping(address => uint256) private _settledTokenAmounts;
 
-    constructor(IVault vault, IWETH weth) RouterCommon(vault, weth) {
+    constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -206,6 +210,11 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                     );
 
                     // Reusing `amountsOut` as input argument and function output to prevent stack too deep error.
+                    if (params.sender == address(this)) {
+                        // Needed for queries.
+                        // If router is the sender, it has to approve itself.
+                        IERC20(step.pool).safeIncreaseAllowance(address(this), type(uint256).max);
+                    }
                     (, amountsOut, ) = _vault.removeLiquidity(
                         RemoveLiquidityParams({
                             pool: step.pool,
@@ -262,7 +271,13 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                         stepTokenIn = step.tokenOut;
                         // If this is an intermediate step, we'll need to send it back to the vault
                         // to get credit for the BPT minted in the add liquidity operation.
-                        _vault.takeFrom(IERC20(step.pool), params.sender, bptAmountOut);
+                        if (params.sender == address(this)) {
+                            // Required for queries or in case router holds tokens.
+                            IERC20(step.pool).safeTransfer(address(_vault), bptAmountOut);
+                        } else {
+                            _permit2.transferFrom(params.sender, address(_vault), uint160(bptAmountOut), step.pool);
+                        }
+                        _vault.settle(IERC20(step.pool));
                     }
                 } else {
                     uint256 amountOut;
@@ -437,6 +452,11 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                         stepExactAmountOut
                     );
 
+                    if (params.sender == address(this)) {
+                        // Needed for queries.
+                        // If router is the sender, it has to approve itself.
+                        IERC20(step.pool).approve(address(this), type(uint256).max);
+                    }
                     (uint256 bptAmountIn, , ) = _vault.removeLiquidity(
                         RemoveLiquidityParams({
                             pool: step.pool,
@@ -457,7 +477,18 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                         stepExactAmountOut = bptAmountIn;
                         // Refund unused portion of BPT flashloan to the Vault
                         if (bptAmountIn < stepMaxAmountIn) {
-                            _vault.takeFrom(stepTokenIn, params.sender, stepMaxAmountIn - bptAmountIn);
+                            if (params.sender == address(this)) {
+                                // Required for queries or in case router holds tokens.
+                                IERC20(stepTokenIn).safeTransfer(address(_vault), stepMaxAmountIn - bptAmountIn);
+                            } else {
+                                _permit2.transferFrom(
+                                    params.sender,
+                                    address(_vault),
+                                    uint160(stepMaxAmountIn - bptAmountIn),
+                                    address(stepTokenIn)
+                                );
+                            }
+                            _vault.settle(IERC20(stepTokenIn));
                         }
                     }
                 } else if (!step.isBuffer && address(step.tokenOut) == step.pool) {
@@ -498,7 +529,17 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             // the vault owes the sender to make one less transfer.
                             _currentSwapTokenOutAmounts[address(step.tokenOut)] -= stepExactAmountOut;
                         } else {
-                            _vault.takeFrom(IERC20(step.pool), params.sender, stepExactAmountOut);
+                            if (params.sender == address(this)) {
+                                IERC20(step.pool).safeTransfer(address(_vault), stepExactAmountOut);
+                            } else {
+                                _permit2.transferFrom(
+                                    params.sender,
+                                    address(_vault),
+                                    uint160(stepExactAmountOut),
+                                    step.pool
+                                );
+                            }
+                            _vault.settle(IERC20(step.pool));
                         }
                     }
                 } else {
