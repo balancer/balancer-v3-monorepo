@@ -56,7 +56,7 @@ library ArrayHelpers {
         bool positive
     ) internal pure returns (int256[] memory signedValues) {
         signedValues = new int256[](values.length);
-        for (uint256 i = 0; i < values.length; i++) {
+        for (uint256 i = 0; i < values.length; ++i) {
             signedValues[i] = positive ? int256(values[i]) : -int256(values[i]);
         }
     }

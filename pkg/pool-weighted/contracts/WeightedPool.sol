@@ -47,7 +47,7 @@ contract WeightedPool is IBasePool, IMinimumSwapFee, BalancerPoolToken {
 
         // Ensure each normalized weight is above the minimum
         uint256 normalizedSum = 0;
-        for (uint8 i = 0; i < params.numTokens; i++) {
+        for (uint8 i = 0; i < params.numTokens; ++i) {
             uint256 normalizedWeight = params.normalizedWeights[i];
 
             if (normalizedWeight < WeightedMath._MIN_WEIGHT) {

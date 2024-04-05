@@ -16,7 +16,7 @@ contract InputHelpersMock {
     }
 
     function sortTokenConfig(TokenConfig[] memory tokenConfig) public pure returns (TokenConfig[] memory) {
-        for (uint256 i = 0; i < tokenConfig.length - 1; i++) {
+        for (uint256 i = 0; i < tokenConfig.length - 1; ++i) {
             for (uint256 j = 0; j < tokenConfig.length - i - 1; j++) {
                 if (tokenConfig[j].token > tokenConfig[j + 1].token) {
                     // Swap if they're out of order.
