@@ -64,7 +64,7 @@ library WeightedMath {
         **********************************************************************************************/
 
         invariant = FixedPoint.ONE;
-        for (uint256 i = 0; i < normalizedWeights.length; i++) {
+        for (uint256 i = 0; i < normalizedWeights.length; ++i) {
             invariant = invariant.mulDown(balances[i].powDown(normalizedWeights[i]));
         }
 
@@ -181,7 +181,7 @@ library WeightedMath {
         uint256[] memory balanceRatiosWithFee = new uint256[](amountsIn.length);
 
         uint256 invariantRatioWithFees = 0;
-        for (uint256 i = 0; i < balances.length; i++) {
+        for (uint256 i = 0; i < balances.length; ++i) {
             balanceRatiosWithFee[i] = (balances[i] + amountsIn[i]).divDown(balances[i]);
             invariantRatioWithFees = invariantRatioWithFees + balanceRatiosWithFee[i].mulDown(normalizedWeights[i]);
         }
@@ -262,7 +262,7 @@ library WeightedMath {
         // increase.
         invariantRatio = FixedPoint.ONE;
 
-        for (uint256 i = 0; i < balances.length; i++) {
+        for (uint256 i = 0; i < balances.length; ++i) {
             uint256 amountInWithoutFee;
 
             if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
@@ -341,7 +341,7 @@ library WeightedMath {
 
         uint256[] memory balanceRatiosWithoutFee = new uint256[](amountsOut.length);
         uint256 invariantRatioWithoutFees = 0;
-        for (uint256 i = 0; i < balances.length; i++) {
+        for (uint256 i = 0; i < balances.length; ++i) {
             balanceRatiosWithoutFee[i] = (balances[i] - amountsOut[i]).divUp(balances[i]);
             invariantRatioWithoutFees = (invariantRatioWithoutFees + balanceRatiosWithoutFee[i]).mulUp(
                 normalizedWeights[i]
@@ -411,7 +411,7 @@ library WeightedMath {
     ) internal pure returns (uint256 invariantRatio) {
         invariantRatio = FixedPoint.ONE;
 
-        for (uint256 i = 0; i < balances.length; i++) {
+        for (uint256 i = 0; i < balances.length; ++i) {
             // Swap fees are typically charged on 'token in', but there is no 'token in' here, so we apply it to
             // 'token out'. This results in slightly larger price impact.
 

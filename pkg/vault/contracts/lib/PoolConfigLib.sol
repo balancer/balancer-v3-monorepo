@@ -210,7 +210,7 @@ library PoolConfigLib {
     function toTokenDecimalDiffs(uint8[] memory tokenDecimalDiffs) internal pure returns (uint256) {
         bytes32 value;
 
-        for (uint256 i = 0; i < tokenDecimalDiffs.length; i++) {
+        for (uint256 i = 0; i < tokenDecimalDiffs.length; ++i) {
             value = value.insertUint(tokenDecimalDiffs[i], i * _DECIMAL_DIFF_BITLENGTH, _DECIMAL_DIFF_BITLENGTH);
         }
 
@@ -225,7 +225,7 @@ library PoolConfigLib {
 
         bytes32 tokenDecimalDiffs = bytes32(uint256(config.tokenDecimalDiffs));
 
-        for (uint256 i = 0; i < numTokens; i++) {
+        for (uint256 i = 0; i < numTokens; ++i) {
             uint256 decimalDiff = tokenDecimalDiffs.decodeUint(i * _DECIMAL_DIFF_BITLENGTH, _DECIMAL_DIFF_BITLENGTH);
 
             // This is equivalent to `10**(18+decimalsDifference)` but this form optimizes for 18 decimal tokens.

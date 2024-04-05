@@ -402,7 +402,7 @@ contract VaultSwapTest is BaseVaultTest {
         (, , uint[] memory balancesRawAfter, , ) = vault.getPoolTokenInfo(address(pool));
 
         // Pool balances should not change
-        for (uint i = 0; i < balancesRawAfter.length; i++) {
+        for (uint i = 0; i < balancesRawAfter.length; ++i) {
             assertEq(balancesRawBefore[i], balancesRawAfter[i], "Balance does not match");
         }
         // No tokens being spent.
@@ -440,7 +440,7 @@ contract VaultSwapTest is BaseVaultTest {
 
         assertEq(currentLiveBalances.length, lastLiveBalances.length);
 
-        for (uint256 i = 0; i < currentLiveBalances.length; i++) {
+        for (uint256 i = 0; i < currentLiveBalances.length; ++i) {
             assertEq(currentLiveBalances[i], lastLiveBalances[i]);
         }
     }

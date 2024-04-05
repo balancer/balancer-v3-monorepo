@@ -393,8 +393,8 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
     function _giveTokensToLPs() private {
         address[] memory usersToTransfer = [address(lp)].toMemoryArray();
 
-        for (uint256 index = 0; index < usersToTransfer.length; index++) {
-            address userAddress = usersToTransfer[index];
+        for (uint256 i = 0; i < usersToTransfer.length; ++i) {
+            address userAddress = usersToTransfer[i];
 
             mockedDai.mint(userAddress, 4 * BUFFER_BASE_TOKENS);
             mockedWsteth.mint(userAddress, 4 * BUFFER_BASE_TOKENS);
@@ -418,8 +418,8 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
     function _giveTokensToBufferContracts() private {
         address[] memory buffersToTransfer = [address(bufferPoolDai), address(bufferPoolWsteth)].toMemoryArray();
 
-        for (uint256 index = 0; index < buffersToTransfer.length; index++) {
-            address bufferAddress = buffersToTransfer[index];
+        for (uint256 i = 0; i < buffersToTransfer.length; ++i) {
+            address bufferAddress = buffersToTransfer[i];
 
             uint256 daiToConvert = wDAI.previewRedeem(1e18);
             mockedDai.mint(bufferAddress, daiToConvert + 1e18);
