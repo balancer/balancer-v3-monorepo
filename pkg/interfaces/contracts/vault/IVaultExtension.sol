@@ -66,17 +66,21 @@ interface IVaultExtension {
      *
      * @param pool The address of the pool being registered
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
+     * @param swapFeePercentage Initial value of the swap fee
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
-     * @param pauseManager Optional contract the Vault will allow to pause the pool
-     * @param hookConfig Flags indicating which hooks the pool supports
+     * @param pauseManager address the Vault will allow to pause the pool
+     * @param poolCreator address the Vault will allow to set the pool creator fee percentage and collect fees
+     * @param poolHooks Flags indicating which hooks the pool supports
      * @param liquidityManagement Liquidity management flags with implemented methods
      */
     function registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
+        uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         address pauseManager,
-        PoolHooks calldata hookConfig,
+        address poolCreator,
+        PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external;
 
@@ -265,6 +269,21 @@ interface IVaultExtension {
      * @return The current static swap fee percentage for the specified pool
      */
     function getStaticSwapFeePercentage(address pool) external view returns (uint256);
+
+    /**
+     * @notice Fetches the creator fee of a pool for a specific token.
+     * @param pool The address of the pool whose creator fee is being queried
+     * @param token The token in which the creator fee was charged
+     * @return poolCreatorFee The creator fee of the pool and token
+     */
+    function getPoolCreatorFees(address pool, IERC20 token) external returns (uint256 poolCreatorFee);
+
+    /**
+     * @notice Fetches the address of the creator of a pool, who can collect creator fees.
+     * @param pool The address of the pool whose creator is being queried
+     * @return poolCreator The address of the creator
+     */
+    function getPoolCreator(address pool) external returns (address poolCreator);
 
     /*******************************************************************************
                                     Recovery Mode

@@ -38,18 +38,15 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         // Still need the rate provider at index 0; buildTokenConfig will sort.
         rateProviders[0] = rateProvider;
 
-        return
-            address(
-                new PoolMock(
-                    IVault(address(vault)),
-                    "ERC20 Pool",
-                    "ERC20POOL",
-                    vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
-                    true,
-                    365 days,
-                    address(0)
-                )
-            );
+        address newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+
+        factoryMock.registerTestPool(
+            newPool,
+            vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
+            address(lp)
+        );
+
+        return newPool;
     }
 
     function testLastLiveBalanceInitialization() public {

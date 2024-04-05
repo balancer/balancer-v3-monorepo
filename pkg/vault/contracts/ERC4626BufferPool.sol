@@ -23,7 +23,6 @@ import {
     SwapKind
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
@@ -40,7 +39,6 @@ contract ERC4626BufferPool is
     IBasePool,
     IBufferPool,
     IRateProvider,
-    IPoolLiquidity,
     BalancerPoolToken,
     BasePoolHooks,
     BasePoolAuthentication,

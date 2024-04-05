@@ -7,6 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
@@ -48,6 +49,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using Address for *;
     using ArrayHelpers for uint256[];
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using EnumerableSet for EnumerableSet.AddressSet;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
@@ -118,8 +120,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     struct PoolRegistrationParams {
         TokenConfig[] tokenConfig;
+        uint256 swapFeePercentage;
         uint256 pauseWindowEndTime;
         address pauseManager;
+        address poolCreator;
         PoolHooks poolHooks;
         LiquidityManagement liquidityManagement;
     }
@@ -128,8 +132,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
+        uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         address pauseManager,
+        address poolCreator,
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
@@ -137,8 +143,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             pool,
             PoolRegistrationParams({
                 tokenConfig: tokenConfig,
+                swapFeePercentage: swapFeePercentage,
                 pauseWindowEndTime: pauseWindowEndTime,
                 pauseManager: pauseManager,
+                poolCreator: poolCreator,
                 poolHooks: poolHooks,
                 liquidityManagement: liquidityManagement
             })
@@ -171,8 +179,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert MaxTokens();
         }
 
+        if (ERC165Checker.supportsERC165(pool) == false) {
+            revert PoolMustSupportERC165();
+        }
+
         // Retrieve or create the pool's token balances mapping.
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        // Retrieve or create the pool's dev fee mapping.
+        EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
+
         uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
         IERC20 previousToken;
 
@@ -198,6 +213,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 revert TokenAlreadyRegistered(token);
             }
 
+            // Register the token dev fee with an initial balance of zero.
+            // Note: EnumerableMaps require an explicit initial value when creating a key-value pair.
+            poolCreatorFees.set(token, 0);
+
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
             _poolTokenConfig[pool][token] = tokenData;
 
@@ -219,6 +238,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Store the pause manager. A zero address means default to the authorizer.
         _poolPauseManagers[pool] = params.pauseManager;
 
+        // Store the pool creator.
+        _poolCreator[pool] = params.poolCreator;
+
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
 
@@ -229,6 +251,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         config.pauseWindowEndTime = params.pauseWindowEndTime;
         _poolConfig[pool] = config.fromPoolConfig();
 
+        _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
+
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
         emit PoolRegistered(
             pool,
@@ -236,6 +260,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             params.tokenConfig,
             params.pauseWindowEndTime,
             params.pauseManager,
+            params.poolCreator,
             params.poolHooks,
             params.liquidityManagement
         );
@@ -486,6 +511,18 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
     }
 
+    /// @inheritdoc IVaultExtension
+    function getPoolCreatorFees(address pool, IERC20 token) external view returns (uint256 poolCreatorFee) {
+        EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
+        uint256 index = poolCreatorFees.indexOf(token);
+        poolCreatorFee = poolCreatorFees.unchecked_valueAt(index);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getPoolCreator(address pool) external view returns (address poolCreator) {
+        return _poolCreator[pool];
+    }
+
     /*******************************************************************************
                                     Recovery Mode
     *******************************************************************************/
@@ -546,10 +583,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             poolBalances.unchecked_setAt(i, packedBalances.setRawBalance(balancesRaw[i]));
         }
 
-        // Trusted routers use Vault's allowances, which are infinite anyways for pool tokens.
-        if (!_isTrustedRouter(msg.sender)) {
-            _spendAllowance(address(pool), from, msg.sender, exactBptAmountIn);
-        }
+        _spendAllowance(address(pool), from, msg.sender, exactBptAmountIn);
 
         // When removing liquidity, we must burn tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.

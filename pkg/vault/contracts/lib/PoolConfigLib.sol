@@ -32,11 +32,13 @@ library PoolConfigLib {
     uint8 public constant POOL_RECOVERY_MODE_OFFSET = AFTER_INITIALIZE_OFFSET + 1;
 
     // Supported liquidity API bit offsets
-    uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = POOL_RECOVERY_MODE_OFFSET + 1;
+    uint8 public constant UNBALANCED_LIQUIDITY_OFFSET = POOL_RECOVERY_MODE_OFFSET + 1;
+    uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = UNBALANCED_LIQUIDITY_OFFSET + 1;
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
 
     uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
-    uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant POOL_DEV_FEE_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = POOL_DEV_FEE_OFFSET + FEE_BITLENGTH;
     uint256 public constant PAUSE_WINDOW_END_TIME_OFFSET =
         DECIMAL_SCALING_FACTORS_OFFSET + _TOKEN_DECIMAL_DIFFS_BITLENGTH;
 
@@ -69,6 +71,10 @@ library PoolConfigLib {
 
     function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
         return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
+    }
+
+    function getPoolCreatorFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
+        return PoolConfigBits.unwrap(config).decodeUint(POOL_DEV_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
     function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint256) {
@@ -111,12 +117,23 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(AFTER_INITIALIZE_OFFSET);
     }
 
+    function supportsUnbalancedLiquidity(PoolConfigBits config) internal pure returns (bool) {
+        // NOTE: The unbalanced liquidity flag is default-on (false means it is supported)
+        return !PoolConfigBits.unwrap(config).decodeBool(UNBALANCED_LIQUIDITY_OFFSET);
+    }
+
+    function requireUnbalancedLiquidityEnabled(PoolConfig memory config) internal pure {
+        if (config.liquidityManagement.disableUnbalancedLiquidity == true) {
+            revert IVaultErrors.DoesNotSupportUnbalancedLiquidity();
+        }
+    }
+
     function supportsAddLiquidityCustom(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(ADD_LIQUIDITY_CUSTOM_OFFSET);
     }
 
-    function requireSupportsAddLiquidityCustom(PoolConfigBits config) internal pure {
-        if (config.supportsAddLiquidityCustom() == false) {
+    function requireAddCustomLiquidityEnabled(PoolConfig memory config) internal pure {
+        if (config.liquidityManagement.enableAddLiquidityCustom == false) {
             revert IVaultErrors.DoesNotSupportAddLiquidityCustom();
         }
     }
@@ -125,8 +142,8 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(REMOVE_LIQUIDITY_CUSTOM_OFFSET);
     }
 
-    function requireSupportsRemoveLiquidityCustom(PoolConfigBits config) internal pure {
-        if (config.supportsRemoveLiquidityCustom() == false) {
+    function requireRemoveCustomLiquidityEnabled(PoolConfig memory config) internal pure {
+        if (config.liquidityManagement.enableRemoveLiquidityCustom == false) {
             revert IVaultErrors.DoesNotSupportRemoveLiquidityCustom();
         }
     }
@@ -162,9 +179,19 @@ library PoolConfigLib {
         {
             configBits = configBits
                 .insertBool(config.hooks.shouldCallBeforeInitialize, BEFORE_INITIALIZE_OFFSET)
-                .insertBool(config.hooks.shouldCallAfterInitialize, AFTER_INITIALIZE_OFFSET)
-                .insertBool(config.liquidityManagement.supportsAddLiquidityCustom, ADD_LIQUIDITY_CUSTOM_OFFSET)
-                .insertBool(config.liquidityManagement.supportsRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET);
+                .insertBool(config.hooks.shouldCallAfterInitialize, AFTER_INITIALIZE_OFFSET);
+        }
+
+        {
+            configBits = configBits
+                .insertBool(config.liquidityManagement.disableUnbalancedLiquidity, UNBALANCED_LIQUIDITY_OFFSET)
+                .insertBool(config.liquidityManagement.enableAddLiquidityCustom, ADD_LIQUIDITY_CUSTOM_OFFSET)
+                .insertBool(config.liquidityManagement.enableRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET);
+        }
+        {
+            configBits = configBits
+                .insertUint(config.staticSwapFeePercentage / FEE_SCALING_FACTOR, STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH)
+                .insertUint(config.poolCreatorFeePercentage / FEE_SCALING_FACTOR, POOL_DEV_FEE_OFFSET, FEE_BITLENGTH);
         }
 
         return
@@ -174,11 +201,6 @@ library PoolConfigLib {
                         config.tokenDecimalDiffs,
                         DECIMAL_SCALING_FACTORS_OFFSET,
                         _TOKEN_DECIMAL_DIFFS_BITLENGTH
-                    )
-                    .insertUint(
-                        config.staticSwapFeePercentage / FEE_SCALING_FACTOR,
-                        STATIC_SWAP_FEE_OFFSET,
-                        FEE_BITLENGTH
                     )
                     .insertUint(config.pauseWindowEndTime, PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH)
             );
@@ -222,6 +244,7 @@ library PoolConfigLib {
                 isPoolInRecoveryMode: config.isPoolInRecoveryMode(),
                 hasDynamicSwapFee: config.hasDynamicSwapFee(),
                 staticSwapFeePercentage: config.getStaticSwapFeePercentage(),
+                poolCreatorFeePercentage: config.getPoolCreatorFeePercentage(),
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 pauseWindowEndTime: config.getPauseWindowEndTime(),
                 hooks: PoolHooks({
@@ -235,8 +258,9 @@ library PoolConfigLib {
                     shouldCallAfterSwap: config.shouldCallAfterSwap()
                 }),
                 liquidityManagement: LiquidityManagement({
-                    supportsAddLiquidityCustom: config.supportsAddLiquidityCustom(),
-                    supportsRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom()
+                    disableUnbalancedLiquidity: !config.supportsUnbalancedLiquidity(),
+                    enableAddLiquidityCustom: config.supportsAddLiquidityCustom(),
+                    enableRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom()
                 })
             });
     }
