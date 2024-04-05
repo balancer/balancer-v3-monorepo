@@ -56,6 +56,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
             address(newPool),
             vault.buildTokenConfig(tokens.asIERC20()),
             address(0),
+            address(0),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
@@ -90,6 +91,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
         factoryMock.registerPool(
             address(newPool),
             tokenConfig,
+            address(0),
             address(0),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({

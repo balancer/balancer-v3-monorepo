@@ -20,13 +20,14 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         _vault = vault;
     }
 
-    function registerTestPool(address pool, TokenConfig[] memory tokenConfig) external {
+    function registerTestPool(address pool, TokenConfig[] memory tokenConfig, address poolCreator) external {
         _vault.registerPool(
             pool,
             tokenConfig,
             DEFAULT_SWAP_FEE,
             getNewPoolPauseWindowEndTime(),
             address(0),
+            poolCreator,
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
@@ -50,6 +51,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             swapFee,
             block.timestamp + pauseWindowDuration,
             pauseManager,
+            address(0),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
@@ -64,6 +66,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         address pool,
         TokenConfig[] memory tokenConfig,
         address pauseManager,
+        address poolCreator,
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement,
         bool hasDynamicSwapFee
@@ -74,6 +77,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             DEFAULT_SWAP_FEE,
             getNewPoolPauseWindowEndTime(),
             pauseManager,
+            poolCreator,
             poolHooks,
             liquidityManagement,
             hasDynamicSwapFee
@@ -95,6 +99,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
             pauseManager,
+            address(0),
             poolHooks,
             liquidityManagement,
             hasDynamicSwapFee
@@ -106,6 +111,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         address pool,
         TokenConfig[] memory tokenConfig,
         address pauseManager,
+        address poolCreator,
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement,
         uint256 timestamp,
@@ -117,6 +123,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             DEFAULT_SWAP_FEE,
             timestamp,
             pauseManager,
+            poolCreator,
             poolHooks,
             liquidityManagement,
             hasDynamicSwapFee

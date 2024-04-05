@@ -4,11 +4,19 @@ import { Contract } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
+import { Router } from '@balancer-labs/v3-vault/typechain-types';
+import { ERC20PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/ERC20PoolMock';
 import { ERC4626BufferPoolFactory, Router } from '@balancer-labs/v3-vault/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { MONTH, currentTimestamp } from '@balancer-labs/v3-helpers/src/time';
 import { ERC20TestToken, ERC4626TestToken, WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
-import { ANY_ADDRESS, MAX_UINT256, ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
+import {
+  ANY_ADDRESS,
+  MAX_UINT256,
+  MAX_UINT160,
+  MAX_UINT48,
+  ZERO_BYTES32,
+} from '@balancer-labs/v3-helpers/src/constants';
 import { PoolConfigStructOutput, VaultMock } from '../typechain-types/contracts/test/VaultMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
@@ -17,12 +25,15 @@ import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
+import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
+import { deployPermit2 } from './Permit2Deployer';
 import '@balancer-labs/v3-common/setupTests';
 
 describe('ERC4626BufferPool', function () {
   const TOKEN_AMOUNT = fp(1000);
   const MIN_BPT = bn(1e6);
 
+  let permit2: IPermit2;
   let vault: IVaultMock;
   let authorizer: Contract;
   let router: Router;
@@ -36,7 +47,7 @@ describe('ERC4626BufferPool', function () {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
 
-  let pool: Contract;
+  let pool: ERC20PoolMock;
 
   before('setup signers', async () => {
     [, alice, bob] = await ethers.getSigners();
@@ -49,8 +60,9 @@ describe('ERC4626BufferPool', function () {
     const authorizerAddress = await vault.getAuthorizer();
     authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
 
+    permit2 = await deployPermit2();
     const WETH: WETHTestToken = await deploy('v3-solidity-utils/WETHTestToken');
-    router = await deploy('v3-vault/Router', { args: [vault, await WETH.getAddress()] });
+    router = await deploy('v3-vault/Router', { args: [vault, await WETH.getAddress(), permit2] });
 
     baseToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Dai Stablecoin', 'DAI', 18] });
     wrappedToken = await deploy('v3-solidity-utils/ERC4626TestToken', {
@@ -64,28 +76,31 @@ describe('ERC4626BufferPool', function () {
     factory = await deploy('v3-vault/ERC4626BufferPoolFactory', { args: [vault, 12 * MONTH] });
   });
 
-  async function createBufferPool(): Promise<Contract> {
+  async function createBufferPool(): Promise<ERC20PoolMock> {
     // initialize assets and supply
     await baseToken.mint(alice, TOKEN_AMOUNT);
     await baseToken.connect(alice).approve(wrappedToken, TOKEN_AMOUNT);
     await wrappedToken.connect(alice).deposit(TOKEN_AMOUNT, alice);
 
-    const tx = await factory.connect(alice).create(wrappedToken, wrappedToken, ANY_ADDRESS, ZERO_BYTES32);
+    const tx = await factory.connect(alice).create(wrappedToken, wrappedToken, ANY_ADDRESS, ANY_ADDRESS, ZERO_BYTES32);
     const receipt = await tx.wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
     const poolAddress = event.args.pool;
 
-    return deployedAt('ERC4626BufferPool', poolAddress);
+    return (await deployedAt('ERC4626BufferPool', poolAddress)) as unknown as ERC20PoolMock;
   }
 
-  async function createAndInitializeBufferPool(): Promise<Contract> {
+  async function createAndInitializeBufferPool(): Promise<ERC20PoolMock> {
     pool = await createBufferPool();
 
     await baseToken.mint(alice, TOKEN_AMOUNT);
 
-    await wrappedToken.connect(alice).approve(vault, MAX_UINT256);
-    await baseToken.connect(alice).approve(vault, MAX_UINT256);
+    await pool.connect(alice).approve(router, MAX_UINT256);
+    for (const token of [wrappedToken, baseToken]) {
+      await token.connect(alice).approve(permit2, MAX_UINT256);
+      await permit2.connect(alice).approve(token, router, MAX_UINT160, MAX_UINT48);
+    }
 
     await router.connect(alice).initialize(pool, tokenAddresses, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
 
@@ -130,14 +145,14 @@ describe('ERC4626BufferPool', function () {
       expect(poolConfig.pauseWindowEndTime).to.gt(currentTime);
       expect(poolConfig.hooks.shouldCallBeforeInitialize).to.be.true;
       expect(poolConfig.hooks.shouldCallAfterInitialize).to.be.false;
-      expect(poolConfig.hooks.shouldCallBeforeAddLiquidity).to.be.true;
+      expect(poolConfig.hooks.shouldCallBeforeAddLiquidity).to.be.false;
       expect(poolConfig.hooks.shouldCallAfterAddLiquidity).to.be.false;
-      expect(poolConfig.hooks.shouldCallBeforeRemoveLiquidity).to.be.true;
+      expect(poolConfig.hooks.shouldCallBeforeRemoveLiquidity).to.be.false;
       expect(poolConfig.hooks.shouldCallAfterRemoveLiquidity).to.be.false;
       expect(poolConfig.hooks.shouldCallBeforeSwap).to.be.true;
       expect(poolConfig.hooks.shouldCallAfterSwap).to.be.false;
-      expect(poolConfig.liquidityManagement.disableUnbalancedLiquidity).to.be.false;
-      expect(poolConfig.liquidityManagement.enableAddLiquidityCustom).to.be.true;
+      expect(poolConfig.liquidityManagement.disableUnbalancedLiquidity).to.be.true;
+      expect(poolConfig.liquidityManagement.enableAddLiquidityCustom).to.be.false;
       expect(poolConfig.liquidityManagement.enableRemoveLiquidityCustom).to.be.false;
     });
   });
@@ -148,8 +163,11 @@ describe('ERC4626BufferPool', function () {
 
       await baseToken.mint(alice, TOKEN_AMOUNT);
 
-      await wrappedToken.connect(alice).approve(vault, MAX_UINT256);
-      await baseToken.connect(alice).approve(vault, MAX_UINT256);
+      await pool.connect(alice).approve(router, MAX_UINT256);
+      for (const token of [wrappedToken, baseToken]) {
+        await token.connect(alice).approve(permit2, MAX_UINT256);
+        await permit2.connect(alice).approve(token, router, MAX_UINT160, MAX_UINT48);
+      }
     });
 
     it('satisfies preconditions', async () => {
@@ -254,7 +272,7 @@ describe('ERC4626BufferPool', function () {
       it('cannot add liquidity unbalanced', async () => {
         await expect(
           router.connect(alice).addLiquidityUnbalanced(pool, [0, TOKEN_AMOUNT], 0, false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'BeforeAddLiquidityHookFailed');
+        ).to.be.revertedWithCustomError(vault, 'DoesNotSupportUnbalancedLiquidity');
       });
 
       it('cannot add liquidity single token exact out', async () => {
@@ -262,22 +280,25 @@ describe('ERC4626BufferPool', function () {
           router
             .connect(alice)
             .addLiquiditySingleTokenExactOut(pool, baseTokenAddress, TOKEN_AMOUNT, TOKEN_AMOUNT, false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'BeforeAddLiquidityHookFailed');
+        ).to.be.revertedWithCustomError(vault, 'DoesNotSupportUnbalancedLiquidity');
       });
     });
 
-    it('can add liquidity custom', async () => {
+    it('can add liquidity proportional', async () => {
       await baseToken.mint(bob, 2n * (TOKEN_AMOUNT + MIN_BPT));
       await baseToken.connect(bob).approve(wrappedToken, TOKEN_AMOUNT + MIN_BPT);
       await wrappedToken.connect(bob).deposit(TOKEN_AMOUNT + MIN_BPT, bob);
 
-      await wrappedToken.connect(bob).approve(vault, MAX_UINT256);
-      await baseToken.connect(bob).approve(vault, MAX_UINT256);
+      await pool.connect(bob).approve(router, MAX_UINT256);
+      for (const token of [wrappedToken, baseToken]) {
+        await token.connect(bob).approve(permit2, MAX_UINT256);
+        await permit2.connect(bob).approve(token, router, MAX_UINT160, MAX_UINT48);
+      }
 
       const bptAmount = await pool.balanceOf(alice);
       const MAX_AMOUNT = TOKEN_AMOUNT + MIN_BPT;
 
-      await router.connect(bob).addLiquidityCustom(pool, [MAX_AMOUNT, MAX_AMOUNT], bptAmount, false, '0x');
+      await router.connect(bob).addLiquidityProportional(pool, [MAX_AMOUNT, MAX_AMOUNT], bptAmount, false, '0x');
 
       // Should withdraw almost all. Contrived test to ensure proportional amounts in calculated correctly.
       expect(await baseToken.balanceOf(bob)).to.equal((MIN_BPT * 3n) / 2n);
@@ -302,7 +323,7 @@ describe('ERC4626BufferPool', function () {
       it('cannot remove liquidity single token exact in', async () => {
         await expect(
           router.connect(alice).removeLiquiditySingleTokenExactIn(pool, TOKEN_AMOUNT, baseTokenAddress, 0, false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'BeforeRemoveLiquidityHookFailed');
+        ).to.be.revertedWithCustomError(vault, 'DoesNotSupportUnbalancedLiquidity');
       });
 
       it('cannot remove liquidity single token exact out', async () => {
@@ -310,13 +331,13 @@ describe('ERC4626BufferPool', function () {
           router
             .connect(alice)
             .removeLiquiditySingleTokenExactOut(pool, TOKEN_AMOUNT, baseTokenAddress, TOKEN_AMOUNT, false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'BeforeRemoveLiquidityHookFailed');
+        ).to.be.revertedWithCustomError(vault, 'DoesNotSupportUnbalancedLiquidity');
       });
 
       it('cannot remove liquidity custom', async () => {
         await expect(
           router.connect(alice).removeLiquidityCustom(pool, TOKEN_AMOUNT, [0, 0], false, '0x')
-        ).to.be.revertedWithCustomError(vault, 'BeforeRemoveLiquidityHookFailed');
+        ).to.be.revertedWithCustomError(vault, 'DoesNotSupportRemoveLiquidityCustom');
       });
     });
 

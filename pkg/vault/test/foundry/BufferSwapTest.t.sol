@@ -89,9 +89,13 @@ contract BufferSwapTest is BaseVaultTest {
         usdc.mint(address(waUSDCBufferPool), 10);
 
         vm.startPrank(lp);
-        waDAI.approve(address(vault), MAX_UINT256);
+        waDAI.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
         _initPool(waDAIBufferPool, [defaultAmount, defaultAmount].toMemoryArray(), defaultAmount * 2 - MIN_BPT);
-        waUSDC.approve(address(vault), MAX_UINT256);
+        waUSDC.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
         _initPool(waUSDCBufferPool, [defaultAmount, defaultAmount].toMemoryArray(), defaultAmount * 2 - MIN_BPT);
         vm.stopPrank();
     }
@@ -107,12 +111,19 @@ contract BufferSwapTest is BaseVaultTest {
 
         PoolMock newPool = new PoolMock(IVault(address(vault)), "Boosted Pool", "BOOSTYBOI");
 
-        factoryMock.registerTestPool(address(newPool), tokenConfig);
+        factoryMock.registerTestPool(address(newPool), tokenConfig, address(lp));
 
         vm.label(address(newPool), "boosted pool");
         boostedPool = address(newPool);
 
         vm.startPrank(bob);
+        waDAI.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
+        waUSDC.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
+
         dai.mint(address(bob), boostedPoolAmount);
         dai.approve(address(waDAI), boostedPoolAmount);
         waDAI.deposit(boostedPoolAmount, address(bob));
@@ -120,9 +131,6 @@ contract BufferSwapTest is BaseVaultTest {
         usdc.mint(address(bob), boostedPoolAmount);
         usdc.approve(address(waUSDC), boostedPoolAmount);
         waUSDC.deposit(boostedPoolAmount, address(bob));
-
-        waDAI.approve(address(vault), MAX_UINT256);
-        waUSDC.approve(address(vault), MAX_UINT256);
 
         _initPool(boostedPool, [boostedPoolAmount, boostedPoolAmount].toMemoryArray(), boostedPoolAmount * 2 - MIN_BPT);
         vm.stopPrank();

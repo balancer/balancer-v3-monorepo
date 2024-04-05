@@ -48,6 +48,7 @@ contract ERC4626BufferPoolFactoryMock is ERC4626BufferPoolFactory {
             rateProvider,
             getNewPoolPauseWindowEndTime(),
             address(0),
+            address(0),
             _getDefaultPoolHooks(),
             _getDefaultLiquidityManagement()
         );

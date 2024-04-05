@@ -25,6 +25,7 @@ interface IVaultMainMock {
         IERC20[] memory tokens,
         uint256 timestamp,
         address pauseManager,
+        address poolCreator,
         bool hasDynamicSwapFee
     ) external;
 

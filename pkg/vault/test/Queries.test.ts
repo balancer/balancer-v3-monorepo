@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
-import { MAX_UINT256 } from '@balancer-labs/v3-helpers/src/constants';
+import { MAX_UINT256, MAX_UINT160, MAX_UINT48, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { Router } from '../typechain-types/contracts/Router';
 import { ERC20PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/ERC20PoolMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
@@ -14,8 +14,11 @@ import { buildTokenConfig } from './poolSetup';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { Vault, PoolFactoryMock } from '../typechain-types';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
+import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
+import { deployPermit2 } from './Permit2Deployer';
 
 describe('Queries', function () {
+  let permit2: IPermit2;
   let vault: Vault;
   let router: Router;
   let factory: PoolFactoryMock;
@@ -39,7 +42,8 @@ describe('Queries', function () {
     vault = await VaultDeployer.deploy();
     const vaultAddress = await vault.getAddress();
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
-    router = await deploy('Router', { args: [vaultAddress, WETH] });
+    permit2 = await deployPermit2();
+    router = await deploy('Router', { args: [vaultAddress, WETH, permit2] });
 
     DAI = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['DAI', 'Token A', 18] });
     USDC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['USDC', 'USDC', 18] });
@@ -51,13 +55,20 @@ describe('Queries', function () {
 
     factory = await deploy('PoolFactoryMock', { args: [vaultAddress, 12 * MONTH] });
 
-    await factory.registerTestPool(pool, buildTokenConfig([await DAI.getAddress(), await USDC.getAddress()]));
+    await factory.registerTestPool(
+      pool,
+      buildTokenConfig([await DAI.getAddress(), await USDC.getAddress()]),
+      ZERO_ADDRESS
+    );
 
     await USDC.mint(alice, 2n * USDC_AMOUNT_IN);
     await DAI.mint(alice, 2n * DAI_AMOUNT_IN);
 
-    await USDC.connect(alice).approve(vault, MAX_UINT256);
-    await DAI.connect(alice).approve(vault, MAX_UINT256);
+    await pool.connect(alice).approve(router, MAX_UINT256);
+    for (const token of [USDC, DAI]) {
+      await token.connect(alice).approve(permit2, MAX_UINT256);
+      await permit2.connect(alice).approve(token, router, MAX_UINT160, MAX_UINT48);
+    }
 
     // The mock pool can be initialized with no liquidity; it mints some BPT to the initializer
     // to comply with the vault's required minimum.
