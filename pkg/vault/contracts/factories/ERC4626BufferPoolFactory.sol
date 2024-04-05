@@ -138,10 +138,8 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         return
             LiquidityManagement({
                 disableUnbalancedLiquidity: true,
-                enableAddLiquidityCustom: false,
-                enableRemoveLiquidityCustom: false,
-                supportsAddLiquidityCustom: true, 
-                supportsRemoveLiquidityCustom: true
+                enableAddLiquidityCustom: true,
+                enableRemoveLiquidityCustom: true
             });
     }
 

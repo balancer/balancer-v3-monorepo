@@ -14,6 +14,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
+import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import {
     AddLiquidityKind,
     AddLiquidityParams,
@@ -38,6 +39,7 @@ import { BasePoolHooks } from "./BasePoolHooks.sol";
 contract ERC4626BufferPool is
     IBasePool,
     IBufferPool,
+    IPoolLiquidity,
     IRateProvider,
     BalancerPoolToken,
     BasePoolHooks,
