@@ -147,12 +147,19 @@ describe('Vault', function () {
         tokenConfig,
         pauseWindowEndTime: pauseWindowEndTime.toString(),
         pauseManager: ANY_ADDRESS,
+        poolCreator: ANY_ADDRESS,
         hooks: [false, false, false, false, false, false, false, false],
-        liquidityManagement: [true, true],
+        liquidityManagement: [false, true, true],
       };
 
       // Use expectEvent here to prevent errors with structs of arrays with hardhat matchers.
-      const tx = await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS);
+      const tx = await vault.manualRegisterPoolAtTimestamp(
+        poolB,
+        poolBTokens,
+        pauseWindowEndTime,
+        ANY_ADDRESS,
+        ANY_ADDRESS
+      );
       expectEvent.inReceipt(await tx.wait(), 'PoolRegistered', expectedArgs);
     });
 
@@ -280,7 +287,7 @@ describe('Vault', function () {
           args: [vault, 'Pool C', 'POOLC'],
         });
 
-        await factory.registerTestPool(poolC, buildTokenConfig(poolATokens, rateProviders));
+        await factory.registerTestPool(poolC, buildTokenConfig(poolATokens, rateProviders), ZERO_ADDRESS);
       });
 
       it('has rate providers', async () => {
@@ -312,7 +319,7 @@ describe('Vault', function () {
         });
         poolAddress = await pool.getAddress();
 
-        await factory.registerTestPool(poolAddress, buildTokenConfig(poolATokens));
+        await factory.registerTestPool(poolAddress, buildTokenConfig(poolATokens), ZERO_ADDRESS);
       });
 
       it('Pools are temporarily pausable', async () => {

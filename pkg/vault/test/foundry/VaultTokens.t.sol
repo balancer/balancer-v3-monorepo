@@ -22,8 +22,6 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract VaultTokenTest is BaseVaultTest {
     using ArrayHelpers for *;
 
-    address poolAddress;
-
     PoolFactoryMock poolFactory;
     ERC4626BufferPoolFactory bufferFactory;
 
@@ -55,15 +53,12 @@ contract VaultTokenTest is BaseVaultTest {
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
+
+        pool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
     }
 
-    function createPool() internal override returns (address) {
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
-        vm.label(address(newPool), "pool");
-
-        poolAddress = address(newPool);
-
-        return poolAddress;
+    function createPool() internal pure override returns (address) {
+        return address(0);
     }
 
     function initPool() internal override {
@@ -74,7 +69,7 @@ contract VaultTokenTest is BaseVaultTest {
         registerBuffers();
         registerPool();
 
-        IERC20[] memory tokens = vault.getPoolTokens(poolAddress);
+        IERC20[] memory tokens = vault.getPoolTokens(pool);
 
         assertEq(tokens.length, 2);
 
@@ -138,9 +133,9 @@ contract VaultTokenTest is BaseVaultTest {
         usdc.approve(address(waUSDC), defaultAmount);
         waUSDC.deposit(defaultAmount, address(alice));
 
-        waDAIBuffer = bufferFactory.create(waDAI, waDAI, address(0), getSalt(address(waDAI)));
-        cDAIBuffer = bufferFactory.create(cDAI, cDAI, address(0), getSalt(address(cDAI)));
-        waUSDCBuffer = bufferFactory.create(waUSDC, waUSDC, address(0), getSalt(address(waUSDC)));
+        waDAIBuffer = bufferFactory.create(waDAI, waDAI, address(0), address(0), getSalt(address(waDAI)));
+        cDAIBuffer = bufferFactory.create(cDAI, cDAI, address(0), address(0), getSalt(address(cDAI)));
+        waUSDCBuffer = bufferFactory.create(waUSDC, waUSDC, address(0), address(0), getSalt(address(waUSDC)));
         vm.stopPrank();
     }
 
@@ -158,8 +153,9 @@ contract VaultTokenTest is BaseVaultTest {
 
     function _registerPool(TokenConfig[] memory tokenConfig) private {
         poolFactory.registerPool(
-            poolAddress,
+            pool,
             tokenConfig,
+            address(0),
             address(0),
             PoolHooks({
                 shouldCallBeforeInitialize: false,
@@ -171,7 +167,11 @@ contract VaultTokenTest is BaseVaultTest {
                 shouldCallBeforeSwap: false,
                 shouldCallAfterSwap: false
             }),
-            LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false })
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: false,
+                enableRemoveLiquidityCustom: false
+            })
         );
     }
 

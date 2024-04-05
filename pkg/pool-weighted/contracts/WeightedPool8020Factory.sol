@@ -75,7 +75,8 @@ contract WeightedPool8020Factory is BasePoolFactory {
             tokenConfig,
             swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
-            address(0), // no pause manager
+            address(0), // no pause manager,
+            address(0), // no pool creator
             PoolHooks({
                 shouldCallBeforeInitialize: false,
                 shouldCallAfterInitialize: false,
@@ -86,7 +87,11 @@ contract WeightedPool8020Factory is BasePoolFactory {
                 shouldCallBeforeSwap: false,
                 shouldCallAfterSwap: false
             }),
-            LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false })
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: false,
+                enableRemoveLiquidityCustom: false
+            })
         );
 
         _registerPoolWithFactory(pool);

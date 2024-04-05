@@ -15,6 +15,8 @@ interface IVaultEvents {
      * @param tokenConfig The pool's tokens
      * @param pauseWindowEndTime The pool's pause window end time
      * @param pauseManager The pool's external pause manager (or 0 for governance)
+     * @param poolCreator The pool's dev address, empowered to set and collect the pool creator fee
+     * @param hooks Flags indicating which hooks the pool supports
      * @param liquidityManagement Supported liquidity management hook flags
      */
     event PoolRegistered(
@@ -23,6 +25,7 @@ interface IVaultEvents {
         TokenConfig[] tokenConfig,
         uint256 pauseWindowEndTime,
         address pauseManager,
+        address poolCreator,
         PoolHooks hooks,
         LiquidityManagement liquidityManagement
     );
@@ -105,6 +108,29 @@ interface IVaultEvents {
      * @param swapFeePercentage The new swap fee percentage for the pool
      */
     event SwapFeePercentageChanged(address indexed pool, uint256 indexed swapFeePercentage);
+
+    /**
+     * @notice Emitted when the pool creator fee percentage of a pool is updated.
+     * @param poolCreatorFeePercentage The new pool creator fee percentage for the pool
+     */
+    event PoolCreatorFeePercentageChanged(address indexed pool, uint256 indexed poolCreatorFeePercentage);
+
+    /**
+     * @notice Emitted when a pool creator fee is incurred.
+     * @dev This is included for traceability of fees to pools.
+     * @param pool The pool associated with this charge
+     * @param token The token whose protocol fee balance increased
+     * @param amount The amount of the pool creator fee
+     */
+    event PoolCreatorFeeCharged(address indexed pool, address indexed token, uint256 amount);
+
+    /**
+     * @notice Logs the collection of pool creator fees in a specific pool, by token and amount.
+     * @param pool The address of the pool for which the fee has been collected
+     * @param token The token in which the fee has been collected
+     * @param amount The amount of the token collected in fees
+     */
+    event PoolCreatorFeeCollected(address pool, IERC20 indexed token, uint256 indexed amount);
 
     /**
      * @dev Recovery mode has been enabled or disabled for a pool.
