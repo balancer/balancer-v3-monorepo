@@ -76,6 +76,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
         defaultBalance = 1e10 * 1e18;
         BaseVaultTest.setUp();
 
+        approveForPool(IERC20(liquidityPool));
+        approveForPool(IERC20(swapPool));
+
         (daiIdx, ) = getSortedIndexes(address(dai), address(usdc));
 
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
@@ -88,7 +91,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         swapPool = _createPool(tokens, "swapPool");
 
         // NOTE: stores address in `pool` (unused in this test)
-        return address(0xdead);
+        return address(0);
     }
 
     function initPool() internal override {

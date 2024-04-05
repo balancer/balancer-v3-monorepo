@@ -147,11 +147,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         _tokenDeltas().tSet(locker, token, next);
     }
 
-    function _isTrustedRouter(address) internal pure returns (bool) {
-        //TODO: Implement based on approval by governance and user
-        return true;
-    }
-
     /*******************************************************************************
                                     Vault Pausing
     *******************************************************************************/
