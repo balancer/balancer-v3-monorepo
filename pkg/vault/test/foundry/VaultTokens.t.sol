@@ -179,7 +179,7 @@ contract VaultTokenTest is BaseVaultTest {
 
         assertEq(actualTokens.length, expectedTokens.length);
 
-        for (uint256 i = 0; i < expectedTokens.length; i++) {
+        for (uint256 i = 0; i < expectedTokens.length; ++i) {
             assertEq(address(actualTokens[i]), address(expectedTokens[i]));
         }
     }

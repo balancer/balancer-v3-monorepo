@@ -1039,11 +1039,11 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
     ) external virtual returns (bytes[] memory results) {
         // Use Permit (ERC-2612) to grant allowances to Permit2 for swapable tokens,
         // and grant allowances to Vault for BPT tokens.
-        for (uint256 index = 0; index < permitBatch.length; index++) {
+        for (uint256 i = 0; i < permitBatch.length; ++i) {
             bytes32 r;
             bytes32 s;
             uint8 v;
-            bytes memory signature = permitSignatures[index];
+            bytes memory signature = permitSignatures[i];
             /// @solidity memory-safe-assembly
             // solhint-disable-next-line no-inline-assembly
             assembly {
@@ -1051,7 +1051,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
                 s := mload(add(signature, 0x40))
                 v := byte(0, mload(add(signature, 0x60)))
             }
-            IRouter.PermitApproval memory permitApproval = permitBatch[index];
+            IRouter.PermitApproval memory permitApproval = permitBatch[i];
             IERC20Permit(permitApproval.token).permit(
                 permitApproval.owner,
                 address(this),
@@ -1071,7 +1071,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
     /// @inheritdoc IRouter
     function multicall(bytes[] calldata data) public virtual returns (bytes[] memory results) {
         results = new bytes[](data.length);
-        for (uint256 i = 0; i < data.length; i++) {
+        for (uint256 i = 0; i < data.length; ++i) {
             results[i] = Address.functionDelegateCall(address(this), data[i]);
         }
         return results;

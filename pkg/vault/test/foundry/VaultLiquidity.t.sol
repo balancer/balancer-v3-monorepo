@@ -418,7 +418,7 @@ contract VaultLiquidityTest is BaseVaultTest {
 
         assertEq(currentLiveBalances.length, lastLiveBalances.length);
 
-        for (uint256 i = 0; i < currentLiveBalances.length; i++) {
+        for (uint256 i = 0; i < currentLiveBalances.length; ++i) {
             assertEq(currentLiveBalances[i], lastLiveBalances[i]);
         }
     }
@@ -476,7 +476,7 @@ contract VaultLiquidityTest is BaseVaultTest {
 
         assertEq(currentLiveBalances.length, lastLiveBalances.length);
 
-        for (uint256 i = 0; i < currentLiveBalances.length; i++) {
+        for (uint256 i = 0; i < currentLiveBalances.length; ++i) {
             assertEq(currentLiveBalances[i], lastLiveBalances[i]);
         }
     }
