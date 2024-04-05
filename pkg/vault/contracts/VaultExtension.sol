@@ -430,7 +430,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         rateProviders = new IRateProvider[](numTokens);
 
         // TODO consider sending TokenConfig externally; maybe parallel arrays are friendlier off-chain.
-        for (uint256 i = 0; i < numTokens; i++) {
+        for (uint256 i = 0; i < numTokens; ++i) {
             tokens[i] = tokenConfig[i].token;
             tokenTypes[i] = tokenConfig[i].tokenType;
             rateProviders[i] = tokenConfig[i].rateProvider;

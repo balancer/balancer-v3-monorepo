@@ -58,8 +58,8 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     function computeInvariant(uint256[] memory balances) public pure returns (uint256) {
         // inv = x + y
         uint256 invariant;
-        for (uint256 index = 0; index < balances.length; index++) {
-            invariant += balances[index];
+        for (uint256 i = 0; i < balances.length; ++i) {
+            invariant += balances[i];
         }
         return invariant;
     }
@@ -212,7 +212,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
         uint256[] memory rates = getVault().getPoolTokenRates(address(this));
 
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
             if (tokens[i] == params.tokenIn) {
                 if (params.tokenInBalanceScaled18 != currentLiveBalances[i]) {
                     return false;
@@ -318,7 +318,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         IERC20[] memory tokens = getPoolTokens();
         scalingFactors = new uint256[](tokens.length);
 
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
             scalingFactors[i] = ScalingHelpers.computeScalingFactor(tokens[i]);
         }
     }
