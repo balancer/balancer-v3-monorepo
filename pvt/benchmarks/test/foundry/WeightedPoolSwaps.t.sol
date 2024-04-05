@@ -87,10 +87,10 @@ contract WeightedPoolSwaps is BaseVaultTest {
         // Set pool swap fee
         authorizer.grantRole(vault.getActionId(IVaultMain.setStaticSwapFeePercentage.selector), alice);
 
-        for (uint256 index = 0; index < pools.length; index++) {
+        for (uint256 i = 0; i < pools.length; ++i) {
             vm.prank(alice);
             router.initialize(
-                pools[index],
+                pools[i],
                 [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
                 [initializeAmount, initializeAmount].toMemoryArray(),
                 0,
