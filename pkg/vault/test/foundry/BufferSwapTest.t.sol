@@ -179,8 +179,10 @@ contract BufferSwapTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount);
 
         vm.prank(alice);
+        snapStart("boostedPoolSwapExactIn");
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
 
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN, swapAmount);
     }
@@ -189,8 +191,10 @@ contract BufferSwapTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount);
 
         vm.prank(alice);
+        snapStart("boostedPoolSwapExactOut");
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
 
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT, swapAmount);
     }
@@ -205,7 +209,9 @@ contract BufferSwapTest is BaseVaultTest {
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeSwapHookFailed.selector));
         vm.prank(alice);
+        snapStart("boostedPoolSwapTooLarge");
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
     }
 
     function testBoostedPoolSwapSimpleRebalance() public {
@@ -230,8 +236,10 @@ contract BufferSwapTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount * 2);
 
         vm.prank(alice);
+        snapStart("boostedPoolSwapSimpleRebalance");
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
 
         // It should now be balanced (except for the trade)
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount * 2, SwapKind.EXACT_IN, swapAmount * 2);
@@ -260,8 +268,10 @@ contract BufferSwapTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amountToSwap);
 
         vm.prank(alice);
+        snapStart("boostedPoolSwapMoreThan50pRebalance");
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
 
         // It should now be 2000 DAI/0 waDAI
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, amountToSwap, SwapKind.EXACT_IN, defaultAmount);
