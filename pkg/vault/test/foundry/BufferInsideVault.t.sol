@@ -96,7 +96,7 @@ contract BufferInsideVaultTest is BaseVaultTest {
 
         PoolMock newPool = new PoolMock(IVault(address(vault)), "Boosted Pool", "BOOSTYBOI");
 
-        factoryMock.registerTestPool(address(newPool), tokenConfig);
+        factoryMock.registerTestPool(address(newPool), tokenConfig, address(0));
 
         vm.label(address(newPool), "boosted pool");
         boostedPool = address(newPool);
