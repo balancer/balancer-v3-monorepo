@@ -98,7 +98,7 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualRegisterPoolPassThruTokens(address pool, IERC20[] memory tokens) external {
         TokenConfig[] memory tokenConfig = new TokenConfig[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
             tokenConfig[i].token = tokens[i];
         }
 
@@ -193,14 +193,14 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetPoolTokenConfig(address pool, IERC20[] memory tokens, TokenConfig[] memory tokenConfig) public {
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
             _poolTokenConfig[pool][tokens[i]] = tokenConfig[i];
         }
     }
 
     function manualSetPoolTokenBalances(address pool, IERC20[] memory tokens, uint256[] memory tokenBalanceRaw) public {
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
             poolTokenBalances.set(tokens[i], bytes32(tokenBalanceRaw[i]));
         }
     }
@@ -234,7 +234,7 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function buildTokenConfig(IERC20[] memory tokens) public pure returns (TokenConfig[] memory tokenConfig) {
         tokenConfig = new TokenConfig[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
             tokenConfig[i].token = tokens[i];
         }
 
@@ -246,7 +246,7 @@ contract VaultMock is IVaultMainMock, Vault {
         IRateProvider[] memory rateProviders
     ) public pure returns (TokenConfig[] memory tokenConfig) {
         tokenConfig = new TokenConfig[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
             tokenConfig[i].token = tokens[i];
             tokenConfig[i].rateProvider = rateProviders[i];
             tokenConfig[i].tokenType = rateProviders[i] == IRateProvider(address(0))
@@ -263,7 +263,7 @@ contract VaultMock is IVaultMainMock, Vault {
         bool[] memory yieldFeeFlags
     ) public pure returns (TokenConfig[] memory tokenConfig) {
         tokenConfig = new TokenConfig[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
             tokenConfig[i].token = tokens[i];
             tokenConfig[i].rateProvider = rateProviders[i];
             tokenConfig[i].tokenType = rateProviders[i] == IRateProvider(address(0))
@@ -282,7 +282,7 @@ contract VaultMock is IVaultMainMock, Vault {
         bool[] memory yieldFeeFlags
     ) public pure returns (TokenConfig[] memory tokenConfig) {
         tokenConfig = new TokenConfig[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
             tokenConfig[i].token = tokens[i];
             tokenConfig[i].tokenType = tokenTypes[i];
             tokenConfig[i].rateProvider = rateProviders[i];
@@ -336,7 +336,7 @@ contract VaultMock is IVaultMainMock, Vault {
         balancesRaw = new uint256[](numTokens);
         bytes32 packedBalances;
 
-        for (uint256 i = 0; i < numTokens; i++) {
+        for (uint256 i = 0; i < numTokens; ++i) {
             (, packedBalances) = poolTokenBalances.unchecked_at(i);
             balancesRaw[i] = packedBalances.getRawBalance();
         }
@@ -359,7 +359,7 @@ contract VaultMock is IVaultMainMock, Vault {
         currentLiveBalances = new uint256[](numTokens);
         bytes32 packedBalances;
 
-        for (uint256 i = 0; i < numTokens; i++) {
+        for (uint256 i = 0; i < numTokens; ++i) {
             (, packedBalances) = poolTokenBalances.unchecked_at(i);
             currentLiveBalances[i] = packedBalances.getRawBalance().toScaled18ApplyRateRoundDown(
                 poolData.decimalScalingFactors[i],
@@ -375,15 +375,15 @@ contract VaultMock is IVaultMainMock, Vault {
         lastLiveBalances = new uint256[](numTokens);
         bytes32 packedBalances;
 
-        for (uint256 i = 0; i < numTokens; i++) {
+        for (uint256 i = 0; i < numTokens; ++i) {
             (, packedBalances) = poolTokenBalances.unchecked_at(i);
             lastLiveBalances[i] = packedBalances.getLastLiveBalanceScaled18();
         }
     }
 
     function sortTokenConfig(TokenConfig[] memory tokenConfig) public pure returns (TokenConfig[] memory) {
-        for (uint256 i = 0; i < tokenConfig.length - 1; i++) {
-            for (uint256 j = 0; j < tokenConfig.length - i - 1; j++) {
+        for (uint256 i = 0; i < tokenConfig.length - 1; ++i) {
+            for (uint256 j = 0; j < tokenConfig.length - i - 1; ++j) {
                 if (tokenConfig[j].token > tokenConfig[j + 1].token) {
                     // Swap if they're out of order.
                     (tokenConfig[j], tokenConfig[j + 1]) = (tokenConfig[j + 1], tokenConfig[j]);

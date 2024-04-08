@@ -120,8 +120,8 @@ abstract contract BaseTest is Test, GasSnapshot {
         vm.label(user, name);
         vm.deal(payable(user), defaultBalance);
 
-        for (uint256 index = 0; index < tokens.length; index++) {
-            deal(address(tokens[index]), user, defaultBalance);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            deal(address(tokens[i]), user, defaultBalance);
         }
 
         return (payable(user), key);

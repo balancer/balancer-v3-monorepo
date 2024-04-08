@@ -361,8 +361,8 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     function _transferTokensFromDonorToUsers() private {
         address[] memory usersToTransfer = [address(lp)].toMemoryArray();
 
-        for (uint256 index = 0; index < usersToTransfer.length; index++) {
-            address userAddress = usersToTransfer[index];
+        for (uint256 i = 0; i < usersToTransfer.length; ++i) {
+            address userAddress = usersToTransfer[i];
 
             vm.startPrank(donor);
             daiMainnet.transfer(userAddress, 4 * BUFFER_DAI_BASE);
@@ -388,8 +388,8 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
     function _transferTokensFromDonorToBuffers() private {
         address[] memory buffersToTransfer = [address(bufferPoolUsdc), address(bufferPoolDai)].toMemoryArray();
 
-        for (uint256 index = 0; index < buffersToTransfer.length; index++) {
-            address bufferAddress = buffersToTransfer[index];
+        for (uint256 i = 0; i < buffersToTransfer.length; ++i) {
+            address bufferAddress = buffersToTransfer[i];
 
             vm.startPrank(donor);
             uint256 daiToConvert = waDAI.previewRedeem(1e18);

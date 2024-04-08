@@ -207,7 +207,9 @@ contract BufferSwapTest is BaseVaultTest {
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeSwapHookFailed.selector));
         vm.prank(alice);
+        snapStart("boostedPoolSwapTooLarge");
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
     }
 
     function testBoostedPoolSwapSimpleRebalance() public {

@@ -69,7 +69,7 @@ contract PoolDataTest is BaseVaultTest {
 
         uint256 expectedLiveBalance;
 
-        for (uint256 i = 0; i < expectedRawBalances.length; i++) {
+        for (uint256 i = 0; i < expectedRawBalances.length; ++i) {
             assertEq(data.decimalScalingFactors[i], expectedScalingFactors[i]);
             assertEq(data.balancesRaw[i], expectedRawBalances[i]);
             assertEq(data.tokenRates[i], expectedRates[i]);
