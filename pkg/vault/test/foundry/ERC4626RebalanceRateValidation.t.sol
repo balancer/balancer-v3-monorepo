@@ -226,8 +226,8 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
             vault,
             address(bufferPoolDai),
             wDAI_ADDRESS,
-            BUFFER_BASE_TOKENS/** + assetsToTransfer**/,
-            bufferDaiWrapped/** - wDAI.convertToShares(assetsToTransfer)**/
+            BUFFER_BASE_TOKENS /** + assetsToTransfer**/,
+            bufferDaiWrapped /** - wDAI.convertToShares(assetsToTransfer)**/
         );
 
         vm.prank(admin);
@@ -266,8 +266,8 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
             vault,
             address(bufferPoolDai),
             wDAI_ADDRESS,
-            BUFFER_BASE_TOKENS/** - assetsToTransfer**/,
-            bufferDaiWrapped/** + wDAI.convertToShares(assetsToTransfer)**/
+            BUFFER_BASE_TOKENS /** - assetsToTransfer**/,
+            bufferDaiWrapped /** + wDAI.convertToShares(assetsToTransfer)**/
         );
 
         vm.prank(admin);
@@ -306,8 +306,8 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
             vault,
             address(bufferPoolWsteth),
             wWSTETH_ADDRESS,
-            BUFFER_BASE_TOKENS/** + assetsToTransfer**/,
-            bufferWstethWrapped/** - wWstEth.convertToShares(assetsToTransfer)**/
+            BUFFER_BASE_TOKENS /** + assetsToTransfer**/,
+            bufferWstethWrapped /** - wWstEth.convertToShares(assetsToTransfer)**/
         );
 
         vm.prank(admin);
@@ -346,8 +346,8 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
             vault,
             address(bufferPoolWsteth),
             wWSTETH_ADDRESS,
-            BUFFER_BASE_TOKENS/** - assetsToTransfer**/,
-            bufferWstethWrapped/** + wWstEth.convertToShares(assetsToTransfer)**/
+            BUFFER_BASE_TOKENS /** - assetsToTransfer**/,
+            bufferWstethWrapped /** + wWstEth.convertToShares(assetsToTransfer)**/
         );
 
         vm.prank(admin);
