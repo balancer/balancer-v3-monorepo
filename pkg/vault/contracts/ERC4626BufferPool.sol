@@ -141,7 +141,7 @@ contract ERC4626BufferPool is
     function _handleUnbalancedPoolSwaps(
         IBasePool.PoolSwapParams calldata params,
         uint256 totalBufferLiquidityScaled18
-    ) private performsInternalSwap {
+    ) private {
         // Calculate the desired base token percentage to rebalance the pool to 50/50 or as close as possible.
         uint256 desiredBaseTokenPercentage;
         // If the trade amount is less than half the total liquidity, we rebalance so that the buffer is
@@ -232,7 +232,7 @@ contract ERC4626BufferPool is
     }
 
     /// @dev Non-reentrant to ensure we don't try to externally rebalance during an internal rebalance.
-    function _rebalance(uint256 percentageBase) internal nonReentrant {
+    function _rebalance(uint256 percentageBase) internal nonReentrant performsInternalSwap {
         address poolAddress = address(this);
         IVault vault = getVault();
 
