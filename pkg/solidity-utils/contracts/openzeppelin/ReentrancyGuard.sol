@@ -36,8 +36,8 @@ contract ReentrancyGuard {
     // amount. Since refunds are capped to a percentage of the total
     // transaction's gas, it is best to keep them low in cases like this one, to
     // increase the likelihood of the full refund coming into effect.
-    uint256 private constant NOT_ENTERED = 1;
-    uint256 private constant ENTERED = 2;
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
 
     uint256 private _status;
 
@@ -47,7 +47,7 @@ contract ReentrancyGuard {
     error ReentrancyGuardReentrantCall();
 
     constructor() {
-        _getReentrancyGuardSlot().tstore(NOT_ENTERED);
+        _getReentrancyGuardSlot().tstore(_NOT_ENTERED);
     }
 
     /**
@@ -68,19 +68,19 @@ contract ReentrancyGuard {
         StorageSlot.Uint256SlotType statusSlot = _getReentrancyGuardSlot();
 
         uint256 status = statusSlot.tload();
-        if (status == ENTERED) {
+        if (status == _ENTERED) {
             revert ReentrancyGuardReentrantCall();
         }
 
         // Any calls to nonReentrant after this point will fail
-        statusSlot.tstore(ENTERED);
+        statusSlot.tstore(_ENTERED);
     }
 
     function _nonReentrantAfter() private {
         // By storing the original value once again, a refund is triggered (see
         // https://eips.ethereum.org/EIPS/eip-2200)
 
-        _getReentrancyGuardSlot().tstore(NOT_ENTERED);
+        _getReentrancyGuardSlot().tstore(_NOT_ENTERED);
     }
 
     /**
@@ -88,11 +88,12 @@ contract ReentrancyGuard {
      * `nonReentrant` function in the call stack.
      */
     function _reentrancyGuardEntered() internal view returns (bool) {
-        return _getReentrancyGuardSlot().tload() == ENTERED;
+        return _getReentrancyGuardSlot().tload() == _ENTERED;
     }
 
     function _getReentrancyGuardSlot() private pure returns (StorageSlot.Uint256SlotType) {
         bytes32 slot;
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             slot := _status.slot
         }
