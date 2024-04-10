@@ -71,6 +71,7 @@ contract ERC4626BufferPool is
     // Apply to edge-case handling functions so that we don't need to remember to set/clear the context flag.
     modifier performsInternalSwap() {
         StorageSlot.BooleanSlotType slot;
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             slot := _inSwapContext.slot
         }
@@ -122,7 +123,7 @@ contract ERC4626BufferPool is
     /// @inheritdoc BasePoolHooks
     function onBeforeAddLiquidity(
         address,
-        AddLiquidityKind kind,
+        AddLiquidityKind,
         uint256[] memory,
         uint256,
         uint256[] memory,
@@ -175,6 +176,7 @@ contract ERC4626BufferPool is
     function onBeforeSwap(IBasePool.PoolSwapParams calldata params) external override onlyVault returns (bool) {
         {
             StorageSlot.BooleanSlotType inSwapContextSlot;
+            // solhint-disable-next-line no-inline-assembly
             assembly {
                 inSwapContextSlot := _inSwapContext.slot
             }
@@ -218,6 +220,7 @@ contract ERC4626BufferPool is
                 _handleUnbalancedPoolSwaps(params, totalBufferLiquidityScaled18);
 
                 StorageSlot.BooleanSlotType slot;
+                // solhint-disable-next-line no-inline-assembly
                 assembly {
                     slot := _afterSwapHookRequired.slot
                 }
@@ -323,6 +326,7 @@ contract ERC4626BufferPool is
     function onAfterSwap(AfterSwapParams calldata params, uint256) external virtual override returns (bool) {
         {
             StorageSlot.BooleanSlotType afterSwapHookRequiredSlot;
+            // solhint-disable-next-line no-inline-assembly
             assembly {
                 afterSwapHookRequiredSlot := _afterSwapHookRequired.slot
             }
@@ -443,7 +447,7 @@ contract ERC4626BufferPool is
 
             // In this case, since there is more wrapped than base assets, wrapped tokens will be removed (tokenOut)
             // and then unwrapped, and the resulting base assets will be deposited in the pool (tokenIn).
-            rebalanceHook(
+            _rebalanceHook(
                 SwapParams({
                     kind: SwapKind.EXACT_IN,
                     pool: poolAddress,
@@ -463,7 +467,7 @@ contract ERC4626BufferPool is
 
             // In this case, since there is more base than wrapped assets, base assets will be removed (tokenOut)
             // and then wrapped, and the resulting wrapped assets will be deposited in the pool (tokenIn).
-            rebalanceHook(
+            _rebalanceHook(
                 SwapParams({
                     kind: SwapKind.EXACT_OUT,
                     pool: poolAddress,
@@ -477,7 +481,7 @@ contract ERC4626BufferPool is
         }
     }
 
-    function rebalanceHook(SwapParams memory params) internal {
+    function _rebalanceHook(SwapParams memory params) internal {
         IVault vault = getVault();
 
         (, uint256 amountIn, uint256 amountOut) = _swapHook(params);
@@ -587,11 +591,11 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IPoolLiquidity
     function onRemoveLiquidityCustom(
-        address sender,
+        address,
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOutScaled18,
-        uint256[] memory balancesScaled18,
-        bytes memory userData
+        uint256[] memory,
+        bytes memory
     )
         external
         pure
