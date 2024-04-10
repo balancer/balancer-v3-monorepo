@@ -379,9 +379,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _ensurePoolInRecoveryMode(pool);
 
         // Ensure we are not within the recovery mode window.
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
         // solhint-disable-next-line not-rely-on-time
-        if (block.timestamp <= config.recoveryWindowEndTime) {
+        if (block.timestamp <= _recoveryModeEndTimes[pool]) {
             revert RecoveryWindowNotExpired(pool);
         }
 
@@ -416,7 +415,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             // be beyond that timestamp in order to get here again, so we can just overwrite the last value.
 
             // solhint-disable-next-line not-rely-on-time
-            config.recoveryWindowEndTime = block.timestamp + RECOVERY_WINDOW_DURATION;
+            _recoveryModeEndTimes[pool] = block.timestamp + RECOVERY_WINDOW_DURATION;
         }
 
         _poolConfig[pool] = config.fromPoolConfig();
