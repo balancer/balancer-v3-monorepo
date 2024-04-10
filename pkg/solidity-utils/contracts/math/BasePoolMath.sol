@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
 import { FixedPoint } from "./FixedPoint.sol";
 
 library BasePoolMath {
@@ -317,14 +315,10 @@ library BasePoolMath {
         // "taxableAmount". Although the former leads to giving less tokens for the same amount of BPT burned,
         // the latter leads to charging less swap fees. In consequence, a conflict of interests arises regarding
         // the rounding of "newBalance"; we prioritize getting a lower "amountOut".
-        console.log('exact bpt in: ', exactBptAmountIn);
-        console.log('new supply: ', newSupply);
-        console.log('invariant ratio: ',newSupply.divUp(totalSupply));
         uint256 newBalance = computeBalance(currentBalances, tokenOutIndex, newSupply.divUp(totalSupply));
 
         // Compute the amount to be withdrawn from the pool.
         uint256 amountOut = currentBalances[tokenOutIndex] - newBalance;
-        console.log('amount out: ', amountOut);
 
         // Calculate the new balance proportionate to the BPT burnt.
         // Round the `newBalanceBeforeTax` up to favor the protocol by increasing the taxable amount, which charges

@@ -281,6 +281,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
+              shouldPayFirst: false,
             },
           ];
 
@@ -328,6 +329,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
+              shouldPayFirst: false,
             },
           ];
 
@@ -372,12 +374,14 @@ describe('BatchSwap', function () {
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
+              shouldPayFirst: false,
             },
             {
               tokenIn: token0,
               steps: [{ pool: poolC, tokenOut: token2 }],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
+              shouldPayFirst: false,
             },
           ];
 
@@ -425,12 +429,14 @@ describe('BatchSwap', function () {
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
+              shouldPayFirst: false,
             },
             {
               tokenIn: token1,
               steps: [{ pool: poolB, tokenOut: token2 }],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
+              shouldPayFirst: false,
             },
           ];
 
@@ -477,12 +483,14 @@ describe('BatchSwap', function () {
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
+              shouldPayFirst: false,
             },
             {
               tokenIn: token0,
               steps: [{ pool: poolA, tokenOut: token1 }],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
+              shouldPayFirst: false,
             },
           ];
 
@@ -532,6 +540,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
+              shouldPayFirst: false,
             },
             {
               tokenIn: poolA,
@@ -541,6 +550,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
+              shouldPayFirst: false,
             },
           ];
 
@@ -585,12 +595,14 @@ describe('BatchSwap', function () {
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
+              shouldPayFirst: false,
             },
             {
               tokenIn: token2,
               steps: [{ pool: poolC, tokenOut: token0 }],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
+              shouldPayFirst: false,
             },
           ];
 
@@ -638,6 +650,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
+              shouldPayFirst: false,
             },
           ];
 
@@ -684,6 +697,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
+              shouldPayFirst: false,
             },
           ];
 
@@ -729,6 +743,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
+              shouldPayFirst: false,
             },
             {
               tokenIn: token0,
@@ -738,6 +753,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
+              shouldPayFirst: false,
             },
           ];
 
@@ -787,6 +803,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
+              shouldPayFirst: false,
             },
           ];
 
@@ -833,6 +850,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pct(pathMinAmountOut, 0.999), // Rounding tolerance
+              shouldPayFirst: false,
             },
           ];
 
@@ -878,6 +896,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pct(pathMinAmountOut, 0.999), // Rounding tolerance
+              shouldPayFirst: false,
             },
           ];
 
@@ -926,6 +945,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pct(pathMinAmountOut, 0.999), // Rounding tolerance
+              shouldPayFirst: false,
             },
             {
               tokenIn: token0,
@@ -936,6 +956,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
+              shouldPayFirst: false,
             },
           ];
 
@@ -1082,6 +1103,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
           ];
 
@@ -1129,6 +1151,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
           ];
 
@@ -1173,12 +1196,14 @@ describe('BatchSwap', function () {
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
             {
               tokenIn: token0,
               steps: [{ pool: poolC, tokenOut: token2 }],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
           ];
 
@@ -1225,12 +1250,14 @@ describe('BatchSwap', function () {
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
             {
               tokenIn: token1,
               steps: [{ pool: poolB, tokenOut: token2 }],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
           ];
 
@@ -1278,12 +1305,14 @@ describe('BatchSwap', function () {
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
             {
               tokenIn: token0,
               steps: [{ pool: poolA, tokenOut: token1 }],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
           ];
 
@@ -1333,6 +1362,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
             {
               tokenIn: poolA,
@@ -1342,6 +1372,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
           ];
 
@@ -1387,12 +1418,14 @@ describe('BatchSwap', function () {
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
             {
               tokenIn: token2,
               steps: [{ pool: poolC, tokenOut: token0 }],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
           ];
 
@@ -1440,6 +1473,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
           ];
 
@@ -1485,6 +1519,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
             {
               tokenIn: token0,
@@ -1494,6 +1529,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
           ];
 
@@ -1541,6 +1577,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
           ];
 
@@ -1592,6 +1629,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
           ];
 
@@ -1642,6 +1680,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
           ];
 
@@ -1687,6 +1726,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
           ];
 
@@ -1733,6 +1773,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pct(pathMaxAmountIn, 1.001), // Rounding tolerance
+              shouldPayFirst: false,
             },
             {
               tokenIn: token0,
@@ -1743,6 +1784,7 @@ describe('BatchSwap', function () {
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
+              shouldPayFirst: false,
             },
           ];
 

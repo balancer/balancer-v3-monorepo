@@ -161,7 +161,7 @@ contract ERC4626BufferPool is
     /// @inheritdoc BasePoolHooks
     function onBeforeRemoveLiquidity(
         address,
-        RemoveLiquidityKind kind,
+        RemoveLiquidityKind,
         uint256,
         uint256[] memory,
         uint256[] memory,
@@ -202,7 +202,7 @@ contract ERC4626BufferPool is
                 uint256[] memory rates = vault.getPoolTokenRates(address(this));
                 uint256[] memory amountsIn = new uint256[](2);
                 amountsIn[params.indexIn] = params.amountGivenScaled18.divDown(rates[params.indexIn]);
-                (, uint256 bptAmountOut, ) = vault.addLiquidity(
+                vault.addLiquidity(
                     AddLiquidityParams({
                         pool: address(this),
                         to: address(this),
@@ -577,7 +577,7 @@ contract ERC4626BufferPool is
         uint256[] memory balancesLiveScaled18,
         uint256 tokenInIndex,
         uint256 invariantRatio
-    ) external view returns (uint256) {
+    ) external pure returns (uint256) {
         // This pool doesn't support single token add/remove liquidity, so this function is not needed.
         // Should never get here, but need to implement the interface.
         return
@@ -594,6 +594,7 @@ contract ERC4626BufferPool is
         bytes memory userData
     )
         external
+        pure
         returns (
             uint256 bptAmountIn,
             uint256[] memory amountsOutScaled18,
