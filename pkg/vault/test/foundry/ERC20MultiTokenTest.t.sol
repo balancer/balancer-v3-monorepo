@@ -33,6 +33,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
     function testTotalSupplyWithZeroValue() public {
         assertEq(token.totalSupply(POOL), 0, "Unexpected total supply");
     }
+
     // #endregion
 
     // #region Approve & Allowance & SpendAllowance
@@ -100,6 +101,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
 
         token.manualSpendAllowance(POOL, OWNER, SPENDER, 1);
     }
+
     // #endregion
 
     // #region QueryModeBalanceIncrease
@@ -116,6 +118,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
         vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
         token.manualQueryModeBalanceIncrease(POOL, OWNER, 300);
     }
+
     // #endregion
 
     // #region Mint
@@ -155,6 +158,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
         vm.expectRevert(abi.encodeWithSelector(TotalSupplyTooLow.selector, amount, minTotalSupply));
         token.manualMint(POOL, OWNER, amount);
     }
+
     // #endregion
 
     // #region MintMinimumSupplyReserve
@@ -173,6 +177,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
         assertEq(token.balanceOf(POOL, ZERO_ADDRESS), amount, "Unexpected balance");
         assertEq(token.totalSupply(POOL), amount, "Unexpected total supply");
     }
+
     // #endregion
 
     // #region Burn
@@ -238,6 +243,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
         vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientBalance.selector, OWNER, mintAmount, burnAmount));
         token.manualBurn(POOL, OWNER, burnAmount);
     }
+
     // #endregion
 
     // #region Transfer
@@ -278,6 +284,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
         vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientBalance.selector, OWNER, mintAmount, transferAmount));
         token.manualTransfer(POOL, OWNER, OWNER2, transferAmount);
     }
+
     // #endregion
 
     // #region Private functions
