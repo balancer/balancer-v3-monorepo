@@ -162,9 +162,10 @@ library PoolConfigLib {
         }
 
         {
-            configBits = configBits
-                .insertBool(config.hooks.shouldCallBeforeSwap, BEFORE_SWAP_OFFSET)
-                .insertBool(config.hooks.shouldCallAfterSwap, AFTER_SWAP_OFFSET);
+            configBits = configBits.insertBool(config.hooks.shouldCallBeforeSwap, BEFORE_SWAP_OFFSET).insertBool(
+                config.hooks.shouldCallAfterSwap,
+                AFTER_SWAP_OFFSET
+            );
         }
 
         {
