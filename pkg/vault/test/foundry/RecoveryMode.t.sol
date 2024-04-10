@@ -73,10 +73,9 @@ contract RecoveryModeTest is BaseVaultTest {
         vm.prank(admin);
         vault.enableRecoveryMode(pool);
 
-        PoolConfig memory config = vault.getPoolConfig(address(pool));
         uint256 firstEndTime = block.timestamp + RECOVERY_WINDOW_DURATION;
 
-        assertEq(config.recoveryWindowEndTime, firstEndTime, "Wrong initial recovery window end time");
+        assertEq(vault.getRecoveryWindowEndTime(pool), firstEndTime, "Wrong initial recovery window end time");
 
         assertTrue(vault.isPoolInRecoveryMode(pool), "Pool not in recovery mode");
 
@@ -96,12 +95,11 @@ contract RecoveryModeTest is BaseVaultTest {
         vm.prank(admin);
         vault.enableRecoveryMode(pool);
 
-        config = vault.getPoolConfig(address(pool));
         uint256 secondEndTime = block.timestamp + RECOVERY_WINDOW_DURATION;
 
         assertTrue(secondEndTime > firstEndTime, "Recovery window end times inconsistent");
 
-        assertEq(config.recoveryWindowEndTime, secondEndTime, "Wrong second recovery window end time");
+        assertEq(vault.getRecoveryWindowEndTime(pool), secondEndTime, "Wrong second recovery window end time");
     }
 
     // Test permissionless Recovery Mode scenarios

@@ -14,4 +14,6 @@ interface IVaultAdminMock {
     function manualEnableRecoveryMode(address pool) external;
 
     function manualDisableRecoveryMode(address pool) external;
+
+    function getRecoveryWindowEndTime(address pool) external view returns (uint256);
 }

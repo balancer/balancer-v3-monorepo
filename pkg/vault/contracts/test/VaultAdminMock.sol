@@ -39,4 +39,8 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
         _ensurePoolInRecoveryMode(pool);
         _setPoolRecoveryMode(pool, false);
     }
+
+    function getRecoveryWindowEndTime(address pool) external view returns (uint256) {
+        return _recoveryModeEndTimes[pool];
+    }
 }
