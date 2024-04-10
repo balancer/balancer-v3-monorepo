@@ -44,6 +44,7 @@ library BasePoolMath {
 
         uint256 bptRatio = bptAmountOut.divUp(bptTotalSupply);
 
+        // Create a new array to hold the amounts of each token to be deposited.
         amountsIn = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; ++i) {
             amountsIn[i] = balances[i].mulUp(bptRatio);
@@ -83,6 +84,7 @@ library BasePoolMath {
 
         uint256 bptRatio = bptAmountIn.divDown(bptTotalSupply);
 
+        // Create a new array to hold the amounts of each token to be withdrawn.
         amountsOut = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; ++i) {
             amountsOut[i] = balances[i].mulDown(bptRatio);
@@ -248,7 +250,7 @@ library BasePoolMath {
         uint256[] memory newBalances = new uint256[](numTokens);
 
         // Copy currentBalances to newBalances
-        for (uint256 i = 0; i < currentBalances.length; ++i) {
+        for (uint256 i = 0; i < numTokens; ++i) {
             newBalances[i] = currentBalances[i];
         }
 
