@@ -114,25 +114,24 @@ contract ERC4626BufferPool is
             return true;
         }
 
-        // We always want to do a rebalance to bring the pool in balance or as close as possible after the swap.
-
         // Ensure we have enough liquidity to accommodate the trade. Since these pools use Linear Math in the swap
         // context, we can use amountGiven as the trade amount, and assume amountCalculated = amountGiven.
-        uint256 totalBufferLiquidityScaled18 = params.balancesScaled18[0] + params.balancesScaled18[1];
 
         // If the trade amount is greater than the available balance, the buffer swap would fail without intervention.
         // Since it's Linear Math, the "available balance" is the amount of tokenOut, regardless of whether the trade
         // is ExactIn or ExactOut.
-
+        if (params.amountGivenScaled18 > params.balancesScaled18[params.indexOut]) {
+            uint256 totalBufferLiquidityScaled18 = params.balancesScaled18[0] + params.balancesScaled18[1];
         // If there is not enough total liquidity in the buffer to support the trade, we can't use the buffer.
-        if (params.amountGivenScaled18 > totalBufferLiquidityScaled18) {
-            // TODO: Should be handled somehow at the pool level (e.g., pool detects buffer failure and
-            //  wraps/unwraps by itself).
-            return false;
-        } else {
-            // The buffer pool is currently too unbalanced to allow the trade, so we need to "counter swap" to fix
-            // this and allow the trade to proceed.
-            _handleUnbalancedPoolSwaps(params, totalBufferLiquidityScaled18);
+            if (params.amountGivenScaled18 > totalBufferLiquidityScaled18) {
+                // TODO: Should be handled somehow at the pool level (e.g., pool detects buffer failure and
+                //  wraps/unwraps by itself).
+                return false;
+            } else {
+                // The buffer pool is currently too unbalanced to allow the trade, so we need to "counter swap" to fix
+                // this and allow the trade to proceed.
+                _handleUnbalancedPoolSwaps(params, totalBufferLiquidityScaled18);
+            }
         }
 
         return true;

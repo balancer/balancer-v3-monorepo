@@ -216,15 +216,14 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         // assetsToTransfer will set the amount of assets that will unbalance the pool, and
         // varies from 0.001% of BUFFER_DAI_BASE to 95% of BUFFER_DAI_BASE
         assetsToTransfer = bound(assetsToTransfer, BUFFER_DAI_BASE / 100000, (95 * BUFFER_DAI_BASE) / 100);
-        // TODO: find a better way to unbalance the pool
-        // bufferPoolDai.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_IN);
+        bufferPoolDai.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_IN);
 
         (uint256 daiBalanceBeforeRebalance, uint256 aDaiBalanceBeforeRebalance) = _checkBufferPoolBalance(
             vault,
             address(bufferPoolDai),
             aDAI_ADDRESS,
-            BUFFER_DAI_BASE /** + assetsToTransfer**/,
-            bufferDaiWrapped /** - waDAI.convertToShares(assetsToTransfer)**/
+            BUFFER_DAI_BASE + assetsToTransfer,
+            bufferDaiWrapped - waDAI.convertToShares(assetsToTransfer)
         );
 
         vm.prank(admin);
@@ -252,15 +251,14 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         // assetsToTransfer will set the amount of assets that will unbalance the pool, and
         // varies from 0.001% of BUFFER_DAI_BASE to 95% of BUFFER_DAI_BASE
         assetsToTransfer = bound(assetsToTransfer, BUFFER_DAI_BASE / 100000, (95 * BUFFER_DAI_BASE) / 100);
-        // TODO: find a better way to unbalance the pool
-        // bufferPoolDai.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_OUT);
+        bufferPoolDai.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_OUT);
 
         (uint256 daiBalanceBeforeRebalance, uint256 aDaiBalanceBeforeRebalance) = _checkBufferPoolBalance(
             vault,
             address(bufferPoolDai),
             aDAI_ADDRESS,
-            BUFFER_DAI_BASE /** - assetsToTransfer**/,
-            bufferDaiWrapped /** + waDAI.convertToShares(assetsToTransfer)**/
+            BUFFER_DAI_BASE - assetsToTransfer,
+            bufferDaiWrapped + waDAI.convertToShares(assetsToTransfer)
         );
 
         vm.prank(admin);
@@ -288,15 +286,14 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         // assetsToTransfer will set the amount of assets that will unbalance the pool, and
         // varies from 0.001% of BUFFER_USDC_BASE to 95% of BUFFER_USDC_BASE
         assetsToTransfer = bound(assetsToTransfer, BUFFER_USDC_BASE / 100000, (95 * BUFFER_USDC_BASE) / 100);
-        // TODO: find a better way to unbalance the pool
-        // bufferPoolUsdc.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_IN);
+        bufferPoolUsdc.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_IN);
 
         (uint256 usdcBalanceBeforeRebalance, uint256 ausdcBalanceBeforeRebalance) = _checkBufferPoolBalance(
             vault,
             address(bufferPoolUsdc),
             aUSDC_ADDRESS,
-            BUFFER_USDC_BASE /** + assetsToTransfer **/,
-            bufferUsdcWrapped /** - waUSDC.convertToShares(assetsToTransfer) **/
+            BUFFER_USDC_BASE + assetsToTransfer,
+            bufferUsdcWrapped - waUSDC.convertToShares(assetsToTransfer)
         );
 
         vm.prank(admin);
@@ -324,15 +321,14 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         // assetsToTransfer will set the amount of assets that will unbalance the pool, and
         // varies from 0.001% of BUFFER_USDC_BASE to 95% of BUFFER_USDC_BASE
         assetsToTransfer = bound(assetsToTransfer, BUFFER_USDC_BASE / 100000, (95 * BUFFER_USDC_BASE) / 100);
-        // TODO: find a better way to unbalance the pool
-        // bufferPoolUsdc.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_OUT);
+        bufferPoolUsdc.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_OUT);
 
         (uint256 usdcBalanceBeforeRebalance, uint256 ausdcBalanceBeforeRebalance) = _checkBufferPoolBalance(
             vault,
             address(bufferPoolUsdc),
             aUSDC_ADDRESS,
-            BUFFER_USDC_BASE /** - assetsToTransfer**/,
-            bufferUsdcWrapped /** + waUSDC.convertToShares(assetsToTransfer)**/
+            BUFFER_USDC_BASE - assetsToTransfer,
+            bufferUsdcWrapped + waUSDC.convertToShares(assetsToTransfer)
         );
 
         vm.prank(admin);
