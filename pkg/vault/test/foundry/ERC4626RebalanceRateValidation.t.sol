@@ -220,7 +220,7 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
         assetsToTransfer = bound(assetsToTransfer, BUFFER_BASE_TOKENS / 100000, (95 * BUFFER_BASE_TOKENS) / 100);
         bufferPoolDai.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_IN);
 
-        // // Check pool balances before rebalance to make sure it's unbalanced
+        // Check pool balances before rebalance to make sure it's unbalanced
         (uint256 daiBalanceBeforeRebalance, uint256 wDaiBalanceBeforeRebalance) = _checkBufferPoolBalance(
             vault,
             address(bufferPoolDai),
@@ -259,7 +259,7 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
         assetsToTransfer = bound(assetsToTransfer, BUFFER_BASE_TOKENS / 100000, (95 * BUFFER_BASE_TOKENS) / 100);
         bufferPoolDai.unbalanceThePool(assetsToTransfer, SwapKind.EXACT_OUT);
 
-        // // Check pool balances before rebalance to make sure it's unbalanced
+        // Check pool balances before rebalance to make sure it's unbalanced
         (uint256 daiBalanceBeforeRebalance, uint256 wDaiBalanceBeforeRebalance) = _checkBufferPoolBalance(
             vault,
             address(bufferPoolDai),

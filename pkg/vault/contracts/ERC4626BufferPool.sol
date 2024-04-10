@@ -122,7 +122,7 @@ contract ERC4626BufferPool is
         // is ExactIn or ExactOut.
         if (params.amountGivenScaled18 > params.balancesScaled18[params.indexOut]) {
             uint256 totalBufferLiquidityScaled18 = params.balancesScaled18[0] + params.balancesScaled18[1];
-        // If there is not enough total liquidity in the buffer to support the trade, we can't use the buffer.
+            // If there is not enough total liquidity in the buffer to support the trade, we can't use the buffer.
             if (params.amountGivenScaled18 > totalBufferLiquidityScaled18) {
                 // TODO: Should be handled somehow at the pool level (e.g., pool detects buffer failure and
                 //  wraps/unwraps by itself).
