@@ -103,6 +103,18 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
         onlyVault
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
     {
+        // If path has a flag shouldPayFirst, collects the tokens from user before computePath
+        // (tokens will be wrapped)
+        for (uint256 i = 0; i < params.paths.length; i++) {
+            SwapPathExactAmountIn memory path = params.paths[i];
+
+            if (path.shouldPayFirst) {
+                _takeTokenIn(params.sender, path.tokenIn, path.exactAmountIn, false);
+                _currentSwapTokensOut.add(address(path.tokenIn));
+                _currentSwapTokenOutAmounts[address(path.tokenIn)] += path.exactAmountIn;
+            }
+        }
+
         (pathAmountsOut, tokensOut, amountsOut) = _swapExactInHook(params);
 
         _settlePaths(params.sender, params.wethIsEth);
@@ -145,11 +157,20 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
             // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses in
             // a set with unique addresses that can be iterated later on.
             // For example, if all paths share the same token in, the set will end up with only one entry.
-            _currentSwapTokensIn.add(address(stepTokenIn));
-            // _currentSwapTokenInAmounts[address(stepTokenIn)] += stepExactAmountIn;
-            // Hack: settle preemptively
-            _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, false);
-
+            if (_currentSwapTokenOutAmounts[address(stepTokenIn)] > stepExactAmountIn) {
+                _currentSwapTokenOutAmounts[address(stepTokenIn)] -= stepExactAmountIn;
+            } else {
+                _currentSwapTokensIn.add(address(stepTokenIn));
+                if (_currentSwapTokenOutAmounts[address(stepTokenIn)] > 0) {
+                    _currentSwapTokenInAmounts[address(stepTokenIn)] +=
+                        stepExactAmountIn -
+                        _currentSwapTokenOutAmounts[address(stepTokenIn)];
+                    _currentSwapTokensOut.remove(address(stepTokenIn));
+                    _currentSwapTokenOutAmounts[address(stepTokenIn)] = 0;
+                } else {
+                    _currentSwapTokenInAmounts[address(stepTokenIn)] += stepExactAmountIn;
+                }
+            }
 
             for (uint256 j = 0; j < path.steps.length; ++j) {
                 bool isLastStep = (j == path.steps.length - 1);
@@ -164,7 +185,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
 
                 SwapPathStep memory step = path.steps[j];
 
-                if (address(stepTokenIn) == step.pool) {
+                if (!path.shouldPayFirst && address(stepTokenIn) == step.pool) {
                     // Token in is BPT: remove liquidity - Single token exact in
 
                     // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
@@ -215,7 +236,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                         // The token in for the next step is the token out of the current step.
                         stepTokenIn = step.tokenOut;
                     }
-                } else if (address(step.tokenOut) == step.pool) {
+                } else if (!path.shouldPayFirst && address(step.tokenOut) == step.pool) {
                     // Token out is BPT: add liquidity - Single token exact in (unbalanced)
                     (uint256[] memory exactAmountsIn, ) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
@@ -296,6 +317,18 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
         onlyVault
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
     {
+        // If path has a flag shouldPayFirst, collects the tokens from user before computePath
+        // (tokens will be wrapped)
+        for (uint256 i = 0; i < params.paths.length; i++) {
+            SwapPathExactAmountOut memory path = params.paths[i];
+
+            if (path.shouldPayFirst) {
+                _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, false);
+                _currentSwapTokensOut.add(address(path.tokenIn));
+                _currentSwapTokenOutAmounts[address(path.tokenIn)] += path.maxAmountIn;
+            }
+        }
+
         (pathAmountsIn, tokensIn, amountsIn) = _swapExactOutHook(params);
 
         _settlePaths(params.sender, params.wethIsEth);
@@ -383,7 +416,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                     }
                 }
 
-                if (address(stepTokenIn) == step.pool) {
+                if (!path.shouldPayFirst && address(stepTokenIn) == step.pool) {
                     // Token in is BPT: remove liquidity - Single token exact out
 
                     // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
@@ -441,7 +474,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
                             _vault.settle(IERC20(stepTokenIn));
                         }
                     }
-                } else if (address(step.tokenOut) == step.pool) {
+                } else if (!path.shouldPayFirst && address(step.tokenOut) == step.pool) {
                     // Token out is BPT: add liquidity - Single token exact out
                     (uint256[] memory stepAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
@@ -601,19 +634,35 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuard {
         // in which case there is nothing to settle. Then, since we're iterating backwards below, we need to be able
         // to subtract 1 from these quantities without reverting, which is why we use signed integers.
         int256 numTokensIn = int256(_currentSwapTokensIn.length());
-        int256 numTokensOut = int256(_currentSwapTokensOut.length());
         uint256 ethAmountIn = 0;
 
-        // Hack: this is already settled for given-ins.
         // Iterate backwards, from the last element to 0 (included).
         // Removing the last element from a set is cheaper than removing the first one.
-        // for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
-        //     address tokenIn = _currentSwapTokensIn.unchecked_at(uint256(i));
-        //     ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts[tokenIn], wethIsEth);
+        for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
+            address tokenIn = _currentSwapTokensIn.unchecked_at(uint256(i));
+            if (_currentSwapTokenOutAmounts[tokenIn] > 0) {
+                if (_currentSwapTokenOutAmounts[tokenIn] > _currentSwapTokenInAmounts[tokenIn]) {
+                    _currentSwapTokenOutAmounts[tokenIn] -= _currentSwapTokenInAmounts[tokenIn];
+                } else {
+                    _currentSwapTokenInAmounts[tokenIn] -= _currentSwapTokenOutAmounts[tokenIn];
+                    _currentSwapTokensOut.remove(tokenIn);
+                    _currentSwapTokenOutAmounts[tokenIn] = 0;
+                    ethAmountIn += _takeTokenIn(
+                        sender,
+                        IERC20(tokenIn),
+                        _currentSwapTokenInAmounts[tokenIn],
+                        wethIsEth
+                    );
+                }
+            } else {
+                ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts[tokenIn], wethIsEth);
+            }
 
-        //     _currentSwapTokensIn.remove(tokenIn);
-        //     _currentSwapTokenInAmounts[tokenIn] = 0;
-        // }
+            _currentSwapTokensIn.remove(tokenIn);
+            _currentSwapTokenInAmounts[tokenIn] = 0;
+        }
+
+        int256 numTokensOut = int256(_currentSwapTokensOut.length());
 
         for (int256 i = int256(numTokensOut - 1); i >= 0; --i) {
             address tokenOut = _currentSwapTokensOut.unchecked_at(uint256(i));

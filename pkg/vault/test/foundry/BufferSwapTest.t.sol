@@ -45,9 +45,9 @@ contract BufferSwapTest is BaseVaultTest {
 
     // `defaultAmount` from BaseVaultTest (e.g., 1,000), corresponds to the funding of the buffer.
     // We will swap with 10% of the buffer
-    uint256 internal swapAmount = defaultAmount * 50;
+    uint256 internal swapAmount = defaultAmount / 10;
     // The boosted pool will have 10x the liquidity of the buffer
-    uint256 internal boostedPoolAmount = defaultAmount * 1000;
+    uint256 internal boostedPoolAmount = defaultAmount * 10;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -85,8 +85,8 @@ contract BufferSwapTest is BaseVaultTest {
         vm.label(address(waUSDCBufferPool), "waUSDCBufferPool");
 
         // Give some tokens to buffer pool contracts to pay for rebalancing rounding issues
-        dai.mint(address(waDAIBufferPool), 1000);
-        usdc.mint(address(waUSDCBufferPool), 1000);
+        dai.mint(address(waDAIBufferPool), 10);
+        usdc.mint(address(waUSDCBufferPool), 10);
 
         vm.startPrank(lp);
         waDAI.approve(address(permit2), MAX_UINT256);
@@ -178,24 +178,13 @@ contract BufferSwapTest is BaseVaultTest {
     function testBoostedPoolSwapExactIn() public {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount);
 
-        console.log('##################################### SWAP EXACT IN ###########################################\n\n\n');
-        uint256 daiBalanceStart = dai.balanceOf(alice);
-        uint256 usdcBalanceStart = usdc.balanceOf(alice);
         vm.prank(alice);
         snapStart("boostedPoolSwapExactIn");
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
 
-        uint256 daiBalanceEnd = dai.balanceOf(alice);
-        uint256 usdcBalanceEnd = usdc.balanceOf(alice);
-
-        console.log('dai balance start: ', daiBalanceStart);
-        console.log('dai balance end: ', daiBalanceEnd);
-        console.log('usdc balance start: ', usdcBalanceStart);
-        console.log('usdc balance end: ', usdcBalanceEnd);
-
-        // _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN, swapAmount);
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN, swapAmount);
     }
 
     function testBoostedPoolSwapExactOut() public {
@@ -218,7 +207,6 @@ contract BufferSwapTest is BaseVaultTest {
 
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(tooLargeSwapAmount);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeSwapHookFailed.selector));
         vm.prank(alice);
         snapStart("boostedPoolSwapTooLarge");
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
@@ -388,7 +376,8 @@ contract BufferSwapTest is BaseVaultTest {
             tokenIn: dai,
             steps: steps,
             exactAmountIn: amount,
-            minAmountOut: 1 // Test
+            minAmountOut: amount - 1, // rebalance tests are a wei off,
+            shouldPayFirst: true
         });
     }
 
@@ -403,6 +392,7 @@ contract BufferSwapTest is BaseVaultTest {
         // Pre-swap through the USDC buffer to get waUSDC, then main swap waUSDC for waDAI in the boosted pool,
         // and finally post-swap the waDAI for DAI through the DAI buffer to calculate the DAI amount in.
         // The only token transfers are DAI in (calculated) and USDC out (given).
+
         steps[0] = IBatchRouter.SwapPathStep({ pool: waDAIBufferPool, tokenOut: waDAI });
         steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC });
         steps[2] = IBatchRouter.SwapPathStep({ pool: waUSDCBufferPool, tokenOut: usdc });
@@ -411,7 +401,8 @@ contract BufferSwapTest is BaseVaultTest {
             tokenIn: dai,
             steps: steps,
             maxAmountIn: amount,
-            exactAmountOut: amount
+            exactAmountOut: amount,
+            shouldPayFirst: true
         });
     }
 

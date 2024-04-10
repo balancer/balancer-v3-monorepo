@@ -26,6 +26,7 @@ interface IBatchRouter {
         SwapPathStep[] steps;
         uint256 exactAmountIn;
         uint256 minAmountOut;
+        bool shouldPayFirst;
     }
 
     struct SwapPathExactAmountOut {
@@ -36,6 +37,7 @@ interface IBatchRouter {
         SwapPathStep[] steps;
         uint256 maxAmountIn;
         uint256 exactAmountOut;
+        bool shouldPayFirst;
     }
 
     struct SwapExactInHookParams {

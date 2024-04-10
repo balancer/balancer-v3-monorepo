@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -121,21 +119,13 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             // decrease the count of non-zero deltas.
             if (next == 0) {
                 _nonzeroDeltaCount().tDecrement();
-                console.log('nonzero delta count down');
             }
             // If there was no previous delta (i.e., it was zero) and now we have one,
             // increase the count of non-zero deltas.
             else if (current == 0) {
                 _nonzeroDeltaCount().tIncrement();
-                console.log('nonzero delta count up');
             }
         }
-
-        console.log('new delta: ');
-        console.logInt(next);
-        console.log('token: ', address(token));
-        console.log('delta count: ', _nonzeroDeltaCount().tload());
-        console.log('___________________________________________\n');
 
         // Update the delta for this token and locker.
         _tokenDeltas().tSet(locker, token, next);
