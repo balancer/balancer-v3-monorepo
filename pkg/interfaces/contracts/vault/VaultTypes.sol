@@ -31,7 +31,6 @@ struct PoolConfig {
     uint256 poolCreatorFeePercentage;
     uint256 tokenDecimalDiffs;
     uint256 pauseWindowEndTime;
-    uint256 recoveryWindowEndTime;
     bool isPoolRegistered;
     bool isPoolInitialized;
     bool isPoolPaused;

@@ -41,7 +41,6 @@ library PoolConfigLib {
     uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = POOL_DEV_FEE_OFFSET + FEE_BITLENGTH;
     uint256 public constant PAUSE_WINDOW_END_TIME_OFFSET =
         DECIMAL_SCALING_FACTORS_OFFSET + _TOKEN_DECIMAL_DIFFS_BITLENGTH;
-    uint256 public constant RECOVERY_WINDOW_END_TIME_OFFSET = PAUSE_WINDOW_END_TIME_OFFSET + _TIMESTAMP_BITLENGTH;
 
     // Uses a uint24 (3 bytes): least significant 20 bits to store the values, and a 4-bit pad.
     // This maximum token count is also hard-coded in the Vault.
@@ -84,10 +83,6 @@ library PoolConfigLib {
 
     function getPauseWindowEndTime(PoolConfigBits config) internal pure returns (uint256) {
         return PoolConfigBits.unwrap(config).decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH);
-    }
-
-    function getRecoveryWindowEndTime(PoolConfigBits config) internal pure returns (uint256) {
-        return PoolConfigBits.unwrap(config).decodeUint(RECOVERY_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH);
     }
 
     function shouldCallBeforeSwap(PoolConfigBits config) internal pure returns (bool) {
@@ -169,8 +164,7 @@ library PoolConfigLib {
         {
             configBits = configBits
                 .insertBool(config.hooks.shouldCallBeforeSwap, BEFORE_SWAP_OFFSET)
-                .insertBool(config.hooks.shouldCallAfterSwap, AFTER_SWAP_OFFSET)
-                .insertUint(config.recoveryWindowEndTime, RECOVERY_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH);
+                .insertBool(config.hooks.shouldCallAfterSwap, AFTER_SWAP_OFFSET);
         }
 
         {
@@ -252,7 +246,6 @@ library PoolConfigLib {
                 poolCreatorFeePercentage: config.getPoolCreatorFeePercentage(),
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 pauseWindowEndTime: config.getPauseWindowEndTime(),
-                recoveryWindowEndTime: config.getRecoveryWindowEndTime(),
                 hooks: PoolHooks({
                     shouldCallBeforeInitialize: config.shouldCallBeforeInitialize(),
                     shouldCallAfterInitialize: config.shouldCallAfterInitialize(),

@@ -90,6 +90,9 @@ contract VaultStorage {
     // Pool -> (Token -> fee): pool creator fees (from swap) accumulated in the Vault for harvest.
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolCreatorFees;
 
+    // Pool -> Recovery Window end time for the pool.
+    mapping(address => uint256) internal _recoveryModeEndTimes;
+
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer internal _authorizer;
 
