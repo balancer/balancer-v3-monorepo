@@ -2,10 +2,12 @@
 
 pragma solidity ^0.8.24;
 
+import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
+
 import "../Router.sol";
 
 contract RouterMock is Router {
-    constructor(IVault vault, IWETH weth) Router(vault, weth) {}
+    constructor(IVault vault, IWETH weth, IPermit2 permit2) Router(vault, weth, permit2) {}
 
     function getSingleInputArrayAndTokenIndex(
         address pool,

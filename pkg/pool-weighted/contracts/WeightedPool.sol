@@ -3,11 +3,13 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IMinimumSwapFee } from "@balancer-labs/v3-interfaces/contracts/vault/IMinimumSwapFee.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -15,7 +17,9 @@ import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/We
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 /// @notice Basic Weighted Pool with immutable weights.
-contract WeightedPool is IBasePool, BalancerPoolToken {
+contract WeightedPool is IBasePool, IMinimumSwapFee, BalancerPoolToken {
+    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
+
     uint256 private immutable _totalTokens;
 
     uint256 internal immutable _normalizedWeight0;
@@ -37,13 +41,14 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
     error NormalizedWeightInvariant();
 
     constructor(NewPoolParams memory params, IVault vault) BalancerPoolToken(vault, params.name, params.symbol) {
-        InputHelpers.ensureInputLengthMatch(params.numTokens, params.normalizedWeights.length);
+        uint256 numTokens = params.numTokens;
+        InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
 
-        _totalTokens = params.numTokens;
+        _totalTokens = numTokens;
 
         // Ensure each normalized weight is above the minimum
         uint256 normalizedSum = 0;
-        for (uint8 i = 0; i < params.numTokens; i++) {
+        for (uint8 i = 0; i < numTokens; ++i) {
             uint256 normalizedWeight = params.normalizedWeights[i];
 
             if (normalizedWeight < WeightedMath._MIN_WEIGHT) {
@@ -59,8 +64,8 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _normalizedWeight0 = params.normalizedWeights[0];
         _normalizedWeight1 = params.normalizedWeights[1];
-        _normalizedWeight2 = params.numTokens > 2 ? params.normalizedWeights[2] : 0;
-        _normalizedWeight3 = params.numTokens > 3 ? params.normalizedWeights[3] : 0;
+        _normalizedWeight2 = numTokens > 2 ? params.normalizedWeights[2] : 0;
+        _normalizedWeight3 = numTokens > 3 ? params.normalizedWeights[3] : 0;
     }
 
     /// @inheritdoc IBasePool
@@ -155,5 +160,15 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         }
 
         return normalizedWeights;
+    }
+
+    /// @inheritdoc ERC165
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IMinimumSwapFee).interfaceId || super.supportsInterface(interfaceId);
+    }
+
+    /// @inheritdoc IMinimumSwapFee
+    function getMinimumSwapFeePercentage() external pure returns (uint256) {
+        return _MIN_SWAP_FEE_PERCENTAGE;
     }
 }

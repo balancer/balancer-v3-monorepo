@@ -4,7 +4,11 @@ pragma solidity ^0.8.24;
 
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
+import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -16,9 +20,10 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { RouterCommon } from "./RouterCommon.sol";
 
 contract Router is IRouter, RouterCommon, ReentrancyGuard {
+    using SafeERC20 for IERC20;
     using Address for address payable;
 
-    constructor(IVault vault, IWETH weth) RouterCommon(vault, weth) {
+    constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -87,10 +92,12 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
                 // transfer WETH from the router to the Vault
-                _vault.takeFrom(_weth, address(this), amountIn);
+                _weth.transfer(address(_vault), amountIn);
+                _vault.settle(_weth);
             } else {
                 // transfer tokens from the user to the Vault
-                _vault.takeFrom(token, params.sender, amountIn);
+                _permit2.transferFrom(params.sender, address(_vault), uint160(amountIn), address(token));
+                _vault.settle(token);
             }
         }
 
@@ -260,9 +267,11 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
 
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
-                _vault.takeFrom(_weth, address(this), amountIn);
+                _weth.transfer(address(_vault), amountIn);
+                _vault.settle(_weth);
             } else {
-                _vault.takeFrom(token, params.sender, amountIn);
+                _permit2.transferFrom(params.sender, address(_vault), uint160(amountIn), address(token));
+                _vault.settle(token);
             }
         }
 
@@ -985,6 +994,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
         onlyVault
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
     {
+        // If router is the sender, it has to approve itself.
+        IERC20(params.pool).approve(address(this), type(uint256).max);
         return
             _vault.removeLiquidity(
                 RemoveLiquidityParams({
@@ -1012,5 +1023,57 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
         uint256 exactBptAmountIn
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
         return _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn);
+    }
+
+    /*******************************************************************************
+                                    Utils
+    *******************************************************************************/
+
+    /// @inheritdoc IRouter
+    function permitBatchAndCall(
+        PermitApproval[] calldata permitBatch,
+        bytes[] calldata permitSignatures,
+        IAllowanceTransfer.PermitBatch calldata permit2Batch,
+        bytes calldata permit2Signature,
+        bytes[] calldata multicallData
+    ) external virtual returns (bytes[] memory results) {
+        // Use Permit (ERC-2612) to grant allowances to Permit2 for swapable tokens,
+        // and grant allowances to Vault for BPT tokens.
+        for (uint256 i = 0; i < permitBatch.length; ++i) {
+            bytes32 r;
+            bytes32 s;
+            uint8 v;
+            bytes memory signature = permitSignatures[i];
+            /// @solidity memory-safe-assembly
+            // solhint-disable-next-line no-inline-assembly
+            assembly {
+                r := mload(add(signature, 0x20))
+                s := mload(add(signature, 0x40))
+                v := byte(0, mload(add(signature, 0x60)))
+            }
+            IRouter.PermitApproval memory permitApproval = permitBatch[i];
+            IERC20Permit(permitApproval.token).permit(
+                permitApproval.owner,
+                address(this),
+                permitApproval.amount,
+                permitApproval.deadline,
+                v,
+                r,
+                s
+            );
+        }
+        // Use Permit2 for tokens that are swapped and added into the Vault.
+        _permit2.permit(msg.sender, permit2Batch, permit2Signature);
+        // Execute all the required operations once permissions have been granted.
+        return multicall(multicallData);
+    }
+
+    /// @inheritdoc IRouter
+    function multicall(bytes[] calldata data) public virtual returns (bytes[] memory results) {
+        results = new bytes[](data.length);
+        for (uint256 i = 0; i < data.length; ++i) {
+            results[i] = Address.functionDelegateCall(address(this), data[i]);
+        }
+        return results;
     }
 }

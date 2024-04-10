@@ -51,33 +51,15 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     // Amounts in are multiplied by the multiplier, amounts out are divided by it
     uint256 private _multiplier = FixedPoint.ONE;
 
-    constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
-        TokenConfig[] memory tokenConfig,
-        bool registerPool,
-        uint256 pauseWindowDuration,
-        address pauseManager
-    ) BalancerPoolToken(vault, name, symbol) {
-        if (registerPool) {
-            PoolFactoryMock factory = new PoolFactoryMock(vault, pauseWindowDuration);
-
-            factory.registerPool(
-                address(this),
-                tokenConfig,
-                pauseManager,
-                PoolConfigBits.wrap(0).toPoolConfig().hooks,
-                PoolConfigBits.wrap(bytes32(type(uint256).max)).toPoolConfig().liquidityManagement
-            );
-        }
+    constructor(IVault vault, string memory name, string memory symbol) BalancerPoolToken(vault, name, symbol) {
+        // solhint-previous-line no-empty-blocks
     }
 
     function computeInvariant(uint256[] memory balances) public pure returns (uint256) {
         // inv = x + y
         uint256 invariant;
-        for (uint256 index = 0; index < balances.length; index++) {
-            invariant += balances[index];
+        for (uint256 i = 0; i < balances.length; ++i) {
+            invariant += balances[i];
         }
         return invariant;
     }
@@ -230,7 +212,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
         uint256[] memory rates = getVault().getPoolTokenRates(address(this));
 
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
             if (tokens[i] == params.tokenIn) {
                 if (params.tokenInBalanceScaled18 != currentLiveBalances[i]) {
                     return false;
@@ -336,7 +318,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         IERC20[] memory tokens = getPoolTokens();
         scalingFactors = new uint256[](tokens.length);
 
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
             scalingFactors[i] = ScalingHelpers.computeScalingFactor(tokens[i]);
         }
     }

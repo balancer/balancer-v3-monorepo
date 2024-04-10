@@ -16,13 +16,16 @@ interface IVaultMainMock {
 
     function manualRegisterPool(address pool, IERC20[] memory tokens) external;
 
+    function manualRegisterPoolWithSwapFee(address pool, IERC20[] memory tokens, uint256 swapFeePercentage) external;
+
     function manualRegisterPoolPassThruTokens(address pool, IERC20[] memory tokens) external;
 
     function manualRegisterPoolAtTimestamp(
         address pool,
         IERC20[] memory tokens,
         uint256 timestamp,
-        address pauseManager
+        address pauseManager,
+        address poolCreator
     ) external;
 
     function manualSetOpenTab(bool status) external;

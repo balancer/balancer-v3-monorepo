@@ -131,10 +131,11 @@ interface IVaultAdmin {
     function setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) external;
 
     /**
-     * @notice Emitted when the swap fee percentage of a pool is updated.
-     * @param swapFeePercentage The new swap fee percentage for the pool
+     * @notice Assigns a new pool creator fee percentage to the specified pool.
+     * @param pool The address of the pool for which the pool creator fee will be changed
+     * @param poolCreatorFeePercentage The new pool creator fee percentage to apply to the pool
      */
-    event SwapFeePercentageChanged(address indexed pool, uint256 indexed swapFeePercentage);
+    function setPoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) external;
 
     /**
      * @notice Collects accumulated protocol fees for the specified array of tokens.
@@ -142,6 +143,13 @@ interface IVaultAdmin {
      * @param tokens An array of token addresses for which the fees should be collected
      */
     function collectProtocolFees(IERC20[] calldata tokens) external;
+
+    /**
+     * @notice Collects accumulated pool creator fees for the specified pool.
+     * @dev Fees are sent to the pool creator address.
+     * @param pool The address of the pool on which we are collecting pool creator fees
+     */
+    function collectPoolCreatorFees(address pool) external;
 
     /*******************************************************************************
                                     Recovery Mode

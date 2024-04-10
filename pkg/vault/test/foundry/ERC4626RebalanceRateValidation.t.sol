@@ -393,20 +393,24 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
     function _giveTokensToLPs() private {
         address[] memory usersToTransfer = [address(lp)].toMemoryArray();
 
-        for (uint256 index = 0; index < usersToTransfer.length; index++) {
-            address userAddress = usersToTransfer[index];
+        for (uint256 i = 0; i < usersToTransfer.length; ++i) {
+            address userAddress = usersToTransfer[i];
 
             mockedDai.mint(userAddress, 4 * BUFFER_BASE_TOKENS);
             mockedWsteth.mint(userAddress, 4 * BUFFER_BASE_TOKENS);
 
             vm.startPrank(userAddress);
-            daiMainnet.approve(address(vault), MAX_UINT256);
-            wDAI.approve(address(vault), MAX_UINT256);
+            daiMainnet.approve(address(permit2), MAX_UINT256);
+            permit2.approve(address(daiMainnet), address(router), type(uint160).max, type(uint48).max);
+            wDAI.approve(address(permit2), MAX_UINT256);
+            permit2.approve(address(wDAI), address(router), type(uint160).max, type(uint48).max);
             daiMainnet.approve(address(wDAI), MAX_UINT256);
 
-            wstethMainnet.approve(address(vault), MAX_UINT256);
-            wWstEth.approve(address(vault), MAX_UINT256);
+            wstethMainnet.approve(address(permit2), MAX_UINT256);
+            permit2.approve(address(wstethMainnet), address(router), type(uint160).max, type(uint48).max);
             wstethMainnet.approve(address(wWstEth), MAX_UINT256);
+            wWstEth.approve(address(permit2), MAX_UINT256);
+            permit2.approve(address(wWstEth), address(router), type(uint160).max, type(uint48).max);
             vm.stopPrank();
         }
     }
@@ -414,8 +418,8 @@ contract ERC4626RebalanceRateValidation is BaseVaultTest {
     function _giveTokensToBufferContracts() private {
         address[] memory buffersToTransfer = [address(bufferPoolDai), address(bufferPoolWsteth)].toMemoryArray();
 
-        for (uint256 index = 0; index < buffersToTransfer.length; index++) {
-            address bufferAddress = buffersToTransfer[index];
+        for (uint256 i = 0; i < buffersToTransfer.length; ++i) {
+            address bufferAddress = buffersToTransfer[i];
 
             uint256 daiToConvert = wDAI.previewRedeem(1e18);
             mockedDai.mint(bufferAddress, daiToConvert + 1e18);

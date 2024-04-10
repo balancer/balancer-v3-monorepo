@@ -9,10 +9,12 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
@@ -74,6 +76,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
         defaultBalance = 1e10 * 1e18;
         BaseVaultTest.setUp();
 
+        approveForPool(IERC20(liquidityPool));
+        approveForPool(IERC20(swapPool));
+
         (daiIdx, ) = getSortedIndexes(address(dai), address(usdc));
 
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
@@ -86,7 +91,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         swapPool = _createPool(tokens, "swapPool");
 
         // NOTE: stores address in `pool` (unused in this test)
-        return address(0xdead);
+        return address(0);
     }
 
     function initPool() internal override {
@@ -139,6 +144,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
     }
 
     function testAddLiquidityUnbalancedNoSwapFee__Fuzz(uint256 daiAmountIn) public {
+        vault.manuallySetSwapFee(liquidityPool, 0);
+        vault.manuallySetSwapFee(swapPool, 0);
+
         daiAmountIn = bound(daiAmountIn, 1e18, maxAmount);
 
         uint256[] memory amountsIn = new uint256[](2);
@@ -214,6 +222,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
     }
 
     function testAddLiquiditySingleTokenExactOutNoSwapFee__Fuzz(uint256 exactBptAmountOut) public {
+        vault.manuallySetSwapFee(liquidityPool, 0);
+        vault.manuallySetSwapFee(swapPool, 0);
+
         exactBptAmountOut = bound(exactBptAmountOut, 1e18, maxAmount / 2 - 1);
 
         vm.startPrank(alice);
@@ -310,6 +321,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
     }
 
     function testRemoveLiquiditySingleTokenExactNoSwapFee__Fuzz(uint256 exactAmountOut) public {
+        vault.manuallySetSwapFee(liquidityPool, 0);
+        vault.manuallySetSwapFee(swapPool, 0);
+
         exactAmountOut = bound(exactAmountOut, 1e18, maxAmount);
 
         // Add liquidity so we have something to remove
@@ -412,6 +426,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
     }
 
     function testRemoveLiquiditySingleTokenExactInNoSwapFee__Fuzz(uint256 exactBptAmountIn) public {
+        vault.manuallySetSwapFee(liquidityPool, 0);
+        vault.manuallySetSwapFee(swapPool, 0);
+
         exactBptAmountIn = bound(exactBptAmountIn, 1e18, maxAmount / 2 - 1);
 
         // Add liquidity so we have something to remove
@@ -459,6 +476,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
     /// Utils
 
     function assertLiquidityOperationNoSwapFee() internal {
+        vault.manuallySetSwapFee(liquidityPool, 0);
+        vault.manuallySetSwapFee(swapPool, 0);
+
         // See @notice
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
 

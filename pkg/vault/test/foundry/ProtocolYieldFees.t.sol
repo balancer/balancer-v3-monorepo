@@ -51,19 +51,18 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         rateProviders[1] = daiRateProvider;
         yieldFeeFlags[0] = true;
 
-        PoolMock newPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+
+        factoryMock.registerTestPool(
+            address(newPool),
             vault.buildTokenConfig(
                 [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
                 rateProviders,
                 yieldFeeFlags
             ),
-            true,
-            365 days,
-            address(0)
+            address(lp)
         );
+
         vm.label(address(newPool), "pool");
         return address(newPool);
     }
@@ -134,7 +133,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         uint256[] memory newLiveBalances = verifyLiveBalances(wstethRate, daiRate, roundUp);
         uint256[] memory liveBalanceDeltas = new uint256[](2);
 
-        for (uint256 i = 0; i < 2; i++) {
+        for (uint256 i = 0; i < 2; ++i) {
             liveBalanceDeltas[i] = newLiveBalances[i] - originalLiveBalances[i];
             // Balances should have increased
             assertTrue(liveBalanceDeltas[i] > 0, "Live balance delta is 0");
@@ -275,7 +274,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
 
         uint256 expectedLiveBalance;
 
-        for (uint256 i = 0; i < expectedRawBalances.length; i++) {
+        for (uint256 i = 0; i < expectedRawBalances.length; ++i) {
             if (roundUp) {
                 expectedLiveBalance = FixedPoint.mulUp(
                     expectedRawBalances[i],
