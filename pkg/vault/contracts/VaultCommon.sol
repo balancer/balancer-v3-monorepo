@@ -125,7 +125,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         }
 
         // Get the current recorded delta for this token and locker.
-        int256 current = _tokenDeltas().tGet(locker, token);
+        int256 current = _tokenDeltas().tGet(token);
 
         // Calculate the new delta after accounting for the change.
         int256 next = current + delta;
@@ -144,7 +144,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         }
 
         // Update the delta for this token and locker.
-        _tokenDeltas().tSet(locker, token, next);
+        _tokenDeltas().tSet(token, next);
     }
 
     /*******************************************************************************

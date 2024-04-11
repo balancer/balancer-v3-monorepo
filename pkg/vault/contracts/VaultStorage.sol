@@ -76,7 +76,7 @@ contract VaultStorage {
      * @notice Represents the token due/owed to each locker.
      * @dev Must all net to zero when the last locker is released.
      */
-    mapping(address => mapping(IERC20 => int256)) private __tokenDeltas;
+    mapping(IERC20 => int256) private __tokenDeltas;
 
     /**
      * @notice Represents the total reserve of each ERC20 token.

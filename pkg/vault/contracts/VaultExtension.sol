@@ -113,8 +113,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function getTokenDelta(address user, IERC20 token) external view onlyVault returns (int256) {
-        return _tokenDeltas().tGet(user, token);
+    function getTokenDelta(IERC20 token) external view onlyVault returns (int256) {
+        return _tokenDeltas().tGet(token);
     }
 
     /// @inheritdoc IVaultExtension
