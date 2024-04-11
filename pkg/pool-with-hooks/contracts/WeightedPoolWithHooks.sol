@@ -16,7 +16,9 @@ contract WeightedPoolWithHooks is WeightedPool, PoolWithHooks {
         IVault vault,
         bytes memory hooksBytecode,
         bytes32 hooksSalt
-    ) WeightedPool(params, vault) PoolWithHooks(hooksBytecode, hooksSalt) {}
+    ) WeightedPool(params, vault) PoolWithHooks(hooksBytecode, hooksSalt) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function onBeforeInitialize(
         uint256[] memory exactAmountsIn,

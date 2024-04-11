@@ -38,7 +38,7 @@ abstract contract BaseHooks is IPoolHooks {
      * @return PoolHooks
      */
     function availableHooks() external pure virtual returns (PoolHooks memory);
-    
+
     /**
      * @notice Returns whether this hooks contract supports a dynamic fee
      * @dev This function should be overridden by derived contracts to true if a dynamic fee is supported.
@@ -127,7 +127,6 @@ abstract contract BaseHooks is IPoolHooks {
         return _computeFee(poolData, vars);
     }
 
-
     /*******************************************************************************************************
             Default function implementations.
             Derived contracts should overwrite the corresponding functions for their supported hooks.
@@ -203,7 +202,10 @@ abstract contract BaseHooks is IPoolHooks {
         return false;
     }
 
-    function _computeFee(PoolData memory /* poolData */, SwapLocals memory /* vars */) internal virtual returns (uint256) {
+    function _computeFee(
+        PoolData memory /* poolData */,
+        SwapLocals memory /* vars */
+    ) internal virtual returns (uint256) {
         return 0;
     }
 }

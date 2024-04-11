@@ -13,6 +13,8 @@ error TooLong(uint256 coolDown);
 error TooShort(uint256 coolDown);
 error CoolDown();
 
+// solhint-disable not-rely-on-time
+
 /**
  * @title BotCoolDownHooks
  * @notice This contract allows for blocking multiple swaps from the same user within a certain time frame.
@@ -31,7 +33,9 @@ contract BotCoolDownHooks is BaseHooks, Ownable {
     /// @notice A mapping to track the timestamp of the last trade made by each trader.
     mapping(address => uint256) public lastTrade;
 
-    constructor(address _owner) Ownable(_owner) {}
+    constructor(address _owner) Ownable(_owner) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function availableHooks() external pure override returns (PoolHooks memory) {
         return

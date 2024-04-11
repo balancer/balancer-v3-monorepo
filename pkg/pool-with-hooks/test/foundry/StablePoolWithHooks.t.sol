@@ -17,9 +17,7 @@ import {
     SwapKind
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import {
-    StablePoolWithHooksFactory
-} from "@balancer-labs/v3-pool-with-hooks/contracts/StablePoolWithHooksFactory.sol";
+import { StablePoolWithHooksFactory } from "@balancer-labs/v3-pool-with-hooks/contracts/StablePoolWithHooksFactory.sol";
 import { StablePoolWithHooks } from "@balancer-labs/v3-pool-with-hooks/contracts/StablePoolWithHooks.sol";
 import { BaseHooks } from "@balancer-labs/v3-pool-with-hooks/contracts/BaseHooks.sol";
 import { MockHooks } from "@balancer-labs/v3-pool-with-hooks/contracts/test/MockHooks.sol";

@@ -16,7 +16,9 @@ contract StablePoolWithHooks is StablePool, PoolWithHooks {
         IVault vault,
         bytes memory hooksBytecode,
         bytes32 hooksSalt
-    ) StablePool(params, vault) PoolWithHooks(hooksBytecode, hooksSalt) {}
+    ) StablePool(params, vault) PoolWithHooks(hooksBytecode, hooksSalt) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function onBeforeInitialize(
         uint256[] memory exactAmountsIn,
