@@ -31,7 +31,6 @@ import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/Ba
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
-
 import { MyHooks } from "../../contracts/MyHooks.sol";
 
 contract WeightedPoolWithHooksTest is BaseTest, DeployPermit2 {
@@ -98,6 +97,5 @@ contract WeightedPoolWithHooksTest is BaseTest, DeployPermit2 {
         customHooks = BaseHooks(customHooksAddress);
     }
 
-    function testMyHook() public {
-    }
+    function testMyHook() public {}
 }

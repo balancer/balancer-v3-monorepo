@@ -11,7 +11,9 @@ import { PoolData } from "@balancer-labs/v3-interfaces/contracts/vault/VaultType
 
 /// @notice A scaffold hooks implementation
 contract MyHooks is BaseHooks {
-    constructor() {}
+    constructor() {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function availableHooks() external pure override returns (PoolHooks memory) {
         return
