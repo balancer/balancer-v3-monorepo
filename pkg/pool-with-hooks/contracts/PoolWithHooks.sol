@@ -37,7 +37,7 @@ abstract contract PoolWithHooks is IPoolHooks {
     }
 
     function computeFee(PoolData memory poolData, SwapLocals memory vars) external returns (uint256) {
-        return hooksContract.computeFee(poolData, vars);
+        return _hooksContract.computeFee(poolData, vars);
     }
 
     /// @inheritdoc IPoolHooks
