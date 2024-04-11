@@ -19,8 +19,7 @@ library TransientStorageHelpers {
     // Mappings
 
     function tGet(NestedAddressMappingSlotType slot, IERC20 k1) internal view returns (int256) {
-        return
-            NestedAddressMappingSlotType.unwrap(slot).deriveMapping(address(k1)).asInt256().tload();
+        return NestedAddressMappingSlotType.unwrap(slot).deriveMapping(address(k1)).asInt256().tload();
     }
 
     function tSet(NestedAddressMappingSlotType slot, IERC20 k1, int256 value) internal {
