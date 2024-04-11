@@ -46,9 +46,4 @@ contract MyPool is IBasePool, BalancerPoolToken {
         
         newBalance = (balancesLiveScaled18[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
     }
-
-    /// @inheritdoc ERC165
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return super.supportsInterface(interfaceId);
-    }
 }
