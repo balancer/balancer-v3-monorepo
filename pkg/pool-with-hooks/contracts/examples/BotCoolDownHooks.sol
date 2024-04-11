@@ -47,6 +47,10 @@ contract BotCoolDownHooks is BaseHooks, Ownable {
             }); // Only before swap hook enabled
     }
 
+    function supportsDynamicFee() external pure override returns (bool) {
+        return false;
+    }
+
     /// @notice Sets the cooldown period required between trades.
     /// @dev Only callable by the contract owner.
     function setCoolDown(uint256 _coolDown) external onlyOwner {

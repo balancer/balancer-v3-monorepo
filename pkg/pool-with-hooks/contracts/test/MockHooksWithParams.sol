@@ -49,4 +49,8 @@ contract MockHooksWithParams is BaseHooks {
                 shouldCallAfterSwap: false
             }); // All hooks disabled
     }
+
+    function supportsDynamicFee() external pure override returns (bool) {
+        return false;
+    }
 }

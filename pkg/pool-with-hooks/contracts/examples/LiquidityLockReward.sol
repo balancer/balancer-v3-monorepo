@@ -89,6 +89,10 @@ contract LiquidityLockForRewardsHooks is BaseHooks {
             }); // Only after add liquidity hook enabled
     }
 
+    function supportsDynamicFee() external pure override returns (bool) {
+        return false;
+    }
+
     /**
      * @notice Executes logic after adding liquidity to the pool.
      *      This function is called after a user adds liquidity to the pool.

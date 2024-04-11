@@ -29,6 +29,10 @@ contract MockHooks is BaseHooks {
             }); // All hooks enabled
     }
 
+    function supportsDynamicFee() external pure override returns (bool) {
+        return false;
+    }
+
     function _onBeforeInitialize(uint256[] memory, bytes memory) internal override returns (bool) {
         // Custom logic before initialize
         emit HookCalled("onBeforeInitialize");

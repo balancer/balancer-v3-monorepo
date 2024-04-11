@@ -4,10 +4,13 @@ pragma solidity ^0.8.4;
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
+import { IBaseDynamicFeePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBaseDynamicFeePool.sol";
+import { SwapLocals } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import {
     AddLiquidityKind,
     PoolHooks,
-    RemoveLiquidityKind
+    RemoveLiquidityKind,
+    PoolData
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 abstract contract BaseHooks is IPoolHooks {
@@ -35,6 +38,13 @@ abstract contract BaseHooks is IPoolHooks {
      * @return PoolHooks
      */
     function availableHooks() external pure virtual returns (PoolHooks memory);
+    
+    /**
+     * @notice Returns whether this hooks contract supports a dynamic fee
+     * @dev This function should be overridden by derived contracts to true if a dynamic fee is supported.
+     * @return bool
+     */
+    function supportsDynamicFee() external pure virtual returns (bool);
 
     /// @inheritdoc IPoolHooks
     function onBeforeInitialize(
@@ -113,6 +123,11 @@ abstract contract BaseHooks is IPoolHooks {
         return _onAfterSwap(params, amountCalculatedScaled18);
     }
 
+    function computeFee(PoolData memory poolData, SwapLocals memory vars) external returns (uint256) {
+        return _computeFee(poolData, vars);
+    }
+
+
     /*******************************************************************************************************
             Default function implementations.
             Derived contracts should overwrite the corresponding functions for their supported hooks.
@@ -186,5 +201,9 @@ abstract contract BaseHooks is IPoolHooks {
         uint256 // amountCalculatedScaled18
     ) internal virtual returns (bool) {
         return false;
+    }
+
+    function _computeFee(PoolData memory poolData, SwapLocals memory vars) internal virtual returns (uint256) {
+        return 0;
     }
 }

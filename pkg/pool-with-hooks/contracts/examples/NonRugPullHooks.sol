@@ -40,6 +40,10 @@ contract NonRugPullHooks is BaseHooks, Ownable {
             }); // Only after swap hook enabled
     }
 
+    function supportsDynamicFee() external pure override returns (bool) {
+        return false;
+    }
+
     /// @notice Checks the token sell limit after a swap operation.
     /// @param params Parameters of the swap operation.
     function _onAfterSwap(IPoolHooks.AfterSwapParams memory params, uint256) internal virtual override returns (bool) {

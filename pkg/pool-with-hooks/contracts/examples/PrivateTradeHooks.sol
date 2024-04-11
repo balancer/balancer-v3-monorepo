@@ -50,6 +50,10 @@ contract PrivateTradeHooks is BaseHooks {
             }); // Only before add liquidity hook enabled
     }
 
+    function supportsDynamicFee() external pure override returns (bool) {
+        return false;
+    }
+
     /**
      * @notice Ensures that the user adding liquidity is allowed to do so
      *         based on the permissions granted by the trade allowance contract.

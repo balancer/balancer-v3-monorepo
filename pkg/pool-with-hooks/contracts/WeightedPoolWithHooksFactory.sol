@@ -83,7 +83,8 @@ contract WeightedPoolWithHooksFactory is BasePoolFactory {
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: false,
                 enableRemoveLiquidityCustom: false
-            })
+            }),
+            hooksContract.supportsDynamicFee()
         );
 
         _registerPoolWithFactory(pool);
