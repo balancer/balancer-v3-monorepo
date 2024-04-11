@@ -203,7 +203,7 @@ abstract contract BaseHooks is IPoolHooks {
         return false;
     }
 
-    function _computeFee(PoolData memory poolData, SwapLocals memory vars) internal virtual returns (uint256) {
+    function _computeFee(PoolData memory /* poolData */, SwapLocals memory /* vars */) internal virtual returns (uint256) {
         return 0;
     }
 }
