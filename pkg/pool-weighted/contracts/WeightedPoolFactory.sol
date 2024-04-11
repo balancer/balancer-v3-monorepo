@@ -78,7 +78,8 @@ contract WeightedPoolFactory is BasePoolFactory {
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: false,
                 enableRemoveLiquidityCustom: false
-            })
+            }),
+            false // hasDynamicSwapFee
         );
 
         _registerPoolWithFactory(pool);

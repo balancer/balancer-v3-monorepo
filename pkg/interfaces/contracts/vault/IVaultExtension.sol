@@ -89,7 +89,8 @@ interface IVaultExtension {
         address pauseManager,
         address poolCreator,
         PoolHooks calldata poolHooks,
-        LiquidityManagement calldata liquidityManagement
+        LiquidityManagement calldata liquidityManagement,
+        bool hasDynamicSwapFee
     ) external;
 
     /**

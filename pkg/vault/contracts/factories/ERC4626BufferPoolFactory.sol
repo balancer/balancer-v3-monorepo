@@ -116,7 +116,8 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
             pauseManager,
             poolCreator,
             poolHooks,
-            liquidityManagement
+            liquidityManagement,
+            false
         );
     }
 

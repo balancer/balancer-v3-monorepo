@@ -150,6 +150,7 @@ describe('Vault', function () {
         poolCreator: ANY_ADDRESS,
         hooks: [false, false, false, false, false, false, false, false],
         liquidityManagement: [false, true, true],
+        hasDynamicSwapFee: false,
       };
 
       // Use expectEvent here to prevent errors with structs of arrays with hardhat matchers.
@@ -158,7 +159,8 @@ describe('Vault', function () {
         poolBTokens,
         pauseWindowEndTime,
         ANY_ADDRESS,
-        ANY_ADDRESS
+        ANY_ADDRESS,
+        false
       );
       expectEvent.inReceipt(await tx.wait(), 'PoolRegistered', expectedArgs);
     });

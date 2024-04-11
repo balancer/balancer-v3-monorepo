@@ -77,7 +77,8 @@ contract VaultMock is IVaultMainMock, Vault {
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: true,
                 enableRemoveLiquidityCustom: true
-            })
+            }),
+            false // hasDynamicSwapFee
         );
     }
 
@@ -92,7 +93,8 @@ contract VaultMock is IVaultMainMock, Vault {
             swapFeePercentage,
             address(0),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
-            PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
+            PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement,
+            false // hasDynamicSwapFee
         );
     }
 
@@ -112,7 +114,8 @@ contract VaultMock is IVaultMainMock, Vault {
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: true,
                 enableRemoveLiquidityCustom: true
-            })
+            }),
+            false // hasDynamicSwapFee
         );
     }
 
@@ -121,7 +124,8 @@ contract VaultMock is IVaultMainMock, Vault {
         IERC20[] memory tokens,
         uint256 timestamp,
         address pauseManager,
-        address poolCreator
+        address poolCreator,
+        bool hasDynamicSwapFee
     ) external whenVaultNotPaused {
         _poolFactoryMock.registerPoolAtTimestamp(
             pool,
@@ -134,7 +138,8 @@ contract VaultMock is IVaultMainMock, Vault {
                 enableAddLiquidityCustom: true,
                 enableRemoveLiquidityCustom: true
             }),
-            timestamp
+            timestamp,
+            hasDynamicSwapFee
         );
     }
 

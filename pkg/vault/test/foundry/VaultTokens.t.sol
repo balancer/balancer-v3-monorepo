@@ -171,7 +171,8 @@ contract VaultTokenTest is BaseVaultTest {
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: false,
                 enableRemoveLiquidityCustom: false
-            })
+            }),
+            false // hasDynamicSwapFee
         );
     }
 

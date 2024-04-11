@@ -33,7 +33,8 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: true,
                 enableRemoveLiquidityCustom: true
-            })
+            }),
+            false // hasDynamicSwapFee
         );
     }
 
@@ -56,7 +57,8 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: true,
                 enableRemoveLiquidityCustom: true
-            })
+            }),
+            false // hasDynamicSwapFee
         );
     }
 
@@ -66,7 +68,8 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         address pauseManager,
         address poolCreator,
         PoolHooks calldata poolHooks,
-        LiquidityManagement calldata liquidityManagement
+        LiquidityManagement calldata liquidityManagement,
+        bool hasDynamicSwapFee
     ) external {
         _vault.registerPool(
             pool,
@@ -76,7 +79,8 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             pauseManager,
             poolCreator,
             poolHooks,
-            liquidityManagement
+            liquidityManagement,
+            hasDynamicSwapFee
         );
     }
 
@@ -86,7 +90,8 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         uint256 swapFeePercentage,
         address pauseManager,
         PoolHooks calldata poolHooks,
-        LiquidityManagement calldata liquidityManagement
+        LiquidityManagement calldata liquidityManagement,
+        bool hasDynamicSwapFee
     ) external {
         _vault.registerPool(
             pool,
@@ -96,7 +101,8 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             pauseManager,
             address(0),
             poolHooks,
-            liquidityManagement
+            liquidityManagement,
+            hasDynamicSwapFee
         );
     }
 
@@ -108,7 +114,8 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         address poolCreator,
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement,
-        uint256 timestamp
+        uint256 timestamp,
+        bool hasDynamicSwapFee
     ) external {
         _vault.registerPool(
             pool,
@@ -118,7 +125,8 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             pauseManager,
             poolCreator,
             poolHooks,
-            liquidityManagement
+            liquidityManagement,
+            hasDynamicSwapFee
         );
     }
 }

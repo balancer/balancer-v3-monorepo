@@ -18,6 +18,7 @@ interface IVaultEvents {
      * @param poolCreator The pool's dev address, empowered to set and collect the pool creator fee
      * @param hooks Flags indicating which hooks the pool supports
      * @param liquidityManagement Supported liquidity management hook flags
+     * @param hasDynamicSwapFee True if the pool implements a dynamic swap fee
      */
     event PoolRegistered(
         address indexed pool,
@@ -27,7 +28,8 @@ interface IVaultEvents {
         address pauseManager,
         address poolCreator,
         PoolHooks hooks,
-        LiquidityManagement liquidityManagement
+        LiquidityManagement liquidityManagement,
+        bool hasDynamicSwapFee
     );
 
     /**

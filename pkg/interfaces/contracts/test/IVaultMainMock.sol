@@ -25,7 +25,8 @@ interface IVaultMainMock {
         IERC20[] memory tokens,
         uint256 timestamp,
         address pauseManager,
-        address poolCreator
+        address poolCreator,
+        bool hasDynamicSwapFee
     ) external;
 
     function manualSetLockers(address[] memory lockers) external;
