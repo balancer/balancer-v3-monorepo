@@ -322,7 +322,7 @@ library WeightedMath {
 
         // We can now compute how much extra balance is being deposited and used in virtual swaps, and charge swap fees
         // accordingly.
-        uint256 taxableAmount = amountInWithoutFee.mulUp(normalizedWeight.complement());
+        uint256 taxableAmount = amountInWithoutFee.mulDown(normalizedWeight.complement());
         uint256 nonTaxableAmount = amountInWithoutFee - taxableAmount;
 
         uint256 taxableAmountPlusFees = taxableAmount.divUp(swapFeePercentage.complement());
@@ -342,8 +342,8 @@ library WeightedMath {
         uint256[] memory balanceRatiosWithoutFee = new uint256[](amountsOut.length);
         uint256 invariantRatioWithoutFees = 0;
         for (uint256 i = 0; i < balances.length; ++i) {
-            balanceRatiosWithoutFee[i] = (balances[i] - amountsOut[i]).divUp(balances[i]);
-            invariantRatioWithoutFees = (invariantRatioWithoutFees + balanceRatiosWithoutFee[i]).mulUp(
+            balanceRatiosWithoutFee[i] = (balances[i] - amountsOut[i]).divDown(balances[i]);
+            invariantRatioWithoutFees = (invariantRatioWithoutFees + balanceRatiosWithoutFee[i]).mulDown(
                 normalizedWeights[i]
             );
         }
@@ -369,9 +369,9 @@ library WeightedMath {
     ) internal pure returns (uint256) {
         // BPT in, so we round up overall.
 
-        uint256 balanceRatioWithoutFee = (balance - amountOut).divUp(balance);
+        uint256 balanceRatioWithoutFee = (balance - amountOut).divDown(balance);
 
-        uint256 invariantRatioWithoutFees = balanceRatioWithoutFee.mulUp(normalizedWeight) +
+        uint256 invariantRatioWithoutFees = balanceRatioWithoutFee.mulDown(normalizedWeight) +
             normalizedWeight.complement();
 
         uint256 amountOutWithFee;
@@ -379,7 +379,7 @@ library WeightedMath {
             // Swap fees are typically charged on 'token in', but there is no 'token in' here, so we apply it to
             // 'token out'. This results in slightly larger price impact.
 
-            uint256 nonTaxableAmount = balance.mulDown(invariantRatioWithoutFees.complement());
+            uint256 nonTaxableAmount = balance.mulUp(invariantRatioWithoutFees.complement());
             uint256 taxableAmount = amountOut - nonTaxableAmount;
             uint256 taxableAmountPlusFees = taxableAmount.divUp(swapFeePercentage.complement());
 
@@ -417,7 +417,7 @@ library WeightedMath {
 
             uint256 amountOutWithFee;
             if (invariantRatioWithoutFees > balanceRatiosWithoutFee[i]) {
-                uint256 nonTaxableAmount = balances[i].mulDown(invariantRatioWithoutFees.complement());
+                uint256 nonTaxableAmount = balances[i].mulUp(invariantRatioWithoutFees.complement());
                 uint256 taxableAmount = amountsOut[i] - nonTaxableAmount;
                 uint256 taxableAmountPlusFees = taxableAmount.divUp(swapFeePercentage.complement());
 
@@ -465,7 +465,7 @@ library WeightedMath {
         }
 
         // Calculate by how much the token balance has to decrease to match invariantRatio
-        uint256 balanceRatio = invariantRatio.powUp(FixedPoint.ONE.divDown(normalizedWeight));
+        uint256 balanceRatio = invariantRatio.powUp(FixedPoint.ONE.divUp(normalizedWeight));
 
         // Because of rounding up, balanceRatio can be greater than one. Using complement prevents reverts.
         uint256 amountOutWithoutFee = balance.mulDown(balanceRatio.complement());
@@ -477,7 +477,7 @@ library WeightedMath {
         // to 'token out'. This results in slightly larger price impact. Fees are rounded up.
         uint256 taxableAmount = amountOutWithoutFee.mulUp(normalizedWeight.complement());
         uint256 nonTaxableAmount = amountOutWithoutFee - taxableAmount;
-        uint256 taxableAmountMinusFees = taxableAmount.mulUp(swapFeePercentage.complement());
+        uint256 taxableAmountMinusFees = taxableAmount.mulDown(swapFeePercentage.complement());
 
         return nonTaxableAmount + taxableAmountMinusFees;
     }
