@@ -4,6 +4,7 @@ import './skipFoundryTests.ts';
 type SolcConfig = {
   version: string;
   settings: {
+    viaIR: boolean;
     optimizer: {
       enabled: boolean;
       runs?: number;
@@ -16,6 +17,7 @@ export const compilers: [SolcConfig] = [
   {
     version: '0.8.24',
     settings: {
+      viaIR: true,
       optimizer: {
         enabled: true,
         runs: 9999,
