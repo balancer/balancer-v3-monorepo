@@ -252,7 +252,7 @@ library StableMath {
         // accordingly.
         uint256 currentWeight = balances[tokenIndex].divDown(sumBalances);
         uint256 taxablePercentage = currentWeight.complement();
-        uint256 taxableAmount = amountInWithoutFee.mulUp(taxablePercentage);
+        uint256 taxableAmount = amountInWithoutFee.mulDown(taxablePercentage);
         uint256 nonTaxableAmount = amountInWithoutFee - taxableAmount;
 
         return nonTaxableAmount + (taxableAmount.divUp(FixedPoint.ONE - swapFeePercentage));
@@ -285,9 +285,9 @@ library StableMath {
         uint256[] memory balanceRatiosWithoutFee = new uint256[](numTokens);
         uint256 invariantRatioWithoutFees = 0;
         for (uint256 i = 0; i < numTokens; ++i) {
-            uint256 currentWeight = balances[i].divUp(sumBalances);
-            balanceRatiosWithoutFee[i] = (balances[i] - amountsOut[i]).divUp(balances[i]);
-            invariantRatioWithoutFees = invariantRatioWithoutFees + (balanceRatiosWithoutFee[i].mulUp(currentWeight));
+            uint256 currentWeight = balances[i].divDown(sumBalances);
+            balanceRatiosWithoutFee[i] = (balances[i] - amountsOut[i]).divDown(balances[i]);
+            invariantRatioWithoutFees = invariantRatioWithoutFees + (balanceRatiosWithoutFee[i].mulDown(currentWeight));
         }
 
         // Second loop calculates new amounts in, taking into account the fee on the percentage excess
@@ -298,7 +298,7 @@ library StableMath {
 
             uint256 amountOutWithFee;
             if (invariantRatioWithoutFees > balanceRatiosWithoutFee[i]) {
-                uint256 nonTaxableAmount = balances[i].mulDown(invariantRatioWithoutFees.complement());
+                uint256 nonTaxableAmount = balances[i].mulUp(invariantRatioWithoutFees.complement());
                 uint256 taxableAmount = amountsOut[i] - nonTaxableAmount;
                 amountOutWithFee = nonTaxableAmount + (taxableAmount.divUp(FixedPoint.ONE - swapFeePercentage));
             } else {
