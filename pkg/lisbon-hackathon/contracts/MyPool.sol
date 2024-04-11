@@ -12,30 +12,28 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-
 contract MyPool is IBasePool, BalancerPoolToken {
     using FixedPoint for uint256;
 
-    constructor(IVault vault, string memory name, string memory symbol) BalancerPoolToken(vault, name, symbol) {}
-    
-        /// @inheritdoc IBasePool
+    constructor(IVault vault, string memory name, string memory symbol) BalancerPoolToken(vault, name, symbol) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    /// @inheritdoc IBasePool
     function getPoolTokens() public view returns (IERC20[] memory tokens) {
         return getVault().getPoolTokens(address(this));
     }
 
-    
     /// @inheritdoc IBasePool
     function onSwap(IBasePool.PoolSwapParams memory request) external pure returns (uint256 amountCalculatedScaled18) {
         amountCalculatedScaled18 = request.amountGivenScaled18;
     }
-    
-    
+
     /// @inheritdoc IBasePool
     function computeInvariant(uint256[] memory balancesLiveScaled18) public pure returns (uint256 invariant) {
         invariant = balancesLiveScaled18[0] + balancesLiveScaled18[1];
     }
 
-   
     /// @inheritdoc IBasePool
     function computeBalance(
         uint256[] memory balancesLiveScaled18,
@@ -43,7 +41,7 @@ contract MyPool is IBasePool, BalancerPoolToken {
         uint256 invariantRatio
     ) external pure returns (uint256 newBalance) {
         uint256 invariant = computeInvariant(balancesLiveScaled18);
-        
+
         newBalance = (balancesLiveScaled18[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
     }
 }

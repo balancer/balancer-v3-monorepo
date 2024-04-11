@@ -7,9 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { PoolHooks, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import {
-    StablePoolWithHooksFactory
-} from "@balancer-labs/v3-pool-with-hooks/contracts/StablePoolWithHooksFactory.sol";
+import { StablePoolWithHooksFactory } from "@balancer-labs/v3-pool-with-hooks/contracts/StablePoolWithHooksFactory.sol";
 import { StablePoolWithHooks } from "@balancer-labs/v3-pool-with-hooks/contracts/StablePoolWithHooks.sol";
 import { BaseHooks } from "@balancer-labs/v3-pool-with-hooks/contracts/BaseHooks.sol";
 import { MockHooks } from "@balancer-labs/v3-pool-with-hooks/contracts/test/MockHooks.sol";

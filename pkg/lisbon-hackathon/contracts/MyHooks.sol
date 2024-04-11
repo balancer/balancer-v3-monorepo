@@ -9,11 +9,11 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { SwapLocals } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { PoolData } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-
 /// @notice A scaffold hooks implementation
 contract MyHooks is BaseHooks {
-
-    constructor() {}
+    constructor() {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function availableHooks() external pure override returns (PoolHooks memory) {
         return
@@ -34,11 +34,14 @@ contract MyHooks is BaseHooks {
     }
 
     /// @dev Checks if the trader has passed the required cooldown period between trades.
-    function _onBeforeSwap(IBasePool.PoolSwapParams memory params) internal virtual override returns (bool) {
+    function _onBeforeSwap(IBasePool.PoolSwapParams memory /* params */) internal virtual override returns (bool) {
         return true;
     }
 
-    function _computeFee(PoolData memory poolData, SwapLocals memory vars) internal virtual override returns (uint256) {
+    function _computeFee(
+        PoolData memory /* poolData */,
+        SwapLocals memory /* vars */
+    ) internal virtual override returns (uint256) {
         return 0;
     }
 }

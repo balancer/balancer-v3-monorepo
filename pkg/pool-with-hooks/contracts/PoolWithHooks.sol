@@ -12,10 +12,11 @@ import { IBaseDynamicFeePool } from "@balancer-labs/v3-interfaces/contracts/vaul
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 
 abstract contract PoolWithHooks is IPoolHooks {
-    IPoolHooks private immutable hooksContract;
+    IPoolHooks private immutable _hooksContract;
 
     constructor(bytes memory hooksBytecode, bytes32 hooksSalt) {
         // Deploy a hooks contract with create2
+        // solhint-disable no-inline-assembly
         address deployedHooksAddress;
         assembly {
             deployedHooksAddress := create2(0, add(hooksBytecode, 0x20), mload(hooksBytecode), hooksSalt)
@@ -24,7 +25,7 @@ abstract contract PoolWithHooks is IPoolHooks {
             }
         }
 
-        hooksContract = IPoolHooks(deployedHooksAddress);
+        _hooksContract = IPoolHooks(deployedHooksAddress);
     }
 
     /**
@@ -32,7 +33,7 @@ abstract contract PoolWithHooks is IPoolHooks {
      * @return The address of the hooks contract
      */
     function hooksAddress() external view returns (address) {
-        return address(hooksContract);
+        return address(_hooksContract);
     }
 
     function computeFee(PoolData memory poolData, SwapLocals memory vars) external returns (uint256) {
@@ -41,7 +42,7 @@ abstract contract PoolWithHooks is IPoolHooks {
 
     /// @inheritdoc IPoolHooks
     function onBeforeInitialize(uint256[] memory exactAmountsIn, bytes memory userData) public virtual returns (bool) {
-        return hooksContract.onBeforeInitialize(exactAmountsIn, userData);
+        return _hooksContract.onBeforeInitialize(exactAmountsIn, userData);
     }
 
     /// @inheritdoc IPoolHooks
@@ -50,7 +51,7 @@ abstract contract PoolWithHooks is IPoolHooks {
         uint256 bptAmountOut,
         bytes memory userData
     ) public virtual returns (bool) {
-        return hooksContract.onAfterInitialize(exactAmountsIn, bptAmountOut, userData);
+        return _hooksContract.onAfterInitialize(exactAmountsIn, bptAmountOut, userData);
     }
 
     /// @inheritdoc IPoolHooks
@@ -63,7 +64,7 @@ abstract contract PoolWithHooks is IPoolHooks {
         bytes memory userData
     ) public virtual returns (bool success) {
         return
-            hooksContract.onBeforeAddLiquidity(
+            _hooksContract.onBeforeAddLiquidity(
                 sender,
                 kind,
                 maxAmountsInScaled18,
@@ -81,7 +82,7 @@ abstract contract PoolWithHooks is IPoolHooks {
         uint256[] memory balancesScaled18,
         bytes memory userData
     ) public virtual returns (bool success) {
-        return hooksContract.onAfterAddLiquidity(sender, amountsInScaled18, bptAmountOut, balancesScaled18, userData);
+        return _hooksContract.onAfterAddLiquidity(sender, amountsInScaled18, bptAmountOut, balancesScaled18, userData);
     }
 
     /// @inheritdoc IPoolHooks
@@ -94,7 +95,7 @@ abstract contract PoolWithHooks is IPoolHooks {
         bytes memory userData
     ) public virtual returns (bool success) {
         return
-            hooksContract.onBeforeRemoveLiquidity(
+            _hooksContract.onBeforeRemoveLiquidity(
                 sender,
                 kind,
                 maxBptAmountIn,
@@ -113,12 +114,12 @@ abstract contract PoolWithHooks is IPoolHooks {
         bytes memory userData
     ) public virtual returns (bool success) {
         return
-            hooksContract.onAfterRemoveLiquidity(sender, bptAmountIn, amountsOutScaled18, balancesScaled18, userData);
+            _hooksContract.onAfterRemoveLiquidity(sender, bptAmountIn, amountsOutScaled18, balancesScaled18, userData);
     }
 
     /// @inheritdoc IPoolHooks
     function onBeforeSwap(IBasePool.PoolSwapParams memory params) public virtual returns (bool success) {
-        return hooksContract.onBeforeSwap(params);
+        return _hooksContract.onBeforeSwap(params);
     }
 
     /// @inheritdoc IPoolHooks
@@ -126,6 +127,6 @@ abstract contract PoolWithHooks is IPoolHooks {
         IPoolHooks.AfterSwapParams memory params,
         uint256 amountCalculatedScaled18
     ) public virtual returns (bool success) {
-        return hooksContract.onAfterSwap(params, amountCalculatedScaled18);
+        return _hooksContract.onAfterSwap(params, amountCalculatedScaled18);
     }
 }

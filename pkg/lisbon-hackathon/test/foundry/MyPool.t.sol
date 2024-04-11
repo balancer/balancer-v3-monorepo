@@ -55,7 +55,7 @@ contract MyPoolTest is BaseVaultTest {
 
     function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
         myPool = new MyPool(vault, "My Pool", "BPT");
-        
+
         IVault(address(vault)).registerPool(
             address(myPool),
             vault.buildTokenConfig(tokens.asIERC20()),
@@ -97,29 +97,7 @@ contract MyPoolTest is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function testMyPool() public {
-        
-    }
-
-    /* function testInitialize() public {
-        // Tokens are transferred from lp
-        assertEq(defaultBalance - usdc.balanceOf(lp), USDC_AMOUNT, "LP: Wrong USDC balance");
-        assertEq(defaultBalance - dai.balanceOf(lp), DAI_AMOUNT, "LP: Wrong DAI balance");
-
-        // Tokens are stored in the Vault
-        assertEq(usdc.balanceOf(address(vault)), USDC_AMOUNT, "Vault: Wrong USDC balance");
-        assertEq(dai.balanceOf(address(vault)), DAI_AMOUNT, "Vault: Wrong DAI balance");
-
-        // Tokens are deposited to the pool
-        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], DAI_AMOUNT, "Pool: Wrong DAI balance");
-        assertEq(balances[1], USDC_AMOUNT, "Pool: Wrong USDC balance");
-
-        // should mint correct amount of BPT tokens
-        // Account for the precision loss
-        assertApproxEqAbs(weightedPool.balanceOf(lp), bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
-        assertApproxEqAbs(bptAmountOut, DAI_AMOUNT, DELTA, "Wrong bptAmountOut");
-    }
+    function testMyPool() public {}
 
     function testAddLiquidity() public {
         uint256[] memory amountsIn = [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray();
@@ -140,8 +118,8 @@ contract MyPoolTest is BaseVaultTest {
         assertEq(balances[1], USDC_AMOUNT * 2, "Pool: Wrong USDC balance");
 
         // should mint correct amount of BPT tokens
-        assertApproxEqAbs(weightedPool.balanceOf(bob), bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
-        assertApproxEqAbs(bptAmountOut, DAI_AMOUNT, DELTA, "Wrong bptAmountOut");
+        assertApproxEqAbs(IERC20(pool).balanceOf(bob), bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
+        assertApproxEqAbs(bptAmountOut, DAI_AMOUNT * 2, DELTA, "Wrong bptAmountOut");
     }
 
     function testRemoveLiquidity() public {
@@ -154,9 +132,9 @@ contract MyPoolTest is BaseVaultTest {
             bytes("")
         );
 
-        weightedPool.approve(address(vault), MAX_UINT256);
+        IERC20(pool).approve(address(vault), MAX_UINT256);
 
-        uint256 bobBptBalance = weightedPool.balanceOf(bob);
+        uint256 bobBptBalance = IERC20(pool).balanceOf(bob);
         uint256 bptAmountIn = bobBptBalance;
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
@@ -187,7 +165,7 @@ contract MyPoolTest is BaseVaultTest {
         assertApproxEqAbs(amountsOut[1], USDC_AMOUNT, DELTA, "Wrong USDC AmountOut");
 
         // should mint correct amount of BPT tokens
-        assertEq(weightedPool.balanceOf(bob), 0, "LP: Wrong BPT balance");
+        assertEq(IERC20(pool).balanceOf(bob), 0, "LP: Wrong BPT balance");
         assertEq(bobBptBalance, bptAmountIn, "LP: Wrong bptAmountIn");
     }
 
@@ -226,52 +204,4 @@ contract MyPoolTest is BaseVaultTest {
     function less(uint256 amount, uint256 base) internal pure returns (uint256) {
         return (amount * (base - 1)) / base;
     }
-
-    function testAddLiquidityUnbalanced() public {
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
-        vm.prank(alice);
-        vault.setStaticSwapFeePercentage(address(pool), 10e16);
-
-        uint256[] memory amountsIn = [uint256(1e2 * 1e18), uint256(USDC_AMOUNT)].toMemoryArray();
-        vm.prank(bob);
-
-        router.addLiquidityUnbalanced(address(pool), amountsIn, 0, false, bytes(""));
-    }
-
-    function testSupportsIERC165() public {
-        assertTrue(weightedPool.supportsInterface(type(IERC165).interfaceId), "Pool does not support IERC165");
-        assertTrue(
-            weightedPool.supportsInterface(type(IMinimumSwapFee).interfaceId),
-            "Pool does not support IMinimumSwapFee"
-        );
-    }
-
-    function testMinimumSwapFee() public {
-        assertEq(weightedPool.getMinimumSwapFeePercentage(), MIN_SWAP_FEE, "Minimum swap fee mismatch");
-    }
-
-    function testFailSwapFeeTooLow() public {
-        TokenConfig[] memory tokens = new TokenConfig[](2);
-        tokens[0].token = IERC20(dai);
-        tokens[1].token = IERC20(usdc);
-
-        address lowFeeWeightedPool = factory.create(
-            "ERC20 Pool",
-            "ERC20POOL",
-            tokens,
-            [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
-            MIN_SWAP_FEE - 1, // Swap fee too low
-            ZERO_BYTES32
-        );
-
-        factoryMock.registerTestPool(lowFeeWeightedPool, tokens, address(0));
-    }
-
-    function testSetSwapFeeTooLow() public {
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
-        vm.prank(alice);
-
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapFeePercentageTooLow.selector));
-        vault.setStaticSwapFeePercentage(address(pool), MIN_SWAP_FEE - 1);
-    } */
 }

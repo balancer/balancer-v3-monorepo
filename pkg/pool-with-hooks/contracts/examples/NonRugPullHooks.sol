@@ -9,6 +9,8 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { BaseHooks } from "../BaseHooks.sol";
 
+// solhint-disable not-rely-on-time
+
 error TooSmall();
 error OverLimit(uint256 amount);
 
@@ -24,7 +26,9 @@ contract NonRugPullHooks is BaseHooks, Ownable {
     /// @notice The minimum available sell amount for each token
     uint256 public constant MIN_SELL_AMOUNT = 20e18;
 
-    constructor(address _owner) Ownable(_owner) {}
+    constructor(address _owner) Ownable(_owner) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function availableHooks() external pure override returns (PoolHooks memory) {
         return

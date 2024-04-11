@@ -17,7 +17,9 @@ contract WeightedPoolWithHooks is WeightedPool, PoolWithHooks {
         IVault vault,
         bytes memory hooksBytecode,
         bytes32 hooksSalt
-    ) WeightedPool(params, vault) PoolWithHooks(hooksBytecode, hooksSalt) {}
+    ) WeightedPool(params, vault) PoolWithHooks(hooksBytecode, hooksSalt) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return interfaceId == type(IBaseDynamicFeePool).interfaceId || super.supportsInterface(interfaceId);

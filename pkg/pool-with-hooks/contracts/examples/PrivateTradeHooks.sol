@@ -8,6 +8,8 @@ import { PoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTyp
 
 import { BaseHooks } from "../BaseHooks.sol";
 
+// solhint-disable avoid-tx-origin
+
 error ZeroAddress();
 error NotAllowedTrader(address trader);
 error NotAllowedLp(address liquidityProvider);
