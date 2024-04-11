@@ -7,6 +7,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault } from "./IVault.sol";
 import { SwapKind, AddLiquidityKind, RemoveLiquidityKind } from "./VaultTypes.sol";
 import { IBasePool } from "./IBasePool.sol";
+import { SwapLocals } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
+import { PoolData } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 /// @notice Interface for pool hooks
 interface IPoolHooks {
@@ -163,4 +165,6 @@ interface IPoolHooks {
         AfterSwapParams calldata params,
         uint256 amountCalculatedScaled18
     ) external returns (bool success);
+
+    function computeFee(PoolData memory poolData, SwapLocals memory vars) external returns (uint256);
 }

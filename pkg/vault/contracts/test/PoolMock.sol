@@ -21,6 +21,9 @@ import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { RateProviderMock } from "./RateProviderMock.sol";
 import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 
+import { SwapLocals } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
+import { PoolData } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
@@ -325,5 +328,9 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
     function _updateTokenRate() private {
         _rateProvider.mockRate(_newTokenRate);
+    }
+
+    function computeFee(PoolData memory, SwapLocals memory) public view override returns (uint256 dynamicFee) {
+        return 0;
     }
 }

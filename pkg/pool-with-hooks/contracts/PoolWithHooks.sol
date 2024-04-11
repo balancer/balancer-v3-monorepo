@@ -5,6 +5,11 @@ pragma solidity ^0.8.4;
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { AddLiquidityKind, RemoveLiquidityKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { SwapLocals } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
+import { PoolData } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IBaseDynamicFeePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBaseDynamicFeePool.sol";
+
+import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 
 abstract contract PoolWithHooks is IPoolHooks {
     IPoolHooks private immutable hooksContract;
@@ -28,6 +33,10 @@ abstract contract PoolWithHooks is IPoolHooks {
      */
     function hooksAddress() external view returns (address) {
         return address(hooksContract);
+    }
+
+    function computeFee(PoolData memory poolData, SwapLocals memory vars) external returns (uint256) {
+        return hooksContract.computeFee(poolData, vars);
     }
 
     /// @inheritdoc IPoolHooks
