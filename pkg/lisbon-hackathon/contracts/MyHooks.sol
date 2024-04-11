@@ -30,7 +30,7 @@ contract MyHooks is BaseHooks {
     }
 
     function supportsDynamicFee() external pure override returns (bool) {
-        return true;
+        return false;
     }
 
     /// @dev Checks if the trader has passed the required cooldown period between trades.
