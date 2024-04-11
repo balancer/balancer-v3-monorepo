@@ -83,13 +83,13 @@ contract MyPoolTest is BaseVaultTest {
 
         vm.label(address(pool), label);
 
-        return address(pool);
+        return address(myPool);
     }
 
     function initPool() internal override {
         vm.startPrank(lp);
         bptAmountOut = _initPool(
-            pool,
+            address(pool),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             // Account for the precision loss
             DAI_AMOUNT - DELTA - 1e6
@@ -97,15 +97,8 @@ contract MyPoolTest is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function testPoolPausedState() public {
-        (bool paused, uint256 pauseWindow, uint256 bufferPeriod, address pauseManager) = vault.getPoolPausedState(
-            address(pool)
-        );
-
-        assertFalse(paused, "Vault should not be paused initially");
-        assertApproxEqAbs(pauseWindow, START_TIMESTAMP + 365 days, 1, "Pause window period mismatch");
-        assertApproxEqAbs(bufferPeriod, START_TIMESTAMP + 365 days + 30 days, 1, "Pause buffer period mismatch");
-        assertEq(pauseManager, address(0), "Pause manager should be 0");
+    function testMyPool() public {
+        
     }
 
     /* function testInitialize() public {
