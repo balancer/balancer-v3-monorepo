@@ -1,5 +1,5 @@
 {
-  "name": "@balancer-labs/lisbon-hackathon",
+  "name": "@balancer-labs/v3-lisbon-hackathon",
   "version": "0.1.0",
   "description": "Balancer V3 Lisbon Hackathon",
   "license": "GPL-3.0-only",
@@ -35,7 +35,8 @@
     "slither:triage": "yarn compile && bash -c 'source ../../slither/bin/activate && slither --compile-force-framework hardhat --ignore-compile . --config-file ../../.slither.config.json --triage-mode'"
   },
   "dependencies": {
-    "@balancer-labs/v3-interfaces": "workspace:*"
+    "@balancer-labs/v3-interfaces": "workspace:*",
+    "@balancer-labs/v3-pool-with-hooks": "workspace:*"
   },
   "devDependencies": {
     "@balancer-labs/solidity-toolbox": "workspace:*",
