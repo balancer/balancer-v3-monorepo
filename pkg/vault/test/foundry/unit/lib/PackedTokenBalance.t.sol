@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { PackedTokenBalance } from "../../contracts/lib/PackedTokenBalance.sol";
+import { PackedTokenBalance } from "../../../../contracts/lib/PackedTokenBalance.sol";
 
 contract PackedTokenBalanceTest is Test {
     function testToFromPackedBalance__Fuzz(uint128 raw, uint128 live) public {

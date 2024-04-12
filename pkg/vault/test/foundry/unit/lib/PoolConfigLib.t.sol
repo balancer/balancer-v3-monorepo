@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { PoolConfig, PoolConfigBits, PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
+import { PoolConfig, PoolConfigBits, PoolConfigLib } from "../../../../contracts/lib/PoolConfigLib.sol";
 
 contract PoolConfigLibTest is Test {
     // 16 flags + 2 * 24 bit fee + 24 bit token diffs + 32 bit timestamp = 120 total bits used.
