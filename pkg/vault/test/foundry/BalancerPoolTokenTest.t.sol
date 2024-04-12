@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
@@ -26,6 +27,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     uint256 private constant CURRENT_NONCE = 0;
+
     uint256 internal privateKey = 0xBEEF;
     address user = vm.addr(privateKey);
 
@@ -45,46 +47,46 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     function testMint() public {
-        vault.mintERC20(address(poolToken), address(0xBEEF), defaultAmount);
+        vm.expectEmit(true, true, true, true);
+        emit IERC20.Transfer(address(0), user, defaultAmount);
 
-        assertEq(poolToken.balanceOf(address(0xBEEF)), defaultAmount);
-    }
+        vault.mintERC20(address(poolToken), user, defaultAmount);
 
-    function testMintMinimum() public {
-        vm.expectRevert(abi.encodeWithSelector(IERC20MultiToken.TotalSupplyTooLow.selector, 1, 1e6));
-        vault.mintERC20(address(pool), address(0xBEEF), 1);
+        assertEq(poolToken.balanceOf(user), defaultAmount);
     }
 
     function testBurn() public {
-        vault.mintERC20(address(pool), address(0xBEEF), defaultAmount);
-        vault.burnERC20(address(pool), address(0xBEEF), defaultAmount - 1e6);
+        uint burnAmount = defaultAmount - 1e6;
 
-        assertEq(poolToken.balanceOf(address(0xBEEF)), 1e6);
-    }
+        vault.mintERC20(address(pool), user, defaultAmount);
 
-    function testBurnMinimum() public {
-        vault.mintERC20(address(pool), address(0xBEEF), defaultAmount);
+        vm.expectEmit(true, true, true, true);
+        emit IERC20.Transfer(user, address(0), burnAmount);
+        vault.burnERC20(address(pool), user, burnAmount);
 
-        vm.expectRevert(abi.encodeWithSelector(IERC20MultiToken.TotalSupplyTooLow.selector, 0, 1e6));
-        vault.burnERC20(address(pool), address(0xBEEF), defaultAmount);
+        assertEq(poolToken.balanceOf(user), 1e6);
     }
 
     function testApprove() public {
         vault.mintERC20(address(pool), address(this), defaultAmount);
 
-        poolToken.approve(address(0xBEEF), defaultAmount);
+        vm.expectEmit(true, true, true, true);
+        emit IERC20.Approval(address(this), user, defaultAmount);
+        poolToken.approve(user, defaultAmount);
 
-        assertEq(poolToken.allowance(address(this), address(0xBEEF)), defaultAmount);
+        assertEq(poolToken.allowance(address(this), user), defaultAmount);
     }
 
     function testTransfer() public {
         vault.mintERC20(address(pool), address(this), defaultAmount);
 
-        assertTrue(poolToken.transfer(address(0xBEEF), defaultAmount));
+        vm.expectEmit(true, true, true, true);
+        emit IERC20.Transfer(address(this), user, defaultAmount);
+        assertTrue(poolToken.transfer(user, defaultAmount));
         assertEq(poolToken.totalSupply(), defaultAmount);
 
         assertEq(poolToken.balanceOf(address(this)), 0);
-        assertEq(poolToken.balanceOf(address(0xBEEF)), defaultAmount);
+        assertEq(poolToken.balanceOf(user), defaultAmount);
     }
 
     function testTransferFrom() public {
@@ -95,27 +97,17 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         vm.prank(from);
         poolToken.approve(address(this), defaultAmount);
 
-        poolToken.transferFrom(from, address(0xBEEF), defaultAmount);
+        vm.expectEmit(true, true, true, true);
+        emit IERC20.Approval(from, address(this), 0);
 
-        assertEq(poolToken.allowance(from, address(0xBEEF)), 0);
-        assertEq(poolToken.balanceOf(address(0xBEEF)), defaultAmount);
+        vm.expectEmit(true, true, true, true);
+        emit IERC20.Transfer(from, user, defaultAmount);
+
+        poolToken.transferFrom(from, user, defaultAmount);
+
+        assertEq(poolToken.allowance(from, user), 0);
+        assertEq(poolToken.balanceOf(user), defaultAmount);
         assertEq(poolToken.balanceOf(from), 0);
-    }
-
-    function testMintToZero() public {
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InvalidReceiver.selector, 0));
-        vault.mintERC20(address(pool), address(0), defaultAmount);
-    }
-
-    function testTransferFromToZero() public {
-        address from = address(0xABCD);
-        vault.mintERC20(address(pool), address(from), defaultAmount);
-
-        vm.prank(from);
-        poolToken.approve(address(this), defaultAmount);
-
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InvalidReceiver.selector, address(0)));
-        poolToken.transferFrom(address(from), address(0), defaultAmount);
     }
 
     function testPermit() public {

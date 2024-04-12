@@ -13,11 +13,13 @@ import { ERC20MultiTokenMock } from "../../contracts/test/ERC20MultiTokenMock.so
 import { ERC20MultiToken } from "../../contracts/token/ERC20MultiToken.sol";
 
 contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
-    address constant ZERO_ADDRESS = address(0x00);
-    address constant POOL = address(0x01);
-    address constant OWNER = address(0x02);
-    address constant OWNER2 = address(0x03);
-    address constant SPENDER = address(0x04);
+    address internal constant ZERO_ADDRESS = address(0x00);
+    address internal constant POOL = address(0x01);
+    address internal constant OWNER = address(0x02);
+    address internal constant OWNER2 = address(0x03);
+    address internal constant SPENDER = address(0x04);
+    uint256 internal constant DEFAULT_AMOUNT = 100;
+    uint256 internal constant MINIMUM_TOTAL_SUPPLY = 1e6;
 
     ERC20MultiTokenMock token;
 
@@ -46,29 +48,28 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
     }
 
     function testApprove() public {
-        uint amount = 100;
-
         vm.expectEmit(true, true, true, true);
-        emit ERC20MultiToken.Approval(POOL, OWNER, SPENDER, amount);
-        _approveWithBPTEmitApprovalMock(POOL, OWNER, SPENDER, amount);
+        emit ERC20MultiToken.Approval(POOL, OWNER, SPENDER, DEFAULT_AMOUNT);
 
-        assertEq(token.allowance(POOL, OWNER, SPENDER), amount, "Unexpected allowance");
+        _approveWithBPTEmitApprovalMock(POOL, OWNER, SPENDER, DEFAULT_AMOUNT);
+
+        assertEq(token.allowance(POOL, OWNER, SPENDER), DEFAULT_AMOUNT, "Unexpected allowance");
     }
 
     function testApproveRevertIfOwnerIsZero() public {
         vm.expectRevert(abi.encodeWithSelector(ERC20InvalidApprover.selector, address(0x00)));
-        token.manualApprove(POOL, ZERO_ADDRESS, SPENDER, 100);
+        token.manualApprove(POOL, ZERO_ADDRESS, SPENDER, DEFAULT_AMOUNT);
     }
 
     function testApproveRevertIfSpenderIsZero() public {
         vm.expectRevert(abi.encodeWithSelector(ERC20InvalidSpender.selector, ZERO_ADDRESS));
-        token.manualApprove(POOL, OWNER, ZERO_ADDRESS, 100);
+        token.manualApprove(POOL, OWNER, ZERO_ADDRESS, DEFAULT_AMOUNT);
     }
 
     function testSpendAllowance() public {
-        uint initialAllowance = 200;
-        uint spendAmount = initialAllowance - 1;
-        uint remainingAllowance = initialAllowance - spendAmount;
+        uint initialAllowance = DEFAULT_AMOUNT;
+        uint remainingAllowance = 1;
+        uint spendAmount = initialAllowance - remainingAllowance;
 
         _approveWithBPTEmitApprovalMock(POOL, OWNER, SPENDER, initialAllowance);
 
@@ -81,11 +82,19 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
         );
         token.manualSpendAllowance(POOL, OWNER, SPENDER, spendAmount);
 
-        assertEq(token.allowance(POOL, OWNER, SPENDER), initialAllowance - spendAmount, "Unexpected allowance");
+        assertEq(token.allowance(POOL, OWNER, SPENDER), remainingAllowance, "Unexpected allowance");
+    }
+
+    function testSpendAllowanceWhenAllowanceIsMax() public {
+        _approveWithBPTEmitApprovalMock(POOL, OWNER, SPENDER, type(uint256).max);
+        assertEq(token.allowance(POOL, OWNER, SPENDER), type(uint256).max, "Unexpected allowance");
+
+        token.manualSpendAllowance(POOL, OWNER, SPENDER, 1);
+        assertEq(token.allowance(POOL, OWNER, SPENDER), type(uint256).max, "Unexpected allowance");
     }
 
     function testSpendAllowanceRevertIfInsufficientAllowance() public {
-        uint initialAllowance = 100;
+        uint initialAllowance = DEFAULT_AMOUNT;
         uint spendAmount = initialAllowance + 1;
 
         _approveWithBPTEmitApprovalMock(POOL, OWNER, SPENDER, initialAllowance);
@@ -96,46 +105,36 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
         token.manualSpendAllowance(POOL, OWNER, SPENDER, spendAmount);
     }
 
-    function testSpendAllowanceRevertIfAllowanceIsMax() public {
-        _approveWithBPTEmitApprovalMock(POOL, OWNER, SPENDER, type(uint256).max);
-
-        token.manualSpendAllowance(POOL, OWNER, SPENDER, 1);
-    }
-
     // #endregion
 
     // #region QueryModeBalanceIncrease
     function testQueryModeBalanceIncrease() public {
-        uint amount = 100;
-
         vm.prank(OWNER, address(0x00));
-        token.manualQueryModeBalanceIncrease(POOL, OWNER, amount);
-        assertEq(token.balanceOf(POOL, OWNER), amount, "Unexpected balance");
+        token.manualQueryModeBalanceIncrease(POOL, OWNER, DEFAULT_AMOUNT);
+        assertEq(token.balanceOf(POOL, OWNER), DEFAULT_AMOUNT, "Unexpected balance");
     }
 
     function testQueryModeBalanceIncreaseRevertIfCallIsNotStatic() public {
         vm.prank(OWNER, OWNER);
         vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
-        token.manualQueryModeBalanceIncrease(POOL, OWNER, 300);
+        token.manualQueryModeBalanceIncrease(POOL, OWNER, DEFAULT_AMOUNT);
     }
 
     // #endregion
 
     // #region Mint
     function testMint() public {
-        uint amount = token.getMinimumTotalSupply();
-
         vm.expectEmit(true, true, true, true);
-        emit ERC20MultiToken.Transfer(POOL, ZERO_ADDRESS, OWNER, amount);
-        _mintWithBPTEmitTransferMock(POOL, OWNER, amount);
+        emit ERC20MultiToken.Transfer(POOL, ZERO_ADDRESS, OWNER, MINIMUM_TOTAL_SUPPLY);
+        _mintWithBPTEmitTransferMock(POOL, OWNER, MINIMUM_TOTAL_SUPPLY);
 
-        assertEq(token.balanceOf(POOL, OWNER), amount, "Unexpected balance");
-        assertEq(token.totalSupply(POOL), amount, "Unexpected total supply");
+        assertEq(token.balanceOf(POOL, OWNER), MINIMUM_TOTAL_SUPPLY, "Unexpected balance");
+        assertEq(token.totalSupply(POOL), MINIMUM_TOTAL_SUPPLY, "Unexpected total supply");
     }
 
     function testDoubleMintToCheckTotalSupply() public {
-        uint firstMintAmount = token.getMinimumTotalSupply();
-        uint secondMintAmount = 100;
+        uint firstMintAmount = MINIMUM_TOTAL_SUPPLY;
+        uint secondMintAmount = DEFAULT_AMOUNT;
 
         _mintWithBPTEmitTransferMock(POOL, OWNER, firstMintAmount);
 
@@ -149,33 +148,36 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
 
     function testMintRevertIfToIsZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(ERC20InvalidReceiver.selector, ZERO_ADDRESS));
-        token.manualMint(POOL, ZERO_ADDRESS, 100);
+        token.manualMint(POOL, ZERO_ADDRESS, DEFAULT_AMOUNT);
     }
 
     function testMintRevertIfTotalSupplyIsLessThanMinimum() public {
-        uint minTotalSupply = token.getMinimumTotalSupply();
-        uint amount = minTotalSupply - 1;
-        vm.expectRevert(abi.encodeWithSelector(TotalSupplyTooLow.selector, amount, minTotalSupply));
-        token.manualMint(POOL, OWNER, amount);
+        vm.expectRevert(
+            abi.encodeWithSelector(TotalSupplyTooLow.selector, MINIMUM_TOTAL_SUPPLY - 1, MINIMUM_TOTAL_SUPPLY)
+        );
+        token.manualMint(POOL, OWNER, MINIMUM_TOTAL_SUPPLY - 1);
     }
 
     // #endregion
 
     // #region MintMinimumSupplyReserve
     function testMintMinimumSupplyReserve() public {
-        uint amount = token.getMinimumTotalSupply();
-
         vm.expectEmit(true, true, true, true);
-        emit ERC20MultiToken.Transfer(POOL, ZERO_ADDRESS, ZERO_ADDRESS, amount);
+        emit ERC20MultiToken.Transfer(POOL, ZERO_ADDRESS, ZERO_ADDRESS, MINIMUM_TOTAL_SUPPLY);
         vm.mockCall(
             POOL,
-            abi.encodeWithSelector(BalancerPoolToken.emitTransfer.selector, ZERO_ADDRESS, ZERO_ADDRESS, amount),
+            abi.encodeWithSelector(
+                BalancerPoolToken.emitTransfer.selector,
+                ZERO_ADDRESS,
+                ZERO_ADDRESS,
+                MINIMUM_TOTAL_SUPPLY
+            ),
             new bytes(0)
         );
         token.manualMintMinimumSupplyReserve(POOL);
 
-        assertEq(token.balanceOf(POOL, ZERO_ADDRESS), amount, "Unexpected balance");
-        assertEq(token.totalSupply(POOL), amount, "Unexpected total supply");
+        assertEq(token.balanceOf(POOL, ZERO_ADDRESS), MINIMUM_TOTAL_SUPPLY, "Unexpected balance");
+        assertEq(token.totalSupply(POOL), MINIMUM_TOTAL_SUPPLY, "Unexpected total supply");
     }
 
     // #endregion
@@ -183,7 +185,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
     // #region Burn
     function testBurn() public {
         uint burnAmount = 1;
-        uint balanceAfterBurn = token.getMinimumTotalSupply();
+        uint balanceAfterBurn = MINIMUM_TOTAL_SUPPLY;
         uint mintAmount = balanceAfterBurn + burnAmount;
 
         _mintWithBPTEmitTransferMock(POOL, OWNER, mintAmount);
@@ -198,8 +200,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
 
     function testDoubleBurnToCheckTotalSupply() public {
         uint firstMintAmount = token.getMinimumTotalSupply();
-        uint secondMintAmount = 100;
-
+        uint secondMintAmount = DEFAULT_AMOUNT;
         uint burnAmount = 50;
 
         _mintWithBPTEmitTransferMock(POOL, OWNER, firstMintAmount);
@@ -219,17 +220,16 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
 
     function testBurnRevertIfFromIsZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(ERC20InvalidSender.selector, ZERO_ADDRESS));
-        token.manualBurn(POOL, ZERO_ADDRESS, 100);
+        token.manualBurn(POOL, ZERO_ADDRESS, DEFAULT_AMOUNT);
     }
 
     function testBurnRevertIfTotalSupplyIsLessThanMinimum() public {
-        uint minTotalSupply = token.getMinimumTotalSupply();
-        uint burnAmount = minTotalSupply - 1;
+        uint burnAmount = 1;
 
-        _mintWithBPTEmitTransferMock(POOL, OWNER, minTotalSupply);
+        _mintWithBPTEmitTransferMock(POOL, OWNER, MINIMUM_TOTAL_SUPPLY);
 
         vm.expectRevert(
-            abi.encodeWithSelector(TotalSupplyTooLow.selector, minTotalSupply - burnAmount, minTotalSupply)
+            abi.encodeWithSelector(TotalSupplyTooLow.selector, MINIMUM_TOTAL_SUPPLY - burnAmount, MINIMUM_TOTAL_SUPPLY)
         );
         token.manualBurn(POOL, OWNER, burnAmount);
     }
@@ -248,21 +248,19 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
 
     // #region Transfer
     function testTransfer() public {
-        uint amount = token.getMinimumTotalSupply();
-
-        _mintWithBPTEmitTransferMock(POOL, OWNER, amount);
+        _mintWithBPTEmitTransferMock(POOL, OWNER, MINIMUM_TOTAL_SUPPLY);
 
         vm.mockCall(
             POOL,
-            abi.encodeWithSelector(BalancerPoolToken.emitTransfer.selector, OWNER, OWNER2, amount),
+            abi.encodeWithSelector(BalancerPoolToken.emitTransfer.selector, OWNER, OWNER2, MINIMUM_TOTAL_SUPPLY),
             new bytes(0)
         );
         vm.expectEmit(true, true, true, true);
-        emit ERC20MultiToken.Transfer(POOL, OWNER, OWNER2, amount);
-        token.manualTransfer(POOL, OWNER, OWNER2, amount);
+        emit ERC20MultiToken.Transfer(POOL, OWNER, OWNER2, MINIMUM_TOTAL_SUPPLY);
+        token.manualTransfer(POOL, OWNER, OWNER2, MINIMUM_TOTAL_SUPPLY);
 
         assertEq(token.balanceOf(POOL, OWNER), 0, "Unexpected balance");
-        assertEq(token.balanceOf(POOL, OWNER2), amount, "Unexpected balance");
+        assertEq(token.balanceOf(POOL, OWNER2), MINIMUM_TOTAL_SUPPLY, "Unexpected balance");
     }
 
     function testTransferRevertIfFromIsZeroAddress() public {
@@ -276,12 +274,13 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
     }
 
     function testTransferRevertIfInsufficientBalance() public {
-        uint mintAmount = token.getMinimumTotalSupply();
-        uint transferAmount = mintAmount + 1;
+        uint transferAmount = MINIMUM_TOTAL_SUPPLY + 1;
 
-        _mintWithBPTEmitTransferMock(POOL, OWNER, mintAmount);
+        _mintWithBPTEmitTransferMock(POOL, OWNER, MINIMUM_TOTAL_SUPPLY);
 
-        vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientBalance.selector, OWNER, mintAmount, transferAmount));
+        vm.expectRevert(
+            abi.encodeWithSelector(ERC20InsufficientBalance.selector, OWNER, MINIMUM_TOTAL_SUPPLY, transferAmount)
+        );
         token.manualTransfer(POOL, OWNER, OWNER2, transferAmount);
     }
 
