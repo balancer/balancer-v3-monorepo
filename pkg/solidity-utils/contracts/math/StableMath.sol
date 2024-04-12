@@ -10,6 +10,10 @@ import "./FixedPoint.sol";
 library StableMath {
     using FixedPoint for uint256;
 
+    // For security reasons, to help ensure that for all possible "round trip" paths
+    // the caller always receives the same or fewer tokens than supplied,
+    // we have chosen the rounding direction to favor the protocol in all cases.
+
     /// @dev The iterations to calculate the invariant didn't converge
     error StableInvariantDidntConverge();
 
@@ -191,6 +195,8 @@ library StableMath {
         // The weighted sum of token balance ratios with fee
         uint256 invariantRatioWithFees = 0;
         for (uint256 i = 0; i < numTokens; ++i) {
+            // Round down to ultimately reduce the ratios with fees,
+            // which will be used later upon calculating the `nonTaxableAmount`
             uint256 currentWeight = balances[i].divDown(sumBalances);
             balanceRatiosWithFee[i] = (balances[i] + amountsIn[i]).divDown(balances[i]);
             invariantRatioWithFees = invariantRatioWithFees + (balanceRatiosWithFee[i].mulDown(currentWeight));
@@ -203,6 +209,7 @@ library StableMath {
 
             // Check if the balance ratio is greater than the ideal ratio to charge fees or not
             if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
+                // Round down to ultimately lower the `amountInWithoutFee`, consequently reducing the `newBalances`
                 uint256 nonTaxableAmount = balances[i].mulDown(invariantRatioWithFees - FixedPoint.ONE);
                 uint256 taxableAmount = amountsIn[i] - nonTaxableAmount;
                 amountInWithoutFee = nonTaxableAmount + (taxableAmount.mulDown(FixedPoint.ONE - swapFeePercentage));
@@ -213,11 +220,13 @@ library StableMath {
             newBalances[i] = balances[i] + amountInWithoutFee;
         }
 
+        // Round down the `invariantRatio` involved in the calculation of the BPT out
         uint256 newInvariant = computeInvariant(amp, newBalances);
         uint256 invariantRatio = newInvariant.divDown(currentInvariant);
 
         // If the invariant didn't increase for any reason, we simply don't mint BPT
         if (invariantRatio > FixedPoint.ONE) {
+            // Round down to get less BPT out
             return bptTotalSupply.mulDown(invariantRatio - FixedPoint.ONE);
         } else {
             return 0;
@@ -235,6 +244,7 @@ library StableMath {
     ) internal pure returns (uint256) {
         // Token in, so we round up overall.
 
+        // Round up to ultimately increase the `amountInWithoutFee`
         uint256 newInvariant = (bptTotalSupply + bptAmountOut).divUp(bptTotalSupply).mulUp(currentInvariant);
 
         // Calculate amount in without fee.
@@ -249,12 +259,14 @@ library StableMath {
         }
 
         // We can now compute how much extra balance is being deposited and used in virtual swaps, and charge swap fees
-        // accordingly.
-        uint256 currentWeight = balances[tokenIndex].divDown(sumBalances);
+        // accordingly. Regarding rounding, a conflict of interests arises – the less the `taxableAmount`,
+        // the larger the `nonTaxableAmount`; we prioritize incrementing the latter.
+        uint256 currentWeight = balances[tokenIndex].divUp(sumBalances);
         uint256 taxablePercentage = currentWeight.complement();
         uint256 taxableAmount = amountInWithoutFee.mulDown(taxablePercentage);
         uint256 nonTaxableAmount = amountInWithoutFee - taxableAmount;
 
+        // Round up to get more token in
         return nonTaxableAmount + (taxableAmount.divUp(FixedPoint.ONE - swapFeePercentage));
     }
 
@@ -285,6 +297,8 @@ library StableMath {
         uint256[] memory balanceRatiosWithoutFee = new uint256[](numTokens);
         uint256 invariantRatioWithoutFees = 0;
         for (uint256 i = 0; i < numTokens; ++i) {
+            // Round down to ultimately reduce the ratios without fees,
+            // which will be used later upon calculating the `nonTaxableAmount`
             uint256 currentWeight = balances[i].divDown(sumBalances);
             balanceRatiosWithoutFee[i] = (balances[i] - amountsOut[i]).divDown(balances[i]);
             invariantRatioWithoutFees = invariantRatioWithoutFees + (balanceRatiosWithoutFee[i].mulDown(currentWeight));
@@ -298,6 +312,7 @@ library StableMath {
 
             uint256 amountOutWithFee;
             if (invariantRatioWithoutFees > balanceRatiosWithoutFee[i]) {
+                // Round up to ultimately enlarge the `amountOutWithFee`, consequently reducing the `newBalances`
                 uint256 nonTaxableAmount = balances[i].mulUp(invariantRatioWithoutFees.complement());
                 uint256 taxableAmount = amountsOut[i] - nonTaxableAmount;
                 amountOutWithFee = nonTaxableAmount + (taxableAmount.divUp(FixedPoint.ONE - swapFeePercentage));
@@ -308,10 +323,11 @@ library StableMath {
             newBalances[i] = balances[i] - amountOutWithFee;
         }
 
+        // Round down the `invariantRatio` involved in the calculation of the BPT in
         uint256 newInvariant = computeInvariant(amp, newBalances);
         uint256 invariantRatio = newInvariant.divDown(currentInvariant);
 
-        // return amountBPTIn
+        // Round up to get more BPT in
         return bptTotalSupply.mulUp(invariantRatio.complement());
     }
 
@@ -326,6 +342,7 @@ library StableMath {
     ) internal pure returns (uint256) {
         // Token out, so we round down overall.
 
+        // Round up to ultimately decrease the `amountOutWithoutFee`
         uint256 newInvariant = (bptTotalSupply - bptAmountIn).divUp(bptTotalSupply).mulUp(currentInvariant);
 
         // Calculate amount out without fee
@@ -340,15 +357,16 @@ library StableMath {
         }
 
         // We can now compute how much excess balance is being withdrawn as a result of the virtual swaps, which result
-        // in swap fees.
+        // in swap fees. Swap fees are typically charged on 'token in', but there is no 'token in' here, so we apply it
+        // to 'token out'. This results in slightly larger price impact.Regarding rounding, a conflict of interests
+        // arises – the greater the `taxableAmount`, the smaller the `nonTaxableAmount`; we prioritize decrementing
+        // the latter.
         uint256 currentWeight = balances[tokenIndex].divDown(sumBalances);
         uint256 taxablePercentage = currentWeight.complement();
-
-        // Swap fees are typically charged on 'token in', but there is no 'token in' here, so we apply it
-        // to 'token out'. This results in slightly larger price impact. Fees are rounded up.
         uint256 taxableAmount = amountOutWithoutFee.mulUp(taxablePercentage);
         uint256 nonTaxableAmount = amountOutWithoutFee - taxableAmount;
 
+        // Round down to get less token out
         return nonTaxableAmount + (taxableAmount.mulDown(FixedPoint.ONE - swapFeePercentage));
     }
 
