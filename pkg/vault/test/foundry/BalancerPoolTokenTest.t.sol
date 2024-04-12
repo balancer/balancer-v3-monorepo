@@ -6,13 +6,14 @@ import "forge-std/Test.sol";
 
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import { IEIP712 } from "permit2/src/interfaces/IEIP712.sol";
 
 import { IMinimumSwapFee } from "@balancer-labs/v3-interfaces/contracts/vault/IMinimumSwapFee.sol";
 
 import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { BalancerPoolToken } from "vault/contracts/BalancerPoolToken.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
@@ -120,7 +121,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
     function testPermit() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
-            BalancerPoolToken(address(poolToken)),
+            IEIP712(address(poolToken)),
             user,
             address(0xCAFE),
             defaultAmount,
@@ -138,7 +139,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     // @dev Just test for general fail as it is hard to compute error arguments
     function testFailPermitBadNonce() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
-            BalancerPoolToken(address(poolToken)),
+            IEIP712(address(poolToken)),
             user,
             address(0xCAFE),
             defaultAmount,
@@ -154,7 +155,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     // @dev Just test for general fail as it is hard to compute error arguments
     function testFailPermitBadDeadline() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
-            BalancerPoolToken(address(poolToken)),
+            IEIP712(address(poolToken)),
             user,
             address(0xCAFE),
             defaultAmount,
@@ -169,7 +170,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     // @dev Just test for general fail as it is hard to compute error arguments
     function testFailPermitPastDeadline() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
-            BalancerPoolToken(address(poolToken)),
+            IEIP712(address(poolToken)),
             user,
             address(0xCAFE),
             defaultAmount,
@@ -184,7 +185,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     // @dev Just test for general fail as it is hard to compute error arguments
     function testFailPermitReplay() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
-            BalancerPoolToken(address(poolToken)),
+            IEIP712(address(poolToken)),
             user,
             address(0xCAFE),
             defaultAmount,
@@ -208,7 +209,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         vm.assume(to != address(vault));
 
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
-            BalancerPoolToken(address(poolToken)),
+            IEIP712(address(poolToken)),
             usr,
             to,
             amount,
@@ -239,7 +240,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         address usr = vm.addr(privKey);
 
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
-            BalancerPoolToken(address(poolToken)),
+            IEIP712(address(poolToken)),
             usr,
             to,
             amount,
@@ -260,7 +261,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         address usr = vm.addr(privKey);
 
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
-            BalancerPoolToken(address(poolToken)),
+            IEIP712(address(poolToken)),
             usr,
             to,
             amount,
@@ -280,7 +281,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         address usr = vm.addr(privKey);
 
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
-            BalancerPoolToken(address(poolToken)),
+            IEIP712(address(poolToken)),
             usr,
             to,
             amount,
@@ -289,7 +290,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
             privKey
         );
 
-        vm.expectRevert(abi.encodeWithSelector(BalancerPoolToken.ERC2612ExpiredSignature.selector, deadline));
+        vm.expectRevert(abi.encodeWithSelector(ERC20Permit.ERC2612ExpiredSignature.selector, deadline));
         poolToken.permit(usr, to, amount, deadline, v, r, s);
     }
 
@@ -302,7 +303,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         address usr = vm.addr(privKey);
 
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
-            BalancerPoolToken(address(poolToken)),
+            IEIP712(address(poolToken)),
             usr,
             to,
             amount,
