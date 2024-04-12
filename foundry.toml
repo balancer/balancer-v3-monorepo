@@ -25,9 +25,6 @@ auto_detect_solc = false
 evm_version = 'cancun'
 ignored_error_codes = [2394] # Transient storage
 
-[profile.via-ir]
-via_ir = true
-
 [fuzz]
 runs = 10000
 max_test_rejects = 60000
