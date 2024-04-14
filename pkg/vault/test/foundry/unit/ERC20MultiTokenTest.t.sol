@@ -9,8 +9,8 @@ import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoo
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 
-import { ERC20MultiTokenMock } from "../../contracts/test/ERC20MultiTokenMock.sol";
-import { ERC20MultiToken } from "../../contracts/token/ERC20MultiToken.sol";
+import { ERC20MultiTokenMock } from "../../../contracts/test/ERC20MultiTokenMock.sol";
+import { ERC20MultiToken } from "../../../contracts/token/ERC20MultiToken.sol";
 
 contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
     address internal constant ZERO_ADDRESS = address(0x00);
