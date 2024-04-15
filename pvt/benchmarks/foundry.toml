@@ -5,6 +5,7 @@ libs = ['node_modules']
 test = 'test/foundry'
 cache_path  = 'forge-cache'
 allow_paths = ['../', '../../node_modules/', '../../pkg']
+ffi = true
 remappings = [
     'vault/=../../pkg/vault/',
     'solidity-utils/=../../pkg/solidity-utils/',
@@ -20,6 +21,8 @@ optimizer = true
 optimizer_runs = 9999
 solc_version = '0.8.24'
 auto_detect_solc = false
+evm_version = 'cancun'
+ignored_error_codes = [2394] # Transient storage
 
 [fuzz]
 runs = 10000

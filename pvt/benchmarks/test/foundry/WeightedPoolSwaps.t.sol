@@ -9,7 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { TokenConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
@@ -34,6 +34,10 @@ contract WeightedPoolSwaps is BaseVaultTest {
     uint256 constant initializeAmount = maxSwapAmount * 100_000;
     uint256 constant initialFunds = initializeAmount * 100e6;
     uint256 constant swapTimes = 5000;
+    uint256 constant swapFee = 1e16; // 1%
+
+    uint256 wstethIdx;
+    uint256 daiIdx;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -48,10 +52,11 @@ contract WeightedPoolSwaps is BaseVaultTest {
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
         rateProviders.push(new RateProviderMock());
         rateProviders.push(new RateProviderMock());
+        (wstethIdx, daiIdx) = wsteth < dai ? (0, 1) : (1, 0);
 
         TokenConfig[] memory tokens = new TokenConfig[](2);
-        tokens[0].token = IERC20(wsteth);
-        tokens[1].token = IERC20(dai);
+        tokens[wstethIdx].token = IERC20(wsteth);
+        tokens[daiIdx].token = IERC20(dai);
 
         wsteth.mint(bob, initialFunds);
         dai.mint(bob, initialFunds);
@@ -65,13 +70,15 @@ contract WeightedPoolSwaps is BaseVaultTest {
                 "ERC20POOL",
                 tokens,
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
-                0, // swap fee
+                swapFee,
                 bytes32(uint256(1))
             )
         );
 
-        tokens[0].rateProvider = rateProviders[0];
-        tokens[1].rateProvider = rateProviders[1];
+        tokens[0].tokenType = TokenType.WITH_RATE;
+        tokens[1].tokenType = TokenType.WITH_RATE;
+        tokens[wstethIdx].rateProvider = rateProviders[wstethIdx];
+        tokens[daiIdx].rateProvider = rateProviders[daiIdx];
 
         weightedPoolWithRate = WeightedPool(
             factory.create(
@@ -79,7 +86,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
                 "ERC20POOL",
                 tokens,
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
-                0, // swap fee
+                swapFee,
                 bytes32(0)
             )
         );
@@ -95,11 +102,15 @@ contract WeightedPoolSwaps is BaseVaultTest {
         // Set pool swap fee
         authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
 
+        IERC20[] memory tokens = new IERC20[](2);
+        tokens[wstethIdx] = wsteth;
+        tokens[daiIdx] = dai;
+
         for (uint256 i = 0; i < pools.length; ++i) {
             vm.prank(alice);
             router.initialize(
                 pools[i],
-                [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
+                tokens,
                 [initializeAmount, initializeAmount].toMemoryArray(),
                 0,
                 false,
