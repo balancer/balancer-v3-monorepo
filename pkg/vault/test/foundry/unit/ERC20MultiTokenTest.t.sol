@@ -48,7 +48,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
     }
 
     function testApprove() public {
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit();
         emit ERC20MultiToken.Approval(POOL, OWNER, SPENDER, DEFAULT_AMOUNT);
 
         _approveWithBPTEmitApprovalMock(POOL, OWNER, SPENDER, DEFAULT_AMOUNT);
@@ -73,7 +73,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
 
         _approveWithBPTEmitApprovalMock(POOL, OWNER, SPENDER, initialAllowance);
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit();
         emit ERC20MultiToken.Approval(POOL, OWNER, SPENDER, remainingAllowance);
         vm.mockCall(
             POOL,
@@ -109,12 +109,14 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
 
     // #region QueryModeBalanceIncrease
     function testQueryModeBalanceIncrease() public {
+        // we prank here msg.sender to OWNER and tx.origin to address(0x00) to simulate a static call
         vm.prank(OWNER, address(0x00));
         token.manualQueryModeBalanceIncrease(POOL, OWNER, DEFAULT_AMOUNT);
         assertEq(token.balanceOf(POOL, OWNER), DEFAULT_AMOUNT, "Unexpected balance");
     }
 
     function testQueryModeBalanceIncreaseRevertIfCallIsNotStatic() public {
+        // we prank here msg.sender and tx.origin to OWNER to simulate a non-static call
         vm.prank(OWNER, OWNER);
         vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
         token.manualQueryModeBalanceIncrease(POOL, OWNER, DEFAULT_AMOUNT);
@@ -124,7 +126,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
 
     // #region Mint
     function testMint() public {
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit();
         emit ERC20MultiToken.Transfer(POOL, ZERO_ADDRESS, OWNER, MINIMUM_TOTAL_SUPPLY);
         _mintWithBPTEmitTransferMock(POOL, OWNER, MINIMUM_TOTAL_SUPPLY);
 
@@ -162,7 +164,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
 
     // #region MintMinimumSupplyReserve
     function testMintMinimumSupplyReserve() public {
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit();
         emit ERC20MultiToken.Transfer(POOL, ZERO_ADDRESS, ZERO_ADDRESS, MINIMUM_TOTAL_SUPPLY);
         vm.mockCall(
             POOL,
@@ -190,7 +192,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
 
         _mintWithBPTEmitTransferMock(POOL, OWNER, mintAmount);
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit();
         emit ERC20MultiToken.Transfer(POOL, OWNER, ZERO_ADDRESS, burnAmount);
         _burnWithBPTEmitTransferMock(POOL, OWNER, burnAmount);
 
@@ -255,7 +257,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
             abi.encodeWithSelector(BalancerPoolToken.emitTransfer.selector, OWNER, OWNER2, MINIMUM_TOTAL_SUPPLY),
             new bytes(0)
         );
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit();
         emit ERC20MultiToken.Transfer(POOL, OWNER, OWNER2, MINIMUM_TOTAL_SUPPLY);
         token.manualTransfer(POOL, OWNER, OWNER2, MINIMUM_TOTAL_SUPPLY);
 

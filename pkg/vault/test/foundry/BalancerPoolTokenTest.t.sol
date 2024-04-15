@@ -28,6 +28,8 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
     uint256 private constant CURRENT_NONCE = 0;
 
+    uint256 internal constant MINIMUM_TOTAL_SUPPLY = 1e6;
+
     uint256 internal privateKey = 0xBEEF;
     address user = vm.addr(privateKey);
 
@@ -41,9 +43,9 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     function testMetadata() public {
-        assertEq(poolToken.name(), "ERC20 Pool");
-        assertEq(poolToken.symbol(), "ERC20POOL");
-        assertEq(poolToken.decimals(), 18);
+        assertEq(poolToken.name(), "ERC20 Pool", "name mismatch");
+        assertEq(poolToken.symbol(), "ERC20POOL", "symbol mismatch");
+        assertEq(poolToken.decimals(), 18, "decimals mismatch");
     }
 
     function testMint() public {
@@ -52,11 +54,11 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
         vault.mintERC20(address(poolToken), user, defaultAmount);
 
-        assertEq(poolToken.balanceOf(user), defaultAmount);
+        assertEq(poolToken.balanceOf(user), defaultAmount, "balance mismatch");
     }
 
     function testBurn() public {
-        uint burnAmount = defaultAmount - 1e6;
+        uint burnAmount = defaultAmount - MINIMUM_TOTAL_SUPPLY;
 
         vault.mintERC20(address(pool), user, defaultAmount);
 
@@ -64,7 +66,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         emit IERC20.Transfer(user, address(0), burnAmount);
         vault.burnERC20(address(pool), user, burnAmount);
 
-        assertEq(poolToken.balanceOf(user), 1e6);
+        assertEq(poolToken.balanceOf(user), MINIMUM_TOTAL_SUPPLY, "balance mismatch");
     }
 
     function testApprove() public {
@@ -74,7 +76,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         emit IERC20.Approval(address(this), user, defaultAmount);
         poolToken.approve(user, defaultAmount);
 
-        assertEq(poolToken.allowance(address(this), user), defaultAmount);
+        assertEq(poolToken.allowance(address(this), user), defaultAmount, "allowance mismatch");
     }
 
     function testTransfer() public {
@@ -82,11 +84,11 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
         vm.expectEmit(true, true, true, true);
         emit IERC20.Transfer(address(this), user, defaultAmount);
-        assertTrue(poolToken.transfer(user, defaultAmount));
-        assertEq(poolToken.totalSupply(), defaultAmount);
+        assertTrue(poolToken.transfer(user, defaultAmount), "transfer failed");
+        assertEq(poolToken.totalSupply(), defaultAmount, "total supply mismatch");
 
-        assertEq(poolToken.balanceOf(address(this)), 0);
-        assertEq(poolToken.balanceOf(user), defaultAmount);
+        assertEq(poolToken.balanceOf(address(this)), 0, "address(this) balance mismatch");
+        assertEq(poolToken.balanceOf(user), defaultAmount, "user balance mismatch");
     }
 
     function testTransferFrom() public {
@@ -105,9 +107,9 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
         poolToken.transferFrom(from, user, defaultAmount);
 
-        assertEq(poolToken.allowance(from, user), 0);
-        assertEq(poolToken.balanceOf(user), defaultAmount);
-        assertEq(poolToken.balanceOf(from), 0);
+        assertEq(poolToken.allowance(from, user), 0, "allowance(from, user) isn't 0");
+        assertEq(poolToken.balanceOf(user), defaultAmount, "user balance mismatch");
+        assertEq(poolToken.balanceOf(from), 0, "sender balance mismatch");
     }
 
     function testPermit() public {
@@ -123,8 +125,8 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v, r, s);
 
-        assertEq(poolToken.allowance(user, address(0xCAFE)), defaultAmount);
-        assertEq(poolToken.nonces(user), CURRENT_NONCE + 1);
+        assertEq(poolToken.allowance(user, address(0xCAFE)), defaultAmount, "allowance mismatch");
+        assertEq(poolToken.nonces(user), CURRENT_NONCE + 1, "nonce mismatch");
     }
 
     // @dev Just test for general fail as it is hard to compute error arguments
@@ -211,8 +213,8 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
         poolToken.permit(usr, to, amount, deadline, v, r, s);
 
-        assertEq(poolToken.allowance(usr, to), amount);
-        assertEq(poolToken.nonces(usr), CURRENT_NONCE + 1);
+        assertEq(poolToken.allowance(usr, to), amount, "allowance mismatch");
+        assertEq(poolToken.nonces(usr), CURRENT_NONCE + 1, "nonce mismatch");
     }
 
     // @dev Just test for general fail as it is hard to compute error arguments
@@ -308,7 +310,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     function testSupportsIERC165() public {
-        assertTrue(poolToken.supportsInterface(type(IERC165).interfaceId));
-        assertFalse(poolToken.supportsInterface(type(IMinimumSwapFee).interfaceId));
+        assertTrue(poolToken.supportsInterface(type(IERC165).interfaceId), "IERC165 not supported");
+        assertFalse(poolToken.supportsInterface(type(IMinimumSwapFee).interfaceId), "IMinimumSwapFee supported");
     }
 }
