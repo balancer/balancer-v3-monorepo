@@ -13,7 +13,7 @@
     "prettier": "npx prettier --write --plugin=prettier-plugin-solidity 'test/**/*.sol' 'test/**/*.sol'",
     "test": "yarn test:hardhat && yarn test:forge",
     "test:hardhat": "hardhat test",
-    "test:forge": "forge test -vvv --no-match-test Fork",
+    "test:forge": "forge test -vvv",
     "gas": "forge test -vvv --gas-report"
   },
   "devDependencies": {
