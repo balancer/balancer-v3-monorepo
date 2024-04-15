@@ -22,7 +22,9 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import { ReentrancyGuard } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
 import { BasePoolAuthentication } from "./BasePoolAuthentication.sol";
 import { BalancerPoolToken } from "./BalancerPoolToken.sol";
@@ -36,7 +38,7 @@ contract ERC4626BufferPool is
     BalancerPoolToken,
     BasePoolHooks,
     BasePoolAuthentication,
-    ReentrancyGuard
+    ReentrancyGuardTransient
 {
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
