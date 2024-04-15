@@ -106,6 +106,117 @@ contract WeightedPoolSwaps is BaseVaultTest {
         }
     }
 
+    function testExactInSnapshot() public {
+        uint256 amountIn = maxSwapAmount;
+
+        vm.startPrank(bob);
+        uint256 amountOut = router.swapSingleTokenExactIn(
+            address(weightedPool),
+            dai,
+            wsteth,
+            amountIn,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        snapStart("exactInSnapshot");
+        router.swapSingleTokenExactIn(address(weightedPool), wsteth, dai, amountOut, 0, MAX_UINT256, false, bytes(""));
+        snapEnd();
+        vm.stopPrank();
+    }
+
+    function testExactInWithRateSnapshot() public {
+        uint256 amountIn = maxSwapAmount;
+
+        vm.startPrank(bob);
+        uint256 amountOut = router.swapSingleTokenExactIn(
+            address(weightedPoolWithRate),
+            dai,
+            wsteth,
+            amountIn,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        snapStart("exactInWithRateSnapshot");
+        router.swapSingleTokenExactIn(
+            address(weightedPoolWithRate),
+            wsteth,
+            dai,
+            amountOut,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+        snapEnd();
+        vm.stopPrank();
+    }
+
+    function testExactOutSnapshot() public {
+        uint256 amountOut = maxSwapAmount;
+
+        vm.startPrank(bob);
+        uint256 amountIn = router.swapSingleTokenExactOut(
+            address(weightedPool),
+            dai,
+            wsteth,
+            amountOut,
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        snapStart("exactOutSnapshot");
+        router.swapSingleTokenExactOut(
+            address(weightedPool),
+            wsteth,
+            dai,
+            amountIn,
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+        snapEnd();
+        vm.stopPrank();
+    }
+
+    function testExactOutWithRateSnapshot() public {
+        uint256 amountOut = maxSwapAmount;
+
+        vm.startPrank(bob);
+        uint256 amountIn = router.swapSingleTokenExactOut(
+            address(weightedPoolWithRate),
+            dai,
+            wsteth,
+            amountOut,
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        snapStart("exactOutWithRateSnapshot");
+        router.swapSingleTokenExactOut(
+            address(weightedPoolWithRate),
+            wsteth,
+            dai,
+            amountIn,
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+        snapEnd();
+        vm.stopPrank();
+    }
+
     function testSwapExactInWithoutRate() public {
         _testSwapExactIn(address(weightedPool));
     }

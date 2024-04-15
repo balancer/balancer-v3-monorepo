@@ -6,6 +6,7 @@ test = 'test/foundry'
 ffi = true
 cache_path  = 'forge-cache'
 allow_paths = ['../', '../../node_modules/', '../../pkg']
+fs_permissions = [{ access = "read-write", path = ".forge-snapshots/"}]
 remappings = [
     'vault/=../../pkg/vault/',
     'pool-weighted/=../../pkg/pool-weighted/',
