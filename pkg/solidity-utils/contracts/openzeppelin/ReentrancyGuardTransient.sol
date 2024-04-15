@@ -13,7 +13,7 @@ abstract contract ReentrancyGuardTransient {
     using StorageSlot for *;
 
     // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.ReentrancyGuard")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant REENTRANCY_GUARD_STORAGE =
+    bytes32 private constant _REENTRANCY_GUARD_STORAGE =
         0x9b779b17422d0df92223018b32b4d1fa46e071723d6817e2486d003becc55f00;
 
     /**
@@ -41,11 +41,11 @@ abstract contract ReentrancyGuardTransient {
         }
 
         // Any calls to nonReentrant after this point will fail
-        REENTRANCY_GUARD_STORAGE.asBoolean().tstore(true);
+        _REENTRANCY_GUARD_STORAGE.asBoolean().tstore(true);
     }
 
     function _nonReentrantAfter() private {
-        REENTRANCY_GUARD_STORAGE.asBoolean().tstore(false);
+        _REENTRANCY_GUARD_STORAGE.asBoolean().tstore(false);
     }
 
     /**
@@ -53,6 +53,6 @@ abstract contract ReentrancyGuardTransient {
      * `nonReentrant` function in the call stack.
      */
     function _reentrancyGuardEntered() internal view returns (bool) {
-        return REENTRANCY_GUARD_STORAGE.asBoolean().tload();
+        return _REENTRANCY_GUARD_STORAGE.asBoolean().tload();
     }
 }
