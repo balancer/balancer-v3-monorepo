@@ -4,9 +4,12 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
@@ -36,7 +39,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
         BaseVaultTest.setUp();
 
         // Set protocol fee
-        authorizer.grantRole(vault.getActionId(IVaultMain.setProtocolSwapFeePercentage.selector), alice);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setProtocolSwapFeePercentage.selector), alice);
         vm.prank(alice);
         vault.setProtocolSwapFeePercentage(50e16); // 50%
     }
@@ -46,7 +49,9 @@ contract WeightedPoolSwaps is BaseVaultTest {
         rateProviders.push(new RateProviderMock());
         rateProviders.push(new RateProviderMock());
 
-        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
+        TokenConfig[] memory tokens = new TokenConfig[](2);
+        tokens[0].token = IERC20(wsteth);
+        tokens[1].token = IERC20(dai);
 
         wsteth.mint(bob, initialFunds);
         dai.mint(bob, initialFunds);
@@ -54,25 +59,28 @@ contract WeightedPoolSwaps is BaseVaultTest {
         wsteth.mint(alice, initialFunds);
         dai.mint(alice, initialFunds);
 
-        weightedPoolWithRate = WeightedPool(
-            factory.create(
-                "ERC20 Pool",
-                "ERC20POOL",
-                [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
-                rateProviders,
-                [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
-                bytes32(0)
-            )
-        );
-
         weightedPool = WeightedPool(
             factory.create(
                 "ERC20 Pool",
                 "ERC20POOL",
-                [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
-                new IRateProvider[](2),
+                tokens,
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                0, // swap fee
                 bytes32(uint256(1))
+            )
+        );
+
+        tokens[0].rateProvider = rateProviders[0];
+        tokens[1].rateProvider = rateProviders[1];
+
+        weightedPoolWithRate = WeightedPool(
+            factory.create(
+                "ERC20 Pool",
+                "ERC20POOL",
+                tokens,
+                [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                0, // swap fee
+                bytes32(0)
             )
         );
 
@@ -85,7 +93,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
         pools[1] = address(weightedPoolWithRate);
 
         // Set pool swap fee
-        authorizer.grantRole(vault.getActionId(IVaultMain.setStaticSwapFeePercentage.selector), alice);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
 
         for (uint256 i = 0; i < pools.length; ++i) {
             vm.prank(alice);
@@ -124,9 +132,18 @@ contract WeightedPoolSwaps is BaseVaultTest {
 
         vm.startPrank(bob);
         for (uint256 i = 0; i < swapTimes; ++i) {
-            uint256 amountOut = router.swapExactIn(pool, dai, wsteth, amountIn, 0, MAX_UINT256, false, bytes(""));
+            uint256 amountOut = router.swapSingleTokenExactIn(
+                pool,
+                dai,
+                wsteth,
+                amountIn,
+                0,
+                MAX_UINT256,
+                false,
+                bytes("")
+            );
 
-            router.swapExactIn(pool, wsteth, dai, amountOut, 0, MAX_UINT256, false, bytes(""));
+            router.swapSingleTokenExactIn(pool, wsteth, dai, amountOut, 0, MAX_UINT256, false, bytes(""));
         }
         vm.stopPrank();
     }
@@ -136,7 +153,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
 
         vm.startPrank(bob);
         for (uint256 i = 0; i < swapTimes; ++i) {
-            uint256 amountIn = router.swapExactOut(
+            uint256 amountIn = router.swapSingleTokenExactOut(
                 pool,
                 dai,
                 wsteth,
@@ -147,7 +164,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
                 bytes("")
             );
 
-            router.swapExactOut(pool, wsteth, dai, amountIn, MAX_UINT256, MAX_UINT256, false, bytes(""));
+            router.swapSingleTokenExactOut(pool, wsteth, dai, amountIn, MAX_UINT256, MAX_UINT256, false, bytes(""));
         }
         vm.stopPrank();
     }
