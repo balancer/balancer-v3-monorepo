@@ -42,6 +42,10 @@ const contractSettings: ContractSettings = {
     version: '0.8.24',
     runs: 500,
   },
+  '@balancer-labs/v3-vault/contracts/VaultAdmin.sol': {
+    version: '0.8.24',
+    runs: 500,
+  },
 };
 
 export const warnings = {
