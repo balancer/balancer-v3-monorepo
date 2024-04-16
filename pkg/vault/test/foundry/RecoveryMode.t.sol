@@ -63,12 +63,16 @@ contract RecoveryModeTest is BaseVaultTest {
 
     // Test recovery window
 
-    function testRecoveryWindow() public {
+    function authorizeRecoveryModeActions(address account) internal {
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.enableRecoveryMode.selector), account);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.disableRecoveryMode.selector), account);
+    }
+
+    function testCanEnterRecoveryMode() public {
         // When Pool is not paused, `enableRecoveryMode` is permissioned.
         require(vault.isPoolInRecoveryMode(pool) == false, "Pool should not be in recovery mode initially");
 
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.enableRecoveryMode.selector), admin);
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.disableRecoveryMode.selector), admin);
+        authorizeRecoveryModeActions(admin);
 
         vm.prank(admin);
         vault.enableRecoveryMode(pool);
@@ -78,21 +82,63 @@ contract RecoveryModeTest is BaseVaultTest {
         assertEq(vault.getRecoveryWindowEndTime(pool), firstEndTime, "Wrong initial recovery window end time");
 
         assertTrue(vault.isPoolInRecoveryMode(pool), "Pool not in recovery mode");
+    }
 
-        // cannot disable it immediately
-        vm.prank(admin);
+    function testRecoveryModeInconsistentState() public {
+        authorizeRecoveryModeActions(admin);
+
+        vm.startPrank(admin);
+        vault.enableRecoveryMode(pool);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolInRecoveryMode.selector, pool));
+        vault.enableRecoveryMode(pool);
+        vm.stopPrank();
+    }
+
+    function testCannotImmediatelyDisableRecoveryMode() public {
+        authorizeRecoveryModeActions(admin);
+
+        vm.startPrank(admin);
+        vault.enableRecoveryMode(pool);
+
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.RecoveryWindowNotExpired.selector, pool));
         vault.disableRecoveryMode(pool);
+        vm.stopPrank();
+    }
+
+    function testCanDisableRecoveryMode() public {
+        authorizeRecoveryModeActions(admin);
+
+        vm.startPrank(admin);
+        vault.enableRecoveryMode(pool);
 
         // Should be able to disable after the window expires
         skip(RECOVERY_WINDOW_DURATION + 1);
 
-        vm.prank(admin);
         vault.disableRecoveryMode(pool);
-        assertFalse(vault.isPoolInRecoveryMode(pool), "Pool still in recovery mode");
 
-        // Can re-enable recovery mode, and it updates the end time.
-        vm.prank(admin);
+        // Inconsistent state if we try to disable it when it's already disabled
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInRecoveryMode.selector, pool));
+        vault.disableRecoveryMode(pool);
+
+        vm.stopPrank();
+
+        assertFalse(vault.isPoolInRecoveryMode(pool), "Pool still in recovery mode");
+    }
+
+    function testCanReenableRecoveryMode() public {
+        authorizeRecoveryModeActions(admin);
+
+        vm.startPrank(admin);
+        vault.enableRecoveryMode(pool);
+
+        uint256 firstEndTime = block.timestamp + RECOVERY_WINDOW_DURATION;
+
+        // Should be able to disable after the window expires
+        skip(RECOVERY_WINDOW_DURATION + 1);
+
+        vm.startPrank(admin);
+        vault.disableRecoveryMode(pool);
         vault.enableRecoveryMode(pool);
 
         uint256 secondEndTime = block.timestamp + RECOVERY_WINDOW_DURATION;
@@ -100,6 +146,7 @@ contract RecoveryModeTest is BaseVaultTest {
         assertTrue(secondEndTime > firstEndTime, "Recovery window end times inconsistent");
 
         assertEq(vault.getRecoveryWindowEndTime(pool), secondEndTime, "Wrong second recovery window end time");
+        vm.stopPrank();
     }
 
     // Test permissionless Recovery Mode scenarios
