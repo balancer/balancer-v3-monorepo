@@ -4,89 +4,94 @@ pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
 import { PoolConfig, PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
+import {
+    FEE_SCALING_FACTOR,
+    FEE_BITLENGTH,
+    PoolHooks,
+    LiquidityManagement
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 
 contract PoolConfigLibTest is Test {
+    using PoolConfigLib for PoolConfig;
     using PoolConfigLib for PoolConfigBits;
     using WordCodec for bytes32;
 
     uint256 private constant MAX_UINT24_VALUE = uint256(type(uint24).max);
     uint256 private constant MAX_UINT32_VALUE = uint256(type(uint32).max);
-    uint256 constant FEE_SCALING_FACTOR = 1e11;
-    uint256 constant FEE_BITLENGTH = 24;
     uint256 constant TOKEN_DECIMAL_DIFFS_BITLENGTH = 24;
+    uint8 constant DECIMAL_DIFF_BITLENGTH = 5;
     uint256 constant TIMESTAMP_BITLENGTH = 32;
+
+    mapping(uint256 => bool) usedBits;
 
     // 16 flags + 2 * 24 bit fee + 24 bit token diffs + 32 bit timestamp = 120 total bits used.
     uint256 private constant CONFIG_MSB = 120;
 
-    // NOTE: we double use here offsets because we need to receive failed test if we change one of offsets in original code
-    // #region slots
-    uint8 public constant POOL_REGISTERED_OFFSET = 0;
-    uint8 public constant POOL_INITIALIZED_OFFSET = POOL_REGISTERED_OFFSET + 1;
-    uint8 public constant POOL_PAUSED_OFFSET = POOL_INITIALIZED_OFFSET + 1;
-    uint8 public constant DYNAMIC_SWAP_FEE_OFFSET = POOL_PAUSED_OFFSET + 1;
-    uint8 public constant BEFORE_SWAP_OFFSET = DYNAMIC_SWAP_FEE_OFFSET + 1;
-    uint8 public constant AFTER_SWAP_OFFSET = BEFORE_SWAP_OFFSET + 1;
-    uint8 public constant BEFORE_ADD_LIQUIDITY_OFFSET = AFTER_SWAP_OFFSET + 1;
-    uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = BEFORE_ADD_LIQUIDITY_OFFSET + 1;
-    uint8 public constant BEFORE_REMOVE_LIQUIDITY_OFFSET = AFTER_ADD_LIQUIDITY_OFFSET + 1;
-    uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = BEFORE_REMOVE_LIQUIDITY_OFFSET + 1;
-    uint8 public constant BEFORE_INITIALIZE_OFFSET = AFTER_REMOVE_LIQUIDITY_OFFSET + 1;
-    uint8 public constant AFTER_INITIALIZE_OFFSET = BEFORE_INITIALIZE_OFFSET + 1;
-    uint8 public constant POOL_RECOVERY_MODE_OFFSET = AFTER_INITIALIZE_OFFSET + 1;
-
-    // Supported liquidity API bit offsets
-    uint8 public constant UNBALANCED_LIQUIDITY_OFFSET = POOL_RECOVERY_MODE_OFFSET + 1;
-    uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = UNBALANCED_LIQUIDITY_OFFSET + 1;
-    uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
-
-    uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
-    uint256 public constant POOL_DEV_FEE_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
-    uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = POOL_DEV_FEE_OFFSET + FEE_BITLENGTH;
-    uint256 public constant PAUSE_WINDOW_END_TIME_OFFSET =
-        DECIMAL_SCALING_FACTORS_OFFSET + TOKEN_DECIMAL_DIFFS_BITLENGTH;
-    // #endregion
-
     // #region PoolConfigBits
+    function testOffsets() public {
+        _checkBit(PoolConfigLib.POOL_REGISTERED_OFFSET);
+        _checkBit(PoolConfigLib.POOL_INITIALIZED_OFFSET);
+        _checkBit(PoolConfigLib.POOL_PAUSED_OFFSET);
+        _checkBit(PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET);
+        _checkBit(PoolConfigLib.BEFORE_SWAP_OFFSET);
+        _checkBit(PoolConfigLib.AFTER_SWAP_OFFSET);
+        _checkBit(PoolConfigLib.BEFORE_ADD_LIQUIDITY_OFFSET);
+        _checkBit(PoolConfigLib.AFTER_ADD_LIQUIDITY_OFFSET);
+        _checkBit(PoolConfigLib.BEFORE_REMOVE_LIQUIDITY_OFFSET);
+        _checkBit(PoolConfigLib.AFTER_REMOVE_LIQUIDITY_OFFSET);
+        _checkBit(PoolConfigLib.BEFORE_INITIALIZE_OFFSET);
+        _checkBit(PoolConfigLib.AFTER_INITIALIZE_OFFSET);
+        _checkBit(PoolConfigLib.POOL_RECOVERY_MODE_OFFSET);
+        _checkBit(PoolConfigLib.UNBALANCED_LIQUIDITY_OFFSET);
+        _checkBit(PoolConfigLib.ADD_LIQUIDITY_CUSTOM_OFFSET);
+        _checkBit(PoolConfigLib.REMOVE_LIQUIDITY_CUSTOM_OFFSET);
+
+        _checkBits(PoolConfigLib.STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH);
+        _checkBits(PoolConfigLib.POOL_DEV_FEE_OFFSET, FEE_BITLENGTH);
+        _checkBits(PoolConfigLib.DECIMAL_SCALING_FACTORS_OFFSET, TOKEN_DECIMAL_DIFFS_BITLENGTH);
+        _checkBits(PoolConfigLib.PAUSE_WINDOW_END_TIME_OFFSET, TIMESTAMP_BITLENGTH);
+    }
+
     function testIsPoolRegistered() public {
         assertTrue(
-            PoolConfigBits.wrap(bytes32(0).insertBool(true, POOL_REGISTERED_OFFSET)).isPoolRegistered(),
+            PoolConfigBits.wrap(bytes32(0).insertBool(true, PoolConfigLib.POOL_REGISTERED_OFFSET)).isPoolRegistered(),
             "isPoolRegistered is false"
         );
     }
 
     function testIsPoolInitialized() public {
         assertTrue(
-            PoolConfigBits.wrap(bytes32(0).insertBool(true, POOL_INITIALIZED_OFFSET)).isPoolInitialized(),
+            PoolConfigBits.wrap(bytes32(0).insertBool(true, PoolConfigLib.POOL_INITIALIZED_OFFSET)).isPoolInitialized(),
             "isPoolInitialized is false"
         );
     }
 
     function testIsPoolPaused() public {
         assertTrue(
-            PoolConfigBits.wrap(bytes32(0).insertBool(true, POOL_PAUSED_OFFSET)).isPoolPaused(),
+            PoolConfigBits.wrap(bytes32(0).insertBool(true, PoolConfigLib.POOL_PAUSED_OFFSET)).isPoolPaused(),
             "isPoolPaused is false"
         );
     }
 
     function testHasDynamicSwapFee() public {
         assertTrue(
-            PoolConfigBits.wrap(bytes32(0).insertBool(true, DYNAMIC_SWAP_FEE_OFFSET)).hasDynamicSwapFee(),
+            PoolConfigBits.wrap(bytes32(0).insertBool(true, PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET)).hasDynamicSwapFee(),
             "hasDynamicSwapFee is false"
         );
     }
 
     function testShouldCallBeforeSwap() public {
         assertTrue(
-            PoolConfigBits.wrap(bytes32(0).insertBool(true, BEFORE_SWAP_OFFSET)).shouldCallBeforeSwap(),
+            PoolConfigBits.wrap(bytes32(0).insertBool(true, PoolConfigLib.BEFORE_SWAP_OFFSET)).shouldCallBeforeSwap(),
             "shouldCallBeforeSwap is false"
         );
     }
 
     function testShouldCallAfterSwap() public {
         assertTrue(
-            PoolConfigBits.wrap(bytes32(0).insertBool(true, AFTER_SWAP_OFFSET)).shouldCallAfterSwap(),
+            PoolConfigBits.wrap(bytes32(0).insertBool(true, PoolConfigLib.AFTER_SWAP_OFFSET)).shouldCallAfterSwap(),
             "shouldCallAfterSwap is false"
         );
     }
@@ -94,7 +99,7 @@ contract PoolConfigLibTest is Test {
     function testShouldCallBeforeAddLiquidity() public {
         assertTrue(
             PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, BEFORE_ADD_LIQUIDITY_OFFSET))
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.BEFORE_ADD_LIQUIDITY_OFFSET))
                 .shouldCallBeforeAddLiquidity(),
             "shouldCallBeforeAddLiquidity is false"
         );
@@ -102,7 +107,9 @@ contract PoolConfigLibTest is Test {
 
     function testShouldCallAfterAddLiquidity() public {
         assertTrue(
-            PoolConfigBits.wrap(bytes32(0).insertBool(true, AFTER_ADD_LIQUIDITY_OFFSET)).shouldCallAfterAddLiquidity(),
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.AFTER_ADD_LIQUIDITY_OFFSET))
+                .shouldCallAfterAddLiquidity(),
             "shouldCallAfterAddLiquidity is false"
         );
     }
@@ -110,7 +117,7 @@ contract PoolConfigLibTest is Test {
     function testShouldCallBeforeRemoveLiquidity() public {
         assertTrue(
             PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, BEFORE_REMOVE_LIQUIDITY_OFFSET))
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.BEFORE_REMOVE_LIQUIDITY_OFFSET))
                 .shouldCallBeforeRemoveLiquidity(),
             "shouldCallBeforeRemoveLiquidity is false"
         );
@@ -119,7 +126,7 @@ contract PoolConfigLibTest is Test {
     function testShouldCallAfterRemoveLiquidity() public {
         assertTrue(
             PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, AFTER_REMOVE_LIQUIDITY_OFFSET))
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.AFTER_REMOVE_LIQUIDITY_OFFSET))
                 .shouldCallAfterRemoveLiquidity(),
             "shouldCallAfterRemoveLiquidity is false"
         );
@@ -127,21 +134,27 @@ contract PoolConfigLibTest is Test {
 
     function testShouldCallBeforeInitialize() public {
         assertTrue(
-            PoolConfigBits.wrap(bytes32(0).insertBool(true, BEFORE_INITIALIZE_OFFSET)).shouldCallBeforeInitialize(),
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.BEFORE_INITIALIZE_OFFSET))
+                .shouldCallBeforeInitialize(),
             "shouldCallBeforeInitialize is false"
         );
     }
 
     function testShouldCallAfterInitialize() public {
         assertTrue(
-            PoolConfigBits.wrap(bytes32(0).insertBool(true, AFTER_INITIALIZE_OFFSET)).shouldCallAfterInitialize(),
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.AFTER_INITIALIZE_OFFSET))
+                .shouldCallAfterInitialize(),
             "shouldCallAfterInitialize is false"
         );
     }
 
     function testIsPoolInRecoveryMode() public {
         assertTrue(
-            PoolConfigBits.wrap(bytes32(0).insertBool(true, POOL_RECOVERY_MODE_OFFSET)).isPoolInRecoveryMode(),
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.POOL_RECOVERY_MODE_OFFSET))
+                .isPoolInRecoveryMode(),
             "isPoolInRecoveryMode is false"
         );
     }
@@ -149,14 +162,18 @@ contract PoolConfigLibTest is Test {
     function testSupportsUnbalancedLiquidity() public {
         // NOTE: assertFalse is here because supportsUnbalancedLiquidity reverse value
         assertFalse(
-            PoolConfigBits.wrap(bytes32(0).insertBool(true, UNBALANCED_LIQUIDITY_OFFSET)).supportsUnbalancedLiquidity(),
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.UNBALANCED_LIQUIDITY_OFFSET))
+                .supportsUnbalancedLiquidity(),
             "supportsUnbalancedLiquidity is true"
         );
     }
 
     function testSupportsAddLiquidityCustom() public {
         assertTrue(
-            PoolConfigBits.wrap(bytes32(0).insertBool(true, ADD_LIQUIDITY_CUSTOM_OFFSET)).supportsAddLiquidityCustom(),
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.ADD_LIQUIDITY_CUSTOM_OFFSET))
+                .supportsAddLiquidityCustom(),
             "supportsAddLiquidityCustom is false"
         );
     }
@@ -164,7 +181,7 @@ contract PoolConfigLibTest is Test {
     function testSupportsRemoveLiquidityCustom() public {
         assertTrue(
             PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, REMOVE_LIQUIDITY_CUSTOM_OFFSET))
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.REMOVE_LIQUIDITY_CUSTOM_OFFSET))
                 .supportsRemoveLiquidityCustom(),
             "supportsRemoveLiquidityCustom is false"
         );
@@ -173,7 +190,7 @@ contract PoolConfigLibTest is Test {
     function testGetStaticSwapFeePercentage() public {
         assertEq(
             PoolConfigBits
-                .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH))
+                .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH))
                 .getStaticSwapFeePercentage(),
             MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
             "staticSwapFeePercentage mismatch"
@@ -183,7 +200,7 @@ contract PoolConfigLibTest is Test {
     function testGetPoolCreatorFeePercentage() public {
         assertEq(
             PoolConfigBits
-                .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, POOL_DEV_FEE_OFFSET, FEE_BITLENGTH))
+                .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_DEV_FEE_OFFSET, FEE_BITLENGTH))
                 .getPoolCreatorFeePercentage(),
             MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
             "staticSwapFeePercentage mismatch"
@@ -196,7 +213,7 @@ contract PoolConfigLibTest is Test {
                 .wrap(
                     bytes32(0).insertUint(
                         MAX_UINT24_VALUE,
-                        DECIMAL_SCALING_FACTORS_OFFSET,
+                        PoolConfigLib.DECIMAL_SCALING_FACTORS_OFFSET,
                         TOKEN_DECIMAL_DIFFS_BITLENGTH
                     )
                 )
@@ -209,7 +226,13 @@ contract PoolConfigLibTest is Test {
     function testGetPauseWindowEndTime() public {
         assertEq(
             PoolConfigBits
-                .wrap(bytes32(0).insertUint(MAX_UINT32_VALUE, PAUSE_WINDOW_END_TIME_OFFSET, TIMESTAMP_BITLENGTH))
+                .wrap(
+                    bytes32(0).insertUint(
+                        MAX_UINT32_VALUE,
+                        PoolConfigLib.PAUSE_WINDOW_END_TIME_OFFSET,
+                        TIMESTAMP_BITLENGTH
+                    )
+                )
                 .getPauseWindowEndTime(),
             MAX_UINT32_VALUE,
             "pauseWindowEndTime mismatch"
@@ -226,7 +249,7 @@ contract PoolConfigLibTest is Test {
         assertFalse(isPaused, "(empty bytes) isPaused mismatch");
 
         (isPaused, pauseWithdrawEndTime) = PoolConfigBits
-            .wrap(configBits.insertBool(true, POOL_PAUSED_OFFSET))
+            .wrap(configBits.insertBool(true, PoolConfigLib.POOL_PAUSED_OFFSET))
             .getPoolPausedState();
         assertTrue(isPaused, "(isPaused = true && pauseWithdrawEndTime == 0) isPaused mismatch");
         assertEq(
@@ -236,7 +259,9 @@ contract PoolConfigLibTest is Test {
         );
 
         (isPaused, pauseWithdrawEndTime) = PoolConfigBits
-            .wrap(configBits.insertUint(MAX_UINT32_VALUE, PAUSE_WINDOW_END_TIME_OFFSET, TIMESTAMP_BITLENGTH))
+            .wrap(
+                configBits.insertUint(MAX_UINT32_VALUE, PoolConfigLib.PAUSE_WINDOW_END_TIME_OFFSET, TIMESTAMP_BITLENGTH)
+            )
             .getPoolPausedState();
         assertFalse(isPaused, "(isPaused = false && pauseWithdrawEndTime != 0) isPaused mismatch");
         assertEq(
@@ -247,9 +272,9 @@ contract PoolConfigLibTest is Test {
 
         (isPaused, pauseWithdrawEndTime) = PoolConfigBits
             .wrap(
-                configBits.insertBool(true, POOL_PAUSED_OFFSET).insertUint(
+                configBits.insertBool(true, PoolConfigLib.POOL_PAUSED_OFFSET).insertUint(
                     MAX_UINT32_VALUE,
-                    PAUSE_WINDOW_END_TIME_OFFSET,
+                    PoolConfigLib.PAUSE_WINDOW_END_TIME_OFFSET,
                     TIMESTAMP_BITLENGTH
                 )
             )
@@ -295,11 +320,361 @@ contract PoolConfigLibTest is Test {
     // #region PoolConfig
     function testToPoolConfig() public {
         assertTrue(
-            PoolConfigBits.wrap(bytes32(0).insertBool(true, POOL_REGISTERED_OFFSET)).toPoolConfig().isPoolRegistered,
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.POOL_REGISTERED_OFFSET))
+                .toPoolConfig()
+                .isPoolRegistered,
             "isPoolRegistered mismatch"
         );
 
-        //TODO
+        assertTrue(
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.POOL_INITIALIZED_OFFSET))
+                .toPoolConfig()
+                .isPoolInitialized,
+            "isPoolInitialized mismatch"
+        );
+
+        assertTrue(
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.POOL_PAUSED_OFFSET))
+                .toPoolConfig()
+                .isPoolPaused,
+            "isPoolPaused mismatch"
+        );
+
+        assertTrue(
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.POOL_RECOVERY_MODE_OFFSET))
+                .toPoolConfig()
+                .isPoolInRecoveryMode,
+            "isPoolInRecoveryMode mismatch"
+        );
+
+        assertTrue(
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET))
+                .toPoolConfig()
+                .hasDynamicSwapFee,
+            "hasDynamicSwapFee mismatch"
+        );
+
+        assertEq(
+            PoolConfigBits
+                .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH))
+                .toPoolConfig()
+                .staticSwapFeePercentage,
+            MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
+            "staticSwapFeePercentage mismatch"
+        );
+
+        assertEq(
+            PoolConfigBits
+                .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_DEV_FEE_OFFSET, FEE_BITLENGTH))
+                .toPoolConfig()
+                .poolCreatorFeePercentage,
+            MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
+            "poolCreatorFeePercentage mismatch"
+        );
+
+        assertEq(
+            PoolConfigBits
+                .wrap(
+                    bytes32(0).insertUint(
+                        MAX_UINT24_VALUE,
+                        PoolConfigLib.DECIMAL_SCALING_FACTORS_OFFSET,
+                        TOKEN_DECIMAL_DIFFS_BITLENGTH
+                    )
+                )
+                .toPoolConfig()
+                .tokenDecimalDiffs,
+            MAX_UINT24_VALUE,
+            "tokenDecimalDiffs mismatch"
+        );
+
+        assertEq(
+            PoolConfigBits
+                .wrap(
+                    bytes32(0).insertUint(
+                        MAX_UINT32_VALUE,
+                        PoolConfigLib.PAUSE_WINDOW_END_TIME_OFFSET,
+                        TIMESTAMP_BITLENGTH
+                    )
+                )
+                .toPoolConfig()
+                .pauseWindowEndTime,
+            MAX_UINT32_VALUE,
+            "pauseWindowEndTime mismatch"
+        );
+
+        // check .hooks
+        assertTrue(
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.BEFORE_INITIALIZE_OFFSET))
+                .toPoolConfig()
+                .hooks
+                .shouldCallBeforeInitialize,
+            "shouldCallBeforeInitialize mismatch"
+        );
+
+        assertTrue(
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.AFTER_INITIALIZE_OFFSET))
+                .toPoolConfig()
+                .hooks
+                .shouldCallAfterInitialize,
+            "shouldCallAfterInitialize mismatch"
+        );
+
+        assertTrue(
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.BEFORE_ADD_LIQUIDITY_OFFSET))
+                .toPoolConfig()
+                .hooks
+                .shouldCallBeforeAddLiquidity,
+            "shouldCallBeforeAddLiquidity mismatch"
+        );
+
+        assertTrue(
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.AFTER_ADD_LIQUIDITY_OFFSET))
+                .toPoolConfig()
+                .hooks
+                .shouldCallAfterAddLiquidity,
+            "shouldCallAfterAddLiquidity mismatch"
+        );
+
+        assertTrue(
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.BEFORE_REMOVE_LIQUIDITY_OFFSET))
+                .toPoolConfig()
+                .hooks
+                .shouldCallBeforeRemoveLiquidity,
+            "shouldCallBeforeRemoveLiquidity mismatch"
+        );
+
+        assertTrue(
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.AFTER_REMOVE_LIQUIDITY_OFFSET))
+                .toPoolConfig()
+                .hooks
+                .shouldCallAfterRemoveLiquidity,
+            "shouldCallAfterRemoveLiquidity mismatch"
+        );
+
+        assertTrue(
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.BEFORE_SWAP_OFFSET))
+                .toPoolConfig()
+                .hooks
+                .shouldCallBeforeSwap,
+            "shouldCallBeforeSwap mismatch"
+        );
+
+        assertTrue(
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.AFTER_SWAP_OFFSET))
+                .toPoolConfig()
+                .hooks
+                .shouldCallAfterSwap,
+            "shouldCallAfterSwap mismatch"
+        );
+
+        // check .liquidityManagement
+        assertTrue(
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.UNBALANCED_LIQUIDITY_OFFSET))
+                .toPoolConfig()
+                .liquidityManagement
+                .disableUnbalancedLiquidity,
+            "disableUnbalancedLiquidity mismatch"
+        );
+
+        assertTrue(
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.ADD_LIQUIDITY_CUSTOM_OFFSET))
+                .toPoolConfig()
+                .liquidityManagement
+                .enableAddLiquidityCustom,
+            "enableAddLiquidityCustom mismatch"
+        );
+
+        assertTrue(
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.REMOVE_LIQUIDITY_CUSTOM_OFFSET))
+                .toPoolConfig()
+                .liquidityManagement
+                .enableRemoveLiquidityCustom,
+            "enableRemoveLiquidityCustom mismatch"
+        );
+    }
+
+    function testFromPoolConfig() public {
+        PoolConfig memory config;
+        config.isPoolRegistered = true;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertBool(true, PoolConfigLib.POOL_REGISTERED_OFFSET),
+            "isPoolRegistered mismatch"
+        );
+
+        config = _cretePureConfig();
+        config.isPoolInitialized = true;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertBool(true, PoolConfigLib.POOL_INITIALIZED_OFFSET),
+            "isPoolInitialized mismatch"
+        );
+
+        config = _cretePureConfig();
+        config.isPoolPaused = true;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertBool(true, PoolConfigLib.POOL_PAUSED_OFFSET),
+            "isPoolPaused mismatch"
+        );
+
+        config = _cretePureConfig();
+        config.isPoolInRecoveryMode = true;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertBool(true, PoolConfigLib.POOL_RECOVERY_MODE_OFFSET),
+            "isPoolInRecoveryMode mismatch"
+        );
+
+        config = _cretePureConfig();
+        config.hasDynamicSwapFee = true;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertBool(true, PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET),
+            "hasDynamicSwapFee mismatch"
+        );
+
+        config = _cretePureConfig();
+        config.staticSwapFeePercentage = MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH),
+            "staticSwapFeePercentage mismatch"
+        );
+
+        config = _cretePureConfig();
+        config.poolCreatorFeePercentage = MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_DEV_FEE_OFFSET, FEE_BITLENGTH),
+            "poolCreatorFeePercentage mismatch"
+        );
+
+        config = _cretePureConfig();
+        config.tokenDecimalDiffs = MAX_UINT24_VALUE;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertUint(
+                MAX_UINT24_VALUE,
+                PoolConfigLib.DECIMAL_SCALING_FACTORS_OFFSET,
+                TOKEN_DECIMAL_DIFFS_BITLENGTH
+            ),
+            "tokenDecimalDiffs mismatch"
+        );
+
+        config = _cretePureConfig();
+        config.pauseWindowEndTime = MAX_UINT32_VALUE;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertUint(MAX_UINT32_VALUE, PoolConfigLib.PAUSE_WINDOW_END_TIME_OFFSET, TIMESTAMP_BITLENGTH),
+            "pauseWindowEndTime mismatch"
+        );
+
+        // check .hooks
+        config = _cretePureConfig();
+        config.hooks.shouldCallBeforeInitialize = true;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertBool(true, PoolConfigLib.BEFORE_INITIALIZE_OFFSET),
+            "shouldCallBeforeInitialize mismatch"
+        );
+
+        config = _cretePureConfig();
+        config.hooks.shouldCallAfterInitialize = true;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertBool(true, PoolConfigLib.AFTER_INITIALIZE_OFFSET),
+            "shouldCallAfterInitialize mismatch"
+        );
+
+        config = _cretePureConfig();
+        config.hooks.shouldCallBeforeAddLiquidity = true;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertBool(true, PoolConfigLib.BEFORE_ADD_LIQUIDITY_OFFSET),
+            "shouldCallBeforeAddLiquidity mismatch"
+        );
+
+        config = _cretePureConfig();
+        config.hooks.shouldCallAfterAddLiquidity = true;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertBool(true, PoolConfigLib.AFTER_ADD_LIQUIDITY_OFFSET),
+            "shouldCallAfterAddLiquidity mismatch"
+        );
+
+        config = _cretePureConfig();
+        config.hooks.shouldCallBeforeRemoveLiquidity = true;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertBool(true, PoolConfigLib.BEFORE_REMOVE_LIQUIDITY_OFFSET),
+            "shouldCallBeforeRemoveLiquidity mismatch"
+        );
+
+        config = _cretePureConfig();
+        config.hooks.shouldCallAfterRemoveLiquidity = true;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertBool(true, PoolConfigLib.AFTER_REMOVE_LIQUIDITY_OFFSET),
+            "shouldCallAfterRemoveLiquidity mismatch"
+        );
+
+        config = _cretePureConfig();
+        config.hooks.shouldCallBeforeSwap = true;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertBool(true, PoolConfigLib.BEFORE_SWAP_OFFSET),
+            "shouldCallBeforeSwap mismatch"
+        );
+
+        config = _cretePureConfig();
+        config.hooks.shouldCallAfterSwap = true;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertBool(true, PoolConfigLib.AFTER_SWAP_OFFSET),
+            "shouldCallAfterSwap mismatch"
+        );
+
+        // check .liquidityManagement
+        config = _cretePureConfig();
+        config.liquidityManagement.disableUnbalancedLiquidity = true;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertBool(true, PoolConfigLib.UNBALANCED_LIQUIDITY_OFFSET),
+            "disableUnbalancedLiquidity mismatch"
+        );
+
+        config = _cretePureConfig();
+        config.liquidityManagement.enableAddLiquidityCustom = true;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertBool(true, PoolConfigLib.ADD_LIQUIDITY_CUSTOM_OFFSET),
+            "enableAddLiquidityCustom mismatch"
+        );
+
+        config = _cretePureConfig();
+        config.liquidityManagement.enableRemoveLiquidityCustom = true;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertBool(true, PoolConfigLib.REMOVE_LIQUIDITY_CUSTOM_OFFSET),
+            "enableRemoveLiquidityCustom mismatch"
+        );
     }
 
     function testToPoolConfigWithZeroBytes() public {
@@ -312,17 +687,46 @@ contract PoolConfigLibTest is Test {
         );
     }
 
-    
-    // #endregion
+    function testRequireUnbalancedLiquidityEnabled() public pure {
+        PoolConfig memory config;
+        config.requireUnbalancedLiquidityEnabled();
+    }
 
-    //requireUnbalancedLiquidityEnabled
-    // requireAddCustomLiquidityEnabled
-    // requireRemoveCustomLiquidityEnabled
-    // fromPoolConfig
+    function testRequireUnbalancedLiquidityEnabledIfIsDisabled() public {
+        PoolConfig memory config;
+        config.liquidityManagement.disableUnbalancedLiquidity = true;
 
-    // toTokenDecimalDiffs
-    // getDecimalScalingFactors
-    // toPoolConfig
+        vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
+        config.requireUnbalancedLiquidityEnabled();
+    }
+
+    function testRequireAddCustomLiquidityEnabled() public pure {
+        PoolConfig memory config;
+        config.liquidityManagement.enableAddLiquidityCustom = true;
+
+        config.requireAddCustomLiquidityEnabled();
+    }
+
+    function testRequireAddCustomLiquidityEnabledIfIsDisabled() public {
+        PoolConfig memory config;
+
+        vm.expectRevert(IVaultErrors.DoesNotSupportAddLiquidityCustom.selector);
+        config.requireAddCustomLiquidityEnabled();
+    }
+
+    function testRequireRemoveCustomLiquidityEnabled() public pure {
+        PoolConfig memory config;
+        config.liquidityManagement.enableRemoveLiquidityCustom = true;
+
+        config.requireRemoveCustomLiquidityEnabled();
+    }
+
+    function testRequireRemoveCustomLiquidityEnabledIfIsDisabled() public {
+        PoolConfig memory config;
+
+        vm.expectRevert(IVaultErrors.DoesNotSupportRemoveLiquidityCustom.selector);
+        config.requireRemoveCustomLiquidityEnabled();
+    }
 
     function testToAndFromConfigBits__Fuzz(uint256 rawConfigInt) public {
         rawConfigInt = bound(rawConfigInt, 0, uint256(1 << CONFIG_MSB) - 1);
@@ -341,4 +745,56 @@ contract PoolConfigLibTest is Test {
 
         assertEq(bytes32(0), configBytes32);
     }
+
+    function testToTokenDecimalDiffs() public {
+        uint8[] memory tokenDecimalDiffs = new uint8[](2);
+        tokenDecimalDiffs[0] = 1;
+        tokenDecimalDiffs[1] = 2;
+
+        uint256 value = uint256(
+            bytes32(0).insertUint(tokenDecimalDiffs[0], 0, DECIMAL_DIFF_BITLENGTH).insertUint(
+                tokenDecimalDiffs[1],
+                DECIMAL_DIFF_BITLENGTH,
+                DECIMAL_DIFF_BITLENGTH
+            )
+        );
+
+        assertEq(PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs), value, "tokenDecimalDiffs mismatch");
+    }
+
+    function testGetDecimalScalingFactors() public {
+        PoolConfig memory config;
+        uint256 valueOne = 5;
+        uint256 valueTwo = 20;
+
+        config.tokenDecimalDiffs = uint256(
+            bytes32(0).insertUint(valueOne, 0, DECIMAL_DIFF_BITLENGTH).insertUint(
+                valueTwo,
+                DECIMAL_DIFF_BITLENGTH,
+                DECIMAL_DIFF_BITLENGTH
+            )
+        );
+
+        uint256[] memory scalingFactors = config.getDecimalScalingFactors(2);
+
+        assertEq(scalingFactors[0], 1e23, "scalingFactors[0] mismatch");
+        assertEq(scalingFactors[1], 1e38, "scalingFactors[1] mismatch");
+    }
+    // #endregion
+
+    // #region private
+    function _cretePureConfig() private pure returns (PoolConfig memory) {}
+
+    function _checkBits(uint256 startBit, uint256 size) private {
+        uint endBit = startBit + size;
+        for (uint256 i = startBit; i < endBit; i++) {
+            _checkBit(i);
+        }
+    }
+
+    function _checkBit(uint256 bitNumber) private {
+        assertEq(usedBits[bitNumber], false, "Bit already used");
+        usedBits[bitNumber] = true;
+    }
+    // #endregion
 }
