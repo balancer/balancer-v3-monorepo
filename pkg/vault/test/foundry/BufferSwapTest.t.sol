@@ -415,8 +415,8 @@ contract BufferSwapTest is BaseVaultTest {
     ) private {
         assertEq(paths.length, 1, "Incorrect output array length");
 
-        assertEq(paths.length, tokens.length, "Output array length mismatch");
-        assertEq(tokens.length, amounts.length, "Output array length mismatch");
+        assertEq(paths.length, tokens.length, "Output array length mismatch (tokens)");
+        assertEq(tokens.length, amounts.length, "Output array length mismatch (amounts)");
 
         // Check results
         assertApproxEqAbs(paths[0], expectedDelta, 1, "Wrong path count");
