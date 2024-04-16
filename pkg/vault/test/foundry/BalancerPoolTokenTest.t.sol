@@ -49,7 +49,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     function testMint() public {
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit();
         emit IERC20.Transfer(address(0), user, defaultAmount);
 
         vault.mintERC20(address(poolToken), user, defaultAmount);
@@ -62,7 +62,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
         vault.mintERC20(address(pool), user, defaultAmount);
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit();
         emit IERC20.Transfer(user, address(0), burnAmount);
         vault.burnERC20(address(pool), user, burnAmount);
 
@@ -72,7 +72,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     function testApprove() public {
         vault.mintERC20(address(pool), address(this), defaultAmount);
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit();
         emit IERC20.Approval(address(this), user, defaultAmount);
         poolToken.approve(user, defaultAmount);
 
@@ -82,7 +82,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     function testTransfer() public {
         vault.mintERC20(address(pool), address(this), defaultAmount);
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit();
         emit IERC20.Transfer(address(this), user, defaultAmount);
         assertTrue(poolToken.transfer(user, defaultAmount), "transfer failed");
         assertEq(poolToken.totalSupply(), defaultAmount, "total supply mismatch");
@@ -99,10 +99,10 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         vm.prank(from);
         poolToken.approve(address(this), defaultAmount);
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit();
         emit IERC20.Approval(from, address(this), 0);
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit();
         emit IERC20.Transfer(from, user, defaultAmount);
 
         poolToken.transferFrom(from, user, defaultAmount);

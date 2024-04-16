@@ -189,16 +189,14 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
 
     function _spendAllowance(address pool, address owner, address spender, uint256 amount) internal {
         uint256 currentAllowance = _allowance(pool, owner, spender);
-        if (currentAllowance == type(uint256).max) {
-            return;
-        }
+        if (currentAllowance != type(uint256).max) {
+            if (amount > currentAllowance) {
+                revert ERC20InsufficientAllowance(spender, currentAllowance, amount);
+            }
 
-        if (amount > currentAllowance) {
-            revert ERC20InsufficientAllowance(spender, currentAllowance, amount);
-        }
-
-        unchecked {
-            _approve(pool, owner, spender, currentAllowance - amount);
+            unchecked {
+                _approve(pool, owner, spender, currentAllowance - amount);
+            }
         }
     }
 }
