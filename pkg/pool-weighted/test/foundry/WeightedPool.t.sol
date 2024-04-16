@@ -17,6 +17,7 @@ import { TokenConfig, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IMinimumSwapFee } from "@balancer-labs/v3-interfaces/contracts/vault/IMinimumSwapFee.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
@@ -63,6 +64,7 @@ contract WeightedPoolTest is BaseVaultTest {
                 "ERC20POOL",
                 vault.buildTokenConfig(tokens.asIERC20()),
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
                 DEFAULT_SWAP_FEE,
                 ZERO_BYTES32
             )
@@ -252,6 +254,7 @@ contract WeightedPoolTest is BaseVaultTest {
             "ERC20POOL",
             tokens,
             [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
             MIN_SWAP_FEE - 1, // Swap fee too low
             ZERO_BYTES32
         );

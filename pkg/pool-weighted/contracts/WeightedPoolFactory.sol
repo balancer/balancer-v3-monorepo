@@ -33,6 +33,7 @@ contract WeightedPoolFactory is BasePoolFactory {
      * @param symbol The symbol of the pool
      * @param tokens An array of descriptors for the tokens the pool will manage
      * @param normalizedWeights The pool weights (must add to FixedPoint.ONE)
+     * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param swapFeePercentage Initial swap fee percentage
      * @param salt The salt value that will be passed to create3 deployment
      */
@@ -41,6 +42,7 @@ contract WeightedPoolFactory is BasePoolFactory {
         string memory symbol,
         TokenConfig[] memory tokens,
         uint256[] memory normalizedWeights,
+        PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,
         bytes32 salt
     ) external returns (address pool) {
@@ -57,29 +59,13 @@ contract WeightedPoolFactory is BasePoolFactory {
             salt
         );
 
-        getVault().registerPool(
+        _registerPoolWithVault(
             pool,
             tokens,
             swapFeePercentage,
-            getNewPoolPauseWindowEndTime(),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
-            PoolHooks({
-                shouldCallBeforeInitialize: false,
-                shouldCallAfterInitialize: false,
-                shouldCallBeforeAddLiquidity: false,
-                shouldCallAfterAddLiquidity: false,
-                shouldCallBeforeRemoveLiquidity: false,
-                shouldCallAfterRemoveLiquidity: false,
-                shouldCallBeforeSwap: false,
-                shouldCallAfterSwap: false
-            }),
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: false,
-                enableRemoveLiquidityCustom: false
-            })
+            roleAccounts,
+            getDefaultPoolHooks(),
+            getDefaultLiquidityManagement()
         );
-
-        _registerPoolWithFactory(pool);
     }
 }
