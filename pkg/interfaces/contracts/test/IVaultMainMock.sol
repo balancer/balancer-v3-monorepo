@@ -28,7 +28,7 @@ interface IVaultMainMock {
         address poolCreator
     ) external;
 
-    function manualSetLockers(address[] memory lockers) external;
+    function manualSetOpenTab(bool status) external;
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) external;
 
@@ -48,7 +48,7 @@ interface IVaultMainMock {
 
     function manualAddReserveOf(IERC20, uint256) external;
 
-    function mockWithLocker() external view;
+    function mockWithOpenTab() external view;
 
     function mockWithInitializedPool(address pool) external view;
 
@@ -79,8 +79,6 @@ interface IVaultMainMock {
 
     function getBufferBalance(IERC20 wrappedToken) external view returns (uint256, uint256);
 
-    function sortTokenConfig(TokenConfig[] memory tokenConfig) external pure returns (TokenConfig[] memory);
-
     function updateLiveTokenBalanceInPoolData(
         PoolData memory poolData,
         Rounding roundingDirection,
@@ -100,27 +98,27 @@ interface IVaultMainMock {
 
     // Convenience functions for constructing TokenConfig arrays
 
-    function buildTokenConfig(IERC20[] memory tokens) external pure returns (TokenConfig[] memory tokenConfig);
+    function buildTokenConfig(IERC20[] memory tokens) external view returns (TokenConfig[] memory tokenConfig);
 
     /// @dev Infers TokenType (STANDARD or WITH_RATE) from the presence or absence of the rate provider.
     function buildTokenConfig(
         IERC20[] memory tokens,
         IRateProvider[] memory rateProviders
-    ) external pure returns (TokenConfig[] memory tokenConfig);
+    ) external view returns (TokenConfig[] memory tokenConfig);
 
     /// @dev Infers TokenType (STANDARD or WITH_RATE) from the presence or absence of the rate provider.
     function buildTokenConfig(
         IERC20[] memory tokens,
         IRateProvider[] memory rateProviders,
         bool[] memory yieldFeeFlags
-    ) external pure returns (TokenConfig[] memory tokenConfig);
+    ) external view returns (TokenConfig[] memory tokenConfig);
 
     function buildTokenConfig(
         IERC20[] memory tokens,
         TokenType[] memory tokenTypes,
         IRateProvider[] memory rateProviders,
         bool[] memory yieldFeeFlags
-    ) external pure returns (TokenConfig[] memory tokenConfig);
+    ) external view returns (TokenConfig[] memory tokenConfig);
 
     function accountDelta(IERC20 token, int256 delta, address locker) external;
 
@@ -128,7 +126,7 @@ interface IVaultMainMock {
 
     function takeDebt(IERC20 token, uint256 debt, address locker) external;
 
-    function manualSetAccountDelta(IERC20 token, address locker, int256 delta) external;
+    function manualSetAccountDelta(IERC20 token, int256 delta) external;
 
     function manualSetNonZeroDeltaCount(uint256 deltaCount) external;
 }

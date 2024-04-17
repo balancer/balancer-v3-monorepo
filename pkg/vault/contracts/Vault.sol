@@ -52,7 +52,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using VaultStateLib for VaultStateBits;
     using BufferPackedTokenBalance for bytes32;
     using TransientStorageHelpers for *;
-    using StorageSlot for StorageSlot.Uint256SlotType;
+    using StorageSlot for *;
 
     constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) {
         if (address(vaultExtension.vault()) != address(this)) {
@@ -83,22 +83,22 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * time the external call is complete.
      */
     modifier transient() {
-        // Add the current locker to the list
-        _lockers().tPush(msg.sender);
+        bool isTabOpenBefore = _openTab().tload();
+
+        if (isTabOpenBefore == false) {
+            _openTab().tstore(true);
+        }
 
         // The caller does everything here and has to settle all outstanding balances
         _;
 
-        // Check if it's the last locker
-        if (_lockers().tLength() == 1) {
-            // Ensure all balances are settled
-            if (_nonzeroDeltaCount().tload() != 0) revert BalanceNotSettled();
+        if (isTabOpenBefore == false) {
+            if (_nonzeroDeltaCount().tload() != 0) {
+                revert BalanceNotSettled();
+            }
 
-            // Reset the counter
-            _nonzeroDeltaCount().tstore(0);
+            _openTab().tstore(false);
         }
-        // Remove locker from the list (applies to the last one too, which resets the array)
-        _lockers().tPop();
     }
 
     /// @inheritdoc IVaultMain
@@ -108,7 +108,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function settle(IERC20 token) public nonReentrant withLocker returns (uint256 paid) {
+    function settle(IERC20 token) public nonReentrant withOpenTab returns (uint256 paid) {
         uint256 reservesBefore = _reservesOf[token];
         _reservesOf[token] = token.balanceOf(address(this));
         paid = _reservesOf[token] - reservesBefore;
@@ -117,7 +117,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function sendTo(IERC20 token, address to, uint256 amount) public nonReentrant withLocker {
+    function sendTo(IERC20 token, address to, uint256 amount) public nonReentrant withOpenTab {
         _takeDebt(token, amount, msg.sender);
         _reservesOf[token] -= amount;
 
@@ -172,7 +172,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapParams memory params
     )
         public
-        withLocker
+        withOpenTab
         withInitializedPool(params.pool)
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
     {
@@ -463,7 +463,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         AddLiquidityParams memory params
     )
         external
-        withLocker
+        withOpenTab
         withInitializedPool(params.pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
@@ -693,7 +693,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         RemoveLiquidityParams memory params
     )
         external
-        withLocker
+        withOpenTab
         withInitializedPool(params.pool)
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
     {
