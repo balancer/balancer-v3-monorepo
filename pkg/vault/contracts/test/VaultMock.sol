@@ -404,7 +404,7 @@ contract VaultMock is IVaultMainMock, Vault {
         _takeDebt(token, debt, locker);
     }
 
-    function manualSetAccountDelta(IERC20 token, address locker, int256 delta) external {
+    function manualSetAccountDelta(IERC20 token, int256 delta) external {
         _tokenDeltas().tSet(token, delta);
     }
 

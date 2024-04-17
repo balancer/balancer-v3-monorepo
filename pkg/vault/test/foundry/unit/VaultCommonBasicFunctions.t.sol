@@ -313,7 +313,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         startingNonZeroDeltaCount = bound(startingNonZeroDeltaCount, 1, 10000);
         vm.assume(delta != 0);
 
-        vault.manualSetAccountDelta(dai, alice, delta);
+        vault.manualSetAccountDelta(dai, delta);
         vault.manualSetNonZeroDeltaCount(startingNonZeroDeltaCount);
 
         require(vault.getNonzeroDeltaCount() == startingNonZeroDeltaCount, "Starting non-zero delta count incorrect");
@@ -330,7 +330,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         delta = bound(delta, int256(1), MAX_UINT128.toInt256());
         startingNonZeroDeltaCount = bound(startingNonZeroDeltaCount, 1, 10000);
 
-        vault.manualSetAccountDelta(dai, alice, delta);
+        vault.manualSetAccountDelta(dai, delta);
         vault.manualSetNonZeroDeltaCount(startingNonZeroDeltaCount);
 
         require(vault.getNonzeroDeltaCount() == startingNonZeroDeltaCount, "Starting non-zero delta count incorrect");
@@ -347,7 +347,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         delta = bound(delta, int256(1), MAX_UINT128.toInt256());
         startingNonZeroDeltaCount = bound(startingNonZeroDeltaCount, 1, 10000);
 
-        vault.manualSetAccountDelta(dai, alice, -delta);
+        vault.manualSetAccountDelta(dai, -delta);
         vault.manualSetNonZeroDeltaCount(startingNonZeroDeltaCount);
 
         require(vault.getNonzeroDeltaCount() == startingNonZeroDeltaCount, "Starting non-zero delta count incorrect");
