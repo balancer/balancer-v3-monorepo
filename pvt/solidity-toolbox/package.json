@@ -40,7 +40,6 @@
     "typescript": "^4.0.2"
   },
   "scripts": {
-    "postinstall": "mkdir -p ../../node_modules/forge-std/lib/ && cd ../../node_modules/forge-std/lib/ && ln -s ../../ds-test/ ds-test",
-    "prettier": "npx prettier --write './**/*.ts'"
+    "postinstall": "mkdir -p ../../node_modules/forge-std/lib/ && cd ../../node_modules/forge-std/lib/ && ln -s ../../ds-test/ ds-test"
   }
 }
