@@ -9,7 +9,8 @@
     "compile": "hardhat compile",
     "gas": "forge test -vvv --gas-report",
     "lint": "yarn lint:typescript",
-    "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
+    "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0",
+    "prettier": "npx prettier --write --plugin=prettier-plugin-solidity 'contracts/**/*.sol' 'test/**/*.sol'"
   },
   "devDependencies": {
     "@balancer-labs/solidity-toolbox": "workspace:*",
