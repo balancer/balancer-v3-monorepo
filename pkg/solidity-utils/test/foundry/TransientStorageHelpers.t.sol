@@ -20,7 +20,7 @@ contract TransientStorageHelpersTest is Test {
     function testTransientNestedMapping__Fuzz(address k1, int256 value) public {
         nestedMapping[IERC20(k1)] = 1234;
 
-        NestedAddressMappingSlotType transientMapping;
+        TokenValueMappingSlotType transientMapping;
         assembly {
             transientMapping := nestedMapping.slot
         }

@@ -7,7 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SlotDerivation } from "../openzeppelin/SlotDerivation.sol";
 import { StorageSlot } from "../openzeppelin/StorageSlot.sol";
 
-type NestedAddressMappingSlotType is bytes32;
+type TokenValueMappingSlotType is bytes32;
 type AddressMappingSlot is bytes32;
 type AddressArraySlotType is bytes32;
 
@@ -19,12 +19,12 @@ library TransientStorageHelpers {
 
     // Mappings
 
-    function tGet(NestedAddressMappingSlotType slot, IERC20 k1) internal view returns (int256) {
-        return NestedAddressMappingSlotType.unwrap(slot).deriveMapping(address(k1)).asInt256().tload();
+    function tGet(TokenValueMappingSlotType slot, IERC20 k1) internal view returns (int256) {
+        return TokenValueMappingSlotType.unwrap(slot).deriveMapping(address(k1)).asInt256().tload();
     }
 
-    function tSet(NestedAddressMappingSlotType slot, IERC20 k1, int256 value) internal {
-        NestedAddressMappingSlotType.unwrap(slot).deriveMapping(address(k1)).asInt256().tstore(value);
+    function tSet(TokenValueMappingSlotType slot, IERC20 k1, int256 value) internal {
+        TokenValueMappingSlotType.unwrap(slot).deriveMapping(address(k1)).asInt256().tstore(value);
     }
 
     function tGet(AddressMappingSlot slot, address key) internal view returns (uint256) {
