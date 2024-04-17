@@ -13,23 +13,23 @@ contract TransientStorageHelpersTest is Test {
     using TransientStorageHelpers for *;
     using StorageSlot for StorageSlot.Uint256SlotType;
 
-    mapping(IERC20 => int256) private nestedMapping;
+    mapping(IERC20 => int256) private tokenDeltaMapping;
     address[] private addressArray;
     uint256 private storageUint;
 
     function testTransientNestedMapping__Fuzz(address k1, int256 value) public {
-        nestedMapping[IERC20(k1)] = 1234;
+        tokenDeltaMapping[IERC20(k1)] = 1234;
 
-        TokenValueMappingSlotType transientMapping;
+        TokenDeltaMappingSlotType transientMapping;
         assembly {
-            transientMapping := nestedMapping.slot
+            transientMapping := tokenDeltaMapping.slot
         }
 
         assertEq(transientMapping.tGet(IERC20(k1)), 0, "Mapping: Initial nonzero value");
 
         transientMapping.tSet(IERC20(k1), value);
         assertEq(transientMapping.tGet(IERC20(k1)), value, "Mapping: Incorrect value set");
-        assertEq(nestedMapping[IERC20(k1)], 1234, "Mapping: storage was modified");
+        assertEq(tokenDeltaMapping[IERC20(k1)], 1234, "Mapping: storage was modified");
     }
 
     function testTransientAddressArray() public {

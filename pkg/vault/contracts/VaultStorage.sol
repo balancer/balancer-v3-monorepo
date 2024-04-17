@@ -14,7 +14,7 @@ import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openze
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 import {
     AddressArraySlotType,
-    TokenValueMappingSlotType
+    TokenDeltaMappingSlotType
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
@@ -121,7 +121,7 @@ contract VaultStorage {
         }
     }
 
-    function _tokenDeltas() internal pure returns (TokenValueMappingSlotType slot) {
+    function _tokenDeltas() internal pure returns (TokenDeltaMappingSlotType slot) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             slot := __tokenDeltas.slot
