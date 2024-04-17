@@ -315,7 +315,7 @@ contract ERC4626BufferPool is
 
             // In this case, since there is more wrapped than base assets, wrapped tokens will be removed (tokenOut)
             // and then unwrapped, and the resulting base assets will be deposited in the pool (tokenIn).
-            rebalanceHook(
+            _rebalanceHook(
                 SwapParams({
                     kind: SwapKind.EXACT_IN,
                     pool: poolAddress,
@@ -335,7 +335,7 @@ contract ERC4626BufferPool is
 
             // In this case, since there is more base than wrapped assets, base assets will be removed (tokenOut)
             // and then wrapped, and the resulting wrapped assets will be deposited in the pool (tokenIn).
-            rebalanceHook(
+            _rebalanceHook(
                 SwapParams({
                     kind: SwapKind.EXACT_OUT,
                     pool: poolAddress,
@@ -349,7 +349,7 @@ contract ERC4626BufferPool is
         }
     }
 
-    function rebalanceHook(SwapParams memory params) internal {
+    function _rebalanceHook(SwapParams memory params) internal {
         IVault vault = getVault();
 
         (, uint256 amountIn, uint256 amountOut) = _swapHook(params);
