@@ -613,7 +613,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 amountBase,
         uint256 amountWrapped,
         address sharesOwner
-    ) public withLocker returns (uint256 issuedShares) {
+    ) public withOpenTab returns (uint256 issuedShares) {
         bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
 
         // amount of shares to issue is the total base token that the user is depositing
@@ -636,7 +636,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
         address sharesOwner
-    ) public withLocker returns (uint256 removedBaseBalance, uint256 removedWrappedBalance) {
+    ) public withOpenTab returns (uint256 removedBaseBalance, uint256 removedWrappedBalance) {
         bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
 
         uint256 ownerShares = _bufferLpShares[IERC20(wrappedToken)][sharesOwner];

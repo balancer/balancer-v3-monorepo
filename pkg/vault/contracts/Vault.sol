@@ -1068,7 +1068,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     function bufferWrapUnwrap(
         WrapParams memory params
-    ) public withLocker returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountBase) {
+    ) public withOpenTab returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountBase) {
         IERC4626 wrappedToken;
         if (params.wrappedToken == params.tokenIn) {
             // tokenIn is wrappedToken, user wants to unwrap
@@ -1102,7 +1102,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapKind kind,
         IERC4626 wrappedToken,
         uint256 amountGivenRaw
-    ) private withLocker returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountBase) {
+    ) private withOpenTab returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountBase) {
         bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
         // it was already checked in the bufferWrapUnwrap function
         IERC20 baseToken = IERC20(wrappedToken.asset());
@@ -1162,7 +1162,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapKind kind,
         IERC4626 wrappedToken,
         uint256 amountGivenRaw
-    ) private withLocker returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountBase) {
+    ) private withOpenTab returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountBase) {
         bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
         // it was already checked in the bufferWrapUnwrap function
         IERC20 baseToken = IERC20(wrappedToken.asset());
