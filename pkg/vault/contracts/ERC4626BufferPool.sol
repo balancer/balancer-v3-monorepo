@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -27,6 +26,9 @@ import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Ba
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
 import { BasePoolAuthentication } from "./BasePoolAuthentication.sol";
 import { BalancerPoolToken } from "./BalancerPoolToken.sol";
@@ -41,7 +43,7 @@ contract ERC4626BufferPool is
     BalancerPoolToken,
     BasePoolHooks,
     BasePoolAuthentication,
-    ReentrancyGuard
+    ReentrancyGuardTransient
 {
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
@@ -63,21 +65,15 @@ contract ERC4626BufferPool is
 
     // If we trigger a rebalance from the `onBeforeSwap` hook, the internal swap on the pool will call this hook again.
     // Use this flag as an internal reentrancy guard to avoid recursion.
-    // TODO: Should be transient.
-    bool private _inSwapContext;
+    bool private __inSwapContext;
     uint256 private __slotSeparator; // Transient storage: loading the slot must target a different one.
     bool private _afterSwapHookRequired;
 
     // Apply to edge-case handling functions so that we don't need to remember to set/clear the context flag.
     modifier performsInternalSwap() {
-        StorageSlot.BooleanSlotType slot;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            slot := _inSwapContext.slot
-        }
-        slot.tstore(true);
+        _inSwapContext().tstore(true);
         _;
-        slot.tstore(false);
+        _inSwapContext().tstore(false);
     }
 
     // Uses the factory as the Authentication disambiguator.
@@ -174,17 +170,9 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc BasePoolHooks
     function onBeforeSwap(IBasePool.PoolSwapParams calldata params) external override onlyVault returns (bool) {
-        {
-            StorageSlot.BooleanSlotType inSwapContextSlot;
-            // solhint-disable-next-line no-inline-assembly
-            assembly {
-                inSwapContextSlot := _inSwapContext.slot
-            }
-
-            // Short-circuit if we're already inside an `onBeforeSwap` hook.
-            if (inSwapContextSlot.tload() == true) {
-                return true;
-            }
+        // Short-circuit if we're already inside an `onBeforeSwap` hook.
+        if (_inSwapContext().tload()) {
+            return true;
         }
 
         // Ensure we have enough liquidity to accommodate the trade. Since these pools use Linear Math in the swap
@@ -609,5 +597,14 @@ contract ERC4626BufferPool is
         bptAmountIn = maxBptAmountIn;
         amountsOutScaled18 = minAmountsOutScaled18;
         swapFeeAmountsScaled18 = new uint256[](minAmountsOutScaled18.length);
+    }
+
+    // Transient Storage
+
+    function _inSwapContext() internal pure returns (StorageSlot.BooleanSlotType slot) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            slot := __inSwapContext.slot
+        }
     }
 }

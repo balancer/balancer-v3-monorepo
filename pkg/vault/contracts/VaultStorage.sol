@@ -14,7 +14,7 @@ import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openze
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 import {
     AddressArraySlotType,
-    NestedAddressMappingSlotType
+    TokenDeltaMappingSlotType
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
@@ -73,10 +73,10 @@ contract VaultStorage {
     uint256 private __nonzeroDeltaCount;
 
     /**
-     * @notice Represents the token due/owed to each locker.
-     * @dev Must all net to zero when the last locker is released.
+     * @notice Represents the token due/owed during an operation.
+     * @dev Must all net to zero when the operation is finished.
      */
-    mapping(address => mapping(IERC20 => int256)) private __tokenDeltas;
+    mapping(IERC20 => int256) private __tokenDeltas;
 
     /**
      * @notice Represents the total reserve of each ERC20 token.
@@ -121,7 +121,7 @@ contract VaultStorage {
         }
     }
 
-    function _tokenDeltas() internal pure returns (NestedAddressMappingSlotType slot) {
+    function _tokenDeltas() internal pure returns (TokenDeltaMappingSlotType slot) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             slot := __tokenDeltas.slot

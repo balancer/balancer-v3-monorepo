@@ -33,11 +33,10 @@ interface IVaultExtension {
     /**
      * @notice Retrieves the token delta for a specific user and token.
      * @dev This function allows reading the value from the `_tokenDeltas` mapping.
-     * @param user The address of the user for whom the delta is being fetched
      * @param token The token for which the delta is being fetched
      * @return The delta of the specified token for the specified user
      */
-    function getTokenDelta(address user, IERC20 token) external view returns (int256);
+    function getTokenDelta(IERC20 token) external view returns (int256);
 
     /**
      * @notice Retrieves the reserve (i.e., total Vault balance) of a given token.

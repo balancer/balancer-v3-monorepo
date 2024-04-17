@@ -10,7 +10,7 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
+import { PoolConfigLib, PoolConfigBits } from "../../../contracts/lib/PoolConfigLib.sol";
 
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
@@ -96,8 +96,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         );
         assertEq(decimalScalingFactors.length, 0, "should have no decimalScalingFactors");
         assertEq(
-            bytes32(sha256(abi.encodePacked(poolConfig.fromPoolConfig()))),
-            bytes32(sha256(abi.encodePacked(emptyPoolConfig.fromPoolConfig()))),
+            PoolConfigBits.unwrap(poolConfig.fromPoolConfig()),
+            PoolConfigBits.unwrap(emptyPoolConfig.fromPoolConfig()),
             "poolConfig should match empty pool config"
         );
     }
@@ -141,8 +141,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             );
         }
         assertEq(
-            bytes32(sha256(abi.encodePacked(newPoolConfig.fromPoolConfig()))),
-            bytes32(sha256(abi.encodePacked(originalPoolConfig.fromPoolConfig()))),
+            PoolConfigBits.unwrap(newPoolConfig.fromPoolConfig()),
+            PoolConfigBits.unwrap(originalPoolConfig.fromPoolConfig()),
             "original and new poolConfigs should be the same"
         );
     }
@@ -230,8 +230,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         }
 
         assertEq(
-            bytes32(sha256(abi.encodePacked(newPoolConfig.fromPoolConfig()))),
-            bytes32(sha256(abi.encodePacked(originalPoolConfig.fromPoolConfig()))),
+            PoolConfigBits.unwrap(newPoolConfig.fromPoolConfig()),
+            PoolConfigBits.unwrap(originalPoolConfig.fromPoolConfig()),
             "original and new poolConfigs should be the same"
         );
     }
@@ -256,45 +256,37 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
 
     function testAccountDeltaNonZeroUp__Fuzz(int256 delta) public {
         vm.assume(delta != 0);
-        int256 startingTokenDelta = vault.getTokenDelta(alice, dai);
+        int256 startingTokenDelta = vault.getTokenDelta(dai);
         uint256 startingNonzeroDeltaCount = vault.getNonzeroDeltaCount();
 
         vm.prank(alice);
         vault.accountDelta(dai, delta, alice);
 
-        assertEq(vault.getTokenDelta(alice, dai), startingTokenDelta + delta, "Incorrect token delta (token)");
+        assertEq(vault.getTokenDelta(dai), startingTokenDelta + delta, "Incorrect token delta (token)");
         assertEq(vault.getNonzeroDeltaCount(), startingNonzeroDeltaCount + 1, "Incorrect non-zero delta count");
     }
 
     function testSupplyCreditNonZeroUp__Fuzz(uint256 delta) public {
         delta = bound(delta, 1, MAX_UINT128);
-        int256 startingTokenDelta = vault.getTokenDelta(alice, dai);
+        int256 startingTokenDelta = vault.getTokenDelta(dai);
         uint256 startingNonzeroDeltaCount = vault.getNonzeroDeltaCount();
 
         vm.prank(alice);
         vault.supplyCredit(dai, delta, alice);
 
-        assertEq(
-            vault.getTokenDelta(alice, dai),
-            startingTokenDelta - delta.toInt256(),
-            "Incorrect token delta (token)"
-        );
+        assertEq(vault.getTokenDelta(dai), startingTokenDelta - delta.toInt256(), "Incorrect token delta (token)");
         assertEq(vault.getNonzeroDeltaCount(), startingNonzeroDeltaCount + 1, "Incorrect non-zero delta count");
     }
 
     function testTakeDebtNonZeroUp__Fuzz(uint256 delta) public {
         delta = bound(delta, 1, MAX_UINT128);
-        int256 startingTokenDelta = vault.getTokenDelta(alice, dai);
+        int256 startingTokenDelta = vault.getTokenDelta(dai);
         uint256 startingNonzeroDeltaCount = vault.getNonzeroDeltaCount();
 
         vm.prank(alice);
         vault.takeDebt(dai, delta, alice);
 
-        assertEq(
-            vault.getTokenDelta(alice, dai),
-            startingTokenDelta + delta.toInt256(),
-            "Incorrect token delta (token)"
-        );
+        assertEq(vault.getTokenDelta(dai), startingTokenDelta + delta.toInt256(), "Incorrect token delta (token)");
         assertEq(vault.getNonzeroDeltaCount(), startingNonzeroDeltaCount + 1, "Incorrect non-zero delta count");
     }
 
@@ -303,16 +295,16 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         startingNonZeroDeltaCount = bound(startingNonZeroDeltaCount, 1, 10000);
         vm.assume(delta != 0);
 
-        vault.manualSetAccountDelta(dai, alice, delta);
+        vault.manualSetAccountDelta(dai, delta);
         vault.manualSetNonZeroDeltaCount(startingNonZeroDeltaCount);
 
         require(vault.getNonzeroDeltaCount() == startingNonZeroDeltaCount, "Starting non-zero delta count incorrect");
-        require(vault.getTokenDelta(alice, dai) == delta, "Starting token delta incorrect");
+        require(vault.getTokenDelta(dai) == delta, "Starting token delta incorrect");
 
         vm.prank(alice);
         vault.accountDelta(dai, -delta, alice);
 
-        assertEq(vault.getTokenDelta(alice, dai), 0, "Incorrect token delta (token)");
+        assertEq(vault.getTokenDelta(dai), 0, "Incorrect token delta (token)");
         assertEq(vault.getNonzeroDeltaCount(), startingNonZeroDeltaCount - 1, "Incorrect non-zero delta count");
     }
 
@@ -320,16 +312,16 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         delta = bound(delta, int256(1), MAX_UINT128.toInt256());
         startingNonZeroDeltaCount = bound(startingNonZeroDeltaCount, 1, 10000);
 
-        vault.manualSetAccountDelta(dai, alice, delta);
+        vault.manualSetAccountDelta(dai, delta);
         vault.manualSetNonZeroDeltaCount(startingNonZeroDeltaCount);
 
         require(vault.getNonzeroDeltaCount() == startingNonZeroDeltaCount, "Starting non-zero delta count incorrect");
-        require(vault.getTokenDelta(alice, dai) == delta, "Starting token delta incorrect");
+        require(vault.getTokenDelta(dai) == delta, "Starting token delta incorrect");
 
         vm.prank(alice);
         vault.supplyCredit(dai, delta.toUint256(), alice);
 
-        assertEq(vault.getTokenDelta(alice, dai), 0, "Incorrect token delta (token)");
+        assertEq(vault.getTokenDelta(dai), 0, "Incorrect token delta (token)");
         assertEq(vault.getNonzeroDeltaCount(), startingNonZeroDeltaCount - 1, "Incorrect non-zero delta count");
     }
 
@@ -337,16 +329,16 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         delta = bound(delta, int256(1), MAX_UINT128.toInt256());
         startingNonZeroDeltaCount = bound(startingNonZeroDeltaCount, 1, 10000);
 
-        vault.manualSetAccountDelta(dai, alice, -delta);
+        vault.manualSetAccountDelta(dai, -delta);
         vault.manualSetNonZeroDeltaCount(startingNonZeroDeltaCount);
 
         require(vault.getNonzeroDeltaCount() == startingNonZeroDeltaCount, "Starting non-zero delta count incorrect");
-        require(vault.getTokenDelta(alice, dai) == -delta, "Starting token delta incorrect");
+        require(vault.getTokenDelta(dai) == -delta, "Starting token delta incorrect");
 
         vm.prank(alice);
         vault.takeDebt(dai, delta.toUint256(), alice);
 
-        assertEq(vault.getTokenDelta(alice, dai), 0, "Incorrect token delta (token)");
+        assertEq(vault.getTokenDelta(dai), 0, "Incorrect token delta (token)");
         assertEq(vault.getNonzeroDeltaCount(), startingNonZeroDeltaCount - 1, "Incorrect non-zero delta count");
     }
 }

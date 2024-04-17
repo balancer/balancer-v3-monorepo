@@ -54,7 +54,7 @@ contract StableMathMock {
         uint256 swapFee
     ) external pure returns (uint256) {
         return
-            StableMath._calcBptOutGivenExactTokensIn(
+            StableMath.computeBptOutGivenExactTokensIn(
                 amp,
                 balances,
                 amountsIn,
@@ -74,7 +74,7 @@ contract StableMathMock {
         uint256 swapFee
     ) external pure returns (uint256) {
         return
-            StableMath._calcTokenInGivenExactBptOut(
+            StableMath.computeTokenInGivenExactBptOut(
                 amp,
                 balances,
                 tokenIndex,
@@ -95,7 +95,7 @@ contract StableMathMock {
         uint256 swapFee
     ) external pure returns (uint256) {
         return
-            StableMath._calcTokenOutGivenExactBptIn(
+            StableMath.computeTokenOutGivenExactBptIn(
                 amp,
                 balances,
                 tokenIndex,
@@ -115,7 +115,7 @@ contract StableMathMock {
         uint256 swapFee
     ) external pure returns (uint256) {
         return
-            StableMath._calcBptInGivenExactTokensOut(
+            StableMath.computeBptInGivenExactTokensOut(
                 amp,
                 balances,
                 amountsOut,
