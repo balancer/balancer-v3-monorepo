@@ -241,6 +241,10 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IBufferPool
     function rebalance() external authenticate {
+        getVault().lock(abi.encodeWithSelector(ERC4626BufferPool.forcedRebalanceHook.selector));
+    }
+
+    function forcedRebalanceHook() external payable onlyVault {
         _rebalance(FIFTY_PERCENT);
     }
 
@@ -278,13 +282,14 @@ contract ERC4626BufferPool is
             unchecked {
                 exchangeAmountRaw = desiredBaseAssetsRaw - balanceBaseAssetsRaw;
             }
-            _rebalanceInternal(vault, poolAddress, tokens, exchangeAmountRaw, SwapKind.EXACT_IN);
+
+            _rebalanceInternal(poolAddress, tokens, exchangeAmountRaw, SwapKind.EXACT_IN);
         } else {
             unchecked {
                 exchangeAmountRaw = balanceBaseAssetsRaw - desiredBaseAssetsRaw;
             }
 
-            _rebalanceInternal(vault, poolAddress, tokens, exchangeAmountRaw, SwapKind.EXACT_OUT);
+            _rebalanceInternal(poolAddress, tokens, exchangeAmountRaw, SwapKind.EXACT_OUT);
         }
     }
 
@@ -295,7 +300,6 @@ contract ERC4626BufferPool is
      * `exchangeAmountRaw` should be in raw base decimals.
      */
     function _rebalanceInternal(
-        IVault vault,
         address poolAddress,
         IERC20[] memory tokens,
         uint256 exchangeAmountRaw,
@@ -311,19 +315,16 @@ contract ERC4626BufferPool is
 
             // In this case, since there is more wrapped than base assets, wrapped tokens will be removed (tokenOut)
             // and then unwrapped, and the resulting base assets will be deposited in the pool (tokenIn).
-            vault.lock(
-                abi.encodeWithSelector(
-                    ERC4626BufferPool.rebalanceHook.selector,
-                    SwapParams({
-                        kind: SwapKind.EXACT_IN,
-                        pool: poolAddress,
-                        tokenIn: tokens[_baseTokenIndex],
-                        tokenOut: tokens[_wrappedTokenIndex],
-                        amountGivenRaw: exchangeAmountRaw,
-                        limitRaw: limitRaw,
-                        userData: ""
-                    })
-                )
+            _rebalanceHook(
+                SwapParams({
+                    kind: SwapKind.EXACT_IN,
+                    pool: poolAddress,
+                    tokenIn: tokens[_baseTokenIndex],
+                    tokenOut: tokens[_wrappedTokenIndex],
+                    amountGivenRaw: exchangeAmountRaw,
+                    limitRaw: limitRaw,
+                    userData: ""
+                })
             );
         } else {
             // Since onSwap will consider a slightly bigger rate for the wrapped token, we need to account that
@@ -334,24 +335,21 @@ contract ERC4626BufferPool is
 
             // In this case, since there is more base than wrapped assets, base assets will be removed (tokenOut)
             // and then wrapped, and the resulting wrapped assets will be deposited in the pool (tokenIn).
-            vault.lock(
-                abi.encodeWithSelector(
-                    ERC4626BufferPool.rebalanceHook.selector,
-                    SwapParams({
-                        kind: SwapKind.EXACT_OUT,
-                        pool: poolAddress,
-                        tokenIn: tokens[_wrappedTokenIndex],
-                        tokenOut: tokens[_baseTokenIndex],
-                        amountGivenRaw: exchangeAmountRaw,
-                        limitRaw: limitRaw,
-                        userData: ""
-                    })
-                )
+            _rebalanceHook(
+                SwapParams({
+                    kind: SwapKind.EXACT_OUT,
+                    pool: poolAddress,
+                    tokenIn: tokens[_wrappedTokenIndex],
+                    tokenOut: tokens[_baseTokenIndex],
+                    amountGivenRaw: exchangeAmountRaw,
+                    limitRaw: limitRaw,
+                    userData: ""
+                })
             );
         }
     }
 
-    function rebalanceHook(SwapParams calldata params) external payable onlyVault {
+    function _rebalanceHook(SwapParams memory params) internal {
         IVault vault = getVault();
 
         (, uint256 amountIn, uint256 amountOut) = _swapHook(params);
@@ -393,7 +391,7 @@ contract ERC4626BufferPool is
     }
 
     function _swapHook(
-        SwapParams calldata params
+        SwapParams memory params
     ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         (amountCalculated, amountIn, amountOut) = getVault().swap(params);
     }

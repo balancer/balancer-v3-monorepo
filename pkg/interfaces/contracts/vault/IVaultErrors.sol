@@ -82,7 +82,9 @@ interface IVaultErrors {
     error WrongLocker(address locker, address caller);
 
     /// @dev A user called a Vault function (swap, add/remove liquidity) outside the lock context.
-    error NoLocker();
+    error TabIsNotOpen();
+
+    error TabAlreadyOpen();
 
     /**
      * @dev The caller attempted to access a Locker at an invalid index.
