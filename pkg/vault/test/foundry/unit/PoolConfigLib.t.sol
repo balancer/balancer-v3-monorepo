@@ -518,7 +518,7 @@ contract PoolConfigLibTest is Test {
             "isPoolRegistered mismatch"
         );
 
-        config = _cretePureConfig();
+        config = _createEmptyConfig();
         config.isPoolInitialized = true;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -526,7 +526,7 @@ contract PoolConfigLibTest is Test {
             "isPoolInitialized mismatch"
         );
 
-        config = _cretePureConfig();
+        config = _createEmptyConfig();
         config.isPoolPaused = true;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -534,7 +534,7 @@ contract PoolConfigLibTest is Test {
             "isPoolPaused mismatch"
         );
 
-        config = _cretePureConfig();
+        config = _createEmptyConfig();
         config.isPoolInRecoveryMode = true;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -542,7 +542,7 @@ contract PoolConfigLibTest is Test {
             "isPoolInRecoveryMode mismatch"
         );
 
-        config = _cretePureConfig();
+        config = _createEmptyConfig();
         config.hasDynamicSwapFee = true;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -550,7 +550,7 @@ contract PoolConfigLibTest is Test {
             "hasDynamicSwapFee mismatch"
         );
 
-        config = _cretePureConfig();
+        config = _createEmptyConfig();
         config.staticSwapFeePercentage = MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -558,7 +558,7 @@ contract PoolConfigLibTest is Test {
             "staticSwapFeePercentage mismatch"
         );
 
-        config = _cretePureConfig();
+        config = _createEmptyConfig();
         config.poolCreatorFeePercentage = MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -566,7 +566,7 @@ contract PoolConfigLibTest is Test {
             "poolCreatorFeePercentage mismatch"
         );
 
-        config = _cretePureConfig();
+        config = _createEmptyConfig();
         config.tokenDecimalDiffs = MAX_UINT24_VALUE;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -578,7 +578,7 @@ contract PoolConfigLibTest is Test {
             "tokenDecimalDiffs mismatch"
         );
 
-        config = _cretePureConfig();
+        config = _createEmptyConfig();
         config.pauseWindowEndTime = MAX_UINT32_VALUE;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -587,7 +587,7 @@ contract PoolConfigLibTest is Test {
         );
 
         // check .hooks
-        config = _cretePureConfig();
+        config = _createEmptyConfig();
         config.hooks.shouldCallBeforeInitialize = true;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -595,7 +595,7 @@ contract PoolConfigLibTest is Test {
             "shouldCallBeforeInitialize mismatch"
         );
 
-        config = _cretePureConfig();
+        config = _createEmptyConfig();
         config.hooks.shouldCallAfterInitialize = true;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -603,7 +603,7 @@ contract PoolConfigLibTest is Test {
             "shouldCallAfterInitialize mismatch"
         );
 
-        config = _cretePureConfig();
+        config = _createEmptyConfig();
         config.hooks.shouldCallBeforeAddLiquidity = true;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -611,7 +611,7 @@ contract PoolConfigLibTest is Test {
             "shouldCallBeforeAddLiquidity mismatch"
         );
 
-        config = _cretePureConfig();
+        config = _createEmptyConfig();
         config.hooks.shouldCallAfterAddLiquidity = true;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -619,7 +619,7 @@ contract PoolConfigLibTest is Test {
             "shouldCallAfterAddLiquidity mismatch"
         );
 
-        config = _cretePureConfig();
+        config = _createEmptyConfig();
         config.hooks.shouldCallBeforeRemoveLiquidity = true;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -627,7 +627,7 @@ contract PoolConfigLibTest is Test {
             "shouldCallBeforeRemoveLiquidity mismatch"
         );
 
-        config = _cretePureConfig();
+        config = _createEmptyConfig();
         config.hooks.shouldCallAfterRemoveLiquidity = true;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -635,7 +635,7 @@ contract PoolConfigLibTest is Test {
             "shouldCallAfterRemoveLiquidity mismatch"
         );
 
-        config = _cretePureConfig();
+        config = _createEmptyConfig();
         config.hooks.shouldCallBeforeSwap = true;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -643,7 +643,7 @@ contract PoolConfigLibTest is Test {
             "shouldCallBeforeSwap mismatch"
         );
 
-        config = _cretePureConfig();
+        config = _createEmptyConfig();
         config.hooks.shouldCallAfterSwap = true;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -652,7 +652,7 @@ contract PoolConfigLibTest is Test {
         );
 
         // check .liquidityManagement
-        config = _cretePureConfig();
+        config = _createEmptyConfig();
         config.liquidityManagement.disableUnbalancedLiquidity = true;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -660,7 +660,7 @@ contract PoolConfigLibTest is Test {
             "disableUnbalancedLiquidity mismatch"
         );
 
-        config = _cretePureConfig();
+        config = _createEmptyConfig();
         config.liquidityManagement.enableAddLiquidityCustom = true;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -668,7 +668,7 @@ contract PoolConfigLibTest is Test {
             "enableAddLiquidityCustom mismatch"
         );
 
-        config = _cretePureConfig();
+        config = _createEmptyConfig();
         config.liquidityManagement.enableRemoveLiquidityCustom = true;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -689,6 +689,8 @@ contract PoolConfigLibTest is Test {
 
     function testRequireUnbalancedLiquidityEnabled() public pure {
         PoolConfig memory config;
+
+        // It's enabled by default
         config.requireUnbalancedLiquidityEnabled();
     }
 
