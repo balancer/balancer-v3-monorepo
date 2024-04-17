@@ -63,6 +63,8 @@ contract WeightedPoolSwaps is BaseVaultTest {
                 "ERC20POOL",
                 vault.buildTokenConfig([address(dai), address(wsteth)].toMemoryArray().asIERC20(), rateProviders),
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                address(0),
+                address(0),
                 swapFee,
                 bytes32(0)
             )
@@ -74,6 +76,8 @@ contract WeightedPoolSwaps is BaseVaultTest {
                 "ERC20POOL",
                 vault.buildTokenConfig([address(dai), address(wsteth)].toMemoryArray().asIERC20()),
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                address(0),
+                address(0),
                 swapFee,
                 bytes32(uint256(1))
             )
