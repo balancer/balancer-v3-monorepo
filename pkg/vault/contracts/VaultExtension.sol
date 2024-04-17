@@ -6,7 +6,6 @@ import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -27,6 +26,9 @@ import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Ba
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
@@ -58,7 +60,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using VaultExtensionsLib for IVault;
     using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
-    using StorageSlot for StorageSlot.Uint256SlotType;
+    using StorageSlot for *;
 
     IVault private immutable _vault;
     IVaultAdmin private immutable _vaultAdmin;
@@ -95,16 +97,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function getLocker(uint256 index) external view onlyVault returns (address) {
-        if (index >= _lockers().tLength()) {
-            revert LockerOutOfBounds(index);
-        }
-        return _lockers().tUncheckedAt(index);
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getLockersCount() external view onlyVault returns (uint256) {
-        return _lockers().tLength();
+    function isTabOpen() external view onlyVault returns (bool) {
+        return _openTab().tload();
     }
 
     /// @inheritdoc IVaultExtension
@@ -113,8 +107,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function getTokenDelta(address user, IERC20 token) external view onlyVault returns (int256) {
-        return _tokenDeltas().tGet(user, token);
+    function getTokenDelta(IERC20 token) external view onlyVault returns (int256) {
+        return _tokenDeltas().tGet(token);
     }
 
     /// @inheritdoc IVaultExtension
@@ -282,7 +276,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external withLocker withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
+    ) external withOpenTab withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
         VaultState memory vaultState = _ensureUnpausedAndGetVaultState(pool);
 
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
@@ -547,7 +541,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 exactBptAmountIn
     )
         external
-        withLocker
+        withOpenTab
         nonReentrant
         withInitializedPool(pool)
         onlyInRecoveryMode(pool)
@@ -622,8 +616,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert QueriesDisabled();
         }
 
-        // Add the current locker to the list so `withLocker` does not revert
-        _lockers().tPush(msg.sender);
+        // Inform that a tab is opened so `withOpenTab` does not revert
+        _openTab().tstore(true);
         _;
     }
 

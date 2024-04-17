@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -23,6 +22,10 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
 import { BasePoolAuthentication } from "./BasePoolAuthentication.sol";
 import { BalancerPoolToken } from "./BalancerPoolToken.sol";
@@ -36,11 +39,12 @@ contract ERC4626BufferPool is
     BalancerPoolToken,
     BasePoolHooks,
     BasePoolAuthentication,
-    ReentrancyGuard
+    ReentrancyGuardTransient
 {
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
+    using StorageSlot for *;
 
     uint256 internal immutable _wrappedTokenIndex;
     uint256 internal immutable _baseTokenIndex;
@@ -57,14 +61,13 @@ contract ERC4626BufferPool is
 
     // If we trigger a rebalance from the `onBeforeSwap` hook, the internal swap on the pool will call this hook again.
     // Use this flag as an internal reentrancy guard to avoid recursion.
-    // TODO: Should be transient.
-    bool private _inSwapContext;
+    bool private __inSwapContext;
 
     // Apply to edge-case handling functions so that we don't need to remember to set/clear the context flag.
     modifier performsInternalSwap() {
-        _inSwapContext = true;
+        _inSwapContext().tstore(true);
         _;
-        _inSwapContext = false;
+        _inSwapContext().tstore(false);
     }
 
     // Uses the factory as the Authentication disambiguator.
@@ -110,7 +113,7 @@ contract ERC4626BufferPool is
     /// @inheritdoc BasePoolHooks
     function onBeforeSwap(IBasePool.PoolSwapParams calldata params) external override onlyVault returns (bool) {
         // Short-circuit if we're already inside an `onBeforeSwap` hook.
-        if (_inSwapContext) {
+        if (_inSwapContext().tload()) {
             return true;
         }
 
@@ -227,6 +230,10 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IBufferPool
     function rebalance() external authenticate {
+        getVault().lock(abi.encodeWithSelector(ERC4626BufferPool.forcedRebalanceHook.selector));
+    }
+
+    function forcedRebalanceHook() external payable onlyVault {
         _rebalance(FIFTY_PERCENT);
     }
 
@@ -264,12 +271,14 @@ contract ERC4626BufferPool is
             unchecked {
                 exchangeAmountRaw = desiredBaseAssetsRaw - balanceBaseAssetsRaw;
             }
-            _rebalanceInternal(vault, poolAddress, tokens, exchangeAmountRaw, SwapKind.EXACT_IN);
+
+            _rebalanceInternal(poolAddress, tokens, exchangeAmountRaw, SwapKind.EXACT_IN);
         } else {
             unchecked {
                 exchangeAmountRaw = balanceBaseAssetsRaw - desiredBaseAssetsRaw;
             }
-            _rebalanceInternal(vault, poolAddress, tokens, exchangeAmountRaw, SwapKind.EXACT_OUT);
+
+            _rebalanceInternal(poolAddress, tokens, exchangeAmountRaw, SwapKind.EXACT_OUT);
         }
     }
 
@@ -280,7 +289,6 @@ contract ERC4626BufferPool is
      * `exchangeAmountRaw` should be in raw base decimals.
      */
     function _rebalanceInternal(
-        IVault vault,
         address poolAddress,
         IERC20[] memory tokens,
         uint256 exchangeAmountRaw,
@@ -296,19 +304,16 @@ contract ERC4626BufferPool is
 
             // In this case, since there is more wrapped than base assets, wrapped tokens will be removed (tokenOut)
             // and then unwrapped, and the resulting base assets will be deposited in the pool (tokenIn).
-            vault.lock(
-                abi.encodeWithSelector(
-                    ERC4626BufferPool.rebalanceHook.selector,
-                    SwapParams({
-                        kind: SwapKind.EXACT_IN,
-                        pool: poolAddress,
-                        tokenIn: tokens[_baseTokenIndex],
-                        tokenOut: tokens[_wrappedTokenIndex],
-                        amountGivenRaw: exchangeAmountRaw,
-                        limitRaw: limitRaw,
-                        userData: ""
-                    })
-                )
+            _rebalanceHook(
+                SwapParams({
+                    kind: SwapKind.EXACT_IN,
+                    pool: poolAddress,
+                    tokenIn: tokens[_baseTokenIndex],
+                    tokenOut: tokens[_wrappedTokenIndex],
+                    amountGivenRaw: exchangeAmountRaw,
+                    limitRaw: limitRaw,
+                    userData: ""
+                })
             );
         } else {
             // Since onSwap will consider a slightly bigger rate for the wrapped token, we need to account that
@@ -319,24 +324,21 @@ contract ERC4626BufferPool is
 
             // In this case, since there is more base than wrapped assets, base assets will be removed (tokenOut)
             // and then wrapped, and the resulting wrapped assets will be deposited in the pool (tokenIn).
-            vault.lock(
-                abi.encodeWithSelector(
-                    ERC4626BufferPool.rebalanceHook.selector,
-                    SwapParams({
-                        kind: SwapKind.EXACT_OUT,
-                        pool: poolAddress,
-                        tokenIn: tokens[_wrappedTokenIndex],
-                        tokenOut: tokens[_baseTokenIndex],
-                        amountGivenRaw: exchangeAmountRaw,
-                        limitRaw: limitRaw,
-                        userData: ""
-                    })
-                )
+            _rebalanceHook(
+                SwapParams({
+                    kind: SwapKind.EXACT_OUT,
+                    pool: poolAddress,
+                    tokenIn: tokens[_wrappedTokenIndex],
+                    tokenOut: tokens[_baseTokenIndex],
+                    amountGivenRaw: exchangeAmountRaw,
+                    limitRaw: limitRaw,
+                    userData: ""
+                })
             );
         }
     }
 
-    function rebalanceHook(SwapParams calldata params) external payable onlyVault {
+    function _rebalanceHook(SwapParams memory params) internal {
         IVault vault = getVault();
 
         (, uint256 amountIn, uint256 amountOut) = _swapHook(params);
@@ -378,7 +380,7 @@ contract ERC4626BufferPool is
     }
 
     function _swapHook(
-        SwapParams calldata params
+        SwapParams memory params
     ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         (amountCalculated, amountIn, amountOut) = getVault().swap(params);
     }
@@ -440,5 +442,14 @@ contract ERC4626BufferPool is
         // This pool doesn't support single token add/remove liquidity, so this function is not needed.
         // Should never get here, but need to implement the interface.
         revert IVaultErrors.OperationNotSupported();
+    }
+
+    // Transient Storage
+
+    function _inSwapContext() internal pure returns (StorageSlot.BooleanSlotType slot) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            slot := __inSwapContext.slot
+        }
     }
 }

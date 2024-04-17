@@ -3,7 +3,6 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
@@ -19,6 +18,9 @@ import {
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -30,7 +32,7 @@ import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
  * @dev Storage layout for Vault. This contract has no code except for common utilities in the inheritance chain
  * that require storage to work and will be required in both the main Vault and its extension.
  */
-abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, ReentrancyGuard, ERC20MultiToken {
+abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, ReentrancyGuardTransient, ERC20MultiToken {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
@@ -39,7 +41,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     using FixedPoint for *;
     using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
-    using StorageSlot for StorageSlot.Uint256SlotType;
+    using StorageSlot for *;
 
     /*******************************************************************************
                               Transient Accounting
@@ -53,25 +55,14 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * If no locker is found or the caller is not the expected locker,
      * it reverts the transaction with specific error messages.
      */
-    modifier withLocker() {
-        _ensureWithLocker();
+    modifier withOpenTab() {
+        _ensureWithOpenTab();
         _;
     }
 
-    function _ensureWithLocker() internal view {
-        uint256 lockersLength = _lockers().tLength();
-        // If there are no handlers in the list, revert with an error.
-        if (lockersLength == 0) {
-            revert NoLocker();
-        }
-
-        // Get the last locker from the `_lockers` array.
-        // This represents the current active locker.
-        address locker = _lockers().tUncheckedAt(lockersLength - 1);
-
-        // If the current function caller is not the active locker, revert.
-        if (msg.sender != locker) {
-            revert WrongLocker(msg.sender, locker);
+    function _ensureWithOpenTab() internal view {
+        if (_openTab().tload() == false) {
+            revert TabIsNotOpen();
         }
     }
 
@@ -119,13 +110,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         // If the delta is zero, there's nothing to account for.
         if (delta == 0) return;
 
-        // Ensure that the locker specified is indeed the caller.
-        if (locker != msg.sender) {
-            revert WrongLocker(locker, msg.sender);
-        }
-
         // Get the current recorded delta for this token and locker.
-        int256 current = _tokenDeltas().tGet(locker, token);
+        int256 current = _tokenDeltas().tGet(token);
 
         // Calculate the new delta after accounting for the change.
         int256 next = current + delta;
@@ -144,7 +130,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         }
 
         // Update the delta for this token and locker.
-        _tokenDeltas().tSet(locker, token, next);
+        _tokenDeltas().tSet(token, next);
     }
 
     /*******************************************************************************

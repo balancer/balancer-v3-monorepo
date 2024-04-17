@@ -20,17 +20,9 @@ interface IVaultExtension {
     *******************************************************************************/
 
     /**
-     * @notice Returns the address at the specified index of the _lockers array.
-     * @param index The index of the locker's address to fetch
-     * @return The address at the given index
+     * @notice Returns True if the tab is open, false otherwise.
      */
-    function getLocker(uint256 index) external view returns (address);
-
-    /**
-     * @notice Returns the total number of lockers.
-     * @return The number of lockers
-     */
-    function getLockersCount() external view returns (uint256);
+    function isTabOpen() external view returns (bool);
 
     /**
      *  @notice Returns the count of non-zero deltas.
@@ -41,11 +33,10 @@ interface IVaultExtension {
     /**
      * @notice Retrieves the token delta for a specific user and token.
      * @dev This function allows reading the value from the `_tokenDeltas` mapping.
-     * @param user The address of the user for whom the delta is being fetched
      * @param token The token for which the delta is being fetched
      * @return The delta of the specified token for the specified user
      */
-    function getTokenDelta(address user, IERC20 token) external view returns (int256);
+    function getTokenDelta(IERC20 token) external view returns (int256);
 
     /**
      * @notice Retrieves the reserve (i.e., total Vault balance) of a given token.
@@ -329,10 +320,10 @@ interface IVaultExtension {
      * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
      * anything else will revert.
      *
-     * Allows querying any operation on the Vault that has the `withLocker` modifier.
+     * Allows querying any operation on the Vault that has the `withOpenTab` modifier.
      *
      * Allows the external calling of a function via the Vault contract to
-     * access Vault's functions guarded by `withLocker`.
+     * access Vault's functions guarded by `withOpenTab`.
      * `transient` modifier ensuring balances changes within the Vault are settled.
      *
      * @param data Contains function signature and args to be passed to the msg.sender
