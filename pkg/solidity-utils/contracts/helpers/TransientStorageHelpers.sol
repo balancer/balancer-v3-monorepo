@@ -8,6 +8,7 @@ import { SlotDerivation } from "../openzeppelin/SlotDerivation.sol";
 import { StorageSlot } from "../openzeppelin/StorageSlot.sol";
 
 type NestedAddressMappingSlotType is bytes32;
+type AddressMappingSlot is bytes32;
 type AddressArraySlotType is bytes32;
 
 library TransientStorageHelpers {
@@ -24,6 +25,23 @@ library TransientStorageHelpers {
 
     function tSet(NestedAddressMappingSlotType slot, IERC20 k1, int256 value) internal {
         NestedAddressMappingSlotType.unwrap(slot).deriveMapping(address(k1)).asInt256().tstore(value);
+    }
+
+    function tGet(AddressMappingSlot slot, address key) internal view returns (uint256) {
+        return AddressMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tload();
+    }
+
+    function tSet(AddressMappingSlot slot, address key, uint256 value) internal {
+        AddressMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(value);
+    }
+
+    // Implement the common "+=" operation: map[key] += value.
+    function tAdd(AddressMappingSlot slot, address key, uint256 value) internal {
+        AddressMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(tGet(slot, key) + value);
+    }
+
+    function tSub(AddressMappingSlot slot, address key, uint256 value) internal {
+        AddressMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(tGet(slot, key) - value);
     }
 
     // Arrays

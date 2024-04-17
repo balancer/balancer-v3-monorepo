@@ -168,7 +168,7 @@ library StableMath {
         return finalBalanceIn - balances[tokenIndexIn] + 1;
     }
 
-    function _calcBptOutGivenExactTokensIn(
+    function computeBptOutGivenExactTokensIn(
         uint256 amp,
         uint256[] memory balances,
         uint256[] memory amountsIn,
@@ -224,7 +224,7 @@ library StableMath {
         }
     }
 
-    function _calcTokenInGivenExactBptOut(
+    function computeTokenInGivenExactBptOut(
         uint256 amp,
         uint256[] memory balances,
         uint256 tokenIndex,
@@ -263,7 +263,7 @@ library StableMath {
      * amountsTokenOut -> amountsOutProportional ->
      * amountOutPercentageExcess -> amountOutBeforeFee -> newInvariant -> amountBPTIn
      */
-    function _calcBptInGivenExactTokensOut(
+    function computeBptInGivenExactTokensOut(
         uint256 amp,
         uint256[] memory balances,
         uint256[] memory amountsOut,
@@ -315,7 +315,7 @@ library StableMath {
         return bptTotalSupply.mulUp(invariantRatio.complement());
     }
 
-    function _calcTokenOutGivenExactBptIn(
+    function computeTokenOutGivenExactBptIn(
         uint256 amp,
         uint256[] memory balances,
         uint256 tokenIndex,

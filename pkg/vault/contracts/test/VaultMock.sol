@@ -19,6 +19,7 @@ import {
     TransientStorageHelpers
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/test/InputHelpersMock.sol";
 
 import { VaultStateLib } from "../lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
@@ -38,6 +39,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using StorageSlot for StorageSlot.Uint256SlotType;
 
     PoolFactoryMock private immutable _poolFactoryMock;
+    InputHelpersMock private immutable _inputHelpersMock;
 
     bytes32 private constant _ALL_BITS_SET = bytes32(type(uint256).max);
 
@@ -45,6 +47,7 @@ contract VaultMock is IVaultMainMock, Vault {
         uint256 pauseWindowEndTime = IVaultAdmin(address(vaultExtension)).getPauseWindowEndTime();
         uint256 bufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
         _poolFactoryMock = new PoolFactoryMock(IVault(address(this)), pauseWindowEndTime - bufferPeriodDuration);
+        _inputHelpersMock = new InputHelpersMock();
     }
 
     function getPoolFactoryMock() external view returns (address) {
@@ -232,19 +235,19 @@ contract VaultMock is IVaultMainMock, Vault {
         (tokenConfig, balancesRaw, decimalScalingFactors, poolConfig) = _getPoolTokenInfo(pool);
     }
 
-    function buildTokenConfig(IERC20[] memory tokens) public pure returns (TokenConfig[] memory tokenConfig) {
+    function buildTokenConfig(IERC20[] memory tokens) public view returns (TokenConfig[] memory tokenConfig) {
         tokenConfig = new TokenConfig[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
             tokenConfig[i].token = tokens[i];
         }
 
-        tokenConfig = sortTokenConfig(tokenConfig);
+        tokenConfig = _inputHelpersMock.sortTokenConfig(tokenConfig);
     }
 
     function buildTokenConfig(
         IERC20[] memory tokens,
         IRateProvider[] memory rateProviders
-    ) public pure returns (TokenConfig[] memory tokenConfig) {
+    ) public view returns (TokenConfig[] memory tokenConfig) {
         tokenConfig = new TokenConfig[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
             tokenConfig[i].token = tokens[i];
@@ -254,14 +257,14 @@ contract VaultMock is IVaultMainMock, Vault {
                 : TokenType.WITH_RATE;
         }
 
-        tokenConfig = sortTokenConfig(tokenConfig);
+        tokenConfig = _inputHelpersMock.sortTokenConfig(tokenConfig);
     }
 
     function buildTokenConfig(
         IERC20[] memory tokens,
         IRateProvider[] memory rateProviders,
         bool[] memory yieldFeeFlags
-    ) public pure returns (TokenConfig[] memory tokenConfig) {
+    ) public view returns (TokenConfig[] memory tokenConfig) {
         tokenConfig = new TokenConfig[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
             tokenConfig[i].token = tokens[i];
@@ -272,7 +275,7 @@ contract VaultMock is IVaultMainMock, Vault {
             tokenConfig[i].paysYieldFees = yieldFeeFlags[i];
         }
 
-        tokenConfig = sortTokenConfig(tokenConfig);
+        tokenConfig = _inputHelpersMock.sortTokenConfig(tokenConfig);
     }
 
     function buildTokenConfig(
@@ -280,7 +283,7 @@ contract VaultMock is IVaultMainMock, Vault {
         TokenType[] memory tokenTypes,
         IRateProvider[] memory rateProviders,
         bool[] memory yieldFeeFlags
-    ) public pure returns (TokenConfig[] memory tokenConfig) {
+    ) public view returns (TokenConfig[] memory tokenConfig) {
         tokenConfig = new TokenConfig[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
             tokenConfig[i].token = tokens[i];
@@ -289,7 +292,7 @@ contract VaultMock is IVaultMainMock, Vault {
             tokenConfig[i].paysYieldFees = yieldFeeFlags[i];
         }
 
-        tokenConfig = sortTokenConfig(tokenConfig);
+        tokenConfig = _inputHelpersMock.sortTokenConfig(tokenConfig);
     }
 
     function getDecimalScalingFactors(address pool) external view returns (uint256[] memory) {
@@ -379,19 +382,6 @@ contract VaultMock is IVaultMainMock, Vault {
             (, packedBalances) = poolTokenBalances.unchecked_at(i);
             lastLiveBalances[i] = packedBalances.getLastLiveBalanceScaled18();
         }
-    }
-
-    function sortTokenConfig(TokenConfig[] memory tokenConfig) public pure returns (TokenConfig[] memory) {
-        for (uint256 i = 0; i < tokenConfig.length - 1; ++i) {
-            for (uint256 j = 0; j < tokenConfig.length - i - 1; ++j) {
-                if (tokenConfig[j].token > tokenConfig[j + 1].token) {
-                    // Swap if they're out of order.
-                    (tokenConfig[j], tokenConfig[j + 1]) = (tokenConfig[j + 1], tokenConfig[j]);
-                }
-            }
-        }
-
-        return tokenConfig;
     }
 
     function guardedCheckEntered() external nonReentrant {
