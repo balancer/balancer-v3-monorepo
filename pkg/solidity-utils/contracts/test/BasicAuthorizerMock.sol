@@ -34,7 +34,7 @@ contract BasicAuthorizerMock is IAuthorizer {
         _specificRoles[role][account][where] = true;
     }
 
-    function revokeSpecifcRole(bytes32 role, address account, address where) external {
+    function revokeSpecificRole(bytes32 role, address account, address where) external {
         _specificRoles[role][account][where] = false;
     }
 
