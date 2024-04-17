@@ -780,6 +780,7 @@ contract PoolConfigLibTest is Test {
         assertEq(scalingFactors[0], 1e23, "scalingFactors[0] mismatch");
         assertEq(scalingFactors[1], 1e38, "scalingFactors[1] mismatch");
     }
+
     // #endregion
 
     // #region private
