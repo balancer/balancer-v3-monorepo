@@ -19,12 +19,15 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
 import { Router } from "@balancer-labs/v3-vault/contracts/Router.sol";
 import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
 import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
-import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
+import { BasePoolFactory } from "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
+import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/test/InputHelpersMock.sol";
+
+import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
+import { StablePool } from "../../contracts/StablePool.sol";
 
 import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 
@@ -45,6 +48,8 @@ contract StablePoolTest is BaseVaultTest {
     StablePool internal stablePool;
     uint256 internal bptAmountOut;
 
+    InputHelpersMock internal immutable inputHelpersMock = new InputHelpersMock();
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
     }
@@ -59,8 +64,10 @@ contract StablePoolTest is BaseVaultTest {
             factory.create(
                 "ERC20 Pool",
                 "ERC20POOL",
-                vault.sortTokenConfig(tokens),
+                inputHelpersMock.sortTokenConfig(tokens),
                 DEFAULT_AMP_FACTOR,
+                address(0),
+                address(0),
                 DEFAULT_SWAP_FEE,
                 ZERO_BYTES32
             )
