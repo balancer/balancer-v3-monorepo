@@ -10,7 +10,7 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
+import { PoolConfigLib, PoolConfigBits } from "../../../contracts/lib/PoolConfigLib.sol";
 
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
@@ -96,8 +96,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         );
         assertEq(decimalScalingFactors.length, 0, "should have no decimalScalingFactors");
         assertEq(
-            bytes32(sha256(abi.encodePacked(poolConfig.fromPoolConfig()))),
-            bytes32(sha256(abi.encodePacked(emptyPoolConfig.fromPoolConfig()))),
+            PoolConfigBits.unwrap(poolConfig.fromPoolConfig()),
+            PoolConfigBits.unwrap(emptyPoolConfig.fromPoolConfig()),
             "poolConfig should match empty pool config"
         );
     }
@@ -141,8 +141,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             );
         }
         assertEq(
-            bytes32(sha256(abi.encodePacked(newPoolConfig.fromPoolConfig()))),
-            bytes32(sha256(abi.encodePacked(originalPoolConfig.fromPoolConfig()))),
+            PoolConfigBits.unwrap(newPoolConfig.fromPoolConfig()),
+            PoolConfigBits.unwrap(originalPoolConfig.fromPoolConfig()),
             "original and new poolConfigs should be the same"
         );
     }
@@ -230,8 +230,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         }
 
         assertEq(
-            bytes32(sha256(abi.encodePacked(newPoolConfig.fromPoolConfig()))),
-            bytes32(sha256(abi.encodePacked(originalPoolConfig.fromPoolConfig()))),
+            PoolConfigBits.unwrap(newPoolConfig.fromPoolConfig()),
+            PoolConfigBits.unwrap(originalPoolConfig.fromPoolConfig()),
             "original and new poolConfigs should be the same"
         );
     }
