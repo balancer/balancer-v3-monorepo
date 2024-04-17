@@ -455,9 +455,4 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function _canPerform(bytes32 actionId, address user, address where) internal view returns (bool) {
         return _authorizer.canPerform(actionId, user, where);
     }
-
-    /// @inheritdoc IVaultAdmin
-    function getRoleId(bytes4 selector) external view returns (bytes32) {
-        return getActionId(selector);
-    }
 }

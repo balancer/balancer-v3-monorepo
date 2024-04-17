@@ -15,6 +15,8 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
@@ -266,21 +268,21 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     function _assignPoolRoles(address pool, PoolRoleAccounts memory roleAccounts) private {
         mapping(bytes32 => PoolFunctionPermission) storage roleAssignments = _poolFunctionPermissions[pool];
-        IVaultAdmin vaultAdmin = _vaultAdmin;
+        IAuthentication vaultAdmin = IAuthentication(address(_vaultAdmin));
 
         if (roleAccounts.pauseManager != address(0)) {
-            roleAssignments[vaultAdmin.getRoleId(IVaultAdmin.pausePool.selector)] = PoolFunctionPermission({
+            roleAssignments[vaultAdmin.getActionId(IVaultAdmin.pausePool.selector)] = PoolFunctionPermission({
                 account: roleAccounts.pauseManager,
                 onlyOwner: false
             });
-            roleAssignments[vaultAdmin.getRoleId(IVaultAdmin.unpausePool.selector)] = PoolFunctionPermission({
+            roleAssignments[vaultAdmin.getActionId(IVaultAdmin.unpausePool.selector)] = PoolFunctionPermission({
                 account: roleAccounts.pauseManager,
                 onlyOwner: false
             });
         }
 
         if (roleAccounts.swapFeeManager != address(0)) {
-            bytes32 swapFeeAction = vaultAdmin.getRoleId(IVaultAdmin.setStaticSwapFeePercentage.selector);
+            bytes32 swapFeeAction = vaultAdmin.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector);
 
             roleAssignments[swapFeeAction] = PoolFunctionPermission({
                 account: roleAccounts.swapFeeManager,
@@ -289,7 +291,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
 
         if (roleAccounts.poolCreator != address(0)) {
-            bytes32 creatorFeeAction = vaultAdmin.getRoleId(IVaultAdmin.setPoolCreatorFeePercentage.selector);
+            bytes32 creatorFeeAction = vaultAdmin.getActionId(IVaultAdmin.setPoolCreatorFeePercentage.selector);
 
             roleAssignments[creatorFeeAction] = PoolFunctionPermission({
                 account: roleAccounts.poolCreator,
