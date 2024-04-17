@@ -784,7 +784,7 @@ contract PoolConfigLibTest is Test {
     // #endregion
 
     // #region private
-    function _cretePureConfig() private pure returns (PoolConfig memory) {}
+    function _createEmptyConfig() private pure returns (PoolConfig memory) {}
 
     function _checkBits(uint256 startBit, uint256 size) private {
         uint endBit = startBit + size;
