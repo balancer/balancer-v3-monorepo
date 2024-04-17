@@ -90,9 +90,9 @@ library WeightedMath {
         // i = invariantRatio                                                                    //
         ******************************************************************************************/
 
-        // Rounds result up overall
+        // Rounds result up overall.
 
-        // Calculate by how much the token balance has to increase to match the invariantRatio
+        // Calculate by how much the token balance has to increase to match the invariantRatio.
         uint256 balanceRatio = invariantRatio.powUp(FixedPoint.ONE.divUp(weight));
 
         return currentBalance.mulUp(balanceRatio);
@@ -122,7 +122,7 @@ library WeightedMath {
         // The multiplication rounds down, and the subtrahend (power) rounds up (so the base rounds up too).
         // Because bI / (bI + aI) <= 1, the exponent rounds down.
 
-        // Cannot exceed maximum in ratio
+        // Cannot exceed maximum in ratio.
         if (amountIn > balanceIn.mulDown(_MAX_IN_RATIO)) {
             revert MaxInRatio();
         }
@@ -160,7 +160,7 @@ library WeightedMath {
         // The multiplication rounds up, and the power rounds up (so the base rounds up too).
         // Because b0 / (b0 - a0) >= 1, the exponent rounds up.
 
-        // Cannot exceed maximum out ratio
+        // Cannot exceed maximum out ratio.
         if (amountOut > balanceOut.mulDown(_MAX_OUT_RATIO)) {
             revert MaxOutRatio();
         }
@@ -190,9 +190,9 @@ library WeightedMath {
         uint256 invariantRatioWithFees = 0;
         for (uint256 i = 0; i < balances.length; ++i) {
             // Round down to ultimately reduce the ratios with fees,
-            // which will be used later upon calculating the `nonTaxableAmount`
+            // which will be used later when calculating the `nonTaxableAmount` for each token.
             balanceRatiosWithFee[i] = (balances[i] + amountsIn[i]).divDown(balances[i]);
-            invariantRatioWithFees = invariantRatioWithFees + balanceRatiosWithFee[i].mulDown(normalizedWeights[i]);
+            invariantRatioWithFees += balanceRatiosWithFee[i].mulDown(normalizedWeights[i]);
         }
 
         uint256 invariantRatio = computeJoinExactTokensInInvariantRatio(
@@ -204,9 +204,9 @@ library WeightedMath {
             swapFeePercentage
         );
 
-        // If the invariant didn't increase for any reason, we simply don't mint BPT
+        // If the invariant didn't increase for any reason, we simply don't mint BPT.
         if (invariantRatio > FixedPoint.ONE) {
-            // Round down to get less BPT out
+            // Round down to reduce the amount of BPT out.
             return bptTotalSupply.mulDown(invariantRatio - FixedPoint.ONE);
         } else {
             return 0;
@@ -225,7 +225,7 @@ library WeightedMath {
         uint256 amountInWithoutFee;
         {
             // Round down to ultimately reduce the ratios with fees,
-            // which will be used later upon calculating the `nonTaxableAmount`
+            // which will be used later when calculating the `nonTaxableAmount` for tokenIn.
             uint256 balanceRatioWithFee = (balance + amountIn).divDown(balance);
             // The use of `normalizedWeight.complement()` assumes that the sum of all weights equals FixedPoint.ONE.
             // This may not be the case when weights are stored in a denormalized format or during a gradual weight
@@ -234,10 +234,11 @@ library WeightedMath {
             uint256 invariantRatioWithFees = balanceRatioWithFee.mulDown(normalizedWeight) +
                 normalizedWeight.complement();
 
+            // Charge fees only when the balance ratio is greater than the ideal (proportional) ratio.
             if (balanceRatioWithFee > invariantRatioWithFees) {
-                // `invariantRatioWithFees` might be less than FixedPoint.ONE in edge scenarios due to rounding error,
+                // `invariantRatioWithFees` might be less than FixedPoint.ONE in edge cases due to rounding errors,
                 // particularly if the weights don't exactly add up to 100%. Round accordingly to ultimately lower the
-                // `amountInWithoutFee`, consequently reducing the `balanceRatio`; we prioritize decrementing the
+                // `amountInWithoutFee`, consequently reducing the `balanceRatio`; we prioritize minimizing the
                 // `nonTaxableAmount` over the `taxableAmount`.
                 uint256 nonTaxableAmount = invariantRatioWithFees > FixedPoint.ONE
                     ? balance.mulDown(invariantRatioWithFees - FixedPoint.ONE)
@@ -257,15 +258,15 @@ library WeightedMath {
             }
         }
 
-        // Round down the `balanceRatio` involved in the calculation of the `invariantRatio`
+        // Round down the `balanceRatio` to lower the `invariantRatio`.
         uint256 balanceRatio = (balance + amountInWithoutFee).divDown(balance);
 
-        // Round down the `invariantRatio` involved in the calculation of the BPT out
+        // Round down the `invariantRatio` to reduce the BPT out.
         uint256 invariantRatio = balanceRatio.powDown(normalizedWeight);
 
-        // If the invariant didn't increase for any reason, we simply don't mint BPT
+        // If the invariant didn't increase for any reason, we simply don't mint BPT.
         if (invariantRatio > FixedPoint.ONE) {
-            // Round down to get less BPT out
+            // Round down to reduce the amount of BPT out.
             return bptTotalSupply.mulDown(invariantRatio - FixedPoint.ONE);
         } else {
             return 0;
@@ -288,8 +289,9 @@ library WeightedMath {
         for (uint256 i = 0; i < balances.length; ++i) {
             uint256 amountInWithoutFee;
 
+            // Charge fees only when the balance ratio is greater than the ideal (proportional) ratio.
             if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
-                // `invariantRatioWithFees` might be less than FixedPoint.ONE in edge scenarios due to rounding error,
+                // `invariantRatioWithFees` might be less than FixedPoint.ONE in edge cases due to rounding errors,
                 // particularly if the weights don't exactly add up to 100%. Round accordingly to ultimately lower the
                 // `amountInWithoutFee`, consequently reducing the `balanceRatio`.
                 uint256 nonTaxableAmount = invariantRatioWithFees > FixedPoint.ONE
@@ -310,10 +312,10 @@ library WeightedMath {
                 }
             }
 
-            // Round down the `balanceRatio` involved in the calculation of the `invariantRatio`
+            // Round down the `balanceRatio` to lower the `invariantRatio`.
             uint256 balanceRatio = (balances[i] + amountInWithoutFee).divDown(balances[i]);
 
-            // Round down the `invariantRatio` involved in the calculation of the BPT out
+            // Round down the `invariantRatio` to reduce the BPT out.
             invariantRatio = invariantRatio.mulDown(balanceRatio.powDown(normalizedWeights[i]));
         }
     }
@@ -339,14 +341,14 @@ library WeightedMath {
         // The multiplication rounds up, and the power rounds up (so the base rounds up too).
         // Because (totalBPT + bptOut) / totalBPT >= 1, the exponent rounds up.
 
-        // Calculate the factor by which the invariant will increase after minting BPTAmountOut
+        // Calculate the factor by which the invariant will increase after minting bptAmountOut.
         uint256 invariantRatio = (bptTotalSupply + bptAmountOut).divUp(bptTotalSupply);
-        // Cannot exceed maximum invariant ratio
+        // Cannot exceed maximum invariant ratio.
         if (invariantRatio > _MAX_INVARIANT_RATIO) {
             revert MaxOutBptForTokenIn();
         }
 
-        // Calculate by how much the token balance has to increase to match the invariantRatio
+        // Calculate by how much the token balance has to increase to match the invariantRatio.
         uint256 balanceRatio = invariantRatio.powUp(FixedPoint.ONE.divUp(normalizedWeight));
 
         // Because the base is larger than one (and the power rounds up), the power should always be larger than one, so
@@ -355,7 +357,7 @@ library WeightedMath {
 
         // We can now compute how much extra balance is being deposited and used in virtual swaps, and charge swap fees
         // accordingly. Regarding rounding, a conflict of interests arises – the less the `taxableAmount`, the larger
-        // the `nonTaxableAmount`; we prioritize incrementing the latter.
+        // the `nonTaxableAmount`; we prioritize maximizing the latter.
         uint256 taxableAmount = amountInWithoutFee.mulDown(normalizedWeight.complement());
         uint256 nonTaxableAmount = amountInWithoutFee - taxableAmount;
         uint256 taxableAmountPlusFees = taxableAmount.divUp(swapFeePercentage.complement());
@@ -376,7 +378,7 @@ library WeightedMath {
         uint256 invariantRatioWithoutFees = 0;
         for (uint256 i = 0; i < balances.length; ++i) {
             // Round down to ultimately reduce the ratios without fees,
-            // which will be used later upon calculating the `nonTaxableAmount`
+            // which will be used later when calculating the `nonTaxableAmount` for each token.
             balanceRatiosWithoutFee[i] = (balances[i] - amountsOut[i]).divDown(balances[i]);
             invariantRatioWithoutFees = (invariantRatioWithoutFees + balanceRatiosWithoutFee[i]).mulDown(
                 normalizedWeights[i]
@@ -392,7 +394,7 @@ library WeightedMath {
             swapFeePercentage
         );
 
-        // Round up to get more BPT in
+        // Round up to increase the amount of BPT in.
         return bptTotalSupply.mulUp(invariantRatio.complement());
     }
 
@@ -406,7 +408,7 @@ library WeightedMath {
         // BPT in, so we round up overall.
 
         // Round down to ultimately reduce the ratios without fees,
-        // which will be used later upon calculating the `nonTaxableAmount`
+        // which will be used later when calculating the `nonTaxableAmount` for tokenOut.
         uint256 balanceRatioWithoutFee = (balance - amountOut).divDown(balance);
         // The use of `normalizedWeight.complement()` assumes that the sum of all weights equals FixedPoint.ONE.
         // This may not be the case when weights are stored in a denormalized format or during a gradual weight
@@ -420,7 +422,7 @@ library WeightedMath {
         uint256 amountOutWithFee;
         if (invariantRatioWithoutFees > balanceRatioWithoutFee) {
             // Round accordingly to ultimately enlarge the `amountOutWithFee`, consequently reducing the
-            // `balanceRatio`; we prioritize incrementing the `nonTaxableAmount` over the `taxableAmount`.
+            // `balanceRatio`; we prioritize maximizing the `nonTaxableAmount` over the `taxableAmount`.
             uint256 nonTaxableAmount = balance.mulUp(invariantRatioWithoutFees.complement());
             uint256 taxableAmount = amountOut - nonTaxableAmount;
             uint256 taxableAmountPlusFees = taxableAmount.divUp(swapFeePercentage.complement());
@@ -436,13 +438,13 @@ library WeightedMath {
             }
         }
 
-        // Round down the `balanceRatio` involved in the calculation of the `invariantRatio`
+        // Round down the `balanceRatio` to lower the `invariantRatio`.
         uint256 balanceRatio = (balance - amountOutWithFee).divDown(balance);
 
-        // Round down the `invariantRatio` involved in the calculation of the BPT in
+        // Round down the `invariantRatio` so that multiplying by its complement increases the BPT in.
         uint256 invariantRatio = balanceRatio.powDown(normalizedWeight);
 
-        // Round up to get more BPT in
+        // Round up to increase the amount of BPT in.
         return bptTotalSupply.mulUp(invariantRatio.complement());
     }
 
@@ -465,7 +467,7 @@ library WeightedMath {
             uint256 amountOutWithFee;
             if (invariantRatioWithoutFees > balanceRatiosWithoutFee[i]) {
                 // Round accordingly to ultimately enlarge the `amountOutWithFee`, consequently reducing the
-                // `balanceRatio`; we prioritize incrementing the `nonTaxableAmount` over the `taxableAmount`.
+                // `balanceRatio`; we prioritize maximizing the `nonTaxableAmount` over the `taxableAmount`.
                 uint256 nonTaxableAmount = balances[i].mulUp(invariantRatioWithoutFees.complement());
                 uint256 taxableAmount = amountsOut[i] - nonTaxableAmount;
                 uint256 taxableAmountPlusFees = taxableAmount.divUp(swapFeePercentage.complement());
@@ -483,10 +485,10 @@ library WeightedMath {
                 }
             }
 
-            // Round down the `balanceRatio` involved in the calculation of the `invariantRatio`
+            // Round down the `balanceRatio` to lower the `invariantRatio`.
             uint256 balanceRatio = (balances[i] - amountOutWithFee).divDown(balances[i]);
 
-            // Round down the `invariantRatio` involved in the calculation of the BPT in
+            // Round down the `invariantRatio` so that multiplying by its complement increases the BPT in.
             invariantRatio = invariantRatio.mulDown(balanceRatio.powDown(normalizedWeights[i]));
         }
     }
@@ -512,14 +514,14 @@ library WeightedMath {
         // The multiplication rounds down, and the subtrahend (power) rounds up (so the base rounds up too).
         // Because (totalBPT - bptIn) / totalBPT <= 1, the exponent rounds down.
 
-        // Calculate the factor by which the invariant will decrease after burning BPTAmountIn
+        // Calculate the factor by which the invariant will decrease after burning bptAmountIn.
         uint256 invariantRatio = (bptTotalSupply - bptAmountIn).divUp(bptTotalSupply);
-        // Cannot not reach minimum invariant ratio
+        // Cannot not reach minimum invariant ratio.
         if (invariantRatio < _MIN_INVARIANT_RATIO) {
             revert MinBPTInForTokenOut();
         }
 
-        // Calculate by how much the token balance has to decrease to match invariantRatio
+        // Calculate by how much the token balance has to decrease to match invariantRatio.
         uint256 balanceRatio = invariantRatio.powUp(FixedPoint.ONE.divDown(normalizedWeight));
 
         // Because of rounding up, balanceRatio can be greater than one. Using complement prevents reverts.
@@ -528,7 +530,7 @@ library WeightedMath {
         // We can now compute how much excess balance is being withdrawn as a result of the virtual swaps, which result
         // in swap fees. Swap fees are typically charged on 'token in', but there is no 'token in' here, so we apply it
         // to 'token out'. This results in slightly larger price impact. Regarding rounding, a conflict of interests
-        // arises – the greater the `taxableAmount`, the smaller the `nonTaxableAmount`; we prioritize decrementing
+        // arises – the greater the `taxableAmount`, the smaller the `nonTaxableAmount`; we prioritize minimizing
         // the latter.
         uint256 taxableAmount = amountOutWithoutFee.mulUp(normalizedWeight.complement());
         uint256 nonTaxableAmount = amountOutWithoutFee - taxableAmount;
@@ -540,8 +542,8 @@ library WeightedMath {
     /**
      * @dev Calculate the amount of BPT which should be minted when adding a new token to the Pool.
      *
-     * Note that normalizedWeight is set that it corresponds to the desired weight of this token *after* adding it.
-     * i.e. For a two token 50:50 pool which we want to turn into a 33:33:33 pool, we use a normalized weight of 33%.
+     * Note that normalizedWeight is set so that it corresponds to the desired weight of this token *after* adding it;
+     * i.e., for a two token 50:50 pool which we want to turn into a 33:33:33 pool, we use a normalized weight of 33%.
      *
      * @param totalSupply - the total supply of the Pool's BPT
      * @param normalizedWeight - the normalized weight of the token to be added (normalized relative to final weights)
@@ -557,7 +559,7 @@ library WeightedMath {
         //
         // As we're working with normalized weights `totalWeight` is equal to 1.
 
-        // Rounds result down overall
+        // Rounds result down overall.
 
         uint256 weightSumRatio = FixedPoint.ONE.divDown(FixedPoint.ONE - normalizedWeight);
 
