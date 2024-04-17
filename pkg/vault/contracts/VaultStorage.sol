@@ -73,7 +73,7 @@ contract VaultStorage {
     uint256 private __nonzeroDeltaCount;
 
     /**
-     * @notice Represents the token due/owed during an openTab operation.
+     * @notice Represents the token due/owed during an operation.
      * @dev Must all net to zero when the operation is finished.
      */
     mapping(IERC20 => int256) private __tokenDeltas;
