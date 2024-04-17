@@ -120,7 +120,7 @@ interface IVaultMainMock {
 
     function takeDebt(IERC20 token, uint256 debt, address locker) external;
 
-    function manualSetAccountDelta(IERC20 token, address locker, int256 delta) external;
+    function manualSetAccountDelta(IERC20 token, int256 delta) external;
 
     function manualSetNonZeroDeltaCount(uint256 deltaCount) external;
 }
