@@ -119,7 +119,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
             if (path.shouldPayFirst) {
                 _takeTokenIn(params.sender, path.tokenIn, path.exactAmountIn, false);
                 _currentSwapTokensOut.add(address(path.tokenIn));
-                _currentSwapTokenOutAmounts[address(path.tokenIn)] += path.exactAmountIn;
+                _currentSwapTokenOutAmounts().tAdd(address(path.tokenIn), path.exactAmountIn);
             }
         }
 
@@ -166,18 +166,18 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
             // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses in
             // a set with unique addresses that can be iterated later on.
             // For example, if all paths share the same token in, the set will end up with only one entry.
-            if (_currentSwapTokenOutAmounts[address(stepTokenIn)] > stepExactAmountIn) {
-                _currentSwapTokenOutAmounts[address(stepTokenIn)] -= stepExactAmountIn;
+            if (_currentSwapTokenOutAmounts().tGet(address(stepTokenIn)) > stepExactAmountIn) {
+                _currentSwapTokenOutAmounts().tSub(address(stepTokenIn), stepExactAmountIn);
             } else {
                 _currentSwapTokensIn.add(address(stepTokenIn));
-                if (_currentSwapTokenOutAmounts[address(stepTokenIn)] > 0) {
-                    _currentSwapTokenInAmounts[address(stepTokenIn)] +=
+                if (_currentSwapTokenOutAmounts().tGet(address(stepTokenIn)) > 0) {
+                    _currentSwapTokenInAmounts().tAdd(address(stepTokenIn),
                         stepExactAmountIn -
-                        _currentSwapTokenOutAmounts[address(stepTokenIn)];
+                        _currentSwapTokenOutAmounts().tGet(address(stepTokenIn)));
                     _currentSwapTokensOut.remove(address(stepTokenIn));
-                    _currentSwapTokenOutAmounts[address(stepTokenIn)] = 0;
+                    _currentSwapTokenOutAmounts().tSet(address(stepTokenIn), 0);
                 } else {
-                    _currentSwapTokenInAmounts[address(stepTokenIn)] += stepExactAmountIn;
+                    _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
                 }
             }
 
@@ -334,7 +334,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
             if (path.shouldPayFirst) {
                 _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, false);
                 _currentSwapTokensOut.add(address(path.tokenIn));
-                _currentSwapTokenOutAmounts[address(path.tokenIn)] += path.maxAmountIn;
+                _currentSwapTokenOutAmounts().tAdd(address(path.tokenIn), path.maxAmountIn);
             }
         }
 
@@ -647,26 +647,26 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
         // Removing the last element from a set is cheaper than removing the first one.
         for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
             address tokenIn = _currentSwapTokensIn.unchecked_at(uint256(i));
-            if (_currentSwapTokenOutAmounts[tokenIn] > 0) {
-                if (_currentSwapTokenOutAmounts[tokenIn] > _currentSwapTokenInAmounts[tokenIn]) {
-                    _currentSwapTokenOutAmounts[tokenIn] -= _currentSwapTokenInAmounts[tokenIn];
+            if (_currentSwapTokenOutAmounts().tGet(tokenIn) > 0) {
+                if (_currentSwapTokenOutAmounts().tGet(tokenIn) > _currentSwapTokenInAmounts().tGet(tokenIn)) {
+                    _currentSwapTokenOutAmounts().tSub(tokenIn, _currentSwapTokenInAmounts().tGet(tokenIn));
                 } else {
-                    _currentSwapTokenInAmounts[tokenIn] -= _currentSwapTokenOutAmounts[tokenIn];
+                    _currentSwapTokenInAmounts().tSub(tokenIn, _currentSwapTokenOutAmounts().tGet(tokenIn));
                     _currentSwapTokensOut.remove(tokenIn);
-                    _currentSwapTokenOutAmounts[tokenIn] = 0;
+                    _currentSwapTokenOutAmounts().tSet(tokenIn, 0);
                     ethAmountIn += _takeTokenIn(
                         sender,
                         IERC20(tokenIn),
-                        _currentSwapTokenInAmounts[tokenIn],
+                        _currentSwapTokenInAmounts().tGet(tokenIn),
                         wethIsEth
                     );
                 }
             } else {
-                ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts[tokenIn], wethIsEth);
+                ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts().tGet(tokenIn), wethIsEth);
             }
 
             _currentSwapTokensIn.remove(tokenIn);
-            _currentSwapTokenInAmounts[tokenIn] = 0;
+            _currentSwapTokenInAmounts().tSet(tokenIn, 0);
         }
 
         int256 numTokensOut = int256(_currentSwapTokensOut.length());
