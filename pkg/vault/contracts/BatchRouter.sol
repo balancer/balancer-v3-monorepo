@@ -171,9 +171,10 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
             } else {
                 _currentSwapTokensIn.add(address(stepTokenIn));
                 if (_currentSwapTokenOutAmounts().tGet(address(stepTokenIn)) > 0) {
-                    _currentSwapTokenInAmounts().tAdd(address(stepTokenIn),
-                        stepExactAmountIn -
-                        _currentSwapTokenOutAmounts().tGet(address(stepTokenIn)));
+                    _currentSwapTokenInAmounts().tAdd(
+                        address(stepTokenIn),
+                        stepExactAmountIn - _currentSwapTokenOutAmounts().tGet(address(stepTokenIn))
+                    );
                     _currentSwapTokensOut.remove(address(stepTokenIn));
                     _currentSwapTokenOutAmounts().tSet(address(stepTokenIn), 0);
                 } else {
@@ -662,7 +663,12 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     );
                 }
             } else {
-                ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts().tGet(tokenIn), wethIsEth);
+                ethAmountIn += _takeTokenIn(
+                    sender,
+                    IERC20(tokenIn),
+                    _currentSwapTokenInAmounts().tGet(tokenIn),
+                    wethIsEth
+                );
             }
 
             _currentSwapTokensIn.remove(tokenIn);
