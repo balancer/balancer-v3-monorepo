@@ -616,7 +616,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert QueriesDisabled();
         }
 
-        // Add the current locker to the list so `withOpenTab` does not revert
+        // Inform that a tab is opened so `withOpenTab` does not revert
         _openTab().tstore(true);
         _;
     }
