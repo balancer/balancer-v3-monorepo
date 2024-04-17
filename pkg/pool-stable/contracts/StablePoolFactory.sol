@@ -32,6 +32,9 @@ contract StablePoolFactory is BasePoolFactory {
      * @param symbol The symbol of the pool
      * @param tokens An array of descriptors for the tokens the pool will manage
      * @param amplificationParameter The starting Amplification Parameter
+     * @param pauseManager An account with permission to pause the pool (or zero to default to governance)
+     * @param poolCreator An account with permission to set the pool creator fee
+     * @param swapFeePercentage Initial swap fee percentage
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
@@ -39,6 +42,8 @@ contract StablePoolFactory is BasePoolFactory {
         string memory symbol,
         TokenConfig[] memory tokens,
         uint256 amplificationParameter,
+        address pauseManager,
+        address poolCreator,
         uint256 swapFeePercentage,
         bytes32 salt
     ) external returns (address pool) {
@@ -54,30 +59,14 @@ contract StablePoolFactory is BasePoolFactory {
             salt
         );
 
-        getVault().registerPool(
+        _registerPoolWithVault(
             pool,
             tokens,
             swapFeePercentage,
-            getNewPoolPauseWindowEndTime(),
-            address(0), // no pause manager
-            address(0), // no pool creator
-            PoolHooks({
-                shouldCallBeforeInitialize: false,
-                shouldCallAfterInitialize: false,
-                shouldCallBeforeAddLiquidity: false,
-                shouldCallAfterAddLiquidity: false,
-                shouldCallBeforeRemoveLiquidity: false,
-                shouldCallAfterRemoveLiquidity: false,
-                shouldCallBeforeSwap: false,
-                shouldCallAfterSwap: false
-            }),
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: false,
-                enableRemoveLiquidityCustom: false
-            })
+            pauseManager,
+            poolCreator,
+            getDefaultPoolHooks(),
+            getDefaultLiquidityManagement()
         );
-
-        _registerPoolWithFactory(pool);
     }
 }
