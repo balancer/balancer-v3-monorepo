@@ -41,7 +41,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     using FixedPoint for *;
     using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
-    using StorageSlot for StorageSlot.Uint256SlotType;
+    using StorageSlot for *;
 
     /*******************************************************************************
                               Transient Accounting
@@ -55,25 +55,14 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * If no locker is found or the caller is not the expected locker,
      * it reverts the transaction with specific error messages.
      */
-    modifier withLocker() {
-        _ensureWithLocker();
+    modifier withOpenTab() {
+        _ensureWithOpenTab();
         _;
     }
 
-    function _ensureWithLocker() internal view {
-        uint256 lockersLength = _lockers().tLength();
-        // If there are no handlers in the list, revert with an error.
-        if (lockersLength == 0) {
-            revert NoLocker();
-        }
-
-        // Get the last locker from the `_lockers` array.
-        // This represents the current active locker.
-        address locker = _lockers().tUncheckedAt(lockersLength - 1);
-
-        // If the current function caller is not the active locker, revert.
-        if (msg.sender != locker) {
-            revert WrongLocker(msg.sender, locker);
+    function _ensureWithOpenTab() internal view {
+        if (_openTab().tload() == false) {
+            revert TabIsNotOpen();
         }
     }
 
@@ -120,11 +109,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     function _accountDelta(IERC20 token, int256 delta, address locker) internal {
         // If the delta is zero, there's nothing to account for.
         if (delta == 0) return;
-
-        // Ensure that the locker specified is indeed the caller.
-        if (locker != msg.sender) {
-            revert WrongLocker(locker, msg.sender);
-        }
 
         // Get the current recorded delta for this token and locker.
         int256 current = _tokenDeltas().tGet(token);
