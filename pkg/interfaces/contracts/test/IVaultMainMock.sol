@@ -28,7 +28,7 @@ interface IVaultMainMock {
         address poolCreator
     ) external;
 
-    function manualSetLockers(address[] memory lockers) external;
+    function manualSetOpenTab(bool status) external;
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) external;
 
@@ -46,7 +46,7 @@ interface IVaultMainMock {
 
     function manualSetPoolTokenBalances(address, IERC20[] memory, uint256[] memory) external;
 
-    function mockWithLocker() external view;
+    function mockWithOpenTab() external view;
 
     function mockWithInitializedPool(address pool) external view;
 
