@@ -44,7 +44,15 @@ contract WeightedPool8020FactoryTest is Test {
         tokenConfig[0].token = highToken;
         tokenConfig[1].token = lowToken;
 
-        return WeightedPool(factory.create(tokenConfig[0], tokenConfig[1], address(0), address(0), DEFAULT_SWAP_FEE));
+        return
+            WeightedPool(
+                factory.create(
+                    tokenConfig[0],
+                    tokenConfig[1],
+                    PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+                    DEFAULT_SWAP_FEE
+                )
+            );
     }
 
     function testFactoryPausedState() public {
@@ -103,7 +111,12 @@ contract WeightedPool8020FactoryTest is Test {
 
         // Trying to create the same pool with same tokens but different token configs should revert
         vm.expectRevert("DEPLOYMENT_FAILED");
-        factory.create(tokenConfig[0], tokenConfig[1], address(0), address(0), DEFAULT_SWAP_FEE);
+        factory.create(
+            tokenConfig[0],
+            tokenConfig[1],
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+            DEFAULT_SWAP_FEE
+        );
     }
 
     /// forge-config: default.fuzz.runs = 10
