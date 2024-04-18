@@ -24,8 +24,7 @@ interface IVaultMainMock {
         address pool,
         IERC20[] memory tokens,
         uint256 timestamp,
-        address pauseManager,
-        address poolCreator
+        PoolRoleAccounts memory roleAccounts
     ) external;
 
     function manualSetOpenTab(bool status) external;

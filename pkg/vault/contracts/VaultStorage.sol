@@ -8,6 +8,7 @@ import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAutho
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { PoolFunctionPermission, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
@@ -51,9 +52,6 @@ contract VaultStorage {
 
     // Store pool pause managers.
     mapping(address => address) internal _poolPauseManagers;
-
-    // Store pool creator addresses.
-    mapping(address => address) internal _poolCreator;
 
     // Pool -> (token -> PackedTokenBalance): structure containing the current raw and "last live" scaled balances.
     // Last live balances are used for yield fee computation, and since these have rates applied, they are stored
@@ -104,8 +102,14 @@ contract VaultStorage {
     // Stored as a convenience, to avoid calculating it on every operation.
     uint256 internal immutable _vaultBufferPeriodDuration;
 
-    // Bytes32 with protocol fees and paused flags
+    // Bytes32 with protocol fees and paused flags.
     VaultStateBits internal _vaultState;
+
+    // pool -> roleId (corresponding to a particular function) -> PoolFunctionPermission.
+    mapping(address => mapping(bytes32 => PoolFunctionPermission)) internal _poolFunctionPermissions;
+
+    // pool -> PoolRoleAccounts (accounts assigned to specific roles; e.g., pauseManager).
+    mapping(address => PoolRoleAccounts) internal _poolRoleAccounts;
 
     function _openTab() internal pure returns (StorageSlot.BooleanSlotType slot) {
         // solhint-disable-next-line no-inline-assembly
