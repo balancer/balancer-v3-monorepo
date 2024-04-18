@@ -583,7 +583,7 @@ contract ERC4626BufferPool is
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOutScaled18,
         uint256[] memory,
-        bytes memory
+        bytes memory userData
     )
         external
         pure
@@ -597,6 +597,7 @@ contract ERC4626BufferPool is
         bptAmountIn = maxBptAmountIn;
         amountsOutScaled18 = minAmountsOutScaled18;
         swapFeeAmountsScaled18 = new uint256[](minAmountsOutScaled18.length);
+        returnData = userData;
     }
 
     // Transient Storage
