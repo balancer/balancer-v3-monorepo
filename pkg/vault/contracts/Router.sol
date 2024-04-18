@@ -82,7 +82,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
         uint256 ethAmountIn;
         for (uint256 i = 0; i < params.tokens.length; ++i) {
-            // Receive tokens from the locker
             IERC20 token = params.tokens[i];
             uint256 amountIn = params.exactAmountsIn[i];
 
@@ -257,7 +256,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
         uint256 ethAmountIn;
         for (uint256 i = 0; i < tokens.length; ++i) {
-            // Receive tokens from the locker
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
 

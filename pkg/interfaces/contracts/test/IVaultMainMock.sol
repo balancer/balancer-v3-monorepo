@@ -114,11 +114,11 @@ interface IVaultMainMock {
         bool[] memory yieldFeeFlags
     ) external view returns (TokenConfig[] memory tokenConfig);
 
-    function accountDelta(IERC20 token, int256 delta, address locker) external;
+    function accountDelta(IERC20 token, int256 delta) external;
 
-    function supplyCredit(IERC20 token, uint256 credit, address locker) external;
+    function supplyCredit(IERC20 token, uint256 credit) external;
 
-    function takeDebt(IERC20 token, uint256 debt, address locker) external;
+    function takeDebt(IERC20 token, uint256 debt) external;
 
     function manualSetAccountDelta(IERC20 token, int256 delta) external;
 
