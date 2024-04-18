@@ -342,10 +342,6 @@ interface IVaultExtension {
      */
     function isQueryDisabled() external view returns (bool);
 
-    /*******************************************************************************
-                                     Default lockers
-    *******************************************************************************/
-
     /**
      * @notice Returns the Vault Admin contract address.
      */

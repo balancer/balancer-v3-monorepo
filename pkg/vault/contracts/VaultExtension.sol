@@ -375,7 +375,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             }
 
             // Debit of token[i] for amountIn
-            _takeDebt(actualToken, exactAmountsIn[i], msg.sender);
+            _takeDebt(actualToken, exactAmountsIn[i]);
 
             // Store the new Pool balances (and initial last live balances).
             poolBalances.unchecked_setAt(
@@ -610,7 +610,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         for (uint256 i = 0; i < numTokens; ++i) {
             // Credit token[i] for amountOut
-            _supplyCredit(tokens[i], amountsOutRaw[i], msg.sender);
+            _supplyCredit(tokens[i], amountsOutRaw[i]);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit
             // (potentially by 0).
@@ -673,10 +673,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function isQueryDisabled() external view onlyVault returns (bool) {
         return _vaultState.isQueryDisabled();
     }
-
-    /*******************************************************************************
-                                     Default lockers
-    *******************************************************************************/
 
     receive() external payable {
         revert CannotReceiveEth();
