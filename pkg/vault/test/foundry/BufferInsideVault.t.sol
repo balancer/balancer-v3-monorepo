@@ -165,7 +165,7 @@ contract BufferInsideVaultTest is BaseVaultTest {
     function testBoostedPoolSwapWithinBufferRangeExactIn() public {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount);
 
-        snapStart("boostedPoolSwapWithinBufferRangeExactIn");
+        snapStart("boostedPoolSwapExactIn");
         vm.prank(alice);
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
@@ -177,7 +177,7 @@ contract BufferInsideVaultTest is BaseVaultTest {
     function testBoostedPoolSwapWithinBufferRangeExactOut() public {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount);
 
-        snapStart("boostedPoolSwapWithinBufferRangeExactOut");
+        snapStart("boostedPoolSwapExactOut");
         vm.prank(alice);
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
@@ -189,7 +189,7 @@ contract BufferInsideVaultTest is BaseVaultTest {
     function testBoostedPoolSwapOutOfBufferRangeExactIn() public {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(tooLargeSwapAmount);
 
-        snapStart("boostedPoolSwapOutOfBufferRangeExactIn");
+        snapStart("boostedPoolSwapTooLarge-ExactIn");
         vm.prank(alice);
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
@@ -201,7 +201,7 @@ contract BufferInsideVaultTest is BaseVaultTest {
     function testBoostedPoolSwapOutOfBufferRangeExactOut() public {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(tooLargeSwapAmount);
 
-        snapStart("boostedPoolSwapOutOfBufferRangeExactOut");
+        snapStart("boostedPoolSwapTooLarge-ExactOut");
         vm.prank(alice);
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
