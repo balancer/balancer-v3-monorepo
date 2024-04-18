@@ -70,10 +70,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     *******************************************************************************/
 
     /**
-     * @dev This modifier is used for functions that temporarily modify the `_tokenDeltas`
-     * of the Vault but expect to revert or settle balances by the end of their execution.
-     * It works by tracking the lockers involved in the execution and ensures that the
-     * balances are properly settled by the time the last locker is executed.
+     * @dev This modifier is used for functions that temporarily modify the token deltas
+     * of the Vault, but expect to revert or settle balances by the end of their execution.
+     * It works by ensuring that the balances are properly settled by the time the last
+     * operation is executed.
      *
      * This is useful for functions like `lock`, which perform arbitrary external calls:
      * we can keep track of temporary deltas changes, and make sure they are settled by the
@@ -110,12 +110,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _reservesOf[token] = token.balanceOf(address(this));
         paid = _reservesOf[token] - reservesBefore;
 
-        _supplyCredit(token, paid, msg.sender);
+        _supplyCredit(token, paid);
     }
 
     /// @inheritdoc IVaultMain
     function sendTo(IERC20 token, address to, uint256 amount) public nonReentrant withOpenTab {
-        _takeDebt(token, amount, msg.sender);
+        _takeDebt(token, amount);
         _reservesOf[token] -= amount;
 
         token.safeTransfer(to, amount);
@@ -398,9 +398,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _setPoolBalances(params.pool, poolData);
 
         // Account amountIn of tokenIn
-        _takeDebt(params.tokenIn, amountIn, msg.sender);
+        _takeDebt(params.tokenIn, amountIn);
         // Account amountOut of tokenOut
-        _supplyCredit(params.tokenOut, amountOut, msg.sender);
+        _supplyCredit(params.tokenOut, amountOut);
     }
 
     /// @dev Returns swap fee for the pool.
@@ -663,7 +663,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
 
             // Debit of token[i] for amountInRaw
-            _takeDebt(token, amountInRaw, msg.sender);
+            _takeDebt(token, amountInRaw);
 
             // We need regular balances to complete the accounting, and the upscaled balances
             // to use in the `after` hook later on.
@@ -889,7 +889,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
 
             // Credit token[i] for amountOut
-            _supplyCredit(token, amountsOutRaw[i], msg.sender);
+            _supplyCredit(token, amountsOutRaw[i]);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit
             // (potentially by 0).

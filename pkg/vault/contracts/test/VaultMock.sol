@@ -384,16 +384,16 @@ contract VaultMock is IVaultMainMock, Vault {
         require(!reentrancyGuardEntered());
     }
 
-    function accountDelta(IERC20 token, int256 delta, address locker) external {
-        _accountDelta(token, delta, locker);
+    function accountDelta(IERC20 token, int256 delta) external {
+        _accountDelta(token, delta);
     }
 
-    function supplyCredit(IERC20 token, uint256 credit, address locker) external {
-        _supplyCredit(token, credit, locker);
+    function supplyCredit(IERC20 token, uint256 credit) external {
+        _supplyCredit(token, credit);
     }
 
-    function takeDebt(IERC20 token, uint256 debt, address locker) external {
-        _takeDebt(token, debt, locker);
+    function takeDebt(IERC20 token, uint256 debt) external {
+        _takeDebt(token, debt);
     }
 
     function manualSetAccountDelta(IERC20 token, int256 delta) external {
