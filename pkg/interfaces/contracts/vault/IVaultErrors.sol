@@ -249,12 +249,6 @@ interface IVaultErrors {
      */
     error PoolPauseWindowExpired(address pool);
 
-    /**
-     * @dev The caller is not the registered pause manager for the pool.
-     * @param pool The pool
-     */
-    error SenderIsNotPauseManager(address pool);
-
     /*******************************************************************************
                                     Miscellaneous
     *******************************************************************************/
@@ -279,10 +273,4 @@ interface IVaultErrors {
 
     /// @dev The vault admin was configured with an incorrect Vault address.
     error WrongVaultAdminDeployment();
-
-    /**
-     * @dev The caller is not the registered pool creator for the pool.
-     * @param pool The pool
-     */
-    error SenderIsNotPoolCreator(address pool);
 }

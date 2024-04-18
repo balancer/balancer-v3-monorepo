@@ -33,8 +33,7 @@ contract WeightedPoolFactory is BasePoolFactory {
      * @param symbol The symbol of the pool
      * @param tokens An array of descriptors for the tokens the pool will manage
      * @param normalizedWeights The pool weights (must add to FixedPoint.ONE)
-     * @param pauseManager An account with permission to pause the pool (or zero to default to governance)
-     * @param poolCreator An account with permission to set the pool creator fee
+     * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param swapFeePercentage Initial swap fee percentage
      * @param salt The salt value that will be passed to create3 deployment
      */
@@ -43,8 +42,7 @@ contract WeightedPoolFactory is BasePoolFactory {
         string memory symbol,
         TokenConfig[] memory tokens,
         uint256[] memory normalizedWeights,
-        address pauseManager,
-        address poolCreator,
+        PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,
         bytes32 salt
     ) external returns (address pool) {
@@ -65,8 +63,7 @@ contract WeightedPoolFactory is BasePoolFactory {
             pool,
             tokens,
             swapFeePercentage,
-            pauseManager,
-            poolCreator,
+            roleAccounts,
             getDefaultPoolHooks(),
             getDefaultLiquidityManagement()
         );

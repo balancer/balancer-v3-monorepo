@@ -67,8 +67,7 @@ interface IVaultExtension {
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
      * @param swapFeePercentage Initial value of the swap fee
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
-     * @param pauseManager address the Vault will allow to pause the pool
-     * @param poolCreator address the Vault will allow to set the pool creator fee percentage and collect fees
+     * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param poolHooks Flags indicating which hooks the pool supports
      * @param liquidityManagement Liquidity management flags with implemented methods
      */
@@ -77,8 +76,7 @@ interface IVaultExtension {
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
-        address pauseManager,
-        address poolCreator,
+        PoolRoleAccounts calldata roleAccounts,
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external;
@@ -268,6 +266,13 @@ interface IVaultExtension {
      * @return The current static swap fee percentage for the specified pool
      */
     function getStaticSwapFeePercentage(address pool) external view returns (uint256);
+
+    /**
+     * @notice Fetches the static swap fee manager for a given pool (or zero).
+     * @param pool The address of the pool whose static swap fee manager is being queried
+     * @return The current static swap fee manager for the specified pool
+     */
+    function getStaticSwapFeeManager(address pool) external view returns (address);
 
     /**
      * @notice Fetches the creator fee of a pool for a specific token.
