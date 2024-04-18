@@ -628,8 +628,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         _bufferTokenBalances[IERC20(wrappedToken)] = buffer;
 
-        _takeDebt(IERC20(wrappedToken.asset()), amountBase, msg.sender);
-        _takeDebt(wrappedToken, amountWrapped, msg.sender);
+        _takeDebt(IERC20(wrappedToken.asset()), amountBase);
+        _takeDebt(wrappedToken, amountWrapped);
     }
 
     function bufferRemoveLiquidity(
@@ -659,8 +659,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         _bufferTokenBalances[IERC20(wrappedToken)] = buffer;
 
-        _supplyCredit(IERC20(wrappedToken.asset()), removedBaseBalance, msg.sender);
-        _supplyCredit(wrappedToken, removedWrappedBalance, msg.sender);
+        _supplyCredit(IERC20(wrappedToken.asset()), removedBaseBalance);
+        _supplyCredit(wrappedToken, removedWrappedBalance);
     }
 
     /*******************************************************************************

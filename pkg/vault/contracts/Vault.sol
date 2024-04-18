@@ -1153,9 +1153,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             amountWrapped = amountWrappedExpected;
         }
 
-        _takeDebt(baseToken, amountBase, msg.sender);
+        _takeDebt(baseToken, amountBase);
 
-        _supplyCredit(wrappedToken, amountWrapped, msg.sender);
+        _supplyCredit(wrappedToken, amountWrapped);
     }
 
     function _bufferUnwrap(
@@ -1215,8 +1215,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             amountBase = amountBaseExpected;
         }
 
-        _takeDebt(wrappedToken, amountWrapped, msg.sender);
+        _takeDebt(wrappedToken, amountWrapped);
 
-        _supplyCredit(baseToken, amountBase, msg.sender);
+        _supplyCredit(baseToken, amountBase);
     }
 }
