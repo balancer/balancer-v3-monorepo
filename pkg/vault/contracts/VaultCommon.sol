@@ -41,7 +41,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     using FixedPoint for *;
     using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
-    using StorageSlot for StorageSlot.Uint256SlotType;
+    using StorageSlot for *;
 
     /*******************************************************************************
                               Transient Accounting
@@ -49,31 +49,16 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /**
      * @dev This modifier ensures that the function it modifies can only be called
-     * by the last locker in the `_lockers` array. This is used to enforce the
-     * order of execution when multiple lockers are in play, ensuring only the
-     * current or "active" locker can perform certain operations in the Vault.
-     * If no locker is found or the caller is not the expected locker,
-     * it reverts the transaction with specific error messages.
+     * when a tab has been opened.
      */
-    modifier withLocker() {
-        _ensureWithLocker();
+    modifier withOpenTab() {
+        _ensureWithOpenTab();
         _;
     }
 
-    function _ensureWithLocker() internal view {
-        uint256 lockersLength = _lockers().tLength();
-        // If there are no handlers in the list, revert with an error.
-        if (lockersLength == 0) {
-            revert NoLocker();
-        }
-
-        // Get the last locker from the `_lockers` array.
-        // This represents the current active locker.
-        address locker = _lockers().tUncheckedAt(lockersLength - 1);
-
-        // If the current function caller is not the active locker, revert.
-        if (msg.sender != locker) {
-            revert WrongLocker(msg.sender, locker);
+    function _ensureWithOpenTab() internal view {
+        if (_openTab().tload() == false) {
+            revert TabIsNotOpen();
         }
     }
 
@@ -86,48 +71,38 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
-     * @notice Records the `credit` for a given locker and token.
+     * @notice Records the `credit` for a given token.
      * @param token   The ERC20 token for which the 'credit' will be accounted.
-     * @param credit  The amount of `token` supplied to the Vault in favor of the `locker`.
-     * @param locker The account credited with the amount.
+     * @param credit  The amount of `token` supplied to the Vault in favor of the caller.
      */
-    function _supplyCredit(IERC20 token, uint256 credit, address locker) internal {
-        _accountDelta(token, -credit.toInt256(), locker);
+    function _supplyCredit(IERC20 token, uint256 credit) internal {
+        _accountDelta(token, -credit.toInt256());
     }
 
     /**
-     * @notice Records the `debt` for a given locker and token.
+     * @notice Records the `debt` for a given token.
      * @param token   The ERC20 token for which the `debt` will be accounted.
-     * @param debt    The amount of `token` taken from the Vault in favor of the `locker`.
-     * @param locker The account responsible for the debt.
+     * @param debt    The amount of `token` taken from the Vault in favor of the caller.
      */
-    function _takeDebt(IERC20 token, uint256 debt, address locker) internal {
-        _accountDelta(token, debt.toInt256(), locker);
+    function _takeDebt(IERC20 token, uint256 debt) internal {
+        _accountDelta(token, debt.toInt256());
     }
 
     /**
-     * @dev Accounts the delta for the given locker and token.
+     * @dev Accounts the delta for the given token.
      * Positive delta represents debt, while negative delta represents surplus.
-     * The function ensures that only the specified locker can update its respective delta.
      *
      * @param token   The ERC20 token for which the delta is being accounted.
      * @param delta   The difference in the token balance.
      *                Positive indicates a debit or a decrease in Vault's tokens,
      *                negative indicates a credit or an increase in Vault's tokens.
-     * @param locker The locker whose balance difference is being accounted for.
-     *                Must be the same as the caller of the function.
      */
-    function _accountDelta(IERC20 token, int256 delta, address locker) internal {
+    function _accountDelta(IERC20 token, int256 delta) internal {
         // If the delta is zero, there's nothing to account for.
         if (delta == 0) return;
 
-        // Ensure that the locker specified is indeed the caller.
-        if (locker != msg.sender) {
-            revert WrongLocker(locker, msg.sender);
-        }
-
-        // Get the current recorded delta for this token and locker.
-        int256 current = _tokenDeltas().tGet(locker, token);
+        // Get the current recorded delta for this token.
+        int256 current = _tokenDeltas().tGet(token);
 
         // Calculate the new delta after accounting for the change.
         int256 next = current + delta;
@@ -145,8 +120,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             }
         }
 
-        // Update the delta for this token and locker.
-        _tokenDeltas().tSet(locker, token, next);
+        // Update the delta for this token.
+        _tokenDeltas().tSet(token, next);
     }
 
     /*******************************************************************************

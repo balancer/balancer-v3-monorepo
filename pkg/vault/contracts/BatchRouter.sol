@@ -176,7 +176,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
                     // required amount when performing the operation. These tokens might be the output of a previous
                     // step, in which case the user will have a BPT credit.
-                    if (IVault(_vault).getTokenDelta(address(this), stepTokenIn) < 0) {
+                    if (IVault(_vault).getTokenDelta(stepTokenIn) < 0) {
                         _vault.sendTo(IERC20(step.pool), params.sender, stepExactAmountIn);
                     }
                     // BPT is burnt instantly, so we don't need to send it back later.

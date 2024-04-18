@@ -36,7 +36,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using PoolConfigLib for PoolConfig;
     using VaultStateLib for VaultState;
     using TransientStorageHelpers for *;
-    using StorageSlot for StorageSlot.Uint256SlotType;
+    using StorageSlot for *;
 
     PoolFactoryMock private immutable _poolFactoryMock;
     InputHelpersMock private immutable _inputHelpersMock;
@@ -141,16 +141,8 @@ contract VaultMock is IVaultMainMock, Vault {
         );
     }
 
-    function manualSetLockers(address[] memory lockers) public {
-        uint256 lockersLength = _lockers().tLength();
-        // Reset existing array
-        for (uint256 i = 0; i < lockersLength; ++i) {
-            _lockers().tPop();
-        }
-
-        for (uint256 i = 0; i < lockers.length; ++i) {
-            _lockers().tPush(lockers[i]);
-        }
+    function manualSetOpenTab(bool status) public {
+        _openTab().tstore(status);
     }
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) public {
@@ -208,7 +200,7 @@ contract VaultMock is IVaultMainMock, Vault {
         }
     }
 
-    function mockWithLocker() public view withLocker {}
+    function mockWithOpenTab() public view withOpenTab {}
 
     function mockWithInitializedPool(address pool) public view withInitializedPool(pool) {}
 
@@ -392,20 +384,20 @@ contract VaultMock is IVaultMainMock, Vault {
         require(!reentrancyGuardEntered());
     }
 
-    function accountDelta(IERC20 token, int256 delta, address locker) external {
-        _accountDelta(token, delta, locker);
+    function accountDelta(IERC20 token, int256 delta) external {
+        _accountDelta(token, delta);
     }
 
-    function supplyCredit(IERC20 token, uint256 credit, address locker) external {
-        _supplyCredit(token, credit, locker);
+    function supplyCredit(IERC20 token, uint256 credit) external {
+        _supplyCredit(token, credit);
     }
 
-    function takeDebt(IERC20 token, uint256 debt, address locker) external {
-        _takeDebt(token, debt, locker);
+    function takeDebt(IERC20 token, uint256 debt) external {
+        _takeDebt(token, debt);
     }
 
-    function manualSetAccountDelta(IERC20 token, address locker, int256 delta) external {
-        _tokenDeltas().tSet(locker, token, delta);
+    function manualSetAccountDelta(IERC20 token, int256 delta) external {
+        _tokenDeltas().tSet(token, delta);
     }
 
     function manualSetNonZeroDeltaCount(uint256 deltaCount) external {
