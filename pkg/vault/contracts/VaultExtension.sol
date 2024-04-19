@@ -297,6 +297,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 account: roleAccounts.poolCreator,
                 onlyOwner: true
             });
+
+            bytes32 creatorFeeClaimAction = vaultAdmin.getActionId(IVaultAdmin.collectPoolCreatorFees.selector);
+
+            roleAssignments[creatorFeeClaimAction] = PoolFunctionPermission({
+                account: roleAccounts.poolCreator,
+                onlyOwner: true
+            });
         }
     }
 

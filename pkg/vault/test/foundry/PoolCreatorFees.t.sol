@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
@@ -47,6 +48,26 @@ contract PoolCreatorFeesTest is BaseVaultTest {
             poolCreatorFeePercentage,
             true
         );
+    }
+
+    function test_RevertWhen_CallerIsNotCreator() public {
+                uint256 amountToSwap = _defaultAmountToSwap;
+        uint64 swapFeePercentage = 1e17; // 10%
+        uint64 protocolFeePercentage = 3e17; // 30%
+        uint64 poolCreatorFeePercentage = 5e17; // 50%
+
+        _swapExactInWithFees(
+            usdc,
+            dai,
+            amountToSwap,
+            swapFeePercentage,
+            protocolFeePercentage,
+            poolCreatorFeePercentage,
+            true
+        );
+        //creator fees have accrued
+        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vault.collectPoolCreatorFees(address(pool));
     }
 
     function testSwapWithCreatorFee_Fuzz(
@@ -104,6 +125,7 @@ contract PoolCreatorFeesTest is BaseVaultTest {
             false
         );
 
+        vm.prank(vault.getPoolCreator(address(pool)));
         vault.collectPoolCreatorFees(address(pool));
         assertEq(
             vault.getPoolCreatorFees(address(pool), dai),

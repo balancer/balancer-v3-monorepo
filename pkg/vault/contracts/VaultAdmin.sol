@@ -344,7 +344,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectPoolCreatorFees(address pool) external nonReentrant onlyVault {
+    function collectPoolCreatorFees(address pool) external authenticateByRole(pool) nonReentrant onlyVault {
         EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
         uint256 numTokens = poolCreatorFees.length();
         for (uint256 i = 0; i < numTokens; ++i) {
