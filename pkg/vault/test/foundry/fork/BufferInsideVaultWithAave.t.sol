@@ -168,7 +168,7 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
     }
 
     function testBoostedPoolSwapWithinBufferRangeExactIn__Fork() public {
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount);
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount, swapAmount / USDC_FACTOR - 1);
 
         snapStart("forkBoostedPoolSwapExactIn");
         vm.prank(alice);
@@ -178,45 +178,45 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
 
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN, swapAmount);
     }
-//
-//    function testBoostedPoolSwapWithinBufferRangeExactOut__Fork() public {
-//        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount);
-//
-//        snapStart("forkBoostedPoolSwapExactOut");
-//        vm.prank(alice);
-//        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
-//            .swapExactOut(paths, MAX_UINT256, false, bytes(""));
-//        snapEnd();
-//
-//        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT, swapAmount);
-//    }
-//
-//    function testBoostedPoolSwapOutOfBufferRangeExactIn__Fork() public {
-//        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(tooLargeSwapAmount);
-//
-//        snapStart("forkBoostedPoolSwapTooLarge-ExactIn");
-//        vm.prank(alice);
-//        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
-//            .swapExactIn(paths, MAX_UINT256, false, bytes(""));
-//        snapEnd();
-//
-//        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, tooLargeSwapAmount, SwapKind.EXACT_IN, 0);
-//    }
-//
-//    function testBoostedPoolSwapOutOfBufferRangeExactOut__Fork() public {
-//        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(tooLargeSwapAmount);
-//
-//        snapStart("forkBoostedPoolSwapTooLarge-ExactOut");
-//        vm.prank(alice);
-//        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
-//            .swapExactOut(paths, MAX_UINT256, false, bytes(""));
-//        snapEnd();
-//
-//        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, tooLargeSwapAmount, SwapKind.EXACT_OUT, 0);
-//    }
-//
+
+    function testBoostedPoolSwapWithinBufferRangeExactOut__Fork() public {
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount, swapAmount / USDC_FACTOR);
+
+        snapStart("forkBoostedPoolSwapExactOut");
+        vm.prank(alice);
+        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
+            .swapExactOut(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
+
+        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT, swapAmount);
+    }
+
+    function testBoostedPoolSwapOutOfBufferRangeExactIn__Fork() public {
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(tooLargeSwapAmount, tooLargeSwapAmount / USDC_FACTOR - 1);
+
+        snapStart("forkBoostedPoolSwapTooLarge-ExactIn");
+        vm.prank(alice);
+        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
+            .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
+
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, tooLargeSwapAmount, SwapKind.EXACT_IN, 0);
+    }
+
+    function testBoostedPoolSwapOutOfBufferRangeExactOut__Fork() public {
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(tooLargeSwapAmount, tooLargeSwapAmount / USDC_FACTOR);
+
+        snapStart("forkBoostedPoolSwapTooLarge-ExactOut");
+        vm.prank(alice);
+        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
+            .swapExactOut(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
+
+        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, tooLargeSwapAmount, SwapKind.EXACT_OUT, 0);
+    }
+
     function _buildExactInPaths(
-        uint256 amount
+        uint256 exactAmountIn, uint256 minAmountOut
     ) private view returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
         paths = new IBatchRouter.SwapPathExactAmountIn[](1);
@@ -233,13 +233,14 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
         paths[0] = IBatchRouter.SwapPathExactAmountIn({
             tokenIn: daiMainnet,
             steps: steps,
-            exactAmountIn: amount,
-            minAmountOut: amount - 1 // rebalance tests are a wei off
+            exactAmountIn: exactAmountIn,
+            minAmountOut: minAmountOut // rebalance tests are a wei off
         });
     }
 
     function _buildExactOutPaths(
-        uint256 amount
+        uint256 maxAmountIn,
+        uint256 exactAmountOut
     ) private view returns (IBatchRouter.SwapPathExactAmountOut[] memory paths) {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
         paths = new IBatchRouter.SwapPathExactAmountOut[](1);
@@ -249,15 +250,15 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
         // Pre-swap through the USDC buffer to get waUSDC, then main swap waUSDC for waDAI in the boosted pool,
         // and finally post-swap the waDAI for DAI through the DAI buffer to calculate the DAI amount in.
         // The only token transfers are DAI in (calculated) and USDC out (given).
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
+        steps[0] = IBatchRouter.SwapPathStep({ pool: aDAI_ADDRESS, tokenOut: waDAI, isBuffer: true });
         steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC, isBuffer: false });
-        steps[2] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
+        steps[2] = IBatchRouter.SwapPathStep({ pool: aUSDC_ADDRESS, tokenOut: usdcMainnet, isBuffer: true });
 
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
-            tokenIn: dai,
+            tokenIn: daiMainnet,
             steps: steps,
-            maxAmountIn: amount,
-            exactAmountOut: amount
+            maxAmountIn: maxAmountIn,
+            exactAmountOut: exactAmountOut
         });
     }
 
