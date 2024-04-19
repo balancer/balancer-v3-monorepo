@@ -15,6 +15,8 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
@@ -124,8 +126,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         TokenConfig[] tokenConfig;
         uint256 swapFeePercentage;
         uint256 pauseWindowEndTime;
-        address pauseManager;
-        address poolCreator;
+        PoolRoleAccounts roleAccounts;
         PoolHooks poolHooks;
         LiquidityManagement liquidityManagement;
     }
@@ -136,8 +137,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
-        address pauseManager,
-        address poolCreator,
+        PoolRoleAccounts calldata roleAccounts,
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
@@ -147,8 +147,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 tokenConfig: tokenConfig,
                 swapFeePercentage: swapFeePercentage,
                 pauseWindowEndTime: pauseWindowEndTime,
-                pauseManager: pauseManager,
-                poolCreator: poolCreator,
+                roleAccounts: roleAccounts,
                 poolHooks: poolHooks,
                 liquidityManagement: liquidityManagement
             })
@@ -237,11 +236,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
         }
 
-        // Store the pause manager. A zero address means default to the authorizer.
-        _poolPauseManagers[pool] = params.pauseManager;
+        // Store the role account addresses (for getters).
+        _poolRoleAccounts[pool] = params.roleAccounts;
 
-        // Store the pool creator.
-        _poolCreator[pool] = params.poolCreator;
+        // Make pool role assignments. A zero address means default to the authorizer.
+        _assignPoolRoles(pool, params.roleAccounts);
 
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
@@ -261,11 +260,44 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             msg.sender,
             params.tokenConfig,
             params.pauseWindowEndTime,
-            params.pauseManager,
-            params.poolCreator,
+            params.roleAccounts,
             params.poolHooks,
             params.liquidityManagement
         );
+    }
+
+    function _assignPoolRoles(address pool, PoolRoleAccounts memory roleAccounts) private {
+        mapping(bytes32 => PoolFunctionPermission) storage roleAssignments = _poolFunctionPermissions[pool];
+        IAuthentication vaultAdmin = IAuthentication(address(_vaultAdmin));
+
+        if (roleAccounts.pauseManager != address(0)) {
+            roleAssignments[vaultAdmin.getActionId(IVaultAdmin.pausePool.selector)] = PoolFunctionPermission({
+                account: roleAccounts.pauseManager,
+                onlyOwner: false
+            });
+            roleAssignments[vaultAdmin.getActionId(IVaultAdmin.unpausePool.selector)] = PoolFunctionPermission({
+                account: roleAccounts.pauseManager,
+                onlyOwner: false
+            });
+        }
+
+        if (roleAccounts.swapFeeManager != address(0)) {
+            bytes32 swapFeeAction = vaultAdmin.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector);
+
+            roleAssignments[swapFeeAction] = PoolFunctionPermission({
+                account: roleAccounts.swapFeeManager,
+                onlyOwner: true
+            });
+        }
+
+        if (roleAccounts.poolCreator != address(0)) {
+            bytes32 creatorFeeAction = vaultAdmin.getActionId(IVaultAdmin.setPoolCreatorFeePercentage.selector);
+
+            roleAssignments[creatorFeeAction] = PoolFunctionPermission({
+                account: roleAccounts.poolCreator,
+                onlyOwner: true
+            });
+        }
     }
 
     /// @inheritdoc IVaultExtension
@@ -464,7 +496,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     ) external view withRegisteredPool(pool) onlyVault returns (bool, uint256, uint256, address) {
         (bool paused, uint256 pauseWindowEndTime) = _getPoolPausedState(pool);
 
-        return (paused, pauseWindowEndTime, pauseWindowEndTime + _vaultBufferPeriodDuration, _poolPauseManagers[pool]);
+        return (
+            paused,
+            pauseWindowEndTime,
+            pauseWindowEndTime + _vaultBufferPeriodDuration,
+            _poolRoleAccounts[pool].pauseManager
+        );
     }
 
     /*******************************************************************************
@@ -494,6 +531,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
+    function getStaticSwapFeeManager(address pool) external view withRegisteredPool(pool) onlyVault returns (address) {
+        return _poolRoleAccounts[pool].swapFeeManager;
+    }
+
+    /// @inheritdoc IVaultExtension
     function getPoolCreatorFees(address pool, IERC20 token) external view returns (uint256 poolCreatorFee) {
         EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
         uint256 index = poolCreatorFees.indexOf(token);
@@ -502,7 +544,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function getPoolCreator(address pool) external view returns (address poolCreator) {
-        return _poolCreator[pool];
+        return _poolRoleAccounts[pool].poolCreator;
     }
 
     /*******************************************************************************

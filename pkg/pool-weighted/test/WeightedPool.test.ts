@@ -161,8 +161,7 @@ describe('WeightedPool', function () {
         'Test',
         tokenConfig,
         WEIGHTS,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
+        [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
         SWAP_FEE,
         ZERO_BYTES32
       );
