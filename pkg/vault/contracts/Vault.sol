@@ -1068,8 +1068,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     function bufferWrapUnwrap(
         WrapParams memory params
-    ) public withOpenTab returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountBase) {
+    ) public withOpenTab returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         IERC4626 wrappedToken;
+        uint256 amountBase;
+        uint256 amountWrapped;
         if (params.wrappedToken == params.tokenIn) {
             // tokenIn is wrappedToken, user wants to unwrap
             wrappedToken = IERC4626(address(params.tokenIn));
@@ -1081,6 +1083,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 wrappedToken,
                 params.amountGivenRaw
             );
+            amountIn = amountWrapped;
+            amountOut = amountBase;
         } else if (params.wrappedToken == params.tokenOut) {
             // tokenOut is wrappedToken, user wants to wrap
             wrappedToken = IERC4626(address(params.tokenOut));
@@ -1092,6 +1096,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 wrappedToken,
                 params.amountGivenRaw
             );
+            amountIn = amountBase;
+            amountOut = amountWrapped;
         } else {
             revert WrongBufferPool();
         }
@@ -1154,7 +1160,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         _takeDebt(baseToken, amountBase);
-
         _supplyCredit(wrappedToken, amountWrapped);
     }
 
@@ -1173,8 +1178,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         uint256 amountBaseExpected;
         (amountBaseExpected, amountWrapped) = kind == SwapKind.EXACT_IN
-            ? (amountGivenRaw, amountCalculated)
-            : (amountCalculated, amountGivenRaw);
+            ? (amountCalculated, amountGivenRaw)
+            : (amountGivenRaw, amountCalculated);
 
         if (buffer.isEmpty()) {
             // no liquidity in the buffer, just wrap the tokens
@@ -1216,7 +1221,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         _takeDebt(wrappedToken, amountWrapped);
-
         _supplyCredit(baseToken, amountBase);
     }
 }
