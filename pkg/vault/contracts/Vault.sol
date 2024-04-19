@@ -1162,10 +1162,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 vars.totalAmountUnwrapped = amountBase + bufferBaseAmountToWrap;
 
                 vars.baseToken.approve(address(wrappedToken), vars.totalAmountUnwrapped);
-                vars.totalAmountWrapped = wrappedToken.deposit(
-                    vars.totalAmountUnwrapped,
-                    address(this)
-                );
+                vars.totalAmountWrapped = wrappedToken.deposit(vars.totalAmountUnwrapped, address(this));
             } else {
                 uint256 baseBalanceInShares = wrappedToken.convertToShares(vars.baseBalance);
                 uint256 bufferSharesToUnwrap = vars.wrappedBalance > baseBalanceInShares
@@ -1174,17 +1171,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
                 vars.totalAmountWrapped = vars.amountWrappedExpected + bufferSharesToUnwrap;
                 vars.baseToken.approve(address(wrappedToken), wrappedToken.previewMint(vars.totalAmountWrapped));
-                vars.totalAmountUnwrapped = wrappedToken.mint(
-                    vars.totalAmountWrapped,
-                    address(this)
-                );
+                vars.totalAmountUnwrapped = wrappedToken.mint(vars.totalAmountWrapped, address(this));
             }
 
             _reservesOf[IERC20(address(wrappedToken))] += vars.totalAmountWrapped;
             _reservesOf[vars.baseToken] -= vars.totalAmountUnwrapped;
 
             vars.buffer = vars.buffer.setBaseBalance(vars.baseBalance - (vars.totalAmountUnwrapped - amountBase));
-            vars.buffer = vars.buffer.setWrappedBalance(vars.wrappedBalance + (vars.totalAmountWrapped - vars.amountWrappedExpected));
+            vars.buffer = vars.buffer.setWrappedBalance(
+                vars.wrappedBalance + (vars.totalAmountWrapped - vars.amountWrappedExpected)
+            );
             _bufferTokenBalances[IERC20(wrappedToken)] = vars.buffer;
 
             amountWrapped = vars.amountWrappedExpected;
@@ -1242,11 +1238,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                         : 0;
 
                     totalAmountWrapped = amountWrapped + bufferSharesToUnwrap;
-                    totalAmountUnwrapped = wrappedToken.redeem(
-                        totalAmountWrapped,
-                        address(this),
-                        address(this)
-                    );
+                    totalAmountUnwrapped = wrappedToken.redeem(totalAmountWrapped, address(this), address(this));
                 }
             } else {
                 {
@@ -1257,11 +1249,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                         : 0;
 
                     totalAmountUnwrapped = amountBaseExpected + bufferBaseAmountToWrap;
-                    totalAmountWrapped = wrappedToken.withdraw(
-                        totalAmountUnwrapped,
-                        address(this),
-                        address(this)
-                    );
+                    totalAmountWrapped = wrappedToken.withdraw(totalAmountUnwrapped, address(this), address(this));
                 }
             }
 

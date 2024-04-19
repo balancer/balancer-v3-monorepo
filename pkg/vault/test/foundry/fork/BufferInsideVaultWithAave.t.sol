@@ -25,7 +25,7 @@ import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 import { RouterCommon } from "../../../contracts/RouterCommon.sol";
 
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
-import {ERC4626RateProvider} from "../../../contracts/test/ERC4626RateProvider.sol";
+import { ERC4626RateProvider } from "../../../contracts/test/ERC4626RateProvider.sol";
 
 contract BufferInsideVaultWithAaveTest is BaseVaultTest {
     using FixedPoint for uint256;
@@ -127,7 +127,11 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
 
     function testSwapPreconditions__Fork() public {
         // bob should have the full boostedPool BPT.
-        assertGt(IERC20(boostedPool).balanceOf(bob), boostedPoolAmount * 2 - USDC_FACTOR, "Wrong boosted pool BPT amount");
+        assertGt(
+            IERC20(boostedPool).balanceOf(bob),
+            boostedPoolAmount * 2 - USDC_FACTOR,
+            "Wrong boosted pool BPT amount"
+        );
 
         (IERC20[] memory tokens, , uint256[] memory balancesRaw, , ) = vault.getPoolTokenInfo(boostedPool);
         // The boosted pool should have `boostedPoolAmount` of both tokens.
@@ -149,7 +153,7 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
         );
         assertApproxEqAbs(
             vault.getBufferShareOfUser(IERC20(waUSDC), address(lp)),
-            bufferAmount * 2 / USDC_FACTOR,
+            (bufferAmount * 2) / USDC_FACTOR,
             1,
             "Wrong share of waUSDC buffer belonging to LP"
         );
@@ -164,11 +168,18 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
 
         (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
         assertEq(baseBalance, bufferAmount / USDC_FACTOR, "Wrong waUSDC buffer balance for base token");
-        assertEq(wrappedBalance, waUSDC.convertToShares(bufferAmount / USDC_FACTOR), "Wrong waUSDC buffer balance for wrapped token");
+        assertEq(
+            wrappedBalance,
+            waUSDC.convertToShares(bufferAmount / USDC_FACTOR),
+            "Wrong waUSDC buffer balance for wrapped token"
+        );
     }
 
     function testBoostedPoolSwapWithinBufferRangeExactIn__Fork() public {
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount, swapAmount / USDC_FACTOR - 1);
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(
+            swapAmount,
+            swapAmount / USDC_FACTOR - 1
+        );
 
         snapStart("forkBoostedPoolSwapExactIn");
         vm.prank(alice);
@@ -192,7 +203,10 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
     }
 
     function testBoostedPoolSwapOutOfBufferRangeExactIn__Fork() public {
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(tooLargeSwapAmount, tooLargeSwapAmount / USDC_FACTOR - 1);
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(
+            tooLargeSwapAmount,
+            tooLargeSwapAmount / USDC_FACTOR - 1
+        );
 
         snapStart("forkBoostedPoolSwapTooLarge-ExactIn");
         vm.prank(alice);
@@ -204,7 +218,10 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
     }
 
     function testBoostedPoolSwapOutOfBufferRangeExactOut__Fork() public {
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(tooLargeSwapAmount, tooLargeSwapAmount / USDC_FACTOR);
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
+            tooLargeSwapAmount,
+            tooLargeSwapAmount / USDC_FACTOR
+        );
 
         snapStart("forkBoostedPoolSwapTooLarge-ExactOut");
         vm.prank(alice);
@@ -216,7 +233,8 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
     }
 
     function _buildExactInPaths(
-        uint256 exactAmountIn, uint256 minAmountOut
+        uint256 exactAmountIn,
+        uint256 minAmountOut
     ) private view returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
         paths = new IBatchRouter.SwapPathExactAmountIn[](1);
@@ -324,7 +342,7 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
 
             vm.startPrank(donor);
             daiMainnet.transfer(userAddress, 4 * boostedPoolAmount);
-            usdcMainnet.transfer(userAddress, 4 * boostedPoolAmount / USDC_FACTOR);
+            usdcMainnet.transfer(userAddress, (4 * boostedPoolAmount) / USDC_FACTOR);
             vm.stopPrank();
 
             vm.startPrank(userAddress);
