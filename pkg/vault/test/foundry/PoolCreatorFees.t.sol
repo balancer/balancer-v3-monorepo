@@ -51,7 +51,7 @@ contract PoolCreatorFeesTest is BaseVaultTest {
     }
 
     function test_RevertWhen_CallerIsNotCreator() public {
-                uint256 amountToSwap = _defaultAmountToSwap;
+        uint256 amountToSwap = _defaultAmountToSwap;
         uint64 swapFeePercentage = 1e17; // 10%
         uint64 protocolFeePercentage = 3e17; // 30%
         uint64 poolCreatorFeePercentage = 5e17; // 50%
