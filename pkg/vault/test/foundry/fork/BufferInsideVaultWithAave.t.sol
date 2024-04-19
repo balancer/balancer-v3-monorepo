@@ -121,9 +121,6 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
         tokenAmounts[waDaiIdx] = boostedAmountDai;
         tokenAmounts[waUsdcIdx] = boostedAmountUSDC;
 
-        console.log(IERC20(aDAI_ADDRESS).balanceOf(address(bob)), boostedAmountDai);
-        console.log(IERC20(aUSDC_ADDRESS).balanceOf(address(bob)), boostedAmountUSDC);
-
         _initPool(boostedPool, tokenAmounts, boostedPoolAmount * 2 - USDC_FACTOR);
         vm.stopPrank();
     }
