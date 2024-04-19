@@ -6,10 +6,12 @@ import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { RouterCommon } from "../../contracts/RouterCommon.sol";
@@ -18,6 +20,7 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract VaultSwapTest is BaseVaultTest {
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
 
     PoolMock internal noInitPool;
     uint256 internal swapFee = defaultAmount / 100; // 1%
@@ -173,6 +176,33 @@ contract VaultSwapTest is BaseVaultTest {
 
     function testSwapSingleTokenExactInWithFee() public {
         assertSwap(swapSingleTokenExactInWithFee);
+    }
+
+    function testSwapEvent() public {
+        setSwapFeePercentage(swapFeePercentage);
+
+        vm.expectEmit();
+        emit IVaultMain.Swap(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount - swapFee,
+            swapFeePercentage,
+            defaultAmount.mulDown(swapFeePercentage)
+        );
+
+        vm.prank(alice);
+        router.swapSingleTokenExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount - swapFee,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
     }
 
     function swapSingleTokenExactInWithFee() public returns (uint256 fee, uint256 protocolFee) {
