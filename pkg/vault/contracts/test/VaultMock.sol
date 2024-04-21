@@ -203,7 +203,7 @@ contract VaultMock is IVaultMainMock, Vault {
         _ensurePoolNotPaused(pool);
     }
 
-    function ensureUnpausedAndGetVaultState(address pool) public view returns (VaultState memory vaultState) {
+    function ensureUnpausedAndGetVaultState(address pool) public returns (VaultState memory vaultState) {
         vaultState = _ensureUnpausedAndGetVaultState(pool);
     }
 

@@ -51,7 +51,7 @@ interface IVaultMainMock {
 
     function ensurePoolNotPaused(address) external view;
 
-    function ensureUnpausedAndGetVaultState(address) external view returns (VaultState memory);
+    function ensureUnpausedAndGetVaultState(address) external returns (VaultState memory);
 
     function internalGetPoolTokenInfo(
         address

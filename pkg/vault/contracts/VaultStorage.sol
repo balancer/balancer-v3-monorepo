@@ -105,6 +105,10 @@ contract VaultStorage {
     // Bytes32 with protocol fees and paused flags.
     VaultStateBits internal _vaultState;
 
+    // Transient storage version, to be used in the swap path (saves gas during batch operations).
+    // Initialize to permanent storage on first use, then use transient storage thereafter.
+    VaultStateBits internal __transientVaultState;
+
     // pool -> roleId (corresponding to a particular function) -> PoolFunctionPermission.
     mapping(address => mapping(bytes32 => PoolFunctionPermission)) internal _poolFunctionPermissions;
 
@@ -129,6 +133,13 @@ contract VaultStorage {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             slot := __tokenDeltas.slot
+        }
+    }
+
+    function _transientVaultState() internal pure returns (StorageSlot.Bytes32SlotType slot) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            slot := __transientVaultState.slot
         }
     }
 }
