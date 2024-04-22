@@ -176,6 +176,12 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
     }
 
     function testBoostedPoolSwapWithinBufferRangeExactIn__Fork() public {
+        SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
+        vars.expectedDeltaDai = swapAmount;
+        vars.expectedBufferDeltaDai = swapAmount;
+        vars.expectedDeltaUsdc = swapAmount / USDC_FACTOR;
+        vars.expectedBufferDeltaUsdc = swapAmount / USDC_FACTOR;
+
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(
             swapAmount,
             swapAmount / USDC_FACTOR - 1
@@ -187,10 +193,12 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
 
-        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN, swapAmount);
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, vars);
     }
 
     function testBoostedPoolSwapWithinBufferRangeExactOut__Fork() public {
+        SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
+
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount, swapAmount / USDC_FACTOR);
 
         snapStart("forkBoostedPoolSwapExactOut");
@@ -199,10 +207,36 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
 
-        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT, swapAmount);
+        // EXACT_IN DAI -> USDC does not introduce rounding issues, since the resulting amountOut is divided by 1e12
+        // to get the correct amount of USDC to return.
+        // However, EXACT_OUT DAI -> USDC has rounding issues, because amount out is given in 6 digits, and we want an
+        // 18 decimals amount in, which is not precisely calculated. The calculation below reproduces what happens in
+        // the vault to scale tokens in the swap operation of the boosted pool
+        uint256 expectedWrappedTokenOutUsdc = waUSDC.convertToShares(swapAmount / USDC_FACTOR);
+        uint256 expectedScaled18WrappedTokenOutUsdc = FixedPoint.mulDown(
+            expectedWrappedTokenOutUsdc * USDC_FACTOR,
+            waUSDC.convertToAssets(FixedPoint.ONE)
+        );
+        uint256 expectedScaled18WrappedTokenInDai = FixedPoint.divDown(
+            expectedScaled18WrappedTokenOutUsdc,
+            waDAI.convertToAssets(FixedPoint.ONE)
+        );
+
+        vars.expectedDeltaDai = waDAI.convertToAssets(expectedScaled18WrappedTokenInDai);
+        vars.expectedBufferDeltaDai = vars.expectedDeltaDai;
+        vars.expectedDeltaUsdc = swapAmount / USDC_FACTOR;
+        vars.expectedBufferDeltaUsdc = swapAmount / USDC_FACTOR;
+
+        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
     }
 
     function testBoostedPoolSwapOutOfBufferRangeExactIn__Fork() public {
+        SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
+        vars.expectedDeltaDai = tooLargeSwapAmount;
+        vars.expectedBufferDeltaDai = 0;
+        vars.expectedDeltaUsdc = tooLargeSwapAmount / USDC_FACTOR;
+        vars.expectedBufferDeltaUsdc = 0;
+
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(
             tooLargeSwapAmount,
             tooLargeSwapAmount / USDC_FACTOR - 1
@@ -214,10 +248,12 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
 
-        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, tooLargeSwapAmount, SwapKind.EXACT_IN, 0);
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, vars);
     }
 
     function testBoostedPoolSwapOutOfBufferRangeExactOut__Fork() public {
+        SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
+
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
             tooLargeSwapAmount,
             tooLargeSwapAmount / USDC_FACTOR
@@ -229,7 +265,27 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
 
-        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, tooLargeSwapAmount, SwapKind.EXACT_OUT, 0);
+        // EXACT_IN DAI -> USDC does not introduce rounding issues, since the resulting amountOut is divided by 1e12
+        // to get the correct amount of USDC to return.
+        // However, EXACT_OUT DAI -> USDC has rounding issues, because amount out is given in 6 digits, and we want an
+        // 18 decimals amount in, which is not precisely calculated. The calculation below reproduces what happens in
+        // the vault to scale tokens in the swap operation of the boosted pool
+        uint256 expectedWrappedTokenOutUsdc = waUSDC.convertToShares(tooLargeSwapAmount / USDC_FACTOR);
+        uint256 expectedScaled18WrappedTokenOutUsdc = FixedPoint.mulDown(
+            expectedWrappedTokenOutUsdc * USDC_FACTOR,
+            waUSDC.convertToAssets(FixedPoint.ONE)
+        );
+        uint256 expectedScaled18WrappedTokenInDai = FixedPoint.divDown(
+            expectedScaled18WrappedTokenOutUsdc,
+            waDAI.convertToAssets(FixedPoint.ONE)
+        );
+
+        vars.expectedDeltaDai = waDAI.convertToAssets(expectedScaled18WrappedTokenInDai);
+        vars.expectedBufferDeltaDai = 0;
+        vars.expectedDeltaUsdc = tooLargeSwapAmount / USDC_FACTOR;
+        vars.expectedBufferDeltaUsdc = 0;
+
+        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
     }
 
     function _buildExactInPaths(
@@ -280,13 +336,48 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
         });
     }
 
+    struct SwapResultLocals {
+        SwapKind kind;
+        uint256 aliceBalanceBeforeSwapDai;
+        uint256 aliceBalanceBeforeSwapUsdc;
+        uint256 bufferBalanceBeforeSwapDai;
+        uint256 bufferBalanceBeforeSwapWaDai;
+        uint256 bufferBalanceBeforeSwapUsdc;
+        uint256 bufferBalanceBeforeSwapWaUsdc;
+        uint256 boostedPoolBalanceBeforeSwapWaDai;
+        uint256 boostedPoolBalanceBeforeSwapWaUsdc;
+        uint256 expectedDeltaDai;
+        uint256 expectedDeltaUsdc;
+        uint256 expectedBufferDeltaDai;
+        uint256 expectedBufferDeltaUsdc;
+    }
+
+    function _createSwapResultLocals(SwapKind kind) private view returns (SwapResultLocals memory vars) {
+        vars.kind = kind;
+        vars.aliceBalanceBeforeSwapDai = daiMainnet.balanceOf(address(alice));
+        vars.aliceBalanceBeforeSwapUsdc = usdcMainnet.balanceOf(address(alice));
+
+        uint256 baseBalance;
+        uint256 wrappedBalance;
+        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
+        vars.bufferBalanceBeforeSwapDai = baseBalance;
+        vars.bufferBalanceBeforeSwapWaDai = wrappedBalance;
+        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
+        vars.bufferBalanceBeforeSwapUsdc = baseBalance;
+        vars.bufferBalanceBeforeSwapWaUsdc = wrappedBalance;
+
+        uint256[] memory balancesRaw;
+        (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
+        (, , balancesRaw, , ) = vault.getPoolTokenInfo(boostedPool);
+        vars.boostedPoolBalanceBeforeSwapWaDai = balancesRaw[daiIdx];
+        vars.boostedPoolBalanceBeforeSwapWaUsdc = balancesRaw[usdcIdx];
+    }
+
     function _verifySwapResult(
         uint256[] memory paths,
         address[] memory tokens,
         uint256[] memory amounts,
-        uint256 expectedDelta,
-        SwapKind kind,
-        uint256 bufferExpectedDelta
+        SwapResultLocals memory vars
     ) private {
         assertEq(paths.length, 1, "Incorrect output array length");
 
@@ -294,30 +385,102 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
         assertEq(tokens.length, amounts.length, "Output array length mismatch");
 
         // Check results
-        assertApproxEqAbs(paths[0], expectedDelta, 1, "Wrong path count");
-        assertApproxEqAbs(amounts[0], expectedDelta, 1, "Wrong amounts count");
-        assertEq(tokens[0], kind == SwapKind.EXACT_IN ? address(usdc) : address(dai), "Wrong token for SwapKind");
+        if (vars.kind == SwapKind.EXACT_IN) {
+            // Rounding issues occurs in favor of vault, and are very small
+            assertLe(paths[0], vars.expectedDeltaUsdc, "paths AmountOut must be <= expected amountOut");
+            assertApproxEqAbs(paths[0], vars.expectedDeltaUsdc, 1, "Wrong path count");
+            assertLe(paths[0], vars.expectedDeltaUsdc, "amounts AmountOut must be <= expected amountOut");
+            assertApproxEqAbs(amounts[0], vars.expectedDeltaUsdc, 1, "Wrong amounts count");
+            assertEq(tokens[0], USDC_ADDRESS, "Wrong token for SwapKind");
+        } else {
+            // Rounding issues occurs in favor of vault, and are very small
+            assertGe(paths[0], vars.expectedDeltaDai, "paths AmountIn must be >= expected amountIn");
+            assertApproxEqAbs(paths[0], vars.expectedDeltaDai, 5, "Wrong path count");
+            assertGe(amounts[0], vars.expectedDeltaDai, "amounts AmountIn must be >= expected amountIn");
+            assertApproxEqAbs(amounts[0], vars.expectedDeltaDai, 5, "Wrong amounts count");
+            assertEq(tokens[0], DAI_ADDRESS, "Wrong token for SwapKind");
+        }
 
         // Tokens were transferred
-        assertApproxEqAbs(dai.balanceOf(alice), defaultBalance - expectedDelta, 1, "Wrong ending balance of DAI");
-        assertApproxEqAbs(usdc.balanceOf(alice), defaultBalance + expectedDelta, 1, "Wrong ending balance of USDC");
+        assertLe(
+            daiMainnet.balanceOf(alice),
+            vars.aliceBalanceBeforeSwapDai - vars.expectedDeltaDai,
+            "Alice balance DAI must be <= expected balance"
+        );
+        assertApproxEqAbs(
+            daiMainnet.balanceOf(alice),
+            vars.aliceBalanceBeforeSwapDai - vars.expectedDeltaDai,
+            5,
+            "Wrong ending balance of DAI for Alice"
+        );
+        assertLe(
+            usdcMainnet.balanceOf(alice),
+            vars.aliceBalanceBeforeSwapUsdc + vars.expectedDeltaUsdc,
+            "Alice balance USDC must be <= expected balance"
+        );
+        assertApproxEqAbs(
+            usdcMainnet.balanceOf(alice),
+            vars.aliceBalanceBeforeSwapUsdc + vars.expectedDeltaUsdc,
+            1,
+            "Wrong ending balance of USDC for Alice"
+        );
 
         uint256[] memory balancesRaw;
 
         (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
         (, , balancesRaw, , ) = vault.getPoolTokenInfo(boostedPool);
-        assertEq(balancesRaw[daiIdx], boostedPoolAmount + expectedDelta, "Wrong boosted pool DAI balance");
-        assertEq(balancesRaw[usdcIdx], boostedPoolAmount - expectedDelta, "Wrong boosted pool USDC balance");
+        assertGe(
+            balancesRaw[daiIdx],
+            vars.boostedPoolBalanceBeforeSwapWaDai + waDAI.convertToShares(vars.expectedDeltaDai),
+            "Boosted Pool DAI balance must be >= expected balance"
+        );
+        assertApproxEqAbs(
+            balancesRaw[daiIdx],
+            vars.boostedPoolBalanceBeforeSwapWaDai + waDAI.convertToShares(vars.expectedDeltaDai),
+            5,
+            "Wrong boosted pool DAI balance"
+        );
+        assertGe(
+            balancesRaw[usdcIdx],
+            vars.boostedPoolBalanceBeforeSwapWaUsdc - waUSDC.convertToShares(vars.expectedDeltaUsdc),
+            "Boosted Pool USDC balance must be >= expected balance"
+        );
+        assertApproxEqAbs(
+            balancesRaw[usdcIdx],
+            vars.boostedPoolBalanceBeforeSwapWaUsdc - waUSDC.convertToShares(vars.expectedDeltaUsdc),
+            1,
+            "Wrong boosted pool USDC balance"
+        );
 
         uint256 baseBalance;
         uint256 wrappedBalance;
         (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
-        assertEq(baseBalance, bufferAmount + bufferExpectedDelta, "Wrong DAI buffer pool base balance");
-        assertEq(wrappedBalance, bufferAmount - bufferExpectedDelta, "Wrong DAI buffer pool wrapped balance");
+        assertApproxEqAbs(
+            baseBalance,
+            vars.bufferBalanceBeforeSwapDai + vars.expectedBufferDeltaDai,
+            5,
+            "Wrong DAI buffer pool base balance"
+        );
+        assertApproxEqAbs(
+            wrappedBalance,
+            vars.bufferBalanceBeforeSwapWaDai - waDAI.convertToShares(vars.expectedBufferDeltaDai),
+            5,
+            "Wrong DAI buffer pool wrapped balance"
+        );
 
         (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
-        assertEq(baseBalance, bufferAmount - bufferExpectedDelta, "Wrong USDC buffer pool base balance");
-        assertEq(wrappedBalance, bufferAmount + bufferExpectedDelta, "Wrong USDC buffer pool wrapped balance");
+        assertApproxEqAbs(
+            baseBalance,
+            vars.bufferBalanceBeforeSwapUsdc - vars.expectedBufferDeltaUsdc,
+            1,
+            "Wrong USDC buffer pool base balance"
+        );
+        assertApproxEqAbs(
+            wrappedBalance,
+            vars.bufferBalanceBeforeSwapWaUsdc + waUSDC.convertToShares(vars.expectedBufferDeltaUsdc),
+            1,
+            "Wrong USDC buffer pool wrapped balance"
+        );
     }
 
     function _setupTokens() private {
