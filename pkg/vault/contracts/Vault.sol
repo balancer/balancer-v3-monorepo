@@ -50,7 +50,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using ScalingHelpers for *;
     using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
-    using StorageSlot for StorageSlot.Uint256SlotType;
+    using StorageSlot for *;
 
     constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) {
         if (address(vaultExtension.vault()) != address(this)) {
@@ -71,32 +71,32 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     *******************************************************************************/
 
     /**
-     * @dev This modifier is used for functions that temporarily modify the `_tokenDeltas`
-     * of the Vault but expect to revert or settle balances by the end of their execution.
-     * It works by tracking the lockers involved in the execution and ensures that the
-     * balances are properly settled by the time the last locker is executed.
+     * @dev This modifier is used for functions that temporarily modify the token deltas
+     * of the Vault, but expect to revert or settle balances by the end of their execution.
+     * It works by ensuring that the balances are properly settled by the time the last
+     * operation is executed.
      *
      * This is useful for functions like `lock`, which perform arbitrary external calls:
      * we can keep track of temporary deltas changes, and make sure they are settled by the
      * time the external call is complete.
      */
     modifier transient() {
-        // Add the current locker to the list
-        _lockers().tPush(msg.sender);
+        bool isTabOpenBefore = _openTab().tload();
+
+        if (isTabOpenBefore == false) {
+            _openTab().tstore(true);
+        }
 
         // The caller does everything here and has to settle all outstanding balances
         _;
 
-        // Check if it's the last locker
-        if (_lockers().tLength() == 1) {
-            // Ensure all balances are settled
-            if (_nonzeroDeltaCount().tload() != 0) revert BalanceNotSettled();
+        if (isTabOpenBefore == false) {
+            if (_nonzeroDeltaCount().tload() != 0) {
+                revert BalanceNotSettled();
+            }
 
-            // Reset the counter
-            _nonzeroDeltaCount().tstore(0);
+            _openTab().tstore(false);
         }
-        // Remove locker from the list (applies to the last one too, which resets the array)
-        _lockers().tPop();
     }
 
     /// @inheritdoc IVaultMain
@@ -106,17 +106,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function settle(IERC20 token) public nonReentrant withLocker returns (uint256 paid) {
+    function settle(IERC20 token) public nonReentrant withOpenTab returns (uint256 paid) {
         uint256 reservesBefore = _reservesOf[token];
         _reservesOf[token] = token.balanceOf(address(this));
         paid = _reservesOf[token] - reservesBefore;
 
-        _supplyCredit(token, paid, msg.sender);
+        _supplyCredit(token, paid);
     }
 
     /// @inheritdoc IVaultMain
-    function sendTo(IERC20 token, address to, uint256 amount) public nonReentrant withLocker {
-        _takeDebt(token, amount, msg.sender);
+    function sendTo(IERC20 token, address to, uint256 amount) public nonReentrant withOpenTab {
+        _takeDebt(token, amount);
         _reservesOf[token] -= amount;
 
         token.safeTransfer(to, amount);
@@ -158,7 +158,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapParams memory params
     )
         public
-        withLocker
+        withOpenTab
         withInitializedPool(params.pool)
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
     {
@@ -387,9 +387,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _setPoolBalances(params.pool, poolData);
 
         // Account amountIn of tokenIn
-        _takeDebt(params.tokenIn, amountIn, msg.sender);
+        _takeDebt(params.tokenIn, amountIn);
         // Account amountOut of tokenOut
-        _supplyCredit(params.tokenOut, amountOut, msg.sender);
+        _supplyCredit(params.tokenOut, amountOut);
     }
 
     /// @dev Returns swap fee for the pool.
@@ -445,7 +445,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         AddLiquidityParams memory params
     )
         external
-        withLocker
+        withOpenTab
         withInitializedPool(params.pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
@@ -648,7 +648,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
 
             // Debit of token[i] for amountInRaw
-            _takeDebt(token, amountInRaw, msg.sender);
+            _takeDebt(token, amountInRaw);
 
             // We need regular balances to complete the accounting, and the upscaled balances
             // to use in the `after` hook later on.
@@ -675,7 +675,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         RemoveLiquidityParams memory params
     )
         external
-        withLocker
+        withOpenTab
         withInitializedPool(params.pool)
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
     {
@@ -875,7 +875,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
 
             // Credit token[i] for amountOut
-            _supplyCredit(token, amountsOutRaw[i], msg.sender);
+            _supplyCredit(token, amountsOutRaw[i]);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit
             // (potentially by 0).

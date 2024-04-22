@@ -7,7 +7,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -18,6 +17,8 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
@@ -29,6 +30,9 @@ import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Ba
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
@@ -60,7 +64,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using VaultExtensionsLib for IVault;
     using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
-    using StorageSlot for StorageSlot.Uint256SlotType;
+    using StorageSlot for *;
 
     IVault private immutable _vault;
     IVaultAdmin private immutable _vaultAdmin;
@@ -97,16 +101,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function getLocker(uint256 index) external view onlyVault returns (address) {
-        if (index >= _lockers().tLength()) {
-            revert LockerOutOfBounds(index);
-        }
-        return _lockers().tUncheckedAt(index);
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getLockersCount() external view onlyVault returns (uint256) {
-        return _lockers().tLength();
+    function isTabOpen() external view onlyVault returns (bool) {
+        return _openTab().tload();
     }
 
     /// @inheritdoc IVaultExtension
@@ -115,8 +111,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function getTokenDelta(address user, IERC20 token) external view onlyVault returns (int256) {
-        return _tokenDeltas().tGet(user, token);
+    function getTokenDelta(IERC20 token) external view onlyVault returns (int256) {
+        return _tokenDeltas().tGet(token);
     }
 
     /// @inheritdoc IVaultExtension
@@ -132,8 +128,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         TokenConfig[] tokenConfig;
         uint256 swapFeePercentage;
         uint256 pauseWindowEndTime;
-        address pauseManager;
-        address poolCreator;
+        PoolRoleAccounts roleAccounts;
         PoolHooks poolHooks;
         LiquidityManagement liquidityManagement;
         bool hasDynamicSwapFee;
@@ -145,11 +140,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
-        address pauseManager,
-        address poolCreator,
+        bool hasDynamicSwapFee,
+        PoolRoleAccounts calldata roleAccounts,
         PoolHooks calldata poolHooks,
-        LiquidityManagement calldata liquidityManagement,
-        bool hasDynamicSwapFee
+        LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
         _registerPool(
             pool,
@@ -157,11 +151,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 tokenConfig: tokenConfig,
                 swapFeePercentage: swapFeePercentage,
                 pauseWindowEndTime: pauseWindowEndTime,
-                pauseManager: pauseManager,
-                poolCreator: poolCreator,
+                hasDynamicSwapFee: hasDynamicSwapFee,
+                roleAccounts: roleAccounts,
                 poolHooks: poolHooks,
-                liquidityManagement: liquidityManagement,
-                hasDynamicSwapFee: hasDynamicSwapFee
+                liquidityManagement: liquidityManagement
             })
         );
     }
@@ -248,11 +241,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
         }
 
-        // Store the pause manager. A zero address means default to the authorizer.
-        _poolPauseManagers[pool] = params.pauseManager;
+        // Store the role account addresses (for getters).
+        _poolRoleAccounts[pool] = params.roleAccounts;
 
-        // Store the pool creator.
-        _poolCreator[pool] = params.poolCreator;
+        // Make pool role assignments. A zero address means default to the authorizer.
+        _assignPoolRoles(pool, params.roleAccounts);
 
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
@@ -277,12 +270,45 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             msg.sender,
             params.tokenConfig,
             params.pauseWindowEndTime,
-            params.pauseManager,
-            params.poolCreator,
+            params.hasDynamicSwapFee,
+            params.roleAccounts,
             params.poolHooks,
-            params.liquidityManagement,
-            params.hasDynamicSwapFee
+            params.liquidityManagement
         );
+    }
+
+    function _assignPoolRoles(address pool, PoolRoleAccounts memory roleAccounts) private {
+        mapping(bytes32 => PoolFunctionPermission) storage roleAssignments = _poolFunctionPermissions[pool];
+        IAuthentication vaultAdmin = IAuthentication(address(_vaultAdmin));
+
+        if (roleAccounts.pauseManager != address(0)) {
+            roleAssignments[vaultAdmin.getActionId(IVaultAdmin.pausePool.selector)] = PoolFunctionPermission({
+                account: roleAccounts.pauseManager,
+                onlyOwner: false
+            });
+            roleAssignments[vaultAdmin.getActionId(IVaultAdmin.unpausePool.selector)] = PoolFunctionPermission({
+                account: roleAccounts.pauseManager,
+                onlyOwner: false
+            });
+        }
+
+        if (roleAccounts.swapFeeManager != address(0)) {
+            bytes32 swapFeeAction = vaultAdmin.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector);
+
+            roleAssignments[swapFeeAction] = PoolFunctionPermission({
+                account: roleAccounts.swapFeeManager,
+                onlyOwner: true
+            });
+        }
+
+        if (roleAccounts.poolCreator != address(0)) {
+            bytes32 creatorFeeAction = vaultAdmin.getActionId(IVaultAdmin.setPoolCreatorFeePercentage.selector);
+
+            roleAssignments[creatorFeeAction] = PoolFunctionPermission({
+                account: roleAccounts.poolCreator,
+                onlyOwner: true
+            });
+        }
     }
 
     /// @inheritdoc IVaultExtension
@@ -293,7 +319,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external withLocker withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
+    ) external withOpenTab withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
         VaultState memory vaultState = _ensureUnpausedAndGetVaultState(pool);
 
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
@@ -360,7 +386,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             }
 
             // Debit of token[i] for amountIn
-            _takeDebt(actualToken, exactAmountsIn[i], msg.sender);
+            _takeDebt(actualToken, exactAmountsIn[i]);
 
             // Store the new Pool balances (and initial last live balances).
             poolBalances.unchecked_setAt(
@@ -441,7 +467,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         rateProviders = new IRateProvider[](numTokens);
 
         // TODO consider sending TokenConfig externally; maybe parallel arrays are friendlier off-chain.
-        for (uint256 i = 0; i < numTokens; i++) {
+        for (uint256 i = 0; i < numTokens; ++i) {
             tokens[i] = tokenConfig[i].token;
             tokenTypes[i] = tokenConfig[i].tokenType;
             rateProviders[i] = tokenConfig[i].rateProvider;
@@ -501,7 +527,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     ) external view withRegisteredPool(pool) onlyVault returns (bool, uint256, uint256, address) {
         (bool paused, uint256 pauseWindowEndTime) = _getPoolPausedState(pool);
 
-        return (paused, pauseWindowEndTime, pauseWindowEndTime + _vaultBufferPeriodDuration, _poolPauseManagers[pool]);
+        return (
+            paused,
+            pauseWindowEndTime,
+            pauseWindowEndTime + _vaultBufferPeriodDuration,
+            _poolRoleAccounts[pool].pauseManager
+        );
     }
 
     /*******************************************************************************
@@ -531,6 +562,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
+    function getStaticSwapFeeManager(address pool) external view withRegisteredPool(pool) onlyVault returns (address) {
+        return _poolRoleAccounts[pool].swapFeeManager;
+    }
+
+    /// @inheritdoc IVaultExtension
     function getPoolCreatorFees(address pool, IERC20 token) external view returns (uint256 poolCreatorFee) {
         EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
         uint256 index = poolCreatorFees.indexOf(token);
@@ -539,7 +575,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function getPoolCreator(address pool) external view returns (address poolCreator) {
-        return _poolCreator[pool];
+        return _poolRoleAccounts[pool].poolCreator;
     }
 
     /*******************************************************************************
@@ -558,7 +594,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 exactBptAmountIn
     )
         external
-        withLocker
+        withOpenTab
         nonReentrant
         withInitializedPool(pool)
         onlyInRecoveryMode(pool)
@@ -585,7 +621,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         for (uint256 i = 0; i < numTokens; ++i) {
             // Credit token[i] for amountOut
-            _supplyCredit(tokens[i], amountsOutRaw[i], msg.sender);
+            _supplyCredit(tokens[i], amountsOutRaw[i]);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit
             // (potentially by 0).
@@ -633,8 +669,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert QueriesDisabled();
         }
 
-        // Add the current locker to the list so `withLocker` does not revert
-        _lockers().tPush(msg.sender);
+        // Inform that a tab is opened so `withOpenTab` does not revert
+        _openTab().tstore(true);
         _;
     }
 
@@ -648,10 +684,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function isQueryDisabled() external view onlyVault returns (bool) {
         return _vaultState.isQueryDisabled();
     }
-
-    /*******************************************************************************
-                                     Default lockers
-    *******************************************************************************/
 
     receive() external payable {
         revert CannotReceiveEth();

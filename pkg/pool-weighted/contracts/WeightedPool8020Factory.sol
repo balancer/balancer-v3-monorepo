@@ -30,11 +30,13 @@ contract WeightedPool8020Factory is BasePoolFactory {
      * @dev Since tokens must be sorted, pass in explicit 80/20 token config structs.
      * @param highWeightTokenConfig The token configuration of the high weight token
      * @param lowWeightTokenConfig The token configuration of the low weight token
+     * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param swapFeePercentage Initial swap fee percentage
      */
     function create(
         TokenConfig memory highWeightTokenConfig,
         TokenConfig memory lowWeightTokenConfig,
+        PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage
     ) external returns (address pool) {
         IERC20 highWeightToken = highWeightTokenConfig.token;
@@ -52,8 +54,6 @@ contract WeightedPool8020Factory is BasePoolFactory {
         tokenConfig[highWeightTokenIdx] = highWeightTokenConfig;
         tokenConfig[lowWeightTokenIdx] = lowWeightTokenConfig;
 
-        bytes32 salt = _calculateSalt(highWeightToken, lowWeightToken);
-
         string memory highWeightTokenSymbol = IERC20Metadata(address(highWeightToken)).symbol();
         string memory lowWeightTokenSymbol = IERC20Metadata(address(lowWeightToken)).symbol();
 
@@ -67,35 +67,18 @@ contract WeightedPool8020Factory is BasePoolFactory {
                 }),
                 getVault()
             ),
-            salt
+            _calculateSalt(highWeightToken, lowWeightToken)
         );
 
-        getVault().registerPool(
+        _registerPoolWithVault(
             pool,
             tokenConfig,
             swapFeePercentage,
-            getNewPoolPauseWindowEndTime(),
-            address(0), // no pause manager,
-            address(0), // no pool creator
-            PoolHooks({
-                shouldCallBeforeInitialize: false,
-                shouldCallAfterInitialize: false,
-                shouldCallBeforeAddLiquidity: false,
-                shouldCallAfterAddLiquidity: false,
-                shouldCallBeforeRemoveLiquidity: false,
-                shouldCallAfterRemoveLiquidity: false,
-                shouldCallBeforeSwap: false,
-                shouldCallAfterSwap: false
-            }),
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: false,
-                enableRemoveLiquidityCustom: false
-            }),
-            false // hasDynamicSwapFee
+            false, // hasDynamicSwapFee
+            roleAccounts,
+            getDefaultPoolHooks(),
+            getDefaultLiquidityManagement()
         );
-
-        _registerPoolWithFactory(pool);
     }
 
     /**
@@ -110,5 +93,13 @@ contract WeightedPool8020Factory is BasePoolFactory {
 
     function _calculateSalt(IERC20 highWeightToken, IERC20 lowWeightToken) internal view returns (bytes32 salt) {
         salt = keccak256(abi.encode(block.chainid, highWeightToken, lowWeightToken));
+    }
+
+    /**
+     * @dev By default, the BasePoolFactory adds the sender and chainId to compute a final salt.
+     * Override this to make it use the canonical address salt directly.
+     */
+    function _computeFinalSalt(bytes32 salt) internal pure override returns (bytes32) {
+        return salt;
     }
 }

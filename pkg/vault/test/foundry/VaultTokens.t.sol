@@ -155,8 +155,8 @@ contract VaultTokenTest is BaseVaultTest {
         poolFactory.registerPool(
             pool,
             tokenConfig,
-            address(0),
-            address(0),
+            false, // hasDynamicSwapFee
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
             PoolHooks({
                 shouldCallBeforeInitialize: false,
                 shouldCallAfterInitialize: false,
@@ -171,8 +171,7 @@ contract VaultTokenTest is BaseVaultTest {
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: false,
                 enableRemoveLiquidityCustom: false
-            }),
-            false // hasDynamicSwapFee
+            })
         );
     }
 
@@ -181,7 +180,7 @@ contract VaultTokenTest is BaseVaultTest {
 
         assertEq(actualTokens.length, expectedTokens.length);
 
-        for (uint256 i = 0; i < expectedTokens.length; i++) {
+        for (uint256 i = 0; i < expectedTokens.length; ++i) {
             assertEq(address(actualTokens[i]), address(expectedTokens[i]));
         }
     }

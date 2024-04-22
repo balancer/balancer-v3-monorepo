@@ -14,9 +14,9 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
-
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 
@@ -119,8 +119,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
         pool = createPool();
 
         // Approve vault allowances
-        for (uint256 index = 0; index < users.length; index++) {
-            address user = users[index];
+        for (uint256 i = 0; i < users.length; ++i) {
+            address user = users[i];
             vm.startPrank(user);
             approveForSender();
             vm.stopPrank();
@@ -133,16 +133,16 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
     }
 
     function approveForSender() internal {
-        for (uint256 index = 0; index < tokens.length; index++) {
-            tokens[index].approve(address(permit2), type(uint256).max);
-            permit2.approve(address(tokens[index]), address(router), type(uint160).max, type(uint48).max);
-            permit2.approve(address(tokens[index]), address(batchRouter), type(uint160).max, type(uint48).max);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            tokens[i].approve(address(permit2), type(uint256).max);
+            permit2.approve(address(tokens[i]), address(router), type(uint160).max, type(uint48).max);
+            permit2.approve(address(tokens[i]), address(batchRouter), type(uint160).max, type(uint48).max);
         }
     }
 
     function approveForPool(IERC20 bpt) internal {
-        for (uint256 index = 0; index < users.length; index++) {
-            vm.startPrank(users[index]);
+        for (uint256 i = 0; i < users.length; ++i) {
+            vm.startPrank(users[i]);
 
             bpt.approve(address(router), type(uint256).max);
             bpt.approve(address(batchRouter), type(uint256).max);
@@ -209,7 +209,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
         (IERC20[] memory tokens, , uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(pool);
         balances.poolTokens = poolBalances;
         balances.userTokens = new uint256[](poolBalances.length);
-        for (uint256 i = 0; i < poolBalances.length; i++) {
+        for (uint256 i = 0; i < poolBalances.length; ++i) {
             // Don't assume token ordering.
             balances.userTokens[i] = tokens[i].balanceOf(user);
         }

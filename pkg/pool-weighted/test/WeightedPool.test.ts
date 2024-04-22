@@ -156,7 +156,15 @@ describe('WeightedPool', function () {
 
       const tokenConfig: TokenConfig[] = buildTokenConfig(realPoolTokens);
 
-      const tx = await factory.create('WeightedPool', 'Test', tokenConfig, WEIGHTS, SWAP_FEE, ZERO_BYTES32);
+      const tx = await factory.create(
+        'WeightedPool',
+        'Test',
+        tokenConfig,
+        WEIGHTS,
+        [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
+        SWAP_FEE,
+        ZERO_BYTES32
+      );
       const receipt = await tx.wait();
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
 

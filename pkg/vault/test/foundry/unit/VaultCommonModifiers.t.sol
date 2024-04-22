@@ -10,47 +10,21 @@ contract VaultCommonModifiersTest is BaseVaultTest {
     }
 
     /*******************************************************************************
-                                      WithLocker
+                                      withOpenTab
     *******************************************************************************/
 
-    function testEmptyLockers() public {
-        address[] memory lockers;
-        vault.manualSetLockers(lockers);
+    function testClosedTab() public {
+        vault.manualSetOpenTab(false);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.NoLocker.selector));
-        vault.mockWithLocker();
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.TabIsNotOpen.selector));
+        vault.mockWithOpenTab();
     }
 
-    function testLockersWithWrongAddress() public {
-        address[] memory lockers = new address[](1);
-        lockers[0] = address(alice);
-        vault.manualSetLockers(lockers);
-
-        vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, address(bob), address(alice)));
-        vault.mockWithLocker();
-    }
-
-    function testLockersWithRightAddressInWrongPosition() public {
-        address[] memory lockers = new address[](2);
-        lockers[0] = address(bob);
-        lockers[1] = address(alice);
-        vault.manualSetLockers(lockers);
-
-        vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, address(bob), address(alice)));
-        vault.mockWithLocker();
-    }
-
-    function testLockersWithRightAddress() public {
-        address[] memory lockers = new address[](2);
-        lockers[0] = address(alice);
-        lockers[1] = address(bob);
-        vault.manualSetLockers(lockers);
+    function testOpenTab() public {
+        vault.manualSetOpenTab(true);
 
         // If function does not revert, test passes
-        vm.prank(bob);
-        vault.mockWithLocker();
+        vault.mockWithOpenTab();
     }
 
     /*******************************************************************************

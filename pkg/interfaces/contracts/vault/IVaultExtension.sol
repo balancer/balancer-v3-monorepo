@@ -20,17 +20,9 @@ interface IVaultExtension {
     *******************************************************************************/
 
     /**
-     * @notice Returns the address at the specified index of the _lockers array.
-     * @param index The index of the locker's address to fetch
-     * @return The address at the given index
+     * @notice Returns True if the tab is open, false otherwise.
      */
-    function getLocker(uint256 index) external view returns (address);
-
-    /**
-     * @notice Returns the total number of lockers.
-     * @return The number of lockers
-     */
-    function getLockersCount() external view returns (uint256);
+    function isTabOpen() external view returns (bool);
 
     /**
      *  @notice Returns the count of non-zero deltas.
@@ -41,11 +33,10 @@ interface IVaultExtension {
     /**
      * @notice Retrieves the token delta for a specific user and token.
      * @dev This function allows reading the value from the `_tokenDeltas` mapping.
-     * @param user The address of the user for whom the delta is being fetched
      * @param token The token for which the delta is being fetched
      * @return The delta of the specified token for the specified user
      */
-    function getTokenDelta(address user, IERC20 token) external view returns (int256);
+    function getTokenDelta(IERC20 token) external view returns (int256);
 
     /**
      * @notice Retrieves the reserve (i.e., total Vault balance) of a given token.
@@ -76,8 +67,8 @@ interface IVaultExtension {
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
      * @param swapFeePercentage Initial value of the swap fee
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
-     * @param pauseManager address the Vault will allow to pause the pool
-     * @param poolCreator address the Vault will allow to set the pool creator fee percentage and collect fees
+     * @param hasDynamicSwapFee Flag indicating whether the swap fee is static or dynamic
+     * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param poolHooks Flags indicating which hooks the pool supports
      * @param liquidityManagement Liquidity management flags with implemented methods
      */
@@ -86,11 +77,10 @@ interface IVaultExtension {
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
-        address pauseManager,
-        address poolCreator,
+        bool hasDynamicSwapFee,
+        PoolRoleAccounts calldata roleAccounts,
         PoolHooks calldata poolHooks,
-        LiquidityManagement calldata liquidityManagement,
-        bool hasDynamicSwapFee
+        LiquidityManagement calldata liquidityManagement
     ) external;
 
     /**
@@ -280,6 +270,13 @@ interface IVaultExtension {
     function getStaticSwapFeePercentage(address pool) external view returns (uint256);
 
     /**
+     * @notice Fetches the static swap fee manager for a given pool (or zero).
+     * @param pool The address of the pool whose static swap fee manager is being queried
+     * @return The current static swap fee manager for the specified pool
+     */
+    function getStaticSwapFeeManager(address pool) external view returns (address);
+
+    /**
      * @notice Fetches the creator fee of a pool for a specific token.
      * @param pool The address of the pool whose creator fee is being queried
      * @param token The token in which the creator fee was charged
@@ -330,10 +327,10 @@ interface IVaultExtension {
      * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
      * anything else will revert.
      *
-     * Allows querying any operation on the Vault that has the `withLocker` modifier.
+     * Allows querying any operation on the Vault that has the `withOpenTab` modifier.
      *
      * Allows the external calling of a function via the Vault contract to
-     * access Vault's functions guarded by `withLocker`.
+     * access Vault's functions guarded by `withOpenTab`.
      * `transient` modifier ensuring balances changes within the Vault are settled.
      *
      * @param data Contains function signature and args to be passed to the msg.sender
@@ -346,10 +343,6 @@ interface IVaultExtension {
      * @return If true, then queries are disabled
      */
     function isQueryDisabled() external view returns (bool);
-
-    /*******************************************************************************
-                                     Default lockers
-    *******************************************************************************/
 
     /**
      * @notice Returns the Vault Admin contract address.

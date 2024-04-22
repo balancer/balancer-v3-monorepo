@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -15,11 +14,14 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { RouterCommon } from "./RouterCommon.sol";
 
-contract Router is IRouter, RouterCommon, ReentrancyGuard {
+contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
     using Address for address payable;
 
@@ -80,7 +82,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
 
         uint256 ethAmountIn;
         for (uint256 i = 0; i < params.tokens.length; ++i) {
-            // Receive tokens from the locker
             IERC20 token = params.tokens[i];
             uint256 amountIn = params.exactAmountsIn[i];
 
@@ -255,7 +256,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
 
         uint256 ethAmountIn;
         for (uint256 i = 0; i < tokens.length; ++i) {
-            // Receive tokens from the locker
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
 
@@ -1039,11 +1039,11 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
     ) external virtual returns (bytes[] memory results) {
         // Use Permit (ERC-2612) to grant allowances to Permit2 for swapable tokens,
         // and grant allowances to Vault for BPT tokens.
-        for (uint256 index = 0; index < permitBatch.length; index++) {
+        for (uint256 i = 0; i < permitBatch.length; ++i) {
             bytes32 r;
             bytes32 s;
             uint8 v;
-            bytes memory signature = permitSignatures[index];
+            bytes memory signature = permitSignatures[i];
             /// @solidity memory-safe-assembly
             // solhint-disable-next-line no-inline-assembly
             assembly {
@@ -1051,7 +1051,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
                 s := mload(add(signature, 0x40))
                 v := byte(0, mload(add(signature, 0x60)))
             }
-            IRouter.PermitApproval memory permitApproval = permitBatch[index];
+            IRouter.PermitApproval memory permitApproval = permitBatch[i];
             IERC20Permit(permitApproval.token).permit(
                 permitApproval.owner,
                 address(this),
@@ -1071,7 +1071,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuard {
     /// @inheritdoc IRouter
     function multicall(bytes[] calldata data) public virtual returns (bytes[] memory results) {
         results = new bytes[](data.length);
-        for (uint256 i = 0; i < data.length; i++) {
+        for (uint256 i = 0; i < data.length; ++i) {
             results[i] = Address.functionDelegateCall(address(this), data[i]);
         }
         return results;

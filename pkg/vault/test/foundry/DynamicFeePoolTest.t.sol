@@ -10,7 +10,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { LiquidityManagement, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
@@ -51,19 +51,19 @@ contract DynamicFeePoolTest is BaseVaultTest {
     function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
         DynamicFeePoolMock newPool = new DynamicFeePoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), label);
+        PoolRoleAccounts memory roleAccounts;
 
         factoryMock.registerPool(
             address(newPool),
             vault.buildTokenConfig(tokens.asIERC20()),
-            address(0),
-            address(0),
+            true, // hasDynamicSwapFee
+            roleAccounts,
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: true,
                 enableRemoveLiquidityCustom: true
-            }),
-            true // hasDynamicSwapFee
+            })
         );
 
         return address(newPool);
@@ -86,20 +86,20 @@ contract DynamicFeePoolTest is BaseVaultTest {
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
+        PoolRoleAccounts memory roleAccounts;
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolMustSupportDynamicFee.selector));
         factoryMock.registerPool(
             address(newPool),
             tokenConfig,
-            address(0),
-            address(0),
+            true, // hasDynamicSwapFee
+            roleAccounts,
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: true,
                 enableRemoveLiquidityCustom: true
-            }),
-            true // hasDynamicSwapFee
+            })
         );
     }
 

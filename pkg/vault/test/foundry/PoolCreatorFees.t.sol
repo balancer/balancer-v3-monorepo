@@ -230,7 +230,7 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         // Check live balances after transfer
         (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(address(pool));
         uint256[] memory liveBalancesAfter = vault.getLastLiveBalances(address(pool));
-        for (uint256 i = 0; i < liveBalancesAfter.length; i++) {
+        for (uint256 i = 0; i < liveBalancesAfter.length; ++i) {
             if (tokens[i] == tokenIn) {
                 assertEq(
                     liveBalancesBefore[i] + amountIn,
