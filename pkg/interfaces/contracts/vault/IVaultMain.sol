@@ -8,13 +8,6 @@ import { IAuthorizer } from "./IAuthorizer.sol";
 import { IRateProvider } from "./IRateProvider.sol";
 import "./VaultTypes.sol";
 
-/// @dev Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
-struct LiquidityLocals {
-    uint256 numTokens;
-    uint256 protocolSwapFeeAmountRaw;
-    uint256 tokenIndex;
-}
-
 struct SwapLocals {
     // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
     uint256 indexIn;
