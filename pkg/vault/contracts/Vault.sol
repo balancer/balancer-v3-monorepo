@@ -12,7 +12,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
-import { IVaultMain, SwapLocals } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
+import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBaseDynamicFeePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBaseDynamicFeePool.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
@@ -153,6 +153,18 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                                           Swaps
     *******************************************************************************/
 
+    struct SwapLocals {
+        // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
+        uint256 indexIn;
+        uint256 indexOut;
+        uint256 amountGivenScaled18;
+        uint256 amountCalculatedScaled18;
+        uint256 swapFeeAmountScaled18;
+        uint256 swapFeePercentage;
+        uint256 protocolSwapFeeAmountRaw;
+        uint256 creatorSwapFeeAmountRaw;
+    }
+
     /// @inheritdoc IVaultMain
     function swap(
         SwapParams memory params
@@ -208,7 +220,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // to a lower calculated amountOut, favoring the pool.
         _updateAmountGivenInVars(vars, params, poolData);
 
-        vars.swapFeePercentage = _getSwapFeePercentage(params.pool, poolData, vars);
+        vars.swapFeePercentage = _getSwapFeePercentage(params.pool, poolData, params);
 
         if (vars.swapFeePercentage > 0 && params.kind == SwapKind.EXACT_OUT) {
             // Round up to avoid losses during precision loss.
@@ -396,10 +408,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function _getSwapFeePercentage(
         address poolAddress,
         PoolData memory poolData,
-        SwapLocals memory vars
+        SwapParams memory params
     ) internal view returns (uint256) {
         if (poolData.poolConfig.hasDynamicSwapFee) {
-            return IBaseDynamicFeePool(poolAddress).computeFee(poolData, vars);
+            return IBaseDynamicFeePool(poolAddress).computeFee(poolData, params);
         } else {
             return poolData.poolConfig.staticSwapFeePercentage;
         }
