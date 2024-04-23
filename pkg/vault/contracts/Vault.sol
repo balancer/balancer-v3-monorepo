@@ -1072,9 +1072,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 amountBase;
         uint256 amountWrapped;
 
-        IERC4626 wrappedToken = params.wrappedToken == params.tokenIn ?
-            IERC4626(address(params.tokenIn)) :
-            IERC4626(address(params.tokenOut));
+        IERC4626 wrappedToken = params.wrappedToken == params.tokenIn
+            ? IERC4626(address(params.tokenIn))
+            : IERC4626(address(params.tokenOut));
 
         address baseToken = wrappedToken.asset();
         if (
