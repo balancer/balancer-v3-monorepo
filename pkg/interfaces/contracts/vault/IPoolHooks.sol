@@ -170,5 +170,7 @@ interface IPoolHooks {
      * @return success True if the pool wishes to proceed with settlement
      * @return dynamicSwapFee Value of the swap fee
      */
-    function onComputeDynamicSwapFee(IBasePool.PoolSwapParams calldata params) external view returns (bool success, uint256 dynamicSwapFee);
+    function onComputeDynamicSwapFee(
+        IBasePool.PoolSwapParams calldata params
+    ) external view returns (bool success, uint256 dynamicSwapFee);
 }
