@@ -224,15 +224,15 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         uint256 amountCalculatedScaled18
     ) external view override returns (bool success) {
         // check that actual pool balances match
-        (IERC20[] memory tokens, , uint256[] memory balancesRaw, uint256[] memory scalingFactors, ) = getVault()
+        (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory scalingFactors) = getVault()
             .getPoolTokenInfo(address(this));
 
         uint256[] memory currentLiveBalances = IVaultMock(address(getVault())).getCurrentLiveBalances(address(this));
 
         uint256[] memory rates = getVault().getPoolTokenRates(address(this));
 
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            if (tokens[i] == params.tokenIn) {
+        for (uint256 i = 0; i < tokenConfig.length; ++i) {
+            if (tokenConfig[i].token == params.tokenIn) {
                 if (params.tokenInBalanceScaled18 != currentLiveBalances[i]) {
                     return false;
                 }
@@ -243,7 +243,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
                 if (expectedTokenInBalanceRaw != balancesRaw[i]) {
                     return false;
                 }
-            } else if (tokens[i] == params.tokenOut) {
+            } else if (tokenConfig[i].token == params.tokenOut) {
                 if (params.tokenOutBalanceScaled18 != currentLiveBalances[i]) {
                     return false;
                 }

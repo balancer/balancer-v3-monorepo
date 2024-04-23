@@ -14,6 +14,7 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
@@ -166,7 +167,13 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
         uint256[] memory amountsIn,
         uint256 minBptOut
     ) internal virtual returns (uint256 bptOut) {
-        (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(poolToInit);
+        (TokenConfig[] memory tokenConfig, , ) = vault.getPoolTokenInfo(poolToInit);
+        IERC20[] memory tokens = new IERC20[](tokenConfig.length);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            tokens[i] = tokenConfig[i].token;
+        }
+
         return router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, "");
     }
 
@@ -206,12 +213,12 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
     function getBalances(address user) internal view returns (Balances memory balances) {
         balances.userBpt = IERC20(pool).balanceOf(user);
 
-        (IERC20[] memory tokens, , uint256[] memory poolBalances, , ) = vault.getPoolTokenInfo(pool);
+        (TokenConfig[] memory tokenConfig, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(pool);
         balances.poolTokens = poolBalances;
         balances.userTokens = new uint256[](poolBalances.length);
         for (uint256 i = 0; i < poolBalances.length; ++i) {
             // Don't assume token ordering.
-            balances.userTokens[i] = tokens[i].balanceOf(user);
+            balances.userTokens[i] = tokenConfig[i].token.balanceOf(user);
         }
     }
 

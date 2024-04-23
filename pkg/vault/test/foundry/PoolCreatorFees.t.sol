@@ -228,16 +228,16 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         );
 
         // Check live balances after transfer
-        (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(address(pool));
+        (TokenConfig[] memory tokenConfig, , ) = vault.getPoolTokenInfo(address(pool));
         uint256[] memory liveBalancesAfter = vault.getLastLiveBalances(address(pool));
         for (uint256 i = 0; i < liveBalancesAfter.length; ++i) {
-            if (tokens[i] == tokenIn) {
+            if (tokenConfig[i].token == tokenIn) {
                 assertEq(
                     liveBalancesBefore[i] + amountIn,
                     liveBalancesAfter[i],
                     "Live Balance for tokenIn does not match after swap"
                 );
-            } else if (tokens[i] == tokenOut) {
+            } else if (tokenConfig[i].token == tokenOut) {
                 // Fees are charged from amountIn, but lpFees stay in the pool
                 uint256 expectedLiveBalancesAfter = liveBalancesBefore[i] - amountIn + vars.lpFees;
                 // Rounding should always favor the protocol when charging fees. We assert that

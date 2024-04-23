@@ -126,7 +126,9 @@ describe('WeightedPool', function () {
         const tokensFromPool = await pool.getPoolTokens();
         expect(tokensFromPool).to.deep.equal(poolTokens);
 
-        const [tokensFromVault, , balancesFromVault] = await vault.getPoolTokenInfo(pool);
+        const [tokenConfigFromVault, balancesFromVault] = await vault.getPoolTokenInfo(pool);
+        const tokensFromVault = tokenConfigFromVault.map((config) => config.token);
+
         expect(tokensFromVault).to.deep.equal(tokensFromPool);
         expect(balancesFromVault).to.deep.equal(initialBalances);
       });
