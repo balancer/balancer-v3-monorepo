@@ -34,7 +34,7 @@ contract PoolConfigLibTest is Test {
         _checkBit(PoolConfigLib.POOL_REGISTERED_OFFSET);
         _checkBit(PoolConfigLib.POOL_INITIALIZED_OFFSET);
         _checkBit(PoolConfigLib.POOL_PAUSED_OFFSET);
-        _checkBit(PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET);
+        _checkBit(PoolConfigLib.COMPUTE_DYNAMIC_SWAP_FEE_OFFSET);
         _checkBit(PoolConfigLib.BEFORE_SWAP_OFFSET);
         _checkBit(PoolConfigLib.AFTER_SWAP_OFFSET);
         _checkBit(PoolConfigLib.BEFORE_ADD_LIQUIDITY_OFFSET);
@@ -49,7 +49,7 @@ contract PoolConfigLibTest is Test {
         _checkBit(PoolConfigLib.REMOVE_LIQUIDITY_CUSTOM_OFFSET);
 
         _checkBits(PoolConfigLib.STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH);
-        _checkBits(PoolConfigLib.POOL_DEV_FEE_OFFSET, FEE_BITLENGTH);
+        _checkBits(PoolConfigLib.POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH);
         _checkBits(PoolConfigLib.DECIMAL_SCALING_FACTORS_OFFSET, TOKEN_DECIMAL_DIFFS_BITLENGTH);
         _checkBits(PoolConfigLib.PAUSE_WINDOW_END_TIME_OFFSET, TIMESTAMP_BITLENGTH);
     }
@@ -202,7 +202,7 @@ contract PoolConfigLibTest is Test {
     function testGetPoolCreatorFeePercentage() public {
         assertEq(
             PoolConfigBits
-                .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_DEV_FEE_OFFSET, FEE_BITLENGTH))
+                .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH))
                 .getPoolCreatorFeePercentage(),
             MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
             "staticSwapFeePercentage mismatch"
@@ -364,7 +364,7 @@ contract PoolConfigLibTest is Test {
 
         assertEq(
             PoolConfigBits
-                .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_DEV_FEE_OFFSET, FEE_BITLENGTH))
+                .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH))
                 .toPoolConfig()
                 .poolCreatorFeePercentage,
             MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
@@ -557,7 +557,7 @@ contract PoolConfigLibTest is Test {
         config.poolCreatorFeePercentage = MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
-            bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_DEV_FEE_OFFSET, FEE_BITLENGTH),
+            bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH),
             "poolCreatorFeePercentage mismatch"
         );
 

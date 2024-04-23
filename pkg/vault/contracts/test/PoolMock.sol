@@ -113,7 +113,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         failComputeDynamicSwapFeeHook = fail;
     }
 
-    function setDynamicSwapFee(uint256 dynamicSwapFee) external {
+    function setDynamicSwapFeePercentage(uint256 dynamicSwapFee) external {
         _dynamicSwapFee = dynamicSwapFee;
     }
 
