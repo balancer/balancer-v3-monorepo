@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { AddLiquidityKind, RemoveLiquidityKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 /**
  * @dev Pools that only implement a subset of callbacks can inherit from here instead of IPoolHooks,
@@ -75,5 +76,10 @@ abstract contract BasePoolHooks is IPoolHooks {
     /// @inheritdoc IPoolHooks
     function onAfterSwap(AfterSwapParams calldata, uint256) external virtual returns (bool) {
         return false;
+    }
+
+    /// @inheritdoc IPoolHooks
+    function onComputeDynamicSwapFee(IBasePool.PoolSwapParams calldata) external pure returns (uint256) {
+        revert IVaultErrors.OperationNotSupported();
     }
 }

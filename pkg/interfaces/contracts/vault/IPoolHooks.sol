@@ -163,4 +163,11 @@ interface IPoolHooks {
         AfterSwapParams calldata params,
         uint256 amountCalculatedScaled18
     ) external returns (bool success);
+
+    /**
+     * @notice Called before `onBeforeSwap` if the pool has dynanmic fees.
+     * @param params Swap parameters (see IBasePool.PoolSwapParams for struct definition)
+     * @return dynamicSwapFee Value of the swap fee
+     */
+    function onComputeDynamicSwapFee(IBasePool.PoolSwapParams calldata params) external view returns (uint256);
 }
