@@ -395,11 +395,11 @@ contract VaultSwapTest is BaseVaultTest {
         uint256 usdcBeforeSwap = usdc.balanceOf(address(this));
         uint256 daiBeforeSwap = dai.balanceOf(address(this));
 
-        (, , uint[] memory balancesRawBefore, , ) = vault.getPoolTokenInfo(address(pool));
+        (, uint[] memory balancesRawBefore, ) = vault.getPoolTokenInfo(address(pool));
 
         vault.lock(abi.encode(this.startSwap.selector));
 
-        (, , uint[] memory balancesRawAfter, , ) = vault.getPoolTokenInfo(address(pool));
+        (, uint[] memory balancesRawAfter, ) = vault.getPoolTokenInfo(address(pool));
 
         // Pool balances should not change
         for (uint i = 0; i < balancesRawAfter.length; ++i) {
@@ -423,7 +423,7 @@ contract VaultSwapTest is BaseVaultTest {
         assertEq(dai.balanceOf(alice), daiBeforeSwap + defaultAmount - fee, "Swap: User's DAI balance is wrong");
 
         // Tokens are adjusted in the pool
-        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
+        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[daiIdx], fee - protocolFee, "Swap: Pool's [0] balance is wrong");
         assertEq(balances[usdcIdx], 2 * defaultAmount, "Swap: Pool's [1] balance is wrong");
 

@@ -438,29 +438,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         external
         view
         withRegisteredPool(pool)
-        returns (
-            IERC20[] memory tokens,
-            TokenType[] memory tokenTypes,
-            uint256[] memory balancesRaw,
-            uint256[] memory decimalScalingFactors,
-            IRateProvider[] memory rateProviders
-        )
+        returns (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors)
     {
-        // Do not use _computePoolData, which makes external calls and could fail.
-        TokenConfig[] memory tokenConfig;
         (tokenConfig, balancesRaw, decimalScalingFactors, ) = _getPoolTokenInfo(pool);
-
-        uint256 numTokens = tokenConfig.length;
-        tokens = new IERC20[](numTokens);
-        tokenTypes = new TokenType[](numTokens);
-        rateProviders = new IRateProvider[](numTokens);
-
-        // TODO consider sending TokenConfig externally; maybe parallel arrays are friendlier off-chain.
-        for (uint256 i = 0; i < numTokens; ++i) {
-            tokens[i] = tokenConfig[i].token;
-            tokenTypes[i] = tokenConfig[i].tokenType;
-            rateProviders[i] = tokenConfig[i].rateProvider;
-        }
     }
 
     /*******************************************************************************
