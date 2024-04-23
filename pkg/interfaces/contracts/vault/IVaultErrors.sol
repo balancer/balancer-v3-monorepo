@@ -76,6 +76,9 @@ interface IVaultErrors {
     error TabAlreadyOpen();
 
     /// @dev The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
+    error DynamicSwapFeeHookFailed();
+
+    /// @dev The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
     error BeforeSwapHookFailed();
 
     /// @dev The pool has returned false to the afterSwap hook, indicating the transaction should revert.

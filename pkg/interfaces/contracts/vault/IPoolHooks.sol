@@ -165,9 +165,10 @@ interface IPoolHooks {
     ) external returns (bool success);
 
     /**
-     * @notice Called before `onBeforeSwap` if the pool has dynanmic fees.
+     * @notice Called before `onBeforeSwap` if the pool has dynamic fees.
      * @param params Swap parameters (see IBasePool.PoolSwapParams for struct definition)
+     * @return success True if the pool wishes to proceed with settlement
      * @return dynamicSwapFee Value of the swap fee
      */
-    function onComputeDynamicSwapFee(IBasePool.PoolSwapParams calldata params) external view returns (uint256);
+    function onComputeDynamicSwapFee(IBasePool.PoolSwapParams calldata params) external view returns (bool success, uint256 dynamicSwapFee);
 }

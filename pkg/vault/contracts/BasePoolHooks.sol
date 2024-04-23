@@ -79,7 +79,7 @@ abstract contract BasePoolHooks is IPoolHooks {
     }
 
     /// @inheritdoc IPoolHooks
-    function onComputeDynamicSwapFee(IBasePool.PoolSwapParams calldata) external pure returns (uint256) {
-        revert IVaultErrors.OperationNotSupported();
+    function onComputeDynamicSwapFee(IBasePool.PoolSwapParams calldata) external pure returns (bool, uint256) {
+        return (false, 0);
     }
 }
