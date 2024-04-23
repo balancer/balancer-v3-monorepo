@@ -144,7 +144,7 @@ describe('Vault', function () {
         pauseWindowEndTime: pauseWindowEndTime.toString(),
         roleAccounts: [ANY_ADDRESS, ZERO_ADDRESS, ANY_ADDRESS],
         poolHooks: [false, false, false, false, false, false, false, false, false],
-        liquidityManagement: [false, true, true]
+        liquidityManagement: [false, true, true],
       };
 
       const roleAccounts: PoolRoleAccountsStruct = {
