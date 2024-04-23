@@ -222,7 +222,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (poolData.poolConfig.hooks.shouldCallComputeDynamicSwapFee) {
             bool success;
 
-            // TODO optimize pool swap params?
             (success, vars.swapFeePercentage) = IPoolHooks(params.pool).onComputeDynamicSwapFee(
                 _buildPoolSwapParams(params, vars, poolData)
             );
@@ -451,6 +450,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                                 Pool Operations
     *******************************************************************************/
 
+    /// @dev Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
+    struct LiquidityLocals {
+        uint256 numTokens;
+        uint256 protocolSwapFeeAmountRaw;
+        uint256 tokenIndex;
+    }
+
     /// @inheritdoc IVaultMain
     function addLiquidity(
         AddLiquidityParams memory params
@@ -541,13 +547,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 revert AfterAddLiquidityHookFailed();
             }
         }
-    }
-
-    /// @dev Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
-    struct LiquidityLocals {
-        uint256 numTokens;
-        uint256 protocolSwapFeeAmountRaw;
-        uint256 tokenIndex;
     }
 
     /**

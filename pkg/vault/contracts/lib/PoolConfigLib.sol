@@ -20,8 +20,8 @@ library PoolConfigLib {
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
     uint8 public constant POOL_INITIALIZED_OFFSET = POOL_REGISTERED_OFFSET + 1;
     uint8 public constant POOL_PAUSED_OFFSET = POOL_INITIALIZED_OFFSET + 1;
-    uint8 public constant COMPUTE_DYNAMIC_SWAP_FEE_OFFSET = POOL_PAUSED_OFFSET + 1;
-    uint8 public constant BEFORE_SWAP_OFFSET = COMPUTE_DYNAMIC_SWAP_FEE_OFFSET + 1;
+    uint8 public constant DYNAMIC_SWAP_FEE_OFFSET = POOL_PAUSED_OFFSET + 1;
+    uint8 public constant BEFORE_SWAP_OFFSET = DYNAMIC_SWAP_FEE_OFFSET + 1;
     uint8 public constant AFTER_SWAP_OFFSET = BEFORE_SWAP_OFFSET + 1;
     uint8 public constant BEFORE_ADD_LIQUIDITY_OFFSET = AFTER_SWAP_OFFSET + 1;
     uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = BEFORE_ADD_LIQUIDITY_OFFSET + 1;
@@ -82,7 +82,7 @@ library PoolConfigLib {
     }
 
     function shouldCallComputeDynamicSwapFee(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(COMPUTE_DYNAMIC_SWAP_FEE_OFFSET);
+        return PoolConfigBits.unwrap(config).decodeBool(DYNAMIC_SWAP_FEE_OFFSET);
     }
 
     function shouldCallBeforeSwap(PoolConfigBits config) internal pure returns (bool) {
@@ -179,7 +179,7 @@ library PoolConfigLib {
             configBits = configBits
                 .insertBool(config.hooks.shouldCallBeforeInitialize, BEFORE_INITIALIZE_OFFSET)
                 .insertBool(config.hooks.shouldCallAfterInitialize, AFTER_INITIALIZE_OFFSET)
-                .insertBool(config.hooks.shouldCallComputeDynamicSwapFee, COMPUTE_DYNAMIC_SWAP_FEE_OFFSET);
+                .insertBool(config.hooks.shouldCallComputeDynamicSwapFee, DYNAMIC_SWAP_FEE_OFFSET);
         }
 
         {
@@ -242,6 +242,7 @@ library PoolConfigLib {
     function toPoolConfig(PoolConfigBits config) internal pure returns (PoolConfig memory) {
         bytes32 rawConfig = PoolConfigBits.unwrap(config);
 
+        // Calling the functions (in addition to costing more gas), causes an obscure form of stack error (Yul errors).
         return
             PoolConfig({
                 isPoolRegistered: rawConfig.decodeBool(POOL_REGISTERED_OFFSET),
@@ -261,7 +262,7 @@ library PoolConfigLib {
                     shouldCallAfterAddLiquidity: rawConfig.decodeBool(AFTER_ADD_LIQUIDITY_OFFSET),
                     shouldCallBeforeRemoveLiquidity: rawConfig.decodeBool(BEFORE_REMOVE_LIQUIDITY_OFFSET),
                     shouldCallAfterRemoveLiquidity: rawConfig.decodeBool(AFTER_REMOVE_LIQUIDITY_OFFSET),
-                    shouldCallComputeDynamicSwapFee: rawConfig.decodeBool(COMPUTE_DYNAMIC_SWAP_FEE_OFFSET),
+                    shouldCallComputeDynamicSwapFee: rawConfig.decodeBool(DYNAMIC_SWAP_FEE_OFFSET),
                     shouldCallBeforeSwap: rawConfig.decodeBool(BEFORE_SWAP_OFFSET),
                     shouldCallAfterSwap: rawConfig.decodeBool(AFTER_SWAP_OFFSET)
                 }),

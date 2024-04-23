@@ -34,7 +34,7 @@ contract PoolConfigLibTest is Test {
         _checkBit(PoolConfigLib.POOL_REGISTERED_OFFSET);
         _checkBit(PoolConfigLib.POOL_INITIALIZED_OFFSET);
         _checkBit(PoolConfigLib.POOL_PAUSED_OFFSET);
-        _checkBit(PoolConfigLib.COMPUTE_DYNAMIC_SWAP_FEE_OFFSET);
+        _checkBit(PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET);
         _checkBit(PoolConfigLib.BEFORE_SWAP_OFFSET);
         _checkBit(PoolConfigLib.AFTER_SWAP_OFFSET);
         _checkBit(PoolConfigLib.BEFORE_ADD_LIQUIDITY_OFFSET);
@@ -78,7 +78,7 @@ contract PoolConfigLibTest is Test {
     function testShouldCallComputeDynamicSwapFee() public {
         assertTrue(
             PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, PoolConfigLib.COMPUTE_DYNAMIC_SWAP_FEE_OFFSET))
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET))
                 .shouldCallComputeDynamicSwapFee(),
             "shouldCallComputeDynamicSwapFee is false"
         );
@@ -458,7 +458,7 @@ contract PoolConfigLibTest is Test {
 
         assertTrue(
             PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, PoolConfigLib.COMPUTE_DYNAMIC_SWAP_FEE_OFFSET))
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET))
                 .toPoolConfig()
                 .hooks
                 .shouldCallComputeDynamicSwapFee,
@@ -634,7 +634,7 @@ contract PoolConfigLibTest is Test {
         config.hooks.shouldCallComputeDynamicSwapFee = true;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
-            bytes32(0).insertBool(true, PoolConfigLib.COMPUTE_DYNAMIC_SWAP_FEE_OFFSET),
+            bytes32(0).insertBool(true, PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET),
             "shouldCallComputeDynamicSwapFee mismatch"
         );
 
