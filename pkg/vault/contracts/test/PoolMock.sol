@@ -9,6 +9,7 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -29,6 +30,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
     bool public failOnAfterInitialize;
     bool public failOnBeforeInitialize;
+    bool public failComputeDynamicSwapFeeHook;
     bool public failOnBeforeSwapHook;
     bool public failOnAfterSwapHook;
     bool public failOnBeforeAddLiquidity;
@@ -47,7 +49,8 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
     RateProviderMock _rateProvider;
     uint256 private _newTokenRate;
-
+    uint256 private _dynamicSwapFee;
+    
     // Amounts in are multiplied by the multiplier, amounts out are divided by it
     uint256 private _multiplier = FixedPoint.ONE;
 
@@ -104,6 +107,14 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         changeTokenRateOnBeforeInitialize = changeRate;
         _rateProvider = rateProvider;
         _newTokenRate = newTokenRate;
+    }
+
+    function setFailComputeDynamicSwapFeeHook(bool fail) external {
+        failComputeDynamicSwapFeeHook = fail;
+    }
+
+    function setDynamicSwapFee(uint256 dynamicSwapFee) external {
+        _dynamicSwapFee = dynamicSwapFee;
     }
 
     function setFailOnBeforeSwapHook(bool fail) external {
@@ -174,6 +185,14 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
     function onAfterInitialize(uint256[] memory, uint256, bytes memory) external view returns (bool) {
         return !failOnAfterInitialize;
+    }
+
+    function onComputeDynamicSwapFee(IBasePool.PoolSwapParams calldata) external view returns (uint256) {
+        if (failComputeDynamicSwapFeeHook) {
+            revert IVaultErrors.OperationNotSupported();
+        }
+
+        return _dynamicSwapFee;
     }
 
     function onBeforeSwap(IBasePool.PoolSwapParams calldata) external override returns (bool success) {

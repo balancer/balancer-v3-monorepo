@@ -14,7 +14,6 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IBaseDynamicFeePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBaseDynamicFeePool.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
@@ -220,7 +219,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // to a lower calculated amountOut, favoring the pool.
         _updateAmountGivenInVars(vars, params, poolData);
 
-        vars.swapFeePercentage = _getSwapFeePercentage(params.pool, poolData, params);
+
+        if (poolData.poolConfig.hooks.shouldCallComputeDynamicSwapFee) {
+            // TODO optimize pool swap params?
+            vars.swapFeePercentage = IPoolHooks(params.pool).onComputeDynamicSwapFee(_buildPoolSwapParams(params, vars, poolData));
+        } else {
+            vars.swapFeePercentage = poolData.poolConfig.staticSwapFeePercentage;
+        }
 
         if (vars.swapFeePercentage > 0 && params.kind == SwapKind.EXACT_OUT) {
             // Round up to avoid losses during precision loss.
@@ -402,19 +407,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _takeDebt(params.tokenIn, amountIn);
         // Account amountOut of tokenOut
         _supplyCredit(params.tokenOut, amountOut);
-    }
-
-    /// @dev Returns swap fee for the pool.
-    function _getSwapFeePercentage(
-        address poolAddress,
-        PoolData memory poolData,
-        SwapParams memory params
-    ) internal view returns (uint256) {
-        if (poolData.poolConfig.hasDynamicSwapFee) {
-            return IBaseDynamicFeePool(poolAddress).computeFee(poolData, params);
-        } else {
-            return poolData.poolConfig.staticSwapFeePercentage;
-        }
     }
 
     /*******************************************************************************

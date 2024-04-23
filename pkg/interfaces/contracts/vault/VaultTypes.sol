@@ -9,6 +9,7 @@ import { IRateProvider } from "./IRateProvider.sol";
 struct PoolHooks {
     bool shouldCallBeforeInitialize;
     bool shouldCallAfterInitialize;
+    bool shouldCallComputeDynamicSwapFee;
     bool shouldCallBeforeSwap;
     bool shouldCallAfterSwap;
     bool shouldCallBeforeAddLiquidity;
@@ -35,7 +36,6 @@ struct PoolConfig {
     bool isPoolInitialized;
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
-    bool hasDynamicSwapFee;
 }
 
 /**

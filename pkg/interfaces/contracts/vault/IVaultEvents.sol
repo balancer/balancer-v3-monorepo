@@ -17,14 +17,12 @@ interface IVaultEvents {
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param poolHooks Flags indicating which hooks the pool supports
      * @param liquidityManagement Supported liquidity management hook flags
-     * @param hasDynamicSwapFee True if the pool implements a dynamic swap fee
      */
     event PoolRegistered(
         address indexed pool,
         address indexed factory,
         TokenConfig[] tokenConfig,
         uint256 pauseWindowEndTime,
-        bool hasDynamicSwapFee,
         PoolRoleAccounts roleAccounts,
         PoolHooks poolHooks,
         LiquidityManagement liquidityManagement

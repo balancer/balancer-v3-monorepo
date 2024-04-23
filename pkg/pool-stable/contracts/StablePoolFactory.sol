@@ -61,7 +61,6 @@ contract StablePoolFactory is BasePoolFactory {
             pool,
             tokens,
             swapFeePercentage,
-            false, // hasDynamicSwapFee
             roleAccounts,
             getDefaultPoolHooks(),
             getDefaultLiquidityManagement()

@@ -110,7 +110,6 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
             tokenConfig,
             0, // zero swap fee
             pauseWindowEndTime,
-            false, // dynamic swap fee
             roleAccounts,
             poolHooks,
             liquidityManagement
@@ -126,6 +125,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
                 shouldCallAfterAddLiquidity: false,
                 shouldCallBeforeRemoveLiquidity: false,
                 shouldCallAfterRemoveLiquidity: false,
+                shouldCallComputeDynamicSwapFee: false,
                 shouldCallBeforeSwap: true, // rebalancing
                 shouldCallAfterSwap: false
             });

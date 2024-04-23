@@ -10,7 +10,6 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
-import { IBaseDynamicFeePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBaseDynamicFeePool.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -130,7 +129,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         PoolRoleAccounts roleAccounts;
         PoolHooks poolHooks;
         LiquidityManagement liquidityManagement;
-        bool hasDynamicSwapFee;
     }
 
     /// @inheritdoc IVaultExtension
@@ -139,7 +137,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
-        bool hasDynamicSwapFee,
         PoolRoleAccounts calldata roleAccounts,
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
@@ -150,7 +147,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 tokenConfig: tokenConfig,
                 swapFeePercentage: swapFeePercentage,
                 pauseWindowEndTime: pauseWindowEndTime,
-                hasDynamicSwapFee: hasDynamicSwapFee,
                 roleAccounts: roleAccounts,
                 poolHooks: poolHooks,
                 liquidityManagement: liquidityManagement
@@ -245,14 +241,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
 
-        if (params.hasDynamicSwapFee && !IERC165(pool).supportsInterface(type(IBaseDynamicFeePool).interfaceId)) {
-            revert PoolMustSupportDynamicFee();
-        }
-
         config.isPoolRegistered = true;
         config.hooks = params.poolHooks;
         config.liquidityManagement = params.liquidityManagement;
-        config.hasDynamicSwapFee = params.hasDynamicSwapFee;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = params.pauseWindowEndTime;
         _poolConfig[pool] = config.fromPoolConfig();
@@ -265,7 +256,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             msg.sender,
             params.tokenConfig,
             params.pauseWindowEndTime,
-            params.hasDynamicSwapFee,
             params.roleAccounts,
             params.poolHooks,
             params.liquidityManagement

@@ -52,13 +52,15 @@ contract DynamicFeePoolTest is BaseVaultTest {
         DynamicFeePoolMock newPool = new DynamicFeePoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), label);
         PoolRoleAccounts memory roleAccounts;
+        PoolHooks memory poolHooks;
+
+        poolHooks.config.shouldCallComputeDynamicSwapFee = true;
 
         factoryMock.registerPool(
             address(newPool),
             vault.buildTokenConfig(tokens.asIERC20()),
-            true, // hasDynamicSwapFee
             roleAccounts,
-            PoolConfigBits.wrap(0).toPoolConfig().hooks,
+            poolHooks,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: true,
@@ -77,30 +79,6 @@ contract DynamicFeePoolTest is BaseVaultTest {
         // TODO: rename swapPool and liquidityPool for pool and witnessPool respectively
         _initPool(liquidityPool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
         vm.stopPrank();
-    }
-
-    function testPoolRegistrationDynamicFeeNotSupported() public {
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
-
-        // NOTE: declaring tokenConfig before vm.expectRevert to view call from interfering with revert expectation
-        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
-            [address(dai), address(usdc)].toMemoryArray().asIERC20()
-        );
-        PoolRoleAccounts memory roleAccounts;
-
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolMustSupportDynamicFee.selector));
-        factoryMock.registerPool(
-            address(newPool),
-            tokenConfig,
-            true, // hasDynamicSwapFee
-            roleAccounts,
-            PoolConfigBits.wrap(0).toPoolConfig().hooks,
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: true,
-                enableRemoveLiquidityCustom: true
-            })
-        );
     }
 
     function testSwapCallsComputeFee() public {

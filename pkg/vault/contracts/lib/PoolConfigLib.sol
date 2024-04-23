@@ -20,8 +20,8 @@ library PoolConfigLib {
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
     uint8 public constant POOL_INITIALIZED_OFFSET = POOL_REGISTERED_OFFSET + 1;
     uint8 public constant POOL_PAUSED_OFFSET = POOL_INITIALIZED_OFFSET + 1;
-    uint8 public constant DYNAMIC_SWAP_FEE_OFFSET = POOL_PAUSED_OFFSET + 1;
-    uint8 public constant BEFORE_SWAP_OFFSET = DYNAMIC_SWAP_FEE_OFFSET + 1;
+    uint8 public constant COMPUTE_DYNAMIC_SWAP_FEE_OFFSET = POOL_PAUSED_OFFSET + 1;
+    uint8 public constant BEFORE_SWAP_OFFSET = COMPUTE_DYNAMIC_SWAP_FEE_OFFSET + 1;
     uint8 public constant AFTER_SWAP_OFFSET = BEFORE_SWAP_OFFSET + 1;
     uint8 public constant BEFORE_ADD_LIQUIDITY_OFFSET = AFTER_SWAP_OFFSET + 1;
     uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = BEFORE_ADD_LIQUIDITY_OFFSET + 1;
@@ -63,10 +63,6 @@ library PoolConfigLib {
 
     function isPoolPaused(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_PAUSED_OFFSET);
-    }
-
-    function hasDynamicSwapFee(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(DYNAMIC_SWAP_FEE_OFFSET);
     }
 
     function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
@@ -117,6 +113,10 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(AFTER_INITIALIZE_OFFSET);
     }
 
+    function shouldCallComputeDynamicSwapFee(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(COMPUTE_DYNAMIC_SWAP_FEE_OFFSET);
+    }
+
     function supportsUnbalancedLiquidity(PoolConfigBits config) internal pure returns (bool) {
         // NOTE: The unbalanced liquidity flag is default-on (false means it is supported)
         return !PoolConfigBits.unwrap(config).decodeBool(UNBALANCED_LIQUIDITY_OFFSET);
@@ -157,8 +157,7 @@ library PoolConfigLib {
                 .insertBool(config.isPoolRegistered, POOL_REGISTERED_OFFSET)
                 .insertBool(config.isPoolInitialized, POOL_INITIALIZED_OFFSET)
                 .insertBool(config.isPoolPaused, POOL_PAUSED_OFFSET)
-                .insertBool(config.isPoolInRecoveryMode, POOL_RECOVERY_MODE_OFFSET)
-                .insertBool(config.hasDynamicSwapFee, DYNAMIC_SWAP_FEE_OFFSET);
+                .insertBool(config.isPoolInRecoveryMode, POOL_RECOVERY_MODE_OFFSET);
         }
 
         {
@@ -179,7 +178,8 @@ library PoolConfigLib {
         {
             configBits = configBits
                 .insertBool(config.hooks.shouldCallBeforeInitialize, BEFORE_INITIALIZE_OFFSET)
-                .insertBool(config.hooks.shouldCallAfterInitialize, AFTER_INITIALIZE_OFFSET);
+                .insertBool(config.hooks.shouldCallAfterInitialize, AFTER_INITIALIZE_OFFSET)
+                .insertBool(config.hooks.shouldCallComputeDynamicSwapFee, COMPUTE_DYNAMIC_SWAP_FEE_OFFSET);
         }
 
         {
@@ -242,7 +242,6 @@ library PoolConfigLib {
                 isPoolInitialized: config.isPoolInitialized(),
                 isPoolPaused: config.isPoolPaused(),
                 isPoolInRecoveryMode: config.isPoolInRecoveryMode(),
-                hasDynamicSwapFee: config.hasDynamicSwapFee(),
                 staticSwapFeePercentage: config.getStaticSwapFeePercentage(),
                 poolCreatorFeePercentage: config.getPoolCreatorFeePercentage(),
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
@@ -254,6 +253,7 @@ library PoolConfigLib {
                     shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),
                     shouldCallBeforeRemoveLiquidity: config.shouldCallBeforeRemoveLiquidity(),
                     shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity(),
+                    shouldCallComputeDynamicSwapFee: config.shouldCallComputeDynamicSwapFee(),
                     shouldCallBeforeSwap: config.shouldCallBeforeSwap(),
                     shouldCallAfterSwap: config.shouldCallAfterSwap()
                 }),

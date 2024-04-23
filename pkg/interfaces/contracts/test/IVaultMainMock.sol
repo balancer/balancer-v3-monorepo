@@ -24,7 +24,6 @@ interface IVaultMainMock {
         address pool,
         IERC20[] memory tokens,
         uint256 timestamp,
-        bool hasDynamicSwapFee,
         PoolRoleAccounts memory roleAccounts
     ) external;
 

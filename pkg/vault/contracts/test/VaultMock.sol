@@ -73,7 +73,6 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolFactoryMock.registerPool(
             pool,
             buildTokenConfig(tokens),
-            false, // hasDynamicSwapFee
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
@@ -93,7 +92,6 @@ contract VaultMock is IVaultMainMock, Vault {
             pool,
             buildTokenConfig(tokens),
             swapFeePercentage,
-            false, // hasDynamicSwapFee
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
         );
@@ -108,7 +106,6 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolFactoryMock.registerPool(
             pool,
             tokenConfig,
-            false, // hasDynamicSwapFee
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
@@ -123,14 +120,12 @@ contract VaultMock is IVaultMainMock, Vault {
         address pool,
         IERC20[] memory tokens,
         uint256 timestamp,
-        bool hasDynamicSwapFee,
         PoolRoleAccounts memory roleAccounts
     ) external whenVaultNotPaused {
         _poolFactoryMock.registerPoolAtTimestamp(
             pool,
             buildTokenConfig(tokens),
             timestamp,
-            hasDynamicSwapFee,
             roleAccounts,
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({

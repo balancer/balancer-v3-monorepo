@@ -152,26 +152,15 @@ contract VaultTokenTest is BaseVaultTest {
     }
 
     function _registerPool(TokenConfig[] memory tokenConfig) private {
+        LiquidityManagement memory liquidityManagement;
+        PoolHooks memory poolHooks;
+        
         poolFactory.registerPool(
             pool,
             tokenConfig,
-            false, // hasDynamicSwapFee
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
-            PoolHooks({
-                shouldCallBeforeInitialize: false,
-                shouldCallAfterInitialize: false,
-                shouldCallBeforeAddLiquidity: false,
-                shouldCallAfterAddLiquidity: false,
-                shouldCallBeforeRemoveLiquidity: false,
-                shouldCallAfterRemoveLiquidity: false,
-                shouldCallBeforeSwap: false,
-                shouldCallAfterSwap: false
-            }),
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: false,
-                enableRemoveLiquidityCustom: false
-            })
+            poolHooks,
+            liquidityManagement
         );
     }
 
