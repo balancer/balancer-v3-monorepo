@@ -50,7 +50,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     RateProviderMock _rateProvider;
     uint256 private _newTokenRate;
     uint256 private _dynamicSwapFee;
-    
+
     // Amounts in are multiplied by the multiplier, amounts out are divided by it
     uint256 private _multiplier = FixedPoint.ONE;
 

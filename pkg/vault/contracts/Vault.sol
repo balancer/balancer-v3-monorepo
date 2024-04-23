@@ -219,10 +219,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // to a lower calculated amountOut, favoring the pool.
         _updateAmountGivenInVars(vars, params, poolData);
 
-
         if (poolData.poolConfig.hooks.shouldCallComputeDynamicSwapFee) {
             // TODO optimize pool swap params?
-            vars.swapFeePercentage = IPoolHooks(params.pool).onComputeDynamicSwapFee(_buildPoolSwapParams(params, vars, poolData));
+            vars.swapFeePercentage = IPoolHooks(params.pool).onComputeDynamicSwapFee(
+                _buildPoolSwapParams(params, vars, poolData)
+            );
         } else {
             vars.swapFeePercentage = poolData.poolConfig.staticSwapFeePercentage;
         }

@@ -77,7 +77,9 @@ contract PoolConfigLibTest is Test {
 
     function testShouldCallComputeDynamicSwapFee() public {
         assertTrue(
-            PoolConfigBits.wrap(bytes32(0).insertBool(true, PoolConfigLib.COMPUTE_DYNAMIC_SWAP_FEE_OFFSET)).shouldCallComputeDynamicSwapFee(),
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.COMPUTE_DYNAMIC_SWAP_FEE_OFFSET))
+                .shouldCallComputeDynamicSwapFee(),
             "shouldCallComputeDynamicSwapFee is false"
         );
     }
