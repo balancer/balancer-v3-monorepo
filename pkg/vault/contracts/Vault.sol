@@ -1069,13 +1069,25 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function bufferWrapUnwrap(
         WrapParams memory params
     ) public withOpenTab returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
-        IERC4626 wrappedToken;
         uint256 amountBase;
         uint256 amountWrapped;
+
+        IERC4626 wrappedToken = params.wrappedToken == params.tokenIn ?
+            IERC4626(address(params.tokenIn)) :
+            IERC4626(address(params.tokenOut));
+
+        address baseToken = wrappedToken.asset();
+        if (
+            _bufferAssets[IERC20(address(wrappedToken))] != address(0) &&
+            _bufferAssets[IERC20(address(wrappedToken))] != baseToken
+        ) {
+            // Asset was changed since the first bufferAddLiquidity call
+            revert WrongWrappedTokenAsset(address(wrappedToken));
+        }
+
         if (params.wrappedToken == params.tokenIn) {
             // tokenIn is wrappedToken, user wants to unwrap
-            wrappedToken = IERC4626(address(params.tokenIn));
-            if (wrappedToken.asset() != address(params.tokenOut)) {
+            if (baseToken != address(params.tokenOut)) {
                 revert WrongWrappedTokenAsset(address(wrappedToken));
             }
             (amountCalculated, amountWrapped, amountBase) = _bufferUnwrap(
@@ -1087,8 +1099,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             amountOut = amountBase;
         } else if (params.wrappedToken == params.tokenOut) {
             // tokenOut is wrappedToken, user wants to wrap
-            wrappedToken = IERC4626(address(params.tokenOut));
-            if (wrappedToken.asset() != address(params.tokenIn)) {
+            if (baseToken != address(params.tokenIn)) {
                 revert WrongWrappedTokenAsset(address(wrappedToken));
             }
             (amountCalculated, amountWrapped, amountBase) = _bufferWrap(
@@ -1200,15 +1211,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vars.wrappedBalanceVaultAfter = IERC20(address(wrappedToken)).balanceOf(address(this));
 
             if (vars.baseBalanceVaultBefore - vars.baseBalanceVaultAfter != vars.totalBaseDepositedOrWithdrawn) {
-                // TODO create error
-                revert();
+                revert WrongBaseAmountOnDeposit(address(wrappedToken));
             }
 
             if (
                 vars.wrappedBalanceVaultAfter - vars.wrappedBalanceVaultBefore != vars.totalWrappedDepositedOrWithdrawn
             ) {
-                // TODO create error
-                revert();
+                revert WrongWrappedAmountOnDeposit(address(wrappedToken));
             }
 
             _reservesOf[IERC20(address(wrappedToken))] = vars.wrappedBalanceVaultAfter;
@@ -1306,15 +1315,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vars.wrappedBalanceVaultAfter = IERC20(address(wrappedToken)).balanceOf(address(this));
 
             if (vars.baseBalanceVaultAfter - vars.baseBalanceVaultBefore != vars.totalBaseDepositedOrWithdrawn) {
-                // TODO create error
-                revert();
+                revert WrongBaseAmountOnWithdraw(address(wrappedToken));
             }
 
             if (
                 vars.wrappedBalanceVaultBefore - vars.wrappedBalanceVaultAfter != vars.totalWrappedDepositedOrWithdrawn
             ) {
-                // TODO create error
-                revert();
+                revert WrongWrappedAmountOnWithdraw(address(wrappedToken));
             }
 
             _reservesOf[IERC20(address(wrappedToken))] = vars.wrappedBalanceVaultAfter;

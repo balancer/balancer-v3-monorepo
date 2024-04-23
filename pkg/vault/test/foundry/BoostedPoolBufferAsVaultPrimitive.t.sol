@@ -25,7 +25,7 @@ import { RouterCommon } from "../../contracts/RouterCommon.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract BufferInsideVaultTest is BaseVaultTest {
+contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
     using FixedPoint for uint256;
     using ArrayHelpers for *;
 

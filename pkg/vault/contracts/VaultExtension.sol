@@ -656,6 +656,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 amountWrapped,
         address sharesOwner
     ) public withOpenTab returns (uint256 issuedShares) {
+        address baseToken = wrappedToken.asset();
+        if (_bufferAssets[IERC20(address(wrappedToken))] == address(0)) {
+            _bufferAssets[IERC20(address(wrappedToken))] = baseToken;
+        } else if (_bufferAssets[IERC20(address(wrappedToken))] != baseToken) {
+            // Asset was changed since the first bufferAddLiquidity call
+            revert WrongWrappedTokenAsset(address(wrappedToken));
+        }
+
         bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
 
         // amount of shares to issue is the total base token that the user is depositing
@@ -670,7 +678,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         _bufferTokenBalances[IERC20(wrappedToken)] = buffer;
 
-        _takeDebt(IERC20(wrappedToken.asset()), amountBase);
+        _takeDebt(IERC20(baseToken), amountBase);
         _takeDebt(wrappedToken, amountWrapped);
     }
 
@@ -679,6 +687,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 sharesToRemove,
         address sharesOwner
     ) public withOpenTab returns (uint256 removedBaseBalance, uint256 removedWrappedBalance) {
+        address baseToken = wrappedToken.asset();
+        if (_bufferAssets[IERC20(address(wrappedToken))] != baseToken) {
+            // Asset was changed since the first bufferAddLiquidity call
+            revert WrongWrappedTokenAsset(address(wrappedToken));
+        }
+
         bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
 
         uint256 ownerShares = _bufferLpShares[IERC20(wrappedToken)][sharesOwner];
@@ -701,7 +715,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         _bufferTokenBalances[IERC20(wrappedToken)] = buffer;
 
-        _supplyCredit(IERC20(wrappedToken.asset()), removedBaseBalance);
+        _supplyCredit(IERC20(baseToken), removedBaseBalance);
         _supplyCredit(wrappedToken, removedWrappedBalance);
     }
 
