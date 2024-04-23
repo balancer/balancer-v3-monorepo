@@ -255,7 +255,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
 
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
-            tooLargeSwapAmount,
+            tooLargeSwapAmount + 1e13,
             tooLargeSwapAmount / USDC_FACTOR
         );
 
@@ -287,6 +287,8 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
 
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
     }
+
+    // TODO create a test that should revert if maxAmountsIn or minAmountsOut is not respected (validating the router)
 
     function _buildExactInPaths(
         uint256 exactAmountIn,
