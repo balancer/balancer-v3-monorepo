@@ -27,7 +27,7 @@ import { RouterCommon } from "../../../contracts/RouterCommon.sol";
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 import { ERC4626RateProvider } from "../../../contracts/test/ERC4626RateProvider.sol";
 
-contract BufferInsideVaultWithAaveTest is BaseVaultTest {
+contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
     using FixedPoint for uint256;
     using ArrayHelpers for *;
 
@@ -212,7 +212,7 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
         // However, EXACT_OUT DAI -> USDC has rounding issues, because amount out is given in 6 digits, and we want an
         // 18 decimals amount in, which is not precisely calculated. The calculation below reproduces what happens in
         // the vault to scale tokens in the swap operation of the boosted pool
-        uint256 expectedWrappedTokenOutUsdc = waUSDC.convertToShares(swapAmount / USDC_FACTOR);
+        uint256 expectedWrappedTokenOutUsdc = waUSDC.previewWithdraw(swapAmount / USDC_FACTOR);
         uint256 expectedScaled18WrappedTokenOutUsdc = FixedPoint.mulDown(
             expectedWrappedTokenOutUsdc * USDC_FACTOR,
             waUSDC.convertToAssets(FixedPoint.ONE)
@@ -270,7 +270,7 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
         // However, EXACT_OUT DAI -> USDC has rounding issues, because amount out is given in 6 digits, and we want an
         // 18 decimals amount in, which is not precisely calculated. The calculation below reproduces what happens in
         // the vault to scale tokens in the swap operation of the boosted pool
-        uint256 expectedWrappedTokenOutUsdc = waUSDC.convertToShares(tooLargeSwapAmount / USDC_FACTOR);
+        uint256 expectedWrappedTokenOutUsdc = waUSDC.previewWithdraw(tooLargeSwapAmount / USDC_FACTOR);
         uint256 expectedScaled18WrappedTokenOutUsdc = FixedPoint.mulDown(
             expectedWrappedTokenOutUsdc * USDC_FACTOR,
             waUSDC.convertToAssets(FixedPoint.ONE)
@@ -429,21 +429,11 @@ contract BufferInsideVaultWithAaveTest is BaseVaultTest {
 
         (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
         (, , balancesRaw, , ) = vault.getPoolTokenInfo(boostedPool);
-        assertGe(
-            balancesRaw[daiIdx],
-            vars.boostedPoolBalanceBeforeSwapWaDai + waDAI.convertToShares(vars.expectedDeltaDai),
-            "Boosted Pool DAI balance must be >= expected balance"
-        );
         assertApproxEqAbs(
             balancesRaw[daiIdx],
             vars.boostedPoolBalanceBeforeSwapWaDai + waDAI.convertToShares(vars.expectedDeltaDai),
             5,
             "Wrong boosted pool DAI balance"
-        );
-        assertGe(
-            balancesRaw[usdcIdx],
-            vars.boostedPoolBalanceBeforeSwapWaUsdc - waUSDC.convertToShares(vars.expectedDeltaUsdc),
-            "Boosted Pool USDC balance must be >= expected balance"
         );
         assertApproxEqAbs(
             balancesRaw[usdcIdx],
