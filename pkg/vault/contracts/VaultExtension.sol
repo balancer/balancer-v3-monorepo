@@ -7,7 +7,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
@@ -183,10 +182,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
         if (numTokens > _MAX_TOKENS) {
             revert MaxTokens();
-        }
-
-        if (ERC165Checker.supportsERC165(pool) == false) {
-            revert PoolMustSupportERC165();
         }
 
         // Retrieve or create the pool's token balances mapping.

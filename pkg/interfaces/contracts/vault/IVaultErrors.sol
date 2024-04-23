@@ -63,9 +63,6 @@ interface IVaultErrors {
      */
     error TokensMismatch(address pool, address expectedToken, address actualToken);
 
-    /// @dev Error thrown on registration if the pool does not support interface queries.
-    error PoolMustSupportERC165();
-
     /// @dev Error thrown on registration if the pool does not support dynamic fee interface.
     error PoolMustSupportDynamicFee();
 
