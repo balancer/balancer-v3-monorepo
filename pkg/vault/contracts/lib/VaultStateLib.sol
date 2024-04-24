@@ -23,8 +23,9 @@ library VaultStateLib {
     // Bit offsets for pool config
     uint256 public constant QUERY_DISABLED_OFFSET = 0;
     uint256 public constant VAULT_PAUSED_OFFSET = QUERY_DISABLED_OFFSET + 1;
+    uint256 public constant BUFFER_PAUSED_OFFSET = VAULT_PAUSED_OFFSET + 1;
 
-    uint256 public constant PROTOCOL_SWAP_FEE_OFFSET = VAULT_PAUSED_OFFSET + 1;
+    uint256 public constant PROTOCOL_SWAP_FEE_OFFSET = BUFFER_PAUSED_OFFSET + 1;
     uint256 public constant PROTOCOL_YIELD_FEE_OFFSET = PROTOCOL_SWAP_FEE_OFFSET + FEE_BITLENGTH;
 
     function isQueryDisabled(VaultStateBits config) internal pure returns (bool) {
@@ -33,6 +34,10 @@ library VaultStateLib {
 
     function isVaultPaused(VaultStateBits config) internal pure returns (bool) {
         return VaultStateBits.unwrap(config).decodeBool(VAULT_PAUSED_OFFSET);
+    }
+
+    function isBufferPaused(VaultStateBits config) external pure returns (bool) {
+        return VaultStateBits.unwrap(config).decodeBool(BUFFER_PAUSED_OFFSET);
     }
 
     function getProtocolSwapFeePercentage(VaultStateBits config) internal pure returns (uint256) {
@@ -49,6 +54,7 @@ library VaultStateLib {
         configBits = configBits
             .insertBool(config.isQueryDisabled, QUERY_DISABLED_OFFSET)
             .insertBool(config.isVaultPaused, VAULT_PAUSED_OFFSET)
+            .insertBool(config.isBufferPaused, BUFFER_PAUSED_OFFSET)
             .insertUint(config.protocolSwapFeePercentage / FEE_SCALING_FACTOR, PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH)
             .insertUint(
                 config.protocolYieldFeePercentage / FEE_SCALING_FACTOR,
@@ -64,6 +70,7 @@ library VaultStateLib {
             VaultState({
                 isQueryDisabled: config.isQueryDisabled(),
                 isVaultPaused: config.isVaultPaused(),
+                isBufferPaused: config.isBufferPaused(),
                 protocolSwapFeePercentage: config.getProtocolSwapFeePercentage(),
                 protocolYieldFeePercentage: config.getProtocolYieldFeePercentage()
             });

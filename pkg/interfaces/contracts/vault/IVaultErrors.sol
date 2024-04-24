@@ -294,4 +294,7 @@ interface IVaultErrors {
 
     /// @dev The wrappedToken redeem or withdraw function did not burn the expected amount of wrapped tokens.
     error WrongWrappedAmountOnWithdraw(address wrappedToken);
+
+    /// @dev Vault buffers are paused.
+    error VaultBuffersArePaused();
 }

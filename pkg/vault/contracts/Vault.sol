@@ -1069,6 +1069,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function bufferWrapUnwrap(
         WrapParams memory params
     ) public withOpenTab returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
+        if (_vaultState.isBufferPaused()) {
+            revert VaultBuffersArePaused();
+        }
+
         uint256 amountBase;
         uint256 amountWrapped;
 

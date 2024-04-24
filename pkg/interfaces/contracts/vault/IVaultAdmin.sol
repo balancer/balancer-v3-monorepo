@@ -177,6 +177,21 @@ interface IVaultAdmin {
     function disableQuery() external;
 
     /*******************************************************************************
+                                Buffers
+    *******************************************************************************/
+    /**
+     * @notice Enables vault buffers to be used to wrap/unwrap yield-bearing tokens.
+     * @dev The caller must be allowed by the current Authorizer to do this.
+     */
+    function enableVaultBuffers() external;
+
+    /**
+     * @notice Disables vault buffers to be used to wrap/unwrap yield-bearing tokens.
+     * @dev The caller must be allowed by the current Authorizer to do this.
+     */
+    function disableVaultBuffers() external;
+
+    /*******************************************************************************
                                 Authentication
     *******************************************************************************/
 
