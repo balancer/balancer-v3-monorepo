@@ -14,6 +14,7 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -40,6 +41,7 @@ contract VaultUnitTest is BaseVaultTest {
         BaseVaultTest.setUp();
     }
 
+    // #region _swap
     function testSwapExactInWithZeroFee() public {
         (
             SwapParams memory params,
@@ -198,6 +200,59 @@ contract VaultUnitTest is BaseVaultTest {
             vaultState
         );
     }
+    // #endregion
+
+    // #region _getSwapFeePercentage
+    function testGetSwapFeePercentageIfHasDynamicSwapFee() public {
+        PoolConfig memory config;
+        config.hasDynamicSwapFee = true;
+
+        assertEq(vault.manualGetSwapFeePercentage(config), 0, "Unexpected swap fee percentage");
+    }
+
+    function testGetSwapFeePercentageIfHasNoDynamicSwapFee() public {
+        PoolConfig memory config;
+        config.staticSwapFeePercentage = 5e16;
+
+        assertEq(
+            vault.manualGetSwapFeePercentage(config),
+            config.staticSwapFeePercentage,
+            "Unexpected swap fee percentage"
+        );
+    }
+    // #endregion
+
+    // #region _buildPoolSwapParams
+    function testBuildPoolSwapParams() public {
+        SwapParams memory params;
+        params.kind = SwapKind.EXACT_IN;
+        params.userData = new bytes(20);
+        params.userData[0] = 0x01;
+        params.userData[19] = 0x05;
+
+        SwapLocals memory vars;
+        vars.amountGivenScaled18 = 2e18;
+        vars.indexIn = 3;
+        vars.indexOut = 4;
+
+        PoolData memory poolData;
+        poolData.balancesLiveScaled18 = [uint256(1e18), 1e18].toMemoryArray();
+
+        IBasePool.PoolSwapParams memory poolSwapParams = vault.manualBuildPoolSwapParams(params, vars, poolData);
+
+        assertEq(uint8(poolSwapParams.kind), uint8(params.kind), "Unexpected kind");
+        assertEq(poolSwapParams.amountGivenScaled18, vars.amountGivenScaled18, "Unexpected amountGivenScaled18");
+        assertEq(
+            keccak256(abi.encodePacked(poolSwapParams.balancesScaled18)),
+            keccak256(abi.encodePacked(poolData.balancesLiveScaled18)),
+            "Unexpected balancesScaled18"
+        );
+        assertEq(poolSwapParams.indexIn, vars.indexIn, "Unexpected indexIn");
+        assertEq(poolSwapParams.indexOut, vars.indexOut, "Unexpected indexOut");
+        assertEq(poolSwapParams.sender, address(this), "Unexpected sender");
+        assertEq(poolSwapParams.userData, params.userData, "Unexpected userData");
+    }
+    // #endregion
 
     // #region Helpers
     function _checkSwapExactInResult(

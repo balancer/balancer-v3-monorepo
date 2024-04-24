@@ -272,7 +272,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapParams memory params,
         SwapLocals memory vars,
         PoolData memory poolData
-    ) private view returns (IBasePool.PoolSwapParams memory) {
+    ) internal view returns (IBasePool.PoolSwapParams memory) {
         return
             IBasePool.PoolSwapParams({
                 kind: params.kind,
