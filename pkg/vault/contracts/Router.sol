@@ -636,6 +636,18 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             );
     }
 
+    /**
+     * @notice Hook for adding liquidity to vault buffers.
+     * @dev Can only be called by the Vault.
+     *
+     * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
+     * @param amountBaseRaw Amount of base tokens that will be deposited into the buffer
+     * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
+     * @param sharesOwner Address of contract that will own the deposited liquidity. Only
+     *        this contract will be able to remove liquidity from the buffer
+     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in base token amounts
+     *         (it is the BPT of vault's internal linear pools)
+     */
     function addLiquidityBufferHook(
         IERC4626 wrappedToken,
         uint256 amountBaseRaw,
@@ -667,6 +679,17 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             );
     }
 
+    /**
+     * @notice Hook for removing liquidity from vault buffers.
+     * @dev Can only be called by the Vault.
+     *
+     * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
+     * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
+     *        total shares
+     * @param sharesOwner Address of contract that owns the deposited liquidity.
+     * @return removedBaseBalanceRaw Amount of base tokens returned to the user
+     * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
+     */
     function removeLiquidityBufferHook(
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
