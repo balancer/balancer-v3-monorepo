@@ -636,7 +636,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 amountBase,
         uint256 amountWrapped,
         address sharesOwner
-    ) public withOpenTab whenVaultBufferNotPaused returns (uint256 issuedShares) {
+    ) public withOpenTab whenVaultBufferNotPaused nonReentrant returns (uint256 issuedShares) {
         address baseToken = wrappedToken.asset();
         if (_bufferAssets[IERC20(address(wrappedToken))] == address(0)) {
             _bufferAssets[IERC20(address(wrappedToken))] = baseToken;
@@ -668,7 +668,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
         address sharesOwner
-    ) public withOpenTab whenVaultBufferNotPaused returns (uint256 removedBaseBalance, uint256 removedWrappedBalance) {
+    )
+        public
+        withOpenTab
+        whenVaultBufferNotPaused
+        nonReentrant
+        returns (uint256 removedBaseBalance, uint256 removedWrappedBalance)
+    {
         address baseToken = wrappedToken.asset();
         if (_bufferAssets[IERC20(address(wrappedToken))] != baseToken) {
             // Asset was changed since the first bufferAddLiquidity call
