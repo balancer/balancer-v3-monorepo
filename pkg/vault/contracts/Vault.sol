@@ -1032,7 +1032,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _bufferAssets[IERC20(address(wrappedToken))] != address(0) &&
             _bufferAssets[IERC20(address(wrappedToken))] != baseToken
         ) {
-            // Asset was changed since the first bufferAddLiquidity call
+            // Asset was changed since the first addLiquidityBuffer call
             revert WrongWrappedTokenAsset(address(wrappedToken));
         }
 
@@ -1060,16 +1060,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
             amountInRaw = amountBase;
             amountOutRaw = amountWrapped;
-
-            if (params.kind == SwapKind.EXACT_IN && amountOutRaw < params.limitRaw) {
-                revert SwapLimit(amountOutRaw, params.limitRaw);
-            }
-
-            if (params.kind == SwapKind.EXACT_OUT && amountInRaw > params.limitRaw) {
-                revert SwapLimit(amountInRaw, params.limitRaw);
-            }
         } else {
+            // Buffer Pool does not match tokenIn or tokenOut
             revert WrongBufferPool();
+        }
+
+        if (params.kind == SwapKind.EXACT_IN && amountOutRaw < params.limitRaw) {
+            revert SwapLimit(amountOutRaw, params.limitRaw);
+        }
+
+        if (params.kind == SwapKind.EXACT_OUT && amountInRaw > params.limitRaw) {
+            revert SwapLimit(amountInRaw, params.limitRaw);
         }
     }
 
