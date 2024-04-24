@@ -381,10 +381,10 @@ contract VaultUnitTest is BaseVaultTest {
         );
 
         // check _takeDebt called
-        assertEq(vault.getTokenDelta(address(this), TOKEN_IN), int256(amountIn), "Unexpected tokenIn delta");
+        assertEq(vault.getTokenDelta(TOKEN_IN), int256(amountIn), "Unexpected tokenIn delta");
 
         // check _supplyCredit called
-        assertEq(vault.getTokenDelta(address(this), TOKEN_OUT), -int256(amountOut), "Unexpected tokenOut delta");
+        assertEq(vault.getTokenDelta(TOKEN_OUT), -int256(amountOut), "Unexpected tokenOut delta");
     }
 
     function _mockOnSwap(

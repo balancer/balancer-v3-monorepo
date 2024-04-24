@@ -25,11 +25,10 @@ interface IVaultMainMock {
         address pool,
         IERC20[] memory tokens,
         uint256 timestamp,
-        address pauseManager,
-        address poolCreator
+        PoolRoleAccounts memory roleAccounts
     ) external;
 
-    function manualSetLockers(address[] memory lockers) external;
+    function manualSetOpenTab(bool status) external;
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) external;
 
@@ -47,7 +46,7 @@ interface IVaultMainMock {
 
     function manualSetPoolTokenBalances(address, IERC20[] memory, uint256[] memory) external;
 
-    function mockWithLocker() external view;
+    function mockWithOpenTab() external view;
 
     function mockWithInitializedPool(address pool) external view;
 
@@ -115,13 +114,13 @@ interface IVaultMainMock {
         bool[] memory yieldFeeFlags
     ) external view returns (TokenConfig[] memory tokenConfig);
 
-    function accountDelta(IERC20 token, int256 delta, address locker) external;
+    function accountDelta(IERC20 token, int256 delta) external;
 
-    function supplyCredit(IERC20 token, uint256 credit, address locker) external;
+    function supplyCredit(IERC20 token, uint256 credit) external;
 
-    function takeDebt(IERC20 token, uint256 debt, address locker) external;
+    function takeDebt(IERC20 token, uint256 debt) external;
 
-    function manualSetAccountDelta(IERC20 token, address locker, int256 delta) external;
+    function manualSetAccountDelta(IERC20 token, int256 delta) external;
 
     function manualSetNonZeroDeltaCount(uint256 deltaCount) external;
 

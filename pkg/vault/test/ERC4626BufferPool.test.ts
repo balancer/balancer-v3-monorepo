@@ -202,7 +202,9 @@ describe('ERC4626BufferPool', function () {
       expect(await wrappedToken.balanceOf(alice)).to.eq(0);
       expect(await baseToken.balanceOf(alice)).to.eq(0);
 
-      const [, tokenTypes, balances, ,] = await vault.getPoolTokenInfo(pool);
+      const [tokenConfig, balances] = await vault.getPoolTokenInfo(pool);
+      const tokenTypes = tokenConfig.map((config) => config.tokenType);
+
       const expectedTokenTypes = tokenAddresses.map((address) =>
         address === wrappedTokenAddress ? TokenType.WITH_RATE : TokenType.STANDARD
       );

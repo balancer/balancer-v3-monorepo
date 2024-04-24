@@ -68,6 +68,33 @@ struct VaultState {
 }
 
 /**
+ * @dev Represents the accounts holding certain roles for a given pool. This is passed in on pool registration.
+ * @param pauseManager Account empowered to pause/unpause the pool (or 0 to delegate to governance)
+ * @param swapFeeManager Account empowered to set static swap fees for a pool (or 0 to delegate to goverance)
+ * @param poolCreator Account empowered to set the pool creator fee (or 0 for no fee)
+ */
+struct PoolRoleAccounts {
+    address pauseManager;
+    address swapFeeManager;
+    address poolCreator;
+}
+
+/**
+ * @notice Record pool function permissions (as a sort of local authorizer).
+ * @dev For each permissioned function controlled by a role (e.g., pause/unpause), store the account empowered to call
+ * that function, and flag indicating whether, if the caller is not the designated account (which might be zero),
+ * it should then delegate to governance. If the `onlyOwner` flag is true, it can only be called by the designated
+ * account.
+ *
+ * @param account The account with permission to perform the role
+ * @param onlyOwner Flag indicating whether it is reserved to the account alone, or also governance
+ */
+struct PoolFunctionPermission {
+    address account;
+    bool onlyOwner;
+}
+
+/**
  * @dev Token types supported by the Vault. In general, pools may contain any combination of these tokens.
  * STANDARD tokens (e.g., BAL, WETH) have no rate provider.
  * WITH_RATE tokens (e.g., wstETH) require a rate provider. These may be tokens like wstETH, which need to be wrapped
