@@ -86,7 +86,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAsset(dai);
 
         // Add Liquidity with the right asset
-        vm.startPrank(lp);
+        vm.prank(lp);
         router.addLiquidityBuffer(IERC4626(address(waDAI)), wrapAmount, wrapAmount, address(lp));
 
         // Change Asset to the wrong asset
@@ -104,7 +104,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         IERC20 baseToken,
         IERC20 wrappedToken
     ) private view returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
         paths = new IBatchRouter.SwapPathExactAmountIn[](1);
 
         steps[0] = IBatchRouter.SwapPathStep({ pool: address(wrappedToken), tokenOut: wrappedToken, isBuffer: true });
