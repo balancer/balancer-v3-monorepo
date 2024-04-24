@@ -1066,10 +1066,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         return address(_vaultExtension);
     }
 
+    // TODO document
     function bufferWrapUnwrap(
         WrapParams memory params
     ) public withOpenTab returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
-        if (_vaultState.isBufferPaused()) {
+        if (_vaultState.toVaultState().isBufferPaused) {
             revert VaultBuffersArePaused();
         }
 
@@ -1133,12 +1134,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 wrappedBalanceVaultAfter;
     }
 
-    // TODO merge bufferWrap and bufferUnwrap functions
+    // TODO document
     function _bufferWrap(
         SwapKind kind,
         IERC4626 wrappedToken,
         uint256 amountGivenRaw
-    ) private withOpenTab returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountBaseToWrap) {
+    )
+        private
+        withOpenTab
+        nonReentrant
+        returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountBaseToWrap)
+    {
         WrapUnwrapLocals memory vars;
         vars.buffer = _bufferTokenBalances[IERC20(wrappedToken)];
         // it was already checked in the bufferWrapUnwrap function
@@ -1242,11 +1248,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _supplyCredit(wrappedToken, amountWrapped);
     }
 
+    // TODO document
     function _bufferUnwrap(
         SwapKind kind,
         IERC4626 wrappedToken,
         uint256 amountGivenRaw
-    ) private withOpenTab returns (uint256 amountCalculated, uint256 amountWrappedToUnwrap, uint256 amountBase) {
+    )
+        private
+        withOpenTab
+        nonReentrant
+        returns (uint256 amountCalculated, uint256 amountWrappedToUnwrap, uint256 amountBase)
+    {
         WrapUnwrapLocals memory vars;
         vars.buffer = _bufferTokenBalances[IERC20(wrappedToken)];
         // it was already checked in the bufferWrapUnwrap function

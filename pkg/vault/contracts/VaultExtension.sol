@@ -636,7 +636,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 amountWrapped,
         address sharesOwner
     ) public withOpenTab returns (uint256 issuedShares) {
-        if (_vaultState.isBufferPaused()) {
+        if (_vaultState.toVaultState().isBufferPaused) {
             revert VaultBuffersArePaused();
         }
 
@@ -671,7 +671,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 sharesToRemove,
         address sharesOwner
     ) public withOpenTab returns (uint256 removedBaseBalance, uint256 removedWrappedBalance) {
-        if (_vaultState.isBufferPaused()) {
+        if (_vaultState.toVaultState().isBufferPaused) {
             revert VaultBuffersArePaused();
         }
 
