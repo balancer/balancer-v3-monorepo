@@ -8,6 +8,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
+
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 
@@ -31,6 +34,10 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // "USDC" is deliberately 18 decimals to test one thing at a time.
         waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 18);
         vm.label(address(waUSDC), "waUSDC");
+
+        // Gives authorization to user "admin" to enable/disable vault's buffer
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.enableVaultBuffers.selector), admin);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.disableVaultBuffers.selector), admin);
 
         initializeLp();
     }
@@ -490,7 +497,63 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
     }
 
-    // Disable Vault Buffers
+    /********************************************************************************
+                                Disable Vault Buffers
+    ********************************************************************************/
+    // Make sure only authorized users can disable/enable vault buffers
+    function testDisableVaultBufferAuthentication() public {
+        vm.prank(alice);
+        // Should revert, since alice has no rights to disable buffer
+        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        IVaultAdmin(address(vault)).disableVaultBuffers();
+
+        vm.prank(admin);
+        // Should pass, since admin has access
+        IVaultAdmin(address(vault)).disableVaultBuffers();
+
+        vm.prank(alice);
+        // Should revert, since alice has no rights to enable buffer
+        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        IVaultAdmin(address(vault)).enableVaultBuffers();
+
+        vm.prank(admin);
+        // Should pass, since admin has access
+        IVaultAdmin(address(vault)).enableVaultBuffers();
+    }
+
+    function testDisableVaultBuffer() public {
+        vm.prank(admin);
+        IVaultAdmin(address(vault)).disableVaultBuffers();
+
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
+            _wrapAmount,
+            0,
+            dai,
+            IERC20(address(waDAI)),
+            IERC20(address(waDAI))
+        );
+
+        // wrap/unwrap, add and remove liquidity should fail, since vault buffers are disabled
+        vm.startPrank(lp);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultBuffersArePaused.selector));
+        batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultBuffersArePaused.selector));
+        router.addLiquidityBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultBuffersArePaused.selector));
+        router.removeLiquidityBuffer(IERC4626(address(waDAI)), _wrapAmount, address(lp));
+
+        vm.stopPrank();
+
+        vm.prank(admin);
+        IVaultAdmin(address(vault)).enableVaultBuffers();
+
+        // deposit should pass, since vault buffers are enabled
+        vm.prank(lp);
+        batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+    }
 
     function _exactInWrapUnwrapPath(
         uint256 exactAmountIn,
