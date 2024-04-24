@@ -284,11 +284,11 @@ interface IRouter {
     ) external returns (uint256[] memory amountsOut);
 
     /**
-     * @notice Adds liquidity to a buffer of yield-bearing tokens (linear pools embedded in the vault).
+     * @notice Removes liquidity from a buffer of yield-bearing token (linear pools embedded in the vault).
      * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
      *        total shares
-     * @param sharesOwner Address of contract that will own the deposited liquidity.
+     * @param sharesOwner Address of contract that owns the deposited liquidity.
      * @return removedBaseBalance Amount of base tokens returned to the user
      * @return removedWrappedBalance Amount of wrapped tokens returned to the user
      */
