@@ -98,8 +98,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     /********************************************************************************
                                         Deposit
     ********************************************************************************/
-
-    function testDepositReturnsWrongShares() public {
+    function testDeposit() public {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount,
             0,
@@ -108,7 +107,49 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        waDAI.setSharesToReturn(1);
+        uint256 lpBaseBalanceBefore = dai.balanceOf(address(lp));
+        uint256 lpWrappedBalanceBefore = IERC20(address(waDAI)).balanceOf(address(lp));
+
+        vm.prank(lp);
+        batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        uint256 lpBaseBalanceAfter = dai.balanceOf(address(lp));
+        uint256 lpWrappedBalanceAfter = IERC20(address(waDAI)).balanceOf(address(lp));
+
+        assertEq(lpBaseBalanceAfter, lpBaseBalanceBefore - _wrapAmount, "LP balance of base token is wrong");
+        assertEq(
+            lpWrappedBalanceAfter,
+            lpWrappedBalanceBefore + waDAI.previewDeposit(_wrapAmount),
+            "LP balance of wrapped token is wrong"
+        );
+    }
+
+    function testDepositReturnsLessShares() public {
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
+            _wrapAmount,
+            0,
+            dai,
+            IERC20(address(waDAI)),
+            IERC20(address(waDAI))
+        );
+
+        waDAI.setSharesToReturn(waDAI.previewDeposit(_wrapAmount) - 1);
+
+        vm.prank(lp);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmountOnDeposit.selector, address(waDAI)));
+        batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+    }
+
+    function testDepositReturnsMoreShares() public {
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
+            _wrapAmount,
+            0,
+            dai,
+            IERC20(address(waDAI)),
+            IERC20(address(waDAI))
+        );
+
+        waDAI.setSharesToReturn(waDAI.previewDeposit(_wrapAmount) + 1);
 
         vm.prank(lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmountOnDeposit.selector, address(waDAI)));
@@ -160,6 +201,31 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     /********************************************************************************
                                         Mint
     ********************************************************************************/
+    function testMint() public {
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
+            2 * _wrapAmount,
+            _wrapAmount,
+            dai,
+            IERC20(address(waDAI)),
+            IERC20(address(waDAI))
+        );
+
+        uint256 lpBaseBalanceBefore = dai.balanceOf(address(lp));
+        uint256 lpWrappedBalanceBefore = IERC20(address(waDAI)).balanceOf(address(lp));
+
+        vm.prank(lp);
+        batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        uint256 lpBaseBalanceAfter = dai.balanceOf(address(lp));
+        uint256 lpWrappedBalanceAfter = IERC20(address(waDAI)).balanceOf(address(lp));
+
+        assertEq(
+            lpBaseBalanceAfter,
+            lpBaseBalanceBefore - waDAI.previewMint(_wrapAmount),
+            "LP balance of base token is wrong"
+        );
+        assertEq(lpWrappedBalanceAfter, lpWrappedBalanceBefore + _wrapAmount, "LP balance of wrapped token is wrong");
+    }
 
     function testMintReturnsLessShares() public {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
@@ -238,6 +304,32 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     /********************************************************************************
                                         Redeem
     ********************************************************************************/
+    function testRedeem() public {
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
+            _wrapAmount,
+            0,
+            IERC20(address(waDAI)),
+            dai,
+            IERC20(address(waDAI))
+        );
+
+        uint256 lpBaseBalanceBefore = dai.balanceOf(address(lp));
+        uint256 lpWrappedBalanceBefore = IERC20(address(waDAI)).balanceOf(address(lp));
+
+        vm.prank(lp);
+        batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        uint256 lpBaseBalanceAfter = dai.balanceOf(address(lp));
+        uint256 lpWrappedBalanceAfter = IERC20(address(waDAI)).balanceOf(address(lp));
+
+        assertEq(lpBaseBalanceAfter, lpBaseBalanceBefore + _wrapAmount, "LP balance of base token is wrong");
+        assertEq(
+            lpWrappedBalanceAfter,
+            lpWrappedBalanceBefore - waDAI.previewRedeem(_wrapAmount),
+            "LP balance of wrapped token is wrong"
+        );
+    }
+
     function testRedeemConsumesLessShares() public {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount,
@@ -308,6 +400,31 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     /********************************************************************************
                                         Withdraw
     ********************************************************************************/
+    function testWithdraw() public {
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
+            2 * _wrapAmount,
+            _wrapAmount,
+            IERC20(address(waDAI)),
+            dai,
+            IERC20(address(waDAI))
+        );
+
+        uint256 lpBaseBalanceBefore = dai.balanceOf(address(lp));
+        uint256 lpWrappedBalanceBefore = IERC20(address(waDAI)).balanceOf(address(lp));
+
+        vm.prank(lp);
+        batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        uint256 lpBaseBalanceAfter = dai.balanceOf(address(lp));
+        uint256 lpWrappedBalanceAfter = IERC20(address(waDAI)).balanceOf(address(lp));
+
+        assertEq(
+            lpBaseBalanceAfter,
+            lpBaseBalanceBefore + waDAI.previewWithdraw(_wrapAmount),
+            "LP balance of base token is wrong"
+        );
+        assertEq(lpWrappedBalanceAfter, lpWrappedBalanceBefore - _wrapAmount, "LP balance of wrapped token is wrong");
+    }
 
     function testWithdrawConsumesLessShares() public {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
