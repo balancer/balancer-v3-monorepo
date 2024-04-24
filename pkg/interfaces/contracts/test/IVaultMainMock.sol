@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import "../vault/VaultTypes.sol";
 import { IRateProvider } from "../vault/IRateProvider.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 interface IVaultMainMock {
     function getPoolFactoryMock() external view returns (address);
@@ -142,4 +143,12 @@ interface IVaultMainMock {
         );
 
     function manualSetPoolCreatorFees(address pool, IERC20 token, uint256 value) external;
+
+    function manualGetSwapFeePercentage(PoolConfig memory config) external pure returns (uint256);
+
+    function manualBuildPoolSwapParams(
+        SwapParams memory params,
+        SwapLocals memory vars,
+        PoolData memory poolData
+    ) external view returns (IBasePool.PoolSwapParams memory);
 }
