@@ -441,10 +441,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // It's possible a reentrant hook changed the raw balances in Vault storage.
         // Update them before computing the live balances.
-        (, uint256[] memory balancesRaw, , ) = _getPoolTokenInfo(pool);
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        bytes32 packedBalance;
 
         for (uint256 i = 0; i < poolData.tokenConfig.length; ++i) {
-            poolData.balancesRaw[i] = balancesRaw[i];
+            (, packedBalance) = poolTokenBalances.unchecked_at(i);
+            poolData.balancesRaw[i] = packedBalance.getRawBalance();
 
             // Note the order dependency. This requires up-to-date tokenRates in `poolData`,
             // so `_updateTokenRatesInPoolData` must be called first.
