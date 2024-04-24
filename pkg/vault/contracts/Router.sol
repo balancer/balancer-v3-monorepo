@@ -611,7 +611,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     }
 
     /*******************************************************************************
-                                    Buffers
+                            Yield-bearing tokens buffers
     *******************************************************************************/
 
     /// @inheritdoc IRouter
