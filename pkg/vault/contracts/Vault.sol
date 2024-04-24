@@ -1008,77 +1008,18 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
-                                    Pool Information
+                             Yield-bearing tokens buffers
     *******************************************************************************/
 
     /// @inheritdoc IVaultMain
-    function getPoolTokenCountAndIndexOfToken(
-        address pool,
-        IERC20 token
-    ) external view withRegisteredPool(pool) returns (uint256, uint256) {
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        uint256 tokenCount = poolTokenBalances.length();
-        // unchecked indexOf returns index + 1, or 0 if token is not present.
-        uint256 index = poolTokenBalances.unchecked_indexOf(token);
-        if (index == 0) {
-            revert TokenNotRegistered();
-        }
-
-        unchecked {
-            return (tokenCount, index - 1);
-        }
-    }
-
-    /*******************************************************************************
-                                    Authentication
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultMain
-    function getAuthorizer() external view returns (IAuthorizer) {
-        return _authorizer;
-    }
-
-    /*******************************************************************************
-                                     Default handlers
-    *******************************************************************************/
-
-    receive() external payable {
-        revert CannotReceiveEth();
-    }
-
-    // solhint-disable no-complex-fallback
-
-    /**
-     * @inheritdoc Proxy
-     * @dev Override proxy implementation of `fallback` to disallow incoming ETH transfers.
-     * This function actually returns whatever the Vault Extension does when handling the request.
-     */
-    fallback() external payable override {
-        if (msg.value > 0) {
-            revert CannotReceiveEth();
-        }
-
-        _fallback();
-    }
-
-    /// @inheritdoc IVaultMain
-    function getVaultExtension() external view returns (address) {
-        return _implementation();
-    }
-
-    /**
-     * @inheritdoc Proxy
-     * @dev Returns Vault Extension, where fallback requests are forwarded.
-     */
-    function _implementation() internal view override returns (address) {
-        return address(_vaultExtension);
-    }
-
-    // TODO document
     function bufferWrapUnwrap(
         SwapParams memory params
-    ) public withOpenTab whenVaultBufferNotPaused returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw) {
-
+    )
+        public
+        withOpenTab
+        whenVaultBufferNotPaused
+        returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw)
+    {
         uint256 amountBase;
         uint256 amountWrapped;
 
@@ -1145,7 +1086,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 wrappedBalanceVaultAfter;
     }
 
-    // TODO document
+    /**
+     * @dev Non-reentrant portion of the wrap operation, which calls the wrapped token deposit/mint and updates
+     * vault accounting.
+     *
+     * Updates `_reservesOf` and token deltas in storage.
+     */
     function _bufferWrap(
         SwapKind kind,
         IERC4626 wrappedToken,
@@ -1163,10 +1109,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN wrap, so AmountGivenRaw is base amount
+            // We can't use convertToShares to get amountCalculatedRaw, because withdraw operation rounds in favor of
+            // the yield-bearing protocol. Besides, fees may be included in deposit and not included in convertToShares
             amountCalculatedRaw = wrappedToken.previewDeposit(amountGivenRaw);
             (amountBaseToWrap, vars.amountWrappedExpected) = (amountGivenRaw, amountCalculatedRaw);
         } else {
             // EXACT_OUT wrap, so AmountGivenRaw is wrapped amount
+            // We can't use convertToAssets to get amountCalculatedRaw, because withdraw operation rounds in favor of
+            // the yield-bearing protocol. Besides, fees may be included in mint and not included in convertToAssets
             amountCalculatedRaw = wrappedToken.previewMint(amountGivenRaw);
             (amountBaseToWrap, vars.amountWrappedExpected) = (amountCalculatedRaw, amountGivenRaw);
         }
@@ -1179,7 +1129,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vars.buffer = vars.buffer.setWrappedBalance(vars.buffer.getWrappedBalance() - amountWrapped);
             _bufferTokenBalances[IERC20(wrappedToken)] = vars.buffer;
         } else {
-            // the buffer has liquidity, but not enough to facilitate the wrap without making an external call.
+            // the buffer does not have enough liquidity to facilitate the wrap without making an external call.
             // We wrap the user's tokens via an external call and additionally rebalance the buffer if it has a
             // surplus of base tokens.
             vars.bufferWrappedBalance = vars.buffer.getWrappedBalance();
@@ -1192,6 +1142,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 uint256 bufferWrappedBalanceAsBase = 0;
                 uint256 bufferBaseAmountToWrap = 0;
 
+                // If buffer is not empty, rebalance it
                 if (!vars.buffer.isEmpty()) {
                     bufferWrappedBalanceAsBase = wrappedToken.convertToAssets(vars.bufferWrappedBalance);
                     bufferBaseAmountToWrap = vars.bufferBaseBalance > bufferWrappedBalanceAsBase
@@ -1202,6 +1153,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 vars.totalBaseDepositedOrWithdrawn = amountBaseToWrap + bufferBaseAmountToWrap;
 
                 vars.baseToken.approve(address(wrappedToken), vars.totalBaseDepositedOrWithdrawn);
+                // EXACT_IN requires the exact amount of base tokens to be deposited, so deposit is called
                 vars.totalWrappedDepositedOrWithdrawn = wrappedToken.deposit(
                     vars.totalBaseDepositedOrWithdrawn,
                     address(this)
@@ -1210,6 +1162,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 uint256 bufferBaseBalanceAsWrapped = 0;
                 uint256 bufferSharesToUnwrap = 0;
 
+                // If buffer is not empty, rebalance it
                 if (!vars.buffer.isEmpty()) {
                     bufferBaseBalanceAsWrapped = wrappedToken.convertToShares(vars.bufferBaseBalance);
                     bufferSharesToUnwrap = vars.bufferWrappedBalance > bufferBaseBalanceAsWrapped
@@ -1222,6 +1175,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     address(wrappedToken),
                     wrappedToken.previewMint(vars.totalWrappedDepositedOrWithdrawn)
                 );
+                // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called
                 vars.totalBaseDepositedOrWithdrawn = wrappedToken.mint(
                     vars.totalWrappedDepositedOrWithdrawn,
                     address(this)
@@ -1259,7 +1213,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _supplyCredit(wrappedToken, amountWrapped);
     }
 
-    // TODO document
+    /**
+     * @dev Non-reentrant portion of the unwrap operation, which calls the wrapped token redeem/withdraw and updates
+     * vault accounting.
+     *
+     * Updates `_reservesOf` and token deltas in storage.
+     */
     function _bufferUnwrap(
         SwapKind kind,
         IERC4626 wrappedToken,
@@ -1277,10 +1236,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN unwrap, so AmountGivenRaw is wrapped amount
+            // We can't use convertToAssets to get amountCalculatedRaw, because redeem operation rounds in favor of
+            // the yield-bearing protocol. Besides, fees may be included in redeem and not included in convertToAssets
             amountCalculatedRaw = wrappedToken.previewRedeem(amountGivenRaw);
             (vars.amountBaseExpected, amountWrappedToUnwrap) = (amountCalculatedRaw, amountGivenRaw);
         } else {
             // EXACT_OUT unwrap, so AmountGivenRaw is base amount
+            // We can't use convertToShares to get amountCalculatedRaw, because withdraw operation rounds in favor of
+            // the yield-bearing protocol. Besides, fees may be included in withdraw and not included in convertToShares
             amountCalculatedRaw = wrappedToken.previewWithdraw(amountGivenRaw);
             (vars.amountBaseExpected, amountWrappedToUnwrap) = (amountGivenRaw, amountCalculatedRaw);
         }
@@ -1293,8 +1256,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vars.buffer = vars.buffer.setWrappedBalance(vars.buffer.getWrappedBalance() + amountWrappedToUnwrap);
             _bufferTokenBalances[IERC20(wrappedToken)] = vars.buffer;
         } else {
-            // the buffer has liquidity, but not enough to facilitate the wrap without making an external call.
-            // We wrap the user's tokens via an external call and additionally rebalance the buffer if it has a
+            // the buffer does not have enough liquidity to facilitate the wrap without making an external call.
+            // We unwrap the user's tokens via an external call and additionally rebalance the buffer if it has a
             // surplus of base tokens.
             vars.bufferWrappedBalance = vars.buffer.getWrappedBalance();
             vars.bufferBaseBalance = vars.buffer.getBaseBalance();
@@ -1306,6 +1269,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 uint256 bufferBaseBalanceAsWrapped = 0;
                 uint256 bufferSharesToUnwrap = 0;
 
+                // If buffer is not empty, rebalance it
                 if (!vars.buffer.isEmpty()) {
                     bufferBaseBalanceAsWrapped = wrappedToken.convertToShares(vars.bufferBaseBalance);
                     bufferSharesToUnwrap = vars.bufferWrappedBalance > bufferBaseBalanceAsWrapped
@@ -1314,6 +1278,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 }
 
                 vars.totalWrappedDepositedOrWithdrawn = amountWrappedToUnwrap + bufferSharesToUnwrap;
+                // EXACT_IN requires the exact amount of wrapped tokens to be unwrapped, so redeem is called
                 vars.totalBaseDepositedOrWithdrawn = wrappedToken.redeem(
                     vars.totalWrappedDepositedOrWithdrawn,
                     address(this),
@@ -1323,6 +1288,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 uint256 bufferWrappedBalanceAsBase = 0;
                 uint256 bufferBaseAmountToWrap = 0;
 
+                // If buffer is not empty, rebalance it
                 if (!vars.buffer.isEmpty()) {
                     bufferWrappedBalanceAsBase = wrappedToken.convertToAssets(vars.bufferWrappedBalance);
                     bufferBaseAmountToWrap = vars.bufferBaseBalance > bufferWrappedBalanceAsBase
@@ -1331,6 +1297,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 }
 
                 vars.totalBaseDepositedOrWithdrawn = vars.amountBaseExpected + bufferBaseAmountToWrap;
+                // EXACT_OUT requires the exact amount of base tokens to be returned, so withdraw is called
                 vars.totalWrappedDepositedOrWithdrawn = wrappedToken.withdraw(
                     vars.totalBaseDepositedOrWithdrawn,
                     address(this),
@@ -1367,5 +1334,72 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         _takeDebt(wrappedToken, amountWrappedToUnwrap);
         _supplyCredit(vars.baseToken, amountBase);
+    }
+
+    /*******************************************************************************
+                                    Pool Information
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultMain
+    function getPoolTokenCountAndIndexOfToken(
+        address pool,
+        IERC20 token
+    ) external view withRegisteredPool(pool) returns (uint256, uint256) {
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        uint256 tokenCount = poolTokenBalances.length();
+        // unchecked indexOf returns index + 1, or 0 if token is not present.
+        uint256 index = poolTokenBalances.unchecked_indexOf(token);
+        if (index == 0) {
+            revert TokenNotRegistered();
+        }
+
+        unchecked {
+            return (tokenCount, index - 1);
+        }
+    }
+
+    /*******************************************************************************
+                                    Authentication
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultMain
+    function getAuthorizer() external view returns (IAuthorizer) {
+        return _authorizer;
+    }
+
+    /*******************************************************************************
+                                     Default handlers
+    *******************************************************************************/
+
+    receive() external payable {
+        revert CannotReceiveEth();
+    }
+
+    // solhint-disable no-complex-fallback
+
+    /**
+     * @inheritdoc Proxy
+     * @dev Override proxy implementation of `fallback` to disallow incoming ETH transfers.
+     * This function actually returns whatever the Vault Extension does when handling the request.
+     */
+    fallback() external payable override {
+        if (msg.value > 0) {
+            revert CannotReceiveEth();
+        }
+
+        _fallback();
+    }
+
+    /// @inheritdoc IVaultMain
+    function getVaultExtension() external view returns (address) {
+        return _implementation();
+    }
+
+    /**
+     * @inheritdoc Proxy
+     * @dev Returns Vault Extension, where fallback requests are forwarded.
+     */
+    function _implementation() internal view override returns (address) {
+        return address(_vaultExtension);
     }
 }

@@ -212,6 +212,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             revert VaultBuffersArePaused();
         }
     }
+
     /*******************************************************************************
                             Pool Registration and Initialization
     *******************************************************************************/

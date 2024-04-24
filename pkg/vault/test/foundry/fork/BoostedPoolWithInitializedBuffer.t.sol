@@ -201,7 +201,10 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
     function testBoostedPoolSwapWithinBufferRangeExactOut__Fork() public {
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount + DAI_TO_USDC_FACTOR, swapAmount / USDC_FACTOR);
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
+            swapAmount + DAI_TO_USDC_FACTOR,
+            swapAmount / USDC_FACTOR
+        );
 
         snapStart("forkBoostedPoolSwapExactOut");
         vm.prank(alice);
