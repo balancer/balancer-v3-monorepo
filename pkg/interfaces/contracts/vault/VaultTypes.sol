@@ -143,7 +143,7 @@ enum SwapKind {
 /**
  * @dev Data for a swap operation.
  * @param kind Type of swap (Exact In or Exact Out)
- * @param pool The pool with the tokens being swapped
+ * @param pool The pool with the tokens being swapped (when calling bufferWrapUnwrap, pool = wrapped token address)
  * @param tokenIn The token entering the Vault (balance increases)
  * @param tokenOut The token leaving the Vault (balance decreases)
  * @param amountGivenRaw Amount specified for tokenIn or tokenOut (depending on the type of swap)

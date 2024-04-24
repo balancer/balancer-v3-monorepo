@@ -1077,7 +1077,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     // TODO document
     function bufferWrapUnwrap(
         SwapParams memory params
-    ) public withOpenTab whenVaultBufferNotPaused returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
+    ) public withOpenTab whenVaultBufferNotPaused returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw) {
 
         uint256 amountBase;
         uint256 amountWrapped;
@@ -1098,32 +1098,32 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             if (baseToken != address(params.tokenOut)) {
                 revert WrongWrappedTokenAsset(params.pool);
             }
-            (amountCalculated, amountWrapped, amountBase) = _bufferUnwrap(
+            (amountCalculatedRaw, amountWrapped, amountBase) = _bufferUnwrap(
                 params.kind,
                 wrappedToken,
                 params.amountGivenRaw
             );
-            amountIn = amountWrapped;
-            amountOut = amountBase;
+            amountInRaw = amountWrapped;
+            amountOutRaw = amountBase;
         } else if (params.pool == address(params.tokenOut)) {
             // tokenOut is wrappedToken, user wants to wrap
             if (baseToken != address(params.tokenIn)) {
                 revert WrongWrappedTokenAsset(params.pool);
             }
-            (amountCalculated, amountWrapped, amountBase) = _bufferWrap(
+            (amountCalculatedRaw, amountWrapped, amountBase) = _bufferWrap(
                 params.kind,
                 wrappedToken,
                 params.amountGivenRaw
             );
-            amountIn = amountBase;
-            amountOut = amountWrapped;
+            amountInRaw = amountBase;
+            amountOutRaw = amountWrapped;
 
-            if (params.kind == SwapKind.EXACT_IN && amountOut < params.limitRaw) {
-                revert SwapLimit(amountOut, params.limitRaw);
+            if (params.kind == SwapKind.EXACT_IN && amountOutRaw < params.limitRaw) {
+                revert SwapLimit(amountOutRaw, params.limitRaw);
             }
 
-            if (params.kind == SwapKind.EXACT_OUT && amountIn > params.limitRaw) {
-                revert SwapLimit(amountIn, params.limitRaw);
+            if (params.kind == SwapKind.EXACT_OUT && amountInRaw > params.limitRaw) {
+                revert SwapLimit(amountInRaw, params.limitRaw);
             }
         } else {
             revert WrongBufferPool();
@@ -1154,7 +1154,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         private
         withOpenTab
         nonReentrant
-        returns (uint256 amountCalculated, uint256 amountWrapped, uint256 amountBaseToWrap)
+        returns (uint256 amountCalculatedRaw, uint256 amountWrapped, uint256 amountBaseToWrap)
     {
         WrapUnwrapLocals memory vars;
         vars.buffer = _bufferTokenBalances[IERC20(wrappedToken)];
@@ -1163,12 +1163,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN wrap, so AmountGivenRaw is base amount
-            amountCalculated = wrappedToken.previewDeposit(amountGivenRaw);
-            (amountBaseToWrap, vars.amountWrappedExpected) = (amountGivenRaw, amountCalculated);
+            amountCalculatedRaw = wrappedToken.previewDeposit(amountGivenRaw);
+            (amountBaseToWrap, vars.amountWrappedExpected) = (amountGivenRaw, amountCalculatedRaw);
         } else {
             // EXACT_OUT wrap, so AmountGivenRaw is wrapped amount
-            amountCalculated = wrappedToken.previewMint(amountGivenRaw);
-            (amountBaseToWrap, vars.amountWrappedExpected) = (amountCalculated, amountGivenRaw);
+            amountCalculatedRaw = wrappedToken.previewMint(amountGivenRaw);
+            (amountBaseToWrap, vars.amountWrappedExpected) = (amountCalculatedRaw, amountGivenRaw);
         }
 
         if (vars.buffer.getWrappedBalance() > vars.amountWrappedExpected) {
@@ -1268,7 +1268,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         private
         withOpenTab
         nonReentrant
-        returns (uint256 amountCalculated, uint256 amountWrappedToUnwrap, uint256 amountBase)
+        returns (uint256 amountCalculatedRaw, uint256 amountWrappedToUnwrap, uint256 amountBase)
     {
         WrapUnwrapLocals memory vars;
         vars.buffer = _bufferTokenBalances[IERC20(wrappedToken)];
@@ -1277,12 +1277,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN unwrap, so AmountGivenRaw is wrapped amount
-            amountCalculated = wrappedToken.previewRedeem(amountGivenRaw);
-            (vars.amountBaseExpected, amountWrappedToUnwrap) = (amountCalculated, amountGivenRaw);
+            amountCalculatedRaw = wrappedToken.previewRedeem(amountGivenRaw);
+            (vars.amountBaseExpected, amountWrappedToUnwrap) = (amountCalculatedRaw, amountGivenRaw);
         } else {
             // EXACT_OUT unwrap, so AmountGivenRaw is base amount
-            amountCalculated = wrappedToken.previewWithdraw(amountGivenRaw);
-            (vars.amountBaseExpected, amountWrappedToUnwrap) = (amountGivenRaw, amountCalculated);
+            amountCalculatedRaw = wrappedToken.previewWithdraw(amountGivenRaw);
+            (vars.amountBaseExpected, amountWrappedToUnwrap) = (amountGivenRaw, amountCalculatedRaw);
         }
 
         if (vars.buffer.getBaseBalance() > vars.amountBaseExpected) {
