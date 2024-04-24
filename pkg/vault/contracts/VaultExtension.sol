@@ -630,7 +630,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                             Yield-bearing tokens buffers
     *******************************************************************************/
 
-    function bufferAddLiquidity(
+    /// @inheritdoc IVaultExtension
+    function addLiquidityBuffer(
         IERC4626 wrappedToken,
         uint256 amountBase,
         uint256 amountWrapped,
@@ -662,7 +663,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _takeDebt(wrappedToken, amountWrapped);
     }
 
-    function bufferRemoveLiquidity(
+    /// @inheritdoc IVaultExtension
+    function removeLiquidityBuffer(
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
         address sharesOwner

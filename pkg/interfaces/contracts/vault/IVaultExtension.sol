@@ -319,11 +319,34 @@ interface IVaultExtension {
                             Yield-bearing tokens buffers
     *******************************************************************************/
 
-    // TODO document
-    function bufferAddLiquidity(IERC4626, uint256, uint256, address) external returns (uint256);
+    /**
+     * @notice Adds liquidity to a buffer of yield-bearing tokens (linear pools embedded in the vault).
+     *
+     * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
+     * @param amountBaseRaw Amount of base tokens that will be deposited into the buffer
+     * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
+     * @param bufferSharesOwner Address of contract that will own the deposited liquidity. Only
+     *        this contract will be able to remove liquidity from the buffer
+     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in base token amounts
+     */
+    function addLiquidityBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountBaseRaw,
+        uint256 amountWrappedRaw,
+        address bufferSharesOwner
+    ) external returns (uint256 issuedShares);
 
-    // TODO document
-    function bufferRemoveLiquidity(
+    /**
+     * @notice Removes liquidity from a buffer of yield-bearing token (linear pools embedded in the vault).
+     *
+     * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
+     * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
+     *        total shares
+     * @param sharesOwner Address of contract that owns the deposited liquidity.
+     * @return removedBaseBalance Amount of base tokens returned to the user
+     * @return removedWrappedBalance Amount of wrapped tokens returned to the user
+     */
+    function removeLiquidityBuffer(
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
         address sharesOwner

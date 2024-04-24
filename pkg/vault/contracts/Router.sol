@@ -642,7 +642,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 amountWrapped,
         address sharesOwner
     ) external nonReentrant onlyVault returns (uint256 issuedShares) {
-        issuedShares = _vault.bufferAddLiquidity(wrappedToken, amountUnderlying, amountWrapped, sharesOwner);
+        issuedShares = _vault.addLiquidityBuffer(wrappedToken, amountUnderlying, amountWrapped, sharesOwner);
         _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountUnderlying, false);
         _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrapped, false);
     }
@@ -672,7 +672,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 sharesToRemove,
         address sharesOwner
     ) external nonReentrant onlyVault returns (uint256 removedBaseBalance, uint256 removedWrappedBalance) {
-        (removedBaseBalance, removedWrappedBalance) = _vault.bufferRemoveLiquidity(
+        (removedBaseBalance, removedWrappedBalance) = _vault.removeLiquidityBuffer(
             wrappedToken,
             sharesToRemove,
             sharesOwner
