@@ -4,8 +4,6 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
@@ -23,7 +21,6 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract VaultSwapTest is BaseVaultTest {
     using ArrayHelpers for *;
     using FixedPoint for uint256;
-    using SafeCast for uint256;
 
     PoolMock internal noInitPool;
     uint256 internal swapFee = defaultAmount / 100; // 1%
@@ -189,10 +186,10 @@ contract VaultSwapTest is BaseVaultTest {
             address(pool),
             usdc,
             dai,
-            defaultAmount.toUint128(),
-            (defaultAmount - swapFee).toUint128(),
-            swapFeePercentage.toUint64(),
-            defaultAmount.mulDown(swapFeePercentage).toUint128()
+            defaultAmount,
+            defaultAmount - swapFee,
+            swapFeePercentage,
+            defaultAmount.mulDown(swapFeePercentage)
         );
 
         vm.prank(alice);

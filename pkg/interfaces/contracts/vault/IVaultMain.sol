@@ -95,10 +95,10 @@ interface IVaultMain {
         address indexed pool,
         IERC20 indexed tokenIn,
         IERC20 indexed tokenOut,
-        uint128 amountIn,
-        uint128 amountOut,
-        uint64 swapFeePercentage,
-        uint128 swapFeeAmount
+        uint256 amountIn,
+        uint256 amountOut,
+        uint256 swapFeePercentage,
+        uint256 swapFeeAmount
     );
 
     /**
