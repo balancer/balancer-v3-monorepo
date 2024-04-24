@@ -198,6 +198,21 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /*******************************************************************************
+                                     Buffer Pausing
+    *******************************************************************************/
+    /// @dev Modifier to make a function callable only when the Vault Buffer is not paused.
+    modifier whenVaultBufferNotPaused() {
+        _ensureVaultBufferNotPaused();
+        _;
+    }
+
+    /// @dev Reverts if the Vault Buffer is paused.
+    function _ensureVaultBufferNotPaused() internal view {
+        if (_vaultState.isBufferPaused()) {
+            revert VaultBuffersArePaused();
+        }
+    }
+    /*******************************************************************************
                             Pool Registration and Initialization
     *******************************************************************************/
 

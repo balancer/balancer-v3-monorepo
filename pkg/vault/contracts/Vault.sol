@@ -1068,20 +1068,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     // TODO document
     function bufferWrapUnwrap(
-        WrapParams memory params
-    ) public withOpenTab returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
-        if (_vaultState.toVaultState().isBufferPaused) {
-            revert VaultBuffersArePaused();
-        }
+        SwapParams memory params
+    ) public withOpenTab whenVaultBufferNotPaused returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
 
         uint256 amountBase;
         uint256 amountWrapped;
 
-        IERC4626 wrappedToken = params.wrappedToken == params.tokenIn
-            ? IERC4626(address(params.tokenIn))
-            : IERC4626(address(params.tokenOut));
-
+        IERC4626 wrappedToken = IERC4626(params.pool);
         address baseToken = wrappedToken.asset();
+
         if (
             _bufferAssets[IERC20(address(wrappedToken))] != address(0) &&
             _bufferAssets[IERC20(address(wrappedToken))] != baseToken
@@ -1090,10 +1085,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             revert WrongWrappedTokenAsset(address(wrappedToken));
         }
 
-        if (params.wrappedToken == params.tokenIn) {
+        if (params.pool == address(params.tokenIn)) {
             // tokenIn is wrappedToken, user wants to unwrap
             if (baseToken != address(params.tokenOut)) {
-                revert WrongWrappedTokenAsset(address(wrappedToken));
+                revert WrongWrappedTokenAsset(params.pool);
             }
             (amountCalculated, amountWrapped, amountBase) = _bufferUnwrap(
                 params.kind,
@@ -1102,10 +1097,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
             amountIn = amountWrapped;
             amountOut = amountBase;
-        } else if (params.wrappedToken == params.tokenOut) {
+        } else if (params.pool == address(params.tokenOut)) {
             // tokenOut is wrappedToken, user wants to wrap
             if (baseToken != address(params.tokenIn)) {
-                revert WrongWrappedTokenAsset(address(wrappedToken));
+                revert WrongWrappedTokenAsset(params.pool);
             }
             (amountCalculated, amountWrapped, amountBase) = _bufferWrap(
                 params.kind,
@@ -1114,6 +1109,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
             amountIn = amountBase;
             amountOut = amountWrapped;
+
+            if (params.kind == SwapKind.EXACT_IN && amountOut < params.limitRaw) {
+                revert SwapLimit(amountOut, params.limitRaw);
+            }
+
+            if (params.kind == SwapKind.EXACT_OUT && amountIn > params.limitRaw) {
+                revert SwapLimit(amountIn, params.limitRaw);
+            }
         } else {
             revert WrongBufferPool();
         }

@@ -293,12 +293,14 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     uint256 amountOut;
                     if (step.isBuffer) {
                         (, , amountOut) = _vault.bufferWrapUnwrap(
-                            WrapParams({
+                            SwapParams({
                                 kind: SwapKind.EXACT_IN,
+                                pool: step.pool,
                                 tokenIn: stepTokenIn,
                                 tokenOut: step.tokenOut,
-                                wrappedToken: IERC20(step.pool),
-                                amountGivenRaw: stepExactAmountIn
+                                amountGivenRaw: stepExactAmountIn,
+                                limitRaw: minAmountOut,
+                                userData: params.userData
                             })
                         );
                     } else {
@@ -555,12 +557,14 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     uint256 amountIn;
                     if (step.isBuffer) {
                         (, amountIn, ) = _vault.bufferWrapUnwrap(
-                            WrapParams({
+                            SwapParams({
                                 kind: SwapKind.EXACT_OUT,
+                                pool: step.pool,
                                 tokenIn: stepTokenIn,
                                 tokenOut: step.tokenOut,
-                                wrappedToken: IERC20(step.pool),
-                                amountGivenRaw: stepExactAmountOut
+                                amountGivenRaw: stepExactAmountOut,
+                                limitRaw: stepMaxAmountIn,
+                                userData: params.userData
                             })
                         );
                     } else {

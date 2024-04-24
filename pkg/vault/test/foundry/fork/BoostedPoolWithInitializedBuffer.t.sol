@@ -40,6 +40,8 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
     address constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
     uint256 constant USDC_FACTOR = 1e12;
+    // When converting from DAI to USDC, we get rounding errors on exact outs (1 unit of USDC is 1e12 units of DAI)
+    uint256 constant DAI_TO_USDC_FACTOR = USDC_FACTOR * 2;
 
     // Owner of DAI and USDC in Mainnet
     address constant DONOR_WALLET_ADDRESS = 0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503;
@@ -199,7 +201,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
     function testBoostedPoolSwapWithinBufferRangeExactOut__Fork() public {
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount, swapAmount / USDC_FACTOR);
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount + DAI_TO_USDC_FACTOR, swapAmount / USDC_FACTOR);
 
         snapStart("forkBoostedPoolSwapExactOut");
         vm.prank(alice);
@@ -255,7 +257,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
 
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
-            tooLargeSwapAmount + 1e13,
+            tooLargeSwapAmount + DAI_TO_USDC_FACTOR,
             tooLargeSwapAmount / USDC_FACTOR
         );
 

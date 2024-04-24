@@ -130,10 +130,17 @@ interface IVaultMain {
                             Yield-bearing tokens buffers
     *******************************************************************************/
 
-    // TODO document
+    /**
+     * @notice Wrap/unwrap tokens based on provided parameters.
+     * @dev All parameters are given in raw token decimal encoding.
+     * @param params Parameters for the swap (see above for struct definition)
+     * @return amountCalculatedRaw Calculated swap amount
+     * @return amountInRaw Amount of input tokens for the swap
+     * @return amountOutRaw Amount of output tokens from the swap
+     */
     function bufferWrapUnwrap(
-        WrapParams memory wrapParams
-    ) external returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut);
+        SwapParams memory params
+    ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
     /*******************************************************************************
                                 Authentication
