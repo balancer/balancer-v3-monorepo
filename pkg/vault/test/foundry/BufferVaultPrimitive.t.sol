@@ -11,20 +11,14 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 
 import {
-    ERC4626MaliciousTestToken
-} from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626MaliciousTestToken.sol";
+ERC4626TestToken
+} from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-// Deposit returns wrong shares or assets
-// Mint returns wrong shares or assets
-// Redeem returns wrong shares or assets
-// Withdraw returns wrong shares or assets
-// Disable Vault Buffers
-
 contract BufferVaultPrimitiveTest is BaseVaultTest {
-    ERC4626MaliciousTestToken internal waDAI;
-    ERC4626MaliciousTestToken internal waUSDC;
+    ERC4626TestToken internal waDAI;
+    ERC4626TestToken internal waUSDC;
 
     uint256 userAmount = 10e6 * 1e18;
     uint256 wrapAmount = userAmount / 100;
@@ -32,11 +26,11 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        waDAI = new ERC4626MaliciousTestToken(dai, "Wrapped aDAI", "waDAI", 18);
+        waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
         vm.label(address(waDAI), "waDAI");
 
         // "USDC" is deliberately 18 decimals to test one thing at a time.
-        waUSDC = new ERC4626MaliciousTestToken(usdc, "Wrapped aUSDC", "waUSDC", 18);
+        waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 18);
         vm.label(address(waUSDC), "waUSDC");
 
         initializeLp();
@@ -66,7 +60,6 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.stopPrank();
     }
 
-    // Change asset of token
     function testChangeAssetOfWrappedToken() public {
         // Change Asset to wrong underlying
         waDAI.setAsset(usdc);
@@ -97,6 +90,29 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedTokenAsset.selector, address(waDAI)));
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
+
+    // Deposit returns wrong shares
+    function testDepositReturnsWrongShares() public {
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapPath(
+            wrapAmount,
+            0,
+            dai,
+            IERC20(address(waDAI))
+        );
+
+        waDAI.setSharesToReturn(1);
+
+        vm.prank(lp);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmountOnDeposit.selector, address(waDAI)));
+        batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+    }
+
+    // Deposit consumes wrong assets
+
+// Mint returns wrong shares or assets
+// Redeem returns wrong shares or assets
+// Withdraw returns wrong shares or assets
+// Disable Vault Buffers
 
     function _exactInWrapPath(
         uint256 exactAmountIn,
