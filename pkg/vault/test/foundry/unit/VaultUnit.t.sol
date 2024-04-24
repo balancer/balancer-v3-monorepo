@@ -200,6 +200,7 @@ contract VaultUnitTest is BaseVaultTest {
             vaultState
         );
     }
+
     // #endregion
 
     // #region _getSwapFeePercentage
@@ -220,6 +221,7 @@ contract VaultUnitTest is BaseVaultTest {
             "Unexpected swap fee percentage"
         );
     }
+
     // #endregion
 
     // #region _buildPoolSwapParams
@@ -252,6 +254,7 @@ contract VaultUnitTest is BaseVaultTest {
         assertEq(poolSwapParams.sender, address(this), "Unexpected sender");
         assertEq(poolSwapParams.userData, params.userData, "Unexpected userData");
     }
+
     // #endregion
 
     // #region Helpers
