@@ -35,7 +35,7 @@ describe('StableMath', function () {
     async function checkInvariant(balances: bigint[], amp: number): Promise<void> {
       const ampParameter = bn(amp) * AMP_PRECISION;
 
-      const actualInvariant = await mock.calculateInvariant(ampParameter, balances);
+      const actualInvariant = await mock.computeInvariant(ampParameter, balances);
       const expectedInvariant = calculateInvariant(balances, amp);
 
       expectEqualWithError(actualInvariant, expectedInvariant, MAX_RELATIVE_ERROR);
@@ -58,7 +58,7 @@ describe('StableMath', function () {
         const amp = bn(100);
         const balances = [fp(10), fp(12)];
 
-        const result = await mock.calculateInvariant(amp * AMP_PRECISION, balances);
+        const result = await mock.computeInvariant(amp * AMP_PRECISION, balances);
         const expectedInvariant = calculateAnalyticalInvariantForTwoTokens(balances, amp);
 
         expectEqualWithError(result, expectedInvariant, MAX_RELATIVE_ERROR);
@@ -69,7 +69,7 @@ describe('StableMath', function () {
       const amp = bn(1);
       const balances = [fp(0.00000001), fp(1200000000), fp(300)];
 
-      const result = await mock.calculateInvariant(amp * AMP_PRECISION, balances);
+      const result = await mock.computeInvariant(amp * AMP_PRECISION, balances);
       const expectedInvariant = calculateInvariant(balances, amp);
 
       expectEqualWithError(result, expectedInvariant, MAX_RELATIVE_ERROR);
@@ -85,12 +85,7 @@ describe('StableMath', function () {
     ): Promise<void> {
       const ampParameter = bn(amp) * AMP_PRECISION;
 
-      const actualTokenBalance = await mock.getTokenBalanceGivenInvariantAndAllOtherBalances(
-        ampParameter,
-        balances,
-        invariant,
-        tokenIndex
-      );
+      const actualTokenBalance = await mock.computeBalance(ampParameter, balances, invariant, tokenIndex);
 
       // Note this function takes the decimal amp (unadjusted)
       const expectedTokenBalance = getTokenBalanceGivenInvariantAndAllOtherBalances(
@@ -132,13 +127,15 @@ describe('StableMath', function () {
         const tokenIndexIn = 0;
         const tokenIndexOut = 1;
         const amountOut = fp(1);
+        const invariant = calculateInvariant(balances, amp);
 
-        const result = await mock.inGivenExactOut(
+        const result = await mock.computeInGivenExactOut(
           amp * AMP_PRECISION,
           balances,
           tokenIndexIn,
           tokenIndexOut,
-          amountOut
+          amountOut,
+          invariant
         );
         const expectedAmountIn = calcInGivenExactOut(balances, amp, tokenIndexIn, tokenIndexOut, amountOut);
 
@@ -152,13 +149,15 @@ describe('StableMath', function () {
         const tokenIndexIn = 0;
         const tokenIndexOut = 1;
         const amountOut = fp(1);
+        const invariant = calculateInvariant(balances, amp);
 
-        const result = await mock.inGivenExactOut(
+        const result = await mock.computeInGivenExactOut(
           amp * AMP_PRECISION,
           balances,
           tokenIndexIn,
           tokenIndexOut,
-          amountOut
+          amountOut,
+          invariant
         );
         const expectedAmountIn = calcInGivenExactOut(balances, amp, tokenIndexIn, tokenIndexOut, amountOut);
 
@@ -175,8 +174,16 @@ describe('StableMath', function () {
         const tokenIndexIn = 0;
         const tokenIndexOut = 1;
         const amountIn = fp(1);
+        const invariant = calculateInvariant(balances, amp);
 
-        const result = await mock.outGivenExactIn(amp * AMP_PRECISION, balances, tokenIndexIn, tokenIndexOut, amountIn);
+        const result = await mock.computeOutGivenExactIn(
+          amp * AMP_PRECISION,
+          balances,
+          tokenIndexIn,
+          tokenIndexOut,
+          amountIn,
+          invariant
+        );
         const expectedAmountOut = calcOutGivenExactIn(balances, amp, tokenIndexIn, tokenIndexOut, amountIn);
 
         expectEqualWithError(result, bn(expectedAmountOut.toFixed(0)), MAX_RELATIVE_ERROR);
@@ -189,8 +196,16 @@ describe('StableMath', function () {
         const tokenIndexIn = 0;
         const tokenIndexOut = 1;
         const amountIn = fp(1);
+        const invariant = calculateInvariant(balances, amp);
 
-        const result = await mock.outGivenExactIn(amp * AMP_PRECISION, balances, tokenIndexIn, tokenIndexOut, amountIn);
+        const result = await mock.computeOutGivenExactIn(
+          amp * AMP_PRECISION,
+          balances,
+          tokenIndexIn,
+          tokenIndexOut,
+          amountIn,
+          invariant
+        );
         const expectedAmountOut = calcOutGivenExactIn(balances, amp, tokenIndexIn, tokenIndexOut, amountIn);
 
         expectEqualWithError(result, bn(expectedAmountOut.toFixed(0)), MAX_RELATIVE_ERROR);
@@ -211,7 +226,7 @@ describe('StableMath', function () {
       const ampParameter = bn(amp) * AMP_PRECISION;
       const currentInvariant = calculateInvariant(balances, amp);
 
-      const actualBptOut = await mock.exactTokensInForBPTOut(
+      const actualBptOut = await mock.computeBptOutGivenExactTokensIn(
         ampParameter,
         balances,
         amountsIn,
@@ -264,7 +279,7 @@ describe('StableMath', function () {
     ): Promise<void> {
       const ampParameter = bn(amp) * AMP_PRECISION;
 
-      const actualTokenIn = await mock.tokenInForExactBPTOut(
+      const actualTokenIn = await mock.computeTokenInGivenExactBptOut(
         ampParameter,
         balances,
         tokenIndex,
@@ -331,7 +346,7 @@ describe('StableMath', function () {
     ): Promise<void> {
       const ampParameter = bn(amp) * AMP_PRECISION;
 
-      const actualBptIn = await mock.bptInForExactTokensOut(
+      const actualBptIn = await mock.computeBptInGivenExactTokensOut(
         ampParameter,
         balances,
         amountsOut,
@@ -386,7 +401,7 @@ describe('StableMath', function () {
     ): Promise<void> {
       const ampParameter = bn(amp) * AMP_PRECISION;
 
-      const actualTokenOut = await mock.exactBPTInForTokenOut(
+      const actualTokenOut = await mock.computeTokenOutGivenExactBptIn(
         ampParameter,
         balances,
         tokenIndex,
