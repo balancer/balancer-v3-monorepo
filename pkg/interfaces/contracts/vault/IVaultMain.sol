@@ -89,6 +89,7 @@ interface IVaultMain {
      * @param tokenOut The token leaving the Vault (balance decreases)
      * @param amountIn Number of tokenIn tokens
      * @param amountOut Number of tokenOut tokens
+     * @param swapFeePercentage Swap fee percentage applied (can differ if dynamic)
      * @param swapFeeAmount Swap fee amount paid in token out
      */
     event Swap(
@@ -97,6 +98,7 @@ interface IVaultMain {
         IERC20 indexed tokenOut,
         uint256 amountIn,
         uint256 amountOut,
+        uint256 swapFeePercentage,
         uint256 swapFeeAmount
     );
 
