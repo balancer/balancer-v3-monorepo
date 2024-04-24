@@ -197,10 +197,6 @@ contract VaultMock is IVaultMainMock, Vault {
         }
     }
 
-    function manualAddReserveOf(IERC20 token, uint256 delta) public {
-        _reservesOf[token] += delta;
-    }
-
     function mockWithOpenTab() public view withOpenTab {}
 
     function mockWithInitializedPool(address pool) public view withInitializedPool(pool) {}

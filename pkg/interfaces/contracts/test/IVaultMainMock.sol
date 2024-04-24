@@ -45,8 +45,6 @@ interface IVaultMainMock {
 
     function manualSetPoolTokenBalances(address, IERC20[] memory, uint256[] memory) external;
 
-    function manualAddReserveOf(IERC20, uint256) external;
-
     function mockWithOpenTab() external view;
 
     function mockWithInitializedPool(address pool) external view;
