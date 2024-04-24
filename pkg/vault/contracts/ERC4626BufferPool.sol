@@ -10,14 +10,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
-import {
-    AddLiquidityKind,
-    RemoveLiquidityKind,
-    SwapParams,
-    SwapKind
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -254,7 +249,7 @@ contract ERC4626BufferPool is
         IVault vault = getVault();
 
         // Get balance of tokens
-        (IERC20[] memory tokens, , uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors, ) = vault
+        (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors) = vault
             .getPoolTokenInfo(poolAddress);
 
         // PreviewRedeem converts a wrapped amount into a base amount
@@ -283,13 +278,13 @@ contract ERC4626BufferPool is
                 exchangeAmountRaw = desiredBaseAssetsRaw - balanceBaseAssetsRaw;
             }
 
-            _rebalanceInternal(poolAddress, tokens, exchangeAmountRaw, SwapKind.EXACT_IN);
+            _rebalanceInternal(poolAddress, tokenConfig, exchangeAmountRaw, SwapKind.EXACT_IN);
         } else {
             unchecked {
                 exchangeAmountRaw = balanceBaseAssetsRaw - desiredBaseAssetsRaw;
             }
 
-            _rebalanceInternal(poolAddress, tokens, exchangeAmountRaw, SwapKind.EXACT_OUT);
+            _rebalanceInternal(poolAddress, tokenConfig, exchangeAmountRaw, SwapKind.EXACT_OUT);
         }
     }
 
@@ -301,7 +296,7 @@ contract ERC4626BufferPool is
      */
     function _rebalanceInternal(
         address poolAddress,
-        IERC20[] memory tokens,
+        TokenConfig[] memory tokenConfig,
         uint256 exchangeAmountRaw,
         SwapKind kind
     ) private {
@@ -319,8 +314,8 @@ contract ERC4626BufferPool is
                 SwapParams({
                     kind: SwapKind.EXACT_IN,
                     pool: poolAddress,
-                    tokenIn: tokens[_baseTokenIndex],
-                    tokenOut: tokens[_wrappedTokenIndex],
+                    tokenIn: tokenConfig[_baseTokenIndex].token,
+                    tokenOut: tokenConfig[_wrappedTokenIndex].token,
                     amountGivenRaw: exchangeAmountRaw,
                     limitRaw: limitRaw,
                     userData: ""
@@ -339,8 +334,8 @@ contract ERC4626BufferPool is
                 SwapParams({
                     kind: SwapKind.EXACT_OUT,
                     pool: poolAddress,
-                    tokenIn: tokens[_wrappedTokenIndex],
-                    tokenOut: tokens[_baseTokenIndex],
+                    tokenIn: tokenConfig[_wrappedTokenIndex].token,
+                    tokenOut: tokenConfig[_baseTokenIndex].token,
                     amountGivenRaw: exchangeAmountRaw,
                     limitRaw: limitRaw,
                     userData: ""

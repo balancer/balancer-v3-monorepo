@@ -14,6 +14,7 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -101,8 +102,14 @@ contract RouterTest is BaseVaultTest {
     }
 
     function initPool() internal override {
-        (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(address(pool));
+        (TokenConfig[] memory tokenConfig, , ) = vault.getPoolTokenInfo(address(pool));
         vm.prank(lp);
+        IERC20[] memory tokens = new IERC20[](tokenConfig.length);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            tokens[i] = tokenConfig[i].token;
+        }
+
         router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
 
         vm.prank(lp);

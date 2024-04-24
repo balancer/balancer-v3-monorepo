@@ -7,6 +7,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
@@ -50,6 +51,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
+    using SafeCast for uint256;
 
     constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) {
         if (address(vaultExtension.vault()) != address(this)) {
@@ -281,10 +283,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             params.pool,
             params.tokenIn,
             params.tokenOut,
-            amountIn,
-            amountOut,
-            vars.swapFeePercentage,
-            swapFeeAmountRaw
+            amountIn.toUint128(),
+            amountOut.toUint128(),
+            vars.swapFeePercentage.toUint64(),
+            swapFeeAmountRaw.toUint128()
         );
     }
 

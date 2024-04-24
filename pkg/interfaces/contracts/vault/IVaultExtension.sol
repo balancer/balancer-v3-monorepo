@@ -128,18 +128,16 @@ interface IVaultExtension {
 
     /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
-     * @return tokens Tokens registered to the pool
-     * @return tokenTypes The types of all registered tokens
+     * @return tokenConfig Pool's token configuration
      * @return balancesRaw Corresponding raw balances of the tokens
      * @return scalingFactors Corresponding scalingFactors of the tokens
-     * @return rateProviders Corresponding rateProviders of the tokens (or zero for tokens with no rates)
      */
     function getPoolTokenInfo(
         address pool
     )
         external
         view
-        returns (IERC20[] memory, TokenType[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
+        returns (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory scalingFactors);
 
     /**
      * @notice Gets the configuration parameters of a pool.
