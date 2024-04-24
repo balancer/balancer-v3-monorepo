@@ -3,11 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import {
-    FEE_BITLENGTH,
-    FEE_SCALING_FACTOR,
-    VaultState
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { VaultState } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -24,9 +20,6 @@ library VaultStateLib {
     uint256 public constant QUERY_DISABLED_OFFSET = 0;
     uint256 public constant VAULT_PAUSED_OFFSET = QUERY_DISABLED_OFFSET + 1;
 
-    uint256 public constant PROTOCOL_SWAP_FEE_OFFSET = VAULT_PAUSED_OFFSET + 1;
-    uint256 public constant PROTOCOL_YIELD_FEE_OFFSET = PROTOCOL_SWAP_FEE_OFFSET + FEE_BITLENGTH;
-
     function isQueryDisabled(VaultStateBits config) internal pure returns (bool) {
         return VaultStateBits.unwrap(config).decodeBool(QUERY_DISABLED_OFFSET);
     }
@@ -35,37 +28,18 @@ library VaultStateLib {
         return VaultStateBits.unwrap(config).decodeBool(VAULT_PAUSED_OFFSET);
     }
 
-    function getProtocolSwapFeePercentage(VaultStateBits config) internal pure returns (uint256) {
-        return VaultStateBits.unwrap(config).decodeUint(PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
-    }
-
-    function getProtocolYieldFeePercentage(VaultStateBits config) internal pure returns (uint256) {
-        return VaultStateBits.unwrap(config).decodeUint(PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
-    }
-
     function fromVaultState(VaultState memory config) internal pure returns (VaultStateBits) {
         bytes32 configBits = bytes32(0);
 
-        configBits = configBits
-            .insertBool(config.isQueryDisabled, QUERY_DISABLED_OFFSET)
-            .insertBool(config.isVaultPaused, VAULT_PAUSED_OFFSET)
-            .insertUint(config.protocolSwapFeePercentage / FEE_SCALING_FACTOR, PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH)
-            .insertUint(
-                config.protocolYieldFeePercentage / FEE_SCALING_FACTOR,
-                PROTOCOL_YIELD_FEE_OFFSET,
-                FEE_BITLENGTH
-            );
+        configBits = configBits.insertBool(config.isQueryDisabled, QUERY_DISABLED_OFFSET).insertBool(
+            config.isVaultPaused,
+            VAULT_PAUSED_OFFSET
+        );
 
         return VaultStateBits.wrap(configBits);
     }
 
     function toVaultState(VaultStateBits config) internal pure returns (VaultState memory) {
-        return
-            VaultState({
-                isQueryDisabled: config.isQueryDisabled(),
-                isVaultPaused: config.isVaultPaused(),
-                protocolSwapFeePercentage: config.getProtocolSwapFeePercentage(),
-                protocolYieldFeePercentage: config.getProtocolYieldFeePercentage()
-            });
+        return VaultState({ isQueryDisabled: config.isQueryDisabled(), isVaultPaused: config.isVaultPaused() });
     }
 }

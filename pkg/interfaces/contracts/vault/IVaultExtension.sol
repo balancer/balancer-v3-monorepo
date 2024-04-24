@@ -240,25 +240,6 @@ interface IVaultExtension {
     *******************************************************************************/
 
     /**
-     * @notice Retrieves the current protocol swap fee percentage.
-     * @return The current protocol swap fee percentage
-     */
-    function getProtocolSwapFeePercentage() external view returns (uint256);
-
-    /**
-     * @notice Retrieves the current protocol yield fee percentage.
-     * @return The current protocol yield fee percentage
-     */
-    function getProtocolYieldFeePercentage() external view returns (uint256);
-
-    /**
-     * @notice Returns the accumulated swap and yield fee in `token` collected by the protocol.
-     * @param token The address of the token in which fees have been accumulated
-     * @return The total amount of fees accumulated in the specified token
-     */
-    function getProtocolFees(address token) external view returns (uint256);
-
-    /**
      * @notice Fetches the static swap fee percentage for a given pool.
      * @param pool The address of the pool whose static swap fee percentage is being queried
      * @return The current static swap fee percentage for the specified pool
@@ -271,14 +252,6 @@ interface IVaultExtension {
      * @return The current static swap fee manager for the specified pool
      */
     function getStaticSwapFeeManager(address pool) external view returns (address);
-
-    /**
-     * @notice Fetches the creator fee of a pool for a specific token.
-     * @param pool The address of the pool whose creator fee is being queried
-     * @param token The token in which the creator fee was charged
-     * @return poolCreatorFee The creator fee of the pool and token
-     */
-    function getPoolCreatorFees(address pool, IERC20 token) external returns (uint256 poolCreatorFee);
 
     /**
      * @notice Fetches the address of the creator of a pool, who can collect creator fees.

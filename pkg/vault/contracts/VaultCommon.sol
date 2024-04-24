@@ -346,11 +346,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * @dev Get poolData and compute protocol yield fees due, without changing any state.
      * Returns poolData with both raw and live balances updated to reflect the fees.
      */
-    function _getPoolDataAndYieldFees(
-        address pool,
-        Rounding roundingDirection,
-        uint256 yieldFeePercentage
-    ) internal view returns (PoolData memory poolData, uint256[] memory dueProtocolYieldFees) {
+    function _getPoolData(address pool, Rounding roundingDirection) internal view returns (PoolData memory poolData) {
         // Initialize poolData with base information for subsequent calculations.
         (
             poolData.tokenConfig,
@@ -362,8 +358,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
         uint256 numTokens = poolBalances.length();
 
-        dueProtocolYieldFees = new uint256[](numTokens);
-
         // Initialize arrays to store balances and rates based on the number of tokens in the pool.
         // Will be read raw, then upscaled and rounded as directed.
         poolData.balancesLiveScaled18 = new uint256[](numTokens);
@@ -371,40 +365,12 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         // Fill in the tokenRates inside poolData (needed for `_updateLiveTokenBalanceInPoolData`).
         _updateTokenRatesInPoolData(poolData);
 
-        bool poolSubjectToYieldFees = poolData.poolConfig.isPoolInitialized &&
-            yieldFeePercentage > 0 &&
-            poolData.poolConfig.isPoolInRecoveryMode == false;
-
         for (uint256 i = 0; i < numTokens; ++i) {
-            TokenConfig memory tokenConfig = poolData.tokenConfig[i];
-
             // This sets the live balance in poolData from the raw balance, applying scaling and rates,
             // and respecting the rounding direction. Charging a yield fee changes the raw
             // balance, in which case the safest and most numerically precise way to adjust
             // the live balance is to simply repeat the scaling (hence the second call below).
             _updateLiveTokenBalanceInPoolData(poolData, roundingDirection, i);
-
-            // The Vault actually guarantees a token with paysYieldFees set is a WITH_RATE token, so technically we
-            // could just check the flag, but we don't want to introduce that dependency for a slight gas savings.
-            bool tokenSubjectToYieldFees = tokenConfig.paysYieldFees && tokenConfig.tokenType == TokenType.WITH_RATE;
-
-            // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
-            if (poolSubjectToYieldFees && tokenSubjectToYieldFees) {
-                uint256 yieldFeeAmountRaw = _computeYieldProtocolFeesDue(
-                    poolData,
-                    poolBalances.unchecked_valueAt(i).getLastLiveBalanceScaled18(),
-                    i,
-                    yieldFeePercentage
-                );
-
-                if (yieldFeeAmountRaw > 0) {
-                    dueProtocolYieldFees[i] = yieldFeeAmountRaw;
-
-                    // Adjust raw and live balances.
-                    poolData.balancesRaw[i] -= yieldFeeAmountRaw;
-                    _updateLiveTokenBalanceInPoolData(poolData, roundingDirection, i);
-                }
-            }
         }
     }
 
@@ -413,55 +379,14 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * This function modifies protocol fees and balance storage. Since it modifies storage and makes external
      * calls, it must be nonReentrant.
      */
-    function _computePoolDataUpdatingBalancesAndFees(
+    function _computePoolDataUpdatingBalances(
         address pool,
-        Rounding roundingDirection,
-        uint256 yieldFeePercentage
+        Rounding roundingDirection
     ) internal nonReentrant returns (PoolData memory poolData) {
-        uint256[] memory dueProtocolYieldFees;
+        poolData = _getPoolData(pool, roundingDirection);
 
-        (poolData, dueProtocolYieldFees) = _getPoolDataAndYieldFees(pool, roundingDirection, yieldFeePercentage);
-        uint256 numTokens = dueProtocolYieldFees.length;
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            IERC20 token = poolData.tokenConfig[i].token;
-            uint256 yieldFeeAmountRaw = dueProtocolYieldFees[i];
-
-            if (yieldFeeAmountRaw > 0) {
-                // Charge protocol fee.
-                _protocolFees[token] += yieldFeeAmountRaw;
-                emit ProtocolYieldFeeCharged(pool, address(token), yieldFeeAmountRaw);
-            }
-        }
-
-        // Update raw and last live pool balances, as computed by `_getPoolDataAndYieldFees`
+        // Update raw and last live pool balances, as computed by `_getPoolData`
         _setPoolBalances(pool, poolData);
-    }
-
-    function _computeYieldProtocolFeesDue(
-        PoolData memory poolData,
-        uint256 lastLiveBalance,
-        uint256 tokenIndex,
-        uint256 yieldFeePercentage
-    ) internal pure returns (uint256 feeAmountRaw) {
-        uint256 currentLiveBalance = poolData.balancesLiveScaled18[tokenIndex];
-
-        // Do not charge fees if rates go down. If the rate were to go up, down, and back up again, protocol fees
-        // would be charged multiple times on the "same" yield. For tokens subject to yield fees, this should not
-        // happen, or at least be very rare. It can be addressed for known volatile rates by setting the yield fee
-        // exempt flag on registration, or compensated off-chain if there is an incident with a normally
-        // well-behaved rate provider.
-        if (currentLiveBalance > lastLiveBalance) {
-            unchecked {
-                // Magnitudes checked above, so it's safe to do unchecked math here.
-                uint256 liveBalanceDiff = currentLiveBalance - lastLiveBalance;
-
-                feeAmountRaw = liveBalanceDiff.mulDown(yieldFeePercentage).toRawUndoRateRoundDown(
-                    poolData.decimalScalingFactors[tokenIndex],
-                    poolData.tokenRates[tokenIndex]
-                );
-            }
-        }
     }
 
     /**

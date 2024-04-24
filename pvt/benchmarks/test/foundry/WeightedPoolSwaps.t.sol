@@ -37,11 +37,6 @@ contract WeightedPoolSwaps is BaseVaultTest {
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-
-        // Set protocol fee
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setProtocolSwapFeePercentage.selector), alice);
-        vm.prank(alice);
-        vault.setProtocolSwapFeePercentage(50e16); // 50%
     }
 
     function createPool() internal override returns (address) {

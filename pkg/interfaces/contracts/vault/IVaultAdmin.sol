@@ -112,44 +112,11 @@ interface IVaultAdmin {
     *******************************************************************************/
 
     /**
-     * @notice Sets a new swap fee percentage for the protocol.
-     * @param newSwapFeePercentage The new swap fee percentage to be set
-     */
-    function setProtocolSwapFeePercentage(uint256 newSwapFeePercentage) external;
-
-    /**
-     * @notice Sets a new yield fee percentage for the protocol.
-     * @param newYieldFeePercentage The new swap fee percentage to be set
-     */
-    function setProtocolYieldFeePercentage(uint256 newYieldFeePercentage) external;
-
-    /**
      * @notice Assigns a new static swap fee percentage to the specified pool.
      * @param pool The address of the pool for which the static swap fee will be changed
      * @param swapFeePercentage The new swap fee percentage to apply to the pool
      */
     function setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) external;
-
-    /**
-     * @notice Assigns a new pool creator fee percentage to the specified pool.
-     * @param pool The address of the pool for which the pool creator fee will be changed
-     * @param poolCreatorFeePercentage The new pool creator fee percentage to apply to the pool
-     */
-    function setPoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) external;
-
-    /**
-     * @notice Collects accumulated protocol fees for the specified array of tokens.
-     * @dev Fees are sent to msg.sender.
-     * @param tokens An array of token addresses for which the fees should be collected
-     */
-    function collectProtocolFees(IERC20[] calldata tokens) external;
-
-    /**
-     * @notice Collects accumulated pool creator fees for the specified pool.
-     * @dev Fees are sent to the pool creator address.
-     * @param pool The address of the pool on which we are collecting pool creator fees
-     */
-    function collectPoolCreatorFees(address pool) external;
 
     /*******************************************************************************
                                     Recovery Mode

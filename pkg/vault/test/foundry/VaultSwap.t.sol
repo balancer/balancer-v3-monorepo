@@ -21,7 +21,6 @@ contract VaultSwapTest is BaseVaultTest {
 
     PoolMock internal noInitPool;
     uint256 internal swapFee = defaultAmount / 100; // 1%
-    uint256 internal protocolSwapFee = swapFee / 2; // 50%
 
     // Track the indices for the standard dai/usdc pool.
     uint256 internal daiIdx;
@@ -133,7 +132,7 @@ contract VaultSwapTest is BaseVaultTest {
         assertSwap(swapSingleTokenExactIn);
     }
 
-    function swapSingleTokenExactIn() public returns (uint256 fee, uint256 protocolFee) {
+    function swapSingleTokenExactIn() public returns (uint256 fee) {
         vm.prank(alice);
         snapStart("vaultSwapSingleTokenExactIn");
         router.swapSingleTokenExactIn(
@@ -147,14 +146,14 @@ contract VaultSwapTest is BaseVaultTest {
             bytes("")
         );
         snapEnd();
-        return (0, 0);
+        return 0;
     }
 
     function testSwapSingleTokenExactOut() public {
         assertSwap(swapSingleTokenExactOut);
     }
 
-    function swapSingleTokenExactOut() public returns (uint256 fee, uint256 protocolFee) {
+    function swapSingleTokenExactOut() public returns (uint256 fee) {
         vm.prank(alice);
         snapStart("vaultSwapSingleTokenExactOut");
         router.swapSingleTokenExactOut(
@@ -168,14 +167,14 @@ contract VaultSwapTest is BaseVaultTest {
             bytes("")
         );
         snapEnd();
-        return (0, 0);
+        return 0;
     }
 
     function testSwapSingleTokenExactInWithFee() public {
         assertSwap(swapSingleTokenExactInWithFee);
     }
 
-    function swapSingleTokenExactInWithFee() public returns (uint256 fee, uint256 protocolFee) {
+    function swapSingleTokenExactInWithFee() public returns (uint256 fee) {
         setSwapFeePercentage(swapFeePercentage);
 
         vm.prank(alice);
@@ -192,7 +191,7 @@ contract VaultSwapTest is BaseVaultTest {
         );
         snapEnd();
 
-        return (swapFee, 0);
+        return swapFee;
     }
 
     function testSwapSingleTokenExactInWithProtocolFee() public {
@@ -206,15 +205,13 @@ contract VaultSwapTest is BaseVaultTest {
         assertSwap(swapSingleTokenExactInWithFeeInRecoveryMode);
     }
 
-    function swapSingleTokenExactInWithFeeInRecoveryMode() public returns (uint256 fee, uint256 protocolFee) {
+    function swapSingleTokenExactInWithFeeInRecoveryMode() public returns (uint256 fee) {
         // Call regular function (which sets the protocol swap fee), but return a fee of 0 to the validation function.
-        protocolFee = 0;
-        (fee, ) = swapSingleTokenExactInWithProtocolFee();
+        fee = swapSingleTokenExactInWithProtocolFee();
     }
 
-    function swapSingleTokenExactInWithProtocolFee() public returns (uint256 fee, uint256 protocolFee) {
+    function swapSingleTokenExactInWithProtocolFee() public returns (uint256 fee) {
         setSwapFeePercentage(swapFeePercentage);
-        setProtocolSwapFeePercentage(protocolSwapFeePercentage);
 
         vm.prank(alice);
         snapStart("vaultSwapSingleTokenExactInWithProtocolFee");
@@ -230,14 +227,14 @@ contract VaultSwapTest is BaseVaultTest {
         );
         snapEnd();
 
-        return (swapFee, protocolSwapFee);
+        return swapFee;
     }
 
     function testSwapSingleTokenExactOutWithFee() public {
         assertSwap(swapSingleTokenExactOutWithFee);
     }
 
-    function swapSingleTokenExactOutWithFee() public returns (uint256 fee, uint256 protocolFee) {
+    function swapSingleTokenExactOutWithFee() public returns (uint256 fee) {
         setSwapFeePercentage(swapFeePercentage);
 
         vm.prank(alice);
@@ -252,7 +249,7 @@ contract VaultSwapTest is BaseVaultTest {
             bytes("")
         );
 
-        return (swapFee, 0);
+        return swapFee;
     }
 
     function testSwapSingleTokenExactOutWithProtocolFee() public {
@@ -266,15 +263,12 @@ contract VaultSwapTest is BaseVaultTest {
         assertSwap(swapSingleTokenExactOutWithFeeInRecoveryMode);
     }
 
-    function swapSingleTokenExactOutWithFeeInRecoveryMode() public returns (uint256 fee, uint256 protocolFee) {
-        // Call regular function (which sets the protocol swap fee), but return a fee of 0 to the validation function.
-        protocolFee = 0;
-        (fee, ) = swapSingleTokenExactOutWithProtocolFee();
+    function swapSingleTokenExactOutWithFeeInRecoveryMode() public returns (uint256 fee) {
+        fee = swapSingleTokenExactOutWithProtocolFee();
     }
 
-    function swapSingleTokenExactOutWithProtocolFee() public returns (uint256 fee, uint256 protocolFee) {
+    function swapSingleTokenExactOutWithProtocolFee() public returns (uint256 fee) {
         setSwapFeePercentage(swapFeePercentage);
-        setProtocolSwapFeePercentage(protocolSwapFeePercentage);
 
         vm.prank(alice);
         router.swapSingleTokenExactOut(
@@ -288,71 +282,7 @@ contract VaultSwapTest is BaseVaultTest {
             bytes("")
         );
 
-        return (swapFee, protocolSwapFee);
-    }
-
-    function testProtocolSwapFeeAccumulation() public {
-        assertSwap(protocolSwapFeeAccumulation);
-    }
-
-    function protocolSwapFeeAccumulation() public returns (uint256 fee, uint256 protocolFee) {
-        setSwapFeePercentage(swapFeePercentage);
-        setProtocolSwapFeePercentage(protocolSwapFeePercentage);
-
-        vm.prank(alice);
-        router.swapSingleTokenExactIn(
-            address(pool),
-            usdc,
-            dai,
-            defaultAmount / 2,
-            defaultAmount / 2 - swapFee / 2,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
-
-        vm.prank(alice);
-        router.swapSingleTokenExactIn(
-            address(pool),
-            usdc,
-            dai,
-            defaultAmount / 2,
-            defaultAmount / 2 - swapFee / 2,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
-
-        return (swapFee, protocolSwapFee);
-    }
-
-    function testCollectProtocolFees() public {
-        usdc.mint(bob, defaultAmount);
-
-        setSwapFeePercentage(swapFeePercentage);
-        setProtocolSwapFeePercentage(protocolSwapFeePercentage);
-
-        vm.prank(bob);
-        router.swapSingleTokenExactIn(
-            address(pool),
-            usdc,
-            dai,
-            defaultAmount,
-            defaultAmount - swapFee,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
-
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.collectProtocolFees.selector), admin);
-        vm.prank(admin);
-        vault.collectProtocolFees([address(dai)].toMemoryArray().asIERC20());
-
-        // protocol fees are zero
-        assertEq(0, vault.getProtocolFees(address(dai)), "Protocol fees are not zero");
-
-        // alice received protocol fees
-        assertEq(dai.balanceOf(admin) - defaultBalance, (protocolSwapFee), "Protocol fees not collected");
+        return swapFee;
     }
 
     function reentrancyHook() public {
@@ -412,11 +342,11 @@ contract VaultSwapTest is BaseVaultTest {
 
     /// Utils
 
-    function assertSwap(function() returns (uint256, uint256) testFunc) internal {
+    function assertSwap(function() returns (uint256) testFunc) internal {
         uint256 usdcBeforeSwap = usdc.balanceOf(alice);
         uint256 daiBeforeSwap = dai.balanceOf(alice);
 
-        (uint256 fee, uint256 protocolFee) = testFunc();
+        uint256 fee = testFunc();
 
         // assets are transferred to/from user
         assertEq(usdc.balanceOf(alice), usdcBeforeSwap - defaultAmount, "Swap: User's USDC balance is wrong");
@@ -424,11 +354,8 @@ contract VaultSwapTest is BaseVaultTest {
 
         // Tokens are adjusted in the pool
         (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[daiIdx], fee - protocolFee, "Swap: Pool's [0] balance is wrong");
+        assertEq(balances[daiIdx], fee, "Swap: Pool's [0] balance is wrong");
         assertEq(balances[usdcIdx], 2 * defaultAmount, "Swap: Pool's [1] balance is wrong");
-
-        // protocol fees are accrued
-        assertEq(protocolFee, vault.getProtocolFees(address(dai)), "Swap: Protocol's fee amount is wrong");
 
         // vault are adjusted balances
         assertEq(dai.balanceOf(address(vault)), fee, "Swap: Vault's DAI balance is wrong");

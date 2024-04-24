@@ -26,8 +26,8 @@ contract PoolConfigLibTest is Test {
 
     mapping(uint256 => bool) usedBits;
 
-    // 16 flags + 2 * 24 bit fee + 24 bit token diffs + 32 bit timestamp = 120 total bits used.
-    uint256 private constant CONFIG_MSB = 120;
+    // 16 flags + 24 bit fee + 24 bit token diffs + 32 bit timestamp = 96 total bits used.
+    uint256 private constant CONFIG_MSB = 96;
 
     // #region PoolConfigBits
     function testOffsets() public {
@@ -49,7 +49,6 @@ contract PoolConfigLibTest is Test {
         _checkBit(PoolConfigLib.REMOVE_LIQUIDITY_CUSTOM_OFFSET);
 
         _checkBits(PoolConfigLib.STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH);
-        _checkBits(PoolConfigLib.POOL_DEV_FEE_OFFSET, FEE_BITLENGTH);
         _checkBits(PoolConfigLib.DECIMAL_SCALING_FACTORS_OFFSET, TOKEN_DECIMAL_DIFFS_BITLENGTH);
         _checkBits(PoolConfigLib.PAUSE_WINDOW_END_TIME_OFFSET, TIMESTAMP_BITLENGTH);
     }
@@ -197,16 +196,6 @@ contract PoolConfigLibTest is Test {
         );
     }
 
-    function testGetPoolCreatorFeePercentage() public {
-        assertEq(
-            PoolConfigBits
-                .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_DEV_FEE_OFFSET, FEE_BITLENGTH))
-                .getPoolCreatorFeePercentage(),
-            MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
-            "staticSwapFeePercentage mismatch"
-        );
-    }
-
     function testGetTokenDecimalDiffs() public {
         assertEq(
             PoolConfigBits
@@ -310,7 +299,6 @@ contract PoolConfigLibTest is Test {
         assertFalse(configBits.supportsAddLiquidityCustom(), "supportsAddLiquidityCustom is true");
         assertFalse(configBits.supportsRemoveLiquidityCustom(), "supportsRemoveLiquidityCustom is true");
         assertEq(configBits.getStaticSwapFeePercentage(), 0, "staticSwapFeePercentage isn't zero");
-        assertEq(configBits.getPoolCreatorFeePercentage(), 0, "staticSwapFeePercentage isn't zero");
         assertEq(configBits.getTokenDecimalDiffs(), 0, "tokenDecimalDiffs isn't zero");
         assertEq(configBits.getPauseWindowEndTime(), 0, "pauseWindowEndTime isn't zero");
     }
@@ -366,15 +354,6 @@ contract PoolConfigLibTest is Test {
                 .staticSwapFeePercentage,
             MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
             "staticSwapFeePercentage mismatch"
-        );
-
-        assertEq(
-            PoolConfigBits
-                .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_DEV_FEE_OFFSET, FEE_BITLENGTH))
-                .toPoolConfig()
-                .poolCreatorFeePercentage,
-            MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
-            "poolCreatorFeePercentage mismatch"
         );
 
         assertEq(
@@ -556,14 +535,6 @@ contract PoolConfigLibTest is Test {
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH),
             "staticSwapFeePercentage mismatch"
-        );
-
-        config = _createEmptyConfig();
-        config.poolCreatorFeePercentage = MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
-        assertEq(
-            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
-            bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_DEV_FEE_OFFSET, FEE_BITLENGTH),
-            "poolCreatorFeePercentage mismatch"
         );
 
         config = _createEmptyConfig();

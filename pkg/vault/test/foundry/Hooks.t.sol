@@ -74,11 +74,9 @@ contract HooksTest is BaseVaultTest {
 
     function testOnAfterSwapHook() public {
         setSwapFeePercentage(swapFeePercentage);
-        setProtocolSwapFeePercentage(protocolSwapFeePercentage);
 
         uint256 expectedAmountOut = defaultAmount.mulDown(swapFeePercentage.complement());
         uint256 swapFee = defaultAmount.mulDown(swapFeePercentage);
-        uint256 protocolFee = swapFee.mulDown(protocolSwapFeePercentage);
 
         vm.prank(bob);
         vm.expectCall(
@@ -92,7 +90,7 @@ contract HooksTest is BaseVaultTest {
                     amountInScaled18: defaultAmount,
                     amountOutScaled18: expectedAmountOut,
                     tokenInBalanceScaled18: defaultAmount * 2,
-                    tokenOutBalanceScaled18: defaultAmount - expectedAmountOut - protocolFee,
+                    tokenOutBalanceScaled18: defaultAmount - expectedAmountOut,
                     sender: address(router),
                     userData: ""
                 }),

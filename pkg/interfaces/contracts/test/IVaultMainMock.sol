@@ -37,7 +37,7 @@ interface IVaultMainMock {
 
     function manualSetVaultPaused(bool) external;
 
-    function manualSetVaultState(bool, bool, uint256, uint256) external;
+    function manualSetVaultState(bool, bool) external;
 
     function manualSetPoolTokenConfig(address, IERC20[] memory, TokenConfig[] memory) external;
 
@@ -61,7 +61,7 @@ interface IVaultMainMock {
 
     function recoveryModeExit(address pool) external view;
 
-    function computePoolDataUpdatingBalancesAndFees(
+    function computePoolDataUpdatingBalances(
         address pool,
         Rounding roundingDirection
     ) external returns (PoolData memory);
@@ -77,13 +77,6 @@ interface IVaultMainMock {
         Rounding roundingDirection,
         uint256 tokenIndex
     ) external pure returns (PoolData memory);
-
-    function computeYieldProtocolFeesDue(
-        PoolData memory poolData,
-        uint256 lastLiveBalance,
-        uint256 tokenIndex,
-        uint256 yieldFeePercentage
-    ) external pure returns (uint256);
 
     function guardedCheckEntered() external;
 

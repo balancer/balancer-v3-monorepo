@@ -263,28 +263,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                                         Fees
     *******************************************************************************/
 
-    /// @inheritdoc IVaultAdmin
-    function setProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external authenticate onlyVault {
-        if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
-            revert ProtocolSwapFeePercentageTooHigh();
-        }
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.protocolSwapFeePercentage = newProtocolSwapFeePercentage;
-        _vaultState = VaultStateLib.fromVaultState(vaultState);
-        emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
-    }
-
-    /// @inheritdoc IVaultAdmin
-    function setProtocolYieldFeePercentage(uint256 newProtocolYieldFeePercentage) external authenticate onlyVault {
-        if (newProtocolYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
-            revert ProtocolYieldFeePercentageTooHigh();
-        }
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.protocolYieldFeePercentage = newProtocolYieldFeePercentage;
-        _vaultState = VaultStateLib.fromVaultState(vaultState);
-        emit ProtocolYieldFeePercentageChanged(newProtocolYieldFeePercentage);
-    }
-
     /**
      * @inheritdoc IVaultAdmin
      * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
@@ -297,67 +275,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         // Saving bits by not implementing a new modifier
         _ensureUnpausedAndGetVaultState(pool);
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
-    }
-
-    /**
-     * @inheritdoc IVaultAdmin
-     * @dev This can only be executed by the pool creator and is disabled if the pool is paused.
-     * The creator fee must be <= 100%. It's the percentage of creatorAndLpFees that will be accrued by the creator
-     * of the pool. For more details, check comment of vault's _computeAndChargeProtocolAndCreatorFees function
-     * Emits the poolCreatorFeePercentageChanged event.
-     */
-    function setPoolCreatorFeePercentage(
-        address pool,
-        uint256 poolCreatorFeePercentage
-    ) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
-        // Saving bits by not implementing a new modifier
-        _ensureUnpausedAndGetVaultState(pool);
-        _setPoolCreatorFeePercentage(pool, poolCreatorFeePercentage);
-    }
-
-    function _setPoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) internal virtual {
-        if (poolCreatorFeePercentage > FixedPoint.ONE) {
-            revert PoolCreatorFeePercentageTooHigh();
-        }
-
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.poolCreatorFeePercentage = poolCreatorFeePercentage;
-        _poolConfig[pool] = config.fromPoolConfig();
-
-        emit PoolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
-    }
-
-    /// @inheritdoc IVaultAdmin
-    function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant onlyVault {
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
-            uint256 amount = _protocolFees[token];
-
-            if (amount > 0) {
-                // set fees to zero for the token
-                _protocolFees[token] = 0;
-
-                token.safeTransfer(msg.sender, amount);
-                emit ProtocolFeeCollected(token, amount);
-            }
-        }
-    }
-
-    /// @inheritdoc IVaultAdmin
-    function collectPoolCreatorFees(address pool) external nonReentrant onlyVault {
-        EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
-        uint256 numTokens = poolCreatorFees.length();
-        for (uint256 i = 0; i < numTokens; ++i) {
-            (IERC20 token, uint256 amount) = poolCreatorFees.unchecked_at(i);
-
-            if (amount > 0) {
-                // set fees to zero for the token
-                poolCreatorFees.unchecked_setAt(i, 0);
-
-                token.safeTransfer(_poolRoleAccounts[pool].poolCreator, amount);
-                emit PoolCreatorFeeCollected(pool, token, amount);
-            }
-        }
     }
 
     /*******************************************************************************

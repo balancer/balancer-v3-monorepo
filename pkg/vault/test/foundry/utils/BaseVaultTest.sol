@@ -204,12 +204,6 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, DeployPermit2 {
         }
     }
 
-    function setProtocolSwapFeePercentage(uint64 percentage) internal {
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setProtocolSwapFeePercentage.selector), admin);
-        vm.prank(admin);
-        vault.setProtocolSwapFeePercentage(percentage);
-    }
-
     function getBalances(address user) internal view returns (Balances memory balances) {
         balances.userBpt = IERC20(pool).balanceOf(user);
 

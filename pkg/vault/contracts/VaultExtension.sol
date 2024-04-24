@@ -186,8 +186,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         // Retrieve or create the pool's token balances mapping.
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        // Retrieve or create the pool's dev fee mapping.
-        EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
 
         uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
         IERC20 previousToken;
@@ -213,10 +211,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             if (poolTokenBalances.set(token, bytes32(0)) == false) {
                 revert TokenAlreadyRegistered(token);
             }
-
-            // Register the token dev fee with an initial balance of zero.
-            // Note: EnumerableMaps require an explicit initial value when creating a key-value pair.
-            poolCreatorFees.set(token, 0);
 
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
             _poolTokenConfig[pool][token] = tokenData;
@@ -289,15 +283,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 onlyOwner: true
             });
         }
-
-        if (roleAccounts.poolCreator != address(0)) {
-            bytes32 creatorFeeAction = vaultAdmin.getActionId(IVaultAdmin.setPoolCreatorFeePercentage.selector);
-
-            roleAssignments[creatorFeeAction] = PoolFunctionPermission({
-                account: roleAccounts.poolCreator,
-                onlyOwner: true
-            });
-        }
     }
 
     /// @inheritdoc IVaultExtension
@@ -309,13 +294,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 minBptAmountOut,
         bytes memory userData
     ) external withOpenTab withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
-        VaultState memory vaultState = _ensureUnpausedAndGetVaultState(pool);
+        _ensureUnpausedAndGetVaultState(pool);
 
-        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
-            pool,
-            Rounding.ROUND_DOWN,
-            vaultState.protocolYieldFeePercentage
-        );
+        PoolData memory poolData = _computePoolDataUpdatingBalances(pool, Rounding.ROUND_DOWN);
 
         if (poolData.poolConfig.isPoolInitialized) {
             revert PoolAlreadyInitialized(pool);
@@ -509,21 +490,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function getProtocolSwapFeePercentage() external view onlyVault returns (uint256) {
-        return _vaultState.getProtocolSwapFeePercentage();
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getProtocolYieldFeePercentage() external view onlyVault returns (uint256) {
-        return _vaultState.getProtocolYieldFeePercentage();
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getProtocolFees(address token) external view onlyVault returns (uint256) {
-        return _protocolFees[IERC20(token)];
-    }
-
-    /// @inheritdoc IVaultExtension
     function getStaticSwapFeePercentage(
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (uint256) {
@@ -533,13 +499,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function getStaticSwapFeeManager(address pool) external view withRegisteredPool(pool) onlyVault returns (address) {
         return _poolRoleAccounts[pool].swapFeeManager;
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getPoolCreatorFees(address pool, IERC20 token) external view returns (uint256 poolCreatorFee) {
-        EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
-        uint256 index = poolCreatorFees.indexOf(token);
-        poolCreatorFee = poolCreatorFees.unchecked_valueAt(index);
     }
 
     /// @inheritdoc IVaultExtension

@@ -54,9 +54,9 @@ contract PoolDataTest is BaseVaultTest {
         daiRateProvider.mockRate(daiRate);
         wstETHRateProvider.mockRate(wstETHRate);
 
-        // `computePoolDataUpdatingBalancesAndFees` and `getRawBalances` are functions in VaultMock.
+        // `computePoolDataUpdatingBalances` and `getRawBalances` are functions in VaultMock.
 
-        PoolData memory data = vault.computePoolDataUpdatingBalancesAndFees(
+        PoolData memory data = vault.computePoolDataUpdatingBalances(
             address(pool),
             roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN
         );

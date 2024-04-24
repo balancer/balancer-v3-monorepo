@@ -164,17 +164,10 @@ contract VaultMock is IVaultMainMock, Vault {
         _vaultState = vaultState.fromVaultState();
     }
 
-    function manualSetVaultState(
-        bool isVaultPaused,
-        bool isQueryDisabled,
-        uint256 protocolSwapFeePercentage,
-        uint256 protocolYieldFeePercentage
-    ) public {
+    function manualSetVaultState(bool isVaultPaused, bool isQueryDisabled) public {
         VaultState memory vaultState = _vaultState.toVaultState();
         vaultState.isVaultPaused = isVaultPaused;
         vaultState.isQueryDisabled = isQueryDisabled;
-        vaultState.protocolSwapFeePercentage = protocolSwapFeePercentage;
-        vaultState.protocolYieldFeePercentage = protocolYieldFeePercentage;
         _vaultState = vaultState.fromVaultState();
     }
 
@@ -293,12 +286,11 @@ contract VaultMock is IVaultMainMock, Vault {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function computePoolDataUpdatingBalancesAndFees(
+    function computePoolDataUpdatingBalances(
         address pool,
         Rounding roundingDirection
     ) external returns (PoolData memory) {
-        VaultState memory vaultState = VaultStateLib.toVaultState(_vaultState);
-        return _computePoolDataUpdatingBalancesAndFees(pool, roundingDirection, vaultState.protocolYieldFeePercentage);
+        return _computePoolDataUpdatingBalances(pool, roundingDirection);
     }
 
     function updateLiveTokenBalanceInPoolData(
@@ -308,15 +300,6 @@ contract VaultMock is IVaultMainMock, Vault {
     ) external pure returns (PoolData memory) {
         _updateLiveTokenBalanceInPoolData(poolData, roundingDirection, tokenIndex);
         return poolData;
-    }
-
-    function computeYieldProtocolFeesDue(
-        PoolData memory poolData,
-        uint256 lastLiveBalance,
-        uint256 tokenIndex,
-        uint256 yieldFeePercentage
-    ) external pure returns (uint256) {
-        return _computeYieldProtocolFeesDue(poolData, lastLiveBalance, tokenIndex, yieldFeePercentage);
     }
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw) {
