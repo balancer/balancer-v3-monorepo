@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
@@ -17,6 +16,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -32,14 +32,12 @@ import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzepp
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
-import { BufferPackedTokenBalance } from "./lib/BufferPackedBalance.sol";
 
 /**
  * @dev Bytecode extension for Vault.
@@ -65,7 +63,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
-    using BufferPackedTokenBalance for bytes32;
 
     IVault private immutable _vault;
     IVaultAdmin private immutable _vaultAdmin;
@@ -624,87 +621,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // We can unsafely cast to int256 because balances are stored as uint128 (see PackedTokenBalance).
             amountsOutRaw.unsafeCastToInt256(false)
         );
-    }
-
-    /*******************************************************************************
-                            Yield-bearing tokens buffers
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultExtension
-    function addLiquidityBuffer(
-        IERC4626 wrappedToken,
-        uint256 amountBase,
-        uint256 amountWrapped,
-        address sharesOwner
-    ) public withOpenTab whenVaultBufferNotPaused nonReentrant returns (uint256 issuedShares) {
-        address baseToken = wrappedToken.asset();
-        if (_bufferAssets[IERC20(address(wrappedToken))] == address(0)) {
-            _bufferAssets[IERC20(address(wrappedToken))] = baseToken;
-        } else if (_bufferAssets[IERC20(address(wrappedToken))] != baseToken) {
-            // Asset was changed since the first bufferAddLiquidity call
-            revert WrongWrappedTokenAsset(address(wrappedToken));
-        }
-
-        bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
-
-        // amount of shares to issue is the total base token that the user is depositing
-        issuedShares = wrappedToken.convertToAssets(amountWrapped) + amountBase;
-
-        // Adds the issued shares to the total shares of the liquidity pool
-        _bufferLpShares[IERC20(wrappedToken)][sharesOwner] += issuedShares;
-        _bufferTotalShares[IERC20(wrappedToken)] += issuedShares;
-
-        buffer = buffer.setBaseBalance(buffer.getBaseBalance() + amountBase);
-        buffer = buffer.setWrappedBalance(buffer.getWrappedBalance() + amountWrapped);
-
-        _bufferTokenBalances[IERC20(wrappedToken)] = buffer;
-
-        _takeDebt(IERC20(baseToken), amountBase);
-        _takeDebt(wrappedToken, amountWrapped);
-    }
-
-    /// @inheritdoc IVaultExtension
-    function removeLiquidityBuffer(
-        IERC4626 wrappedToken,
-        uint256 sharesToRemove,
-        address sharesOwner
-    )
-        public
-        withOpenTab
-        whenVaultBufferNotPaused
-        nonReentrant
-        returns (uint256 removedBaseBalance, uint256 removedWrappedBalance)
-    {
-        address baseToken = wrappedToken.asset();
-        if (_bufferAssets[IERC20(address(wrappedToken))] != baseToken) {
-            // Asset was changed since the first bufferAddLiquidity call
-            revert WrongWrappedTokenAsset(address(wrappedToken));
-        }
-
-        bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
-
-        uint256 ownerShares = _bufferLpShares[IERC20(wrappedToken)][sharesOwner];
-        if (sharesToRemove > ownerShares) {
-            revert NotEnoughBufferShares();
-        }
-        uint256 totalShares = _bufferTotalShares[IERC20(wrappedToken)];
-
-        uint256 baseBalance = buffer.getBaseBalance();
-        uint256 wrappedBalance = buffer.getWrappedBalance();
-
-        removedBaseBalance = (baseBalance * sharesToRemove) / totalShares;
-        removedWrappedBalance = (wrappedBalance * sharesToRemove) / totalShares;
-
-        _bufferLpShares[IERC20(wrappedToken)][sharesOwner] -= sharesToRemove;
-        _bufferTotalShares[IERC20(wrappedToken)] -= sharesToRemove;
-
-        buffer = buffer.setBaseBalance(buffer.getBaseBalance() - removedBaseBalance);
-        buffer = buffer.setWrappedBalance(buffer.getWrappedBalance() - removedWrappedBalance);
-
-        _bufferTokenBalances[IERC20(wrappedToken)] = buffer;
-
-        _supplyCredit(IERC20(baseToken), removedBaseBalance);
-        _supplyCredit(wrappedToken, removedWrappedBalance);
     }
 
     /*******************************************************************************

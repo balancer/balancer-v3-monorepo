@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { IVault } from "./IVault.sol";
@@ -190,6 +191,42 @@ interface IVaultAdmin {
      * @dev The caller must be allowed by the current Authorizer to do this.
      */
     function disableVaultBuffers() external;
+
+    /**
+     * @notice Adds liquidity to a buffer of yield-bearing tokens (linear pools embedded in the vault).
+     *
+     * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
+     * @param amountBaseRaw Amount of base tokens that will be deposited into the buffer
+     * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
+     * @param bufferSharesOwner Address of contract that will own the deposited liquidity. Only
+     *        this contract will be able to remove liquidity from the buffer
+     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in base token amounts
+     *         (it is the BPT of vault's internal linear pools)
+     */
+    function addLiquidityBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountBaseRaw,
+        uint256 amountWrappedRaw,
+        address bufferSharesOwner
+    ) external returns (uint256 issuedShares);
+
+    /**
+     * @notice Removes liquidity from a buffer of yield-bearing token (linear pools embedded in the vault).
+     * Only proportional exits are supported. This call is authenticated, so only members (routers) approved by the
+     * DAO can remove the liquidity of a buffer, since the original caller cannot be identified.
+     *
+     * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
+     * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
+     *        total shares
+     * @param sharesOwner Address of contract that owns the deposited liquidity.
+     * @return removedBaseBalanceRaw Amount of base tokens returned to the user
+     * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
+     */
+    function removeLiquidityBuffer(
+        IERC4626 wrappedToken,
+        uint256 sharesToRemove,
+        address sharesOwner
+    ) external returns (uint256 removedBaseBalanceRaw, uint256 removedWrappedBalanceRaw);
 
     /*******************************************************************************
                                 Authentication

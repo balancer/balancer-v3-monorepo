@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -31,6 +32,7 @@ import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
+import { BufferPackedTokenBalance } from "./lib/BufferPackedBalance.sol";
 
 /**
  * @dev Bytecode extension for the Vault containing permissioned functions. Complementary to the `VaultExtension`.
@@ -49,6 +51,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using SafeERC20 for IERC20;
     using VaultStateLib for VaultStateBits;
+    using BufferPackedTokenBalance for bytes32;
 
     IVault private immutable _vault;
 
@@ -437,7 +440,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /*******************************************************************************
-                                Buffers
+                                Yield-bearing tokens buffers
     *******************************************************************************/
     /// @inheritdoc IVaultAdmin
     function enableVaultBuffers() external authenticate onlyVault {
@@ -451,6 +454,84 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         VaultState memory vaultState = _vaultState.toVaultState();
         vaultState.isBufferPaused = true;
         _vaultState = VaultStateLib.fromVaultState(vaultState);
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function addLiquidityBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountBase,
+        uint256 amountWrapped,
+        address sharesOwner
+    ) public withOpenTab whenVaultBufferNotPaused nonReentrant returns (uint256 issuedShares) {
+        address baseToken = wrappedToken.asset();
+        if (_bufferAssets[IERC20(address(wrappedToken))] == address(0)) {
+            _bufferAssets[IERC20(address(wrappedToken))] = baseToken;
+        } else if (_bufferAssets[IERC20(address(wrappedToken))] != baseToken) {
+            // Asset was changed since the first bufferAddLiquidity call
+            revert WrongWrappedTokenAsset(address(wrappedToken));
+        }
+
+        bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
+
+        // amount of shares to issue is the total base token that the user is depositing
+        issuedShares = wrappedToken.convertToAssets(amountWrapped) + amountBase;
+
+        // Adds the issued shares to the total shares of the liquidity pool
+        _bufferLpShares[IERC20(wrappedToken)][sharesOwner] += issuedShares;
+        _bufferTotalShares[IERC20(wrappedToken)] += issuedShares;
+
+        buffer = buffer.setBaseBalance(buffer.getBaseBalance() + amountBase);
+        buffer = buffer.setWrappedBalance(buffer.getWrappedBalance() + amountWrapped);
+
+        _bufferTokenBalances[IERC20(wrappedToken)] = buffer;
+
+        _takeDebt(IERC20(baseToken), amountBase);
+        _takeDebt(wrappedToken, amountWrapped);
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function removeLiquidityBuffer(
+        IERC4626 wrappedToken,
+        uint256 sharesToRemove,
+        address sharesOwner
+    )
+    public
+    withOpenTab
+    whenVaultBufferNotPaused
+    nonReentrant
+    authenticate
+    returns (uint256 removedBaseBalance, uint256 removedWrappedBalance)
+    {
+        address baseToken = wrappedToken.asset();
+        if (_bufferAssets[IERC20(address(wrappedToken))] != baseToken) {
+            // Asset was changed since the first bufferAddLiquidity call
+            revert WrongWrappedTokenAsset(address(wrappedToken));
+        }
+
+        bytes32 buffer = _bufferTokenBalances[IERC20(wrappedToken)];
+
+        uint256 ownerShares = _bufferLpShares[IERC20(wrappedToken)][sharesOwner];
+        if (sharesToRemove > ownerShares) {
+            revert NotEnoughBufferShares();
+        }
+        uint256 totalShares = _bufferTotalShares[IERC20(wrappedToken)];
+
+        uint256 baseBalance = buffer.getBaseBalance();
+        uint256 wrappedBalance = buffer.getWrappedBalance();
+
+        removedBaseBalance = (baseBalance * sharesToRemove) / totalShares;
+        removedWrappedBalance = (wrappedBalance * sharesToRemove) / totalShares;
+
+        _bufferLpShares[IERC20(wrappedToken)][sharesOwner] -= sharesToRemove;
+        _bufferTotalShares[IERC20(wrappedToken)] -= sharesToRemove;
+
+        buffer = buffer.setBaseBalance(buffer.getBaseBalance() - removedBaseBalance);
+        buffer = buffer.setWrappedBalance(buffer.getWrappedBalance() - removedWrappedBalance);
+
+        _bufferTokenBalances[IERC20(wrappedToken)] = buffer;
+
+        _supplyCredit(IERC20(baseToken), removedBaseBalance);
+        _supplyCredit(wrappedToken, removedWrappedBalance);
     }
 
     /*******************************************************************************

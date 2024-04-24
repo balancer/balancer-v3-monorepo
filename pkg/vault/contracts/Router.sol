@@ -16,10 +16,12 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { RouterCommon } from "./RouterCommon.sol";
 
@@ -665,6 +667,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 sharesToRemove,
         address sharesOwner
     ) external returns (uint256, uint256) {
+        if (sharesOwner != msg.sender) {
+            revert IAuthentication.SenderNotAllowed();
+        }
+
         return
             abi.decode(
                 _vault.lock(
