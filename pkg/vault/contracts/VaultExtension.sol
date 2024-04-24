@@ -650,7 +650,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // amount of shares to issue is the total base token that the user is depositing
         issuedShares = wrappedToken.convertToAssets(amountWrapped) + amountBase;
 
-        //TODO: could potentially burn a minimum amount of shares if the supply is 0;
+        // Adds the issued shares to the total shares of the liquidity pool
         _bufferLpShares[IERC20(wrappedToken)][sharesOwner] += issuedShares;
         _bufferTotalShares[IERC20(wrappedToken)] += issuedShares;
 

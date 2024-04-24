@@ -617,8 +617,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     /// @inheritdoc IRouter
     function addLiquidityBuffer(
         IERC4626 wrappedToken,
-        uint256 amountUnderlying,
-        uint256 amountWrapped,
+        uint256 amountBaseRaw,
+        uint256 amountWrappedRaw,
         address sharesOwner
     ) external returns (uint256 issuedShares) {
         return
@@ -627,8 +627,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                     abi.encodeWithSelector(
                         Router.addLiquidityBufferHook.selector,
                         wrappedToken,
-                        amountUnderlying,
-                        amountWrapped,
+                        amountBaseRaw,
+                        amountWrappedRaw,
                         sharesOwner
                     )
                 ),
@@ -638,13 +638,13 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
     function addLiquidityBufferHook(
         IERC4626 wrappedToken,
-        uint256 amountUnderlying,
-        uint256 amountWrapped,
+        uint256 amountBaseRaw,
+        uint256 amountWrappedRaw,
         address sharesOwner
     ) external nonReentrant onlyVault returns (uint256 issuedShares) {
-        issuedShares = _vault.addLiquidityBuffer(wrappedToken, amountUnderlying, amountWrapped, sharesOwner);
-        _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountUnderlying, false);
-        _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrapped, false);
+        issuedShares = _vault.addLiquidityBuffer(wrappedToken, amountBaseRaw, amountWrappedRaw, sharesOwner);
+        _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountBaseRaw, false);
+        _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrappedRaw, false);
     }
 
     /// @inheritdoc IRouter
@@ -652,7 +652,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
         address sharesOwner
-    ) external returns (uint256 removedBaseBalance, uint256 removedWrappedBalance) {
+    ) external returns (uint256, uint256) {
         return
             abi.decode(
                 _vault.lock(
@@ -671,14 +671,14 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
         address sharesOwner
-    ) external nonReentrant onlyVault returns (uint256 removedBaseBalance, uint256 removedWrappedBalance) {
-        (removedBaseBalance, removedWrappedBalance) = _vault.removeLiquidityBuffer(
+    ) external nonReentrant onlyVault returns (uint256 removedBaseBalanceRaw, uint256 removedWrappedBalanceRaw) {
+        (removedBaseBalanceRaw, removedWrappedBalanceRaw) = _vault.removeLiquidityBuffer(
             wrappedToken,
             sharesToRemove,
             sharesOwner
         );
-        _sendTokenOut(sharesOwner, IERC20(wrappedToken.asset()), removedBaseBalance, false);
-        _sendTokenOut(sharesOwner, IERC20(address(wrappedToken)), removedWrappedBalance, false);
+        _sendTokenOut(sharesOwner, IERC20(wrappedToken.asset()), removedBaseBalanceRaw, false);
+        _sendTokenOut(sharesOwner, IERC20(address(wrappedToken)), removedWrappedBalanceRaw, false);
     }
 
     /*******************************************************************************

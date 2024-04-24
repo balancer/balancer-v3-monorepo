@@ -156,16 +156,17 @@ interface IRouter {
     /**
      * @notice Adds liquidity to a buffer of yield-bearing tokens (linear pools embedded in the vault).
      * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
-     * @param amountUnderlying Amount of base tokens that will be deposited into the buffer
-     * @param amountWrapped Amount of wrapped tokens that will be deposited into the buffer
+     * @param amountBaseRaw Amount of base tokens that will be deposited into the buffer
+     * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
      * @param sharesOwner Address of contract that will own the deposited liquidity. Only
      *        this contract will be able to remove liquidity from the buffer
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in base token amounts
+     *         (it is the BPT of vault's internal linear pools)
      */
     function addLiquidityBuffer(
         IERC4626 wrappedToken,
-        uint256 amountUnderlying,
-        uint256 amountWrapped,
+        uint256 amountBaseRaw,
+        uint256 amountWrappedRaw,
         address sharesOwner
     ) external returns (uint256 issuedShares);
 
@@ -285,18 +286,20 @@ interface IRouter {
 
     /**
      * @notice Removes liquidity from a buffer of yield-bearing token (linear pools embedded in the vault).
+     *         Only proportional exits are supported.
+     *
      * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
      *        total shares
      * @param sharesOwner Address of contract that owns the deposited liquidity.
-     * @return removedBaseBalance Amount of base tokens returned to the user
-     * @return removedWrappedBalance Amount of wrapped tokens returned to the user
+     * @return removedBaseBalanceRaw Amount of base tokens returned to the user
+     * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
      */
     function removeLiquidityBuffer(
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
         address sharesOwner
-    ) external returns (uint256 removedBaseBalance, uint256 removedWrappedBalance);
+    ) external returns (uint256 removedBaseBalanceRaw, uint256 removedWrappedBalanceRaw);
 
     /***************************************************************************
                                        Swaps

@@ -328,6 +328,7 @@ interface IVaultExtension {
      * @param bufferSharesOwner Address of contract that will own the deposited liquidity. Only
      *        this contract will be able to remove liquidity from the buffer
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in base token amounts
+     *         (it is the BPT of vault's internal linear pools)
      */
     function addLiquidityBuffer(
         IERC4626 wrappedToken,
@@ -338,6 +339,7 @@ interface IVaultExtension {
 
     /**
      * @notice Removes liquidity from a buffer of yield-bearing token (linear pools embedded in the vault).
+     *         Only proportional exits are supported.
      *
      * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
