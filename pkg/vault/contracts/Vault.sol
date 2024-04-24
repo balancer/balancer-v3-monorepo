@@ -277,7 +277,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.tokenRates[vars.indexOut]
         );
 
-        emit Swap(params.pool, params.tokenIn, params.tokenOut, amountIn, amountOut, swapFeeAmountRaw);
+        emit Swap(
+            params.pool,
+            params.tokenIn,
+            params.tokenOut,
+            amountIn,
+            amountOut,
+            vars.swapFeePercentage,
+            swapFeeAmountRaw
+        );
     }
 
     function _buildPoolSwapParams(
