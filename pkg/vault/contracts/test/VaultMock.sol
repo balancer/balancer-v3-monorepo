@@ -411,4 +411,30 @@ contract VaultMock is IVaultMainMock, Vault {
     function manualSetNonZeroDeltaCount(uint256 deltaCount) external {
         _nonzeroDeltaCount().tstore(deltaCount);
     }
+
+    function manualInternalSwap(
+        SwapParams memory params,
+        SwapLocals memory vars,
+        PoolData memory poolData,
+        VaultState memory vaultState
+    )
+        external
+        returns (
+            uint256 amountCalculated,
+            uint256 amountIn,
+            uint256 amountOut,
+            SwapParams memory,
+            SwapLocals memory,
+            PoolData memory,
+            VaultState memory
+        )
+    {
+        (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData, vaultState);
+
+        return (amountCalculated, amountIn, amountOut, params, vars, poolData, vaultState);
+    }
+
+    function manualSetPoolCreatorFees(address pool, IERC20 token, uint256 value) external {
+        _poolCreatorFees[pool].set(token, value);
+    }
 }

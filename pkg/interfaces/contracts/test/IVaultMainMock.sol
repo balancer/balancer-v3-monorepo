@@ -123,4 +123,23 @@ interface IVaultMainMock {
     function manualSetAccountDelta(IERC20 token, address locker, int256 delta) external;
 
     function manualSetNonZeroDeltaCount(uint256 deltaCount) external;
+
+    function manualInternalSwap(
+        SwapParams memory params,
+        SwapLocals memory vars,
+        PoolData memory poolData,
+        VaultState memory vaultState
+    )
+        external
+        returns (
+            uint256 amountCalculated,
+            uint256 amountIn,
+            uint256 amountOut,
+            SwapParams memory,
+            SwapLocals memory,
+            PoolData memory,
+            VaultState memory
+        );
+
+    function manualSetPoolCreatorFees(address pool, IERC20 token, uint256 value) external;
 }
