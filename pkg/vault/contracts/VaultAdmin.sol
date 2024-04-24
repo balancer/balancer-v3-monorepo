@@ -495,12 +495,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         uint256 sharesToRemove,
         address sharesOwner
     )
-    public
-    withOpenTab
-    whenVaultBufferNotPaused
-    nonReentrant
-    authenticate
-    returns (uint256 removedBaseBalance, uint256 removedWrappedBalance)
+        public
+        withOpenTab
+        whenVaultBufferNotPaused
+        nonReentrant
+        authenticate
+        returns (uint256 removedBaseBalance, uint256 removedWrappedBalance)
     {
         address baseToken = wrappedToken.asset();
         if (_bufferAssets[IERC20(address(wrappedToken))] != baseToken) {
