@@ -62,7 +62,11 @@ contract StableMathTest is Test {
     }
 
     function boundAmountIn(uint256 rawAmountIn, uint256 balanceIn) internal pure returns (uint256 amountIn) {
-        amountIn = bound(rawAmountIn, FixedPoint.mulDown(balanceIn, MIN_IN_RATIO), FixedPoint.mulDown(balanceIn, MAX_IN_RATIO));
+        amountIn = bound(
+            rawAmountIn,
+            FixedPoint.mulDown(balanceIn, MIN_IN_RATIO),
+            FixedPoint.mulDown(balanceIn, MAX_IN_RATIO)
+        );
     }
 
     function boundAmountsIn(
@@ -76,7 +80,11 @@ contract StableMathTest is Test {
     }
 
     function boundAmountOut(uint256 rawAmountOut, uint256 balanceOut) internal pure returns (uint256 amountOut) {
-        amountOut = bound(rawAmountOut, FixedPoint.mulDown(balanceOut, MIN_OUT_RATIO), FixedPoint.mulDown(balanceOut, MAX_OUT_RATIO));
+        amountOut = bound(
+            rawAmountOut,
+            FixedPoint.mulDown(balanceOut, MIN_OUT_RATIO),
+            FixedPoint.mulDown(balanceOut, MAX_OUT_RATIO)
+        );
     }
 
     function boundAmountsOut(
