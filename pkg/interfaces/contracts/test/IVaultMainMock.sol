@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 
 import "../vault/VaultTypes.sol";
 import { IRateProvider } from "../vault/IRateProvider.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IBasePool } from "../vault/IBasePool.sol";
 
 interface IVaultMainMock {
     function getPoolFactoryMock() external view returns (address);
