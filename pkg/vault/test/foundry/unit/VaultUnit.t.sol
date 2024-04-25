@@ -14,6 +14,7 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
@@ -203,7 +204,7 @@ contract VaultUnitTest is BaseVaultTest {
 
     // #endregion
 
-    // #region _getSwapFeePercentage
+    // #region Other tests
     function testGetSwapFeePercentageIfHasDynamicSwapFee() public {
         PoolConfig memory config;
         config.hasDynamicSwapFee = true;
@@ -222,9 +223,6 @@ contract VaultUnitTest is BaseVaultTest {
         );
     }
 
-    // #endregion
-
-    // #region _buildPoolSwapParams
     function testBuildPoolSwapParams() public {
         SwapParams memory params;
         params.kind = SwapKind.EXACT_IN;
@@ -255,9 +253,135 @@ contract VaultUnitTest is BaseVaultTest {
         assertEq(poolSwapParams.userData, params.userData, "Unexpected userData");
     }
 
+    function testComputeAndChargeProtocolFees() public {
+        (, , PoolData memory poolData, ) = _makeParams(SwapKind.EXACT_IN, amountGivenRaw, 0, 5e16, 10e16);
+
+        uint swapFeeAmountScaled18 = 1e18;
+        uint protocolSwapFeePercentage_ = 10e16;
+
+        uint expectSwapFeeAmountScaled18 = swapFeeAmountScaled18
+            .mulUp(protocolSwapFeePercentage_)
+            .toRawUndoRateRoundDown(poolData.decimalScalingFactors[0], poolData.tokenRates[0]);
+
+        vm.expectEmit();
+        emit IVaultEvents.ProtocolSwapFeeCharged(POOL, address(TOKEN_IN), expectSwapFeeAmountScaled18);
+        uint256 protocolSwapFeeAmountRaw = vault.manualComputeAndChargeProtocolFees(
+            poolData,
+            swapFeeAmountScaled18,
+            protocolSwapFeePercentage_,
+            POOL,
+            TOKEN_IN,
+            0
+        );
+
+        assertEq(protocolSwapFeeAmountRaw, expectSwapFeeAmountScaled18, "Unexpected protocolSwapFeeAmountRaw");
+        assertEq(
+            vault.getProtocolFees(address(TOKEN_IN)),
+            protocolSwapFeeAmountRaw,
+            "Unexpected protocol fees in storage"
+        );
+    }
+
+    function testComputeAndChargeProtocolFeesIfPoolIsInRecoveryMode() public {
+        PoolData memory poolData;
+        poolData.poolConfig.isPoolInRecoveryMode = true;
+        uint256 protocolSwapFeeAmountRaw = vault.manualComputeAndChargeProtocolFees(
+            poolData,
+            1e18,
+            10e16,
+            POOL,
+            TOKEN_IN,
+            0
+        );
+
+        assertEq(protocolSwapFeeAmountRaw, 0, "Unexpected protocolSwapFeeAmountRaw");
+        assertEq(vault.getProtocolFees(address(TOKEN_IN)), 0, "Unexpected protocol fees in storage");
+    }
+
+    function testComputeAndChargeProtocolAndCreatorFees() public {
+        uint256 initVault = 10e18;
+        vault.manualSetPoolCreatorFees(POOL, TOKEN_IN, initVault);
+
+        (, , PoolData memory poolData, ) = _makeParams(SwapKind.EXACT_IN, amountGivenRaw, 0, 5e16, 10e16);
+
+        uint swapFeeAmountScaled18 = 1e18;
+        uint protocolSwapFeePercentage_ = 5e16;
+        uint creatorFeePercentage = 5e16;
+
+        uint expectSwapFeeAmountScaled18 = swapFeeAmountScaled18
+            .mulUp(protocolSwapFeePercentage_)
+            .toRawUndoRateRoundDown(poolData.decimalScalingFactors[0], poolData.tokenRates[0]);
+
+        uint expectCreatorFeeAmountRaw = (swapFeeAmountScaled18 - expectSwapFeeAmountScaled18)
+            .mulUp(creatorFeePercentage)
+            .toRawUndoRateRoundDown(poolData.decimalScalingFactors[0], poolData.tokenRates[0]);
+
+        vm.expectEmit();
+        emit IVaultEvents.ProtocolSwapFeeCharged(POOL, address(TOKEN_IN), expectSwapFeeAmountScaled18);
+
+        vm.expectEmit();
+        emit IVaultEvents.PoolCreatorFeeCharged(POOL, address(TOKEN_IN), expectCreatorFeeAmountRaw);
+
+        (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
+            .manualComputeAndChargeProtocolAndCreatorFees(
+                poolData,
+                swapFeeAmountScaled18,
+                protocolSwapFeePercentage_,
+                creatorFeePercentage,
+                POOL,
+                TOKEN_IN,
+                0
+            );
+
+        assertEq(protocolSwapFeeAmountRaw, expectSwapFeeAmountScaled18, "Unexpected protocolSwapFeeAmountRaw");
+        assertEq(creatorSwapFeeAmountRaw, expectCreatorFeeAmountRaw, "Unexpected creatorSwapFeeAmountRaw");
+        assertEq(
+            vault.getPoolCreatorFees(POOL, TOKEN_IN),
+            initVault + creatorSwapFeeAmountRaw,
+            "Unexpected creator fees in storage"
+        );
+    }
+
     // #endregion
 
     // #region Helpers
+    function _makeParams(
+        SwapKind kind,
+        uint256 amountGivenRaw_,
+        uint256 limitRaw,
+        uint256 swapFeePercentage_,
+        uint256 poolCreatorFeePercentage_
+    )
+        internal
+        returns (
+            SwapParams memory params,
+            SwapLocals memory vars,
+            PoolData memory poolData,
+            VaultState memory vaultState
+        )
+    {
+        params = SwapParams({
+            kind: kind,
+            pool: POOL,
+            tokenIn: TOKEN_IN,
+            tokenOut: TOKEN_OUT,
+            amountGivenRaw: amountGivenRaw_,
+            limitRaw: limitRaw,
+            userData: new bytes(0)
+        });
+
+        vars.indexIn = 0;
+        vars.indexOut = 1;
+
+        poolData.decimalScalingFactors = decimalScalingFactors;
+        poolData.tokenRates = tokenRates;
+        poolData.balancesRaw = initialBalances;
+
+        vars.swapFeePercentage = swapFeePercentage_;
+        vaultState.protocolSwapFeePercentage = swapFeePercentage_;
+        poolData.poolConfig.poolCreatorFeePercentage = poolCreatorFeePercentage_;
+    }
+
     function _checkSwapExactInResult(
         uint256 mockedAmountCalculatedScaled18_,
         uint256 amountGivenRaw_,
@@ -387,6 +511,10 @@ contract VaultUnitTest is BaseVaultTest {
         assertEq(vault.getTokenDelta(TOKEN_OUT), -int256(amountOut), "Unexpected tokenOut delta");
     }
 
+    function _checkComputeAndChargeProtocolAndCreatorFees() internal {
+        // TODO
+    }
+
     function _mockOnSwap(
         uint256 mockedAmountCalculatedScaled18_,
         SwapParams memory params,
@@ -409,43 +537,6 @@ contract VaultUnitTest is BaseVaultTest {
             ),
             abi.encodePacked(mockedAmountCalculatedScaled18_)
         );
-    }
-
-    function _makeParams(
-        SwapKind kind,
-        uint256 amountGivenRaw_,
-        uint256 limitRaw,
-        uint256 swapFeePercentage_,
-        uint256 poolCreatorFeePercentage_
-    )
-        internal
-        returns (
-            SwapParams memory params,
-            SwapLocals memory vars,
-            PoolData memory poolData,
-            VaultState memory vaultState
-        )
-    {
-        params = SwapParams({
-            kind: kind,
-            pool: POOL,
-            tokenIn: TOKEN_IN,
-            tokenOut: TOKEN_OUT,
-            amountGivenRaw: amountGivenRaw_,
-            limitRaw: limitRaw,
-            userData: new bytes(0)
-        });
-
-        vars.indexIn = 0;
-        vars.indexOut = 1;
-
-        poolData.decimalScalingFactors = decimalScalingFactors;
-        poolData.tokenRates = tokenRates;
-        poolData.balancesRaw = initialBalances;
-
-        vars.swapFeePercentage = swapFeePercentage_;
-        vaultState.protocolSwapFeePercentage = swapFeePercentage_;
-        poolData.poolConfig.poolCreatorFeePercentage = poolCreatorFeePercentage_;
     }
     // #endregion
 }

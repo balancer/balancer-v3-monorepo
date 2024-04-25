@@ -437,4 +437,44 @@ contract VaultMock is IVaultMainMock, Vault {
     ) external view returns (IBasePool.PoolSwapParams memory) {
         return _buildPoolSwapParams(params, vars, poolData);
     }
+
+    function manualComputeAndChargeProtocolFees(
+        PoolData memory poolData,
+        uint256 swapFeeAmountScaled18,
+        uint256 protocolSwapFeePercentage,
+        address pool,
+        IERC20 token,
+        uint256 index
+    ) external returns (uint256 protocolSwapFeeAmountRaw) {
+        return
+            _computeAndChargeProtocolFees(
+                poolData,
+                swapFeeAmountScaled18,
+                protocolSwapFeePercentage,
+                pool,
+                token,
+                index
+            );
+    }
+
+    function manualComputeAndChargeProtocolAndCreatorFees(
+        PoolData memory poolData,
+        uint256 swapFeeAmountScaled18,
+        uint256 protocolSwapFeePercentage,
+        uint256 creatorFeePercentage,
+        address pool,
+        IERC20 token,
+        uint256 index
+    ) external returns (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) {
+        return
+            _computeAndChargeProtocolAndCreatorFees(
+                poolData,
+                swapFeeAmountScaled18,
+                protocolSwapFeePercentage,
+                creatorFeePercentage,
+                pool,
+                token,
+                index
+            );
+    }
 }
