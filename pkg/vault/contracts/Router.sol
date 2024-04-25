@@ -44,7 +44,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external payable returns (uint256 bptAmountOut) {
         return
             abi.decode(
-                _vault.lock{ value: msg.value }(
+                _vault.unlock{ value: msg.value }(
                     abi.encodeWithSelector(
                         Router.initializeHook.selector,
                         InitializeHookParams({
@@ -115,7 +115,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn) {
         (amountsIn, , ) = abi.decode(
-            _vault.lock{ value: msg.value }(
+            _vault.unlock{ value: msg.value }(
                 abi.encodeWithSelector(
                     Router.addLiquidityHook.selector,
                     AddLiquidityHookParams({
@@ -142,7 +142,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         bytes memory userData
     ) external payable returns (uint256 bptAmountOut) {
         (, bptAmountOut, ) = abi.decode(
-            _vault.lock{ value: msg.value }(
+            _vault.unlock{ value: msg.value }(
                 abi.encodeWithSelector(
                     Router.addLiquidityHook.selector,
                     AddLiquidityHookParams({
@@ -176,7 +176,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         );
 
         (uint256[] memory amountsIn, , ) = abi.decode(
-            _vault.lock{ value: msg.value }(
+            _vault.unlock{ value: msg.value }(
                 abi.encodeWithSelector(
                     Router.addLiquidityHook.selector,
                     AddLiquidityHookParams({
@@ -206,7 +206,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         return
             abi.decode(
-                _vault.lock{ value: msg.value }(
+                _vault.unlock{ value: msg.value }(
                     abi.encodeWithSelector(
                         Router.addLiquidityHook.selector,
                         AddLiquidityHookParams({
@@ -288,7 +288,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         bytes memory userData
     ) external payable returns (uint256[] memory amountsOut) {
         (, amountsOut, ) = abi.decode(
-            _vault.lock(
+            _vault.unlock(
                 abi.encodeWithSelector(
                     Router.removeLiquidityHook.selector,
                     RemoveLiquidityHookParams({
@@ -322,7 +322,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         );
 
         (, uint256[] memory amountsOut, ) = abi.decode(
-            _vault.lock(
+            _vault.unlock(
                 abi.encodeWithSelector(
                     Router.removeLiquidityHook.selector,
                     RemoveLiquidityHookParams({
@@ -354,7 +354,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         (uint256[] memory minAmountsOut, ) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, exactAmountOut);
 
         (bptAmountIn, , ) = abi.decode(
-            _vault.lock(
+            _vault.unlock(
                 abi.encodeWithSelector(
                     Router.removeLiquidityHook.selector,
                     RemoveLiquidityHookParams({
@@ -384,7 +384,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
         return
             abi.decode(
-                _vault.lock(
+                _vault.unlock(
                     abi.encodeWithSelector(
                         Router.removeLiquidityHook.selector,
                         RemoveLiquidityHookParams({
@@ -408,7 +408,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 exactBptAmountIn
     ) external returns (uint256[] memory amountsOut) {
         amountsOut = abi.decode(
-            _vault.lock(
+            _vault.unlock(
                 abi.encodeWithSelector(Router.removeLiquidityRecoveryHook.selector, pool, msg.sender, exactBptAmountIn)
             ),
             (uint256[])
@@ -506,7 +506,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external payable returns (uint256) {
         return
             abi.decode(
-                _vault.lock{ value: msg.value }(
+                _vault.unlock{ value: msg.value }(
                     abi.encodeWithSelector(
                         Router.swapSingleTokenHook.selector,
                         SwapSingleTokenHookParams({
@@ -540,7 +540,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external payable returns (uint256) {
         return
             abi.decode(
-                _vault.lock{ value: msg.value }(
+                _vault.unlock{ value: msg.value }(
                     abi.encodeWithSelector(
                         Router.swapSingleTokenHook.selector,
                         SwapSingleTokenHookParams({

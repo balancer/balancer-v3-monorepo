@@ -61,7 +61,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
     {
         return
             abi.decode(
-                _vault.lock{ value: msg.value }(
+                _vault.unlock{ value: msg.value }(
                     abi.encodeWithSelector(
                         BatchRouter.swapExactInHook.selector,
                         SwapExactInHookParams({
@@ -86,7 +86,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
     ) external payable returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
         return
             abi.decode(
-                _vault.lock{ value: msg.value }(
+                _vault.unlock{ value: msg.value }(
                     abi.encodeWithSelector(
                         BatchRouter.swapExactOutHook.selector,
                         SwapExactOutHookParams({
