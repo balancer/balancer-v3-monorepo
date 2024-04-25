@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
+
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -142,7 +142,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setSharesToReturn(waDAI.previewDeposit(_wrapAmount) - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmountOnDeposit.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapWrappedAmount.selector, address(waDAI)));
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -158,7 +158,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setSharesToReturn(waDAI.previewDeposit(_wrapAmount) + 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmountOnDeposit.selector, address(waDAI)));
+        // Do not revert since more shares were deposited into the vault
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -174,7 +174,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAssetsToConsume(_wrapAmount - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongBaseAmountOnDeposit.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapBaseAmount.selector, address(waDAI)));
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -245,7 +245,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setSharesToReturn(_wrapAmount - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmountOnDeposit.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapWrappedAmount.selector, address(waDAI)));
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -261,7 +261,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setSharesToReturn(_wrapAmount + 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmountOnDeposit.selector, address(waDAI)));
+        // Do not revert since more shares were deposited into the vault
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -277,7 +277,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAssetsToConsume(_wrapAmount - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongBaseAmountOnDeposit.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapBaseAmount.selector, address(waDAI)));
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -348,7 +348,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setSharesToConsume(_wrapAmount - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmountOnWithdraw.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapWrappedAmount.selector, address(waDAI)));
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -366,7 +366,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.startPrank(lp);
         // Call addLiquidity so vault has enough liquidity to cover extra wrapped amount
         router.addLiquidityBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmountOnWithdraw.selector, address(waDAI)));
+        // Do not revert since more shares were consumed from a malicious token, but the right amount of assets
+        // returned
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
     }
@@ -383,7 +384,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAssetsToReturn(waDAI.previewRedeem(_wrapAmount) + 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongBaseAmountOnWithdraw.selector, address(waDAI)));
+        // Do not revert since more assets were deposited into the vault
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -399,7 +400,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAssetsToReturn(waDAI.previewRedeem(_wrapAmount) - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongBaseAmountOnWithdraw.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapBaseAmount.selector, address(waDAI)));
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -444,7 +445,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setSharesToConsume(waDAI.previewWithdraw(_wrapAmount) - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmountOnWithdraw.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapWrappedAmount.selector, address(waDAI)));
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -459,9 +460,13 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         waDAI.setSharesToConsume(waDAI.previewWithdraw(_wrapAmount) + 1);
 
-        vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmountOnWithdraw.selector, address(waDAI)));
+        vm.startPrank(lp);
+        // Call addLiquidity so vault has enough liquidity to cover extra wrapped amount
+        router.addLiquidityBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
+        // Do not revert since more shares were consumed from a malicious token, but the right amount of assets
+        // returned
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+        vm.stopPrank();
     }
 
     function testWithdrawReturnsMoreAssets() public {
@@ -476,7 +481,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAssetsToReturn(_wrapAmount + 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongBaseAmountOnWithdraw.selector, address(waDAI)));
+        // Do not revert since more assets were deposited into the vault
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -492,7 +497,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAssetsToReturn(_wrapAmount - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongBaseAmountOnWithdraw.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapBaseAmount.selector, address(waDAI)));
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
     }
 

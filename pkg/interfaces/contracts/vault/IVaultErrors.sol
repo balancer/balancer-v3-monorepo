@@ -283,17 +283,11 @@ interface IVaultErrors {
     /// @dev The wrapped token asset does not match the base token of the swap path.
     error WrongWrappedTokenAsset(address token);
 
-    /// @dev The wrappedToken deposit or mint function did not deposit the expected amount of base tokens.
-    error WrongBaseAmountOnDeposit(address wrappedToken);
+    /// @dev The wrappedToken wrap/unwrap function did not deposit/return the expected amount of base tokens.
+    error WrongWrapUnwrapBaseAmount(address wrappedToken);
 
-    /// @dev The wrappedToken deposit or mint function did not retrieve the expected amount of wrapped tokens.
-    error WrongWrappedAmountOnDeposit(address wrappedToken);
-
-    /// @dev The wrappedToken redeem or withdraw function did not retrieve the expected amount of base tokens.
-    error WrongBaseAmountOnWithdraw(address wrappedToken);
-
-    /// @dev The wrappedToken redeem or withdraw function did not burn the expected amount of wrapped tokens.
-    error WrongWrappedAmountOnWithdraw(address wrappedToken);
+    /// @dev The wrappedToken wrap/unwrap function did not burn/mint the expected amount of wrapped tokens.
+    error WrongWrapUnwrapWrappedAmount(address wrappedToken);
 
     /// @dev Vault buffers are paused.
     error VaultBuffersArePaused();

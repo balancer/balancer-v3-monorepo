@@ -212,8 +212,10 @@ interface IVaultAdmin {
 
     /**
      * @notice Removes liquidity from a buffer of yield-bearing token (linear pools embedded in the vault).
-     * Only proportional exits are supported. This call is authenticated, so only members (routers) approved by the
-     * DAO can remove the liquidity of a buffer, since the original caller cannot be identified.
+     * Only proportional exits are supported.
+     *
+     * Pre-conditions: sharesOwner is the original msg.sender, it needs to be checked in the router. That's why
+     * this call is authenticated, only routers approved by the DAO can remove the liquidity of a buffer.
      *
      * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
