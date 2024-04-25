@@ -254,7 +254,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     (, uint256 bptAmountOut, ) = _vault.addLiquidity(
                         AddLiquidityParams({
                             pool: step.pool,
-                            to: stepLocals.isLastStep ? params.sender : address(this),
+                            to: stepLocals.isLastStep ? params.sender : address(_vault),
                             maxAmountsIn: exactAmountsIn,
                             minBptAmountOut: minAmountOut,
                             kind: AddLiquidityKind.UNBALANCED,
@@ -274,9 +274,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         stepExactAmountIn = bptAmountOut;
                         // The token in for the next step is the token out of the current step.
                         stepTokenIn = step.tokenOut;
-                        // If this is an intermediate step, we'll need to send it back to the vault
-                        // to get credit for the BPT minted in the add liquidity operation.
-                        IERC20(step.pool).safeTransfer(address(_vault), bptAmountOut);
+                        // If this is an intermediate step, BPT is minted to the vault so we just get the credit.
                         _vault.settle(IERC20(step.pool));
                     }
                 } else {
@@ -476,7 +474,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     (stepAmountsIn, , ) = _vault.addLiquidity(
                         AddLiquidityParams({
                             pool: step.pool,
-                            to: stepLocals.isFirstStep ? params.sender : address(this),
+                            to: stepLocals.isFirstStep ? params.sender : address(_vault),
                             maxAmountsIn: stepAmountsIn,
                             minBptAmountOut: stepExactAmountOut,
                             kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
@@ -498,7 +496,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         // the vault owes the sender to make one less transfer.
                         _currentSwapTokenOutAmounts().tSub(address(step.tokenOut), stepExactAmountOut);
                     } else {
-                        IERC20(step.pool).safeTransfer(address(_vault), stepExactAmountOut);
+                        // If it's not the first step, BPT is minted to the vault so we just get the credit.
                         _vault.settle(IERC20(step.pool));
                     }
                 } else {
