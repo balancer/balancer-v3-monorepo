@@ -985,7 +985,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     .toRawUndoRateRoundDown(poolData.decimalScalingFactors[index], poolData.tokenRates[index]);
 
                 _protocolFees[token] += protocolSwapFeeAmountRaw;
-                emit ProtocolSwapFeeCharged(pool, address(token), protocolSwapFeeAmountRaw);
             }
 
             if (creatorFeePercentage > 0) {
@@ -1000,8 +999,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // created on pool registration).
                 uint256 currentPoolCreatorFee = poolCreatorFees.get(token);
                 poolCreatorFees.set(token, currentPoolCreatorFee + creatorSwapFeeAmountRaw);
-
-                emit PoolCreatorFeeCharged(pool, address(token), creatorSwapFeeAmountRaw);
             }
         }
     }
