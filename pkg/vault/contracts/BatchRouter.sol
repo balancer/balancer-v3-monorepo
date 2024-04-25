@@ -24,6 +24,11 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { RouterCommon } from "./RouterCommon.sol";
 
+struct SwapStepLocals {
+    bool isFirstStep;
+    bool isLastStep;
+}
+
 contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
@@ -158,12 +163,13 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
             _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
 
             for (uint256 j = 0; j < path.steps.length; ++j) {
-                bool isFirstStep = (j == 0);
-                bool isLastStep = (j == path.steps.length - 1);
+                SwapStepLocals memory stepLocals;
+                stepLocals.isLastStep = (j == path.steps.length - 1);
+                stepLocals.isFirstStep = (j == 0);
                 uint256 minAmountOut;
 
                 // minAmountOut only applies to the last step.
-                if (isLastStep) {
+                if (stepLocals.isLastStep) {
                     minAmountOut = path.minAmountOut;
                 } else {
                     minAmountOut = 0;
@@ -178,7 +184,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     // required amount when performing the operation. These tokens might be the output of a previous
                     // step, in which case the user will have a BPT credit.
 
-                    if (isFirstStep && params.sender != address(this)) {
+                    if (stepLocals.isFirstStep && params.sender != address(this)) {
                         // If this is the first step, the sender must have the tokens. Therefore, we can transfer them
                         // to the router, which acts as an intermediary. If the sender is the router, we just skip this
                         // step (useful for queries).
@@ -225,7 +231,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         })
                     );
 
-                    if (isLastStep) {
+                    if (stepLocals.isLastStep) {
                         // The amount out for the last step of the path should be recorded for the return value, and the
                         // amount for the token should be sent back to the sender later on.
                         pathAmountsOut[i] = amountsOut[tokenIndex];
@@ -248,7 +254,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     (, uint256 bptAmountOut, ) = _vault.addLiquidity(
                         AddLiquidityParams({
                             pool: step.pool,
-                            to: isLastStep ? params.sender : address(this),
+                            to: stepLocals.isLastStep ? params.sender : address(this),
                             maxAmountsIn: exactAmountsIn,
                             minBptAmountOut: minAmountOut,
                             kind: AddLiquidityKind.UNBALANCED,
@@ -256,7 +262,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         })
                     );
 
-                    if (isLastStep) {
+                    if (stepLocals.isLastStep) {
                         // The amount out for the last step of the path should be recorded for the return value.
                         // We do not need to register the amount out in _currentSwapTokenOutAmounts since the BPT
                         // is minted directly to the sender, so this step can be considered settled at this point.
@@ -287,7 +293,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         })
                     );
 
-                    if (isLastStep) {
+                    if (stepLocals.isLastStep) {
                         // The amount out for the last step of the path should be recorded for the return value, and the
                         // amount for the token should be sent back to the sender later on.
                         pathAmountsOut[i] = amountOut;
@@ -365,15 +371,16 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
             // last. The calculated input of step (j) is the exact amount out for step (j - 1).
             for (int256 j = int256(path.steps.length - 1); j >= 0; --j) {
                 SwapPathStep memory step = path.steps[uint256(j)];
-                bool isLastStep = (j == 0);
-                bool isFirstStep = (uint256(j) == path.steps.length - 1);
+                SwapStepLocals memory stepLocals;
+                stepLocals.isLastStep = (j == 0);
+                stepLocals.isFirstStep = (uint256(j) == path.steps.length - 1);
 
                 // These two variables are set at the beginning of the iteration and are used as inputs for
                 // the operation described by the step.
                 uint256 stepMaxAmountIn;
                 IERC20 stepTokenIn;
 
-                if (isFirstStep) {
+                if (stepLocals.isFirstStep) {
                     // The first step in the iteration is the last one in the given array of steps, and it
                     // specifies the output token for the step as well as the exact amount out for that token.
                     // Output amounts are stored to send them later on.
@@ -381,7 +388,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), stepExactAmountOut);
                 }
 
-                if (isLastStep) {
+                if (stepLocals.isLastStep) {
                     // In backwards order, the last step is the first one in the given path.
                     // The given token in and max amount in apply for this step.
                     stepMaxAmountIn = path.maxAmountIn;
@@ -402,7 +409,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     // operation is not known in advance, so we take a flashloan for all the available reserves.
                     // The last step is the one that defines the inputs for this path. The caller should have enough
                     // BPT to burn already if that's the case, so we just skip this step if so.
-                    if (isLastStep == false) {
+                    if (stepLocals.isLastStep == false) {
                         stepMaxAmountIn = _vault.getReservesOf(stepTokenIn);
                         _vault.sendTo(IERC20(step.pool), address(this), stepMaxAmountIn);
                     } else if (params.sender != address(this)) {
@@ -439,7 +446,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         })
                     );
 
-                    if (isLastStep) {
+                    if (stepLocals.isLastStep) {
                         // BPT is burnt instantly, so we don't need to send it to the Vault during settlement.
                         pathAmountsIn[i] = bptAmountIn;
                         _settledTokenAmounts().tAdd(address(stepTokenIn), bptAmountIn);
@@ -469,7 +476,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     (stepAmountsIn, , ) = _vault.addLiquidity(
                         AddLiquidityParams({
                             pool: step.pool,
-                            to: isFirstStep ? params.sender : address(this),
+                            to: stepLocals.isFirstStep ? params.sender : address(this),
                             maxAmountsIn: stepAmountsIn,
                             minBptAmountOut: stepExactAmountOut,
                             kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
@@ -477,7 +484,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         })
                     );
 
-                    if (isLastStep) {
+                    if (stepLocals.isLastStep) {
                         // The amount out for the last step of the path should be recorded for the return value.
                         pathAmountsIn[i] = stepAmountsIn[tokenIndex];
                         _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), stepAmountsIn[tokenIndex]);
@@ -486,7 +493,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     }
 
                     // The first step executed determines the outputs for the path, since this is given out.
-                    if (isFirstStep) {
+                    if (stepLocals.isFirstStep) {
                         // Instead of sending tokens back to the vault, we can just discount it from whatever
                         // the vault owes the sender to make one less transfer.
                         _currentSwapTokenOutAmounts().tSub(address(step.tokenOut), stepExactAmountOut);
@@ -508,7 +515,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         })
                     );
 
-                    if (isLastStep) {
+                    if (stepLocals.isLastStep) {
                         pathAmountsIn[i] = amountIn;
                         _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), amountIn);
                     } else {
