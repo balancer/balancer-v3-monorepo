@@ -1028,10 +1028,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC4626 wrappedToken = IERC4626(params.pool);
         address baseToken = wrappedToken.asset();
 
-        if (
-            _bufferAssets[IERC20(address(wrappedToken))] != address(0) &&
-            _bufferAssets[IERC20(address(wrappedToken))] != baseToken
-        ) {
+        address bufferAsset = _bufferAssets[IERC20(wrappedToken)];
+
+        if (bufferAsset != address(0) && bufferAsset != baseToken) {
             // Asset was changed since the first addLiquidityBuffer call
             revert WrongWrappedTokenAsset(address(wrappedToken));
         }
