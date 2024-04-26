@@ -77,16 +77,45 @@ contract VaultStorage {
     mapping(IERC20 => int256) private __tokenDeltas;
 
     /**
-     * @notice Represents the total reserve of each ERC20 token.
-     * @dev It should be always equal to `token.balanceOf(vault)`, except during `lock`.
+     * @dev The aggregate fee percentage charged on swaps, composed of both the protocol swap fee and creator fee.
+     * It is given by: protocolSwapFeePct + (1 - protocolSwapFeePct) * poolCreatorFeePct (see derivation in TODO).
+     * This will not change during the operation, so cache it in transient storage.
+     */
+    uint256 private __aggregateProtocolSwapFeePercentage;
+
+    /**
+     * @dev Transient storage of the current protocol swap and yield fee percentages (packed into one slot).
+     * This will not change during the operation, and is used to detect whether we need to force collection of
+     * protocol fees on a given pool before charging "new" fees.
+     */
+    bytes32 private __currentProtocolFeePercentages;
+
+    /**
+     * @dev Pool -> Packed bytes32 with current protocol swap and yield fees.
+     * Store the protocol swap and yield fee percentages the last time fees were charged. This is because separation
+     * of protocol and creator fees is deferred until collection, and the protocol fee percentages might have changed
+     * between these times. To avoid retroactive changes, we would ideally force collection of fees before updating
+     * the fee percentage.
+     *
+     * This is fine for pool creator fees, but we cannot force collection on all pools when the protocol swap fee
+     * changes. So we always collect fees based on the "last" value of the percentages. If we are about to charge
+     * protocol fees and notice the percentages have change, force collection of that pool first, then update the
+     * "last" values (i.e., lazy evaluation to ensure the rates on collection are the same as when the fees were
+     * incurred).
+     */
+    mapping(address => bytes32) private _lastProtocolFeePercentages;
+
+    // Pool -> (Token -> fee): protocol fees (swap and creator) accumulated in the Vault for harvest.
+    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _protocolSwapFees;
+
+    // Token -> fee: Protocol yield fees accumulated in the Vault for harvest.
+    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _protocolYieldFees;
+
+    /**
+     * @dev Represents the total reserve of each ERC20 token. It should be always equal to `token.balanceOf(vault)`,
+     * except during `lock`.
      */
     mapping(IERC20 => uint256) internal _reservesOf;
-
-    // Token -> fee: Protocol fees (from both swap and yield) accumulated in the Vault for harvest.
-    mapping(IERC20 => uint256) internal _protocolFees;
-
-    // Pool -> (Token -> fee): pool creator fees (from swap) accumulated in the Vault for harvest.
-    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolCreatorFees;
 
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer internal _authorizer;
@@ -111,24 +140,35 @@ contract VaultStorage {
     // pool -> PoolRoleAccounts (accounts assigned to specific roles; e.g., pauseManager).
     mapping(address => PoolRoleAccounts) internal _poolRoleAccounts;
 
+    // solhint-disable no-inline-assembly
+
     function _openTab() internal pure returns (StorageSlot.BooleanSlotType slot) {
-        // solhint-disable-next-line no-inline-assembly
         assembly {
             slot := __openTab.slot
         }
     }
 
     function _nonzeroDeltaCount() internal pure returns (StorageSlot.Uint256SlotType slot) {
-        // solhint-disable-next-line no-inline-assembly
         assembly {
             slot := __nonzeroDeltaCount.slot
         }
     }
 
     function _tokenDeltas() internal pure returns (TokenDeltaMappingSlotType slot) {
-        // solhint-disable-next-line no-inline-assembly
         assembly {
             slot := __tokenDeltas.slot
+        }
+    }
+
+    function _aggregateProtocolSwapFeePercentage() internal pure returns (StorageSlot.Uint256SlotType slot) {
+        assembly {
+            slot := __aggregateProtocolSwapFeePercentage.slot
+        }
+    }
+
+    function _currentProtocolFeePercentages() internal pure returns (StorageSlot.Bytes32SlotType slot) {
+        assembly {
+            slot := __currentProtocolFeePercentages.slot
         }
     }
 }

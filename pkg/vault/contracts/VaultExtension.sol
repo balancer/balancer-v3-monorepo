@@ -186,8 +186,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         // Retrieve or create the pool's token balances mapping.
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        // Retrieve or create the pool's dev fee mapping.
-        EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
+        // Retrieve or create the pool's protocol swap fee mapping.
+        EnumerableMap.IERC20ToUint256Map storage protocolSwapFees = _protocolSwapFees[pool];
+        // Retrieve or create the pool's protocol yield fee mapping.
+        EnumerableMap.IERC20ToUint256Map storage protocolYieldFees = _protocolYieldFees[pool];
 
         uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
         IERC20 previousToken;
@@ -216,7 +218,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
             // Register the token dev fee with an initial balance of zero.
             // Note: EnumerableMaps require an explicit initial value when creating a key-value pair.
-            poolCreatorFees.set(token, 0);
+            protocolSwapFees.set(token, 0);
+            // Not every token will have a yield fee, but simpler to just initialize all the time.
+            protocolYieldFees.set(token, 0);
 
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
             _poolTokenConfig[pool][token] = tokenData;
@@ -519,11 +523,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function getProtocolFees(address token) external view onlyVault returns (uint256) {
-        return _protocolFees[IERC20(token)];
-    }
-
-    /// @inheritdoc IVaultExtension
     function getStaticSwapFeePercentage(
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (uint256) {
@@ -533,13 +532,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function getStaticSwapFeeManager(address pool) external view withRegisteredPool(pool) onlyVault returns (address) {
         return _poolRoleAccounts[pool].swapFeeManager;
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getPoolCreatorFees(address pool, IERC20 token) external view returns (uint256 poolCreatorFee) {
-        EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
-        uint256 index = poolCreatorFees.indexOf(token);
-        poolCreatorFee = poolCreatorFees.unchecked_valueAt(index);
     }
 
     /// @inheritdoc IVaultExtension
