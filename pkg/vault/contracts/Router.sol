@@ -662,15 +662,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     }
 
     /// @inheritdoc IRouter
-    function removeLiquidityBuffer(
-        IERC4626 wrappedToken,
-        uint256 sharesToRemove,
-        address sharesOwner
-    ) external returns (uint256, uint256) {
-        if (sharesOwner != msg.sender) {
-            revert IAuthentication.SenderNotAllowed();
-        }
-
+    function removeLiquidityBuffer(IERC4626 wrappedToken, uint256 sharesToRemove) external returns (uint256, uint256) {
         return
             abi.decode(
                 _vault.unlock(
@@ -678,7 +670,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         Router.removeLiquidityBufferHook.selector,
                         wrappedToken,
                         sharesToRemove,
-                        sharesOwner
+                        msg.sender
                     )
                 ),
                 (uint256, uint256)

@@ -545,7 +545,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         router.addLiquidityBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultBuffersArePaused.selector));
-        router.removeLiquidityBuffer(IERC4626(address(waDAI)), _wrapAmount, address(lp));
+        router.removeLiquidityBuffer(IERC4626(address(waDAI)), _wrapAmount);
 
         vm.stopPrank();
 

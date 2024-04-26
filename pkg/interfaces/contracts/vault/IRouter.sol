@@ -291,14 +291,12 @@ interface IRouter {
      * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
      *        total shares
-     * @param sharesOwner Address of contract that owns the deposited liquidity.
      * @return removedBaseBalanceRaw Amount of base tokens returned to the user
      * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
      */
     function removeLiquidityBuffer(
         IERC4626 wrappedToken,
-        uint256 sharesToRemove,
-        address sharesOwner
+        uint256 sharesToRemove
     ) external returns (uint256 removedBaseBalanceRaw, uint256 removedWrappedBalanceRaw);
 
     /***************************************************************************
