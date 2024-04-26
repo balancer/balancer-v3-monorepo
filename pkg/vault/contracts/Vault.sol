@@ -1191,6 +1191,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vars.totalWrappedDepositedOrWithdrawn = vars.wrappedBalanceVaultAfter - vars.wrappedBalanceVaultBefore;
 
             if (vars.totalBaseDepositedOrWithdrawn < amountBaseToWrap) {
+                // If this error is thrown, it means the previewDeposit or previewMint had a different result from
+                // the actual operation.
                 revert WrongWrapUnwrapBaseAmount(address(wrappedToken));
             }
             vars.buffer = vars.buffer.setBaseBalance(
@@ -1198,6 +1200,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
 
             if (vars.totalWrappedDepositedOrWithdrawn < vars.amountWrappedExpected) {
+                // If this error is thrown, it means the previewDeposit or previewMint had a different result from
+                // the actual operation.
                 revert WrongWrapUnwrapWrappedAmount(address(wrappedToken));
             }
             vars.buffer = vars.buffer.setWrappedBalance(
@@ -1304,6 +1308,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vars.totalWrappedDepositedOrWithdrawn = vars.wrappedBalanceVaultBefore - vars.wrappedBalanceVaultAfter;
 
             if (vars.totalBaseDepositedOrWithdrawn < vars.amountBaseExpected) {
+                // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result from
+                // the actual operation.
                 revert WrongWrapUnwrapBaseAmount(address(wrappedToken));
             }
             vars.buffer = vars.buffer.setBaseBalance(
@@ -1311,6 +1317,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
 
             if (vars.totalWrappedDepositedOrWithdrawn < amountWrappedToUnwrap) {
+                // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result from
+                // the actual operation.
                 revert WrongWrapUnwrapWrappedAmount(address(wrappedToken));
             }
             vars.buffer = vars.buffer.setWrappedBalance(
