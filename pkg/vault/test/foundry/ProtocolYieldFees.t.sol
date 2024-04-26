@@ -180,11 +180,18 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
             wstethRate
         );
         vars.creatorFeeScaled18 = vars.protocolFeeScaled18.mulDown(creatorYieldFeePercentage);
-        vars.feeScaled18 = (liveBalanceDeltas[wstethIdx] + vars.protocolFeeScaled18 + vars.creatorFeeScaled18).mulDown(yieldFeePercentage);
+        vars.feeScaled18 = (liveBalanceDeltas[wstethIdx] + vars.protocolFeeScaled18 + vars.creatorFeeScaled18).mulDown(
+            yieldFeePercentage
+        );
         vars.expectedProtocolFee = vars.feeScaled18.toRawUndoRateRoundDown(scalingFactors[wstethIdx], wstethRate);
         vars.expectedCreatorFee = vars.expectedProtocolFee.mulDown(creatorYieldFeePercentage);
 
-        assertApproxEqAbs(actualProtocolFee, vars.expectedProtocolFee, 1e3, "Actual protocol fee is not the expected one");
+        assertApproxEqAbs(
+            actualProtocolFee,
+            vars.expectedProtocolFee,
+            1e3,
+            "Actual protocol fee is not the expected one"
+        );
         assertApproxEqAbs(actualCreatorFee, vars.expectedCreatorFee, 1e3, "Actual creator fee is not the expected one");
     }
 
@@ -249,7 +256,12 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         }
     }
 
-    function testYieldFeesOnSwap__Fuzz(uint256 wstethRate, uint256 daiRate, uint256 yieldFeePercentage, uint256 creatorYieldFeePercentage) public {
+    function testYieldFeesOnSwap__Fuzz(
+        uint256 wstethRate,
+        uint256 daiRate,
+        uint256 yieldFeePercentage,
+        uint256 creatorYieldFeePercentage
+    ) public {
         // yield fee 0.000001-20%
         yieldFeePercentage = bound(yieldFeePercentage, 1, 2e6);
         // VaultState stores yieldFeePercentage as a 24 bits variable (from 0 to (2^24)-1, or 0% to ~167%)
@@ -315,7 +327,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         // Dummy swap
         vm.prank(alice);
         if (shouldSnap) {
-            snapStart('swapWithProtocolAndCreatorYieldFees');
+            snapStart("swapWithProtocolAndCreatorYieldFees");
         }
         router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, MAX_UINT256, false, "");
         if (shouldSnap) {
