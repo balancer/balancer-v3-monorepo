@@ -165,7 +165,7 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
     function testBoostedPoolSwapWithinBufferRangeExactIn() public {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount);
 
-        snapStart("boostedPoolSwapExactIn");
+        snapStart("boostedPoolSwapExactIn-vault");
         vm.prank(alice);
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
@@ -177,7 +177,7 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
     function testBoostedPoolSwapWithinBufferRangeExactOut() public {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount);
 
-        snapStart("boostedPoolSwapExactOut");
+        snapStart("boostedPoolSwapExactOut-vault");
         vm.prank(alice);
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
@@ -189,7 +189,7 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
     function testBoostedPoolSwapOutOfBufferRangeExactIn() public {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(tooLargeSwapAmount);
 
-        snapStart("boostedPoolSwapTooLarge-ExactIn");
+        snapStart("boostedPoolSwapTooLarge-ExactIn-vault");
         vm.prank(alice);
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
@@ -201,7 +201,7 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
     function testBoostedPoolSwapOutOfBufferRangeExactOut() public {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(tooLargeSwapAmount);
 
-        snapStart("boostedPoolSwapTooLarge-ExactOut");
+        snapStart("boostedPoolSwapTooLarge-ExactOut-vault");
         vm.prank(alice);
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));

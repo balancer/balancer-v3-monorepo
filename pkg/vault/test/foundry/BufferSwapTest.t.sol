@@ -180,7 +180,7 @@ contract BufferSwapTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount);
 
         vm.prank(alice);
-        snapStart("boostedPoolSwapExactIn");
+        snapStart("boostedPoolSwapExactIn-pool");
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
@@ -192,7 +192,7 @@ contract BufferSwapTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount);
 
         vm.prank(alice);
-        snapStart("boostedPoolSwapExactOut");
+        snapStart("boostedPoolSwapExactOut-pool");
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
@@ -210,7 +210,7 @@ contract BufferSwapTest is BaseVaultTest {
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeSwapHookFailed.selector));
         vm.prank(alice);
-        snapStart("boostedPoolSwapTooLarge");
+        snapStart("boostedPoolSwapTooLarge-pool");
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
     }
@@ -237,7 +237,7 @@ contract BufferSwapTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount * 2);
 
         vm.prank(alice);
-        snapStart("boostedPoolSwapSimpleRebalance");
+        snapStart("boostedPoolSwapSimpleRebalance-pool");
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
@@ -269,7 +269,7 @@ contract BufferSwapTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amountToSwap);
 
         vm.prank(alice);
-        snapStart("boostedPoolSwapMoreThan50pRebalance");
+        snapStart("boostedPoolSwapMoreThan50pRebalance-pool");
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
