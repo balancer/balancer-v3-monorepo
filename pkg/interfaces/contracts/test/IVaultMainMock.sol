@@ -27,7 +27,7 @@ interface IVaultMainMock {
         PoolRoleAccounts memory roleAccounts
     ) external;
 
-    function manualSetOpenTab(bool status) external;
+    function manualSetIsUnlocked(bool status) external;
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) external;
 
@@ -45,7 +45,7 @@ interface IVaultMainMock {
 
     function manualSetPoolTokenBalances(address, IERC20[] memory, uint256[] memory) external;
 
-    function mockWithOpenTab() external view;
+    function mockIsUnlocked() external view;
 
     function mockWithInitializedPool(address pool) external view;
 

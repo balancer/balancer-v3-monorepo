@@ -10,21 +10,21 @@ contract VaultCommonModifiersTest is BaseVaultTest {
     }
 
     /*******************************************************************************
-                                      withOpenTab
+                                    onlyWhenUnlocked
     *******************************************************************************/
 
-    function testClosedTab() public {
-        vault.manualSetOpenTab(false);
+    function testLock() public {
+        vault.manualSetIsUnlocked(false);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.TabIsNotOpen.selector));
-        vault.mockWithOpenTab();
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultIsNotUnlocked.selector));
+        vault.mockIsUnlocked();
     }
 
-    function testOpenTab() public {
-        vault.manualSetOpenTab(true);
+    function testUnlock() public {
+        vault.manualSetIsUnlocked(true);
 
         // If function does not revert, test passes
-        vault.mockWithOpenTab();
+        vault.mockIsUnlocked();
     }
 
     /*******************************************************************************
