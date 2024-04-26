@@ -10,7 +10,10 @@ import {
     SwapLocals,
     PoolData,
     SwapKind,
-    VaultState
+    VaultState,
+    TokenConfig,
+    TokenType,
+    Rounding
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -339,6 +342,49 @@ contract VaultUnitTest is BaseVaultTest {
             vault.getPoolCreatorFees(POOL, TOKEN_IN),
             initVault + creatorSwapFeeAmountRaw,
             "Unexpected creator fees in storage"
+        );
+    }
+
+    function testManualUpdatePoolDataLiveBalancesAndRates() public {
+        PoolData memory poolData;
+        poolData.balancesRaw = new uint256[](2);
+        poolData.tokenRates = new uint256[](2);
+        poolData.balancesLiveScaled18 = new uint256[](2);
+
+        poolData.decimalScalingFactors = decimalScalingFactors;
+
+        poolData.tokenConfig = new TokenConfig[](2);
+        poolData.tokenConfig[0].tokenType = TokenType.STANDARD;
+        poolData.tokenConfig[1].tokenType = TokenType.STANDARD;
+
+        uint256[] memory tokenBalances = [1e18, 2e18].toMemoryArray();
+
+        IERC20[] memory defaultTokens = new IERC20[](2);
+        defaultTokens[0] = TOKEN_IN;
+        defaultTokens[1] = TOKEN_OUT;
+
+        vault.manualSetPoolTokenBalances(POOL, defaultTokens, tokenBalances);
+
+        poolData = vault.manualUpdatePoolDataLiveBalancesAndRates(POOL, poolData, Rounding.ROUND_UP);
+
+        // check _updateTokenRatesInPoolData is called
+        assertEq(poolData.tokenRates[0], FixedPoint.ONE, "Unexpected tokenRates[0]");
+        assertEq(poolData.tokenRates[1], FixedPoint.ONE, "Unexpected tokenRates[1]");
+
+        // check balances
+        assertEq(poolData.balancesRaw[0], tokenBalances[0], "Unexpected balancesRaw[0]");
+        assertEq(poolData.balancesRaw[1], tokenBalances[1], "Unexpected balancesRaw[1]");
+
+        // check _updateLiveTokenBalanceInPoolData is called
+        assertEq(
+            poolData.balancesLiveScaled18[0],
+            poolData.balancesRaw[0].mulUp(poolData.decimalScalingFactors[0]).mulUp(poolData.tokenRates[0]),
+            "Unexpected balancesLiveScaled18[0]"
+        );
+        assertEq(
+            poolData.balancesLiveScaled18[1],
+            poolData.balancesRaw[1].mulUp(poolData.decimalScalingFactors[1]).mulUp(poolData.tokenRates[1]),
+            "Unexpected balancesLiveScaled18[1]"
         );
     }
 

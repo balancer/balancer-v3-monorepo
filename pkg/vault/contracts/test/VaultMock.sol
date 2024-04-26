@@ -477,4 +477,14 @@ contract VaultMock is IVaultMainMock, Vault {
                 index
             );
     }
+
+    function manualUpdatePoolDataLiveBalancesAndRates(
+        address pool,
+        PoolData memory poolData,
+        Rounding roundingDirection
+    ) external view returns (PoolData memory) {
+        _updatePoolDataLiveBalancesAndRates(pool, poolData, roundingDirection);
+
+        return poolData;
+    }
 }
