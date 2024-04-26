@@ -137,8 +137,8 @@ contract VaultMock is IVaultMainMock, Vault {
         );
     }
 
-    function manualSetOpenTab(bool status) public {
-        _openTab().tstore(status);
+    function manualSetIsUnlocked(bool status) public {
+        _isUnlocked().tstore(status);
     }
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) public {
@@ -196,7 +196,7 @@ contract VaultMock is IVaultMainMock, Vault {
         }
     }
 
-    function mockWithOpenTab() public view withOpenTab {}
+    function mockIsUnlocked() public view onlyWhenUnlocked {}
 
     function mockWithInitializedPool(address pool) public view withInitializedPool(pool) {}
 

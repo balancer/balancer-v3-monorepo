@@ -236,7 +236,7 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IBufferPool
     function rebalance() external authenticate {
-        getVault().lock(abi.encodeWithSelector(ERC4626BufferPool.forcedRebalanceHook.selector));
+        getVault().unlock(abi.encodeWithSelector(ERC4626BufferPool.forcedRebalanceHook.selector));
     }
 
     function forcedRebalanceHook() external payable onlyVault {

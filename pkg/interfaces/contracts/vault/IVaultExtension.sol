@@ -20,9 +20,9 @@ interface IVaultExtension {
     *******************************************************************************/
 
     /**
-     * @notice Returns True if the tab is open, false otherwise.
+     * @notice Returns True if the Vault is unlocked, false otherwise.
      */
-    function isTabOpen() external view returns (bool);
+    function isUnlocked() external view returns (bool);
 
     /**
      *  @notice Returns the count of non-zero deltas.
@@ -323,10 +323,10 @@ interface IVaultExtension {
      * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
      * anything else will revert.
      *
-     * Allows querying any operation on the Vault that has the `withOpenTab` modifier.
+     * Allows querying any operation on the Vault that has the `onlyWhenUnlocked` modifier.
      *
      * Allows the external calling of a function via the Vault contract to
-     * access Vault's functions guarded by `withOpenTab`.
+     * access Vault's functions guarded by `onlyWhenUnlocked`.
      * `transient` modifier ensuring balances changes within the Vault are settled.
      *
      * @param data Contains function signature and args to be passed to the msg.sender

@@ -40,7 +40,7 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
             limit += limit / 100;
         }
 
-        getVault().lock(
+        getVault().unlock(
             abi.encodeWithSelector(
                 ERC4626BufferPoolMock.unbalanceHook.selector,
                 VaultSwapParams({
