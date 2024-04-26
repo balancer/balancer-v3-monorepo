@@ -1072,6 +1072,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (params.kind == SwapKind.EXACT_OUT && amountInRaw > params.limitRaw) {
             revert SwapLimit(amountInRaw, params.limitRaw);
         }
+
+        emit Swap(params.pool, params.tokenIn, params.tokenOut, amountInRaw, amountOutRaw, 0, 0);
     }
 
     struct WrapUnwrapLocals {
