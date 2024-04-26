@@ -61,8 +61,8 @@ contract VaultStorage {
     // Pool -> (token -> TokenConfig): The token configuration of each Pool's tokens.
     mapping(address => mapping(IERC20 => TokenConfig)) internal _poolTokenConfig;
 
-    /// @notice Main tab. Open to operate with the vault.
-    bool private __openTab;
+    /// @notice Global lock state. Unlock to operate with the vault.
+    bool private __isUnlocked;
 
     /**
      * @notice The total number of nonzero deltas over all active + completed lockers.
@@ -111,10 +111,10 @@ contract VaultStorage {
     // pool -> PoolRoleAccounts (accounts assigned to specific roles; e.g., pauseManager).
     mapping(address => PoolRoleAccounts) internal _poolRoleAccounts;
 
-    function _openTab() internal pure returns (StorageSlot.BooleanSlotType slot) {
+    function _isUnlocked() internal pure returns (StorageSlot.BooleanSlotType slot) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            slot := __openTab.slot
+            slot := __isUnlocked.slot
         }
     }
 
