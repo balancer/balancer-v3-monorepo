@@ -14,31 +14,31 @@ import {
     TokenType,
     Rounding
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
+import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
-
-contract VaultUnitTest is BaseVaultTest {
+contract VaultUnitTest is BaseTest {
     using ArrayHelpers for *;
     using ScalingHelpers for *;
     using FixedPoint for *;
 
-    address constant POOL = address(0x1234);
-    IERC20 constant TOKEN_IN = IERC20(address(0x2345));
-    IERC20 constant TOKEN_OUT = IERC20(address(0x3456));
+    IVaultMock internal vault;
 
+    address pool = address(0x1234);
+    uint256 amountGivenRaw = 1 ether;
     uint256[] decimalScalingFactors = [uint256(1e18), 1e18];
     uint256[] tokenRates = [uint256(1e18), 2e18];
 
-    uint256 amountGivenRaw = 1 ether;
-
     function setUp() public virtual override {
-        BaseVaultTest.setUp();
+        BaseTest.setUp();
+        vault = IVaultMock(address(VaultMockDeployer.deploy()));
     }
 
     function testGetSwapFeePercentageIfHasDynamicSwapFee() public {
@@ -102,23 +102,19 @@ contract VaultUnitTest is BaseVaultTest {
             .toRawUndoRateRoundDown(poolData.decimalScalingFactors[0], poolData.tokenRates[0]);
 
         vm.expectEmit();
-        emit IVaultEvents.ProtocolSwapFeeCharged(POOL, address(TOKEN_IN), expectSwapFeeAmountScaled18);
+        emit IVaultEvents.ProtocolSwapFeeCharged(pool, address(dai), expectSwapFeeAmountScaled18);
 
         uint256 protocolSwapFeeAmountRaw = vault.manualComputeAndChargeProtocolFees(
             poolData,
             swapFeeAmountScaled18,
             protocolSwapFeePercentage_,
-            POOL,
-            TOKEN_IN,
+            pool,
+            dai,
             0
         );
 
         assertEq(protocolSwapFeeAmountRaw, expectSwapFeeAmountScaled18, "Unexpected protocolSwapFeeAmountRaw");
-        assertEq(
-            vault.getProtocolFees(address(TOKEN_IN)),
-            protocolSwapFeeAmountRaw,
-            "Unexpected protocol fees in storage"
-        );
+        assertEq(vault.getProtocolFees(address(dai)), protocolSwapFeeAmountRaw, "Unexpected protocol fees in storage");
     }
 
     function testComputeAndChargeProtocolFeesIfPoolIsInRecoveryMode() public {
@@ -129,18 +125,18 @@ contract VaultUnitTest is BaseVaultTest {
             poolData,
             1e18,
             10e16,
-            POOL,
-            TOKEN_IN,
+            pool,
+            dai,
             0
         );
 
         assertEq(protocolSwapFeeAmountRaw, 0, "Unexpected protocolSwapFeeAmountRaw");
-        assertEq(vault.getProtocolFees(address(TOKEN_IN)), 0, "Unexpected protocol fees in storage");
+        assertEq(vault.getProtocolFees(address(dai)), 0, "Unexpected protocol fees in storage");
     }
 
     function testComputeAndChargeProtocolAndCreatorFees() public {
         uint256 initVault = 10e18;
-        vault.manualSetPoolCreatorFees(POOL, TOKEN_IN, initVault);
+        vault.manualSetPoolCreatorFees(pool, dai, initVault);
 
         PoolData memory poolData;
         poolData.decimalScalingFactors = decimalScalingFactors;
@@ -159,10 +155,10 @@ contract VaultUnitTest is BaseVaultTest {
             .toRawUndoRateRoundDown(poolData.decimalScalingFactors[0], poolData.tokenRates[0]);
 
         vm.expectEmit();
-        emit IVaultEvents.ProtocolSwapFeeCharged(POOL, address(TOKEN_IN), expectSwapFeeAmountScaled18);
+        emit IVaultEvents.ProtocolSwapFeeCharged(pool, address(dai), expectSwapFeeAmountScaled18);
 
         vm.expectEmit();
-        emit IVaultEvents.PoolCreatorFeeCharged(POOL, address(TOKEN_IN), expectCreatorFeeAmountRaw);
+        emit IVaultEvents.PoolCreatorFeeCharged(pool, address(dai), expectCreatorFeeAmountRaw);
 
         (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
             .manualComputeAndChargeProtocolAndCreatorFees(
@@ -170,15 +166,15 @@ contract VaultUnitTest is BaseVaultTest {
                 swapFeeAmountScaled18,
                 protocolSwapFeePercentage_,
                 creatorFeePercentage,
-                POOL,
-                TOKEN_IN,
+                pool,
+                dai,
                 0
             );
 
         assertEq(protocolSwapFeeAmountRaw, expectSwapFeeAmountScaled18, "Unexpected protocolSwapFeeAmountRaw");
         assertEq(creatorSwapFeeAmountRaw, expectCreatorFeeAmountRaw, "Unexpected creatorSwapFeeAmountRaw");
         assertEq(
-            vault.getPoolCreatorFees(POOL, TOKEN_IN),
+            vault.getPoolCreatorFees(pool, dai),
             initVault + creatorSwapFeeAmountRaw,
             "Unexpected creator fees in storage"
         );
@@ -199,12 +195,12 @@ contract VaultUnitTest is BaseVaultTest {
         uint256[] memory tokenBalances = [uint256(1e18), 2e18].toMemoryArray();
 
         IERC20[] memory defaultTokens = new IERC20[](2);
-        defaultTokens[0] = TOKEN_IN;
-        defaultTokens[1] = TOKEN_OUT;
+        defaultTokens[0] = dai;
+        defaultTokens[1] = usdc;
 
-        vault.manualSetPoolTokenBalances(POOL, defaultTokens, tokenBalances);
+        vault.manualSetPoolTokenBalances(pool, defaultTokens, tokenBalances);
 
-        poolData = vault.manualUpdatePoolDataLiveBalancesAndRates(POOL, poolData, Rounding.ROUND_UP);
+        poolData = vault.manualUpdatePoolDataLiveBalancesAndRates(pool, poolData, Rounding.ROUND_UP);
 
         // check _updateTokenRatesInPoolData is called
         assertEq(poolData.tokenRates[0], FixedPoint.ONE, "Unexpected tokenRates[0]");

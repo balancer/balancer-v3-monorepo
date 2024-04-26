@@ -175,4 +175,18 @@ interface IVaultMainMock {
         PoolData memory poolData,
         Rounding roundingDirection
     ) external view returns (PoolData memory);
+
+    function manualAddLiquidity(
+        PoolData memory poolData,
+        AddLiquidityParams memory params,
+        uint256[] memory maxAmountsInScaled18,
+        VaultState memory vaultState
+    )
+        external
+        returns (
+            uint256[] memory amountsInRaw,
+            uint256[] memory amountsInScaled18,
+            uint256 bptAmountOut,
+            bytes memory returnData
+        );
 }

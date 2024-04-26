@@ -12,33 +12,33 @@ import {
     SwapKind,
     VaultState
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
+import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
-
-contract VaultUnitSwapTest is BaseVaultTest {
+contract VaultUnitSwapTest is BaseTest {
     using ArrayHelpers for *;
     using ScalingHelpers for *;
     using FixedPoint for *;
 
-    address constant POOL = address(0x1234);
-    IERC20 constant TOKEN_IN = IERC20(address(0x2345));
-    IERC20 constant TOKEN_OUT = IERC20(address(0x3456));
+    IVaultMock internal vault;
+    address pool = address(0x1234);
 
+    uint256 amountGivenRaw = 1 ether;
+    uint256 mockedAmountCalculatedScaled18 = 5e17;
     uint256[] initialBalances = [uint256(10 ether), 10 ether];
     uint256[] decimalScalingFactors = [uint256(1e18), 1e18];
     uint256[] tokenRates = [uint256(1e18), 2e18];
 
-    uint256 amountGivenRaw = 1 ether;
-    uint256 mockedAmountCalculatedScaled18 = 5e17;
-
     function setUp() public virtual override {
-        BaseVaultTest.setUp();
+        BaseTest.setUp();
+        vault = IVaultMock(address(VaultMockDeployer.deploy()));
     }
 
     function testSwapExactInWithZeroFee() public {
@@ -73,7 +73,7 @@ contract VaultUnitSwapTest is BaseVaultTest {
 
     function testSwapExactInWithFee() public {
         // set zero pool creator fee
-        vault.manualSetPoolCreatorFees(POOL, TOKEN_OUT, 0);
+        vault.manualSetPoolCreatorFees(pool, usdc, 0);
 
         (
             SwapParams memory params,
@@ -222,9 +222,9 @@ contract VaultUnitSwapTest is BaseVaultTest {
     {
         params = SwapParams({
             kind: kind,
-            pool: POOL,
-            tokenIn: TOKEN_IN,
-            tokenOut: TOKEN_OUT,
+            pool: pool,
+            tokenIn: dai,
+            tokenOut: usdc,
             amountGivenRaw: amountGivenRaw_,
             limitRaw: limitRaw,
             userData: new bytes(0)
@@ -365,10 +365,10 @@ contract VaultUnitSwapTest is BaseVaultTest {
         );
 
         // check _takeDebt called
-        assertEq(vault.getTokenDelta(TOKEN_IN), int256(amountIn), "Unexpected tokenIn delta");
+        assertEq(vault.getTokenDelta(dai), int256(amountIn), "Unexpected tokenIn delta");
 
         // check _supplyCredit called
-        assertEq(vault.getTokenDelta(TOKEN_OUT), -int256(amountOut), "Unexpected tokenOut delta");
+        assertEq(vault.getTokenDelta(usdc), -int256(amountOut), "Unexpected tokenOut delta");
     }
 
     function _mockOnSwap(
@@ -378,7 +378,7 @@ contract VaultUnitSwapTest is BaseVaultTest {
         PoolData memory poolData
     ) internal {
         vm.mockCall(
-            POOL,
+            pool,
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
                 IBasePool.PoolSwapParams({
