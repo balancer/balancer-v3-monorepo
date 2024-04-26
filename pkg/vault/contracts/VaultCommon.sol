@@ -52,14 +52,14 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * @dev This modifier ensures that the function it modifies can only be called
      * when a tab has been opened.
      */
-    modifier withOpenTab() {
-        _ensureWithOpenTab();
+    modifier onlyWhenUnlocked() {
+        _ensureUnlocked();
         _;
     }
 
-    function _ensureWithOpenTab() internal view {
-        if (_openTab().tload() == false) {
-            revert TabIsNotOpen();
+    function _ensureUnlocked() internal view {
+        if (_isUnlocked().tload() == false) {
+            revert VaultIsNotUnlocked();
         }
     }
 

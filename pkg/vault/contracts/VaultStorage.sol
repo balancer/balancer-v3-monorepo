@@ -61,8 +61,8 @@ contract VaultStorage {
     // Pool -> (token -> TokenConfig): The token configuration of each Pool's tokens.
     mapping(address => mapping(IERC20 => TokenConfig)) internal _poolTokenConfig;
 
-    /// @notice Main tab. Open to operate with the vault.
-    bool private __openTab;
+    /// @notice Global lock state. Unlock to operate with the vault.
+    bool private __isUnlocked;
 
     /**
      * @notice The total number of nonzero deltas over all active + completed lockers.
@@ -142,9 +142,9 @@ contract VaultStorage {
 
     // solhint-disable no-inline-assembly
 
-    function _openTab() internal pure returns (StorageSlot.BooleanSlotType slot) {
+    function _isUnlocked() internal pure returns (StorageSlot.BooleanSlotType slot) {
         assembly {
-            slot := __openTab.slot
+            slot := __isUnlocked.slot
         }
     }
 

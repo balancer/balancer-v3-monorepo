@@ -74,9 +74,7 @@ interface IVaultErrors {
     error BalanceNotSettled();
 
     /// @dev A user called a Vault function (swap, add/remove liquidity) outside the lock context.
-    error TabIsNotOpen();
-
-    error TabAlreadyOpen();
+    error VaultIsNotUnlocked();
 
     /// @dev The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
     error BeforeSwapHookFailed();

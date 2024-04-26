@@ -99,8 +99,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function isTabOpen() external view onlyVault returns (bool) {
-        return _openTab().tload();
+    function isUnlocked() external view onlyVault returns (bool) {
+        return _isUnlocked().tload();
     }
 
     /// @inheritdoc IVaultExtension
@@ -312,7 +312,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external withOpenTab withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
+    ) external onlyWhenUnlocked withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
         VaultState memory vaultState = _ensureUnpausedAndGetVaultState(pool);
 
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
@@ -555,7 +555,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 exactBptAmountIn
     )
         external
-        withOpenTab
+        onlyWhenUnlocked
         nonReentrant
         withInitializedPool(pool)
         onlyInRecoveryMode(pool)
@@ -630,8 +630,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert QueriesDisabled();
         }
 
-        // Inform that a tab is opened so `withOpenTab` does not revert
-        _openTab().tstore(true);
+        // Unlock so that `onlyWhenUnlocked` does not revert
+        _isUnlocked().tstore(true);
         _;
     }
 
