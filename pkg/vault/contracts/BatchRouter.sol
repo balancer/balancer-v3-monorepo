@@ -111,20 +111,6 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
         onlyVault
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
     {
-        // If first step of path is buffer, get user tokens
-        for (uint256 i = 0; i < params.paths.length; i++) {
-            SwapPathExactAmountIn memory path = params.paths[i];
-            if (path.steps.length == 0) {
-                continue;
-            }
-            SwapPathStep memory firstStep = path.steps[0];
-            if (firstStep.isBuffer) {
-                _takeTokenIn(params.sender, path.tokenIn, path.exactAmountIn, false);
-                _currentSwapTokensOut.add(address(path.tokenIn));
-                _currentSwapTokenOutAmounts().tAdd(address(path.tokenIn), path.exactAmountIn);
-            }
-        }
-
         (pathAmountsOut, tokensOut, amountsOut) = _swapExactInHook(params);
 
         _settlePaths(params.sender, params.wethIsEth);
@@ -160,28 +146,22 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
             SwapPathExactAmountIn memory path = params.paths[i];
+
             // These two variables shall be updated at the end of each step to be used as inputs of the next one.
             // The initial values are the given token and amount in for the current path.
             uint256 stepExactAmountIn = path.exactAmountIn;
             IERC20 stepTokenIn = path.tokenIn;
 
-            // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses in
-            // a set with unique addresses that can be iterated later on.
-            // For example, if all paths share the same token in, the set will end up with only one entry.
-            if (_currentSwapTokenOutAmounts().tGet(address(stepTokenIn)) > stepExactAmountIn) {
-                _currentSwapTokenOutAmounts().tSub(address(stepTokenIn), stepExactAmountIn);
+            if (path.steps[0].isBuffer) {
+                // If first step is a buffer, take the token in advance. We need this to wrap/unwrap
+                _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, false);
+                _settledTokenAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
             } else {
+                // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses in
+                // a set with unique addresses that can be iterated later on.
+                // For example, if all paths share the same token in, the set will end up with only one entry.
                 _currentSwapTokensIn.add(address(stepTokenIn));
-                if (_currentSwapTokenOutAmounts().tGet(address(stepTokenIn)) > 0) {
-                    _currentSwapTokenInAmounts().tAdd(
-                        address(stepTokenIn),
-                        stepExactAmountIn - _currentSwapTokenOutAmounts().tGet(address(stepTokenIn))
-                    );
-                    _currentSwapTokensOut.remove(address(stepTokenIn));
-                    _currentSwapTokenOutAmounts().tSet(address(stepTokenIn), 0);
-                } else {
-                    _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
-                }
+                _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
             }
 
             for (uint256 j = 0; j < path.steps.length; ++j) {
@@ -344,20 +324,6 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
         onlyVault
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
     {
-        // If first step of path is buffer, get user tokens
-        for (uint256 i = 0; i < params.paths.length; i++) {
-            SwapPathExactAmountOut memory path = params.paths[i];
-            if (path.steps.length == 0) {
-                continue;
-            }
-            SwapPathStep memory firstStep = path.steps[0];
-            if (firstStep.isBuffer) {
-                _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, false);
-                _currentSwapTokensOut.add(address(path.tokenIn));
-                _currentSwapTokenOutAmounts().tAdd(address(path.tokenIn), path.maxAmountIn);
-            }
-        }
-
         (pathAmountsIn, tokensIn, amountsIn) = _swapExactOutHook(params);
 
         _settlePaths(params.sender, params.wethIsEth);
@@ -556,6 +522,12 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     // No BPT involved in the operation: regular swap exact out
                     uint256 amountIn;
                     if (step.isBuffer) {
+                        if (isLastStep) {
+                            // The buffer will need this token to wrap/unwrap, so take it from the user in advance
+                            _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, false);
+                            _settledTokenAmounts().tAdd(address(path.tokenIn), path.maxAmountIn);
+                        }
+
                         (, amountIn, ) = _vault.bufferWrapUnwrap(
                             SwapParams({
                                 kind: SwapKind.EXACT_OUT,
@@ -583,7 +555,13 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
 
                     if (isLastStep) {
                         pathAmountsIn[i] = amountIn;
-                        _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), amountIn);
+                        if(step.isBuffer) {
+                            // since the token was taken in advance, returns to the user what is left from the
+                            // wrap/unwrap operation
+                            _currentSwapTokenOutAmounts().tAdd(address(stepTokenIn), path.maxAmountIn - amountIn);
+                        } else {
+                            _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), amountIn);
+                        }
                     } else {
                         stepExactAmountOut = amountIn;
                     }
@@ -682,31 +660,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
         // Removing the last element from a set is cheaper than removing the first one.
         for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
             address tokenIn = _currentSwapTokensIn.unchecked_at(uint256(i));
-            if (_currentSwapTokenOutAmounts().tGet(tokenIn) > 0) {
-                if (_currentSwapTokenOutAmounts().tGet(tokenIn) > _currentSwapTokenInAmounts().tGet(tokenIn)) {
-                    _currentSwapTokenOutAmounts().tSub(tokenIn, _currentSwapTokenInAmounts().tGet(tokenIn));
-                } else {
-                    _currentSwapTokenInAmounts().tSub(tokenIn, _currentSwapTokenOutAmounts().tGet(tokenIn));
-                    _currentSwapTokensOut.remove(tokenIn);
-                    _currentSwapTokenOutAmounts().tSet(tokenIn, 0);
-                    ethAmountIn += _takeTokenIn(
-                        sender,
-                        IERC20(tokenIn),
-                        _currentSwapTokenInAmounts().tGet(tokenIn),
-                        wethIsEth
-                    );
-                }
-            } else {
-                ethAmountIn += _takeTokenIn(
-                    sender,
-                    IERC20(tokenIn),
-                    _currentSwapTokenInAmounts().tGet(tokenIn),
-                    wethIsEth
-                );
-            }
-
-            _currentSwapTokensIn.remove(tokenIn);
-            _currentSwapTokenInAmounts().tSet(tokenIn, 0);
+            ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts().tGet(tokenIn), wethIsEth);
         }
 
         // If any swap path has a yield-bearing buffer in the first step, the user paid the swap upfront with the
