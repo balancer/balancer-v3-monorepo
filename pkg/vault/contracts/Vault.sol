@@ -1001,7 +1001,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 uint256 currentPoolCreatorFee = poolCreatorFees.get(token);
                 poolCreatorFees.set(token, currentPoolCreatorFee + creatorSwapFeeAmountRaw);
 
-                emit PoolCreatorFeeCharged(pool, address(token), creatorSwapFeeAmountRaw);
+                emit PoolCreatorSwapFeeCharged(pool, address(token), creatorSwapFeeAmountRaw);
             }
         }
     }

@@ -34,6 +34,7 @@ import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
  */
 abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, ReentrancyGuardTransient, ERC20MultiToken {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
     using ScalingHelpers for *;
@@ -350,7 +351,11 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         address pool,
         Rounding roundingDirection,
         uint256 yieldFeePercentage
-    ) internal view returns (PoolData memory poolData, uint256[] memory dueProtocolYieldFees) {
+    )
+        internal
+        view
+        returns (PoolData memory poolData, uint256[] memory dueProtocolYieldFees, uint256[] memory dueCreatorYieldFees)
+    {
         // Initialize poolData with base information for subsequent calculations.
         (
             poolData.tokenConfig,
@@ -363,6 +368,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         uint256 numTokens = poolBalances.length();
 
         dueProtocolYieldFees = new uint256[](numTokens);
+        dueCreatorYieldFees = new uint256[](numTokens);
 
         // Initialize arrays to store balances and rates based on the number of tokens in the pool.
         // Will be read raw, then upscaled and rounded as directed.
@@ -399,9 +405,13 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
                 if (yieldFeeAmountRaw > 0) {
                     dueProtocolYieldFees[i] = yieldFeeAmountRaw;
+                    uint256 creatorFeeAmountRaw = poolData.poolConfig.poolCreatorFeePercentage.mulDown(
+                        yieldFeeAmountRaw
+                    );
+                    dueCreatorYieldFees[i] = creatorFeeAmountRaw;
 
                     // Adjust raw and live balances.
-                    poolData.balancesRaw[i] -= yieldFeeAmountRaw;
+                    poolData.balancesRaw[i] -= (yieldFeeAmountRaw + creatorFeeAmountRaw);
                     _updateLiveTokenBalanceInPoolData(poolData, roundingDirection, i);
                 }
             }
@@ -419,8 +429,13 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         uint256 yieldFeePercentage
     ) internal nonReentrant returns (PoolData memory poolData) {
         uint256[] memory dueProtocolYieldFees;
+        uint256[] memory dueCreatorYieldFees;
 
-        (poolData, dueProtocolYieldFees) = _getPoolDataAndYieldFees(pool, roundingDirection, yieldFeePercentage);
+        (poolData, dueProtocolYieldFees, dueCreatorYieldFees) = _getPoolDataAndYieldFees(
+            pool,
+            roundingDirection,
+            yieldFeePercentage
+        );
         uint256 numTokens = dueProtocolYieldFees.length;
 
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -431,6 +446,17 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                 // Charge protocol fee.
                 _protocolFees[token] += yieldFeeAmountRaw;
                 emit ProtocolYieldFeeCharged(pool, address(token), yieldFeeAmountRaw);
+            }
+
+            uint256 creatorYieldFeeAmountRaw = dueCreatorYieldFees[i];
+            if (creatorYieldFeeAmountRaw > 0) {
+                EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
+                // Reverts with KeyNotFound if the token isn't present (should not happen; token entries
+                // created on pool registration).
+                uint256 currentPoolCreatorFee = poolCreatorFees.get(token);
+                poolCreatorFees.set(token, currentPoolCreatorFee + creatorYieldFeeAmountRaw);
+
+                emit PoolCreatorYieldFeeCharged(pool, address(token), creatorYieldFeeAmountRaw);
             }
         }
 
