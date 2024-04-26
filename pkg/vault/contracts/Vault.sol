@@ -1157,10 +1157,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
                 vars.baseToken.approve(address(wrappedToken), vars.totalBaseDepositedOrWithdrawn);
                 // EXACT_IN requires the exact amount of base tokens to be deposited, so deposit is called
-                wrappedToken.deposit(
-                    vars.totalBaseDepositedOrWithdrawn,
-                    address(this)
-                );
+                wrappedToken.deposit(vars.totalBaseDepositedOrWithdrawn, address(this));
             } else {
                 uint256 bufferBaseBalanceAsWrapped = 0;
                 uint256 bufferSharesToUnwrap = 0;
@@ -1179,10 +1176,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     wrappedToken.previewMint(vars.totalWrappedDepositedOrWithdrawn)
                 );
                 // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called
-                wrappedToken.mint(
-                    vars.totalWrappedDepositedOrWithdrawn,
-                    address(this)
-                );
+                wrappedToken.mint(vars.totalWrappedDepositedOrWithdrawn, address(this));
             }
 
             vars.baseBalanceVaultAfter = vars.baseToken.balanceOf(address(this));
@@ -1281,11 +1275,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 }
 
                 // EXACT_IN requires the exact amount of wrapped tokens to be unwrapped, so redeem is called
-                wrappedToken.redeem(
-                    amountWrappedToUnwrap + bufferSharesToUnwrap,
-                    address(this),
-                    address(this)
-                );
+                wrappedToken.redeem(amountWrappedToUnwrap + bufferSharesToUnwrap, address(this), address(this));
             } else {
                 uint256 bufferWrappedBalanceAsBase = 0;
                 uint256 bufferBaseAmountToWrap = 0;
@@ -1299,11 +1289,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 }
 
                 // EXACT_OUT requires the exact amount of base tokens to be returned, so withdraw is called
-                wrappedToken.withdraw(
-                    vars.amountBaseExpected + bufferBaseAmountToWrap,
-                    address(this),
-                    address(this)
-                );
+                wrappedToken.withdraw(vars.amountBaseExpected + bufferBaseAmountToWrap, address(this), address(this));
             }
 
             vars.baseBalanceVaultAfter = vars.baseToken.balanceOf(address(this));
