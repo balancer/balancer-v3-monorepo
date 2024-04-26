@@ -83,32 +83,32 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * time the external call is complete.
      */
     modifier transient() {
-        bool isTabOpenBefore = _openTab().tload();
+        bool isUnlockedBefore = _isUnlocked().tload();
 
-        if (isTabOpenBefore == false) {
-            _openTab().tstore(true);
+        if (isUnlockedBefore == false) {
+            _isUnlocked().tstore(true);
         }
 
         // The caller does everything here and has to settle all outstanding balances
         _;
 
-        if (isTabOpenBefore == false) {
+        if (isUnlockedBefore == false) {
             if (_nonzeroDeltaCount().tload() != 0) {
                 revert BalanceNotSettled();
             }
 
-            _openTab().tstore(false);
+            _isUnlocked().tstore(false);
         }
     }
 
     /// @inheritdoc IVaultMain
-    function lock(bytes calldata data) external payable transient returns (bytes memory result) {
+    function unlock(bytes calldata data) external payable transient returns (bytes memory result) {
         // Executes the function call with value to the msg.sender.
         return (msg.sender).functionCallWithValue(data, msg.value);
     }
 
     /// @inheritdoc IVaultMain
-    function settle(IERC20 token) public nonReentrant withOpenTab returns (uint256 paid) {
+    function settle(IERC20 token) public nonReentrant onlyWhenUnlocked returns (uint256 paid) {
         uint256 reservesBefore = _reservesOf[token];
         _reservesOf[token] = token.balanceOf(address(this));
         paid = _reservesOf[token] - reservesBefore;
@@ -117,7 +117,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function sendTo(IERC20 token, address to, uint256 amount) public nonReentrant withOpenTab {
+    function sendTo(IERC20 token, address to, uint256 amount) public nonReentrant onlyWhenUnlocked {
         _takeDebt(token, amount);
         _reservesOf[token] -= amount;
 
@@ -172,7 +172,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapParams memory params
     )
         public
-        withOpenTab
+        onlyWhenUnlocked
         withInitializedPool(params.pool)
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
     {
@@ -473,7 +473,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         AddLiquidityParams memory params
     )
         external
-        withOpenTab
+        onlyWhenUnlocked
         withInitializedPool(params.pool)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
@@ -703,7 +703,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         RemoveLiquidityParams memory params
     )
         external
-        withOpenTab
+        onlyWhenUnlocked
         withInitializedPool(params.pool)
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
     {
@@ -1018,7 +1018,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapParams memory params
     )
         public
-        withOpenTab
+        onlyWhenUnlocked
         whenVaultBufferNotPaused
         returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw)
     {
@@ -1103,7 +1103,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 amountGivenRaw
     )
         private
-        withOpenTab
+        onlyWhenUnlocked
         nonReentrant
         returns (uint256 amountCalculatedRaw, uint256 amountWrapped, uint256 amountBaseToWrap)
     {
@@ -1228,7 +1228,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 amountGivenRaw
     )
         private
-        withOpenTab
+        onlyWhenUnlocked
         nonReentrant
         returns (uint256 amountCalculatedRaw, uint256 amountWrappedToUnwrap, uint256 amountBase)
     {

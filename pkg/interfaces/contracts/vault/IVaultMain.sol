@@ -15,14 +15,14 @@ interface IVaultMain {
     *******************************************************************************/
 
     /**
-     * @notice Creates a lock context for a sequence of operations.
+     * @notice Creates a context for a sequence of operations (i.e., "unlocks" the Vault).
      * @dev Performs a callback on msg.sender with arguments provided in `data`. The Callback is `transient`,
      * meaning all balances for the caller have to be settled at the end.
      *
      * @param data Contains function signature and args to be passed to the msg.sender
      * @return result Resulting data from the call
      */
-    function lock(bytes calldata data) external payable returns (bytes memory result);
+    function unlock(bytes calldata data) external payable returns (bytes memory result);
 
     /**
      * @notice Settles deltas for a token; must be successful for the current lock to be released.

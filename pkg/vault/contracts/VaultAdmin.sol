@@ -462,7 +462,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         uint256 amountBase,
         uint256 amountWrapped,
         address sharesOwner
-    ) public withOpenTab whenVaultBufferNotPaused nonReentrant returns (uint256 issuedShares) {
+    ) public onlyWhenUnlocked whenVaultBufferNotPaused nonReentrant returns (uint256 issuedShares) {
         address baseToken = wrappedToken.asset();
         if (_bufferAssets[IERC20(address(wrappedToken))] == address(0)) {
             _bufferAssets[IERC20(address(wrappedToken))] = baseToken;
@@ -496,7 +496,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         address sharesOwner
     )
         public
-        withOpenTab
+        onlyWhenUnlocked
         whenVaultBufferNotPaused
         nonReentrant
         authenticate
