@@ -327,11 +327,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         emit PoolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
     }
 
-    /// @inheritdoc IVaultAdmin
-    function collectProtocolFees(address /* pool */) public nonReentrant onlyVault {
-        // need protocol fees collector address. Deploy contract and move collection to there?
-    }
-
     /*function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant onlyVault {
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];

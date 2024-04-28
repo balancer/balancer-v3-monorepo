@@ -20,6 +20,7 @@ import {
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
+import { ProtocolFeeCollector } from "./ProtocolFeeCollector.sol";
 
 // solhint-disable max-states-count
 
@@ -103,7 +104,7 @@ contract VaultStorage {
      * "last" values (i.e., lazy evaluation to ensure the rates on collection are the same as when the fees were
      * incurred).
      */
-    mapping(address => bytes32) private _lastProtocolFeePercentages;
+    mapping(address => uint256) internal _lastProtocolFeePercentages;
 
     // Pool -> (Token -> fee): protocol fees (swap and creator) accumulated in the Vault for harvest.
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _protocolSwapFees;
@@ -139,6 +140,9 @@ contract VaultStorage {
 
     // pool -> PoolRoleAccounts (accounts assigned to specific roles; e.g., pauseManager).
     mapping(address => PoolRoleAccounts) internal _poolRoleAccounts;
+
+    // Contract that receives protocol swap and yield fees
+    ProtocolFeeCollector internal immutable _protocolFeeCollector;
 
     // solhint-disable no-inline-assembly
 

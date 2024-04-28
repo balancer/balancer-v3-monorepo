@@ -11,6 +11,7 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -35,6 +36,7 @@ import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 import { VaultCommon } from "./VaultCommon.sol";
+import { ProtocolFeeCollector } from "./ProtocolFeeCollector.sol";
 
 contract Vault is IVaultMain, VaultCommon, Proxy {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -63,6 +65,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _vaultBufferPeriodEndTime = IVaultAdmin(address(vaultExtension)).getBufferPeriodEndTime();
 
         _authorizer = authorizer;
+
+        _protocolFeeCollector = new ProtocolFeeCollector(IVault(address(this)));
     }
 
     /*******************************************************************************
@@ -944,15 +948,18 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 token,
         uint256 index
     ) internal returns (uint256 aggregateSwapFeeAmountRaw) {
-        // If we're here, we already know fees are due, have been collected if necessary,
-        // and `_aggregateProtocolSwapFeePercentage` has been initialized.
-
         if (
             swapFeeAmountScaled18 > 0 &&
             vaultState.protocolSwapFeePercentage > 0 &&
             poolData.poolConfig.isPoolInRecoveryMode == false
         ) {
-            // Do we need to force collection?
+            if (_lastProtocolFeePercentages[pool] != vaultState.protocolSwapFeePercentage) {
+                collectProtocolFees(pool);
+
+                // Update the last to the current value.
+                _lastProtocolFeePercentages[pool] = vaultState.protocolSwapFeePercentage;
+            }
+
             // Initialize aggregate percentage, if not already set
             if (_aggregateProtocolSwapFeePercentage().tload() == 0) {
                 // Pool creator fees are calculated based on creatorAndLpFees, and not in totalFees. See example below
@@ -1011,6 +1018,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 poolCreatorFees.set(token, currentPoolCreatorFee + creatorSwapFeeAmountRaw);
             }
         }*/
+    }
+
+    /// @inheritdoc IVaultMain
+    function collectProtocolFees(address /* pool */) public nonReentrant {
+        // need protocol fees collector address. Deploy contract and move collection to there?
     }
 
     /*******************************************************************************
