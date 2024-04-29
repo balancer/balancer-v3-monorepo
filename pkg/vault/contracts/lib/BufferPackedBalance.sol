@@ -22,11 +22,7 @@ library BufferPackedTokenBalance {
     }
 
     /// @dev Updates base and wrapped balances and returns the new bytes32 balance
-    function setBalances(
-        bytes32 balance,
-        uint256 newBaseBalance,
-        uint256 newWrappedBalance
-    ) internal pure returns (bytes32) {
+    function setBalances(bytes32, uint256 newBaseBalance, uint256 newWrappedBalance) internal pure returns (bytes32) {
         return toPackedBalance(newBaseBalance, newWrappedBalance);
     }
 
