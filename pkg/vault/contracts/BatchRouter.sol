@@ -525,7 +525,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     // No BPT involved in the operation: regular swap exact out
                     uint256 amountIn;
                     if (step.isBuffer) {
-                        if (isLastStep) {
+                        if (stepLocals.isLastStep) {
                             // The buffer will need this token to wrap/unwrap, so take it from the user in advance
                             _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, false);
                             _settledTokenAmounts().tAdd(address(path.tokenIn), path.maxAmountIn);
