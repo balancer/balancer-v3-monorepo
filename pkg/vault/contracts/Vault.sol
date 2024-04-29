@@ -1169,11 +1169,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 wrappedToken.mint(vars.totalWrappedMintedRaw, address(this));
             }
 
-            vars.vaultBaseAfterRaw = baseToken.balanceOf(address(this));
-            vars.vaultWrappedAfterRaw = IERC20(wrappedToken).balanceOf(address(this));
-
-            _reservesOf[IERC20(wrappedToken)] = vars.vaultWrappedAfterRaw;
-            _reservesOf[baseToken] = vars.vaultBaseAfterRaw;
+            (vars.vaultBaseAfterRaw, vars.vaultWrappedAfterRaw) = _settleWrapUnwrap(baseToken, IERC20(wrappedToken));
 
             // Since deposit takes base assets from the vault, the total is assetsBefore - assetsAfter wrapping
             vars.totalBaseDepositedRaw = vars.vaultBaseBeforeRaw - vars.vaultBaseAfterRaw;
@@ -1303,11 +1299,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 wrappedToken.withdraw(tradeBaseRaw + bufferBaseAmountToUnwrap, address(this), address(this));
             }
 
-            vars.vaultBaseAfterRaw = baseToken.balanceOf(address(this));
-            vars.vaultWrappedAfterRaw = IERC20(wrappedToken).balanceOf(address(this));
-
-            _reservesOf[IERC20(wrappedToken)] = vars.vaultWrappedAfterRaw;
-            _reservesOf[baseToken] = vars.vaultBaseAfterRaw;
+            (vars.vaultBaseAfterRaw, vars.vaultWrappedAfterRaw) = _settleWrapUnwrap(baseToken, IERC20(wrappedToken));
 
             // Since withdraw puts base assets into the vault, the total is assetsAfter - assetsBefore unwrapping
             vars.totalBaseWithdrawnRaw = vars.vaultBaseAfterRaw - vars.vaultBaseBeforeRaw;
@@ -1341,6 +1333,20 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         _takeDebt(wrappedToken, tradeWrappedRaw);
         _supplyCredit(baseToken, tradeBaseRaw);
+    }
+
+    /**
+     * @dev Settles balances for base and wrapped tokens, updating `_reservesOf`.
+     */
+    function _settleWrapUnwrap(
+        IERC20 baseToken,
+        IERC20 wrappedToken
+    ) private returns (uint256 vaultBaseAfterRaw, uint256 vaultWrappedAfterRaw) {
+        vaultBaseAfterRaw = baseToken.balanceOf(address(this));
+        vaultWrappedAfterRaw = wrappedToken.balanceOf(address(this));
+
+        _reservesOf[wrappedToken] = vaultWrappedAfterRaw;
+        _reservesOf[baseToken] = vaultBaseAfterRaw;
     }
 
     /*******************************************************************************
