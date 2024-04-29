@@ -181,16 +181,16 @@ interface IVaultAdmin {
                          Yield-bearing tokens buffers
     *******************************************************************************/
     /**
-     * @notice Enables vault buffers, used to wrap/unwrap yield-bearing tokens.
+     * @notice Unpauses vault buffers, used to wrap/unwrap yield-bearing tokens.
      * @dev The caller must be allowed by the current Authorizer to do this.
      */
-    function enableVaultBuffers() external;
+    function unpauseVaultBuffers() external;
 
     /**
-     * @notice Disables vault buffers.
+     * @notice Pauses vault buffers.
      * @dev The caller must be allowed by the current Authorizer to do this.
      */
-    function disableVaultBuffers() external;
+    function pauseVaultBuffers() external;
 
     /**
      * @notice Adds liquidity to a buffer of yield-bearing tokens (linear pools embedded in the vault).

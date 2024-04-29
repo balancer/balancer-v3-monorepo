@@ -33,8 +33,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.label(address(waUSDC), "waUSDC");
 
         // Gives authorization to user "admin" to enable/disable vault's buffer
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.enableVaultBuffers.selector), admin);
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.disableVaultBuffers.selector), admin);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.unpauseVaultBuffers.selector), admin);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector), admin);
 
         initializeLp();
     }
@@ -507,25 +507,25 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.prank(alice);
         // Should revert, since alice has no rights to disable buffer
         vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
-        IVaultAdmin(address(vault)).disableVaultBuffers();
+        IVaultAdmin(address(vault)).pauseVaultBuffers();
 
         vm.prank(admin);
         // Should pass, since admin has access
-        IVaultAdmin(address(vault)).disableVaultBuffers();
+        IVaultAdmin(address(vault)).pauseVaultBuffers();
 
         vm.prank(alice);
         // Should revert, since alice has no rights to enable buffer
         vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
-        IVaultAdmin(address(vault)).enableVaultBuffers();
+        IVaultAdmin(address(vault)).unpauseVaultBuffers();
 
         vm.prank(admin);
         // Should pass, since admin has access
-        IVaultAdmin(address(vault)).enableVaultBuffers();
+        IVaultAdmin(address(vault)).unpauseVaultBuffers();
     }
 
     function testDisableVaultBuffer() public {
         vm.prank(admin);
-        IVaultAdmin(address(vault)).disableVaultBuffers();
+        IVaultAdmin(address(vault)).pauseVaultBuffers();
 
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount,
@@ -550,7 +550,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.stopPrank();
 
         vm.prank(admin);
-        IVaultAdmin(address(vault)).enableVaultBuffers();
+        IVaultAdmin(address(vault)).unpauseVaultBuffers();
 
         // deposit should pass, since vault buffers are enabled
         vm.prank(lp);

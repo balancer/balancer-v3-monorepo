@@ -443,14 +443,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                                 Yield-bearing tokens buffers
     *******************************************************************************/
     /// @inheritdoc IVaultAdmin
-    function enableVaultBuffers() external authenticate onlyVault {
+    function unpauseVaultBuffers() external authenticate onlyVault {
         VaultState memory vaultState = _vaultState.toVaultState();
         vaultState.isBufferPaused = false;
         _vaultState = VaultStateLib.fromVaultState(vaultState);
     }
 
     /// @inheritdoc IVaultAdmin
-    function disableVaultBuffers() external authenticate onlyVault {
+    function pauseVaultBuffers() external authenticate onlyVault {
         VaultState memory vaultState = _vaultState.toVaultState();
         vaultState.isBufferPaused = true;
         _vaultState = VaultStateLib.fromVaultState(vaultState);
