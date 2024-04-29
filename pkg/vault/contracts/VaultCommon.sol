@@ -453,8 +453,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                 EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
                 // Reverts with KeyNotFound if the token isn't present (should not happen; token entries
                 // created on pool registration).
-                uint256 currentPoolCreatorFee = poolCreatorFees.get(token);
-                poolCreatorFees.set(token, currentPoolCreatorFee + creatorYieldFeeAmountRaw);
+                poolCreatorFees.set(token, poolCreatorFees.get(token) + creatorYieldFeeAmountRaw);
 
                 emit PoolCreatorYieldFeeCharged(pool, address(token), creatorYieldFeeAmountRaw);
             }
