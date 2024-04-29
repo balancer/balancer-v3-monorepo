@@ -101,7 +101,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
         );
     }
 
-    function testSwapChargesFees_Fuzz(uint256 dynamicSwapFeePercentage) public {
+    function testSwapChargesFees__Fuzz(uint256 dynamicSwapFeePercentage) public {
         dynamicSwapFeePercentage = bound(dynamicSwapFeePercentage, 0, 1e18);
         PoolMock(swapPool).setDynamicSwapFeePercentage(dynamicSwapFeePercentage);
 
