@@ -412,7 +412,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         _vault.sendTo(IERC20(step.pool), address(this), stepMaxAmountIn);
                     } else if (params.sender != address(this)) {
                         // The last step being executed is the first step in the swap path, meaning that it's the one
-                        // that defines the inputs of the path.abi
+                        // that defines the inputs of the path.
                         // In that case, the sender must have the tokens. Therefore, we can transfer them
                         // to the router, which acts as an intermediary. If the sender is the router, we just skip this
                         // step (useful for queries).
