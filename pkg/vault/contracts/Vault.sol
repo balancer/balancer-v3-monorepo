@@ -1074,8 +1074,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         bytes32 bufferBalancesRaw;
         uint256 bufferBaseBalanceRaw;
         uint256 bufferWrappedBalanceRaw;
-        uint256 expectedBaseRaw;
-        uint256 expectedWrappedRaw;
         uint256 totalBaseDepositedRaw;
         uint256 totalWrappedMintedRaw;
         uint256 vaultBaseBeforeRaw;
@@ -1104,18 +1102,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // We can't use convertToShares to get amountCalculatedRaw, because withdraw operation rounds in favor of
             // the yield-bearing protocol. Besides, fees may be included in deposit and not included in convertToShares
             amountCalculatedRaw = wrappedToken.previewDeposit(amountGivenRaw);
-            (tradeBaseRaw, vars.expectedWrappedRaw) = (amountGivenRaw, amountCalculatedRaw);
+            (tradeBaseRaw, tradeWrappedRaw) = (amountGivenRaw, amountCalculatedRaw);
         } else {
             // EXACT_OUT wrap, so AmountGivenRaw is wrapped amount
             // We can't use convertToAssets to get amountCalculatedRaw, because withdraw operation rounds in favor of
             // the yield-bearing protocol. Besides, fees may be included in mint and not included in convertToAssets
             amountCalculatedRaw = wrappedToken.previewMint(amountGivenRaw);
-            (tradeBaseRaw, vars.expectedWrappedRaw) = (amountCalculatedRaw, amountGivenRaw);
+            (tradeBaseRaw, tradeWrappedRaw) = (amountCalculatedRaw, amountGivenRaw);
         }
 
-        if (vars.bufferBalancesRaw.getWrappedBalance() > vars.expectedWrappedRaw) {
+        if (vars.bufferBalancesRaw.getWrappedBalance() > tradeWrappedRaw) {
             // the buffer has enough liquidity to facilitate the wrap without making an external call.
-            tradeWrappedRaw = vars.expectedWrappedRaw;
 
             vars.bufferBalancesRaw = vars.bufferBalancesRaw.setBalances(
                 vars.bufferBalancesRaw.getBaseBalance() + tradeBaseRaw,
@@ -1134,39 +1131,39 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             if (kind == SwapKind.EXACT_IN) {
                 uint256 bufferWrappedBalanceAsBase = 0;
-                uint256 bufferBaseAmountToWrap = 0;
+                uint256 bufferBaseToWrapRaw = 0;
 
                 // If buffer is not empty, rebalance it
                 if (!vars.bufferBalancesRaw.isEmpty()) {
                     bufferWrappedBalanceAsBase = wrappedToken.convertToAssets(vars.bufferWrappedBalanceRaw);
-                    bufferBaseAmountToWrap = vars.bufferBaseBalanceRaw > bufferWrappedBalanceAsBase
+                    bufferBaseToWrapRaw = vars.bufferBaseBalanceRaw > bufferWrappedBalanceAsBase
                         ? (vars.bufferBaseBalanceRaw - bufferWrappedBalanceAsBase) / 2
                         : 0;
                 }
 
                 // The amount of base tokens to deposit is the necessary amount to fulfill the trade (amountBaseToWrap),
                 // plus the amount needed to leave the buffer rebalanced 50/50 at the end (bufferBaseAmountToWrap)
-                vars.totalBaseDepositedRaw = tradeBaseRaw + bufferBaseAmountToWrap;
+                vars.totalBaseDepositedRaw = tradeBaseRaw + bufferBaseToWrapRaw;
 
                 baseToken.approve(address(wrappedToken), vars.totalBaseDepositedRaw);
                 // EXACT_IN requires the exact amount of base tokens to be deposited, so deposit is called
                 wrappedToken.deposit(vars.totalBaseDepositedRaw, address(this));
             } else {
                 uint256 bufferBaseBalanceAsWrapped = 0;
-                uint256 bufferSharesToUnwrap = 0;
+                uint256 bufferWrappedToUnwrapRaw = 0;
 
                 // If buffer is not empty, rebalance it
                 if (!vars.bufferBalancesRaw.isEmpty()) {
                     bufferBaseBalanceAsWrapped = wrappedToken.convertToShares(vars.bufferBaseBalanceRaw);
-                    bufferSharesToUnwrap = vars.bufferWrappedBalanceRaw > bufferBaseBalanceAsWrapped
+                    bufferWrappedToUnwrapRaw = vars.bufferWrappedBalanceRaw > bufferBaseBalanceAsWrapped
                         ? (vars.bufferWrappedBalanceRaw - bufferBaseBalanceAsWrapped) / 2
                         : 0;
                 }
 
                 // The amount of wrapped tokens to mint is the necessary amount to fulfill the trade
-                // (amountWrappedExpected), plus the amount needed to leave the buffer rebalanced 50/50 at the end
-                // (bufferSharesToUnwrap)
-                vars.totalWrappedMintedRaw = vars.expectedWrappedRaw + bufferSharesToUnwrap;
+                // (tradeWrappedRaw), plus the amount needed to leave the buffer rebalanced 50/50 at the end
+                // (bufferWrappedToUnwrapRaw)
+                vars.totalWrappedMintedRaw = tradeWrappedRaw + bufferWrappedToUnwrapRaw;
                 baseToken.approve(
                     address(wrappedToken),
                     wrappedToken.previewMint(vars.totalWrappedMintedRaw)
@@ -1189,7 +1186,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // the actual operation.
                 revert WrongWrapUnwrapBaseAmount(address(wrappedToken));
             }
-            if (vars.totalWrappedMintedRaw < vars.expectedWrappedRaw) {
+            if (vars.totalWrappedMintedRaw < tradeWrappedRaw) {
                 // If this error is thrown, it means the previewDeposit or previewMint had a different result from
                 // the actual operation.
                 revert WrongWrapUnwrapWrappedAmount(address(wrappedToken));
@@ -1203,12 +1200,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // balances.
                 vars.bufferBalancesRaw = vars.bufferBalancesRaw.setBalances(
                     vars.bufferBaseBalanceRaw - (vars.totalBaseDepositedRaw - tradeBaseRaw),
-                    vars.bufferWrappedBalanceRaw + (vars.totalWrappedMintedRaw - vars.expectedWrappedRaw)
+                    vars.bufferWrappedBalanceRaw + (vars.totalWrappedMintedRaw - tradeWrappedRaw)
                 );
                 _bufferTokenBalances[IERC20(wrappedToken)] = vars.bufferBalancesRaw;
             }
-
-            tradeWrappedRaw = vars.expectedWrappedRaw;
         }
 
         _takeDebt(baseToken, tradeBaseRaw);
@@ -1219,8 +1214,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         bytes32 bufferBalancesRaw;
         uint256 bufferBaseBalanceRaw;
         uint256 bufferWrappedBalanceRaw;
-        uint256 expectedBaseRaw;
-        uint256 expectedWrappedRaw;
         uint256 totalBaseWithdrawnRaw;
         uint256 totalWrappedRedeemedRaw;
         uint256 vaultBaseBeforeRaw;
@@ -1249,19 +1242,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // We can't use convertToAssets to get amountCalculatedRaw, because redeem operation rounds in favor of
             // the yield-bearing protocol. Besides, fees may be included in redeem and not included in convertToAssets
             amountCalculatedRaw = wrappedToken.previewRedeem(amountGivenRaw);
-            (vars.expectedBaseRaw, tradeWrappedRaw) = (amountCalculatedRaw, amountGivenRaw);
+            (tradeBaseRaw, tradeWrappedRaw) = (amountCalculatedRaw, amountGivenRaw);
         } else {
             // EXACT_OUT unwrap, so AmountGivenRaw is base amount
             // We can't use convertToShares to get amountCalculatedRaw, because withdraw operation rounds in favor of
             // the yield-bearing protocol. Besides, fees may be included in withdraw and not included in convertToShares
             amountCalculatedRaw = wrappedToken.previewWithdraw(amountGivenRaw);
-            (vars.expectedBaseRaw, tradeWrappedRaw) = (amountGivenRaw, amountCalculatedRaw);
+            (tradeBaseRaw, tradeWrappedRaw) = (amountGivenRaw, amountCalculatedRaw);
         }
 
-        if (vars.bufferBalancesRaw.getBaseBalance() > vars.expectedBaseRaw) {
+        if (vars.bufferBalancesRaw.getBaseBalance() > tradeBaseRaw) {
             // the buffer has enough liquidity to facilitate the wrap without making an external call.
-            tradeBaseRaw = vars.expectedBaseRaw;
-
             vars.bufferBalancesRaw = vars.bufferBalancesRaw.setBalances(
                 vars.bufferBalancesRaw.getBaseBalance() - tradeBaseRaw,
                 vars.bufferBalancesRaw.getWrappedBalance() + tradeWrappedRaw
@@ -1308,9 +1299,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
                 // EXACT_OUT requires the exact amount of base tokens to be returned, so withdraw is called.
                 // The amount of base tokens to withdraw is the necessary amount to fulfill the trade
-                // (expectedBaseRaw), plus the amount needed to leave the buffer rebalanced 50/50 at the end
+                // (tradeBaseRaw), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferBaseAmountToUnwrap).
-                wrappedToken.withdraw(vars.expectedBaseRaw + bufferBaseAmountToUnwrap, address(this), address(this));
+                wrappedToken.withdraw(tradeBaseRaw + bufferBaseAmountToUnwrap, address(this), address(this));
             }
 
             vars.vaultBaseAfterRaw = baseToken.balanceOf(address(this));
@@ -1322,7 +1313,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vars.totalBaseWithdrawnRaw = vars.vaultBaseAfterRaw - vars.vaultBaseBeforeRaw;
             vars.totalWrappedRedeemedRaw = vars.vaultWrappedBeforeRaw - vars.vaultWrappedAfterRaw;
 
-            if (vars.totalBaseWithdrawnRaw < vars.expectedBaseRaw) {
+            if (vars.totalBaseWithdrawnRaw < tradeBaseRaw) {
                 // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result from
                 // the actual operation.
                 revert WrongWrapUnwrapBaseAmount(address(wrappedToken));
@@ -1340,13 +1331,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // and discounts the amount needed in the trade (amountBaseExpectedRaw). Same logic applies to wrapped
                 // balances.
                 vars.bufferBalancesRaw = vars.bufferBalancesRaw.setBalances(
-                    vars.bufferBaseBalanceRaw + (vars.totalBaseWithdrawnRaw - vars.expectedBaseRaw),
+                    vars.bufferBaseBalanceRaw + (vars.totalBaseWithdrawnRaw - tradeBaseRaw),
                     vars.bufferWrappedBalanceRaw - (vars.totalWrappedRedeemedRaw - tradeWrappedRaw)
                 );
                 _bufferTokenBalances[IERC20(wrappedToken)] = vars.bufferBalancesRaw;
             }
-
-            tradeBaseRaw = vars.expectedBaseRaw;
         }
 
         _takeDebt(wrappedToken, tradeWrappedRaw);
