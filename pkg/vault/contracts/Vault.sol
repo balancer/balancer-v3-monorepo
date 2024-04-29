@@ -1151,6 +1151,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                         : 0;
                 }
 
+                // The amount of base tokens to deposit is the necessary amount to fulfill the trade (amountBaseToWrap),
+                // plus the amount needed to leave the buffer rebalanced 50/50 at the end (bufferBaseAmountToWrap)
                 vars.totalBaseDepositedOrWithdrawn = amountBaseToWrap + bufferBaseAmountToWrap;
 
                 baseToken.approve(address(wrappedToken), vars.totalBaseDepositedOrWithdrawn);
@@ -1168,6 +1170,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                         : 0;
                 }
 
+                // The amount of wrapped tokens to mint is the necessary amount to fulfill the trade
+                // (amountWrappedExpected), plus the amount needed to leave the buffer rebalanced 50/50 at the end
+                // (bufferSharesToUnwrap)
                 vars.totalWrappedDepositedOrWithdrawn = vars.amountWrappedExpected + bufferSharesToUnwrap;
                 baseToken.approve(
                     address(wrappedToken),
@@ -1284,21 +1289,27 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 }
 
                 // EXACT_IN requires the exact amount of wrapped tokens to be unwrapped, so redeem is called
+                // The amount of wrapped tokens to redeem is the necessary amount to fulfill the trade
+                // (amountWrappedToUnwrap), plus the amount needed to leave the buffer rebalanced 50/50 at the end
+                // (bufferSharesToUnwrap)
                 wrappedToken.redeem(amountWrappedToUnwrap + bufferSharesToUnwrap, address(this), address(this));
             } else {
                 uint256 bufferWrappedBalanceAsBase = 0;
-                uint256 bufferBaseAmountToWrap = 0;
+                uint256 bufferBaseAmountToUnwrap = 0;
 
                 // If buffer is not empty, rebalance it
                 if (!vars.bufferBalances.isEmpty()) {
                     bufferWrappedBalanceAsBase = wrappedToken.convertToAssets(vars.bufferWrappedBalance);
-                    bufferBaseAmountToWrap = vars.bufferBaseBalance > bufferWrappedBalanceAsBase
+                    bufferBaseAmountToUnwrap = vars.bufferBaseBalance > bufferWrappedBalanceAsBase
                         ? (vars.bufferBaseBalance - bufferWrappedBalanceAsBase) / 2
                         : 0;
                 }
 
-                // EXACT_OUT requires the exact amount of base tokens to be returned, so withdraw is called
-                wrappedToken.withdraw(vars.amountBaseExpected + bufferBaseAmountToWrap, address(this), address(this));
+                // EXACT_OUT requires the exact amount of base tokens to be returned, so withdraw is called.
+                // The amount of base tokens to withdraw is the necessary amount to fulfill the trade
+                // (amountBaseExpected), plus the amount needed to leave the buffer rebalanced 50/50 at the end
+                // (bufferBaseAmountToUnwrap).
+                wrappedToken.withdraw(vars.amountBaseExpected + bufferBaseAmountToUnwrap, address(this), address(this));
             }
 
             vars.baseBalanceVaultAfter = baseToken.balanceOf(address(this));
