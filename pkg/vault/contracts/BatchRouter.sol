@@ -561,6 +561,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         if (step.isBuffer) {
                             // since the token was taken in advance, returns to the user what is left from the
                             // wrap/unwrap operation
+                            _currentSwapTokensOut.add(address(stepTokenIn));
                             _currentSwapTokenOutAmounts().tAdd(address(stepTokenIn), path.maxAmountIn - amountIn);
                         } else {
                             _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), amountIn);
