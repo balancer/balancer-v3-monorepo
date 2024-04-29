@@ -528,7 +528,6 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         if (stepLocals.isLastStep) {
                             // The buffer will need this token to wrap/unwrap, so take it from the user in advance
                             _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, false);
-                            _settledTokenAmounts().tAdd(address(path.tokenIn), path.maxAmountIn);
                         }
 
                         (, amountIn, ) = _vault.bufferWrapUnwrap(
@@ -563,6 +562,10 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                             // wrap/unwrap operation
                             _currentSwapTokensOut.add(address(stepTokenIn));
                             _currentSwapTokenOutAmounts().tAdd(address(stepTokenIn), path.maxAmountIn - amountIn);
+                            // settledTokenAmounts is used to return the amountsIn at the end of the operation, which
+                            // is only amountIn. The difference between maxAmountIn and amountIn will be paid during
+                            // settle
+                            _settledTokenAmounts().tAdd(address(path.tokenIn), amountIn);
                         } else {
                             _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), amountIn);
                         }
