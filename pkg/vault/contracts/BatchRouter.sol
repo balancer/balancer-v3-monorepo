@@ -24,6 +24,11 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { RouterCommon } from "./RouterCommon.sol";
 
+struct SwapStepLocals {
+    bool isFirstStep;
+    bool isLastStep;
+}
+
 contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
@@ -158,11 +163,13 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
             _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
 
             for (uint256 j = 0; j < path.steps.length; ++j) {
-                bool isLastStep = (j == path.steps.length - 1);
+                SwapStepLocals memory stepLocals;
+                stepLocals.isLastStep = (j == path.steps.length - 1);
+                stepLocals.isFirstStep = (j == 0);
                 uint256 minAmountOut;
 
                 // minAmountOut only applies to the last step.
-                if (isLastStep) {
+                if (stepLocals.isLastStep) {
                     minAmountOut = path.minAmountOut;
                 } else {
                     minAmountOut = 0;
@@ -176,9 +183,25 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
                     // required amount when performing the operation. These tokens might be the output of a previous
                     // step, in which case the user will have a BPT credit.
-                    if (IVault(_vault).getTokenDelta(stepTokenIn) < 0) {
-                        _vault.sendTo(IERC20(step.pool), params.sender, stepExactAmountIn);
+
+                    if (stepLocals.isFirstStep && params.sender != address(this)) {
+                        // If this is the first step, the sender must have the tokens. Therefore, we can transfer them
+                        // to the router, which acts as an intermediary. If the sender is the router, we just skip this
+                        // step (useful for queries).
+                        // This saves one permit(1) approval for the BPT to the router; if we burned tokens directly
+                        // from the sender we would need their approval.
+                        _permit2.transferFrom(
+                            params.sender,
+                            address(this),
+                            uint160(stepExactAmountIn),
+                            address(stepTokenIn)
+                        );
+                    } else {
+                        // If this is an intermediary step, we don't expect the sender to have BPT to burn.
+                        // Then, we flashloan tokens here (which should in practice just use existing credit).
+                        _vault.sendTo(IERC20(step.pool), address(this), stepExactAmountIn);
                     }
+
                     // BPT is burnt instantly, so we don't need to send it back later.
                     if (_currentSwapTokenInAmounts().tGet(address(stepTokenIn)) > 0) {
                         _currentSwapTokenInAmounts().tSub(address(stepTokenIn), stepExactAmountIn);
@@ -192,16 +215,15 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         minAmountOut == 0 ? 1 : minAmountOut
                     );
 
+                    // Router is always an intermediary in this case.
+                    // The Vault will burn tokens spending this allowance.
+                    IERC20(step.pool).forceApprove(address(this), type(uint256).max);
+
                     // Reusing `amountsOut` as input argument and function output to prevent stack too deep error.
-                    if (params.sender == address(this)) {
-                        // Needed for queries.
-                        // If router is the sender, it has to approve itself.
-                        IERC20(step.pool).safeIncreaseAllowance(address(this), type(uint256).max);
-                    }
                     (, amountsOut, ) = _vault.removeLiquidity(
                         RemoveLiquidityParams({
                             pool: step.pool,
-                            from: params.sender,
+                            from: address(this),
                             maxBptAmountIn: stepExactAmountIn,
                             minAmountsOut: amountsOut,
                             kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
@@ -209,7 +231,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         })
                     );
 
-                    if (isLastStep) {
+                    if (stepLocals.isLastStep) {
                         // The amount out for the last step of the path should be recorded for the return value, and the
                         // amount for the token should be sent back to the sender later on.
                         pathAmountsOut[i] = amountsOut[tokenIndex];
@@ -232,7 +254,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     (, uint256 bptAmountOut, ) = _vault.addLiquidity(
                         AddLiquidityParams({
                             pool: step.pool,
-                            to: params.sender,
+                            to: stepLocals.isLastStep ? params.sender : address(_vault),
                             maxAmountsIn: exactAmountsIn,
                             minBptAmountOut: minAmountOut,
                             kind: AddLiquidityKind.UNBALANCED,
@@ -240,7 +262,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         })
                     );
 
-                    if (isLastStep) {
+                    if (stepLocals.isLastStep) {
                         // The amount out for the last step of the path should be recorded for the return value.
                         // We do not need to register the amount out in _currentSwapTokenOutAmounts since the BPT
                         // is minted directly to the sender, so this step can be considered settled at this point.
@@ -252,14 +274,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         stepExactAmountIn = bptAmountOut;
                         // The token in for the next step is the token out of the current step.
                         stepTokenIn = step.tokenOut;
-                        // If this is an intermediate step, we'll need to send it back to the vault
-                        // to get credit for the BPT minted in the add liquidity operation.
-                        if (params.sender == address(this)) {
-                            // Required for queries or in case router holds tokens.
-                            IERC20(step.pool).safeTransfer(address(_vault), bptAmountOut);
-                        } else {
-                            _permit2.transferFrom(params.sender, address(_vault), uint160(bptAmountOut), step.pool);
-                        }
+                        // If this is an intermediate step, BPT is minted to the vault so we just get the credit.
                         _vault.settle(IERC20(step.pool));
                     }
                 } else {
@@ -276,7 +291,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         })
                     );
 
-                    if (isLastStep) {
+                    if (stepLocals.isLastStep) {
                         // The amount out for the last step of the path should be recorded for the return value, and the
                         // amount for the token should be sent back to the sender later on.
                         pathAmountsOut[i] = amountOut;
@@ -354,37 +369,34 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
             // last. The calculated input of step (j) is the exact amount out for step (j - 1).
             for (int256 j = int256(path.steps.length - 1); j >= 0; --j) {
                 SwapPathStep memory step = path.steps[uint256(j)];
-                bool isLastStep = (j == 0);
+                SwapStepLocals memory stepLocals;
+                stepLocals.isLastStep = (j == 0);
+                stepLocals.isFirstStep = (uint256(j) == path.steps.length - 1);
 
                 // These two variables are set at the beginning of the iteration and are used as inputs for
                 // the operation described by the step.
                 uint256 stepMaxAmountIn;
                 IERC20 stepTokenIn;
 
-                // Stack too deep
-                {
-                    bool isFirstStep = (uint256(j) == path.steps.length - 1);
+                if (stepLocals.isFirstStep) {
+                    // The first step in the iteration is the last one in the given array of steps, and it
+                    // specifies the output token for the step as well as the exact amount out for that token.
+                    // Output amounts are stored to send them later on.
+                    _currentSwapTokensOut.add(address(step.tokenOut));
+                    _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), stepExactAmountOut);
+                }
 
-                    if (isFirstStep) {
-                        // The first step in the iteration is the last one in the given array of steps, and it
-                        // specifies the output token for the step as well as the exact amount out for that token.
-                        // Output amounts are stored to send them later on.
-                        _currentSwapTokensOut.add(address(step.tokenOut));
-                        _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), stepExactAmountOut);
-                    }
-
-                    if (isLastStep) {
-                        // In backwards order, the last step is the first one in the given path.
-                        // The given token in and max amount in apply for this step.
-                        stepMaxAmountIn = path.maxAmountIn;
-                        stepTokenIn = path.tokenIn;
-                    } else {
-                        // For every other intermediate step, no maximum input applies.
-                        // The input token for this step is the output token of the previous given step.
-                        // We use uint128 to prevent Vault's internal scaling from overflowing.
-                        stepMaxAmountIn = _MAX_AMOUNT;
-                        stepTokenIn = path.steps[uint256(j - 1)].tokenOut;
-                    }
+                if (stepLocals.isLastStep) {
+                    // In backwards order, the last step is the first one in the given path.
+                    // The given token in and max amount in apply for this step.
+                    stepMaxAmountIn = path.maxAmountIn;
+                    stepTokenIn = path.tokenIn;
+                } else {
+                    // For every other intermediate step, no maximum input applies.
+                    // The input token for this step is the output token of the previous given step.
+                    // We use uint128 to prevent Vault's internal scaling from overflowing.
+                    stepMaxAmountIn = _MAX_AMOUNT;
+                    stepTokenIn = path.steps[uint256(j - 1)].tokenOut;
                 }
 
                 if (address(stepTokenIn) == step.pool) {
@@ -395,9 +407,21 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     // operation is not known in advance, so we take a flashloan for all the available reserves.
                     // The last step is the one that defines the inputs for this path. The caller should have enough
                     // BPT to burn already if that's the case, so we just skip this step if so.
-                    if (isLastStep == false) {
+                    if (stepLocals.isLastStep == false) {
                         stepMaxAmountIn = _vault.getReservesOf(stepTokenIn);
-                        _vault.sendTo(IERC20(step.pool), params.sender, stepMaxAmountIn);
+                        _vault.sendTo(IERC20(step.pool), address(this), stepMaxAmountIn);
+                    } else if (params.sender != address(this)) {
+                        // The last step being executed is the first step in the swap path, meaning that it's the one
+                        // that defines the inputs of the path.
+                        // In that case, the sender must have the tokens. Therefore, we can transfer them
+                        // to the router, which acts as an intermediary. If the sender is the router, we just skip this
+                        // step (useful for queries).
+                        _permit2.transferFrom(
+                            params.sender,
+                            address(this),
+                            uint160(stepMaxAmountIn),
+                            address(stepTokenIn)
+                        );
                     }
 
                     (uint256[] memory exactAmountsOut, ) = _getSingleInputArrayAndTokenIndex(
@@ -406,15 +430,13 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         stepExactAmountOut
                     );
 
-                    if (params.sender == address(this)) {
-                        // Needed for queries.
-                        // If router is the sender, it has to approve itself.
-                        IERC20(step.pool).approve(address(this), type(uint256).max);
-                    }
+                    // The router is always the intermediary, and the Vault will burn BPT tokens using its allowance.
+                    stepTokenIn.forceApprove(address(this), type(uint256).max);
+
                     (uint256 bptAmountIn, , ) = _vault.removeLiquidity(
                         RemoveLiquidityParams({
                             pool: step.pool,
-                            from: params.sender,
+                            from: address(this),
                             maxBptAmountIn: stepMaxAmountIn,
                             minAmountsOut: exactAmountsOut,
                             kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
@@ -422,27 +444,22 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         })
                     );
 
-                    if (isLastStep) {
+                    if (stepLocals.isLastStep) {
                         // BPT is burnt instantly, so we don't need to send it to the Vault during settlement.
                         pathAmountsIn[i] = bptAmountIn;
                         _settledTokenAmounts().tAdd(address(stepTokenIn), bptAmountIn);
+
+                        // Refund unused portion of BPT to the user
+                        if (bptAmountIn < stepMaxAmountIn && params.sender != address(this)) {
+                            stepTokenIn.safeTransfer(address(params.sender), stepMaxAmountIn - bptAmountIn);
+                        }
                     } else {
                         // Output for the step (j - 1) is the input of step (j).
                         stepExactAmountOut = bptAmountIn;
                         // Refund unused portion of BPT flashloan to the Vault
                         if (bptAmountIn < stepMaxAmountIn) {
-                            if (params.sender == address(this)) {
-                                // Required for queries or in case router holds tokens.
-                                IERC20(stepTokenIn).safeTransfer(address(_vault), stepMaxAmountIn - bptAmountIn);
-                            } else {
-                                _permit2.transferFrom(
-                                    params.sender,
-                                    address(_vault),
-                                    uint160(stepMaxAmountIn - bptAmountIn),
-                                    address(stepTokenIn)
-                                );
-                            }
-                            _vault.settle(IERC20(stepTokenIn));
+                            stepTokenIn.safeTransfer(address(_vault), stepMaxAmountIn - bptAmountIn);
+                            _vault.settle(stepTokenIn);
                         }
                     }
                 } else if (address(step.tokenOut) == step.pool) {
@@ -457,7 +474,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     (stepAmountsIn, , ) = _vault.addLiquidity(
                         AddLiquidityParams({
                             pool: step.pool,
-                            to: params.sender,
+                            to: stepLocals.isFirstStep ? params.sender : address(_vault),
                             maxAmountsIn: stepAmountsIn,
                             minBptAmountOut: stepExactAmountOut,
                             kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
@@ -465,7 +482,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         })
                     );
 
-                    if (isLastStep) {
+                    if (stepLocals.isLastStep) {
                         // The amount out for the last step of the path should be recorded for the return value.
                         pathAmountsIn[i] = stepAmountsIn[tokenIndex];
                         _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), stepAmountsIn[tokenIndex]);
@@ -473,28 +490,14 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         stepExactAmountOut = stepAmountsIn[tokenIndex];
                     }
 
-                    // stack-too-deep
-                    {
-                        // The last step given determines the outputs for the path. Since this is given out, the last
-                        // step given is the first one to be executed in the loop.
-                        bool isFirstStep = (uint256(j) == path.steps.length - 1);
-                        if (isFirstStep) {
-                            // Instead of sending tokens back to the vault, we can just discount it from whatever
-                            // the vault owes the sender to make one less transfer.
-                            _currentSwapTokenOutAmounts().tSub(address(step.tokenOut), stepExactAmountOut);
-                        } else {
-                            if (params.sender == address(this)) {
-                                IERC20(step.pool).safeTransfer(address(_vault), stepExactAmountOut);
-                            } else {
-                                _permit2.transferFrom(
-                                    params.sender,
-                                    address(_vault),
-                                    uint160(stepExactAmountOut),
-                                    step.pool
-                                );
-                            }
-                            _vault.settle(IERC20(step.pool));
-                        }
+                    // The first step executed determines the outputs for the path, since this is given out.
+                    if (stepLocals.isFirstStep) {
+                        // Instead of sending tokens back to the vault, we can just discount it from whatever
+                        // the vault owes the sender to make one less transfer.
+                        _currentSwapTokenOutAmounts().tSub(address(step.tokenOut), stepExactAmountOut);
+                    } else {
+                        // If it's not the first step, BPT is minted to the vault so we just get the credit.
+                        _vault.settle(IERC20(step.pool));
                     }
                 } else {
                     // No BPT involved in the operation: regular swap exact out
@@ -510,7 +513,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         })
                     );
 
-                    if (isLastStep) {
+                    if (stepLocals.isLastStep) {
                         pathAmountsIn[i] = amountIn;
                         _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), amountIn);
                     } else {
