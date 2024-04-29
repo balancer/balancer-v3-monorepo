@@ -21,14 +21,13 @@ library BufferPackedTokenBalance {
         return uint256(balance >> 128) & _MAX_BALANCE;
     }
 
-    /// @dev Replace a base balance value, without modifying the wrapped balance.
-    function setBaseBalance(bytes32 balance, uint256 newBaseBalance) internal pure returns (bytes32) {
-        return toPackedBalance(newBaseBalance, getWrappedBalance(balance));
-    }
-
-    /// @dev Replace a wrapped balance value, without modifying the base balance.
-    function setWrappedBalance(bytes32 balance, uint256 newWrappedBalance) internal pure returns (bytes32) {
-        return toPackedBalance(getBaseBalance(balance), newWrappedBalance);
+    /// @dev Updates base and wrapped balances and returns the new bytes32 balance
+    function setBalances(
+        bytes32 balance,
+        uint256 newBaseBalance,
+        uint256 newWrappedBalance
+    ) internal pure returns (bytes32) {
+        return toPackedBalance(newBaseBalance, newWrappedBalance);
     }
 
     /// @dev Packs together `base` and `wrapped` amounts to create a balance value.

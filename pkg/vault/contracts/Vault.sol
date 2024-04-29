@@ -1102,11 +1102,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 baseToken,
         IERC4626 wrappedToken,
         uint256 amountGivenRaw
-    )
-        private
-        nonReentrant
-        returns (uint256 amountCalculatedRaw, uint256 amountWrapped, uint256 amountBaseToWrap)
-    {
+    ) private nonReentrant returns (uint256 amountCalculatedRaw, uint256 amountWrapped, uint256 amountBaseToWrap) {
         WrapLocals memory vars;
         vars.bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
 
@@ -1128,8 +1124,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // the buffer has enough liquidity to facilitate the wrap without making an external call.
             amountWrapped = vars.amountWrappedExpected;
 
-            vars.bufferBalances = vars.bufferBalances.setBaseBalance(vars.bufferBalances.getBaseBalance() + amountBaseToWrap);
-            vars.bufferBalances = vars.bufferBalances.setWrappedBalance(vars.bufferBalances.getWrappedBalance() - amountWrapped);
+            vars.bufferBalances = vars.bufferBalances.setBalances(
+                vars.bufferBalances.getBaseBalance() + amountBaseToWrap,
+                vars.bufferBalances.getWrappedBalance() - amountWrapped
+            );
             _bufferTokenBalances[IERC20(wrappedToken)] = vars.bufferBalances;
         } else {
             // the buffer does not have enough liquidity to facilitate the wrap without making an external call.
@@ -1193,16 +1191,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // the actual operation.
                 revert WrongWrapUnwrapBaseAmount(address(wrappedToken));
             }
-            vars.bufferBalances = vars.bufferBalances.setBaseBalance(
-                vars.bufferBaseBalance - (vars.totalBaseDepositedOrWithdrawn - amountBaseToWrap)
-            );
-
             if (vars.totalWrappedDepositedOrWithdrawn < vars.amountWrappedExpected) {
                 // If this error is thrown, it means the previewDeposit or previewMint had a different result from
                 // the actual operation.
                 revert WrongWrapUnwrapWrappedAmount(address(wrappedToken));
             }
-            vars.bufferBalances = vars.bufferBalances.setWrappedBalance(
+            vars.bufferBalances = vars.bufferBalances.setBalances(
+                vars.bufferBaseBalance - (vars.totalBaseDepositedOrWithdrawn - amountBaseToWrap),
                 vars.bufferWrappedBalance + (vars.totalWrappedDepositedOrWithdrawn - vars.amountWrappedExpected)
             );
             _bufferTokenBalances[IERC20(wrappedToken)] = vars.bufferBalances;
@@ -1239,11 +1234,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 baseToken,
         IERC4626 wrappedToken,
         uint256 amountGivenRaw
-    )
-        private
-        nonReentrant
-        returns (uint256 amountCalculatedRaw, uint256 amountWrappedToUnwrap, uint256 amountBase)
-    {
+    ) private nonReentrant returns (uint256 amountCalculatedRaw, uint256 amountWrappedToUnwrap, uint256 amountBase) {
         UnwrapLocals memory vars;
         vars.bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
 
@@ -1265,8 +1256,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // the buffer has enough liquidity to facilitate the wrap without making an external call.
             amountBase = vars.amountBaseExpected;
 
-            vars.bufferBalances = vars.bufferBalances.setBaseBalance(vars.bufferBalances.getBaseBalance() - amountBase);
-            vars.bufferBalances = vars.bufferBalances.setWrappedBalance(vars.bufferBalances.getWrappedBalance() + amountWrappedToUnwrap);
+            vars.bufferBalances = vars.bufferBalances.setBalances(
+                vars.bufferBalances.getBaseBalance() - amountBase,
+                vars.bufferBalances.getWrappedBalance() + amountWrappedToUnwrap
+            );
             _bufferTokenBalances[IERC20(wrappedToken)] = vars.bufferBalances;
         } else {
             // the buffer does not have enough liquidity to facilitate the wrap without making an external call.
@@ -1322,16 +1315,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // the actual operation.
                 revert WrongWrapUnwrapBaseAmount(address(wrappedToken));
             }
-            vars.bufferBalances = vars.bufferBalances.setBaseBalance(
-                vars.bufferBaseBalance + (vars.totalBaseDepositedOrWithdrawn - vars.amountBaseExpected)
-            );
-
             if (vars.totalWrappedDepositedOrWithdrawn < amountWrappedToUnwrap) {
                 // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result from
                 // the actual operation.
                 revert WrongWrapUnwrapWrappedAmount(address(wrappedToken));
             }
-            vars.bufferBalances = vars.bufferBalances.setWrappedBalance(
+            vars.bufferBalances = vars.bufferBalances.setBalances(
+                vars.bufferBaseBalance + (vars.totalBaseDepositedOrWithdrawn - vars.amountBaseExpected),
                 vars.bufferWrappedBalance - (vars.totalWrappedDepositedOrWithdrawn - amountWrappedToUnwrap)
             );
             _bufferTokenBalances[IERC20(wrappedToken)] = vars.bufferBalances;
