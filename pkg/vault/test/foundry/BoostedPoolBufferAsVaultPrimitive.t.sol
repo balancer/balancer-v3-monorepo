@@ -139,12 +139,12 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
         // LP should have correct amount of shares from buffer (total invested amount in base)
         assertEq(
-            vault.getBufferShareOfUser(IERC20(waDAI), address(lp)),
+            vault.getBufferSharesOfLiquidityOwner(IERC20(waDAI), address(lp)),
             bufferAmount * 2,
             "Wrong share of waDAI buffer belonging to LP"
         );
         assertEq(
-            vault.getBufferShareOfUser(IERC20(waUSDC), address(lp)),
+            vault.getBufferSharesOfLiquidityOwner(IERC20(waUSDC), address(lp)),
             bufferAmount * 2,
             "Wrong share of waUSDC buffer belonging to LP"
         );

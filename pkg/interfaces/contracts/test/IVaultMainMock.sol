@@ -72,10 +72,6 @@ interface IVaultMainMock {
 
     function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances);
 
-    function getBufferShareOfUser(IERC20 wrappedToken, address user) external view returns (uint256);
-
-    function getBufferBalance(IERC20 wrappedToken) external view returns (uint256, uint256);
-
     function updateLiveTokenBalanceInPoolData(
         PoolData memory poolData,
         Rounding roundingDirection,
