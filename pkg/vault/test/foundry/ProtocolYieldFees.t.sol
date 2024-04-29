@@ -170,7 +170,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
 
         // There should be creator fees on non-exempt wsteth
         uint256 actualCreatorFee = vault.getPoolCreatorFees(address(pool), wsteth);
-        assertTrue(actualProtocolFee > 0, "wstETH did not collect any creator fees");
+        assertTrue(actualCreatorFee > 0, "wstETH did not collect any creator fees");
 
         // How much should the fee be?
         // Tricky, because the diff already has the fee subtracted. Need to add it back in
