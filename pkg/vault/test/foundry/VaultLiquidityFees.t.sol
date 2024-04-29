@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -179,9 +181,14 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             "Add - Pool balance: token 1"
         );
 
+        IERC20[] memory feeTokens = new IERC20[](2);
+        feeTokens[0] = dai;
+        feeTokens[1] = usdc;
+        uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedFeeAmounts(feeTokens);
+
         // Protocols fees are charged
-        assertEq(protocolSwapFees[daiIdx], vault.getProtocolFees(address(dai)), "Protocol's fee amount is wrong");
-        assertEq(protocolSwapFees[usdcIdx], vault.getProtocolFees(address(usdc)), "Protocol's fee amount is wrong");
+        assertEq(protocolSwapFees[daiIdx], feeAmounts[0], "Protocol's fee amount is wrong");
+        assertEq(protocolSwapFees[usdcIdx], feeAmounts[1], "Protocol's fee amount is wrong");
 
         // User now has BPT
         assertEq(balancesBefore.userBpt, 0, "Add - User BPT balance before");
@@ -231,9 +238,14 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             "Remove - Pool balance: token 1"
         );
 
+        IERC20[] memory feeTokens = new IERC20[](2);
+        feeTokens[0] = dai;
+        feeTokens[1] = usdc;
+        uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedFeeAmounts(feeTokens);
+
         // Protocols fees are charged
-        assertEq(protocolSwapFees[daiIdx], vault.getProtocolFees(address(dai)), "Protocol's fee amount is wrong");
-        assertEq(protocolSwapFees[usdcIdx], vault.getProtocolFees(address(usdc)), "Protocol's fee amount is wrong");
+        assertEq(protocolSwapFees[daiIdx], feeAmounts[0], "Protocol's fee amount is wrong");
+        assertEq(protocolSwapFees[usdcIdx], feeAmounts[1], "Protocol's fee amount is wrong");
 
         // User has burnt the correct amount of BPT
         assertEq(balancesBefore.userBpt - balancesAfter.userBpt, bptAmountIn, "Wrong amount of BPT burned");

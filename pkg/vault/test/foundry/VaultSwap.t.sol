@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
+import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -374,12 +375,19 @@ contract VaultSwapTest is BaseVaultTest {
             bytes("")
         );
 
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.collectProtocolFees.selector), admin);
+        authorizer.grantRole(vault.getActionId(IProtocolFeeCollector.withdrawCollectedFees.selector), admin);
         vm.prank(admin);
-        vault.collectProtocolFees([address(dai)].toMemoryArray().asIERC20());
+        vault.getProtocolFeeCollector().withdrawCollectedFees(
+            [address(dai)].toMemoryArray().asIERC20(),
+            address(admin)
+        );
+
+        IERC20[] memory feeTokens = new IERC20[](1);
+        feeTokens[0] = dai;
+        uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedFeeAmounts(feeTokens);
 
         // protocol fees are zero
-        assertEq(0, vault.getProtocolFees(address(dai)), "Protocol fees are not zero");
+        assertEq(0, feeAmounts[0], "Protocol fees are not zero");
 
         // alice received protocol fees
         assertEq(dai.balanceOf(admin) - defaultBalance, (protocolSwapFee), "Protocol fees not collected");
@@ -457,8 +465,12 @@ contract VaultSwapTest is BaseVaultTest {
         assertEq(balances[daiIdx], fee - protocolFee, "Swap: Pool's [0] balance is wrong");
         assertEq(balances[usdcIdx], 2 * defaultAmount, "Swap: Pool's [1] balance is wrong");
 
+        IERC20[] memory feeTokens = new IERC20[](1);
+        feeTokens[0] = dai;
+        uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedFeeAmounts(feeTokens);
+
         // protocol fees are accrued
-        assertEq(protocolFee, vault.getProtocolFees(address(dai)), "Swap: Protocol's fee amount is wrong");
+        assertEq(protocolFee, feeAmounts[0], "Swap: Protocol's fee amount is wrong");
 
         // vault are adjusted balances
         assertEq(dai.balanceOf(address(vault)), fee, "Swap: Vault's DAI balance is wrong");

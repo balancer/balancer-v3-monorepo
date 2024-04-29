@@ -145,11 +145,4 @@ interface IVaultMain {
      * @notice Returns the Vault Extension address.
      */
     function getVaultExtension() external view returns (address);
-
-    /**
-     * @notice Collects accumulated protocol fees for the specified array of tokens.
-     * @dev Fees are sent to msg.sender.
-     * @param pool The pool on which all protocol fees should be collected
-     */
-    function collectProtocolFees(address pool) external;
 }

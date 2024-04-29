@@ -7,13 +7,14 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -31,6 +32,7 @@ import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
+import { ProtocolFeeCollector } from "./ProtocolFeeCollector.sol";
 
 /**
  * @dev Bytecode extension for the Vault containing permissioned functions. Complementary to the `VaultExtension`.
@@ -78,6 +80,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
 
         _vault = mainVault;
+
+        _protocolFeeCollector = new ProtocolFeeCollector(mainVault);
     }
 
     /*******************************************************************************
@@ -88,18 +92,22 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         return _vault;
     }
 
+    function getProtocolFeeCollector() external view onlyVault returns (IProtocolFeeCollector) {
+        return _protocolFeeCollector;
+    }
+
     /// @inheritdoc IVaultAdmin
-    function getPauseWindowEndTime() external view returns (uint256) {
+    function getPauseWindowEndTime() external view onlyVault returns (uint256) {
         return _vaultPauseWindowEndTime;
     }
 
     /// @inheritdoc IVaultAdmin
-    function getBufferPeriodDuration() external view returns (uint256) {
+    function getBufferPeriodDuration() external view onlyVault returns (uint256) {
         return _vaultBufferPeriodDuration;
     }
 
     /// @inheritdoc IVaultAdmin
-    function getBufferPeriodEndTime() external view returns (uint256) {
+    function getBufferPeriodEndTime() external view onlyVault returns (uint256) {
         return _vaultBufferPeriodEndTime;
     }
 
@@ -327,6 +335,11 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         emit PoolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
     }
 
+    /// @inheritdoc IVaultAdmin
+    function collectProtocolFees(address /* pool */) public nonReentrant {
+        // need protocol fees collector address. Deploy contract and move collection to there?
+    }
+    
     /*function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant onlyVault {
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];

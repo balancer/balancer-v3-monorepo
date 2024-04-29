@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IProtocolFeeCollector } from "./IProtocolFeeCollector.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { IVault } from "./IVault.sol";
 
@@ -45,6 +46,9 @@ interface IVaultAdmin {
 
     /// @dev Returns the main Vault address.
     function vault() external view returns (IVault);
+
+    /// @dev Returns the ProtocolFeeCollector address.
+    function getProtocolFeeCollector() external view returns (IProtocolFeeCollector);
 
     /*******************************************************************************
                                     Pool Information
@@ -136,6 +140,13 @@ interface IVaultAdmin {
      * @param poolCreatorFeePercentage The new pool creator fee percentage to apply to the pool
      */
     function setPoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) external;
+
+    /**
+     * @notice Collects accumulated protocol fees for the specified array of tokens.
+     * @dev Fees are sent to the ProtocolFeeCollector address.
+     * @param pool The pool on which all protocol fees should be collected
+     */
+    function collectProtocolFees(address pool) external;
 
     /*******************************************************************************
                                     Recovery Mode

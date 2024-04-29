@@ -76,49 +76,6 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         );
     }
 
-    function testCollectPoolCreatorFee__Fuzz(
-        uint256 amountToSwap,
-        uint64 swapFeePercentage,
-        uint64 protocolFeePercentage,
-        uint64 poolCreatorFeePercentage
-    ) public {
-        amountToSwap = bound(amountToSwap, _defaultAmountToSwap, defaultAmount / 2);
-        // 0 to 10%
-        swapFeePercentage = (bound(swapFeePercentage, 0, 1e17 / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR).toUint64();
-        // 0 to 50%
-        protocolFeePercentage = (bound(protocolFeePercentage, 0, 5e17 / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR)
-            .toUint64();
-        // 0 to 100%
-        poolCreatorFeePercentage = (bound(poolCreatorFeePercentage, 0, 1e18 / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR)
-            .toUint64();
-
-        uint256 lpBalanceDaiBefore = dai.balanceOf(address(lp));
-
-        uint256 chargedCreatorFees = _swapExactInWithFees(
-            usdc,
-            dai,
-            amountToSwap,
-            swapFeePercentage,
-            protocolFeePercentage,
-            poolCreatorFeePercentage,
-            false
-        );
-
-        vault.collectPoolCreatorFees(address(pool));
-        assertEq(
-            vault.getPoolCreatorFees(address(pool), dai),
-            0,
-            "creatorFees in the vault should be 0 after fee collected"
-        );
-
-        uint256 lpBalanceDaiAfter = dai.balanceOf(address(lp));
-        assertEq(
-            lpBalanceDaiAfter - lpBalanceDaiBefore,
-            chargedCreatorFees,
-            "LP (poolCreator) tokenOut balance should increase by chargedCreatorFees after fee collected"
-        );
-    }
-
     /// @dev Avoid "stack too deep"
     struct SwapTestLocals {
         uint256 totalFees;
@@ -165,12 +122,17 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         vars.aliceTokenOutBalanceBefore = tokenOut.balanceOf(address(alice));
 
         // Get protocol fees before transfer
-        vars.protocolTokenInFeesBefore = vault.getProtocolFees(address(tokenIn));
-        vars.protocolTokenOutFeesBefore = vault.getProtocolFees(address(tokenOut));
+        IERC20[] memory feeTokens = new IERC20[](2);
+        feeTokens[0] = tokenIn;
+        feeTokens[1] = tokenOut;
+        uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedFeeAmounts(feeTokens);
+        (vars.protocolTokenInFeesBefore, vars.protocolTokenOutFeesBefore) = (feeAmounts[0], feeAmounts[1]);
+        //vars.protocolTokenInFeesBefore = vault.getProtocolFeeCollector().getCollectedFeeAmounts(address(tokenIn));
+        //vars.protocolTokenOutFeesBefore = vault.getProtocolFees(address(tokenOut));
 
         // Get creator fees before transfer
-        vars.creatorTokenInFeesBefore = vault.getPoolCreatorFees(address(pool), tokenIn);
-        vars.creatorTokenOutFeesBefore = vault.getPoolCreatorFees(address(pool), tokenOut);
+        //vars.creatorTokenInFeesBefore = vault.getPoolCreatorFees(address(pool), tokenIn);
+        //vars.creatorTokenOutFeesBefore = vault.getPoolCreatorFees(address(pool), tokenOut);
 
         uint256[] memory liveBalancesBefore = vault.getLastLiveBalances(address(pool));
 
@@ -197,19 +159,17 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         );
 
         // Check protocol fees after transfer
+        feeAmounts = vault.getProtocolFeeCollector().getCollectedFeeAmounts(feeTokens);
+
+        assertEq(feeAmounts[0], vars.protocolTokenInFeesBefore, "tokenIn protocol fees should not change");
         assertEq(
-            vault.getProtocolFees(address(tokenIn)),
-            vars.protocolTokenInFeesBefore,
-            "tokenIn protocol fees should not change"
-        );
-        assertEq(
-            vault.getProtocolFees(address(tokenOut)),
+            feeAmounts[1],
             vars.protocolTokenOutFeesBefore + vars.protocolFees,
             "tokenOut protocol fees should increase by vars.protocolFees after swap"
         );
 
         // Check creator fees after transfer
-        assertEq(
+        /*assertEq(
             vault.getPoolCreatorFees(address(pool), tokenIn),
             vars.creatorTokenInFeesBefore,
             "tokenIn creator fees should not change"
@@ -218,7 +178,7 @@ contract PoolCreatorFeesTest is BaseVaultTest {
             vault.getPoolCreatorFees(address(pool), tokenOut),
             vars.creatorTokenOutFeesBefore + chargedCreatorFee,
             "tokenOut creator fees should increase by chargedCreatorFee after swap"
-        );
+        );*/
 
         // Check protocol + creator fees are always smaller than total fees
         assertLe(

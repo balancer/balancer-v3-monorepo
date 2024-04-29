@@ -36,7 +36,6 @@ import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 import { VaultCommon } from "./VaultCommon.sol";
-import { ProtocolFeeCollector } from "./ProtocolFeeCollector.sol";
 
 contract Vault is IVaultMain, VaultCommon, Proxy {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -65,8 +64,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _vaultBufferPeriodEndTime = IVaultAdmin(address(vaultExtension)).getBufferPeriodEndTime();
 
         _authorizer = authorizer;
-
-        _protocolFeeCollector = new ProtocolFeeCollector(IVault(address(this)));
     }
 
     /*******************************************************************************
@@ -954,7 +951,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.poolConfig.isPoolInRecoveryMode == false
         ) {
             if (_lastProtocolFeePercentages[pool] != vaultState.protocolSwapFeePercentage) {
-                collectProtocolFees(pool);
+                IVault(address(this)).collectProtocolFees(pool);
 
                 // Update the last to the current value.
                 _lastProtocolFeePercentages[pool] = vaultState.protocolSwapFeePercentage;
@@ -1018,11 +1015,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 poolCreatorFees.set(token, currentPoolCreatorFee + creatorSwapFeeAmountRaw);
             }
         }*/
-    }
-
-    /// @inheritdoc IVaultMain
-    function collectProtocolFees(address /* pool */) public nonReentrant {
-        // need protocol fees collector address. Deploy contract and move collection to there?
     }
 
     /*******************************************************************************

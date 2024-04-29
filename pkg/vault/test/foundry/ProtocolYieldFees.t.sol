@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
@@ -140,13 +142,23 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
             assertTrue(liveBalanceDeltas[i] > 0, "Live balance delta is 0");
         }
 
-        // Should be no protocol fees on dai, since it is yield fee exempt
-        assertEq(vault.getProtocolFees(address(dai)), 0, "Protocol fees on exempt dai are not 0");
-        uint256[] memory scalingFactors = PoolMock(pool).getDecimalScalingFactors();
+        uint256[] memory scalingFactors;
+        uint256 actualProtocolFee;
 
-        // There should be fees on non-exempt wsteth
-        uint256 actualProtocolFee = vault.getProtocolFees(address(wsteth));
-        assertTrue(actualProtocolFee > 0, "wstETH did not collect any protocol fees");
+        {
+            IERC20[] memory feeTokens = new IERC20[](2);
+            feeTokens[0] = dai;
+            feeTokens[1] = wsteth;
+            uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedFeeAmounts(feeTokens);
+
+            // Should be no protocol fees on dai, since it is yield fee exempt
+            assertEq(feeAmounts[0], 0, "Protocol fees on exempt dai are not 0");
+            scalingFactors = PoolMock(pool).getDecimalScalingFactors();
+
+            // There should be fees on non-exempt wsteth
+            actualProtocolFee = feeAmounts[1];
+            assertTrue(actualProtocolFee > 0, "wstETH did not collect any protocol fees");
+        }
 
         // How much should the fee be?
         // Tricky, because the diff already has the fee subtracted. Need to add it back in
@@ -233,8 +245,13 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
 
         initPool();
 
-        require(vault.getProtocolFees(address(dai)) == 0, "Initial protocol fees for DAI not 0");
-        require(vault.getProtocolFees(address(wsteth)) == 0, "Initial protocol fees for wstETH not 0");
+        IERC20[] memory feeTokens = new IERC20[](2);
+        feeTokens[0] = dai;
+        feeTokens[1] = wsteth;
+        uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedFeeAmounts(feeTokens);
+
+        require(feeAmounts[0] == 0, "Initial protocol fees for DAI not 0");
+        require(feeAmounts[1] == 0, "Initial protocol fees for wstETH not 0");
 
         // Pump the rates 10 times
         wstethRate *= 10;
@@ -248,12 +265,14 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
 
         // No matter what the rates are, the value of wsteth grows from 1x to 10x.
         // Then, the protocol takes its cut out of the 9x difference.
+        feeAmounts = vault.getProtocolFeeCollector().getCollectedFeeAmounts(feeTokens);
+
         assertEq(
-            vault.getProtocolFees(address(wsteth)),
+            feeAmounts[1],
             ((poolInitAmount * 9) / 10).mulDown(protocolYieldFeePercentage),
             "Yield fees for wstETH is not the expected one"
         );
-        assertEq(vault.getProtocolFees(address(dai)), 0, "Yield fees for exempt dai are not 0");
+        assertEq(feeAmounts[0], 0, "Yield fees for exempt dai are not 0");
     }
 
     function verifyLiveBalances(
