@@ -114,16 +114,12 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
 
-        // yield fee 0.000001-20%
-        yieldFeePercentage = bound(yieldFeePercentage, 1, 2e6);
-        // VaultState stores yieldFeePercentage as a 24 bits variable (from 0 to (2^24)-1, or 0% to ~167%)
-        // Multiplying by FEE_SCALING_FACTOR (1e11) makes it 18 decimals scaled again
-        yieldFeePercentage = yieldFeePercentage * FEE_SCALING_FACTOR;
-        // creator yield fees 1-100%
-        creatorYieldFeePercentage = bound(creatorYieldFeePercentage, 1, 1e7);
-        // PoolConfig stores creatorYieldFeePercentage as a 24 bits variable (from 0 to (2^24)-1, or 0% to ~167%)
-        // Multiplying by FEE_SCALING_FACTOR (1e11) makes it 18 decimals scaled again
-        creatorYieldFeePercentage = creatorYieldFeePercentage * FEE_SCALING_FACTOR;
+        (yieldFeePercentage, creatorYieldFeePercentage) = _initializeFees(
+            yieldFeePercentage,
+            creatorYieldFeePercentage,
+            0,
+            0
+        );
 
         pool = createPool();
         wstETHRateProvider.mockRate(wstethRate);
@@ -186,12 +182,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         vars.expectedProtocolFee = vars.feeScaled18.toRawUndoRateRoundDown(scalingFactors[wstethIdx], wstethRate);
         vars.expectedCreatorFee = vars.expectedProtocolFee.mulDown(creatorYieldFeePercentage);
 
-        assertApproxEqAbs(
-            actualProtocolFee,
-            vars.expectedProtocolFee,
-            1e3,
-            "Wrong protocol fee"
-        );
+        assertApproxEqAbs(actualProtocolFee, vars.expectedProtocolFee, 1e3, "Wrong protocol fee");
         assertApproxEqAbs(actualCreatorFee, vars.expectedCreatorFee, 1e3, "Wrong creator fee");
     }
 
@@ -262,16 +253,12 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         uint256 yieldFeePercentage,
         uint256 creatorYieldFeePercentage
     ) public {
-        // yield fee 0.000001-20%
-        yieldFeePercentage = bound(yieldFeePercentage, 1, 2e6);
-        // VaultState stores yieldFeePercentage as a 24 bits variable (from 0 to (2^24)-1, or 0% to ~167%)
-        // Multiplying by FEE_SCALING_FACTOR (1e11) makes it 18 decimals scaled again
-        yieldFeePercentage = yieldFeePercentage * FEE_SCALING_FACTOR;
-        // creator yield fees 1-100%
-        creatorYieldFeePercentage = bound(creatorYieldFeePercentage, 1, 1e7);
-        // PoolConfig stores creatorYieldFeePercentage as a 24 bits variable (from 0 to (2^24)-1, or 0% to ~167%)
-        // Multiplying by FEE_SCALING_FACTOR (1e11) makes it 18 decimals scaled again
-        creatorYieldFeePercentage = creatorYieldFeePercentage * FEE_SCALING_FACTOR;
+        (yieldFeePercentage, creatorYieldFeePercentage) = _initializeFees(
+            yieldFeePercentage,
+            creatorYieldFeePercentage,
+            0,
+            0
+        );
 
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
@@ -280,16 +267,16 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     }
 
     function testYieldFeesOnSwap() public {
-        // yield fee 20%
-        uint256 yieldFeePercentage = 2e6;
-        // VaultState stores yieldFeePercentage as a 24 bits variable (from 0 to (2^24)-1, or 0% to ~167%)
-        // Multiplying by FEE_SCALING_FACTOR (1e11) makes it 18 decimals scaled again
-        yieldFeePercentage = yieldFeePercentage * FEE_SCALING_FACTOR;
-        // creator yield fees 100%
-        uint256 creatorYieldFeePercentage = 1e7;
-        // PoolConfig stores creatorYieldFeePercentage as a 24 bits variable (from 0 to (2^24)-1, or 0% to ~167%)
-        // Multiplying by FEE_SCALING_FACTOR (1e11) makes it 18 decimals scaled again
-        creatorYieldFeePercentage = creatorYieldFeePercentage * FEE_SCALING_FACTOR;
+        uint256 yieldFeePercentage;
+        uint256 creatorYieldFeePercentage;
+
+        // yield fee 20% and creator yield fees 100%
+        (yieldFeePercentage, creatorYieldFeePercentage) = _initializeFees(
+            yieldFeePercentage,
+            creatorYieldFeePercentage,
+            2e6,
+            1e7
+        );
 
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
@@ -407,5 +394,29 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         poolData.tokenRates[0] = tokenRate;
         uint256 liveBalance = balanceRaw.mulDown(decimalScalingFactor).mulDown(tokenRate);
         poolData.balancesLiveScaled18[0] = liveBalance;
+    }
+
+    function _initializeFees(
+        uint256 yieldFeePercentage,
+        uint256 creatorYieldFeePercentage,
+        uint256 fixedYieldFee,
+        uint256 fixedCreatorFee
+    ) private returns (uint256 finalYieldFeePercentage, uint256 finalCreatorFeePercentage) {
+        // Fees are stored as a 24 bits variable (from 0 to (2^24)-1, or 0% to ~167%) in vaultConfig and poolConfig
+        // Multiplying by FEE_SCALING_FACTOR (1e11) makes it 18 decimals scaled again
+
+        if (fixedYieldFee > 0) {
+            finalYieldFeePercentage = fixedYieldFee * FEE_SCALING_FACTOR;
+        } else {
+            // yield fee 0.000001-20%
+            finalYieldFeePercentage = bound(yieldFeePercentage, 1, 2e6) * FEE_SCALING_FACTOR;
+        }
+
+        if (fixedCreatorFee > 0) {
+            finalCreatorFeePercentage = fixedCreatorFee * FEE_SCALING_FACTOR;
+        } else {
+            // creator yield fees 1-100%
+            finalCreatorFeePercentage = bound(creatorYieldFeePercentage, 1, 1e7) * FEE_SCALING_FACTOR;
+        }
     }
 }
