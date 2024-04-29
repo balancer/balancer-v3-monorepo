@@ -76,14 +76,6 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         vault.setProtocolYieldFeePercentage(yieldFeePercentage);
     }
 
-    struct YieldTestLocals {
-        uint256 protocolFeeScaled18;
-        uint256 creatorFeeScaled18;
-        uint256 feeScaled18;
-        uint256 expectedProtocolFee;
-        uint256 expectedCreatorFee;
-    }
-
     function testSwapWithoutYieldFeesSnapshot() public {
         uint256 yieldFeePercentage;
         uint256 creatorYieldFeePercentage;
