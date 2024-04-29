@@ -190,9 +190,9 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
             actualProtocolFee,
             vars.expectedProtocolFee,
             1e3,
-            "Actual protocol fee is not the expected one"
+            "Wrong protocol fee"
         );
-        assertApproxEqAbs(actualCreatorFee, vars.expectedCreatorFee, 1e3, "Actual creator fee is not the expected one");
+        assertApproxEqAbs(actualCreatorFee, vars.expectedCreatorFee, 1e3, "Wrong creator fee");
     }
 
     function testUpdateLiveTokenBalanceInPoolData__Fuzz(
@@ -251,7 +251,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
                 (liveBalance - lastLiveBalance).mulDown(yieldFeePercentage).divDown(
                     decimalScalingFactor.mulDown(tokenRate)
                 ),
-                "Yield fees does not match the expected one"
+                "Wrong yield fees"
             );
         }
     }
@@ -341,14 +341,14 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
             vault.getProtocolFees(address(wsteth)),
             expectedProtocolFees,
             10, // rounding issues
-            "protocol yield fees for wstETH is not the expected one"
+            "Wrong protocol yield fees for wstETH"
         );
         uint256 expectedYieldFees = expectedProtocolFees.mulDown(creatorYieldFeePercentage);
         assertApproxEqAbs(
             vault.getPoolCreatorFees(address(pool), wsteth),
             expectedYieldFees,
             10, // rounding issues
-            "Creator yield fees for wstETH is not the expected one"
+            "Wrong creator yield fees for wstETH"
         );
         assertEq(vault.getProtocolFees(address(dai)), 0, "Yield fees for exempt dai are not 0");
     }
@@ -386,7 +386,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
             }
 
             // Tolerate being off by 1 wei
-            assertApproxEqAbs(data.balancesLiveScaled18[i], expectedLiveBalance, 1, "Live balance does not match");
+            assertApproxEqAbs(data.balancesLiveScaled18[i], expectedLiveBalance, 1, "Wrong live balances");
         }
 
         return data.balancesLiveScaled18;
