@@ -1164,10 +1164,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (tradeWrappedRaw), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferWrappedToUnwrapRaw)
                 vars.totalWrappedMintedRaw = tradeWrappedRaw + bufferWrappedToUnwrapRaw;
-                baseToken.approve(
-                    address(wrappedToken),
-                    wrappedToken.previewMint(vars.totalWrappedMintedRaw)
-                );
+                baseToken.approve(address(wrappedToken), wrappedToken.previewMint(vars.totalWrappedMintedRaw));
                 // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called
                 wrappedToken.mint(vars.totalWrappedMintedRaw, address(this));
             }
@@ -1194,9 +1191,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Only updates buffer balances if buffer is not empty.
             if (!vars.bufferBalancesRaw.isEmpty()) {
-                // In a wrap operation, the base balance of the buffer will decrease and the wrapped balance will 
-                // increase. To decrease base balance, we get the total amount that was deposited (totalBaseDeposited) 
-                // and discounts the amount needed in the trade (amountBaseToWrap). Same logic applies to wrapped 
+                // In a wrap operation, the base balance of the buffer will decrease and the wrapped balance will
+                // increase. To decrease base balance, we get the total amount that was deposited (totalBaseDeposited)
+                // and discounts the amount needed in the trade (amountBaseToWrap). Same logic applies to wrapped
                 // balances.
                 vars.bufferBalancesRaw = vars.bufferBalancesRaw.setBalances(
                     vars.bufferBaseBalanceRaw - (vars.totalBaseDepositedRaw - tradeBaseRaw),
@@ -1323,11 +1320,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // the actual operation.
                 revert WrongWrapUnwrapWrappedAmount(address(wrappedToken));
             }
-            
+
             // Only updates buffer balances if buffer is not empty.
             if (!vars.bufferBalancesRaw.isEmpty()) {
-                // In an unwrap operation, the base balance of the buffer will increase and the wrapped balance will 
-                // decrease. To increase base balance, we get the total amount that was withdrawn (totalBaseWithdrawn) 
+                // In an unwrap operation, the base balance of the buffer will increase and the wrapped balance will
+                // decrease. To increase base balance, we get the total amount that was withdrawn (totalBaseWithdrawn)
                 // and discounts the amount needed in the trade (amountBaseExpectedRaw). Same logic applies to wrapped
                 // balances.
                 vars.bufferBalancesRaw = vars.bufferBalancesRaw.setBalances(
