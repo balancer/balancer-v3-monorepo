@@ -661,6 +661,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
         // in which case there is nothing to settle. Then, since we're iterating backwards below, we need to be able
         // to subtract 1 from these quantities without reverting, which is why we use signed integers.
         int256 numTokensIn = int256(_currentSwapTokensIn.length());
+        int256 numTokensOut = int256(_currentSwapTokensOut.length());
         uint256 ethAmountIn = 0;
 
         // Iterate backwards, from the last element to 0 (included).
@@ -669,12 +670,6 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
             address tokenIn = _currentSwapTokensIn.unchecked_at(uint256(i));
             ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts().tGet(tokenIn), wethIsEth);
         }
-
-        // If any swap path has a yield-bearing buffer in the first step, the user paid the swap upfront with the
-        // maxAmountsIn value, and we possibly need to return part of this value to the user at the end. So,
-        // numTokensOut will have tokenIn as well, with the difference between amountIn and maxAmountIn to pay back.
-        // That's why numTokensOut is calculated after tokensIn are settled
-        int256 numTokensOut = int256(_currentSwapTokensOut.length());
 
         for (int256 i = int256(numTokensOut - 1); i >= 0; --i) {
             address tokenOut = _currentSwapTokensOut.unchecked_at(uint256(i));
