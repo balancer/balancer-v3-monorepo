@@ -1175,7 +1175,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _reservesOf[IERC20(wrappedToken)] = vars.vaultWrappedAfterRaw;
             _reservesOf[baseToken] = vars.vaultBaseAfterRaw;
 
+            // Since deposit takes base assets from the vault, the total is assetsBefore - assetsAfter wrapping
             vars.totalBaseDepositedRaw = vars.vaultBaseBeforeRaw - vars.vaultBaseAfterRaw;
+            // Since deposit puts wrapped assets into the vault, the total is wrappedAfter - wrappedBefore wrapping
             vars.totalWrappedMintedRaw = vars.vaultWrappedAfterRaw - vars.vaultWrappedBeforeRaw;
 
             if (vars.totalBaseDepositedRaw < tradeBaseRaw) {
@@ -1307,7 +1309,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _reservesOf[IERC20(wrappedToken)] = vars.vaultWrappedAfterRaw;
             _reservesOf[baseToken] = vars.vaultBaseAfterRaw;
 
+            // Since withdraw puts base assets into the vault, the total is assetsAfter - assetsBefore unwrapping
             vars.totalBaseWithdrawnRaw = vars.vaultBaseAfterRaw - vars.vaultBaseBeforeRaw;
+            // Since withdraw takes wrapped assets from the vault, the total is wrappedBefore - wrappedAfter unwrapping
             vars.totalWrappedRedeemedRaw = vars.vaultWrappedBeforeRaw - vars.vaultWrappedAfterRaw;
 
             if (vars.totalBaseWithdrawnRaw < tradeBaseRaw) {
