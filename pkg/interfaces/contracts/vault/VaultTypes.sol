@@ -38,8 +38,8 @@ struct PoolConfig {
     bool hasDynamicSwapFee;
 }
 
-/// @dev Represents local temporary vars used in a swap operation.
-struct SwapLocals {
+/// @dev Represents temporary vars used in a swap operation.
+struct SwapVars {
     // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
     uint256 indexIn;
     uint256 indexOut;
