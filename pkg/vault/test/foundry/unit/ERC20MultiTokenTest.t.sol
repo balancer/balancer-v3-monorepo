@@ -67,9 +67,9 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
     }
 
     function testSpendAllowance() public {
-        uint initialAllowance = DEFAULT_AMOUNT;
-        uint remainingAllowance = 1;
-        uint spendAmount = initialAllowance - remainingAllowance;
+        uint256 initialAllowance = DEFAULT_AMOUNT;
+        uint256 remainingAllowance = 1;
+        uint256 spendAmount = initialAllowance - remainingAllowance;
 
         _approveWithBPTEmitApprovalMock(POOL, OWNER, SPENDER, initialAllowance);
 
@@ -94,8 +94,8 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
     }
 
     function testSpendAllowanceRevertIfInsufficientAllowance() public {
-        uint initialAllowance = DEFAULT_AMOUNT;
-        uint spendAmount = initialAllowance + 1;
+        uint256 initialAllowance = DEFAULT_AMOUNT;
+        uint256 spendAmount = initialAllowance + 1;
 
         _approveWithBPTEmitApprovalMock(POOL, OWNER, SPENDER, initialAllowance);
 
@@ -135,8 +135,8 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
     }
 
     function testDoubleMintToCheckTotalSupply() public {
-        uint firstMintAmount = MINIMUM_TOTAL_SUPPLY;
-        uint secondMintAmount = DEFAULT_AMOUNT;
+        uint256 firstMintAmount = MINIMUM_TOTAL_SUPPLY;
+        uint256 secondMintAmount = DEFAULT_AMOUNT;
 
         _mintWithBPTEmitTransferMock(POOL, OWNER, firstMintAmount);
 
@@ -186,9 +186,9 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
 
     // #region Burn
     function testBurn() public {
-        uint burnAmount = 1;
-        uint balanceAfterBurn = MINIMUM_TOTAL_SUPPLY;
-        uint mintAmount = balanceAfterBurn + burnAmount;
+        uint256 burnAmount = 1;
+        uint256 balanceAfterBurn = MINIMUM_TOTAL_SUPPLY;
+        uint256 mintAmount = balanceAfterBurn + burnAmount;
 
         _mintWithBPTEmitTransferMock(POOL, OWNER, mintAmount);
 
@@ -201,9 +201,9 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
     }
 
     function testDoubleBurnToCheckTotalSupply() public {
-        uint firstMintAmount = token.getMinimumTotalSupply();
-        uint secondMintAmount = DEFAULT_AMOUNT;
-        uint burnAmount = 50;
+        uint256 firstMintAmount = token.getMinimumTotalSupply();
+        uint256 secondMintAmount = DEFAULT_AMOUNT;
+        uint256 burnAmount = 50;
 
         _mintWithBPTEmitTransferMock(POOL, OWNER, firstMintAmount);
         _mintWithBPTEmitTransferMock(POOL, OWNER2, secondMintAmount);
@@ -211,10 +211,10 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
         _burnWithBPTEmitTransferMock(POOL, OWNER, burnAmount);
         assertEq(token.balanceOf(POOL, OWNER), firstMintAmount - burnAmount, "Unexpected balance");
 
-        uint totalSupplyAfterFirstBurn = (firstMintAmount + secondMintAmount) - burnAmount;
+        uint256 totalSupplyAfterFirstBurn = (firstMintAmount + secondMintAmount) - burnAmount;
         assertEq(token.totalSupply(POOL), totalSupplyAfterFirstBurn, "Unexpected total supply");
 
-        uint totalSupplyAfterSecondBurn = totalSupplyAfterFirstBurn - burnAmount;
+        uint256 totalSupplyAfterSecondBurn = totalSupplyAfterFirstBurn - burnAmount;
         _burnWithBPTEmitTransferMock(POOL, OWNER2, burnAmount);
         assertEq(token.balanceOf(POOL, OWNER2), secondMintAmount - burnAmount, "Unexpected balance");
         assertEq(token.totalSupply(POOL), totalSupplyAfterSecondBurn, "Unexpected total supply");
@@ -226,7 +226,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
     }
 
     function testBurnRevertIfTotalSupplyIsLessThanMinimum() public {
-        uint burnAmount = 1;
+        uint256 burnAmount = 1;
 
         _mintWithBPTEmitTransferMock(POOL, OWNER, MINIMUM_TOTAL_SUPPLY);
 
@@ -237,8 +237,8 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
     }
 
     function testBurnRevertIfInsufficientBalance() public {
-        uint mintAmount = token.getMinimumTotalSupply();
-        uint burnAmount = mintAmount + 1;
+        uint256 mintAmount = token.getMinimumTotalSupply();
+        uint256 burnAmount = mintAmount + 1;
 
         _mintWithBPTEmitTransferMock(POOL, OWNER, mintAmount);
 
@@ -276,7 +276,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
     }
 
     function testTransferRevertIfInsufficientBalance() public {
-        uint transferAmount = MINIMUM_TOTAL_SUPPLY + 1;
+        uint256 transferAmount = MINIMUM_TOTAL_SUPPLY + 1;
 
         _mintWithBPTEmitTransferMock(POOL, OWNER, MINIMUM_TOTAL_SUPPLY);
 
