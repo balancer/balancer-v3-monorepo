@@ -152,18 +152,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                                           Swaps
     *******************************************************************************/
 
-    struct SwapLocals {
-        // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
-        uint256 indexIn;
-        uint256 indexOut;
-        uint256 amountGivenScaled18;
-        uint256 amountCalculatedScaled18;
-        uint256 swapFeeAmountScaled18;
-        uint256 swapFeePercentage;
-        uint256 protocolSwapFeeAmountRaw;
-        uint256 creatorSwapFeeAmountRaw;
-    }
-
     /// @inheritdoc IVaultMain
     function swap(
         SwapParams memory params
@@ -197,7 +185,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[params.pool];
 
-        SwapLocals memory vars;
+        SwapVars memory vars;
         // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value for non-existence.
         vars.indexIn = poolBalances.unchecked_indexOf(params.tokenIn);
         vars.indexOut = poolBalances.unchecked_indexOf(params.tokenOut);
@@ -290,9 +278,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     function _buildPoolSwapParams(
         SwapParams memory params,
-        SwapLocals memory vars,
+        SwapVars memory vars,
         PoolData memory poolData
-    ) private view returns (IBasePool.PoolSwapParams memory) {
+    ) internal view returns (IBasePool.PoolSwapParams memory) {
         return
             IBasePool.PoolSwapParams({
                 kind: params.kind,
@@ -310,7 +298,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * Uses amountGivenRaw and kind from `params`. Side effects: mutates `amountGivenScaled18` in vars.
      */
     function _updateAmountGivenInVars(
-        SwapLocals memory vars,
+        SwapVars memory vars,
         SwapParams memory params,
         PoolData memory poolData
     ) private pure {
@@ -338,7 +326,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      */
     function _swap(
         SwapParams memory params,
-        SwapLocals memory vars,
+        SwapVars memory vars,
         PoolData memory poolData,
         VaultState memory vaultState
     ) internal nonReentrant returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
