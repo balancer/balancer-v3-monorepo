@@ -62,6 +62,10 @@ contract WeightedPoolWithHooksFactory is BasePoolFactory {
 
         BaseHook hooksContract = BaseHook(hooks);
 
+        if (hooksContract.isSupportedFactory(address(this)) == false) {
+            revert InvalidHooksContract();
+        }
+
         getVault().registerPool(
             pool,
             tokens,
@@ -76,8 +80,6 @@ contract WeightedPoolWithHooksFactory is BasePoolFactory {
                 enableRemoveLiquidityCustom: false
             })
         );
-
-        hooksContract.registerPool(pool);
 
         _registerPoolWithFactory(pool);
     }

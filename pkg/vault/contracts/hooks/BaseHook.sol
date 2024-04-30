@@ -12,14 +12,6 @@ import {
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 
 abstract contract BaseHook is IPoolHooks {
-    mapping(address => bool) public isPoolRegistered;
-
-    error PoolAlreadyRegisteredOnHook(address);
-    error PoolFromUnsupportedFactory(address);
-    error PoolNotRegisteredOnVault(address);
-    error PoolAlreadyInitializedOnVault(address);
-    error PoolNotRegisteredOnHook(address);
-
     IVault public immutable vault;
     address public immutable supportedFactory;
 
@@ -28,43 +20,12 @@ abstract contract BaseHook is IPoolHooks {
         supportedFactory = _supportedFactory;
     }
 
-    /**
-     * @notice Modifier to check that the sender is a registered pool.
-     */
-    modifier onlyRegisteredPools() {
-        if (isPoolRegistered[msg.sender] == false) {
-            revert PoolNotRegisteredOnHook(msg.sender);
+    function isSupportedFactory(address factory) public view returns (bool) {
+        if (supportedFactory == address(0) || supportedFactory == factory) {
+            return true;
         }
 
-        _;
-    }
-
-    function _registerPool(address pool) internal {
-        if (isPoolRegistered[pool] == true) {
-            revert PoolAlreadyRegisteredOnHook(pool);
-        }
-
-        // Pool types can vary dramatically from each other. It is suggested to only support pools
-        // from a single factory to ensure that the hook is not used with an incompatible pool type. 
-        if (supportedFactory != address(0) && msg.sender != supportedFactory) {
-            revert PoolFromUnsupportedFactory(pool);
-        }
-
-        // Expectation is that register is called on the hook AFTER it is called on the vault.
-        if (vault.isPoolRegistered(pool) == false) {
-            revert PoolNotRegisteredOnVault(pool);
-        }
-
-        // Register must be called prior to pool initialization.
-        if (vault.isPoolInitialized(pool) == true) {
-            revert PoolAlreadyInitializedOnVault(pool);
-        }
-
-        isPoolRegistered[pool] = true;
-    }
-
-    function registerPool(address pool) public {
-        _registerPool(pool);
+        return false;
     }
 
     /**
@@ -78,7 +39,7 @@ abstract contract BaseHook is IPoolHooks {
     function onBeforeInitialize(
         uint256[] memory exactAmountsIn,
         bytes memory userData
-    ) external onlyRegisteredPools returns (bool) {
+    ) external returns (bool) {
         return _onBeforeInitialize(msg.sender, exactAmountsIn, userData);
     }
 
@@ -87,7 +48,7 @@ abstract contract BaseHook is IPoolHooks {
         uint256[] memory exactAmountsIn,
         uint256 bptAmountOut,
         bytes memory userData
-    ) external onlyRegisteredPools returns (bool) {
+    ) external returns (bool) {
         return _onAfterInitialize(msg.sender, exactAmountsIn, bptAmountOut, userData);
     }
 
@@ -99,7 +60,7 @@ abstract contract BaseHook is IPoolHooks {
         uint256 minBptAmountOut,
         uint256[] memory balancesScaled18,
         bytes memory userData
-    ) external onlyRegisteredPools returns (bool success) {
+    ) external returns (bool success) {
         return _onBeforeAddLiquidity(msg.sender, sender, kind, maxAmountsInScaled18, minBptAmountOut, balancesScaled18, userData);
     }
 
@@ -110,7 +71,7 @@ abstract contract BaseHook is IPoolHooks {
         uint256 bptAmountOut,
         uint256[] memory balancesScaled18,
         bytes memory userData
-    ) external onlyRegisteredPools returns (bool success) {
+    ) external returns (bool success) {
         return _onAfterAddLiquidity(msg.sender, sender, amountsInScaled18, bptAmountOut, balancesScaled18, userData);
     }
 
@@ -122,7 +83,7 @@ abstract contract BaseHook is IPoolHooks {
         uint256[] memory minAmountsOutScaled18,
         uint256[] memory balancesScaled18,
         bytes memory userData
-    ) external onlyRegisteredPools returns (bool success) {
+    ) external returns (bool success) {
         return _onBeforeRemoveLiquidity(
             msg.sender,
             sender,
@@ -141,7 +102,7 @@ abstract contract BaseHook is IPoolHooks {
         uint256[] memory amountsOutScaled18,
         uint256[] memory balancesScaled18,
         bytes memory userData
-    ) external onlyRegisteredPools returns (bool success) {
+    ) external returns (bool success) {
         return _onAfterRemoveLiquidity(
             msg.sender,
             sender,
@@ -153,7 +114,7 @@ abstract contract BaseHook is IPoolHooks {
     }
 
     /// @inheritdoc IPoolHooks
-    function onBeforeSwap(IBasePool.PoolSwapParams memory params) external onlyRegisteredPools returns (bool success) {
+    function onBeforeSwap(IBasePool.PoolSwapParams memory params) external returns (bool success) {
         return _onBeforeSwap(msg.sender, params);
     }
 
@@ -161,7 +122,7 @@ abstract contract BaseHook is IPoolHooks {
     function onAfterSwap(
         IPoolHooks.AfterSwapParams memory params,
         uint256 amountCalculatedScaled18
-    ) external onlyRegisteredPools returns (bool success) {
+    ) external returns (bool success) {
         return _onAfterSwap(msg.sender, params, amountCalculatedScaled18);
     }
 
