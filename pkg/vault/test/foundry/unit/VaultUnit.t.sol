@@ -136,7 +136,7 @@ contract VaultUnitTest is BaseTest {
         emit IVaultEvents.ProtocolSwapFeeCharged(pool, address(dai), expectSwapFeeAmountRaw);
 
         vm.expectEmit();
-        emit IVaultEvents.PoolCreatorFeeCharged(pool, address(dai), expectCreatorFeeAmountRaw);
+        emit IVaultEvents.PoolCreatorSwapFeeCharged(pool, address(dai), expectCreatorFeeAmountRaw);
 
         (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
             .manualComputeAndChargeProtocolAndCreatorFees(

@@ -38,7 +38,6 @@ import { VaultCommon } from "./VaultCommon.sol";
 
 contract Vault is IVaultMain, VaultCommon, Proxy {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
-    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using PackedTokenBalance for bytes32;
     using InputHelpers for uint256;
     using FixedPoint for *;
@@ -957,12 +956,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     .mulUp(poolData.poolConfig.poolCreatorFeePercentage)
                     .toRawUndoRateRoundDown(poolData.decimalScalingFactors[index], poolData.tokenRates[index]);
 
-                EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
-                // Reverts with KeyNotFound if the token isn't present (should not happen; token entries
-                // created on pool registration).
-                poolCreatorFees.set(token, poolCreatorFees.get(token) + creatorSwapFeeAmountRaw);
-
-                emit PoolCreatorFeeCharged(pool, address(token), creatorSwapFeeAmountRaw);
+                _poolCreatorFees[pool][address(token)] += creatorSwapFeeAmountRaw;
+                emit PoolCreatorSwapFeeCharged(pool, address(token), creatorSwapFeeAmountRaw);
             }
         }
     }
