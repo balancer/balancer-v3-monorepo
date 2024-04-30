@@ -21,7 +21,7 @@ import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
-contract ProtocolYieldFeesTest is BaseVaultTest {
+contract YieldFeesTest is BaseVaultTest {
     using ArrayHelpers for *;
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
@@ -91,9 +91,15 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
 
+        _initializePoolAndRateProviders(wstethRate, daiRate);
+
+        // Warm-up storage slots
+        _testYieldFeesOnSwap(wstethRate, daiRate, 5, yieldFeePercentage, creatorYieldFeePercentage, false, "");
+
         _testYieldFeesOnSwap(
             wstethRate,
             daiRate,
+            10,
             yieldFeePercentage,
             creatorYieldFeePercentage,
             true,
@@ -116,9 +122,15 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
 
+        _initializePoolAndRateProviders(wstethRate, daiRate);
+
+        // Warm-up storage slots
+        _testYieldFeesOnSwap(wstethRate, daiRate, 5, yieldFeePercentage, creatorYieldFeePercentage, false, "");
+
         _testYieldFeesOnSwap(
             wstethRate,
             daiRate,
+            10,
             yieldFeePercentage,
             creatorYieldFeePercentage,
             true,
@@ -141,9 +153,15 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
 
+        _initializePoolAndRateProviders(wstethRate, daiRate);
+
+        // Warm-up storage slots
+        _testYieldFeesOnSwap(wstethRate, daiRate, 5, yieldFeePercentage, creatorYieldFeePercentage, false, "");
+
         _testYieldFeesOnSwap(
             wstethRate,
             daiRate,
+            10,
             yieldFeePercentage,
             creatorYieldFeePercentage,
             true,
@@ -154,25 +172,20 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     function _testYieldFeesOnSwap(
         uint256 wstethRate,
         uint256 daiRate,
+        uint256 pumpRate,
         uint256 protocolYieldFeePercentage,
         uint256 creatorYieldFeePercentage,
         bool shouldSnap,
         string memory snapName
     ) private {
-        pool = createPool();
-        wstETHRateProvider.mockRate(wstethRate);
-        daiRateProvider.mockRate(daiRate);
-
-        initPool();
-
         setProtocolYieldFeePercentage(protocolYieldFeePercentage);
         // lp is the pool creator, the only user who can change the pool creator fee percentage
         vm.prank(lp);
         vault.setPoolCreatorFeePercentage(address(pool), creatorYieldFeePercentage);
 
-        // Pump the rates 10 times
-        wstethRate *= 10;
-        daiRate *= 10;
+        // Pump the rates [pumpRate] times
+        wstethRate *= pumpRate;
+        daiRate *= pumpRate;
         wstETHRateProvider.mockRate(wstethRate);
         daiRateProvider.mockRate(daiRate);
 
@@ -185,6 +198,14 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         if (shouldSnap) {
             snapEnd();
         }
+    }
+
+    function _initializePoolAndRateProviders(uint256 wstethRate, uint256 daiRate) private {
+        pool = createPool();
+        wstETHRateProvider.mockRate(wstethRate);
+        daiRateProvider.mockRate(daiRate);
+
+        initPool();
     }
 
     function _initializeFees(
