@@ -114,13 +114,30 @@ interface IVaultEvents {
     event PoolCreatorFeePercentageChanged(address indexed pool, uint256 indexed poolCreatorFeePercentage);
 
     /**
-     * @notice Emitted when a pool creator fee is incurred.
-     * @dev This is included for traceability of fees to pools.
+     * @notice Emitted when a creator swap fee is incurred.
+     * @dev This is included for traceability of fees to pools. Pending creator fees on both swap and yield are
+     * combined. It is an invariant of the system that the total amounts for each token reported here and by
+     * `PoolCreatorYieldFeeCharged`, summed over all pools, should equal the total collected for the token reported by
+     * `PoolCreatorFeeCollected` when `collectPoolCreatorFees` is called.
+     *
      * @param pool The pool associated with this charge
-     * @param token The token whose protocol fee balance increased
+     * @param token The token whose pool creator fee balance increased
      * @param amount The amount of the pool creator fee
      */
-    event PoolCreatorFeeCharged(address indexed pool, address indexed token, uint256 amount);
+    event PoolCreatorSwapFeeCharged(address indexed pool, address indexed token, uint256 amount);
+
+    /**
+     * @notice Emitted when a creator yield fee is incurred.
+     * @dev This is included for traceability of fees to pools. Pending creator fees on both swap and yield are
+     * combined. It is an invariant of the system that the total amounts for each token reported here and by
+     * `PoolCreatorSwapFeeCharged`, summed over all pools, should equal the total collected for the token reported by
+     * `PoolCreatorFeeCollected` when `collectPoolCreatorFees` is called.
+     *
+     * @param pool The pool associated with this charge
+     * @param token The token whose pool creator fee balance increased
+     * @param amount The amount of the pool creator fee
+     */
+    event PoolCreatorYieldFeeCharged(address indexed pool, address indexed token, uint256 amount);
 
     /**
      * @notice Logs the collection of pool creator fees in a specific pool, by token and amount.

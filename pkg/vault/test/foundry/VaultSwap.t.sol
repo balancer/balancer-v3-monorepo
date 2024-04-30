@@ -425,14 +425,14 @@ contract VaultSwapTest is BaseVaultTest {
         uint256 usdcBeforeSwap = usdc.balanceOf(address(this));
         uint256 daiBeforeSwap = dai.balanceOf(address(this));
 
-        (, uint[] memory balancesRawBefore, ) = vault.getPoolTokenInfo(address(pool));
+        (, uint256[] memory balancesRawBefore, ) = vault.getPoolTokenInfo(address(pool));
 
         vault.unlock(abi.encode(this.startSwap.selector));
 
-        (, uint[] memory balancesRawAfter, ) = vault.getPoolTokenInfo(address(pool));
+        (, uint256[] memory balancesRawAfter, ) = vault.getPoolTokenInfo(address(pool));
 
         // Pool balances should not change
-        for (uint i = 0; i < balancesRawAfter.length; ++i) {
+        for (uint256 i = 0; i < balancesRawAfter.length; ++i) {
             assertEq(balancesRawBefore[i], balancesRawAfter[i], "Balance does not match");
         }
         // No tokens being spent.

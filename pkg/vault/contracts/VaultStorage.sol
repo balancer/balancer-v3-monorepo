@@ -86,7 +86,7 @@ contract VaultStorage {
     mapping(IERC20 => uint256) internal _protocolFees;
 
     // Pool -> (Token -> fee): pool creator fees (from swap) accumulated in the Vault for harvest.
-    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolCreatorFees;
+    mapping(address => mapping(address => uint256)) internal _poolCreatorFees;
 
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer internal _authorizer;

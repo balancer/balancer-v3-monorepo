@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import "../vault/VaultTypes.sol";
 import { IRateProvider } from "../vault/IRateProvider.sol";
+import { IBasePool } from "../vault/IBasePool.sol";
 
 interface IVaultMainMock {
     function getPoolFactoryMock() external view returns (address);
@@ -78,12 +79,12 @@ interface IVaultMainMock {
         uint256 tokenIndex
     ) external pure returns (PoolData memory);
 
-    function computeYieldProtocolFeesDue(
+    function computeYieldFeesDue(
         PoolData memory poolData,
         uint256 lastLiveBalance,
         uint256 tokenIndex,
-        uint256 yieldFeePercentage
-    ) external pure returns (uint256);
+        uint256 protocolYieldFeePercentage
+    ) external pure returns (uint256, uint256);
 
     function guardedCheckEntered() external;
 
@@ -122,4 +123,61 @@ interface IVaultMainMock {
     function manualSetAccountDelta(IERC20 token, int256 delta) external;
 
     function manualSetNonZeroDeltaCount(uint256 deltaCount) external;
+
+    function manualInternalSwap(
+        SwapParams memory params,
+        SwapVars memory vars,
+        PoolData memory poolData,
+        VaultState memory vaultState
+    )
+        external
+        returns (
+            uint256 amountCalculated,
+            uint256 amountIn,
+            uint256 amountOut,
+            SwapParams memory,
+            SwapVars memory,
+            PoolData memory,
+            VaultState memory
+        );
+
+    function manualSetPoolCreatorFees(address pool, IERC20 token, uint256 value) external;
+
+    function manualGetSwapFeePercentage(PoolConfig memory config) external pure returns (uint256);
+
+    function manualBuildPoolSwapParams(
+        SwapParams memory params,
+        SwapVars memory vars,
+        PoolData memory poolData
+    ) external view returns (IBasePool.PoolSwapParams memory);
+
+    function manualComputeAndChargeProtocolAndCreatorFees(
+        PoolData memory poolData,
+        uint256 swapFeeAmountScaled18,
+        uint256 protocolSwapFeePercentage,
+        uint256 creatorFeePercentage,
+        address pool,
+        IERC20 token,
+        uint256 index
+    ) external returns (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw);
+
+    function manualUpdatePoolDataLiveBalancesAndRates(
+        address pool,
+        PoolData memory poolData,
+        Rounding roundingDirection
+    ) external view returns (PoolData memory);
+
+    function manualAddLiquidity(
+        PoolData memory poolData,
+        AddLiquidityParams memory params,
+        uint256[] memory maxAmountsInScaled18,
+        VaultState memory vaultState
+    )
+        external
+        returns (
+            uint256[] memory amountsInRaw,
+            uint256[] memory amountsInScaled18,
+            uint256 bptAmountOut,
+            bytes memory returnData
+        );
 }

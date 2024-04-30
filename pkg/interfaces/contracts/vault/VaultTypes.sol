@@ -38,6 +38,19 @@ struct PoolConfig {
     bool hasDynamicSwapFee;
 }
 
+/// @dev Represents temporary vars used in a swap operation.
+struct SwapVars {
+    // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
+    uint256 indexIn;
+    uint256 indexOut;
+    uint256 amountGivenScaled18;
+    uint256 amountCalculatedScaled18;
+    uint256 swapFeeAmountScaled18;
+    uint256 swapFeePercentage;
+    uint256 protocolSwapFeeAmountRaw;
+    uint256 creatorSwapFeeAmountRaw;
+}
+
 /**
  * @dev Represents the Vault's configuration.
  * @param protocolSwapFeePercentage Charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
