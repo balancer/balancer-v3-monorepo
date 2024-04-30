@@ -21,7 +21,7 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract ProtocolYieldFeesTest is BaseVaultTest {
+contract YieldFeesTest is BaseVaultTest {
     using ArrayHelpers for *;
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
@@ -97,9 +97,8 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     }
 
     struct YieldTestLocals {
-        uint256 protocolFeeScaled18;
-        uint256 creatorFeeScaled18;
-        uint256 feeScaled18;
+        uint256 liveBalanceBeforeRaw;
+        uint256 liveBalanceAfterRaw;
         uint256 expectedProtocolFee;
         uint256 expectedCreatorFee;
     }
@@ -107,15 +106,15 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
     function testNoYieldFeesIfExempt__Fuzz(
         uint256 wstethRate,
         uint256 daiRate,
-        uint256 yieldFeePercentage,
+        uint256 protocolYieldFeePercentage,
         uint256 creatorYieldFeePercentage,
         bool roundUp
     ) public {
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
 
-        (yieldFeePercentage, creatorYieldFeePercentage) = _initializeFees(
-            yieldFeePercentage,
+        (protocolYieldFeePercentage, creatorYieldFeePercentage) = _initializeFees(
+            protocolYieldFeePercentage,
             creatorYieldFeePercentage,
             0,
             0
@@ -130,7 +129,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         uint256[] memory originalLiveBalances = verifyLiveBalances(wstethRate, daiRate, roundUp);
 
         // Set non-zero yield fee
-        setProtocolYieldFeePercentage(yieldFeePercentage);
+        setProtocolYieldFeePercentage(protocolYieldFeePercentage);
         // lp is the pool creator, the only user who can change the pool creator fee percentage
         vm.prank(lp);
         vault.setPoolCreatorFeePercentage(address(pool), creatorYieldFeePercentage);
@@ -149,8 +148,8 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
 
         for (uint256 i = 0; i < 2; ++i) {
             liveBalanceDeltas[i] = newLiveBalances[i] - originalLiveBalances[i];
-            // Balances should have increased
-            assertTrue(liveBalanceDeltas[i] > 0, "Live balance delta is 0");
+            // Balances should have increased, but delta can be 0 if creator fee is 100%
+            assertTrue(liveBalanceDeltas[i] >= 0, "Live balance delta is 0");
         }
 
         // Should be no protocol fees on dai, since it is yield fee exempt
@@ -171,16 +170,15 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         // How much should the fee be?
         // Tricky, because the diff already has the fee subtracted. Need to add it back in
         YieldTestLocals memory vars;
-        vars.protocolFeeScaled18 = actualProtocolFee.toScaled18ApplyRateRoundDown(
+        vars.liveBalanceAfterRaw = liveBalanceDeltas[wstethIdx].toRawUndoRateRoundDown(
             scalingFactors[wstethIdx],
             wstethRate
         );
-        vars.creatorFeeScaled18 = vars.protocolFeeScaled18.mulDown(creatorYieldFeePercentage);
-        vars.feeScaled18 = (liveBalanceDeltas[wstethIdx] + vars.protocolFeeScaled18 + vars.creatorFeeScaled18).mulDown(
-            yieldFeePercentage
+        vars.liveBalanceBeforeRaw = vars.liveBalanceAfterRaw + actualProtocolFee + actualCreatorFee;
+        vars.expectedProtocolFee = vars.liveBalanceBeforeRaw.mulDown(protocolYieldFeePercentage);
+        vars.expectedCreatorFee = (vars.liveBalanceBeforeRaw - vars.expectedProtocolFee).mulDown(
+            creatorYieldFeePercentage
         );
-        vars.expectedProtocolFee = vars.feeScaled18.toRawUndoRateRoundDown(scalingFactors[wstethIdx], wstethRate);
-        vars.expectedCreatorFee = vars.expectedProtocolFee.mulDown(creatorYieldFeePercentage);
 
         assertApproxEqAbs(actualProtocolFee, vars.expectedProtocolFee, 1e3, "Wrong protocol fee");
         assertApproxEqAbs(actualCreatorFee, vars.expectedCreatorFee, 1e3, "Wrong creator fee");
@@ -216,7 +214,7 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         }
     }
 
-    function testComputeYieldProtocolFeesDue__Fuzz(
+    function testComputeYieldFeesDue__Fuzz(
         uint256 balanceRaw,
         uint8 decimals,
         uint256 tokenRate,
@@ -233,12 +231,18 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         PoolData memory poolData = _simplePoolData(balanceRaw, decimalScalingFactor, tokenRate);
         uint256 liveBalance = poolData.balancesLiveScaled18[0];
 
-        uint256 yieldFeesRaw = vault.computeYieldProtocolFeesDue(poolData, lastLiveBalance, 0, yieldFeePercentage);
+        (uint256 protocolYieldFeesRaw, ) = vault.computeYieldFeesDue(
+            poolData,
+            lastLiveBalance,
+            0,
+            yieldFeePercentage,
+            0
+        );
         if (liveBalance <= lastLiveBalance) {
-            assertEq(yieldFeesRaw, 0, "Yield fees are not 0 with decreasing live balance");
+            assertEq(protocolYieldFeesRaw, 0, "Yield fees are not 0 with decreasing live balance");
         } else {
             assertEq(
-                yieldFeesRaw,
+                protocolYieldFeesRaw,
                 (liveBalance - lastLiveBalance).mulDown(yieldFeePercentage).divDown(
                     decimalScalingFactor.mulDown(tokenRate)
                 ),
@@ -322,15 +326,17 @@ contract ProtocolYieldFeesTest is BaseVaultTest {
         }
 
         // No matter what the rates are, the value of wsteth grows from 1x to 10x.
-        // Then, the protocol takes its cut out of the 9x difference.
-        uint256 expectedProtocolFees = ((poolInitAmount * 9) / 10).mulDown(protocolYieldFeePercentage);
+        // Then, the protocol takes its cut out of the 9x difference (live balance diff).
+        uint256 liveBalanceDiffRaw = (poolInitAmount * 9) / 10;
+
+        uint256 expectedProtocolFees = liveBalanceDiffRaw.mulDown(protocolYieldFeePercentage);
         assertApproxEqAbs(
             vault.getProtocolFees(address(wsteth)),
             expectedProtocolFees,
             10, // rounding issues
             "Wrong protocol yield fees for wstETH"
         );
-        uint256 expectedYieldFees = expectedProtocolFees.mulDown(creatorYieldFeePercentage);
+        uint256 expectedYieldFees = (liveBalanceDiffRaw - expectedProtocolFees).mulDown(creatorYieldFeePercentage);
         assertApproxEqAbs(
             vault.getPoolCreatorFees(address(pool), wsteth),
             expectedYieldFees,

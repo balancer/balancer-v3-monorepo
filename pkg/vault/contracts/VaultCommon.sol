@@ -396,22 +396,20 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
             // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
             if (poolSubjectToYieldFees && tokenSubjectToYieldFees) {
-                uint256 yieldFeeAmountRaw = _computeYieldProtocolFeesDue(
+                (uint256 protocolYieldFeeAmountRaw, uint256 creatorYieldFeeAmountRaw) = _computeYieldFeesDue(
                     poolData,
                     poolBalances.unchecked_valueAt(i).getLastLiveBalanceScaled18(),
                     i,
-                    yieldFeePercentage
+                    yieldFeePercentage,
+                    poolData.poolConfig.poolCreatorFeePercentage
                 );
 
-                if (yieldFeeAmountRaw > 0) {
-                    dueProtocolYieldFees[i] = yieldFeeAmountRaw;
-                    uint256 creatorFeeAmountRaw = poolData.poolConfig.poolCreatorFeePercentage.mulDown(
-                        yieldFeeAmountRaw
-                    );
-                    dueCreatorYieldFees[i] = creatorFeeAmountRaw;
+                if (protocolYieldFeeAmountRaw > 0 || creatorYieldFeeAmountRaw > 0) {
+                    dueProtocolYieldFees[i] = protocolYieldFeeAmountRaw;
+                    dueCreatorYieldFees[i] = creatorYieldFeeAmountRaw;
 
                     // Adjust raw and live balances.
-                    poolData.balancesRaw[i] -= (yieldFeeAmountRaw + creatorFeeAmountRaw);
+                    poolData.balancesRaw[i] -= (protocolYieldFeeAmountRaw + creatorYieldFeeAmountRaw);
                     _updateLiveTokenBalanceInPoolData(poolData, roundingDirection, i);
                 }
             }
@@ -463,12 +461,13 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         _setPoolBalances(pool, poolData);
     }
 
-    function _computeYieldProtocolFeesDue(
+    function _computeYieldFeesDue(
         PoolData memory poolData,
         uint256 lastLiveBalance,
         uint256 tokenIndex,
-        uint256 yieldFeePercentage
-    ) internal pure returns (uint256 feeAmountRaw) {
+        uint256 protocolYieldFeePercentage,
+        uint256 creatorYieldFeePercentage
+    ) internal view returns (uint256 protocolFeeAmountRaw, uint256 creatorFeeAmountRaw) {
         uint256 currentLiveBalance = poolData.balancesLiveScaled18[tokenIndex];
 
         // Do not charge fees if rates go down. If the rate were to go up, down, and back up again, protocol fees
@@ -481,10 +480,23 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                 // Magnitudes checked above, so it's safe to do unchecked math here.
                 uint256 liveBalanceDiff = currentLiveBalance - lastLiveBalance;
 
-                feeAmountRaw = liveBalanceDiff.mulDown(yieldFeePercentage).toRawUndoRateRoundDown(
-                    poolData.decimalScalingFactors[tokenIndex],
-                    poolData.tokenRates[tokenIndex]
-                );
+                if (protocolYieldFeePercentage > 0) {
+                    protocolFeeAmountRaw = liveBalanceDiff.mulDown(protocolYieldFeePercentage).toRawUndoRateRoundDown(
+                        poolData.decimalScalingFactors[tokenIndex],
+                        poolData.tokenRates[tokenIndex]
+                    );
+                } else {
+                    protocolFeeAmountRaw = 0;
+                }
+
+                if (creatorYieldFeePercentage > 0) {
+                    creatorFeeAmountRaw = (liveBalanceDiff.toRawUndoRateRoundDown(
+                        poolData.decimalScalingFactors[tokenIndex],
+                        poolData.tokenRates[tokenIndex]
+                    ) - protocolFeeAmountRaw).mulDown(creatorYieldFeePercentage);
+                } else {
+                    creatorFeeAmountRaw = 0;
+                }
             }
         }
     }
