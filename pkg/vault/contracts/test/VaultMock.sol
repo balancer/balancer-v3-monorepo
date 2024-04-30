@@ -9,6 +9,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMainMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMainMock.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -396,5 +397,91 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualSetNonZeroDeltaCount(uint256 deltaCount) external {
         _nonzeroDeltaCount().tstore(deltaCount);
+    }
+
+    function manualInternalSwap(
+        SwapParams memory params,
+        SwapVars memory vars,
+        PoolData memory poolData,
+        VaultState memory vaultState
+    )
+        external
+        returns (
+            uint256 amountCalculated,
+            uint256 amountIn,
+            uint256 amountOut,
+            SwapParams memory,
+            SwapVars memory,
+            PoolData memory,
+            VaultState memory
+        )
+    {
+        (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData, vaultState);
+
+        return (amountCalculated, amountIn, amountOut, params, vars, poolData, vaultState);
+    }
+
+    function manualSetPoolCreatorFees(address pool, IERC20 token, uint256 value) external {
+        _poolCreatorFees[pool].set(token, value);
+    }
+
+    function manualGetSwapFeePercentage(PoolConfig memory config) external pure returns (uint256) {
+        return _getSwapFeePercentage(config);
+    }
+
+    function manualBuildPoolSwapParams(
+        SwapParams memory params,
+        SwapVars memory vars,
+        PoolData memory poolData
+    ) external view returns (IBasePool.PoolSwapParams memory) {
+        return _buildPoolSwapParams(params, vars, poolData);
+    }
+
+    function manualComputeAndChargeProtocolAndCreatorFees(
+        PoolData memory poolData,
+        uint256 swapFeeAmountScaled18,
+        uint256 protocolSwapFeePercentage,
+        uint256 creatorFeePercentage,
+        address pool,
+        IERC20 token,
+        uint256 index
+    ) external returns (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) {
+        return
+            _computeAndChargeProtocolAndCreatorFees(
+                poolData,
+                swapFeeAmountScaled18,
+                protocolSwapFeePercentage,
+                creatorFeePercentage,
+                pool,
+                token,
+                index
+            );
+    }
+
+    function manualUpdatePoolDataLiveBalancesAndRates(
+        address pool,
+        PoolData memory poolData,
+        Rounding roundingDirection
+    ) external view returns (PoolData memory) {
+        _updatePoolDataLiveBalancesAndRates(pool, poolData, roundingDirection);
+
+        return poolData;
+    }
+
+    function manualAddLiquidity(
+        PoolData memory poolData,
+        AddLiquidityParams memory params,
+        uint256[] memory maxAmountsInScaled18,
+        VaultState memory vaultState
+    )
+        external
+        returns (
+            uint256[] memory amountsInRaw,
+            uint256[] memory amountsInScaled18,
+            uint256 bptAmountOut,
+            bytes memory returnData
+        )
+    {
+        return _addLiquidity(poolData, params, maxAmountsInScaled18, vaultState);
     }
 }
