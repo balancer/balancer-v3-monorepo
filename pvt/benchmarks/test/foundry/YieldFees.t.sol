@@ -60,6 +60,7 @@ contract YieldFeesTest is BaseVaultTest {
         rateProviders[0] = wstETHRateProvider;
         rateProviders[1] = daiRateProvider;
         yieldFeeFlags[0] = true;
+        yieldFeeFlags[1] = true;
 
         PoolRoleAccounts memory poolRoleAccounts;
         poolRoleAccounts.poolCreator = address(lp);
@@ -188,7 +189,7 @@ contract YieldFeesTest is BaseVaultTest {
         daiRateProvider.mockRate(daiRate * pumpRate / 2);
 
         vm.prank(alice);
-        router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, MAX_UINT256, false, "");
+        uint256 amountOut = router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, MAX_UINT256, false, "");
 
         // Pump the original rates [pumpRate] times
         wstETHRateProvider.mockRate(wstethRate * pumpRate);
@@ -197,7 +198,7 @@ contract YieldFeesTest is BaseVaultTest {
         // Dummy swap
         vm.prank(alice);
         snapStart(snapName);
-        router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, MAX_UINT256, false, "");
+        router.swapSingleTokenExactIn(pool, wsteth, dai, amountOut, 0, MAX_UINT256, false, "");
         snapEnd();
     }
 
