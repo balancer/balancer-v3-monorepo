@@ -34,7 +34,6 @@ import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
  */
 abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, ReentrancyGuardTransient, ERC20MultiToken {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
-    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
     using ScalingHelpers for *;
@@ -447,11 +446,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
             uint256 creatorYieldFeeAmountRaw = dueCreatorYieldFees[i];
             if (creatorYieldFeeAmountRaw > 0) {
-                EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
-                // Reverts with KeyNotFound if the token isn't present (should not happen; token entries
-                // created on pool registration).
-                poolCreatorFees.set(token, poolCreatorFees.get(token) + creatorYieldFeeAmountRaw);
-
+                // Charge pool creator fee
+                _poolCreatorFees[pool][address(token)] += creatorYieldFeeAmountRaw;
                 emit PoolCreatorYieldFeeCharged(pool, address(token), creatorYieldFeeAmountRaw);
             }
         }
