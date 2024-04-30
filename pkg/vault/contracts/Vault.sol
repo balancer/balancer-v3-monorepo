@@ -219,17 +219,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // to a lower calculated amountOut, favoring the pool.
         _updateAmountGivenInVars(vars, params, poolData);
 
-        vars.swapFeePercentage = _getSwapFeePercentage(poolData.poolConfig);
-
-        if (vars.swapFeePercentage > 0 && params.kind == SwapKind.EXACT_OUT) {
-            // Round up to avoid losses during precision loss.
-            vars.swapFeeAmountScaled18 =
-                vars.amountGivenScaled18.divUp(vars.swapFeePercentage.complement()) -
-                vars.amountGivenScaled18;
-
-            vars.amountGivenScaled18 += vars.swapFeeAmountScaled18;
-        }
-
         if (poolData.poolConfig.hooks.shouldCallBeforeSwap) {
             if (IPoolHooks(params.pool).onBeforeSwap(_buildPoolSwapParams(params, vars, poolData)) == false) {
                 revert BeforeSwapHookFailed();
@@ -240,6 +229,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Also update amountGivenScaled18, as it will now be used in the swap, and the rates might have changed.
             _updateAmountGivenInVars(vars, params, poolData);
         }
+
+        // Need for the event, or could do inside `_swap`.
+        vars.swapFeePercentage = _getSwapFeePercentage(poolData.poolConfig);
 
         // Non-reentrant call that updates accounting.
         (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData, vaultState);
@@ -350,16 +342,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Intervening code cannot read balances from storage, as they are temporarily out-of-sync here. This function
         // is nonReentrant, to guard against read-only reentrancy issues.
 
-        if (params.kind == SwapKind.EXACT_IN) {
-            // If it's an ExactIn swap, set vars.swapFeeAmountScaled18 based on the amountCalculated.
-            if (vars.swapFeePercentage > 0) {
-                // Swap fee is a percentage of the amountCalculated for the EXACT_IN swap
-                // Round up to avoid losses during precision loss.
-                vars.swapFeeAmountScaled18 = vars.amountCalculatedScaled18.mulUp(vars.swapFeePercentage);
-                // Should subtract the fee from the amountCalculated for EXACT_IN swap
-                vars.amountCalculatedScaled18 -= vars.swapFeeAmountScaled18;
-            }
+        // Set vars.swapFeeAmountScaled18 based on the amountCalculated.
+        if (vars.swapFeePercentage > 0) {
+            // Swap fee is a percentage of the amountCalculated for the EXACT_IN swap
+            // Round up to avoid losses during precision loss.
+            vars.swapFeeAmountScaled18 = vars.amountCalculatedScaled18.mulUp(vars.swapFeePercentage);
+            // Should subtract the fee from the amountCalculated for EXACT_IN swap
+            vars.amountCalculatedScaled18 -= vars.swapFeeAmountScaled18;
+        }
 
+        if (params.kind == SwapKind.EXACT_IN) {
             // For `ExactIn` the amount calculated is leaving the Vault, so we round down.
             amountCalculated = vars.amountCalculatedScaled18.toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[vars.indexOut],
