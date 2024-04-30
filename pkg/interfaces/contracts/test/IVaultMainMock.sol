@@ -143,8 +143,6 @@ interface IVaultMainMock {
 
     function manualSetPoolCreatorFees(address pool, IERC20 token, uint256 value) external;
 
-    function manualGetSwapFeePercentage(PoolConfig memory config) external pure returns (uint256);
-
     function manualBuildPoolSwapParams(
         SwapParams memory params,
         SwapVars memory vars,

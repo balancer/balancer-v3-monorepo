@@ -426,10 +426,6 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolCreatorFees[pool].set(token, value);
     }
 
-    function manualGetSwapFeePercentage(PoolConfig memory config) external pure returns (uint256) {
-        return _getSwapFeePercentage(config);
-    }
-
     function manualBuildPoolSwapParams(
         SwapParams memory params,
         SwapVars memory vars,
