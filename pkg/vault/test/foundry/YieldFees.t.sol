@@ -235,15 +235,14 @@ contract YieldFeesTest is BaseVaultTest {
             poolData,
             lastLiveBalance,
             0,
-            yieldFeePercentage,
-            0
+            yieldFeePercentage
         );
         if (liveBalance <= lastLiveBalance) {
             assertEq(protocolYieldFeesRaw, 0, "Yield fees are not 0 with decreasing live balance");
         } else {
             assertEq(
                 protocolYieldFeesRaw,
-                (liveBalance - lastLiveBalance).divDown(decimalScalingFactor.mulDown(tokenRate)).mulDown(
+                (liveBalance - lastLiveBalance).divDown(decimalScalingFactor.mulDown(tokenRate)).mulUp(
                     yieldFeePercentage
                 ),
                 "Wrong protocol yield fees"

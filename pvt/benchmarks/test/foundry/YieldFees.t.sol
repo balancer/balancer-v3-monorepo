@@ -91,9 +91,7 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
 
-        _initializePoolAndRateProviders(wstethRate, daiRate);
-
-        // Warm-up storage slots
+        // Warm-up storage slots (using a different pool)
         _testYieldFeesOnSwap(wstethRate, daiRate, 5, yieldFeePercentage, creatorYieldFeePercentage, false, "");
 
         _testYieldFeesOnSwap(
@@ -122,9 +120,7 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
 
-        _initializePoolAndRateProviders(wstethRate, daiRate);
-
-        // Warm-up storage slots
+        // Warm-up storage slots (using a different pool)
         _testYieldFeesOnSwap(wstethRate, daiRate, 5, yieldFeePercentage, creatorYieldFeePercentage, false, "");
 
         _testYieldFeesOnSwap(
@@ -153,9 +149,7 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
 
-        _initializePoolAndRateProviders(wstethRate, daiRate);
-
-        // Warm-up storage slots
+        // Warm-up storage slots (using a different pool)
         _testYieldFeesOnSwap(wstethRate, daiRate, 5, yieldFeePercentage, creatorYieldFeePercentage, false, "");
 
         _testYieldFeesOnSwap(
@@ -178,6 +172,8 @@ contract YieldFeesTest is BaseVaultTest {
         bool shouldSnap,
         string memory snapName
     ) private {
+        _initializePoolAndRateProviders(wstethRate, daiRate);
+
         setProtocolYieldFeePercentage(protocolYieldFeePercentage);
         // lp is the pool creator, the only user who can change the pool creator fee percentage
         vm.prank(lp);

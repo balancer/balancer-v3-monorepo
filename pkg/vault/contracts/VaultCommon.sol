@@ -400,8 +400,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                     poolData,
                     poolBalances.unchecked_valueAt(i).getLastLiveBalanceScaled18(),
                     i,
-                    yieldFeePercentage,
-                    poolData.poolConfig.poolCreatorFeePercentage
+                    yieldFeePercentage
                 );
 
                 if (protocolYieldFeeAmountRaw > 0 || creatorYieldFeeAmountRaw > 0) {
@@ -465,8 +464,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         PoolData memory poolData,
         uint256 lastLiveBalance,
         uint256 tokenIndex,
-        uint256 protocolYieldFeePercentage,
-        uint256 creatorYieldFeePercentage
+        uint256 protocolYieldFeePercentage
     ) internal pure returns (uint256 protocolFeeAmountRaw, uint256 creatorFeeAmountRaw) {
         uint256 currentLiveBalance = poolData.balancesLiveScaled18[tokenIndex];
 
@@ -484,13 +482,13 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                     poolData.tokenRates[tokenIndex]
                 );
 
-                if (protocolYieldFeePercentage > 0) {
-                    protocolFeeAmountRaw = liveBalanceDiffRaw.mulDown(protocolYieldFeePercentage);
-                }
+                // A pool is subject to yield fees if poolSubjectToYieldFees is true, meaning that
+                // `protocolYieldFeePercentage > 0`. So, we don't need to check this again in here, saving some gas.
+                protocolFeeAmountRaw = liveBalanceDiffRaw.mulUp(protocolYieldFeePercentage);
 
-                if (creatorYieldFeePercentage > 0) {
-                    creatorFeeAmountRaw = (liveBalanceDiffRaw - protocolFeeAmountRaw).mulDown(
-                        creatorYieldFeePercentage
+                if (poolData.poolConfig.poolCreatorFeePercentage > 0) {
+                    creatorFeeAmountRaw = (liveBalanceDiffRaw - protocolFeeAmountRaw).mulUp(
+                        poolData.poolConfig.poolCreatorFeePercentage
                     );
                 }
             }

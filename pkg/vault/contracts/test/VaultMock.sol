@@ -314,17 +314,9 @@ contract VaultMock is IVaultMainMock, Vault {
         PoolData memory poolData,
         uint256 lastLiveBalance,
         uint256 tokenIndex,
-        uint256 protocolYieldFeePercentage,
-        uint256 creatorYieldFeePercentage
+        uint256 protocolYieldFeePercentage
     ) external pure returns (uint256, uint256) {
-        return
-            _computeYieldFeesDue(
-                poolData,
-                lastLiveBalance,
-                tokenIndex,
-                protocolYieldFeePercentage,
-                creatorYieldFeePercentage
-            );
+        return _computeYieldFeesDue(poolData, lastLiveBalance, tokenIndex, protocolYieldFeePercentage);
     }
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw) {
