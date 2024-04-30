@@ -792,7 +792,7 @@ contract PoolConfigLibTest is Test {
     function _createEmptyConfig() private pure returns (PoolConfig memory) {}
 
     function _checkBits(uint256 startBit, uint256 size) private {
-        uint endBit = startBit + size;
+        uint256 endBit = startBit + size;
         for (uint256 i = startBit; i < endBit; i++) {
             _checkBit(i);
         }

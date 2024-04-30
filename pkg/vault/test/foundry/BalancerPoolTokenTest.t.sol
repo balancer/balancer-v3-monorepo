@@ -58,7 +58,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     function testBurn() public {
-        uint burnAmount = defaultAmount - MINIMUM_TOTAL_SUPPLY;
+        uint256 burnAmount = defaultAmount - MINIMUM_TOTAL_SUPPLY;
 
         vault.mintERC20(address(pool), user, defaultAmount);
 
