@@ -15,14 +15,17 @@ abstract contract BaseHook is IPoolHooks {
     mapping(address => bool) public isPoolRegistered;
 
     error PoolAlreadyRegisteredOnHook(address);
+    error PoolFromUnsupportedFactory(address);
     error PoolNotRegisteredOnVault(address);
     error PoolAlreadyInitializedOnVault(address);
     error PoolNotRegisteredOnHook(address);
 
     IVault public immutable vault;
+    address public immutable supportedFactory;
 
-    constructor(IVault _vault) {
+    constructor(IVault _vault, address _supportedFactory) {
         vault = _vault;
+        supportedFactory = _supportedFactory;
     }
 
     /**
@@ -41,6 +44,12 @@ abstract contract BaseHook is IPoolHooks {
             revert PoolAlreadyRegisteredOnHook(pool);
         }
 
+        // Pool types can vary dramatically from each other. It is suggested to only support pools
+        // from a single factory to ensure that the hook is not used with an incompatible pool type. 
+        if (supportedFactory != address(0) && msg.sender != supportedFactory) {
+            revert PoolFromUnsupportedFactory(pool);
+        }
+
         // Expectation is that register is called on the hook AFTER it is called on the vault.
         if (vault.isPoolRegistered(pool) == false) {
             revert PoolNotRegisteredOnVault(pool);
@@ -55,7 +64,6 @@ abstract contract BaseHook is IPoolHooks {
     }
 
     function registerPool(address pool) public {
-        //this function can be overridden to add additional register checks (ie: only supported weighted pools)
         _registerPool(pool);
     }
 
