@@ -340,7 +340,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (params.kind == SwapKind.EXACT_IN) {
             // For `ExactIn` the amount calculated is leaving the Vault, so we round down.
-            amountCalculated = (vars.amountCalculatedScaled18 - vars.swapFeeAmountScaled18).toRawUndoRateRoundDown(
+            // Need to update `amountCalculatedScaled18` for the onAfterSwap hook.
+            vars.amountCalculatedScaled18 -= vars.swapFeeAmountScaled18;
+
+            amountCalculated = vars.amountCalculatedScaled18.toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[vars.indexOut],
                 poolData.tokenRates[vars.indexOut]
             );
@@ -351,7 +354,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
         } else {
             // Round up when entering the Vault on `ExactOut`.
-            amountCalculated = (vars.amountCalculatedScaled18 + vars.swapFeeAmountScaled18).toRawUndoRateRoundUp(
+            // Need to update `amountCalculatedScaled18` for the onAfterSwap hook.
+            vars.amountCalculatedScaled18 += vars.swapFeeAmountScaled18;
+
+            amountCalculated = vars.amountCalculatedScaled18.toRawUndoRateRoundUp(
                 poolData.decimalScalingFactors[vars.indexIn],
                 poolData.tokenRates[vars.indexIn]
             );
