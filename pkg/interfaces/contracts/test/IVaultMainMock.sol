@@ -84,7 +84,7 @@ interface IVaultMainMock {
         uint256 tokenIndex,
         uint256 protocolYieldFeePercentage,
         uint256 creatorYieldFeePercentage
-    ) external view returns (uint256, uint256);
+    ) external pure returns (uint256, uint256);
 
     function guardedCheckEntered() external;
 

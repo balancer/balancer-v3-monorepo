@@ -316,7 +316,7 @@ contract VaultMock is IVaultMainMock, Vault {
         uint256 tokenIndex,
         uint256 protocolYieldFeePercentage,
         uint256 creatorYieldFeePercentage
-    ) external view returns (uint256, uint256) {
+    ) external pure returns (uint256, uint256) {
         return
             _computeYieldFeesDue(
                 poolData,

@@ -467,7 +467,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         uint256 tokenIndex,
         uint256 protocolYieldFeePercentage,
         uint256 creatorYieldFeePercentage
-    ) internal view returns (uint256 protocolFeeAmountRaw, uint256 creatorFeeAmountRaw) {
+    ) internal pure returns (uint256 protocolFeeAmountRaw, uint256 creatorFeeAmountRaw) {
         uint256 currentLiveBalance = poolData.balancesLiveScaled18[tokenIndex];
 
         // Do not charge fees if rates go down. If the rate were to go up, down, and back up again, protocol fees
@@ -478,24 +478,20 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         if (currentLiveBalance > lastLiveBalance) {
             unchecked {
                 // Magnitudes checked above, so it's safe to do unchecked math here.
-                uint256 liveBalanceDiff = currentLiveBalance - lastLiveBalance;
+                uint256 liveBalanceDiffScaled18 = currentLiveBalance - lastLiveBalance;
+                uint256 liveBalanceDiffRaw = liveBalanceDiffScaled18.toRawUndoRateRoundDown(
+                    poolData.decimalScalingFactors[tokenIndex],
+                    poolData.tokenRates[tokenIndex]
+                );
 
                 if (protocolYieldFeePercentage > 0) {
-                    protocolFeeAmountRaw = liveBalanceDiff.mulDown(protocolYieldFeePercentage).toRawUndoRateRoundDown(
-                        poolData.decimalScalingFactors[tokenIndex],
-                        poolData.tokenRates[tokenIndex]
-                    );
-                } else {
-                    protocolFeeAmountRaw = 0;
+                    protocolFeeAmountRaw = liveBalanceDiffRaw.mulDown(protocolYieldFeePercentage);
                 }
 
                 if (creatorYieldFeePercentage > 0) {
-                    creatorFeeAmountRaw = (liveBalanceDiff.toRawUndoRateRoundDown(
-                        poolData.decimalScalingFactors[tokenIndex],
-                        poolData.tokenRates[tokenIndex]
-                    ) - protocolFeeAmountRaw).mulDown(creatorYieldFeePercentage);
-                } else {
-                    creatorFeeAmountRaw = 0;
+                    creatorFeeAmountRaw = (liveBalanceDiffRaw - protocolFeeAmountRaw).mulDown(
+                        creatorYieldFeePercentage
+                    );
                 }
             }
         }
