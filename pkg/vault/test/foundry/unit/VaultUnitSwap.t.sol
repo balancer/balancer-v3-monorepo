@@ -7,7 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
     SwapParams,
-    SwapLocals,
+    SwapVars,
     PoolData,
     SwapKind,
     VaultState
@@ -44,7 +44,7 @@ contract VaultUnitSwapTest is BaseTest {
     function testSwapExactInWithZeroFee() public {
         (
             SwapParams memory params,
-            SwapLocals memory vars,
+            SwapVars memory vars,
             PoolData memory poolData,
             VaultState memory vaultState
         ) = _makeParams(SwapKind.EXACT_IN, amountGivenRaw, 0, 0, 0);
@@ -77,7 +77,7 @@ contract VaultUnitSwapTest is BaseTest {
 
         (
             SwapParams memory params,
-            SwapLocals memory vars,
+            SwapVars memory vars,
             PoolData memory poolData,
             VaultState memory vaultState
         ) = _makeParams(SwapKind.EXACT_IN, amountGivenRaw, 0, 5e16, 10e16);
@@ -109,7 +109,7 @@ contract VaultUnitSwapTest is BaseTest {
 
         (
             SwapParams memory params,
-            SwapLocals memory vars,
+            SwapVars memory vars,
             PoolData memory poolData,
             VaultState memory vaultState
         ) = _makeParams(SwapKind.EXACT_IN, amountGivenRaw, swapLimit, 0, 0);
@@ -128,7 +128,7 @@ contract VaultUnitSwapTest is BaseTest {
     function testSwapExactOutSwapLimitRevert() public {
         (
             SwapParams memory params,
-            SwapLocals memory vars,
+            SwapVars memory vars,
             PoolData memory poolData,
             VaultState memory vaultState
         ) = _makeParams(SwapKind.EXACT_OUT, amountGivenRaw, 0, 0, 0);
@@ -147,7 +147,7 @@ contract VaultUnitSwapTest is BaseTest {
     function testSwapExactOutWithZeroFee() public {
         (
             SwapParams memory params,
-            SwapLocals memory vars,
+            SwapVars memory vars,
             PoolData memory poolData,
             VaultState memory vaultState
         ) = _makeParams(SwapKind.EXACT_OUT, amountGivenRaw, mockedAmountCalculatedScaled18, 0, 0);
@@ -177,7 +177,7 @@ contract VaultUnitSwapTest is BaseTest {
     function testSwapExactOutWithFee() public {
         (
             SwapParams memory params,
-            SwapLocals memory vars,
+            SwapVars memory vars,
             PoolData memory poolData,
             VaultState memory vaultState
         ) = _makeParams(SwapKind.EXACT_OUT, amountGivenRaw, mockedAmountCalculatedScaled18, 5e16, 10e16);
@@ -213,12 +213,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 poolCreatorFeePercentage_
     )
         internal
-        returns (
-            SwapParams memory params,
-            SwapLocals memory vars,
-            PoolData memory poolData,
-            VaultState memory vaultState
-        )
+        returns (SwapParams memory params, SwapVars memory vars, PoolData memory poolData, VaultState memory vaultState)
     {
         params = SwapParams({
             kind: kind,
@@ -249,7 +244,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 amountIn,
         uint256 amountOut,
         SwapParams memory params,
-        SwapLocals memory vars,
+        SwapVars memory vars,
         PoolData memory poolData,
         VaultState memory vaultState
     ) internal {
@@ -301,7 +296,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 amountIn,
         uint256 amountOut,
         SwapParams memory params,
-        SwapLocals memory vars,
+        SwapVars memory vars,
         PoolData memory poolData,
         VaultState memory vaultState
     ) internal {
@@ -332,7 +327,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 amountIn,
         uint256 amountOut,
         SwapParams memory params,
-        SwapLocals memory vars,
+        SwapVars memory vars,
         PoolData memory poolData,
         VaultState memory vaultState
     ) internal {
@@ -374,7 +369,7 @@ contract VaultUnitSwapTest is BaseTest {
     function _mockOnSwap(
         uint256 mockedAmountCalculatedScaled18_,
         SwapParams memory params,
-        SwapLocals memory vars,
+        SwapVars memory vars,
         PoolData memory poolData
     ) internal {
         vm.mockCall(

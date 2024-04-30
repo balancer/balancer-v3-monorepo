@@ -126,7 +126,7 @@ interface IVaultMainMock {
 
     function manualInternalSwap(
         SwapParams memory params,
-        SwapLocals memory vars,
+        SwapVars memory vars,
         PoolData memory poolData,
         VaultState memory vaultState
     )
@@ -136,7 +136,7 @@ interface IVaultMainMock {
             uint256 amountIn,
             uint256 amountOut,
             SwapParams memory,
-            SwapLocals memory,
+            SwapVars memory,
             PoolData memory,
             VaultState memory
         );
@@ -147,18 +147,9 @@ interface IVaultMainMock {
 
     function manualBuildPoolSwapParams(
         SwapParams memory params,
-        SwapLocals memory vars,
+        SwapVars memory vars,
         PoolData memory poolData
     ) external view returns (IBasePool.PoolSwapParams memory);
-
-    function manualComputeAndChargeProtocolFees(
-        PoolData memory poolData,
-        uint256 swapFeeAmountScaled18,
-        uint256 protocolSwapFeePercentage,
-        address pool,
-        IERC20 token,
-        uint256 index
-    ) external returns (uint256 protocolSwapFeeAmountRaw);
 
     function manualComputeAndChargeProtocolAndCreatorFees(
         PoolData memory poolData,
